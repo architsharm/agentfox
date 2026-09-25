@@ -1896,3 +1896,41 @@
   .bd-head, .bd-bar, .bd-verdict, .bd-rule { opacity: 1; animation: none; }
   .bd-impact { animation: none; opacity: 0; }
 }
+
+/* --- The gate rule, on the public site ------------------------------------
+ *
+ * The same motif as .gate-rule in globals.css (the hero's checkpoint seen
+ * edge-on), carried to the seam between sections. Applied with an adjacent
+ * sibling so it lands on every section boundary except the first, without a
+ * class on any of them — a divider that has to be remembered is a divider that
+ * will be missed on the next section somebody adds.
+ *
+ * Centred fade rather than the left-anchored one the app header uses: a section
+ * seam is symmetrical and the page has no left edge to measure from.
+ */
+.mk-section + .mk-section,
+.mk-section + .mk-section-tight,
+.mk-section-tight + .mk-section { position: relative; }
+
+.mk-section + .mk-section::before,
+.mk-section + .mk-section-tight::before,
+.mk-section-tight + .mk-section::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 6px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--mk-accent) 26%, transparent) 0 1px,
+      transparent 1px 38px
+    ),
+    linear-gradient(to bottom, var(--mk-border) 1px, transparent 1px);
+  background-size: 100% 4px, 100% 100%;
+  background-repeat: no-repeat;
+  background-position: 0 bottom, 0 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+}

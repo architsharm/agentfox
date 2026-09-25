@@ -28,6 +28,10 @@ export function PageHeader({
         {action}
       </div>
       {sub && <p className="sub">{sub}</p>}
+      {/* The hero's checkpoint, seen edge-on. Every signed-in page opens with
+          the same mark the public site's hero is built from — which is what
+          makes it an identity rather than one good picture on one page. */}
+      <div className="gate-rule" aria-hidden />
     </header>
   );
 }

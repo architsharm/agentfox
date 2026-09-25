@@ -2814,3 +2814,47 @@ td .mono { overflow-wrap: anywhere; }
 @media (max-width: 640px) {
   .am-label { font-size: 10px; }
 }
+
+/* --- The gate rule --------------------------------------------------------
+ *
+ * The hero's boundary, seen edge-on, as a divider.
+ *
+ * One good visual on one page is a hero; the same visual carried across a
+ * product is an identity. This is that motif reduced to a rule: a baseline with
+ * measurement ticks rising off it, the same ticks that run up the checkpoint in
+ * components/marketing/boundary.tsx. It goes under every signed-in page header
+ * and between marketing sections, which is what ties the app and the public
+ * site to one idea rather than to one palette.
+ *
+ * Two backgrounds, no markup, no image: the ticks are a repeating gradient and
+ * the baseline is a second layer under them. It costs a div.
+ */
+.gate-rule {
+  /* Quiet. It is a divider carrying a motif, not a feature: at 45% on a 30px
+     pitch it read as a ruler somebody had left on the page. */
+  --tick: 38px;
+  height: 6px;
+  margin: 18px 0 0;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 30%, transparent) 0 1px,
+      transparent 1px var(--tick)
+    ),
+    linear-gradient(to bottom, transparent calc(100% - 1px), var(--hairline) calc(100% - 1px));
+  background-size: 100% 4px, 100% 100%;
+  background-repeat: no-repeat;
+  background-position: 0 bottom, 0 0;
+}
+/* Fades out to the right, so it reads as a measure running off the page rather
+   than a box edge that stops. */
+.gate-rule {
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 42%, transparent 92%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 42%, transparent 92%);
+}
+
+/* The signed-in page header.
+   The title was 32px at 600 — the same inversion the marketing headline had,
+   just smaller. Lighter and tracked, so a dashboard page opens with the same
+   voice the public site now uses. */
+.page-head h1 { font-weight: 560; letter-spacing: -0.028em; }
