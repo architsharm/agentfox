@@ -219,7 +219,7 @@
   line-height: 1.02;
   letter-spacing: var(--track-display);
   font-variant-numeric: tabular-nums;
-  color: var(--text, var(--mk-ink));
+  color: var(--text, var(--mk-text));
 }
 .figure-lg { font-size: var(--t-figure-lg); }
 .figure-sm { font-size: var(--t-figure-sm); letter-spacing: var(--track-title); }
@@ -1762,3 +1762,137 @@
 .fr-rule .mk-mono { color: var(--mk-stop); font-size: var(--t-small); }
 /* The frames reuse the boundary-sequence row styles, which live inside .mk. */
 .fr-frame .seq-rows { margin-top: 0; }
+
+/* --- The Boundary ---------------------------------------------------------
+ *
+ * The hero visual. See components/marketing/boundary.tsx for why it exists:
+ * the product IS a boundary, and the panel of log rows it replaced showed what
+ * happened without making that argument.
+ *
+ * Everything draws with stroke-dashoffset, so switching the animation off
+ * leaves the finished diagram rather than an empty frame.
+ */
+/* The diagram sits on its own surface rather than floating in the page.
+   Bruno frames its product shot in a window; Fireworks boxes its chart with
+   crop marks. A drawing with no edges reads as an illustration someone pasted
+   in, not as a panel the product produced. */
+.bd {
+  margin: 0;
+  color: var(--mk-text);
+  padding: 22px 24px 20px;
+  border: 1px solid var(--mk-hairline, var(--mk-border, rgba(0,0,0,.08)));
+  border-radius: var(--mk-r-lg, 14px);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--mk-surface) 92%, var(--mk-bg)),
+      var(--mk-surface));
+  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 12px 36px -14px rgba(0,0,0,.12);
+}
+/* On a black ground a drop shadow does nothing, so the panel is separated by
+   its border and a lighter surface instead. */
+:root[data-theme="dark"] .bd,
+:root:not([data-theme="light"]) .bd { box-shadow: none; border-color: var(--mk-border); }
+.bd svg { display: block; overflow: visible; }
+
+/* The checkpoint itself.
+   The gradient stops are coloured HERE, not with `currentColor` in the markup:
+   a <linearGradient> lives in <defs>, outside the group that sets the colour,
+   so `currentColor` in a stop resolves against the defs' inherited colour —
+   which was the page's text colour — and the boundary rendered near-black instead of accent.
+   A gradient stop does not inherit from the element that references it. */
+.bd-gate { color: var(--mk-accent); }
+#bd-gate stop, #bd-band stop { stop-color: var(--mk-accent); }
+.bd-tick { stroke: var(--mk-accent); stroke-width: 1; opacity: .45; }
+.bd-gate-label {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 8.5px;
+  letter-spacing: .14em;
+  fill: var(--mk-accent);
+  opacity: .8;
+}
+
+/* A call, as a label and a line. */
+.bd-tool {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 12px;
+  fill: var(--mk-text);
+}
+.bd-arg {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 9.5px;
+  fill: var(--mk-muted);
+}
+.bd-line {
+  stroke: var(--mk-good);
+  stroke-width: 1.5;
+  opacity: .7;
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: bd-draw .52s cubic-bezier(.3, .7, .3, 1) both;
+  animation-delay: var(--d);
+}
+.bd-track-stop .bd-line { stroke: var(--mk-stop); opacity: .75; }
+
+.bd-head { fill: none; stroke: var(--mk-good); stroke-width: 1.5; opacity: 0; animation: bd-appear .3s ease-out both; animation-delay: var(--d); }
+
+/* The moment of refusal: a ring that expands once and is gone, and a bar that
+   stays. The ring is the event; the bar is the fact. */
+.bd-impact {
+  fill: none;
+  stroke: var(--mk-stop);
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bd-ring .62s cubic-bezier(.2, .7, .3, 1) both;
+  animation-delay: var(--d);
+}
+.bd-bar {
+  stroke: var(--mk-stop);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: bd-appear .28s ease-out both;
+  animation-delay: var(--d);
+}
+
+.bd-verdict {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 11px;
+  opacity: 0;
+  animation: bd-appear .3s ease-out both;
+  animation-delay: var(--d);
+}
+.bd-verdict-go { fill: var(--mk-good); animation-delay: var(--d); }
+.bd-verdict-stop { fill: var(--mk-stop); font-size: 12px; }
+.bd-rule {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 10.5px;
+  fill: var(--mk-muted);
+  opacity: 0;
+  animation: bd-appear .3s ease-out both;
+  animation-delay: var(--d);
+}
+
+@keyframes bd-draw { to { stroke-dashoffset: 0; } }
+@keyframes bd-appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bd-ring {
+  0%   { opacity: .9; r: 4; }
+  70%  { opacity: 0;  r: 17; }
+  100% { opacity: 0;  r: 17; }
+}
+
+.bd figcaption {
+  margin-top: 16px;
+  font-size: var(--t-small);
+  line-height: 1.5;
+  color: var(--mk-muted);
+  max-width: 46ch;
+}
+
+/* Off: the finished diagram, complete and still. */
+@media (prefers-reduced-motion: reduce) {
+  .bd-line { stroke-dashoffset: 0; animation: none; }
+  .bd-head, .bd-bar, .bd-verdict, .bd-rule { opacity: 1; animation: none; }
+  .bd-impact { animation: none; opacity: 0; }
+}

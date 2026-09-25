@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BoundarySequence } from "@/components/marketing/sequence";
-import { DecisionStream, EstateScan, TraceAnatomy } from "@/components/marketing/product";
+import { EstateScan, TraceAnatomy } from "@/components/marketing/product";
+import { Boundary } from "@/components/marketing/boundary";
 import { REPO } from "@/components/marketing/nav";
 
 /*
@@ -220,12 +221,11 @@ export function Hero() {
         {/* Was a 1600px capture of the findings table. At this width it rendered a
             sidebar, a help paragraph, a filter row and seven columns of 8px grey —
             a picture of a document, with nothing for the eye to land on. */}
+        {/* Was a panel of log rows — accurate, and carrying no argument of its
+            own. The Boundary draws the thing the product is instead: calls
+            approach a check, three cross it, one does not. See boundary.tsx. */}
         <div className="mk-up mk-d3">
-          <DecisionStream />
-          <p className="mk-fine" style={{ marginTop: 12, maxWidth: "46ch" }}>
-            Refused on this agent&rsquo;s grants and the call&rsquo;s own arguments —
-            no prompt recognition involved.
-          </p>
+          <Boundary />
         </div>
       </div>
     </section>
