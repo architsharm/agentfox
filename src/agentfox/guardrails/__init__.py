@@ -15,6 +15,8 @@ from .adapters.classifiers import (
 )
 from .adapters.embeddings import EmbeddingSimilarityDetector
 from .adapters.presidio import PresidioPiiDetector
+from .adapters.hub import CATALOGUE as HUB_CATALOGUE
+from .adapters.hub import HubValidatorDetector, hub_detectors
 from .adapters.rails import GuardrailsAiDetector, NemoRailsDetector
 from .base import (
     SURFACES,
@@ -55,6 +57,13 @@ register_detector(GraniteGuardianDetector())
 register_detector(NemoRailsDetector())
 register_detector(GuardrailsAiDetector())
 
+# --- Guardrails AI Hub, one detector per validator (adapters/hub.py) ---
+# Registered even when not installed: the Detectors strip counts "not installed"
+# separately from "off", so an operator can see a jailbreak classifier is one
+# `pip install` away rather than having to know the catalogue exists.
+for _hub_detector in hub_detectors():
+    register_detector(_hub_detector)
+
 # --- Licence-restricted, opt-in only (Appendix A.4) ---
 register_detector(RestrictedClassifierDetector())
 
@@ -89,6 +98,9 @@ __all__ = [
     "get_detector",
     "redact_content",
     "redact_sample",
+    "HUB_CATALOGUE",
+    "HubValidatorDetector",
+    "hub_detectors",
     "register_detector",
     "taint_rank",
     "warm_all",

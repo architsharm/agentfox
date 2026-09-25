@@ -5,6 +5,7 @@ import { api, safeApi, apiErrorProps } from "@/lib/api";
 import { ApiDown, Empty, InfoTip, InventoryStrip, Panel, Severity, Stat, agentName } from "@/components/ui";
 import { PageHeader } from "@/components/PageHeader";
 import { Countdown } from "@/components/Countdown";
+import { DetectorCatalogue } from "@/components/DetectorCatalogue";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -251,6 +252,15 @@ async function RulesTab({ agent }: { agent?: string }) {
         Cost, precision and suppressions for each are on the{" "}
         <Link href="/app/policies?tab=guardrails">Guardrail tuning tab</Link>.
       </p>
+
+      {/* "Not installed" was a number with nowhere to go.
+       
+          Most of that number is the Guardrails AI Hub, wrapped one validator per
+          detector — so it is not a deficiency, it is a catalogue, and a reader
+          should be able to see what is in it and take one. Each row carries the
+          exact command, because "install the package" without the name is the
+          same dead end the count was. */}
+      <DetectorCatalogue detectors={detectors.detectors} />
 
       {/* Was a heading, a sentence pointing elsewhere, and a 22-row reference
           table open on every load — a catalogue you could read but not act on.

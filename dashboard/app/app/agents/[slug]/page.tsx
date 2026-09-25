@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api, safeApi, apiErrorProps } from "@/lib/api";
 import { ApiDown, InfoTip, InventoryStrip, Panel, Severity, ts } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { AgentMap } from "@/components/AgentMap";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -419,7 +420,19 @@ export default async function AgentDetail({
           <button type="submit" className="btn-scan">Save</button>
         </form>
 
-        <div className="grid2" style={{ marginTop: 22 }}>
+        {/* The reach, drawn, before the reach listed. The table below is the same
+          data and stays — it is what you read when you need the exact counts —
+          but "how far does this thing go" is a shape, not four columns. */}
+      {lineage.links?.length > 0 && (
+        <AgentMap
+          root={lineage.root || a.slug}
+          nodes={lineage.nodes || []}
+          links={lineage.links}
+          blastRadius={lineage.blast_radius ?? 0}
+        />
+      )}
+
+      <div className="grid2" style={{ marginTop: 22 }}>
           <Panel title="Registration">
             <table>
               <tbody>

@@ -473,7 +473,18 @@ def create_app() -> FastAPI:
                     "surfaces": list(detector.surfaces),
                     "available": key in available,
                     "enabled": key in get_settings().enabled_detectors,
-                    "unavailable_reason": None if key in available else unavailable_reason.get(key),
+                    # A detector that knows why it is unavailable says so itself;
+                    # the table above covers the ones that predate that. Twenty
+                    # Hub validators maintained in a hard-coded dict in this file
+                    # would drift from the catalogue on the first addition.
+                    "unavailable_reason": (
+                        None
+                        if key in available
+                        else getattr(detector, "unavailable_reason", None)
+                        or unavailable_reason.get(key)
+                    ),
+                    "label": getattr(detector, "label", None),
+                    "install": getattr(detector, "package", None),
                     "stats": stats.get(key, {}),
                 }
                 for key, detector in sorted(all_detectors().items())
