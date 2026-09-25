@@ -173,7 +173,7 @@
    half-pixel px values in globals.css. A reader cannot perceive a hierarchy with
    48 levels; they perceive a mistake. Every size below is a whole pixel. */
 :root {
-  --t-display: 56px;
+  --t-display: 72px;
   --t-title: 32px;
   --t-subhead: 20px;
   --t-body: 15px;
@@ -255,13 +255,60 @@
   text-align: start;
   font-family: var(--mk-display);
 }
+/* Big and light.
+   This was 56px at weight 600 — small AND heavy, which is the opposite of what
+   every site worth comparing to does: Trajectory sets 96px at 500, Bruno 72px at
+   400, Fireworks 48px at 550 with -0.04em. A bold headline at a middling size
+   reads as a slide title; a large one at 430 reads as a masthead, and the weight
+   is what makes the difference, not the size alone.
+   `1.02` line-height because at this size the default leading opens a visible
+   gap between the two lines of a two-line headline. */
 .mk-h1 {
-  font-size: clamp(2.25rem, 4.4vw, var(--t-display));
-  line-height: 1.05;
-  letter-spacing: -.03em;
-  font-weight: 600;
+  font-size: clamp(2.5rem, 5.6vw, var(--t-display));
+  line-height: 1.03;
+  letter-spacing: -.035em;
+  font-weight: 430;
+  /* Not `balance`. Balance evened the line lengths and in doing so split the
+     accent phrase across two lines and orphaned "for" — the two worst breaks
+     available in a four-word headline. The phrase is held together below
+     instead, and the natural break lands where the sense does. */
+  text-wrap: pretty;
 }
-.mk-h1 em { font-style: normal; color: var(--mk-accent); }
+/* The accent phrase carries a little more weight than the rest of the line, so
+   it reads as emphasis rather than as two headlines in two colours — at 430 a
+   pure colour change is too weak to register as deliberate. */
+/* The accent phrase is one word as far as the line breaker is concerned: a
+   headline that reads "Runtime / firewall for" has broken the one phrase the
+   whole line exists to deliver. */
+.mk-h1 em { font-style: normal; color: var(--mk-accent); font-weight: 520; white-space: nowrap; }
+
+/* The eyebrow: mono, because this product's subject matter IS code and the
+   hero's own panel is a list of tool calls. A tracked-out uppercase grotesk
+   here would be the generic choice; the mono ties the type to the content. */
+.mk-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 22px;
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+}
+.mk-kicker::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mk-accent);
+  /* A slow pulse, not a blink: this is a status light on a thing that is
+     running, and anything faster reads as an alert. */
+  animation: mk-pulse 2.8s ease-in-out infinite;
+}
+@keyframes mk-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.82); } }
+@media (prefers-reduced-motion: reduce) { .mk-kicker::before { animation: none; } }
 .mk-h2 {
   font-size: clamp(1.625rem, 2.6vw, var(--t-title));
   line-height: 1.15;
@@ -374,7 +421,9 @@
 }
 .mk-hero > * { min-width: 0; }
 @media (min-width: 940px) {
-  .mk-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; }
+  /* The left column carries a 72px headline now, so it needs the room: at
+     1.05fr "Runtime firewall" did not fit on one line at any weight. */
+  .mk-hero { grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr); gap: 52px; }
 }
 
 /* The line a reader would actually type, at the size they would read it. */
@@ -466,21 +515,53 @@
    on white rather than as light falling on it. Two layers now: a faint brand-tinted
    glow behind the headline, and a neutral gradient that is fully transparent well
    before the element ends, so there is no edge to see. */
+/* The ground the hero sits on.
+   It was a 7% brand radial centred at the top — so faint it read as a printing
+   error rather than a decision. Every site worth comparing to treats this
+   surface deliberately: Trajectory's entire identity is an atmosphere, Bruno
+   puts a tinted panel behind the product shot.
+
+   Three layers, each doing one job: a warm accent bloom behind the headline, a
+   cooler one behind the panel on the right so the two halves of the composition
+   are not lit identically, and a fine grain over both. The grain is the part
+   that stops a CSS gradient looking like a CSS gradient — it is an inline SVG
+   turbulence, so it costs no request and no image. */
 .mk-wash {
   position: absolute;
   inset-inline: 0;
   top: -60px;
-  height: 820px;
+  height: 900px;
   pointer-events: none;
   z-index: 0;
   background:
     radial-gradient(
-      62% 52% at 50% 6%,
-      color-mix(in srgb, var(--mk-brand) 7%, transparent) 0%,
-      transparent 68%
+      48% 46% at 22% 14%,
+      color-mix(in srgb, var(--mk-accent) 13%, transparent) 0%,
+      transparent 70%
     ),
-    linear-gradient(180deg, var(--mk-surface-2) 0%, transparent 78%);
+    radial-gradient(
+      42% 44% at 82% 30%,
+      color-mix(in srgb, var(--mk-brand) 11%, transparent) 0%,
+      transparent 72%
+    ),
+    linear-gradient(180deg, var(--mk-surface-2) 0%, transparent 82%);
 }
+/* Grain. 0.035 opacity is the whole trick: visible as texture, invisible as
+   dots. `mix-blend-mode` keeps it from greying the surface underneath. */
+.mk-wash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* In dark the same bloom at this strength turns the top of the page muddy, and
+   multiply on a dark ground does nothing — the grain switches to screen. */
+:root[data-theme="dark"] .mk-wash,
+:root:not([data-theme="light"]) .mk-wash { opacity: .55; }
+:root[data-theme="dark"] .mk-wash::after,
+:root:not([data-theme="light"]) .mk-wash::after { mix-blend-mode: screen; opacity: .05; }
 
 /* --- Entrance motion, CSS only ----------------------------------------- */
 
@@ -492,15 +573,28 @@
    waiting on a frame that never came. The resting state is now visible by
    construction, and the animation only moves things eight pixels. */
 @keyframes mk-fade-up {
-  from { transform: translateY(8px); }
-  to { transform: none; }
+  /* It was named fade-up and only did the up: no opacity, so the "fade" was a
+     translate of eight pixels that nobody could see.
+
+     The whole sequence finishes inside ~0.73s, and that ceiling is the
+     constraint, not a preference. `both` means an element is at opacity 0
+     during its delay, so a long stagger is indistinguishable from a page that
+     has not loaded — a capture at 450ms of the first attempt (0.62s steps,
+     90ms apart) showed an empty hero with only the kicker in it. Motion that
+     reads as a loading state is worse than no motion. */
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
 }
-.mk-up { animation: mk-fade-up .5s cubic-bezier(.32, .72, 0, 1) both; }
-.mk-d1 { animation-delay: .05s; }
-.mk-d2 { animation-delay: .1s; }
+/* The page arrives in sequence rather than all at once.
+   This was .5s with 50ms between steps: five elements inside a quarter second,
+   which the eye reads as one event. At 90ms apart the order is legible — kicker,
+   headline, lede, buttons — and it still finishes well under a second. */
+.mk-up { animation: mk-fade-up .44s cubic-bezier(.22, .68, 0, 1) both; }
+.mk-d1 { animation-delay: .02s; }
+.mk-d2 { animation-delay: .08s; }
 .mk-d3 { animation-delay: .15s; }
-.mk-d4 { animation-delay: .2s; }
-.mk-d5 { animation-delay: .25s; }
+.mk-d4 { animation-delay: .22s; }
+.mk-d5 { animation-delay: .29s; }
 @media (prefers-reduced-motion: reduce) {
   .mk-up { animation: none; }
 }
@@ -827,13 +921,40 @@
 .pv-reason { font-size: var(--t-small); line-height: 1.5; color: var(--mk-muted); }
 
 /* The one piece of motion on the page, and it is the point of the page: the
-   records arrive, and the refusal arrives with them. */
+   records arrive, and the refusal arrives with them.
+
+   The choreography is the argument. Three calls go through at an even pace, and
+   then the fourth beat is a refusal that does not just appear — it settles, and
+   its reason opens underneath it. Someone who watches the hero for two seconds
+   has watched the product work, which is the one thing a static screenshot of
+   the same panel cannot do.
+
+   The timing was 0.5s steps at 0.09s apart, which is fast enough that all four
+   rows effectively arrive at once and nothing is choreographed at all. */
 @keyframes pv-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+/* The refusal lands rather than fades: a short overshoot on the ring, so the
+   eye is pulled to the one row that matters without anything flashing. */
+@keyframes pv-stop-land {
+  0%   { opacity: 0; transform: translateY(10px) scale(.985); box-shadow: 0 0 0 0 color-mix(in srgb, var(--mk-stop) 32%, transparent); }
+  55%  { opacity: 1; transform: translateY(0) scale(1.012); box-shadow: 0 0 0 7px color-mix(in srgb, var(--mk-stop) 0%, transparent); }
+  100% { opacity: 1; transform: none; box-shadow: 0 0 0 0 color-mix(in srgb, var(--mk-stop) 0%, transparent); }
+}
+.pv-call-stop { animation-name: pv-stop-land; animation-duration: .62s; }
+/* The reason unfolds after the row it belongs to has settled, so it reads as a
+   consequence of the block rather than as part of the same arrival. */
+.pv-call-stop .pv-call-why {
+  animation: pv-why .34s cubic-bezier(.2, .7, .3, 1) both;
+  animation-delay: .52s;
+}
+@keyframes pv-why {
+  from { opacity: 0; transform: translateY(-3px); }
   to   { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pv-call { animation: none; }
+  .pv-call, .pv-call-stop, .pv-call-stop .pv-call-why { animation: none; }
 }
 
 /* --- Trace anatomy -------------------------------------------------------- */

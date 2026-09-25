@@ -98,7 +98,10 @@ export function DecisionStream() {
           <div
             key={c.tool}
             className={c.verdict === "block" ? "pv-call pv-call-stop" : "pv-call"}
-            style={{ animationDelay: `${0.12 + i * 0.09}s` }}
+            /* 0.16s apart, not 0.09: at the old spacing all four rows arrived
+               inside a quarter second and there was no sequence to read. The
+               refusal is the fourth beat and gets the extra pause before it. */
+            style={{ animationDelay: `${0.18 + i * 0.16 + (c.verdict === "block" ? 0.1 : 0)}s` }}
           >
             <div className="pv-call-head">
               <span className="pv-tool">{c.tool}</span>

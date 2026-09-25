@@ -170,7 +170,12 @@ export function Hero() {
               against an actual network firewall — the two pages have to agree,
               so that passage says "not a network firewall, an action-layer one"
               rather than "not a firewall". */}
-          <h1 className="mk-h1 mk-up mk-d1">
+          {/* A third level above the headline. Mono, because this product's
+              subject is code and the panel beside it is a list of tool calls —
+              a tracked-out uppercase grotesk here would be the generic choice.
+              The dot is a status light: the thing is running. */}
+          <p className="mk-kicker mk-up mk-d1">Runtime, on every tool call</p>
+          <h1 className="mk-h1 mk-up mk-d2">
             <em>Runtime firewall</em> for AI agents
           </h1>
           {/* Every version of this line before it failed the same way: it described
@@ -183,7 +188,7 @@ export function Hero() {
               stakes and concreteness: the tools in question move money, delete
               records and send mail, which is why any of this matters, and the
               payoff is that being tricked does not get the model an exception. */}
-          <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20, maxWidth: "50ch" }}>
+          <p className="mk-lede mk-up mk-d3" style={{ marginTop: 22, maxWidth: "46ch" }}>
             Your agents read customer data, answer on your behalf, and move money.
             AgentFox checks each of those against what you allowed, and stops the ones
             that fall outside.
@@ -199,7 +204,7 @@ export function Hero() {
               reader has not actually wired up is the worst error available, so the
               hero no longer pairs an import with a refusal. The two paths are named
               on /how-it-works, and the one action here is the playground. */}
-          <div className="mk-row mk-up mk-d4" style={{ marginTop: 26 }}>
+          <div className="mk-row mk-up mk-d4" style={{ marginTop: 30 }}>
             <Link href="/playground" className="mk-btn mk-btn-primary">
               Try it, no account
             </Link>
