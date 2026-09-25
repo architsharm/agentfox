@@ -100,22 +100,45 @@ const CONTENTS: { id: string; title: string }[] = [
  * that travels with it. A number whose denominator is not beside it is not
  * evidence, and this page cannot afford to be the place that forgets that.
  */
-const CLAIMS: { question: string; result: string; detail: string; limit: string }[] = [
+/**
+ * The three headline results, as figures.
+ *
+ * `result` used to be one string set at --t-subhead — 20px, smaller than the
+ * heading above it and barely larger than the prose beside it, inside a stacked
+ * card in an 820px column on a 1440px screen. A benchmark page whose numbers are
+ * the smallest confident thing on the screen is arguing against itself.
+ *
+ * Split into `figure` and `unit` so the number can be set large and the symbol
+ * can ride with it at half size instead of competing. The second claim carried
+ * two ratios in one string ("42 of 42 · 552 of 552"), which cannot be set as a
+ * figure at any size; the denominator that matters leads and the other moves
+ * into the detail, where it is still stated in full.
+ */
+const CLAIMS: {
+  question: string;
+  figure: string;
+  unit?: string;
+  detail: string;
+  limit: string;
+}[] = [
   {
     question: "Does containment depend on detection?",
-    result: "8 of 8",
-    detail: "attack scenarios contained with every detector disabled, and 4 of 4 legitimate calls still allowed",
+    figure: "8 of 8",
+    detail:
+      "attack scenarios contained with every detector disabled — and 4 of 4 legitimate calls still allowed",
     limit: "Eight constructed scenarios, one per containment mechanism. Only as good as the grants and impact tiers declared for the agent.",
   },
   {
     question: "Does it hold at scale, without blocking real work?",
-    result: "42 of 42 · 552 of 552",
-    detail: "attacker calls that act, contained; legitimate calls still allowed, across a 617-call AgentDojo replay",
+    figure: "42 of 42",
+    detail:
+      "attacker calls that act, contained across a 617-call AgentDojo replay — with 552 of 552 legitimate calls still allowed",
     limit: "Ground-truth replay: no live model was persuaded. Three of the 23 attacker read calls were allowed, each one something the agent already held a grant for.",
   },
   {
     question: "How good is our detection on its own?",
-    result: "66.7%",
+    figure: "66.7",
+    unit: "%",
     detail: "recall at 100% precision on the deepset held-out split of 116",
     limit: "A different test from the llm-guard comparison in section 3, which measures precision on 20 indirect-injection cases. An adaptive attacker gets 72.9% of what we do catch through within 50 attempts.",
   },
@@ -141,13 +164,20 @@ export default function BenchmarkPage() {
               </p>
             </div>
 
-            <div className="bm-claims bm-rail">
+            {/* Out of the 820px reading rail on purpose. The rail is right for
+                prose and wrong for evidence: three results stacked in the left
+                half of a 1440px screen read as a list of footnotes. Across the
+                full width, each one is a column with its own figure, which is
+                the shape a reader already knows means "these are the results". */}
+            <div className="bm-claims">
               {CLAIMS.map((c) => (
                 <div key={c.question} className="bm-claim">
-                  <h2 className="mk-h3">{c.question}</h2>
-                  <p className="bm-claim-result">
-                    <b>{c.result}</b> <span>{c.detail}</span>
+                  <h2>{c.question}</h2>
+                  <p className="figure figure-lg bm-claim-figure">
+                    {c.figure}
+                    {c.unit && <span className="unit">{c.unit}</span>}
                   </p>
+                  <p className="bm-claim-detail">{c.detail}</p>
                   <p className="bm-claim-limit">{c.limit}</p>
                 </div>
               ))}

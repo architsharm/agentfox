@@ -48,7 +48,15 @@
      at 13px, where nearly all of this app's prose is set. */
   --measure: 680px;
 
-  --bg: #fbfbfd;
+  /* The ground is a real step below the panels, not 2% below them.
+     --bg was #fbfbfd against #ffffff panels: a 1.5% luminance difference, which
+     is to say none. Every card, panel and table on every page was floating on a
+     ground the same colour as itself, so the only thing separating them was a
+     hairline border — and a page of hairline rectangles reads as a wireframe,
+     not as a product. Each reference site sets this step deliberately (Bruno
+     #f5f5f5 under white, Trajectory a full cream). Ours is now a 3.5% step,
+     which is enough to see and not enough to look grey. */
+  --bg: #f4f4f7;
   --panel: #ffffff;
   --panel-2: #f5f5f7;
   --elevated: #ffffff;
@@ -555,8 +563,31 @@ h3 { font-size: var(--t-body); margin: 22px 0 8px; color: var(--text); font-weig
   border-radius: var(--r-3) 0 0 var(--r-3);
   background: transparent;
 }
-.card .n { font-size: var(--t-subhead); font-weight: 680; letter-spacing: -0.02em; }
-.card .l { color: var(--muted); font-size: var(--t-micro); margin-top: 3px; }
+/* Big and light, not small and bold.
+   This was 20px at weight 680 — the same size as an h2 and heavier than one, on
+   a number that is the whole reason the tile exists. Heavy digits at small sizes
+   read as shouting; large digits at 400 read as a measurement, which is what
+   every site this was compared against does and what we did nowhere. */
+.card .n {
+  font-size: var(--t-figure);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: var(--track-display);
+  font-variant-numeric: tabular-nums;
+}
+.card .l {
+  color: var(--muted);
+  font-size: var(--t-micro);
+  margin-top: 7px;
+  font-weight: 560;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  /* Uppercase plus tracking makes these labels longer, which left a trailing
+     ⓘ alone on its own line reading as a stray glyph. `pretty` spends the last
+     two lines avoiding exactly that orphan. */
+  text-wrap: pretty;
+  line-height: 1.4;
+}
 .card.bad { background: color-mix(in srgb, var(--bad-bg) 32%, var(--elevated)); border-color: color-mix(in srgb, var(--bad) 28%, var(--hairline)); }
 .card.warn { background: color-mix(in srgb, var(--warn-bg) 32%, var(--elevated)); border-color: color-mix(in srgb, var(--warn) 28%, var(--hairline)); }
 .card.ok { border-color: color-mix(in srgb, var(--ok) 22%, var(--hairline)); }
@@ -2021,21 +2052,52 @@ input[type="checkbox"], input[type="radio"] {
 /* Three claims, each with the limit that travels with it. Stacked rather than
    tiled: four tiles side by side read as four measurements of one thing, which
    is exactly the mistake this block was making. */
-.bm-claims { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r-3); overflow: hidden; margin-top: 34px; }
-.bm-claim { background: var(--panel); padding: 18px 20px; display: grid; gap: 8px; }
-.bm-doc .bm-claim h2, .bm-claim h2 { margin: 0; font-size: var(--t-body); font-weight: 600; color: var(--muted); }
-.bm-claim-result { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
-.bm-claim-result b {
-  font-size: var(--t-subhead);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  white-space: nowrap;
+/* The three headline results, across the page rather than stacked in its left
+   half. Three columns, each led by its figure; one column at phone width. The
+   hairline grid is kept — it is what says "these three are one set" — but the
+   claims no longer sit inside the prose rail, because a result is not prose. */
+.bm-claims {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  overflow: hidden;
+  margin-top: 40px;
 }
-.bm-claim-result span { font-size: var(--t-small); line-height: 1.5; color: var(--text-2); }
+@media (max-width: 860px) { .bm-claims { grid-template-columns: minmax(0, 1fr); } }
+
+.bm-claim {
+  background: var(--panel);
+  padding: 22px 24px 24px;
+  display: grid;
+  /* The gaps are uneven on purpose: the question sits close to the figure it
+     asks about, and the limit sits away from the result it qualifies. */
+  grid-template-rows: auto auto auto 1fr;
+  gap: 10px;
+}
+.bm-doc .bm-claim h2, .bm-claim h2 {
+  margin: 0;
+  font-size: var(--t-micro);
+  font-weight: 560;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.bm-claim-figure { margin: 2px 0 0; color: var(--text); }
+.bm-claim-detail {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: 1.55;
+  color: var(--text-2);
+  text-wrap: pretty;
+}
 .bm-claim-limit {
-  margin: 2px 0 0;
+  margin: 6px 0 0;
+  align-self: end;
   padding-left: 11px;
   border-left: 2px solid var(--border-strong, var(--border));
   font-size: var(--t-small);
@@ -2104,9 +2166,9 @@ td .mono { overflow-wrap: anywhere; }
 }
 .inv-item:hover { background: var(--panel-2); text-decoration: none; }
 .inv-item b {
-  font-size: var(--t-subhead);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: var(--t-figure-sm);
+  font-weight: 450;
+  letter-spacing: var(--track-title);
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }

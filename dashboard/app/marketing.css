@@ -179,6 +179,62 @@
   --t-body: 15px;
   --t-small: 13px;
   --t-micro: 12px;
+
+  /* --- Figures -----------------------------------------------------------
+     A number that IS the content, not a number inside a sentence.
+
+     This was the gap against every site this was measured against. Our largest
+     evidence — "8 of 8 contained", "66.7% recall", the stat tiles on every
+     signed-in page — rendered at --t-subhead (20px), which is smaller than the
+     heading above it and barely larger than the prose beside it. A benchmark
+     page whose numbers are the smallest confident thing on the screen is
+     arguing against itself.
+
+     Three sizes, because there are three jobs: a headline result, a tile on a
+     dashboard, and a figure inside a row. All three are set LIGHTER than the
+     body, not heavier — 680-weight digits at 20px read as shouting, where 45px
+     at 400 with -0.03em reads as a measurement. That inversion (big and light,
+     small and firm) is what the reference sites have in common and what we did
+     not have anywhere. */
+  --t-figure-lg: clamp(38px, 4.4vw, 56px);
+  --t-figure: 34px;
+  --t-figure-sm: 22px;
+
+  /* Tracking belongs to the size, not to the element. Display type needs
+     negative tracking or it reads loose; uppercase micro-labels need positive
+     or they read cramped. Both were being written per-rule. */
+  --track-display: -0.03em;
+  --track-title: -0.022em;
+  --track-tight: -0.012em;
+  --track-label: 0.07em;
+}
+
+/* One class for every figure that is the point of its block. `tabular-nums` so
+   a column of them lines up and a changing one does not reflow its neighbours. */
+.figure {
+  display: block;
+  font-family: var(--mk-sans, var(--sans));
+  font-size: var(--t-figure);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: var(--track-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--text, var(--mk-ink));
+}
+.figure-lg { font-size: var(--t-figure-lg); }
+.figure-sm { font-size: var(--t-figure-sm); letter-spacing: var(--track-title); }
+/* The unit rides with the number at a fraction of its size, so "66.7%" does not
+   become two competing type sizes on one baseline. */
+.figure .unit { font-size: 0.52em; font-weight: 500; letter-spacing: 0; margin-left: 1px; }
+/* What the figure counts. Never a full sentence — that goes underneath. */
+.figure-label {
+  display: block;
+  margin-top: 8px;
+  font-size: var(--t-micro);
+  font-weight: 560;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--muted, var(--mk-muted));
 }
 
 /* UPPERCASE labels only, and 12px is the floor for anything on this site: 368 of
