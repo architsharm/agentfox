@@ -127,6 +127,10 @@ class AutoState:
     #: is in observe, or because this state's mode is ``"observe"``.
     would_have_blocked: int = 0
     started: bool = False
+    #: How many policies are actually in force for this agent. -1 means the count
+    #: could not be taken (no database yet, or the query failed) — distinct from
+    #: 0, which is the dangerous case the banner warns about.
+    policies_bound: int = -1
     #: Groups turns into a conversation. Without one every exchange looks like a
     #: separate single-turn conversation, and turn-depth and repeated-failure
     #: conditions can never fire.
@@ -157,11 +161,31 @@ class AutoState:
 
     def summary(self) -> str:
         """One paragraph a developer reads once and never again."""
+        # Whether anything is actually in force. See `policies_bound` — a banner
+        # that says "governing in enforce mode" over an empty policy set is the
+        # one sentence this product must never print.
         by_label = {p.library: p for p in self.patches}
         patched = [p.library for p in self.patches if p.patched]
         lines = [
             f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment}).",
         ]
+        # A security tool that announces protection it is not providing is worse
+        # than one that is absent, because the absent one does not stop anyone
+        # looking further. On a database that has never been initialised there
+        # are no policies to apply, so every content check passes and the banner
+        # above was the only evidence a developer had — it said "enforce mode"
+        # and enforced nothing.
+        #
+        # Found by installing 0.3.1 from PyPI into a third-party project and
+        # calling auto() without running `agentfox init` first, which is exactly
+        # what adding one line to an existing app looks like. The canonical
+        # injection went straight to OpenAI and came back 401.
+        if self.policies_bound == 0:
+            lines.append(
+                "  NOTHING IS BEING ENFORCED: no policy is bound to this agent, so "
+                "no content check can fire. Tool-call containment still applies. "
+                "Run `agentfox init` to load the shipped policies."
+            )
         if patched:
             lines.append(f"  Patched: {', '.join(patched)}")
         else:
@@ -1207,10 +1231,19 @@ def auto(
                     framework=state.frameworks[0] if state.frameworks else None,
                     purpose="auto-registered by agentfox.auto()",
                 )
+        # How many policies actually reach this agent. Taken here because the
+        # banner below claims a mode, and a mode claim with nothing behind it is
+        # the failure this count exists to surface.
+        with session_scope() as session:
+            from .policy import active_policies
+
+            state.policies_bound = len(active_policies(session))
     except Exception as exc:
         # Registration is a convenience; failing it must not stop governance, and
         # hiding the failure would leave the developer wondering why the agent never
-        # appeared in the registry.
+        # appeared in the registry. The policy count shares this guard: if it could
+        # not be taken it stays -1, and the banner says nothing rather than
+        # claiming an all-clear it did not verify.
         log.warning("agentfox: could not register agent '%s': %s", state.agent, exc)
 
     state.patches = [result for patch in _PATCHERS for result in patch(state)]
