@@ -2858,3 +2858,42 @@ td .mono { overflow-wrap: anywhere; }
    just smaller. Lighter and tracked, so a dashboard page opens with the same
    voice the public site now uses. */
 .page-head h1 { font-weight: 560; letter-spacing: -0.028em; }
+
+/* --- Verdict ---------------------------------------------------------------
+ *
+ * The decision, in the hero's vocabulary. See components/ui.tsx: a verdict was
+ * a coloured pill, the same shape this product uses for a tier, a status, a
+ * mode and a framework — so in a table of fifty rows the one column carrying
+ * the actual decision looked like every other chip on the page.
+ *
+ * Not a pill any more. The glyph carries the outcome and the word confirms it,
+ * which is the right order for a column somebody scans.
+ */
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--t-micro);
+  font-weight: 560;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.verdict .vg { flex: 0 0 auto; overflow: visible; }
+
+/* The approach and the boundary are the same in every verdict — they are the
+   constant the reader measures against, so they never take the tone colour. */
+.vg-in { stroke: var(--border-strong, var(--border)); stroke-width: 1.2; }
+.vg-gate { stroke: var(--accent); stroke-width: 1.2; opacity: .55; }
+
+.vg-out { stroke: currentColor; stroke-width: 1.2; }
+.vg-dash { stroke-dasharray: 2.5 2; }
+.vg-head { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.vg-bar { stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.vg-hold { fill: none; stroke: currentColor; stroke-width: 1.4; }
+
+/* Tone lives on the wrapper so the glyph and the word can never disagree. */
+.verdict-ok { color: var(--ok); }
+.verdict-bad { color: var(--bad); }
+.verdict-warn { color: var(--warn); }
+.verdict-escalate { color: var(--escalate, var(--warn)); }

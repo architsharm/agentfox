@@ -121,9 +121,75 @@ const VERDICT_TONE: Record<string, string> = {
   allow: "ok",
 };
 
+/**
+ * What happened to the call at the boundary — drawn, then named.
+ *
+ * A verdict was a coloured pill, which is the same shape this product uses for
+ * a tier, a status, a mode and a framework. In a table of fifty rows the one
+ * column that carries the actual decision looked like every other chip on the
+ * page, and the reader had to read the word to know what they were looking at.
+ *
+ * These are the hero's vocabulary at row scale: a track meeting a checkpoint,
+ * and what became of it. Crossed with an arrow, stopped at a bar, held at the
+ * line for a person, or crossed altered. Four outcomes, four silhouettes, so a
+ * column of them is scannable before any word is read.
+ *
+ * The word stays. A glyph on its own is a puzzle, and this is a governance
+ * record — the row has to say what it means in language, not only in shape.
+ */
+const VERDICT_SHAPE: Record<string, "through" | "stop" | "hold" | "altered"> = {
+  allow: "through",
+  block: "stop",
+  escalate: "hold",
+  redact: "altered",
+  mask: "altered",
+  tokenize: "altered",
+};
+
+function VerdictGlyph({ shape }: { shape: "through" | "stop" | "hold" | "altered" }) {
+  // 34x14. The gate sits at x=19 in every one of them, so a column of these
+  // lines up on the boundary and the eye reads the difference, not the drift.
+  return (
+    <svg className="vg" viewBox="0 0 34 14" width="34" height="14" aria-hidden focusable="false">
+      {/* approach — identical in all four */}
+      <line x1="1" y1="7" x2="19" y2="7" className="vg-in" />
+      {/* the boundary */}
+      <line x1="19" y1="2.5" x2="19" y2="11.5" className="vg-gate" />
+
+      {shape === "through" && (
+        <>
+          <line x1="19" y1="7" x2="29" y2="7" className="vg-out" />
+          <path d="M26.5 4.5 L30 7 L26.5 9.5" className="vg-head" />
+        </>
+      )}
+      {shape === "altered" && (
+        <>
+          {/* It crossed, but not unchanged: the dash is the alteration. */}
+          <line x1="19" y1="7" x2="29" y2="7" className="vg-out vg-dash" />
+          <path d="M26.5 4.5 L30 7 L26.5 9.5" className="vg-head" />
+        </>
+      )}
+      {shape === "stop" && <line x1="21" y1="3" x2="21" y2="11" className="vg-bar" />}
+      {shape === "hold" && (
+        /* Held at the line waiting for a person — an open ring, not a bar:
+           nothing has been decided yet. */
+        <circle cx="24" cy="7" r="3" className="vg-hold" />
+      )}
+    </svg>
+  );
+}
+
 export function Verdict({ value }: { value?: string | null }) {
   if (!value) return <span className="muted">—</span>;
-  return <span className={`tag ${VERDICT_TONE[value] || ""}`}>{value}</span>;
+  const shape = VERDICT_SHAPE[value];
+  const tone = VERDICT_TONE[value] || "";
+  if (!shape) return <span className={`tag ${tone}`}>{value}</span>;
+  return (
+    <span className={`verdict verdict-${tone}`}>
+      <VerdictGlyph shape={shape} />
+      <span>{value}</span>
+    </span>
+  );
 }
 
 const STATUS_TONE: Record<string, string> = {
