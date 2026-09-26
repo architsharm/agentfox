@@ -296,7 +296,7 @@ const LIMITS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "It is MVP v0.3",
+    title: "It is an early release",
     body: (
       <>
         No SSO. Multi-tenancy is enforced at the session for a single organisation, and this is
@@ -495,7 +495,7 @@ export function CTA() {
                 lineHeight: 1.7,
               }}
             >
-              {`pip install git+https://github.com/architsharm/agentfox.git\nagentfox init && agentfox demo`}
+              {`pip install agentfox\nagentfox init && agentfox demo`}
             </pre>
             <p className="mk-fine" style={{ marginTop: 12 }}>
               Offline: no API key, no downloaded weights, no network egress.

@@ -9,7 +9,7 @@
 An open-source control plane that checks what your agent may read, may claim and may do —
 and refuses the rest. It holds after the model has already been convinced.
 
-[![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](pyproject.toml) [![Status](https://img.shields.io/badge/status-MVP%20v0.3-8a5a00.svg)](docs/status.md) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
+[![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](pyproject.toml) [![PyPI](https://img.shields.io/pypi/v/agentfox.svg?color=2f6feb)](https://pypi.org/project/agentfox/) [![Status](https://img.shields.io/badge/status-early%20release-8a5a00.svg)](docs/status.md) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
 
 **[▶ Try it live, no account](https://useagentfox.com/playground)** &nbsp;·&nbsp; [🚀 Self-host it](#self-hosting) &nbsp;·&nbsp; [📊 Every benchmark](https://useagentfox.com/benchmark) &nbsp;·&nbsp; [⚖ How we compare](https://useagentfox.com/compare)
 

@@ -124,7 +124,7 @@ export function Editions({
               Runs offline: no API key, no downloaded weights, no network egress.
             </p>
             <pre className="ed-code">
-              <code>pip install git+https://github.com/architsharm/agentfox.git</code>
+              <code>pip install agentfox</code>
               <code className="ed-code-2">agentfox init &amp;&amp; agentfox demo</code>
             </pre>
             <a

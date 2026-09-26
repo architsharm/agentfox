@@ -287,7 +287,7 @@ compliance and self-host-vs-SaaS competitive claims are actually built for.
 
 **Secondary path — Vercel serverless (`api/`), for a hosted trial/demo:** `api/index.py`
 re-exports the gateway app; dependencies install from a **git-committed prebuilt wheel**
-(`api/vendor/agentfox-0.3.0-py3-none-any.whl`) because Vercel's Root Directory for this
+(`api/vendor/agentfox-<version>-py3-none-any.whl`) because Vercel's Root Directory for this
 function is `api/`, so a relative import against `../src` doesn't ship. **This is an
 architecturally significant risk, not a packaging footnote**: the wheel must be rebuilt
 and committed after every change to `src/agentfox` that the hosted path should reflect.
