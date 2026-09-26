@@ -221,3 +221,122 @@ def test_silencing_telemetry_never_takes_the_detector_down(monkeypatch):
     broken = object()  # no `.settings`, no `.rc`
     monkeypatch.setitem(sys.modules, "guardrails", broken)
     _silence_guardrails_telemetry()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Found by installing the real packages into a scratch venv and looking at the
+# validators that were NOT installed. None of this is reachable with the
+# stand-in alone, so each test reproduces the shape the real packages have.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def shared_hub_namespace(monkeypatch):
+    """`guardrails.hub` as it really behaves: shared, and lazily populated.
+
+    It exports nothing until a hub package is installed, and then exports that
+    package's class — not the one you asked for.
+    """
+    base = types.ModuleType("guardrails.validator_base")
+    base.Validator = _Validator
+    root = types.ModuleType("guardrails")
+    root.validator_base = base
+    hub = types.ModuleType("guardrails.hub")
+
+    class DetectJailbreak(_Validator):
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def validate(self, value, metadata):
+            return PassResult()
+
+    hub.DetectJailbreak = DetectJailbreak
+    root.hub = hub
+    monkeypatch.setitem(sys.modules, "guardrails", root)
+    monkeypatch.setitem(sys.modules, "guardrails.validator_base", base)
+    monkeypatch.setitem(sys.modules, "guardrails.hub", hub)
+    monkeypatch.delitem(sys.modules, "guardrails_ai", raising=False)
+    return DetectJailbreak
+
+
+def test_an_uninstalled_slug_never_resolves_to_somebody_elses_validator(shared_hub_namespace):
+    """The worst thing this adapter could do, and it was doing it.
+
+    With one hub package installed, `guardrails.hub` holds exactly one class, so
+    the "lone candidate" fallback handed that class to every slug that asked.
+    Measured against the real packages: unusual_prompt, bias_check, nsfw_text
+    and competitor_check all resolved to DetectJailbreak. Each would have run
+    the jailbreak classifier while reporting its own entity type, under its own
+    key, with its own measured precision and its own policy rules. A control
+    reporting the wrong check under the right name is worse than one that is
+    off, because nothing about it looks wrong.
+    """
+    for slug in ("unusual_prompt", "bias_check", "nsfw_text", "competitor_check"):
+        assert _load_validator_class(slug) is None, slug
+
+
+def test_the_slug_that_is_installed_still_resolves(shared_hub_namespace):
+    """The fix must not cost the classic namespace its one legitimate use."""
+    assert _load_validator_class("detect_jailbreak") is shared_hub_namespace
+
+
+def test_a_lone_class_is_still_accepted_from_the_standalone_package(fake_guardrails):
+    """There the module IS the validator, so an unexpected spelling is safe."""
+    made = fake_guardrails("bias_check", "SomethingRenamed", lambda v: PassResult())
+    del sys.modules["guardrails_ai.bias_check"].Validator  # the only class left
+    assert _load_validator_class("bias_check") is made
+
+
+def test_installed_but_broken_does_not_report_itself_as_not_installed(fake_guardrails):
+    """`detect_jailbreak` installs, its class is found, and constructing it
+
+    raises — transformers 5.x tightened `id2label` typing and the validator
+    ships `{"0": 0, "1": 1}`. The reason said "not installed. Install it with
+    `pip install ...`", so an operator ran that command and got the same
+    sentence back, with no way to learn that a jailbreak classifier they
+    believed was enabled was silently off. The module docstring names exactly
+    this as the failure the discovery logic exists to prevent.
+    """
+
+    def explode(**_kwargs):
+        raise TypeError("Field 'id2label' with value {'0': 0, '1': 1} doesn't match")
+
+    fake_guardrails("detect_jailbreak", "DetectJailbreak", lambda v: PassResult())
+    monkey = sys.modules["guardrails_ai.detect_jailbreak"]
+    monkey.DetectJailbreak.__init__ = lambda self, **kw: explode(**kw)
+
+    d = _detector("detect_jailbreak")
+    assert d.available() is False
+    reason = d.unavailable_reason
+    assert "installed, but it failed to load" in reason
+    assert "id2label" in reason
+    assert "pip install guardrails-ai-detect-jailbreak" not in reason
+
+
+def test_a_validator_that_constructs_but_cannot_run_is_not_reported_as_available(
+    fake_guardrails,
+):
+    """`toxic_language` constructs cleanly and raises on every call, because its
+
+    nltk `punkt_tab` resource downloads on first use and is not there. The
+    pipeline degrades it correctly per request; the lie was upstream, in
+    `available()` counting a control nobody actually has.
+    """
+
+    def raises(_value):
+        raise LookupError("Resource 'punkt_tab' not found.")
+
+    fake_guardrails("toxic_language", "ToxicLanguage", raises)
+    d = _detector("toxic_language")
+    assert d.available() is True  # constructing says nothing about running
+    d.warm()
+    assert d.available() is False
+    assert "punkt_tab" in d.unavailable_reason
+    assert "installed, but it failed to load" in d.unavailable_reason
+
+
+def test_warming_a_working_validator_leaves_it_available(fake_guardrails):
+    fake_guardrails("profanity_free", "ProfanityFree", lambda v: PassResult())
+    d = _detector("profanity_free")
+    d.warm()
+    assert d.available() is True

@@ -207,20 +207,20 @@ def _load_validator_class(slug: str) -> type | None:
     _silence_guardrails_telemetry()
 
     module = None
+    standalone = False
     for name in (f"guardrails_ai.{slug}", "guardrails.hub"):
         try:
             module = __import__(name, fromlist=["*"])
+            standalone = name != "guardrails.hub"
             break
         except Exception:
             continue
     if module is None:
         return None
 
-    # The module exports exactly one Validator subclass in the standalone case.
-    # In the shared `guardrails.hub` namespace it exports many, so match on the
-    # slug: "detect_jailbreak" -> "DetectJailbreak", case-insensitively, which
-    # also catches the acronym spellings (NSFWText, ValidSQL) that a naive
-    # title-case would miss.
+    # Match on the slug: "detect_jailbreak" -> "DetectJailbreak",
+    # case-insensitively, which also catches the acronym spellings (NSFWText,
+    # ValidSQL) that a naive title-case would miss.
     want = slug.replace("_", "").lower()
     candidates = []
     for attr in dir(module):
@@ -229,7 +229,27 @@ def _load_validator_class(slug: str) -> type | None:
             candidates.append(obj)
             if attr.replace("_", "").lower() == want:
                 return obj
-    return candidates[0] if len(candidates) == 1 else None
+
+    # A lone unnamed candidate is only safe in the standalone package, where the
+    # module IS this validator and the class is simply spelled unexpectedly.
+    #
+    # `guardrails.hub` is a shared, lazily-populated namespace: it exports
+    # nothing until something is installed, and then exports whatever is. So
+    # this fallback, applied there, returned *somebody else's* validator for any
+    # slug that was not installed. Measured with one hub package present:
+    #
+    #   unusual_prompt   -> DetectJailbreak
+    #   bias_check       -> DetectJailbreak
+    #   nsfw_text        -> DetectJailbreak
+    #   competitor_check -> DetectJailbreak
+    #
+    # Four detectors, each with its own key, its own entity type, its own
+    # measured precision and its own policy rules, all running the jailbreak
+    # classifier. A governance control reporting the wrong check under the right
+    # name is worse than one that is off, because nothing about it looks wrong.
+    if standalone and len(candidates) == 1:
+        return candidates[0]
+    return None
 
 
 class HubValidatorDetector(BaseDetector):
@@ -250,6 +270,11 @@ class HubValidatorDetector(BaseDetector):
         self.surfaces = spec.surfaces
         self.timeout_ms = spec.timeout_ms
         self._kwargs = kwargs
+        #: Set when the package IS installed and constructing it failed anyway.
+        #: The two states have to be told apart — see `unavailable_reason`.
+        self._load_error: str | None = None
+        #: Set by `warm()` when it constructs but cannot actually run.
+        self._unusable = False
 
     @property
     def package(self) -> str:
@@ -267,8 +292,29 @@ class HubValidatorDetector(BaseDetector):
         Carried on the detector rather than in the gateway's hard-coded table,
         because a catalogue of twenty entries maintained in a different file from
         the catalogue itself will drift on the first addition.
+
+        Two reasons, not one. This said "not installed" whatever had happened,
+        and the module docstring above names precisely that as the failure the
+        discovery logic exists to prevent: "the detector sits in the UI reading
+        'not installed' forever with nobody able to tell that from the truth."
+        The import was guarded and the identical hole was left one line later at
+        construction — where it then opened for real. `detect_jailbreak`
+        installs, its class is found, and `DetectJailbreak()` raises
+        `StrictDataclassFieldValidationError` because transformers 5.x tightened
+        `id2label` typing and the validator ships `{"0": 0, "1": 1}`. An
+        operator who ran the pip command this property told them to run saw the
+        same sentence afterwards, and had no way to learn that a jailbreak
+        classifier they believed they had enabled was silently off.
         """
         note = f" {self.spec.note}" if self.spec.note else ""
+        self._probe()
+        if self._load_error is not None:
+            return (
+                f"{self.spec.label} from the Guardrails AI Hub — installed, but it "
+                f"failed to load: {self._load_error} This is a fault in "
+                f"{self.package} or its dependencies, not a missing install; "
+                f"upgrading or pinning that package is what changes it.{note}"
+            )
         return (
             f"{self.spec.label} from the Guardrails AI Hub — not installed. "
             f"Install it with `pip install {self.package}`, then add "
@@ -277,8 +323,12 @@ class HubValidatorDetector(BaseDetector):
             f"enabled.{note}"
         )
 
+    def _probe(self) -> None:
+        """Resolve `_validator` so `_load_error` reflects what happened."""
+        _ = self._validator
+
     def available(self) -> bool:
-        return self._validator is not None
+        return self._validator is not None and not self._unusable
 
     @functools.cached_property
     def _validator(self) -> Any:
@@ -292,13 +342,35 @@ class HubValidatorDetector(BaseDetector):
             return cls(**self._kwargs)
         except Exception as exc:  # pragma: no cover - depends on the package
             log.warning("guardrails hub validator %s failed to construct: %s", self.spec.slug, exc)
+            # Their messages run to several lines of dataclass validation noise;
+            # one line is what fits where this is shown, and the log above keeps
+            # the rest.
+            detail = " ".join(str(exc).split())
+            self._load_error = f"{type(exc).__name__}: {detail[:160]}"
             return None
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
         # Several of these load model weights on first call. The per-detector
         # budget is tens of milliseconds, so paying that cost on a real request
         # would degrade the detector exactly once and look like a flake.
-        _ = self._validator
+        validator = self._validator
+        if validator is None:
+            return
+        # And run it once, because constructing is not the same as working.
+        # `toxic_language` constructs cleanly and then raises on every call —
+        # its nltk `punkt_tab` resource is downloaded on first use and is not
+        # there. Without this probe `available()` reports a healthy detector
+        # that cannot run, so the Detectors strip counts a control nobody has.
+        # The pipeline does degrade it correctly per request (see `_detect`);
+        # the lie is upstream of that, in what we claim to be running.
+        try:
+            validator.validate("ok", {})
+        except Exception as exc:
+            log.warning("guardrails hub validator %s constructed but cannot run: %s",
+                        self.spec.slug, exc)
+            detail = " ".join(str(exc).split())
+            self._load_error = f"{type(exc).__name__}: {detail[:160]}"
+            self._unusable = True
 
     def _detect(
         self, content: str, context: DetectionContext
