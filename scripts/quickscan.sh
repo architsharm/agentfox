@@ -4,9 +4,9 @@
 #   curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash
 #
 # Installs AgentFox into a throwaway virtualenv (removed on exit either way) and runs
-# `agentfox quickscan` against the current directory. It's the same package
-# `pip install agentfox` would give you — this script exists only to skip "clone,
-# create a venv, activate it, pip install" for a first look. No step here talks to
+# `agentfox quickscan` against the current directory. It installs from git rather than
+# PyPI so a first look always runs the current main, not the last release — this script
+# exists only to skip "create a venv, activate it, pip install" for that first look. No step here talks to
 # anything but PyPI/GitHub (to fetch the package itself) and your local filesystem.
 
 set -euo pipefail

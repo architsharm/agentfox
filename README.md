@@ -29,7 +29,7 @@ and refuses the rest. It holds after the model has already been convinced.
 ## Quickstart
 
 ```bash
-pip install git+https://github.com/architsharm/agentfox.git
+pip install agentfox
 agentfox init && agentfox demo
 ```
 

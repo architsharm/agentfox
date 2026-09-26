@@ -13,6 +13,29 @@ the file it came from.
 
 Nothing yet.
 
+## [0.3.1] - 2026-09-26
+
+The first release published to PyPI, which is the whole point of it: 0.3.0 was
+tagged before `release.yml` had a `pypi` job, so `pip install agentfox` has never
+worked and the README's first command has been a `git+https` URL. From this tag
+the package is on PyPI and the name is held.
+
+Published through Trusted Publishing — PyPI mints a short-lived token from the
+release workflow's OIDC identity, so there is no API token in the repository's
+secrets, nothing to rotate, and nothing that keeps working if it leaks.
+
+Also in this release, all of it since 0.3.0:
+
+- A blocked tool call no longer leaves its trace reading `allow`. `Trace.verdict`
+  was only ever written by the completion path, so every trace the tool-call path
+  refused reported that nothing had happened.
+- Twenty Guardrails AI Hub validators wrapped one-per-detector, each with its own
+  key, telemetry and suppressions, reporting into this project's entity taxonomy —
+  and with that project's own telemetry switched off, because enabling a check
+  must not start exporting spans to a third party.
+- The vendored gateway wheel carries two fixes it had been missing since 0.3.0.
+- The latency probe measures the mechanism rather than the CI runner.
+
 ## [0.3.0] - 2026-09-25
 
 The MVP described in the README. The package was declared `0.1.0` while every document

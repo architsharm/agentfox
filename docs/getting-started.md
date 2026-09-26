@@ -32,7 +32,7 @@ enforcement path demonstrable with nothing installed.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install git+https://github.com/architsharm/agentfox.git
+pip install agentfox
 agentfox --help
 ```
 

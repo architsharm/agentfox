@@ -15,7 +15,7 @@ control plane. The one-liner exists because the sum of small integration asks is
 governance tooling sits in a proof-of-concept for six months.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 # Lazily re-exported so `import agentfox` stays fast and side-effect free — importing
 # the package must never open a database or touch a client library.

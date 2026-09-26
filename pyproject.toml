@@ -1,6 +1,6 @@
 [project]
 name = "agentfox"
-version = "0.3.0"
+version = "0.3.1"
 description = "Agent-native, vendor-neutral governance, security and compliance control plane for AI agents in production."
 readme = "README.md"
 requires-python = ">=3.11"

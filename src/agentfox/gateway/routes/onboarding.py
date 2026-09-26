@@ -115,13 +115,13 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
             "id": "install",
             "title": "Run it yourself, if you want it in your own infrastructure",
             "done": agents > 0,
-            # Not `pip install agentfox`: the distribution name is unclaimed on
-            # PyPI (release.yml publishes a GitHub Release and deliberately does
-            # not upload there), so that command fails with "No matching
-            # distribution found" for everyone who copies it. This is the same
-            # line the README and the marketing site give, and it works today.
+            # `pip install agentfox` from 0.3.1 on. It was a git+https URL until
+            # then, because release.yml published a GitHub Release and nothing to
+            # PyPI, so the obvious command failed with "No matching distribution
+            # found" for everyone who copied it. The release workflow now uploads
+            # via Trusted Publishing. Same line as the README and the site.
             "command": (
-                "pip install git+https://github.com/architsharm/agentfox.git"
+                "pip install agentfox"
                 " && agentfox init"
             ),
             "detail": (
