@@ -40,4 +40,4 @@ cryptography>=43
 # actual build error: a bare "vendor/..." resolved to ".../api/api/vendor/...").
 # Rebuild after changing src/agentfox: `uv build --wheel --out-dir api/vendor` from the
 # repo root, then delete the old wheel file.
-../vendor/agentfox-0.3.0-py3-none-any.whl
+../vendor/agentfox-0.3.1-py3-none-any.whl

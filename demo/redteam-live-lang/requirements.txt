@@ -34,4 +34,4 @@ langchain-openai>=0.3
 #   uv build --wheel --out-dir demo/redteam-live-lang/vendor
 # then delete the old wheel file and `git add -f` the new one (vendor/.gitignore
 # excludes build output by default, same as api/vendor/'s).
-../../vendor/agentfox-0.3.0-py3-none-any.whl
+../../vendor/agentfox-0.3.1-py3-none-any.whl
