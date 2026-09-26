@@ -28,6 +28,50 @@ log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+#: Env var naming where this installation keeps the things it writes. Like
+#: CONFIG_ENV_VAR, deliberately not a Settings field: it decides the default of
+#: other fields, which are evaluated when this class is defined.
+STATE_ENV_VAR = "AGENTFOX_STATE_DIR"
+
+
+def _running_from_a_source_checkout() -> bool:
+    """Is `REPO_ROOT` the repository, or a directory inside somebody's venv?
+
+    `parents[2]` of `src/agentfox/config.py` is the repository root — and
+    `parents[2]` of `<venv>/lib/python3.12/site-packages/agentfox/config.py` is
+    `<venv>/lib/python3.12`. The expression is the same; what it names is not.
+    """
+    return (REPO_ROOT / "pyproject.toml").is_file() and (REPO_ROOT / "src" / "agentfox").is_dir()
+
+
+def state_root() -> Path:
+    """Where this installation writes its database and its evidence packages.
+
+    In the repository, that is the repository — `agentfox.db` and `var/evidence/`
+    where every contributor and every script already expects them.
+
+    Installed from PyPI it cannot be, and the old default put both *inside the
+    virtualenv's lib directory*: a governance database and signed auditor
+    evidence in a tree that `pip install --upgrade`, a rebuilt venv or a stray
+    `rm -rf .venv` throws away, with nothing said about it. The read-only side of
+    this exact mistake is already commented at `compliance_dir` below — the
+    catalog was empty in production because a repo-relative path finds nothing
+    once installed. This is the writing side of it, and it fails the other way
+    round: not empty, but silently disposable.
+    """
+    override = os.environ.get(STATE_ENV_VAR)
+    if override:
+        return Path(override).expanduser().resolve()
+    if _running_from_a_source_checkout():
+        return REPO_ROOT
+    # Not the venv, and not the working directory either: `agentfox findings`
+    # must show the same findings from whichever directory it is typed in.
+    xdg = os.environ.get("XDG_DATA_HOME")
+    return (Path(xdg) / "agentfox" if xdg else Path.home() / ".agentfox").expanduser().resolve()
+
+
+STATE_ROOT = state_root()
+
 #: Env var naming an explicit config file. Deliberately *not* a Settings field: it
 #: decides where settings come from, so it cannot itself come from that file.
 CONFIG_ENV_VAR = "AGENTFOX_CONFIG"
@@ -132,7 +176,7 @@ class Settings(BaseSettings):
         return self._config_file
 
     # --- Persistence -----------------------------------------------------
-    database_url: str = f"sqlite:///{REPO_ROOT / 'agentfox.db'}"
+    database_url: str = f"sqlite:///{STATE_ROOT / 'agentfox.db'}"
     sql_echo: bool = False
 
     # --- Deployment ------------------------------------------------------
@@ -432,7 +476,7 @@ class Settings(BaseSettings):
     audit_checkpoint_interval: int = 100
     # P5-5 / R8: the audit log must not become a new PII liability.
     redact_at_capture: bool = True
-    evidence_dir: Path = REPO_ROOT / "var" / "evidence"
+    evidence_dir: Path = STATE_ROOT / "var" / "evidence"
 
     # --- Content paths -----------------------------------------------------
     # Packaged *inside* agentfox/ (not at the repo root) so `packages =
