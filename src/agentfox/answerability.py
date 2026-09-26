@@ -372,6 +372,23 @@ class AnswerabilityVerdict:
         }
 
 
+def _article(word: str) -> str:
+    """"a opinion question" is the kind of slip that makes a refusal look automated.
+
+    Every value that reaches this is one of QUESTION_TYPES — plain ASCII words — so
+    the vowel test is exact here and does not need a general a/an library.
+    """
+    return "an" if word[:1].lower() in "aeiou" else "a"
+
+
+def _or_list(items: list[str]) -> str:
+    """"fact or aggregate or procedure" reads as a machine listing enum members."""
+    items = list(items)
+    if len(items) <= 2:
+        return " or ".join(items)
+    return f"{', '.join(items[:-1])} or {items[-1]}"
+
+
 #: P7-3 — templated abstentions. Each says *what* is missing, because "I don't know"
 #: sends the user away while "I hold 24 months and you asked about 2019" sends them to
 #: the right system.
@@ -389,7 +406,7 @@ _TEMPLATES = {
         "isn't there."
     ),
     UNSUPPORTED_TYPE: (
-        "That's a {question_type} question, and this agent is set up to answer "
+        "That's {article} {question_type} question, and this agent is set up to answer "
         "{answerable} questions from {systems}."
     ),
     OUT_OF_DOMAIN: "That topic is outside what this agent is set up to cover ({topics}).",
@@ -424,7 +441,10 @@ def classify_answerability(
             abstention_kind=kind,
             mode=mode,
             response=_TEMPLATES[kind].format(
-                systems=systems, question_type=qtype, answerable=" or ".join(answerable_types)
+                systems=systems,
+                question_type=qtype,
+                article=_article(qtype),
+                answerable=_or_list(answerable_types),
             ),
         )
 

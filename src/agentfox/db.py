@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
+from typing import Any
 
 from sqlalchemy import create_engine, event, inspect
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import get_settings
@@ -58,9 +60,29 @@ def configure_pool(url: str, *, workers: int = 1) -> dict:
     }
 
 
+def _ensure_sqlite_directory(url: str) -> None:
+    """Create the directory a SQLite file lives in, if it does not exist.
+
+    SQLite will create the *file* and not the directory, and SQLAlchemy reports
+    the miss as `OperationalError: unable to open database file` wrapped in a
+    forty-line traceback pointing at `dialect.connect`, which says nothing about
+    a missing directory. On a fresh PyPI install that is the first thing
+    `agentfox init` does, against a state directory that by definition does not
+    exist yet — so the very first command anyone runs would end in a stack trace.
+    """
+    if not url.startswith("sqlite"):
+        return
+    path = make_url(url).database
+    # ":memory:" and a bare "sqlite://" have no file to make room for.
+    if not path or path == ":memory:":
+        return
+    Path(path).expanduser().parent.mkdir(parents=True, exist_ok=True)
+
+
 def _build_engine() -> Engine:
     settings = get_settings()
     url = settings.database_url
+    _ensure_sqlite_directory(url)
     kwargs: dict = {"echo": settings.sql_echo, "future": True}
     kwargs.update(configure_pool(url, workers=getattr(settings, "workers", 1) or 1))
     engine = create_engine(url, **kwargs)
@@ -143,21 +165,53 @@ def init_db(stamp: bool = True) -> None:
         _stamp_head()
 
 
+def migration_root() -> tuple[Path, Path] | None:
+    """Where alembic.ini and the migration scripts are, or None if unavailable.
+
+    Two layouts, because there are two ways to have this package. In the
+    repository both sit at the root. Installed from PyPI they are copied into
+    the package itself (see the force-include in pyproject.toml) — the root
+    copies are simply not in the wheel, which is why `agentfox db upgrade` used
+    to die with a raw alembic traceback naming a path inside the user's venv.
+    """
+    from .config import REPO_ROOT
+
+    packaged = Path(__file__).resolve().parent
+    for ini, scripts in (
+        (REPO_ROOT / "alembic.ini", REPO_ROOT / "migrations"),
+        (packaged / "_alembic.ini", packaged / "_migrations"),
+    ):
+        if ini.is_file() and scripts.is_dir():
+            return ini, scripts
+    return None
+
+
+def _alembic_config(revision_hint: str) -> Any:
+    """An alembic Config pointed at whichever copy of the migrations exists."""
+    from alembic.config import Config
+
+    found = migration_root()
+    if found is None:
+        raise RuntimeError(
+            "migration scripts are not available in this installation, so "
+            f"'{revision_hint}' cannot run. Reinstall agentfox from PyPI, or run "
+            "this from a source checkout."
+        )
+    ini, scripts = found
+    cfg = Config(str(ini))
+    cfg.set_main_option("script_location", str(scripts))
+    cfg.set_main_option("sqlalchemy.url", get_settings().database_url)
+    return cfg
+
+
 def _stamp_head() -> None:
     """Mark a create_all-built database as being at the latest revision."""
     try:
         from alembic import command
-        from alembic.config import Config
 
-        from .config import REPO_ROOT
-
-        ini = REPO_ROOT / "alembic.ini"
-        if not ini.exists():
+        if migration_root() is None:
             return
-        cfg = Config(str(ini))
-        cfg.set_main_option("script_location", str(REPO_ROOT / "migrations"))
-        cfg.set_main_option("sqlalchemy.url", get_settings().database_url)
-        command.stamp(cfg, "head")
+        command.stamp(_alembic_config("stamp"), "head")
     except Exception:  # pragma: no cover - alembic is optional for library use
         pass
 
@@ -165,26 +219,14 @@ def _stamp_head() -> None:
 def upgrade_db(revision: str = "head") -> None:
     """Run migrations against the configured database."""
     from alembic import command
-    from alembic.config import Config
 
-    from .config import REPO_ROOT
-
-    cfg = Config(str(REPO_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(REPO_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", get_settings().database_url)
-    command.upgrade(cfg, revision)
+    command.upgrade(_alembic_config("db upgrade"), revision)
 
 
 def downgrade_db(revision: str) -> None:
     from alembic import command
-    from alembic.config import Config
 
-    from .config import REPO_ROOT
-
-    cfg = Config(str(REPO_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(REPO_ROOT / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", get_settings().database_url)
-    command.downgrade(cfg, revision)
+    command.downgrade(_alembic_config("db downgrade"), revision)
 
 
 def current_revision() -> str | None:

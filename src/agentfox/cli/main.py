@@ -21,7 +21,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .. import __version__
-from ._style import SEVERITY_COLOUR
+from ._style import SEVERITY_COLOUR, print_unknown_agent
 
 app = typer.Typer(
     name="agentfox",
@@ -434,7 +434,7 @@ def _agent_state(slug: str, state: str, reason: str) -> None:
         try:
             control = set_state(session, slug, state, reason=reason, actor="cli")
         except UnknownAgent as exc:
-            console.print(f"[red]{exc}[/]")
+            print_unknown_agent(console, session, slug)
             raise typer.Exit(1) from exc
         previous, now = control.previous_state, control.state
     colour = {"killed": "red", "quarantined": "yellow"}.get(now, "green")
@@ -689,6 +689,53 @@ def policy_validate(file: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _unknown_suite(session: Any, suite: str) -> None:
+    """Name the suites that do exist.
+
+    A required positional whose valid values live in a database table is
+    undiscoverable otherwise — `policy enforce` already lists its options on the
+    same mistake, and there is no reason this one should not.
+    """
+    from sqlalchemy import select
+
+    from ..models import EvalSuite
+
+    known = sorted(k for k in session.scalars(select(EvalSuite.key)))
+    console.print(f"[red]unknown suite '{suite}'[/]")
+    if known:
+        console.print(f"  known suites: {', '.join(known)}")
+    else:
+        console.print("  no suites exist yet — `agentfox seed` creates one to try.")
+
+
+@eval_app.command("suites")
+def eval_suites() -> None:
+    """List the evaluation suites in this deployment."""
+    from sqlalchemy import func, select
+
+    from ..models import EvalCase, EvalSuite
+
+    with _session() as session:
+        counts = dict(
+            session.execute(
+                select(EvalCase.suite_id, func.count()).group_by(EvalCase.suite_id)
+            ).all()
+        )
+        rows = [
+            (suite.key, suite.name or "", counts.get(suite.id, 0))
+            for suite in session.scalars(select(EvalSuite).order_by(EvalSuite.key))
+        ]
+    if not rows:
+        console.print("[dim]no evaluation suites — `agentfox seed` creates one to try.[/]")
+        return
+    table = Table(box=None, pad_edge=False)
+    for column in ("suite", "name", "cases"):
+        table.add_column(column)
+    for key, name, cases in rows:
+        table.add_row(key, name, str(cases))
+    console.print(table)
+
+
 @eval_app.command("run")
 def eval_run(
     suite: str,
@@ -707,7 +754,7 @@ def eval_run(
     with _session() as session:
         record = session.scalar(select(EvalSuite).where(EvalSuite.key == suite))
         if record is None:
-            console.print(f"[red]unknown suite '{suite}'[/]")
+            _unknown_suite(session, suite)
             raise typer.Exit(1)
         target: dict[str, Any] = {"provider": provider, "model": model}
         if agent:
@@ -720,13 +767,18 @@ def eval_run(
             envelope=fit_envelope(session, agent) if agent else None,
         )
         summary = run.summary_json
-    _print_eval_summary(suite, summary)
+        run_id = run.id
+    _print_eval_summary(suite, summary, run_id)
 
 
-def _print_eval_summary(suite: str, summary: dict[str, Any]) -> None:
+def _print_eval_summary(suite: str, summary: dict[str, Any], run_id: str | None = None) -> None:
     console.print(
         f"[bold]{suite}[/] — {summary.get('cases')} cases, {summary.get('errors')} errors"
     )
+    # Without this the run → baseline → gate workflow has a hole in the middle:
+    # `eval baseline` takes a run id that nothing in the CLI ever printed.
+    if run_id:
+        console.print(f"  [dim]run {run_id} · `agentfox eval baseline {run_id}` to pin it[/]")
     table = Table(box=None, pad_edge=False)
     for column in ("scorer", "mean", "min", "max", "pass rate"):
         table.add_column(
@@ -766,15 +818,16 @@ def eval_gate(
     with _session() as session:
         record = session.scalar(select(EvalSuite).where(EvalSuite.key == suite))
         if record is None:
-            console.print(f"[red]unknown suite '{suite}'[/]")
+            _unknown_suite(session, suite)
             raise typer.Exit(1)
         run = NativeEvalRunner().run(session, record, {"provider": provider, "model": model})
         result = gate(session, run, baseline, min_pass_rate=min_pass_rate)
         junit_xml = to_junit(result, suite)
         sarif_json = to_sarif(result)
         summary = run.summary_json
+        run_id = run.id
 
-    _print_eval_summary(suite, summary)
+    _print_eval_summary(suite, summary, run_id)
     if junit:
         junit.write_text(junit_xml)
         console.print(f"  [dim]JUnit → {junit}[/]")
@@ -784,6 +837,16 @@ def eval_gate(
 
     if result.passed:
         console.print("\n[bold green]GATE PASS[/]")
+        # A gate with no baseline and no floor cannot fail, whatever the scores
+        # say. Left unsaid, the first CI run prints GATE PASS and the team
+        # believes they have a regression gate when they have an empty one.
+        if result.baseline_run_id is None and min_pass_rate is None:
+            console.print(
+                "  [yellow]nothing to fail against[/] — no baseline and no --min-pass-rate, "
+                "so this run could not have failed.\n"
+                f"  [dim]arm it: `agentfox eval baseline {run_id}`, or pass "
+                "--min-pass-rate.[/]"
+            )
         return
     console.print("\n[bold red]GATE FAIL[/]")
     for regression in result.regressions:
@@ -1900,6 +1963,17 @@ def proposals_list(
         ]
     if as_json:
         _emit({"proposals": rows}, True)
+        return
+    if not rows:
+        # The only list command in the CLI that printed a bare header row and
+        # stopped. Every other one says what is missing and how to get some.
+        filtered = any((status, kind, scope_level))
+        console.print(
+            "[dim]no proposals match that filter[/]"
+            if filtered
+            else "[dim]no proposals — `agentfox proposals from-labels` files them from "
+            "false positives you have labelled.[/]"
+        )
         return
     table = Table(box=None, pad_edge=False)
     for column in ("id", "status", "kind", "direction", "autonomy", "scope", "title"):

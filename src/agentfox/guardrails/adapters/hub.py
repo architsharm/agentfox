@@ -186,8 +186,91 @@ def _silence_guardrails_telemetry() -> None:
             # August 2026 is another way a validator reaches the network.
             if hasattr(rc, "use_remote_inferencing"):
                 rc.use_remote_inferencing = False
+    except ModuleNotFoundError:
+        # Not installed is the normal state, not a problem to warn about. This
+        # warned on every start of every deployment that does not have it.
+        return
     except Exception as exc:  # pragma: no cover - depends on optional dependency
         log.warning("could not disable guardrails-ai telemetry: %s", exc)
+
+    _detach_hub_telemetry_exporter()
+
+
+def _detach_hub_telemetry_exporter() -> None:
+    """Take the network out of their telemetry pipeline, not just the flag.
+
+    The flags above stopped being sufficient. Measured against guardrails-ai
+    0.11.0 with a real Hub validator, spans still went out — the setting suppresses
+    nothing here because `HubTelemetry.initialize_tracer` builds its
+    `BatchSpanProcessor(OTLPSpanExporter(endpoint="https://…execute-api.
+    us-east-1.amazonaws.com/v1/traces"))` *unconditionally*; `enabled` only gates
+    whether spans are created afterwards, and `HubTelemetry` is a singleton, so
+    whichever code path constructs it first decides for the whole process.
+
+    So this claims the singleton before their code can, and then removes the
+    exporter behind it — anything that does create a span writes into a sink
+    that goes nowhere. The flag is still set above, because two independent
+    reasons for no egress is the right number when the promise is "no egress".
+
+    Best-effort by design, same as the rest of this function: their internals
+    have moved between versions, and failing to silence telemetry must not take
+    the detector down with it. What it must never do is fail *silently* — a
+    warning naming the endpoint is the minimum an operator needs to decide
+    whether to keep the validator.
+    """
+
+    class _Nowhere:
+        """An OTel SpanExporter that exports to nothing."""
+
+        def export(self, _spans: Any) -> Any:
+            from opentelemetry.sdk.trace.export import SpanExportResult
+
+            return SpanExportResult.SUCCESS
+
+        def force_flush(self, timeout_millis: int = 0) -> bool:
+            return True
+
+        def shutdown(self) -> None:
+            return None
+
+    try:
+        from guardrails.utils import hub_telemetry_utils as telemetry  # type: ignore
+
+        # Constructing it with enabled=False claims the singleton; if theirs is
+        # already built, this returns that one and we defuse it in place.
+        telemetry.HubTelemetry(enabled=False)
+        instance = getattr(telemetry.HubTelemetry, "_instance", None)
+        if instance is None:
+            return
+        instance._enabled = False
+        processor = getattr(instance, "_processor", None)
+        exporter = getattr(processor, "span_exporter", None)
+        if exporter is None:
+            return
+        try:
+            processor.span_exporter = _Nowhere()  # type: ignore[misc]
+            return
+        except AttributeError:
+            # `span_exporter` is a read-only property on BatchSpanProcessor in
+            # current opentelemetry-sdk, and which private attribute backs it has
+            # moved between releases. Neutering the exporter object itself needs
+            # no knowledge of that: whoever holds it, it no longer has a network
+            # call in it.
+            pass
+        nowhere = _Nowhere()
+        exporter.export = nowhere.export  # type: ignore[method-assign]
+        exporter.force_flush = nowhere.force_flush  # type: ignore[method-assign]
+        exporter.shutdown = nowhere.shutdown  # type: ignore[method-assign]
+    except ModuleNotFoundError:
+        return
+    except Exception as exc:  # pragma: no cover - depends on optional dependency
+        # Loud on purpose when the package IS there: the operator needs to know
+        # the egress promise is not being kept before deciding to keep using it.
+        log.warning(
+            "could not detach guardrails-ai hub telemetry; it may export spans to "
+            "their endpoint (%s)",
+            exc,
+        )
 
 
 def _load_validator_class(slug: str) -> type | None:
@@ -198,29 +281,32 @@ def _load_validator_class(slug: str) -> type | None:
     (`guardrails.hub`). Returns None if neither is installed — which is the
     normal state, not an error.
     """
+    # Before anything of theirs is imported or constructed — which is what this
+    # comment always said, two lines below where it was true. `from
+    # guardrails.validator_base import ...` pulls in the whole package and lets
+    # its telemetry singleton be built first, and a singleton built first wins.
+    _silence_guardrails_telemetry()
+
     try:
         from guardrails.validator_base import Validator  # type: ignore
     except Exception:
         return None
 
-    # Before anything of theirs is imported or constructed.
-    _silence_guardrails_telemetry()
-
     module = None
+    standalone = False
     for name in (f"guardrails_ai.{slug}", "guardrails.hub"):
         try:
             module = __import__(name, fromlist=["*"])
+            standalone = name != "guardrails.hub"
             break
         except Exception:
             continue
     if module is None:
         return None
 
-    # The module exports exactly one Validator subclass in the standalone case.
-    # In the shared `guardrails.hub` namespace it exports many, so match on the
-    # slug: "detect_jailbreak" -> "DetectJailbreak", case-insensitively, which
-    # also catches the acronym spellings (NSFWText, ValidSQL) that a naive
-    # title-case would miss.
+    # Match on the slug: "detect_jailbreak" -> "DetectJailbreak",
+    # case-insensitively, which also catches the acronym spellings (NSFWText,
+    # ValidSQL) that a naive title-case would miss.
     want = slug.replace("_", "").lower()
     candidates = []
     for attr in dir(module):
@@ -229,7 +315,27 @@ def _load_validator_class(slug: str) -> type | None:
             candidates.append(obj)
             if attr.replace("_", "").lower() == want:
                 return obj
-    return candidates[0] if len(candidates) == 1 else None
+
+    # A lone unnamed candidate is only safe in the standalone package, where the
+    # module IS this validator and the class is simply spelled unexpectedly.
+    #
+    # `guardrails.hub` is a shared, lazily-populated namespace: it exports
+    # nothing until something is installed, and then exports whatever is. So
+    # this fallback, applied there, returned *somebody else's* validator for any
+    # slug that was not installed. Measured with one hub package present:
+    #
+    #   unusual_prompt   -> DetectJailbreak
+    #   bias_check       -> DetectJailbreak
+    #   nsfw_text        -> DetectJailbreak
+    #   competitor_check -> DetectJailbreak
+    #
+    # Four detectors, each with its own key, its own entity type, its own
+    # measured precision and its own policy rules, all running the jailbreak
+    # classifier. A governance control reporting the wrong check under the right
+    # name is worse than one that is off, because nothing about it looks wrong.
+    if standalone and len(candidates) == 1:
+        return candidates[0]
+    return None
 
 
 class HubValidatorDetector(BaseDetector):
@@ -250,6 +356,11 @@ class HubValidatorDetector(BaseDetector):
         self.surfaces = spec.surfaces
         self.timeout_ms = spec.timeout_ms
         self._kwargs = kwargs
+        #: Set when the package IS installed and constructing it failed anyway.
+        #: The two states have to be told apart — see `unavailable_reason`.
+        self._load_error: str | None = None
+        #: Set by `warm()` when it constructs but cannot actually run.
+        self._unusable = False
 
     @property
     def package(self) -> str:
@@ -267,8 +378,29 @@ class HubValidatorDetector(BaseDetector):
         Carried on the detector rather than in the gateway's hard-coded table,
         because a catalogue of twenty entries maintained in a different file from
         the catalogue itself will drift on the first addition.
+
+        Two reasons, not one. This said "not installed" whatever had happened,
+        and the module docstring above names precisely that as the failure the
+        discovery logic exists to prevent: "the detector sits in the UI reading
+        'not installed' forever with nobody able to tell that from the truth."
+        The import was guarded and the identical hole was left one line later at
+        construction — where it then opened for real. `detect_jailbreak`
+        installs, its class is found, and `DetectJailbreak()` raises
+        `StrictDataclassFieldValidationError` because transformers 5.x tightened
+        `id2label` typing and the validator ships `{"0": 0, "1": 1}`. An
+        operator who ran the pip command this property told them to run saw the
+        same sentence afterwards, and had no way to learn that a jailbreak
+        classifier they believed they had enabled was silently off.
         """
         note = f" {self.spec.note}" if self.spec.note else ""
+        self._probe()
+        if self._load_error is not None:
+            return (
+                f"{self.spec.label} from the Guardrails AI Hub — installed, but it "
+                f"failed to load: {self._load_error} This is a fault in "
+                f"{self.package} or its dependencies, not a missing install; "
+                f"upgrading or pinning that package is what changes it.{note}"
+            )
         return (
             f"{self.spec.label} from the Guardrails AI Hub — not installed. "
             f"Install it with `pip install {self.package}`, then add "
@@ -277,8 +409,12 @@ class HubValidatorDetector(BaseDetector):
             f"enabled.{note}"
         )
 
+    def _probe(self) -> None:
+        """Resolve `_validator` so `_load_error` reflects what happened."""
+        _ = self._validator
+
     def available(self) -> bool:
-        return self._validator is not None
+        return self._validator is not None and not self._unusable
 
     @functools.cached_property
     def _validator(self) -> Any:
@@ -292,13 +428,35 @@ class HubValidatorDetector(BaseDetector):
             return cls(**self._kwargs)
         except Exception as exc:  # pragma: no cover - depends on the package
             log.warning("guardrails hub validator %s failed to construct: %s", self.spec.slug, exc)
+            # Their messages run to several lines of dataclass validation noise;
+            # one line is what fits where this is shown, and the log above keeps
+            # the rest.
+            detail = " ".join(str(exc).split())
+            self._load_error = f"{type(exc).__name__}: {detail[:160]}"
             return None
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
         # Several of these load model weights on first call. The per-detector
         # budget is tens of milliseconds, so paying that cost on a real request
         # would degrade the detector exactly once and look like a flake.
-        _ = self._validator
+        validator = self._validator
+        if validator is None:
+            return
+        # And run it once, because constructing is not the same as working.
+        # `toxic_language` constructs cleanly and then raises on every call —
+        # its nltk `punkt_tab` resource is downloaded on first use and is not
+        # there. Without this probe `available()` reports a healthy detector
+        # that cannot run, so the Detectors strip counts a control nobody has.
+        # The pipeline does degrade it correctly per request (see `_detect`);
+        # the lie is upstream of that, in what we claim to be running.
+        try:
+            validator.validate("ok", {})
+        except Exception as exc:
+            log.warning("guardrails hub validator %s constructed but cannot run: %s",
+                        self.spec.slug, exc)
+            detail = " ".join(str(exc).split())
+            self._load_error = f"{type(exc).__name__}: {detail[:160]}"
+            self._unusable = True
 
     def _detect(
         self, content: str, context: DetectionContext

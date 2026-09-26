@@ -73,6 +73,13 @@ DEFAULT_EXCLUDED = {"PERSON", "LOCATION", "DATE_TIME", "US_DRIVER_LICENSE", "US_
 _MIN_SCORE: dict[str, float] = {"US_SSN": 0.1}
 
 
+#: The spaCy model `AnalyzerEngine()` loads when given no configuration. Their
+#: `NlpEngineProvider` hardcodes the same fallback, and their default conf names
+#: it; it is repeated here because the check below has to ask about the exact
+#: model Presidio will ask for, and any other answer is a guess.
+_SPACY_MODEL = "en_core_web_lg"
+
+
 @functools.lru_cache(maxsize=1)
 def _analyzer():  # pragma: no cover - requires optional dependency
     from presidio_analyzer import AnalyzerEngine
@@ -94,7 +101,65 @@ class PresidioPiiDetector(BaseDetector):
             import presidio_analyzer  # noqa: F401
         except Exception:
             return False
-        return True
+        return self._model_present()
+
+    @staticmethod
+    def _model_present() -> bool:
+        """Is the spaCy model there, or would asking for it reach the network?
+
+        `available()` used to answer yes the moment `presidio_analyzer`
+        imported, and `AnalyzerEngine()` is built lazily on the first real
+        request. Measured on a clean install of `agentfox[pii]`:
+
+          available(): True
+          detect():    downloaded en_core_web_lg (400.7 MB) and returned in 29,791ms
+
+        A 400MB `pip install` from inside a guarded request, against a 300ms
+        pre-flight budget and a 40ms per-detector timeout, on a product whose
+        first README line is that it runs offline. `allow_egress` was false
+        throughout; it gates our own outbound calls and never saw this one.
+
+        Air-gapped, the same `available(): True` is followed by every request
+        raising a ProxyError against raw.githubusercontent.com — so the
+        Detectors strip reported PII as covered by a check that could not run.
+
+        `adapters/classifiers.py` already had the rule and the comment for
+        exactly this: "never trigger a download at request time. Absent weights
+        mean 'unavailable', not 'fetch it now'." One adapter honoured it; this
+        one did not.
+        """
+        try:
+            import spacy.util
+
+            return _SPACY_MODEL in spacy.util.get_installed_models()
+        except Exception:
+            return False
+
+    @property
+    def unavailable_reason(self) -> str:
+        try:
+            import presidio_analyzer  # noqa: F401
+        except Exception:
+            return (
+                "Microsoft Presidio is not installed. `pip install "
+                "'agentfox[pii]'`, then download its language model with "
+                f"`python -m spacy download {_SPACY_MODEL}`."
+            )
+        return (
+            f"Microsoft Presidio is installed but its spaCy model "
+            f"({_SPACY_MODEL}, ~400MB) is not. Download it ahead of time with "
+            f"`python -m spacy download {_SPACY_MODEL}`. It is deliberately not "
+            "fetched on demand: that would put a 400MB download inside a "
+            "guarded request, and this product does not reach the network "
+            "during one. `pii.native` covers the offline path meanwhile."
+        )
+
+    def warm(self) -> None:  # pragma: no cover - requires optional dependency
+        # Building the engine loads the model from disk, which measured about a
+        # second. `detector_timeout_ms` is tens of milliseconds, so paying it on
+        # a real request degrades that request and looks like a flake.
+        if self._model_present():
+            _analyzer()
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         if not content:

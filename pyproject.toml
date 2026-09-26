@@ -93,6 +93,20 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentfox", "src/nometria"]
 
+# `agentfox db upgrade` — which the command's own help calls "how a deployed
+# instance is upgraded" — died with a raw alembic traceback for everyone who
+# installed from PyPI, because the migration scripts live at the repository root
+# and the wheel therefore did not carry them. Same shape as the comment on
+# `compliance_dir`: a repo-relative path resolves fine from a checkout and finds
+# nothing once installed. Copied in under `agentfox/` rather than moved, so the
+# repository layout, alembic.ini and CI keep working unchanged.
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "agentfox/_migrations"
+"alembic.ini" = "agentfox/_alembic.ini"
+
+[tool.hatch.build]
+exclude = ["**/__pycache__", "**/*.pyc"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

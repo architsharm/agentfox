@@ -18,12 +18,22 @@ def _source_module_files(package_dir: Path) -> set[str]:
     }
 
 
+#: Copied into the wheel from the repository root rather than living under
+#: `src/agentfox` (see the force-include in pyproject.toml, which exists so that
+#: `agentfox db upgrade` works for someone who installed from PyPI). They are
+#: legitimately in the wheel and legitimately not in the source package, so this
+#: comparison has to know about them or it reports the fix as staleness.
+FORCE_INCLUDED = ("agentfox/_migrations/",)
+
+
 def _wheel_module_files(wheel_path: Path) -> set[str]:
     with ZipFile(wheel_path) as wheel:
         return {
             name
             for name in wheel.namelist()
-            if name.startswith("agentfox/") and name.endswith(".py")
+            if name.startswith("agentfox/")
+            and name.endswith(".py")
+            and not name.startswith(FORCE_INCLUDED)
         }
 
 
@@ -73,3 +83,21 @@ def test_wheel_check_reports_missing_source_module(tmp_path: Path) -> None:
 
     with pytest.raises(AssertionError, match="agentfox/new_module.py"):
         _assert_module_sets_match(source_modules, _wheel_module_files(scratch_wheel))
+
+
+def test_the_wheel_carries_the_migrations_it_is_supposed_to() -> None:
+    """The other half of excluding them above.
+
+    `_wheel_module_files` now ignores `agentfox/_migrations/`, so dropping the
+    force-include would make the comparison pass while producing a wheel whose
+    `agentfox db upgrade` dies exactly as 0.3.1's did. This asserts they are in
+    there, and that alembic has what it needs to run them.
+    """
+    wheel_path = sorted(VENDOR_DIR.glob("agentfox-*.whl"))[0]
+    with ZipFile(wheel_path) as wheel:
+        names = set(wheel.namelist())
+
+    assert "agentfox/_alembic.ini" in names
+    assert "agentfox/_migrations/env.py" in names
+    revisions = [n for n in names if n.startswith("agentfox/_migrations/versions/")]
+    assert len(revisions) == len(list((REPO_ROOT / "migrations" / "versions").glob("*.py")))

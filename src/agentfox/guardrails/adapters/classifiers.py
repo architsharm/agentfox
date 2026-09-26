@@ -76,11 +76,22 @@ class _TransformersClassifier(BaseDetector):
         # load. One torch thread per call is the standard fix for many-small-calls
         # serving, as opposed to few-large-batches.
         torch.set_num_threads(1)
+        # `local_files_only` because `_weights_present()` has already confirmed
+        # these are in the cache — there is nothing for the hub to tell us.
+        # Without it transformers contacts huggingface.co on every load to check
+        # for a newer revision, and on a host that cannot reach it that is not a
+        # fast failure: measured 143.1s to warm this detector behind a blocked
+        # network against 4.1s with the flag set, the difference being TCP
+        # timeouts. `warm_all()` runs in the gateway's startup (see
+        # `gateway.app.lifespan`), so an egress-restricted deployment — which is
+        # the deployment this product is for — had its boot blocked for minutes,
+        # long enough for an orchestrator's readiness probe to kill it first.
         return pipeline(
             "text-classification",
             model=self.model_id,
             top_k=None,
             trust_remote_code=self.trust_remote_code,
+            local_files_only=True,
         )
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
@@ -201,7 +212,13 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         from transformers import pipeline
 
         torch.set_num_threads(1)
-        return pipeline("text-classification", model=self.secondary_model_id, top_k=None)
+        # local_files_only: see `_TransformersClassifier._pipeline`.
+        return pipeline(
+            "text-classification",
+            model=self.secondary_model_id,
+            top_k=None,
+            local_files_only=True,
+        )
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
         super().warm()
@@ -302,8 +319,11 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         torch.set_num_threads(1)  # see _TransformersClassifier._pipeline for why
-        tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        model = AutoModelForCausalLM.from_pretrained(self.model_id, torch_dtype=torch.bfloat16)
+        # local_files_only: see `_TransformersClassifier._pipeline`.
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id, local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, torch_dtype=torch.bfloat16, local_files_only=True
+        )
         model.eval()
         return tokenizer, model
 

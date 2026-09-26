@@ -437,22 +437,16 @@ def create_app() -> FastAPI:
         # detectors (injection.heuristic, pii.native, safety.lexicon, schema.json,
         # secrets.native) need none of this and are always available.
         unavailable_reason = {
-            "pii.presidio": (
-                "Wrapped Microsoft Presidio, pulled in with spaCy and numpy — "
-                "~170MB, which doesn't fit this deployment's Vercel serverless "
-                "function size budget alongside the rest of the app. Available in "
-                "the self-hosted docker-compose deployment: pip install "
-                "'agentfox[presidio]'."
-            ),
-            "rails.guardrails_ai": (
-                "Wrapped Guardrails AI. Core is Apache-2.0, but individual Guardrails "
-                "Hub validators carry their own licences that must be checked before "
-                "shipping, so none is enabled by default in any deployment."
-            ),
-            "rails.nemo": (
-                "Wrapped NVIDIA NeMo Guardrails — needs both the nemoguardrails "
-                "package and a Colang rails config, neither shipped by default."
-            ),
+            # pii.presidio answers for itself too, and has to: this said it was
+            # "available in the self-hosted docker-compose deployment", which is
+            # only true where its 400MB spaCy model has also been provisioned —
+            # and getting that wrong is what the detector's own reason exists to
+            # explain. It also named the wrong extra (`[presidio]`, not `[pii]`).
+            # rails.nemo and rails.guardrails_ai answer for themselves now that
+            # they can actually be turned on: their reason names the setting to
+            # set and distinguishes "not installed" from "installed, nothing
+            # configured" from "configured, but it did not load". A fixed
+            # sentence here could say none of that.
             "safety.granite": (
                 "Wrapped IBM Granite Guardian, via transformers — needs the model "
                 "weights downloaded ahead of time (never fetched at request time); "
