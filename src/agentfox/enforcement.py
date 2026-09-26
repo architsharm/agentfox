@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import functools
 import logging
 import time
 from collections.abc import Iterator
@@ -187,6 +188,92 @@ _CONTEXT_SEVERITY = {"warn": "low", "degraded": "medium", "reject": "high"}
 #: precedence the policy engine itself uses to combine rule effects, not a second
 #: copy of it.
 _RANK = EFFECT_RANK
+
+
+class _FallbackVersion:
+    """Stands in for a PolicyVersion the fallback does not have.
+
+    `id` is None on purpose. These ids are persisted onto the Decision row as
+    the exact set of policy versions in force, which is what makes a decision
+    reproducible (X-4). The fallback has no stored version, so inventing an id
+    would put a reference to a row that does not exist into the audit record —
+    the one place in this product that must not contain a plausible fiction.
+    Callers filter it out; a decision made under the fallback records no policy
+    version, which is the truth.
+    """
+
+    id = None
+
+
+_FALLBACK_VERSION = _FallbackVersion()
+
+
+#: Past tense, spelled out. `f"{verdict.capitalize()}ed"` produced "Escalateed"
+#: and "Tokenizeed", and there is no rule that turns every one of these into a
+#: past participle correctly.
+_PAST_TENSE = {
+    "block": "Blocked",
+    "redact": "Redacted",
+    "mask": "Masked",
+    "tokenize": "Tokenised",
+    "escalate": "Escalated",
+    "abstain": "Abstained",
+    "allow": "Allowed",
+}
+
+
+def _detection_title(effective: str, applied: str, surface: str, entity_types: list[str]) -> str:
+    """What a detection finding is called, and it has to be what HAPPENED.
+
+    This read `f"{effective.capitalize()}ed on {surface}"`, where `effective` is
+    what the policy WOULD do rather than what was done. Under an observe-mode
+    policy the finding was therefore titled "Blocked on input" for a request
+    that was allowed through — a false statement, in the record the product
+    exists to keep.
+
+    It matters more now than it did: a deployment with nothing bound falls back
+    to the shipped baseline in observe, so an observe-mode finding is the first
+    one a new user sees rather than an edge case.
+
+    Same distinction the trace verdict carries: `applied` is what happened,
+    `effective` is what the policy asked for, and when they differ the title
+    says so rather than picking the more dramatic of the two.
+    """
+    entities = ", ".join(entity_types)
+    if applied == effective:
+        return f"{_PAST_TENSE.get(effective, effective.capitalize())} on {surface}: {entities}"
+    # Observe: recorded, not acted on. Naming both is what makes the row
+    # actionable — it says what would change if this policy were promoted.
+    return (
+        f"Would have been {_PAST_TENSE.get(effective, effective).lower()} "
+        f"on {surface}: {entities}"
+    )
+
+
+
+@functools.lru_cache(maxsize=1)
+def _fallback_policies() -> tuple:
+    """The shipped baseline, forced to observe, for a deployment with nothing bound.
+
+    Cached: this reads YAML off disk and the answer cannot change within a
+    process. Cleared by `_fallback_policies.cache_clear()` in tests that swap
+    the policies directory.
+    """
+    from .policy import load_from_dir
+
+    out = []
+    try:
+        for doc in load_from_dir():
+            if doc.key != "baseline":
+                continue
+            # The document ships in observe already; forcing it makes the
+            # guarantee independent of anyone editing that file.
+            doc.mode = "observe"
+            out.append(doc)
+    except Exception as exc:  # pragma: no cover - a broken install, not a code path
+        log.warning("agentfox: could not load the fallback policy: %s", exc)
+    return tuple(out)
+
 
 
 @dataclass
@@ -617,6 +704,42 @@ class Enforcer:
         )
 
         bound = active_policies(self.session, agent_slug, environment)
+        # Nothing bound is not the same as nothing to check.
+        #
+        # A database that has never been initialised holds no policies, so every
+        # content rule was skipped and `auto()` governed exactly nothing while
+        # announcing a mode. Adding one line to an existing application is the
+        # integration this product leads with, and it produced a no-op.
+        #
+        # So the shipped baseline applies as a fallback. Deliberately OBSERVE
+        # only, and deliberately only `baseline`:
+        #
+        #   - Observe because silently blocking traffic in an application whose
+        #     owner configured nothing is how governance gets ripped out — the
+        #     exact failure L8.8 exists to measure. Detections are recorded, so
+        #     the findings and traces are real and the banner stops lying, and
+        #     nothing is refused that would not have been refused anyway.
+        #   - `baseline` alone because it is the general content pack.
+        #     eu-ai-act-high-risk is jurisdiction- and risk-tier specific, and
+        #     applying it to everyone by default would be overclaiming on
+        #     somebody else's behalf. tool-containment needs no help: capability
+        #     default-deny does not depend on a policy binding and already
+        #     refuses an ungranted call with zero policies present.
+        #
+        # In memory, never written: the moment an operator runs `agentfox init`
+        # or binds their own, this stops applying and their policies decide. A
+        # fallback that seeded itself into the database would be a tool editing
+        # the configuration it is supposed to be governed by.
+        used_fallback = False
+        if not bound:
+            fallback = _fallback_policies()
+            if fallback:
+                bound = [
+                    (doc, _FALLBACK_VERSION, None)
+                    for doc in fallback
+                    if doc.matches_scope(agent_slug, environment)
+                ]
+                used_fallback = bool(bound)
         evaluated = [
             (doc, version, self.engine.evaluate(doc, pinput)) for doc, version, _b in bound
         ]
@@ -624,7 +747,11 @@ class Enforcer:
 
         # X-4: a decision is only reproducible if the *whole* set of versions in force
         # is recorded, not just the one that happened to win.
-        policy_version_ids = [version.id for _doc, version, _d in evaluated]
+        # None is filtered, not stored: see _FallbackVersion. A decision made
+        # under the fallback records no policy version, because there is none.
+        policy_version_ids = [
+            version.id for _doc, version, _d in evaluated if version.id is not None
+        ]
         policy_version_id = next(
             (
                 version.id
@@ -922,6 +1049,7 @@ class Enforcer:
                 decision_id=decision_row.id,
                 surface=surface,
                 effective=effective,
+                applied=verdict,
                 reason=reason,
                 rules_fired=rules_fired,
                 detections=pipeline_result.detections,
@@ -2916,6 +3044,7 @@ class Enforcer:
         decision_id: str,
         surface: str,
         effective: str,
+        applied: str,
         reason: str,
         rules_fired: list[dict[str, Any]],
         detections: list,
@@ -2949,7 +3078,7 @@ class Enforcer:
             self.session,
             type="guardrail_detection",
             severity=severity,
-            title=f"{effective.capitalize()}ed on {surface}: {', '.join(entity_types)}",
+            title=_detection_title(effective, applied, surface, entity_types),
             subject_type="agent",
             subject_id=agent.id if agent else None,
             fingerprint_parts=(surface, effective, *entity_types),

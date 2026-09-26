@@ -169,22 +169,23 @@ class AutoState:
         lines = [
             f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment}).",
         ]
-        # A security tool that announces protection it is not providing is worse
-        # than one that is absent, because the absent one does not stop anyone
-        # looking further. On a database that has never been initialised there
-        # are no policies to apply, so every content check passes and the banner
-        # above was the only evidence a developer had — it said "enforce mode"
-        # and enforced nothing.
-        #
         # Found by installing 0.3.1 from PyPI into a third-party project and
         # calling auto() without running `agentfox init` first, which is exactly
-        # what adding one line to an existing app looks like. The canonical
-        # injection went straight to OpenAI and came back 401.
+        # what adding one line to an existing app looks like: the banner said
+        # "enforce mode", the canonical injection went straight to OpenAI, and
+        # the 401 from an invalid key proved it had left the process.
+        #
+        # The enforcer now falls back to the shipped baseline in observe when
+        # nothing is bound (see _fallback_policies), so this line says what is
+        # actually running rather than warning that nothing is. Still said out
+        # loud, because "a fallback is deciding for you" is a fact an operator
+        # has to know before they trust a clean dashboard.
         if self.policies_bound == 0:
             lines.append(
-                "  NOTHING IS BEING ENFORCED: no policy is bound to this agent, so "
-                "no content check can fire. Tool-call containment still applies. "
-                "Run `agentfox init` to load the shipped policies."
+                "  No policy is bound, so the shipped baseline applies as a fallback, "
+                "in observe: detections are recorded, nothing is blocked on their "
+                "account. Tool-call containment enforces regardless. Run "
+                "`agentfox init` for the full set and to choose what enforces."
             )
         if patched:
             lines.append(f"  Patched: {', '.join(patched)}")

@@ -24,14 +24,15 @@ def _state(**kw) -> GuardState:
 
 def test_banner_warns_when_no_policy_is_bound() -> None:
     summary = _state(policies_bound=0).summary()
-    assert "NOTHING IS BEING ENFORCED" in summary
+    assert "shipped baseline applies as a fallback" in summary
+    assert "in observe" in summary
     # The way out has to be in the message; a warning with no remedy is noise.
     assert "agentfox init" in summary
 
 
 def test_banner_is_quiet_when_policies_are_bound() -> None:
     """A warning that cries wolf is worse than no warning."""
-    assert "NOTHING IS BEING ENFORCED" not in _state(policies_bound=3).summary()
+    assert "fallback" not in _state(policies_bound=3).summary()
 
 
 def test_banner_is_quiet_when_the_count_is_unknown() -> None:
@@ -40,11 +41,11 @@ def test_banner_is_quiet_when_the_count_is_unknown() -> None:
     Claiming "nothing is enforced" on a failed query would be its own false
     statement, in the other direction.
     """
-    assert "NOTHING IS BEING ENFORCED" not in _state(policies_bound=-1).summary()
+    assert "fallback" not in _state(policies_bound=-1).summary()
 
 
 def test_the_warning_does_not_overclaim_either() -> None:
     """Tool-call containment does not depend on a policy being bound, so the
     warning must not tell someone they have no protection at all."""
     summary = _state(policies_bound=0).summary()
-    assert "Tool-call containment still applies" in summary
+    assert "Tool-call containment enforces regardless" in summary
