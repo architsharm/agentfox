@@ -262,7 +262,12 @@ def check(
     if other:
         console.print(
             "  [dim]also found:[/] "
-            + ", ".join(f"{v} {k.replace('_', ' ')}" for k, v in other.items())
+            # Pluralise. "16 shell call" reads as a truncation bug on the first
+            # command a new user runs, which is the worst place to have one.
+            + ", ".join(
+                f"{v} {k.replace('_', ' ')}{'' if v == 1 else 's'}"
+                for k, v in other.items()
+            )
         )
 
     ranked = report.ranked(limit)
@@ -296,8 +301,17 @@ def check(
         if len(report.sites) > len(ranked):
             # A hint has to be a command someone can run. "(--limit)" is a flag name.
             target = "" if str(path) == "." else f" {path}"
+            # Say WHAT is not shown, not just how many.
+            #
+            # Found running this against browser-use, a real repository: the
+            # headline read "32 of 32 model call sites" and this line read "33
+            # more not shown", which cannot both be true of the same population
+            # and left the reader to work out that the table also holds the 16
+            # shell calls. It counts findings; the headline counts model calls.
+            # Naming the unit reconciles them without changing either number.
+            hidden = len(report.sites) - len(ranked)
             console.print(
-                f"  [dim]{len(report.sites) - len(ranked)} more not shown. "
+                f"  [dim]{hidden} more finding(s) not shown, across every kind above. "
                 f"See all of them:[/] [cyan]agentfox check{target} "
                 f"--limit {len(report.sites)}[/]"
             )
