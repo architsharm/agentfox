@@ -22,6 +22,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from ._style import print_unknown_agent
+
 console = Console()
 
 
@@ -76,7 +78,7 @@ def boundary_set(
     with _session() as session:
         record = session.scalar(select(Agent).where(Agent.slug == agent))
         if record is None:
-            console.print(f"[red]unknown agent '{agent}'[/]")
+            print_unknown_agent(console, session, agent)
             raise typer.Exit(1)
         declare_boundary(
             session,
@@ -117,7 +119,7 @@ def boundary_check(
     with _session() as session:
         record = session.scalar(select(Agent).where(Agent.slug == agent))
         if record is None:
-            console.print(f"[red]unknown agent '{agent}'[/]")
+            print_unknown_agent(console, session, agent)
             raise typer.Exit(1)
         boundary = get_boundary(session, record.id)
         verdict = classify_answerability(question, boundary)
@@ -326,7 +328,7 @@ def escalation_set(
         if agent:
             record = session.scalar(select(Agent).where(Agent.slug == agent))
             if record is None:
-                console.print(f"[red]unknown agent '{agent}'[/]")
+                print_unknown_agent(console, session, agent)
                 raise typer.Exit(1)
             agent_id = record.id
         policy = set_policy(

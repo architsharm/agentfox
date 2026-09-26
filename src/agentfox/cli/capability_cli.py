@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ._style import match_id, short_id
+from ._style import match_id, print_unknown_agent, short_id
 
 console = Console()
 
@@ -129,12 +129,7 @@ def _resolve_identity(session, agent: str):
     if identity is not None:
         return identity
 
-    known = sorted(a.slug for a in session.scalars(select(Agent)))
-    console.print(f"[red]unknown agent '{agent}'[/]")
-    if known:
-        console.print(f"  known agents: {', '.join(known)}")
-    else:
-        console.print("  no agents registered yet — run `agentfox seed` or register one.")
+    print_unknown_agent(console, session, agent)
     raise typer.Exit(1)
 
 
