@@ -356,6 +356,31 @@ class Settings(BaseSettings):
     # corpus file, no retraining required.
     embedding_similarity_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
+    # --- Wrapped rail orchestrators (P3-1) -------------------------------
+    # Both adapters were registered with their configuration hard-coded empty —
+    # `NemoRailsDetector()` with no config path, `GuardrailsAiDetector()` with no
+    # validators — and `available()` returns False when those are empty. There
+    # was no setting anywhere to fill them, so installing `agentfox[rails]` or
+    # `agentfox[validators]` changed nothing and the two detectors were
+    # unreachable by construction. These are how they are turned on.
+    #
+    # A directory holding a NeMo Guardrails config (`config.yml` plus any Colang
+    # files). Empty by default: NeMo's rails are programs, and which programs to
+    # run is a deployment's decision, not a default.
+    nemo_rails_config_path: str | None = None
+    # Guardrails AI Hub validator slugs, e.g. ["valid_json", "detect_pii"]. Each
+    # must already be installed (`pip install guardrails-ai-<slug-with-dashes>`)
+    # because Hub validators carry licences independent of the Apache-2.0 core
+    # (Appendix A.1), so none is ever enabled by inheritance.
+    #
+    # Prefer the per-validator `rails.hub.*` detectors: they report one entity
+    # type per check, so existing policy rules match them and precision is
+    # measured per validator. This composite reports everything as
+    # SCHEMA.VIOLATION. It exists for the case those do not cover — several
+    # validators evaluated as one Guard, which is what Guardrails AI's own
+    # `use_many` composition is for.
+    guardrails_ai_validators: list[str] = []
+
     # --- Entitlement (P10) -----------------------------------------------
     # native | openfga. The seam exists because no winner does: customers running
     # OpenFGA or Cedar keep them, and the much larger group who express permissions as

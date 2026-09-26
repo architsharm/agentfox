@@ -444,15 +444,11 @@ def create_app() -> FastAPI:
                 "the self-hosted docker-compose deployment: pip install "
                 "'agentfox[presidio]'."
             ),
-            "rails.guardrails_ai": (
-                "Wrapped Guardrails AI. Core is Apache-2.0, but individual Guardrails "
-                "Hub validators carry their own licences that must be checked before "
-                "shipping, so none is enabled by default in any deployment."
-            ),
-            "rails.nemo": (
-                "Wrapped NVIDIA NeMo Guardrails — needs both the nemoguardrails "
-                "package and a Colang rails config, neither shipped by default."
-            ),
+            # rails.nemo and rails.guardrails_ai answer for themselves now that
+            # they can actually be turned on: their reason names the setting to
+            # set and distinguishes "not installed" from "installed, nothing
+            # configured" from "configured, but it did not load". A fixed
+            # sentence here could say none of that.
             "safety.granite": (
                 "Wrapped IBM Granite Guardian, via transformers — needs the model "
                 "weights downloaded ahead of time (never fetched at request time); "
