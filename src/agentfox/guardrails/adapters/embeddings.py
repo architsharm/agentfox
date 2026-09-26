@@ -96,8 +96,9 @@ class EmbeddingSimilarityDetector(BaseDetector):
         from transformers import AutoModel, AutoTokenizer
 
         torch.set_num_threads(1)  # see injection.classifier's _pipeline for why
-        tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-        model = AutoModel.from_pretrained(self.model_id)
+        # local_files_only: see `injection.classifier`'s `_pipeline`.
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id, local_files_only=True)
+        model = AutoModel.from_pretrained(self.model_id, local_files_only=True)
         model.eval()
         return tokenizer, model
 

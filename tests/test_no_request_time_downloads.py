@@ -101,3 +101,58 @@ def test_warm_does_not_build_the_engine_when_the_model_is_absent(monkeypatch):
     monkeypatch.setattr(PresidioPiiDetector, "_model_present", staticmethod(lambda: True))
     PresidioPiiDetector().warm()
     assert built == [1]
+
+
+# ---------------------------------------------------------------------------
+# The other half: not fetching, and not *asking* either.
+# ---------------------------------------------------------------------------
+
+
+def test_cached_weights_are_loaded_without_contacting_the_hub():
+    """`_weights_present()` has already established the weights are cached, so
+    there is nothing left for huggingface.co to tell us — and asking is not free.
+
+    Without `local_files_only`, transformers checks the hub for a newer revision
+    on every load. On a host that cannot reach it, that is not a fast failure.
+    Measured against a blocked network with the weights fully cached:
+
+        injection.classifier   warm  143.1s      (4.1s with HF_HUB_OFFLINE=1)
+        injection.classifier   warm    4.4s      (after this change)
+
+    `warm_all()` runs inside the gateway's startup (`gateway.app.lifespan`), so
+    an egress-restricted deployment — which is the deployment this product is
+    for — had its boot blocked for over two minutes per model-backed detector,
+    long enough for an orchestrator's readiness probe to kill it first.
+
+    Asserted on the source because the alternative is a real model download and
+    a blocked network in CI. What went wrong was a missing argument, and a
+    missing argument is exactly what this can see.
+    """
+    import ast
+    import inspect
+
+    from agentfox.guardrails.adapters import classifiers, embeddings
+
+    LOADERS = {"pipeline", "from_pretrained"}
+    missing = []
+    seen = 0
+    for module in (classifiers, embeddings):
+        tree = ast.parse(inspect.getsource(module))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+            if name not in LOADERS:
+                continue
+            seen += 1
+            if not any(kw.arg == "local_files_only" for kw in node.keywords):
+                missing.append(f"{module.__name__}:{node.lineno} {name}(...)")
+
+    assert seen >= 4, f"expected the known model loads, found {seen} — did they move?"
+    assert not missing, (
+        "these model loads do not pass local_files_only=True, so on an "
+        "air-gapped host they hang on hub timeouts instead of reading the "
+        "cache that `_weights_present()` already confirmed:\n  "
+        + "\n  ".join(missing)
+    )
