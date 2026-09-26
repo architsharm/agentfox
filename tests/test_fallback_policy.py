@@ -78,3 +78,62 @@ def test_a_fallback_decision_records_no_policy_version(session) -> None:
     decision = session.scalars(select(Decision)).first()
     assert decision is not None
     assert not decision.policy_version_ids
+
+
+# --- which packs, for whom ------------------------------------------------
+#
+# Only the default case. Anything an operator binds replaces all of this.
+
+
+def test_an_ordinary_agent_gets_baseline_alone() -> None:
+    """Silently applying EU AI Act rules to someone who never said they were in
+    scope would be overclaiming on their behalf."""
+    for tier in (None, "limited", "minimal"):
+        assert [d.key for d in _fallback_policies(tier)] == ["baseline"]
+
+
+def test_a_declared_high_risk_agent_also_gets_the_eu_pack() -> None:
+    """That pack's own header says it is "for agents classified high-risk", so
+    this responds to a declaration the operator already made."""
+    assert [d.key for d in _fallback_policies("high")] == [
+        "baseline",
+        "eu-ai-act-high-risk",
+    ]
+
+
+def test_every_fallback_pack_is_observe_whatever_the_tier() -> None:
+    for tier in (None, "limited", "high", "unacceptable"):
+        assert all(doc.mode == "observe" for doc in _fallback_policies(tier))
+
+
+def test_the_set_is_deterministic() -> None:
+    """Ordered by the table, not by whatever the directory listing produced:
+    the set of policies in force must not vary between processes."""
+    assert [d.key for d in _fallback_policies("high")] == [
+        d.key for d in _fallback_policies("high")
+    ]
+
+
+def test_the_high_risk_agent_picks_up_a_rule_the_ordinary_one_does_not(session) -> None:
+    from agentfox.registry.service import register_agent
+
+    ordinary = register_agent(session, "ordinary-bot", name="o", environment="production")
+    high = register_agent(
+        session, "credit-scorer", name="c", environment="production", risk_tier="high"
+    )
+    session.flush()
+
+    enforcer = Enforcer(session)
+    fired = {}
+    for agent in (ordinary, high):
+        result = enforcer.evaluate(
+            agent=agent, identity=None, content=INJECTION, surface="input"
+        )
+        fired[agent.slug] = {r.get("rule_id") for r in (result.rules_fired or [])}
+        # Observe either way: the tier changes WHICH rules apply, never whether
+        # they block.
+        assert result.verdict == "allow"
+
+    eu_rules = {r for r in fired["credit-scorer"] if r.startswith("eu.")}
+    assert eu_rules, "a declared high-risk agent should pick up the EU pack"
+    assert not {r for r in fired["ordinary-bot"] if r.startswith("eu.")}

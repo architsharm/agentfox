@@ -251,28 +251,61 @@ def _detection_title(effective: str, applied: str, surface: str, entity_types: l
 
 
 
-@functools.lru_cache(maxsize=1)
-def _fallback_policies() -> tuple:
-    """The shipped baseline, forced to observe, for a deployment with nothing bound.
+#: Which shipped packs apply to a deployment that has configured nothing.
+#:
+#: Only the default case. Anything an operator binds replaces all of this —
+#: `active_policies` is consulted first and the fallback is never reached.
+#:
+#: `baseline` is unconditional because prompt injection, PII and secrets are not
+#: properties of a sector or a jurisdiction; every agent that reads text has
+#: them. The rest is chosen from what the operator has ALREADY DECLARED about
+#: the agent, never inferred:
+#:
+#:   risk_tier == "high"  ->  eu-ai-act-high-risk
+#:
+#: That pack's own header says it is "for agents classified high-risk", so
+#: applying it to an agent somebody classified high-risk is responding to their
+#: declaration rather than deciding on their behalf. An agent at the default
+#: tier gets baseline alone, because silently applying EU AI Act rules to
+#: someone who never said they were in scope would be overclaiming.
+#:
+#: Framework is deliberately NOT a selector. Which content pack is right does
+#: not depend on whether the app is built on LangChain or CrewAI — the same
+#: injection reaches the same model either way — and a framework-to-policy
+#: mapping would be a rule that looks considered and means nothing.
+_FALLBACK_FOR_TIER: dict[str, tuple[str, ...]] = {
+    "high": ("baseline", "eu-ai-act-high-risk"),
+    "unacceptable": ("baseline", "eu-ai-act-high-risk"),
+}
+_FALLBACK_DEFAULT: tuple[str, ...] = ("baseline",)
 
-    Cached: this reads YAML off disk and the answer cannot change within a
-    process. Cleared by `_fallback_policies.cache_clear()` in tests that swap
-    the policies directory.
+
+@functools.lru_cache(maxsize=8)
+def _fallback_policies(risk_tier: str | None = None) -> tuple:
+    """The shipped packs for a deployment with nothing bound, forced to observe.
+
+    Cached per tier: this reads YAML off disk and the answer cannot change
+    within a process. Cleared by `_fallback_policies.cache_clear()` in tests
+    that swap the policies directory.
     """
     from .policy import load_from_dir
 
-    out = []
+    wanted = _FALLBACK_FOR_TIER.get((risk_tier or "").lower(), _FALLBACK_DEFAULT)
+    by_key = {}
     try:
         for doc in load_from_dir():
-            if doc.key != "baseline":
+            if doc.key not in wanted:
                 continue
-            # The document ships in observe already; forcing it makes the
-            # guarantee independent of anyone editing that file.
+            # Every pack ships in observe except tool-containment, which is not
+            # a candidate here. Forcing it makes the guarantee independent of
+            # anyone editing those files.
             doc.mode = "observe"
-            out.append(doc)
+            by_key[doc.key] = doc
     except Exception as exc:  # pragma: no cover - a broken install, not a code path
         log.warning("agentfox: could not load the fallback policy: %s", exc)
-    return tuple(out)
+    # Ordered by `wanted`, so the set in force is deterministic rather than
+    # whatever order the directory listing happened to produce.
+    return tuple(by_key[k] for k in wanted if k in by_key)
 
 
 
@@ -732,7 +765,7 @@ class Enforcer:
         # the configuration it is supposed to be governed by.
         used_fallback = False
         if not bound:
-            fallback = _fallback_policies()
+            fallback = _fallback_policies(getattr(agent, "risk_tier", None))
             if fallback:
                 bound = [
                     (doc, _FALLBACK_VERSION, None)
