@@ -118,21 +118,6 @@ const ROUTES: [string, string, string][] = [
   ],
 ];
 
-const BEFORE: { cmd: string; why: string }[] = [
-  {
-    cmd: "agentfox doctor",
-    why: "Grades the runtime configuration and the quality of your tool declarations. Often explains a surprising verdict on its own.",
-  },
-  {
-    cmd: "agentfox version",
-    why: "Every template asks for it. The first line is enough, or the commit SHA from a clone.",
-  },
-  {
-    cmd: "agentfox policy list",
-    why: "Prints which packs are bound and whether each is in observe or enforce.",
-  },
-];
-
 const DOCS: { title: string; body: React.ReactNode }[] = [
   {
     title: "A linear first hour",
@@ -182,8 +167,7 @@ export default function Support() {
             <h1 className="mk-h1 mk-up mk-d1">
               Support</h1>
             <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20 }}>
-              This is one developer&rsquo;s project, so none of the routes below carries a
-              promised response time. All of them are read.
+              One person reads these. There is no promised reply time.
             </p>
             <div className="mk-row mk-up mk-d3" style={{ marginTop: 26, gap: 10 }}>
               <a href={NEW_ISSUE} target="_blank" rel="noreferrer" className="mk-btn mk-btn-primary">
@@ -201,7 +185,7 @@ export default function Support() {
           <div className="mk-wrap">
             <Head
               eyebrow="Before you file"
-              title="Three commands, and one warning"
+              title="Redact first"
               lede="A report for this product is likely to contain production data, and a GitHub issue is public."
             />
             <div className="mk-narrow" style={{ marginTop: 36 }}>
@@ -217,26 +201,10 @@ export default function Support() {
                   Redact first
                 </span>
                 <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)", color: "var(--mk-text)" }}>
-                  Do not paste real prompts, tool arguments, retrieved documents or audit rows. Replace names, accounts, URLs and secrets with obvious placeholders. A reduced reproduction with made-up values runs here.
+                  Do not paste real prompts, tool arguments, retrieved documents or audit rows. Replace names, accounts, URLs and secrets with obvious placeholders. A reduced reproduction with made-up values runs here.{" "}
+                  <Link href="/docs/support">The commands to run first are in the docs.</Link>
                 </p>
               </div>
-              <ol className="mk-steps mk-up mk-d2" style={{ listStyle: "none", margin: "24px 0 0", padding: 0 }}>
-                {BEFORE.map((b, i) => (
-                  <li key={b.cmd} className="mk-step">
-                    <span className="mk-step-n" aria-hidden="true">
-                      {i + 1}
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <code className="mk-mono" style={{ overflowWrap: "anywhere" }}>
-                        {b.cmd}
-                      </code>
-                      <p className="mk-body" style={{ margin: "5px 0 0", fontSize: "var(--t-small)" }}>
-                        {b.why}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
             </div>
           </div>
         </section>
@@ -274,39 +242,35 @@ export default function Support() {
 
         {/* 3. Wrong verdict, called out */}
         <section className="mk-section mk-reveal">
-          <div className="mk-wrap mk-split mk-split-wide">
-            <div className="mk-up">
-              <span className="mk-eyebrow">The one that matters most</span>
-              <h2 className="mk-h2" style={{ marginTop: 14 }}>
-                A wrong verdict is the best report we get</h2>
-              <p className="mk-body" style={{ marginTop: 14 }}>
-                A false positive costs you an afternoon. A false negative is the thing the product
-                exists to prevent. There is a template for both.
-              </p>
-              <p className="mk-fine" style={{ marginTop: 18 }}>
-                The trace id and the rule id are what is needed, not the payload. Redact it and
-                keep the structure.
-              </p>
-            </div>
-            <div className="mk-card mk-up mk-d2" style={{ display: "grid", gap: 14, minWidth: 0 }}>
-              <div>
+          <div className="mk-wrap">
+            <Head
+              eyebrow="The one that matters most"
+              title="A wrong verdict is the best report we get"
+              lede="A false positive costs you an afternoon. A false negative is the thing the product exists to prevent. There is a template for both."
+            />
+            <p className="mk-fine" style={{ marginTop: 18 }}>
+              The trace id and the rule id are what is needed, not the payload. Redact it and
+              keep the structure.
+            </p>
+            <div className="mk-grid mk-grid-3" style={{ marginTop: 36 }}>
+              <div className="mk-card">
                 <span className="mk-label">It asks for</span>
-                <p className="mk-body" style={{ margin: "5px 0 0", fontSize: "var(--t-small)" }}>
+                <p className="mk-body" style={{ margin: "8px 0 0", fontSize: "var(--t-small)" }}>
                   Which way it went wrong, the trace id, the rule id, the policy pack and its
                   mode, and which surface was being checked: input, output, tool arguments, tool
                   result, a memory write or an agent message.
                 </p>
               </div>
-              <div>
+              <div className="mk-card">
                 <span className="mk-label">And if a tool was involved</span>
-                <p className="mk-body" style={{ margin: "5px 0 0", fontSize: "var(--t-small)" }}>
+                <p className="mk-body" style={{ margin: "8px 0 0", fontSize: "var(--t-small)" }}>
                   The tool&rsquo;s impact tier and the capability grant that applied. Containment is
                   exactly as good as the declarations behind it.
                 </p>
               </div>
-              <div>
+              <div className="mk-card">
                 <span className="mk-label">Not a vulnerability</span>
-                <p className="mk-body" style={{ margin: "5px 0 0", fontSize: "var(--t-small)" }}>
+                <p className="mk-body" style={{ margin: "8px 0 0", fontSize: "var(--t-small)" }}>
                   A prompt injection a detector missed goes here, not through the private advisory
                   route. SECURITY.md says so itself: detection is a speed bump, not a defence.
                 </p>
@@ -315,27 +279,20 @@ export default function Support() {
           </div>
         </section>
 
-        {/* 4. Security */}
         <section className="mk-section mk-band mk-reveal">
           <div className="mk-wrap">
-            <div
-              className="mk-card mk-card-raised mk-up"
-              style={{ display: "grid", gap: 12, minWidth: 0 }}
-            >
-              <div className="mk-row" style={{ gap: 8 }}>
-                <h2 className="mk-h2">Found a vulnerability?</h2>
-                <span className="mk-chip mk-chip-stop">Private route only</span>
-              </div>
-              <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)" }}>
+            <div className="mk-narrow">
+              <h2 className="mk-h2">Found a vulnerability?</h2>
+              <p className="mk-body" style={{ marginTop: 14 }}>
                 Do not open a public issue for a security problem, and do not email the details.{" "}
                 <Out href={SECURITY_MD}>SECURITY.md</Out> holds the private reporting route, what
                 is in scope, and the two things this project says in public are not
                 vulnerabilities.
               </p>
-              <p className="mk-fine" style={{ margin: 0 }}>
+              <p className="mk-fine" style={{ marginTop: 14 }}>
                 It is the only description of that process, deliberately.
               </p>
-              <div className="mk-row" style={{ marginTop: 4 }}>
+              <div className="mk-row" style={{ marginTop: 20 }}>
                 <a
                   href={SECURITY_MD}
                   target="_blank"

@@ -169,9 +169,7 @@ export function TraceAnatomy() {
       </div>
       <div className="pv-note">
         <span className="pv-rule">injection.indirect</span>
-        <span className="pv-reason">
-          Instruction-like content found in untrusted retrieved or tool content.
-        </span>
+        <span className="pv-reason">Instruction-like text in retrieved content.</span>
       </div>
     </Pane>
   );
@@ -205,9 +203,7 @@ export function EstateScan() {
           <span className="pv-v pv-v-stop">never registered</span>
         </div>
         <div className="pv-call-why">
-          <span className="pv-reason">
-            Observed in traffic. Nobody declared it, so nobody owns what it does.
-          </span>
+          <span className="pv-reason">Seen in traffic. Never declared.</span>
         </div>
       </div>
     </Pane>

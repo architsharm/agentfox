@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { WaitlistForm } from "@/components/marketing/waitlist";
 
 /*
@@ -121,12 +122,9 @@ export function Editions({
             </div>
             <p className="mk-body">
               The whole control plane, Apache-2.0, nothing gated and no licence key.
-              Runs offline: no API key, no downloaded weights, no network egress.
+              Runs offline: no API key, no downloaded weights, no network egress.{" "}
+              <Link href="/docs">Install and the demo are in the docs.</Link>
             </p>
-            <pre className="ed-code">
-              <code>pip install agentfox</code>
-              <code className="ed-code-2">agentfox init &amp;&amp; agentfox demo</code>
-            </pre>
             <a
               className="mk-btn mk-btn-outline"
               href={REPO_HREF}
@@ -243,7 +241,7 @@ const OSS_FACTS: { label: string; body: string; where: string }[] = [
   {
     label: "Offline",
     body: "No API key, no downloaded weights.",
-    where: "agentfox init && agentfox demo",
+    where: "No API key, no weights",
   },
   {
     label: "No telemetry",

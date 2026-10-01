@@ -529,9 +529,9 @@ export function Decisions() {
         </div>
 
         <p className="mk-fine" style={{ marginTop: 22 }}>
-          The first three are the calls <span className="mk-mono">agentfox demo</span>{" "}
-          makes, offline, on a first install. Run the same ones in the{" "}
-          <Link href="/playground">playground</Link>.
+          The first three are what the offline demo does on a first install. Run the same
+          ones in the <Link href="/playground">playground</Link>, or see the commands in the{" "}
+          <Link href="/docs">docs</Link>.
         </p>
       </div>
     </section>

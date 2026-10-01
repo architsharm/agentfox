@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { CATEGORY_CAP } from "./how-it-works/_public";
 import { SITE_URL, SUPPORT_EMAIL, publicPageMetadata, HOME_TITLE, HOME_DESCRIPTION } from "@/lib/site";
 import { MarketingNav, REPO } from "@/components/marketing/nav";
@@ -7,11 +6,8 @@ import { CTA, Footer } from "@/components/marketing/sections";
 import { Platform } from "@/components/marketing/platform";
 import {
   Hero,
-  Stack,
-  ControlPoints,
   Origins,
   Boundaries,
-  Around,
   Proof,
   Limits,
 } from "@/components/marketing/home";
@@ -141,7 +137,7 @@ function Landing() {
           describing the wrong document. */}
       <LandingJsonLd />
       <MarketingNav />
-      <main>
+      <main className="mk-home">
         {/* Benefit, proof, price, honesty. Each section states what the reader gets
             and then shows it, and no two adjacent sections have the same shape.
 
@@ -172,13 +168,10 @@ function Landing() {
             carries the observe-mode line, which was shipped a year ago and
             mentioned on no public page. */}
         <Hero />
-        <Stack />
         <Origins />
         <Platform />
         <Boundaries />
-        <ControlPoints />
         <Proof />
-        <Around />
         <Limits />
         <CTA />
       </main>

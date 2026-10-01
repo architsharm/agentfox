@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { publicPageMetadata } from "@/lib/site";
 import Link from "next/link";
-import { CATEGORY, REPO } from "./_public";
+import { REPO } from "./_public";
 import { MarketingNav } from "@/components/marketing/nav";
 import { Footer } from "@/components/marketing/sections";
 import { RequestPath } from "@/components/marketing/path";
@@ -27,9 +27,9 @@ import { FollowRequest } from "@/components/marketing/follow";
  */
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Runtime enforcement, end to end",
+  title: "What happens when an agent calls a tool",
   description:
-    "How one tool call is enforced: input and output guards, retrieval, provenance, the action check, and the audit trail.",
+    "The prompt, the documents it read, whether the call was allowed, and the record left behind.",
   path: "/how-it-works",
 });
 
@@ -45,9 +45,9 @@ export default function HowItWorks() {
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
               <h1 className="mk-h1">
-                Runtime enforcement, end to end</h1>
+                What happens when an agent calls a tool</h1>
               <p className="mk-lede" style={{ marginTop: 18 }}>
-                AgentFox is a {CATEGORY}. It checks the call before the tool runs.
+                The prompt, the documents it read, whether the call was allowed, and the record left behind.
               </p>
           </div>
         </section>
@@ -76,16 +76,14 @@ export default function HowItWorks() {
             </thead>
             <tbody>
               <tr>
-                <td>
-                  <code className="mono">agentfox.auto()</code>, one line in your entry point
-                </td>
+                <td>One line in a Python entry point</td>
                 <td>
                   Model traffic: detectors over prompts and responses, the answerability
                   gate before the call, the kill switch and budgets. <strong>Not tool calls.</strong>
                 </td>
               </tr>
               <tr>
-                <td>The gateway — point an OpenAI or Anthropic client&apos;s base URL at it</td>
+                <td>The gateway. Point an OpenAI or Anthropic client&apos;s base URL at it</td>
                 <td>
                   The same model-traffic checks, from any language, with no AgentFox code
                   in your application
@@ -93,8 +91,7 @@ export default function HowItWorks() {
               </tr>
               <tr>
                 <td>
-                  A governed tool path: the LangGraph node, the MCP governor, the SDK, or{" "}
-                  <code className="mono">POST /v1/guard/tool_call</code>
+                  A governed tool path: the LangGraph node, the MCP governor, or the SDK
                 </td>
                 <td>
                   The action itself: the agent&apos;s grants, declared argument ceilings,
@@ -102,10 +99,7 @@ export default function HowItWorks() {
                 </td>
               </tr>
               <tr>
-                <td>
-                  <code className="mono">filter_retrieval()</code> from your retrieval code,
-                  or its HTTP endpoint
-                </td>
+                <td>Your own retrieval code, or its HTTP endpoint</td>
                 <td>What comes back for the person asking, before it reaches the prompt</td>
               </tr>
             </tbody>
@@ -113,7 +107,8 @@ export default function HowItWorks() {
         </div>
         <p>
           The sequence below is the full path a call takes when all four are connected.
-          Three of its eight steps can end a call before it reaches anything.
+          Three of its eight steps can end a call before it reaches anything.{" "}
+          <Link href="/docs/connect">The calls themselves are in the docs.</Link>
         </p>
 
         {/* The same request, at whichever stage you are reading about. The panel

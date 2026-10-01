@@ -55,11 +55,8 @@ export default function Privacy() {
               <h1 className="mk-h1" style={{ margin: "18px 0 0" }}>
                 Privacy policy</h1>
               <p className="mk-lede" style={{ marginTop: 20 }}>
-                This covers the hosted site you are reading, at{" "}
-                <span className="mk-mono">useagentfox.com</span>, and
-                nothing else. AgentFox is also software you can run yourself, and a copy
-                you run is covered by the section at the bottom, which is the shortest one
-                here.
+                What this site stores if you use the playground or sign in. A copy you
+                run yourself sends us nothing.
               </p>
               <p className="mk-fine" style={{ marginTop: 16 }}>
                 Last updated 24 September 2026.

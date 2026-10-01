@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "Compliance: EU AI Act, NIST, OWASP, ATLAS",
   description:
-    "43 controls across EU AI Act, ISO 42001, NIST AI RMF, SOC 2, OWASP LLM and Agentic, and MITRE ATLAS. Status comes from what ran, not from a questionnaire.",
+    "EU AI Act, ISO 42001, NIST, OWASP and MITRE ATLAS. 43 controls, scored from what the agent did, not from a form.",
   path: "/frameworks",
 });
 
@@ -31,7 +31,8 @@ export default function Page() {
     <CapabilityPage
       kicker="Compliance"
       title={["EU AI Act, NIST,", "OWASP and ATLAS"]}
-      lede="43 controls. Status is computed from what ran, not from a questionnaire."
+      lede="43 controls. You meet one because of what the agent did, not because someone filled in a form."
+      docs="/docs/compliance"
       challenge={
         <p>
           AI compliance is usually a document describing controls someone believes are
@@ -78,7 +79,6 @@ export default function Page() {
               which also means nobody can tick a box.
             </p>
           ),
-          code: "agentfox compliance status",
         },
         {
           title: "A pack for high-risk systems",
@@ -99,7 +99,6 @@ export default function Page() {
               independently is a mapping nobody should accept.
             </p>
           ),
-          code: "agentfox evidence export",
         },
       ]}
       gaps={{

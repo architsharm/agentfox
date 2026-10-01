@@ -34,11 +34,11 @@ export const SITE_NAME = "AgentFox";
  */
 export const HOME_TITLE = "AgentFox: AI agent governance and security control plane";
 export const HOME_DESCRIPTION =
-  "Runtime guardrails for AI agents. AgentFox blocks a tool call the agent was not granted, and keeps an audit trail you can check without us.";
+  "One control plane for AI agent security: discovery, access control, runtime guardrails, and an audit trail.";
 
 /** The site-wide default, for routes that do not describe themselves. */
 export const SITE_DESCRIPTION =
-  "Open source control plane for AI agents: guardrails on model traffic, tool calls bounded by capability grants, and a tamper-evident record of what ran.";
+  "Open source control plane for AI agents: discover what is running, least privilege on tool calls, and an audit trail you can check without us.";
 
 /**
  * The repository. Also spelled out in components/marketing/nav.tsx and

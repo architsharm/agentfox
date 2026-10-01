@@ -106,12 +106,12 @@ export function ogImage(): ImageResponse {
               letterSpacing: "-0.03em",
             }}
           >
-            <span>Stop the agent before it&nbsp;</span>
-            <span style={{ color: MK.brand }}>spends.</span>
+            <span style={{ width: "100%" }}>Secure your agents.</span>
+            <span style={{ width: "100%", color: MK.brand }}>One control plane.</span>
           </div>
           <div style={{ display: "flex", fontSize: 26, color: MK.muted, marginTop: 22, lineHeight: 1.45 }}>
-            Runtime guardrails for agents that transfer money, delete rows and
-            send mail. The call is checked against the grant.
+            One platform for the agents you already run: discovery, access
+            control, runtime guardrails, and an audit trail.
           </div>
         </div>
 

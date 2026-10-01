@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "Audit trail for agent decisions",
   description:
-    "Every allow and every block in a hash-chained audit trail, with a verifier an auditor can run without our code.",
+    "Every time a call is allowed, and every time it is blocked. You can check the export without our code.",
   path: "/evidence",
 });
 
@@ -25,8 +25,9 @@ export default function Page() {
   return (
     <CapabilityPage
       kicker="Audit trail"
-      title={["An audit trail", "you can verify"]}
-      lede="Every allow and every block, hash-chained, with a verifier that does not use our code."
+      title={["An audit trail", "you can check"]}
+      lede="Every time a call is allowed, and every time it is blocked. The export includes a verifier that does not use our code."
+      docs="/docs/evidence"
       challenge={
         <p>
           If the only proof a control ran is a row in a database the vendor also
@@ -67,7 +68,6 @@ export default function Page() {
               a loud verification failure.
             </p>
           ),
-          code: "agentfox audit verify",
         },
         {
           title: "Export a package that travels",
@@ -77,7 +77,6 @@ export default function Page() {
               versions of everything that took part, bundled for a date range and a scope.
             </p>
           ),
-          code: "agentfox evidence export",
         },
         {
           title: "Verified by a script that does not import us",
@@ -91,7 +90,7 @@ export default function Page() {
           ),
         },
         {
-          title: "The governance layer is governed too",
+          title: "Changes to the policy are recorded too",
           body: (
             <p>
               Operator actions — a policy switched to observe, an agent un-quarantined —

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = publicPageMetadata({
   title: "Red team a running agent",
   description:
-    "Red team a running agent in the browser, no account: prompt injection, indirect injection, payload splitting, and the enforcement verdict for every try.",
+    "A prompt injection, or a tool call the agent was not granted. No account. The verdict comes from the product, not a mock.",
   path: "/playground",
 });
 

@@ -105,11 +105,9 @@ export default function CoveragePage() {
               What the red team covers, and <em>what it misses</em>
             </h1>
             <p className="mk-lede">
-              {scenarios} ways an agentic request can fail, built from the
-              architecture of the request rather than from our own feature list.{" "}
-              {verified} of them are executed against the running product every
-              night; the rest say plainly that they were assessed by reading the
-              code.
+              Red team coverage for the ways an agentic request can fail, gaps
+              included. {scenarios} scenarios. {verified} run against the product
+              every night. The rest were read, not executed, and say so.
             </p>
 
             <div className="cov-kpis">
@@ -152,7 +150,7 @@ export default function CoveragePage() {
           */}
         <section className="mk-section mk-ink-act mk-reveal">
           <div className="mk-wrap">
-            <h2>Why the agent did it</h2>
+            <h2 className="mk-h2">Why the request went wrong</h2>
             <p className="mk-lede">
               The same {scenarios} scenarios cut by cause rather than by stage.
               Most coverage pages only have the first three rows, because the
@@ -188,7 +186,7 @@ export default function CoveragePage() {
 
         <section className="mk-section mk-reveal">
           <div className="mk-wrap">
-            <h2>Where the request can fail</h2>
+            <h2 className="mk-h2">Where the request can fail</h2>
             <p className="mk-lede">
               Each layer is a stage the request actually travels through. The
               score counts a partial control as half, because most of the honest
@@ -212,7 +210,7 @@ export default function CoveragePage() {
 
         <section className="mk-section mk-reveal">
           <div className="mk-wrap">
-            <h2>What we do not catch</h2>
+            <h2 className="mk-h2">What we do not catch</h2>
             <p className="mk-lede">
               Published for the same reason the rest is: a coverage page that
               only listed successes would not be evidence of anything.{" "}
@@ -232,7 +230,7 @@ export default function CoveragePage() {
 
         <section className="mk-section mk-reveal">
           <div className="mk-wrap">
-            <h2>What it costs, and what happens when it fails</h2>
+            <h2 className="mk-h2">How long a check takes, and what is recorded if it runs out of time</h2>
             <p className="mk-lede">
               Latency and false positives are the most-cited reasons guardrails
               get switched off. Every control here runs inside a declared budget

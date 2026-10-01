@@ -20,7 +20,7 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "Agent hooks for coding agents",
   description:
-    "Three hook points in Claude Code. Two can block a call. One cannot, and the page says which.",
+    "Claude Code has three hooks. Two can stop a call. One cannot, and this page says which.",
   path: "/hooks",
 });
 
@@ -62,12 +62,9 @@ export default function Page() {
   return (
     <CapabilityPage
       kicker="Agent hooks"
-      title={["Which hooks", "can actually block"]}
-      lede="Claude Code has three checkpoints. Two can stop a call. One cannot, and the page says so."
-      commands={[
-        "agentfox hooks daemon",
-        "agentfox hooks install --agent my-agent --write",
-      ]}
+      title={["Which hooks can", "stop a call"]}
+      lede="Claude Code has three. Two can stop a call. One cannot, and this page says which."
+      docs="/docs/hooks"
       challenge={
         <p>
           A coding agent on a laptop can reach production. It reads issue comments and
@@ -114,7 +111,7 @@ export default function Page() {
           ),
         },
         {
-          title: "Taint travels with the text",
+          title: "The source of the text stays attached to it",
           body: (
             <p>
               An argument later derived from that result cannot exceed the ceiling for
@@ -125,7 +122,7 @@ export default function Page() {
           ),
         },
         {
-          title: "A warm daemon, because a hook is in the critical path",
+          title: "The check is already running when the hook fires",
           body: (
             <p>
               The harness spawns a fresh process per call. Cold, that costs 3.9 seconds;
@@ -144,7 +141,6 @@ export default function Page() {
               at a threshold that would be intolerable there.
             </p>
           ),
-          code: "agentfox policy observe coding-agent",
         },
       ]}
       gaps={{

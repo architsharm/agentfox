@@ -160,8 +160,8 @@ export function Pillars() {
   return (
     <section id="pillars" className="mk-section">
       <div className="mk-wrap">
-        <Head eyebrow="The platform" title="What a security team asks first" center>
-          Each one answers a question an organisation has to answer about its agents.
+        <Head eyebrow="The platform" title="Six questions about your agents">
+          What is running, what it can reach, what it is allowed to do, what it just did, whether that was tested, and whether you can show the record.
         </Head>
 
         <div className="mk-up mk-d2" style={{ marginTop: 44 }}>
@@ -169,8 +169,8 @@ export function Pillars() {
         </div>
 
         <p className="mk-fine mk-up mk-d3" style={{ marginTop: 20 }}>
-          Areas 1, 2, 3 and 5 run on the request itself —{" "}
-          <Link href="/how-it-works">the path one call takes &rarr;</Link>
+          The checks on the request itself are written up on{" "}
+          <Link href="/how-it-works">how a tool call is handled</Link>.
         </p>
       </div>
     </section>
@@ -211,20 +211,18 @@ export function Guardrails() {
   return (
     <section id="guardrails" className="mk-section">
       <div className="mk-wrap">
-        <Split flip wide>
+        <Head eyebrow="Area 3 · Runtime guardrails" title="Detectors read the text. A policy decides">
+          Detectors read input, output, retrieved documents and tool results. Detection is
+          the layer we trust least.
+        </Head>
+        <Split wide>
           <Half>
-            <Head eyebrow="Area 3 · Runtime guardrails" title="Detectors read the text. A policy decides">
-              Detectors read input, output, retrieved documents and tool results. Detection is
-              the layer we trust least.
-            </Head>
             <Items items={GUARDRAIL_ITEMS} />
             <div
               className="mk-card"
               style={{ marginTop: 26, background: "var(--mk-surface-2)" }}
             >
               <span className="mk-label">What this layer is worth</span>
-              {/* Both figures: README.md, "Where a competitor beats us" and the adaptive
-                  benchmark line above it. */}
               <p className="mk-body" style={{ ...BODY, marginTop: 8, fontSize: "var(--t-small)" }}>
                 66.7% recall on the held-out injection split. An attacker who reads our verdict
                 and retries gets 73% of what we catch through within 50 attempts. A speed bump,
@@ -237,7 +235,6 @@ export function Guardrails() {
               </p>
             </div>
           </Half>
-
           <Half className="mk-up mk-d2">
             <DetectorPipeline />
           </Half>
@@ -341,16 +338,16 @@ export function Containment() {
 const DISCOVERY_ITEMS: Item[] = [
   {
     // README.md "Commands"; behaviour from src/agentfox/discovery.py.
-    label: "agentfox check",
+    label: "Committed code",
     body: "Reports what in a repository talks to a model, and which of it is ungoverned.",
   },
   {
-    label: "agentfox agents discover",
+    label: "An owner",
     body: "Shadow agents, drift and identity posture. Unregistered traffic raises a shadow_agent finding.",
   },
   {
     // src/agentfox/registry/service.py raises these types.
-    label: "agentfox scan mcp",
+    label: "Tool servers",
     body: "MCP tool hygiene: tool_poisoning in a tool description, an unpinned_server, schema_drift since the last scan.",
   },
   {
@@ -369,22 +366,21 @@ export function Discovery() {
   return (
     <section id="discovery" className="mk-section">
       <div className="mk-wrap">
-        <Split flip wide>
+        <Head
+          eyebrow="Area 1 · Discovery and registry"
+          title="Find the agents before you govern them"
+        >
+          It never imports or runs your code, and a scan that read no file it understands
+          says exactly that instead of reporting clean.
+        </Head>
+        <Split wide>
           <Half>
-            <Head
-              eyebrow="Area 1 · Discovery and registry"
-              title="Find the agents before you govern them"
-            >
-              It never imports or runs your code, and a scan that read no file it understands
-              says exactly that instead of reporting clean.
-            </Head>
             <Items items={DISCOVERY_ITEMS} />
             <p className="mk-fine" style={{ marginTop: 22 }}>
-              <span className="mk-mono">agentfox quickscan</span> is the zero-config first
-              look. Nothing leaves the machine.
+              The first look at a directory stays on the machine.{" "}
+              <Link href="/docs/discovery">The commands are in the docs.</Link>
             </p>
           </Half>
-
           <Half className="mk-up mk-d2">
             <DiscoveryMock />
           </Half>
@@ -400,18 +396,18 @@ export function Discovery() {
 const ASSURANCE_ITEMS: Item[] = [
   {
     // README.md "Test before you trust"; scorer keys in evaluation/scorers.py.
-    label: "agentfox eval gate",
+    label: "A regression gate",
     body: "Scores a suite against its recorded baseline and exits 1 on a regression. Groundedness, safety and tool_trajectory are registered scorers.",
   },
   {
     // evaluation/adaptive.py is explicit that this is configuration regression
     // testing and a dishonest thing to call adversarial robustness. So is this line.
-    label: "agentfox redteam run",
+    label: "A red-team run",
     body: "Probes fired at your own agents' grants, then retried in mutated form. A posture delta, not a robustness certificate.",
   },
   {
     // audit/chain.py.
-    label: "agentfox audit verify",
+    label: "A check of the record",
     body: "Re-derives the hash chain and exits 1 if it is broken. There is no update or delete path for an audit entry.",
   },
   {
@@ -434,15 +430,15 @@ export function Assurance() {
   return (
     <section id="assurance" className="mk-section mk-band">
       <div className="mk-wrap">
+        <Head
+          eyebrow="Areas 4, 5 and 6"
+          title="Test it, record it, and show the record to an auditor"
+        >
+          Every decision lands in a hash chain, and the compliance status above it is
+          computed from that chain rather than from a questionnaire.
+        </Head>
         <Split wide>
           <Half>
-            <Head
-              eyebrow="Areas 4, 5 and 6"
-              title="Test it, record it, and show the record to an auditor"
-            >
-              Every decision lands in a hash chain, and the compliance status above it is
-              computed from that chain rather than from a questionnaire.
-            </Head>
             <Items items={ASSURANCE_ITEMS} />
             <div
               className="mk-card"

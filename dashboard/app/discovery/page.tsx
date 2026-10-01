@@ -6,24 +6,24 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "AI-SPM: agents, tools, MCP servers and skills",
   description:
-    "AI security posture for agents: static scanning, running-session detection, MCP snapshots and skill analysis, with an owner on each.",
+    "Agents, tools, MCP servers and skills in your repositories, and on laptops where they were never committed.",
   path: "/discovery",
 });
 
 const FINDS = [
   {
     what: "Agents",
-    how: "agentfox check .",
+    how: "Committed code",
     why: "Model clients and agent frameworks in committed code, with the file and line.",
   },
   {
-    what: "What is running now",
-    how: "agentfox quickscan .",
+    what: "Shadow agents",
+    how: "A laptop session",
     why: "Local coding-assistant session state — the agent someone is using today that was never committed.",
   },
   {
     what: "MCP servers and tools",
-    how: "agentfox scan mcp",
+    how: "A fingerprint of the tools",
     why: "Recorded with a digest, which is the only thing that makes a later change detectable.",
   },
   {
@@ -37,8 +37,9 @@ export default function Page() {
   return (
     <CapabilityPage
       kicker="AI-SPM"
-      title={["Every agent, tool,", "MCP server and skill"]}
-      lede="Including shadow AI: agents in a repo, and agents only running on a laptop."
+      title={["Every agent, tool,", "and MCP server"]}
+      lede="In your repositories, and on laptops where they were never committed. If nobody owns one, it is listed."
+      docs="/docs/discovery"
       challenge={
         <p>
           Agents get built quickly and rarely get written down. By the time someone
@@ -54,7 +55,7 @@ export default function Page() {
             {FINDS.map((f) => (
               <div key={f.what} className="find">
                 <b>{f.what}</b>
-                <code>{f.how}</code>
+                <span>{f.how}</span>
                 <p>{f.why}</p>
               </div>
             ))}
@@ -70,7 +71,6 @@ export default function Page() {
               scan costs nothing and cannot have side effects.
             </p>
           ),
-          code: "agentfox check .",
         },
         {
           title: "Find what is actually running",
@@ -81,7 +81,6 @@ export default function Page() {
               using today that was never committed anywhere.
             </p>
           ),
-          code: "agentfox quickscan .",
         },
         {
           title: "Snapshot the tool servers",
@@ -92,7 +91,6 @@ export default function Page() {
               raised at the same time.
             </p>
           ),
-          code: "agentfox scan mcp",
         },
         {
           title: "Read the skills, including the parts nobody proofreads",
@@ -115,7 +113,6 @@ export default function Page() {
               operates this.
             </p>
           ),
-          code: "agentfox agents discover",
         },
       ]}
       gaps={{

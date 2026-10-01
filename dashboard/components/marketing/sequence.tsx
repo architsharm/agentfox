@@ -53,7 +53,7 @@ const STAGES: Stage[] = [
   {
     n: "01",
     question: "Can it read this?",
-    label: "retrieved for alex@example.com",
+    label: "retrieved",
     rows: [
       { text: "billing/refund-policy", mono: true, state: "kept", mark: "returned" },
       { text: "orders/ord_88213", mono: true, state: "kept", mark: "returned" },
@@ -62,30 +62,26 @@ const STAGES: Stage[] = [
     rule: "not_entitled",
     verdict: "withhold",
     tone: "hold",
-    requires: "You call the filter from your retrieval code.",
+    requires: "Call the filter from retrieval.",
   },
   {
     n: "02",
     question: "Can it answer this?",
     label: "asked",
     rows: [
-      { text: "Will this customer's refund definitely be approved?", state: "quiet" },
-      { text: "Yes — based on the policy it should go through.", state: "cut", mark: "not supported" },
-      {
-        text: "I can tell you what the policy says and where this request is in the queue, but I can't promise an outcome.",
-        state: "answer",
-        mark: "sent instead",
-      },
+      { text: "Will this refund be approved?", state: "quiet" },
+      { text: "Yes. It should go through.", state: "cut", mark: "not supported" },
+      { text: "Policy and queue status. No promise.", state: "answer", mark: "sent instead" },
     ],
     rule: "answerable: false",
     verdict: "abstain",
     tone: "hold",
-    requires: "You declare a knowledge boundary and set it to enforce.",
+    requires: "Declare a boundary, then enforce it.",
   },
   {
     n: "03",
     question: "Can it do this?",
-    label: "requested, from text inside a retrieved document",
+    label: "requested",
     rows: [
       { text: "payments.transfer", mono: true, state: "blocked", mark: "block" },
       { text: "amount: 5000   to: acct_x", mono: true, state: "quiet" },
@@ -94,7 +90,7 @@ const STAGES: Stage[] = [
     rule: "capability.denied",
     verdict: "block",
     tone: "stop",
-    requires: "Nothing, on a governed tool path. Containment ships enforcing.",
+    requires: "Nothing extra. Containment already enforces.",
   },
 ];
 
@@ -140,8 +136,6 @@ export function BoundarySequence() {
               <span className="seq-chip">{s.verdict}</span>
               <code className="mk-mono">{s.rule}</code>
             </div>
-
-            <p className="seq-req">{s.requires}</p>
           </li>
         ))}
       </ol>

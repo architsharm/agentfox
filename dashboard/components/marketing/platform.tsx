@@ -51,7 +51,7 @@ const PILLARS: Pillar[] = [
   {
     verb: "Govern",
     product: "Access control",
-    headline: "Least privilege on every tool call",
+    headline: "Set what each agent is allowed to do",
     points: [
       "Every tool is read, write, high impact or irreversible",
       "Grants carry limits: a value ceiling, an environment, a data source",
@@ -64,10 +64,10 @@ const PILLARS: Pillar[] = [
   {
     verb: "Protect",
     product: "Runtime",
-    headline: "Guard the action, not only the prompt",
+    headline: "The tool call is checked before it runs",
     points: [
-      "Nine surfaces: prompts, tool calls, tool results, retrieved documents, memory, agent messages, model reasoning and completions",
-      "50 rules in four packs, as YAML in your repository",
+      "Prompts, tool calls, results, documents, and completions",
+      "50 rules in four packs, as YAML in the repo",
       "A detector that runs out of time is marked, not skipped",
       "Starts in observe mode and changes nothing until you turn it on",
     ],
@@ -92,8 +92,8 @@ const PILLARS: Pillar[] = [
     product: "Audit",
     headline: "An audit trail an auditor can verify",
     points: [
-      "Every decision is hash-chained, so a deletion shows up",
-      "Evidence packages come with a verifier that does not use our code",
+      "A verifier an auditor can run without our code",
+      "Each record links to the one before it, so a deletion shows up",
       "43 controls across seven frameworks, including the EU AI Act",
       "Status comes from telemetry, not a questionnaire",
     ],
@@ -115,8 +115,7 @@ export function Platform() {
             Discover, govern, protect, test, prove.
           </h2>
           <p className="mk-lede" style={{ marginTop: 16 }}>
-            AI-SPM, access control, runtime guardrails, red teaming and an audit
-            trail. One policy across all five.
+            One platform for discovery, access control, runtime guardrails, red teaming, and an audit trail.
           </p>
         </div>
 

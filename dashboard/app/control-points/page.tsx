@@ -13,9 +13,9 @@ import { CapabilityPage } from "@/components/marketing/capability";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Open enforcement across six control points",
+  title: "One policy, six control points",
   description:
-    "One policy, enforced at the hooks, gateway, SDK and MCP governor you already run. Each control point says what it cannot see.",
+    "The same rules at the hook, the gateway, the SDK, the MCP governor, LangGraph, and the CLI. Each one misses something.",
   path: "/control-points",
 });
 
@@ -23,7 +23,6 @@ const POINTS = [
   {
     where: "Your coding agent",
     how: "Claude Code hooks",
-    install: "agentfox hooks install --agent my-agent --write",
     sees: ["The turn you submitted", "Each tool call before it runs", "Every tool result"],
     blind: "Anything not going through this harness, and sessions that run in the vendor's cloud rather than on the laptop.",
     href: "/hooks",
@@ -31,15 +30,13 @@ const POINTS = [
   {
     where: "Any language",
     how: "HTTP gateway",
-    install: "agentfox serve",
     sees: ["Whatever you post to it", "One endpoint per surface", "Model traffic, if you proxy it"],
     blind: "Calls your code makes without asking. It answers questions; it cannot intercept what it is not shown.",
     href: "/how-it-works",
   },
   {
     where: "Python",
-    how: "agentfox.auto()",
-    install: "import agentfox; agentfox.auto()",
+    how: "The SDK",
     sees: ["Prompts and completions", "OpenAI, Anthropic, LiteLLM, LangChain", "Sync, async and streamed"],
     blind: "Tool calls. It patches model clients, so a tool your agent invokes directly never reaches it — use one of the other four for that.",
     href: "/how-it-works",
@@ -47,7 +44,6 @@ const POINTS = [
   {
     where: "Tool servers",
     how: "MCP governor",
-    install: "agentfox scan mcp",
     sees: ["The call and its arguments", "The schema it was approved under", "What the server sent back"],
     blind: "A server nobody pointed it at. An undeclared tool becomes a finding the first time it is called, not before.",
     href: "/mcp",
@@ -55,7 +51,6 @@ const POINTS = [
   {
     where: "Graphs",
     how: "LangGraph tool node",
-    install: "guard.tool_node(transfer, tool=\"payments.transfer\")",
     sees: ["Each tool call in the run", "Retrieved documents", "Model input and output"],
     blind: "Nodes you did not wrap. Escalation maps to LangGraph's own interrupt(), so there is one pause mechanism rather than two.",
     href: "/how-it-works",
@@ -63,7 +58,6 @@ const POINTS = [
   {
     where: "CI and the terminal",
     how: "The CLI",
-    install: "agentfox quickscan .",
     sees: ["A repository, without running it", "A session transcript", "A policy, before it ships"],
     blind: "Runtime. It reads code and records; it stops nothing that is already executing.",
     href: "/product",
@@ -73,9 +67,10 @@ const POINTS = [
 export default function Page() {
   return (
     <CapabilityPage
-      kicker="Open enforcement"
+      kicker="Enforcement"
       title={["One policy,", "six control points"]}
-      lede="Write the policy once. Bind it at the hooks, gateway, SDK and MCP governor you already run."
+      lede="The same rules at the hook, the gateway, the SDK, the MCP governor, LangGraph, and the CLI. Each one misses something, and the page says what."
+      docs="/docs/control-points"
       challenge={
         <p>
           One team uses LangGraph, one calls an API from Go, one runs Claude Code on a
@@ -95,7 +90,6 @@ export default function Page() {
                   <h3>{point.how}</h3>
                 </div>
                 <div className="cp-item-body">
-                  <code className="cp-install">{point.install}</code>
                   <ul className="cp-sees">
                     {point.sees.map((line) => (
                       <li key={line}>{line}</li>
@@ -132,7 +126,6 @@ export default function Page() {
               than living in a console somebody has to remember to update.
             </p>
           ),
-          code: "agentfox policy lint",
         },
         {
           title: "Add a binding point without moving traffic",
@@ -152,11 +145,10 @@ export default function Page() {
               returned, against real calls, changing nothing until you promote it.
             </p>
           ),
-          code: "agentfox policy observe baseline",
         },
       ]}
       gaps={{
-        title: "Six doors is not every door",
+        title: "These six are not every place an agent can run",
         body: (
           <p>
             Traffic that goes through none of them is ungoverned, and we would rather

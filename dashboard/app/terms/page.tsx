@@ -38,11 +38,8 @@ export default function Terms() {
               <h1 className="mk-h1" style={{ margin: "18px 0 0" }}>
                 Terms of service</h1>
               <p className="mk-lede" style={{ marginTop: 20 }}>
-                These terms govern your use of the site at{" "}
-                <span className="mk-mono">useagentfox.com</span>: the
-                playground, the dashboard, and the API behind them. They are an agreement
-                about a demonstration someone else is paying to run. They are not a
-                software licence.
+                These cover the hosted playground and dashboard. They do not narrow
+                the Apache-2.0 licence.
               </p>
               <p className="mk-fine" style={{ marginTop: 16 }}>
                 Last updated 24 September 2026.

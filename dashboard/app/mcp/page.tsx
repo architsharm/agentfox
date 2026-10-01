@@ -15,7 +15,7 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "MCP security: tool poisoning and rug pulls",
   description:
-    "Tool poisoning and rug pulls checked at call time. Undeclared tools become findings. Two MCP risks on this page are not covered.",
+    "Approving an MCP server once is not enough. If a tool changes later, that shows up when it is called.",
   path: "/mcp",
 });
 
@@ -69,8 +69,8 @@ export default function Page() {
     <CapabilityPage
       kicker="MCP security"
       title={["Tool poisoning", "and rug pulls"]}
-      lede="Checked when the call happens, not only when the server was approved."
-      commands={["agentfox scan mcp"]}
+      lede="Approving the server once is not enough. If a tool changes later, that shows up when it is called. Two risks on this page are not covered."
+      docs="/docs/mcp"
       challenge={
         <p>
           MCP is how agents reach tools, and every server is somebody else&rsquo;s code.
@@ -131,7 +131,7 @@ export default function Page() {
           ),
         },
         {
-          title: "Transport-agnostic on purpose",
+          title: "It does not matter how the tool server is connected",
           body: (
             <p>
               The governor wraps any callable that speaks list-tools and call-tool, so

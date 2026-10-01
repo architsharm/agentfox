@@ -88,9 +88,8 @@ export default async function Login({
 
           <h1>Sign in, or start a workspace</h1>
           <p className="sub">
-            AgentFox keeps a register of every AI agent you run, the rules each one has
-            to follow, and a record of what it actually did. Signing in with GitHub
-            creates the workspace if you do not have one yet.
+            Your agents, the rules they have to follow, and a record of what they did.
+            GitHub opens the workspace.
           </p>
 
           {expired && (

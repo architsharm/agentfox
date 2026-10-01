@@ -477,8 +477,9 @@ export function Playground({ apiBase }: { apiBase: string }) {
         <div className="mk-wrap">
           <h1 className="pg-h1">Red team a running agent</h1>
           <p className="pg-lede">
-            Prompt injection, indirect injection, or a tool call the agent was not
-            granted. Both verdicts come from the same enforcement code.
+            Red team a running agent in the browser, with no account. Try a prompt
+            injection or a tool call the agent was not granted. The verdict comes
+            from the product.
           </p>
         </div>
       </section>

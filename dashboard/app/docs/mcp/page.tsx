@@ -1,0 +1,50 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { publicPageMetadata } from "@/lib/site";
+
+export const metadata: Metadata = publicPageMetadata({
+  title: "MCP",
+  description: "Scan a tool server, and catch the change a Monday scan cannot see.",
+  path: "/docs/mcp",
+});
+
+export default function Page() {
+  return (
+    <article className="docs-doc">
+      <p className="docs-kicker">Product</p>
+      <h1>MCP</h1>
+      <p>
+        Approving a server once is not enough. A scan records the tools. The check that
+        matters is at the call, against the digest that was in force when the agent was
+        authorised.
+      </p>
+      <h2>Before anything runs</h2>
+      <pre>
+        <code>{`agentfox scan mcp internal-tools --seed-fixture
+agentfox scan mcp internal-tools --file tools.json`}</code>
+      </pre>
+      <p>
+        <code>--seed-fixture</code> is the bundled example. <code>--file</code> takes a
+        real <code>tools/list</code>. The scan checks tool hygiene: a poisoned
+        description, a server that is not pinned, and schema drift since the last scan.
+        An undeclared tool becomes a discovery finding rather than an invisible call.
+      </p>
+      <h2>At the call</h2>
+      <p>
+        The governor compares the tool&apos;s digest with the one recorded when the
+        agent was authorised against it. That is the rug pull: a server that passed
+        review on Monday and changed on Thursday, which no earlier scan can catch.
+        Results are evaluated on the <code>tool_result</code> surface, and the taint is
+        propagated, so an argument later derived from an MCP result cannot exceed the
+        ceiling for tool-sourced data.
+      </p>
+      <p>
+        The HTTP route for one MCP call is <code>POST /v1/mcp/call</code>. A read-only
+        MCP server that exposes AgentFox itself to a coding agent is{" "}
+        <code>agentfox mcp serve</code>, documented on the <Link href="/docs/harness">harness</Link>{" "}
+        page. That server does not decide or apply a change.
+      </p>
+    </article>
+  );
+}

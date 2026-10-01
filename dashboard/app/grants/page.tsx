@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "Access control for agent tool calls",
   description:
-    "Least privilege for agents: capability grants declared up front and checked on every call, so a prompt cannot raise what the agent is allowed to do.",
+    "You write down what each agent is allowed to do before it runs. A prompt cannot add to that.",
   path: "/grants",
 });
 
@@ -32,8 +32,9 @@ export default function Page() {
   return (
     <CapabilityPage
       kicker="Access control"
-      title={["Least privilege,", "checked on the call"]}
-      lede="Capability grants say what the agent may do. A prompt that talks it into more does not raise the grant."
+      title={["What each agent", "is allowed to do"]}
+      lede="You write that down before the agent runs. A prompt cannot add to it."
+      docs="/docs/access"
       challenge={
         <p>
           Text filters have to guess whether a string is an attack, and an attacker
@@ -42,8 +43,8 @@ export default function Page() {
         </p>
       }
       feature={{
-        title: "Two ladders, and a call has a rung on each",
-        lede: "What the tool can do, and where the data came from.",
+        title: "What the tool can do, and where the argument came from",
+        lede: "A call is judged on both. How dangerous the tool is, and whether a document supplied the value.",
         body: (
           <div className="ladders mk-stagger">
             <div className="ladder">
@@ -78,10 +79,9 @@ export default function Page() {
               A tool is <code>read</code>, <code>write</code>, <code>high_impact</code>{" "}
               or <code>irreversible</code>. That is the floor for what a call can be
               reasoned about as — and for a shell tool it really is only the floor,
-              because <code>ls</code> and <code>rm -rf</code> are the same tool.
+              because <code>ls</code> and <code>rm -rf</code> are               the same tool.
             </p>
           ),
-          code: "agentfox tools declare",
         },
         {
           title: "Grant the capability, with its limits",

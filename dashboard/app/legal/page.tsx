@@ -69,9 +69,8 @@ export default function Legal() {
               <h1 className="mk-h1" style={{ margin: "18px 0 0" }}>
                 Legal</h1>
               <p className="mk-lede" style={{ marginTop: 20 }}>
-                Five documents. Three of them describe the hosted service at this domain;
-                two of them describe the software, which you can run without agreeing to
-                anything.
+                Terms for the hosted service. The software is Apache-2.0, and running
+                it does not require agreeing to these.
               </p>
             </div>
           </div>

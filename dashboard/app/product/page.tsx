@@ -43,8 +43,8 @@ export default function Product() {
               Discover, govern, protect, <em>test, prove</em>
             </h1>
             <p className="mk-lede mk-up mk-d1" style={{ marginTop: 18 }}>
-              AI-SPM, access control, runtime guardrails, red teaming and an audit
-              trail, each on a real screen. <Link href="/playground">The playground</Link> needs no account.
+              One platform for discovery, access control, runtime guardrails, red
+              teaming, and an audit trail. <Link href="/playground">The playground</Link> needs no account.
             </p>
           </div>
         </section>

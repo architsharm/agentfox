@@ -28,6 +28,7 @@ const archivo = Archivo({
   variable: "--font-archivo",
 });
 import "./globals.css";
+import "./theme.css";
 import "./marketing.css";
 
 /**

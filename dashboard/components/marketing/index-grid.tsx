@@ -23,7 +23,7 @@ export function ProductIndex({ exclude = [] }: { exclude?: string[] } = {}) {
         <div className="mk-narrow">
           <h2 className="mk-h2">The platform, in depth</h2>
           <p className="mk-lede" style={{ marginTop: 16 }}>
-            Each of these was a section on this page until it outgrew one.
+            One page for each part of the product.
           </p>
         </div>
 

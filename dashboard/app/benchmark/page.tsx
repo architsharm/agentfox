@@ -155,9 +155,8 @@ export default function BenchmarkPage() {
               <h1 className="mk-h1">
                 Benchmarks, including the ones we lose</h1>
               <p className="mk-lede" style={{ marginTop: 18 }}>
-                Five benchmarks, written up in full. Some of them make this product look
-                good and some of them do not, and they are here for the same reason: a
-                claim only the vendor can reproduce is not evidence.
+                The published results, including the losses. Containment with the
+                detectors off, the AgentDojo replay, and the detection rates where we lose.
               </p>
             </div>
 

@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "Runtime guardrails for AI agents",
   description:
-    "Input and output guards plus tool calls, tool results, retrieval and memory. Fifty rules, and a detector that times out is recorded rather than skipped.",
+    "The tool call is checked, and so are the prompt, the result, the document the agent read, and what it saves to memory.",
   path: "/runtime",
 });
 
@@ -32,8 +32,9 @@ export default function Page() {
   return (
     <CapabilityPage
       kicker="Runtime guardrails"
-      title={["Guard the action,", "not only the prompt"]}
-      lede="Input and output guards, plus tool calls, tool results, retrieval and memory. A detector that times out is recorded."
+      title={["The tool call", "is checked too"]}
+      lede="So are the prompt, the result, the document the agent read, and what it saves to memory. If a detector runs out of time, that is written down."
+      docs="/docs/runtime"
       challenge={
         <p>
           A scanner gives you a score. You still have to decide what to do with it:
@@ -42,8 +43,8 @@ export default function Page() {
         </p>
       }
       feature={{
-        title: "Nine places content enters or leaves",
-        lede: "The same sentence means different things depending on where it turned up.",
+        title: "Nine places a check can run",
+        lede: "The prompt is one of them. A tool call, a tool result, and a document the agent reads are others.",
         body: (
           <div className="surf-grid mk-stagger">
             {SURFACES.map((s) => (
@@ -57,7 +58,7 @@ export default function Page() {
         ) }}
       steps={[
         {
-          title: "Nine surfaces, not one",
+          title: "The prompt is only one of them",
           body: (
             <p>
               Input, output, tool arguments, tool results, retrieved documents, memory
@@ -69,7 +70,7 @@ export default function Page() {
           ),
         },
         {
-          title: "The same detection, weighted by where it landed",
+          title: "Text from a document is trusted less than text you typed",
           body: (
             <p>
               Injection-shaped text in a retrieved document is an attempt. The same text
@@ -89,7 +90,6 @@ export default function Page() {
               can never all hold.
             </p>
           ),
-          code: "agentfox policy lint",
         },
         {
           title: "Nothing blocks until you say so",
@@ -100,7 +100,6 @@ export default function Page() {
               right rather than when the documentation says to.
             </p>
           ),
-          code: "agentfox policy observe baseline",
         },
         {
           title: "A check that cannot run says so",

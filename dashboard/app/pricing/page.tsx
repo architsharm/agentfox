@@ -48,10 +48,8 @@ export default async function Pricing({
             <h1 className="mk-h1 mk-up mk-d1">
               Free to self-host, <em>forever</em></h1>
             <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20 }}>
-              Everything in the repository is Apache-2.0 and nothing is gated behind a paid tier.
-              The hosted version is open and free while it is in preview — sign in with
-              GitHub and you have a workspace in about ten seconds. Nothing is priced
-              yet, and no card is taken anywhere on this site.
+              Free to self-host, under Apache-2.0. The hosted preview is free while
+              it lasts, and nothing on this site is priced.
             </p>
             <p className="mk-fine mk-up mk-d3" style={{ marginTop: 18 }}>
               Questions about a rollout? <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>, or

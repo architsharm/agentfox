@@ -21,15 +21,15 @@ import { PRODUCT } from "@/lib/nav";
  * someone writing marketing copy in a hurry.
  */
 
-export type Step = { title: string; body: ReactNode; code?: string };
+export type Step = { title: string; body: ReactNode };
 
 export type CapabilityPageProps = {
   kicker: string;
   /** Two parts, so the second can carry the accent. */
   title: [string, string];
   lede: string;
-  /** A command or two under the lede, where the page has one to give. */
-  commands?: string[];
+  /** Where the commands for this page live. Marketing pages do not print them. */
+  docs?: string;
   challenge: ReactNode;
   /**
    * The one thing this page is really about, rendered full width between the
@@ -57,7 +57,7 @@ export function CapabilityPage({
   kicker,
   title,
   lede,
-  commands,
+  docs,
   challenge,
   feature,
   steps,
@@ -84,12 +84,10 @@ export function CapabilityPage({
             <p className="mk-lede mk-up mk-d3" style={{ marginTop: 20 }}>
               {lede}
             </p>
-            {commands && (
-              <div className="mk-code-block mk-up mk-d4" style={{ marginTop: 28 }}>
-                {commands.map((line) => (
-                  <code key={line}>{line}</code>
-                ))}
-              </div>
+            {docs && (
+              <p className="mk-fine mk-up mk-d4" style={{ marginTop: 18 }}>
+                <Link href={docs}>Commands and setup</Link>
+              </p>
             )}
           </div>
         </section>
@@ -135,7 +133,6 @@ export function CapabilityPage({
                   <div className="cap-step-body">
                     <h2>{step.title}</h2>
                     <div className="mk-body">{step.body}</div>
-                    {step.code && <code className="cap-step-code">{step.code}</code>}
                   </div>
                 </li>
               ))}

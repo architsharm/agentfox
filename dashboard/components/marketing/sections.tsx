@@ -190,11 +190,10 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
     title: "Put one line in your entry point, or call it over HTTP",
     body: (
       <>
-        <code className="mk-mono">import agentfox; agentfox.auto()</code> wraps the OpenAI,
-        Anthropic, LiteLLM and LangChain clients already running in that process. From any
-        other language, post a single tool call to{" "}
-        <code className="mk-mono">/v1/guard/tool_call</code>, or point an existing client&rsquo;s
-        base URL at the gateway and change nothing else.
+        One line in the entry point wraps the OpenAI, Anthropic, LiteLLM and LangChain
+        clients already running in that process. From any other language, post a single
+        tool call, or point an existing client&rsquo;s base URL at the gateway.{" "}
+        <Link href="/docs/connect">The calls are in the docs.</Link>
       </>
     ),
   },
@@ -206,9 +205,9 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
     title: "Turn enforcement on when the findings look right",
     body: (
       <>
-        <code className="mk-mono">agentfox policy enforce baseline</code> is the one step that
-        starts blocking model traffic, and the one-liner picks it up with no code change.{" "}
-        <code className="mk-mono">agentfox policy observe baseline</code> puts it back.
+        Enforcement is the step that starts blocking model traffic. Until then the
+        policy records what it would have done and lets the call through.{" "}
+        <Link href="/docs/runtime">How to turn it on is in the docs.</Link>
       </>
     ),
   },
@@ -398,10 +397,10 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "Does it work outside Python?",
     a: (
       <>
-        Yes, two ways, neither of which puts AgentFox code in your application. Post a single
-        tool call to <code className="mk-mono">/v1/guard/tool_call</code> and read the verdict
-        back, or point an existing OpenAI or Anthropic client&rsquo;s base URL at the gateway,
-        which speaks the API your code already calls.
+        Yes. Point an existing OpenAI or Anthropic client&rsquo;s base URL at the gateway,
+        which speaks the API your code already calls, or post a tool call to the gateway
+        and read the verdict back. Neither puts AgentFox code in the application.{" "}
+        <Link href="/docs/connect">The calls are in the docs.</Link>
       </>
     ),
   },
@@ -412,9 +411,8 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
         Open the <Link href="/playground">playground</Link>. There is no account and nothing to
         install, every visitor gets a throwaway sandbox running the same enforcement code the
         product runs in production, and the audit chain on the page reports its own
-        verification state as you go. If you would rather point something at your own code
-        without a permanent install, <code className="mk-mono">quickscan.sh</code> installs
-        into a virtualenv it removes on exit.
+        verification state as you go. A one-off scan of a directory, from a virtualenv that
+        is removed on exit, is in the <Link href="/docs">docs</Link>.
       </>
     ),
   },
@@ -480,22 +478,9 @@ export function CTA() {
                 Read the source
               </Out>
             </div>
-            <pre
-              className="mk-mono"
-              style={{
-                marginTop: 26,
-                padding: "14px 16px",
-                overflowX: "auto",
-                background: "var(--mk-surface-2)",
-                border: "1px solid var(--mk-border)",
-                borderRadius: "var(--mk-r-md)",
-                color: "var(--mk-muted)",
-                lineHeight: 1.7 }}
-            >
-              {`pip install agentfox\nagentfox init && agentfox demo`}
-            </pre>
-            <p className="mk-fine" style={{ marginTop: 12 }}>
-              Offline: no API key, no downloaded weights, no network egress.
+            <p className="mk-fine" style={{ marginTop: 16 }}>
+              Offline: no API key, no downloaded weights, no network egress.{" "}
+              <Link href="/docs">Install from the docs.</Link>
             </p>
           </div>
         </div>

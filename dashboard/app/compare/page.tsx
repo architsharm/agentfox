@@ -251,8 +251,7 @@ export default function Compare() {
             <h1 className="mk-h1 mk-up mk-d1">
               Governance platforms and <em>runtime tools</em></h1>
             <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20 }}>
-              One camp owns policy and framework mapping. The other owns runtime
-              guardrails. This page says where each one beats us.
+              Where a governance platform is ahead of us, and where a runtime tool is.
             </p>
             <p className="mk-fine mk-up mk-d3" style={{ marginTop: 18 }}>
               Every competitor statement below comes from{" "}
@@ -269,7 +268,7 @@ export default function Compare() {
             <Head
               eyebrow="The landscape"
               title="What each camp genuinely owns"
-              lede="Both descriptions are the README’s own, not softened for this page."
+              lede="Governance platforms own the policy. Runtime tools own the call. These are the descriptions we can check."
             />
             <div className="mk-grid mk-grid-2" style={{ marginTop: 40 }}>
               {CAMPS.map((c, i) => (

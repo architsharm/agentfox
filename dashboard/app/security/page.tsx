@@ -51,8 +51,8 @@ export default function Security() {
               <h1 className="mk-h1" style={{ margin: "18px 0 0" }}>
                 Security and <em>disclosure</em></h1>
               <p className="mk-lede" style={{ marginTop: 20 }}>
-                How to report a vulnerability, what the product enforces in code, and
-                what has not been independently verified.
+                How to report a vulnerability, what the code enforces, and what nobody
+                outside this project has checked.
               </p>
             </div>
           </div>
@@ -259,11 +259,11 @@ export default function Security() {
         <section className="mk-section mk-band mk-reveal">
           <div className="mk-wrap">
             <div className="mk-narrow">
-              <div className="mk-card">
-                <span className="mk-eyebrow">Maturity</span>
-                <h2 className="mk-h2" style={{ marginTop: 16 }}>
-                  Nobody outside this project has checked any of it</h2>
-                <p className="mk-body" style={{ marginTop: 14 }}>
+              <span className="mk-eyebrow">Maturity</span>
+              <h2 className="mk-h2" style={{ marginTop: 16 }}>
+                Nobody outside this project has checked any of it
+              </h2>
+              <p className="mk-body" style={{ marginTop: 14 }}>
                   There has been no third-party security audit. There is no SOC 2 report,
                   Type I or Type II. There has been no penetration test by anyone. There is
                   no ISO 27001 certification and no paid bug bounty. None of those things
@@ -279,7 +279,6 @@ export default function Security() {
                   verifier, and price in that it has not been reviewed by anyone but its
                   maintainer.
                 </p>
-              </div>
               <p className="mk-body" style={{ marginTop: 22 }}>
                 The playground has a stated limit worth knowing before you test it: its rate
                 limiter is per process, so on a serverless deployment it bounds one
