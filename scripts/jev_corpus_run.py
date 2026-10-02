@@ -202,9 +202,23 @@ def one(case) -> dict:
     claims_refund = a3["asserts"]["noul"] >= 0.5 or a3["presupposes"]["noul"] >= 0.5
     got["R3 routed"] = (claims_refund and not decision.authorised) or a3["other"]["noul"] >= 0.6
     got["R4 union"] = any(got.values())
+    # Every raw probability is kept, so a threshold sweep or a different
+    # combiner becomes an offline calculation over this file rather than
+    # another 6,480 API calls.
+    raw = {
+        "r1_exceeds": a1["exceeds"].get("noul"),
+        "r2_promised": a2["promised"]["noul"],
+        "r2_duplicate": a2["is_duplicate"]["noul"],
+        "r2_amount": a2["within_amount"]["noul"],
+        "r2_recency": a2["recency_ok"]["noul"],
+        "r3_asserts": a3["asserts"]["noul"],
+        "r3_presupposes": a3["presupposes"]["noul"],
+        "r3_other": a3["other"]["noul"],
+    }
     return {
         "case": case,
         "got": got,
+        "raw": raw,
         "code_authorised": decision.authorised,
         "code_escalate": decision.escalate,
     }
@@ -294,7 +308,17 @@ def main() -> int:
     out = pathlib.Path(__file__).parent / "jev_corpus_results.json"
     out.write_text(
         json.dumps(
-            [{"id": r["case"]["id"], "expect": r["case"]["expect"], "got": r["got"]} for r in rows]
+            [
+                {
+                    "id": r["case"]["id"],
+                    "expect": r["case"]["expect"],
+                    "template": r["case"]["answer_template"],
+                    "got": r["got"],
+                    "raw": r["raw"],
+                    "code_authorised": r["code_authorised"],
+                }
+                for r in rows
+            ]
         )
     )
     print(f"\nper-case results -> {out.name}")
