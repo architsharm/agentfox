@@ -31,3 +31,4 @@ dashboard/.npm-cache/
 local/
 scripts/jev_embeddings.npz
 scripts/jev_transfer_emb.npz
+scripts/sp_emb.npz
