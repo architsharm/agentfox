@@ -1,21 +1,28 @@
 # Final numbers
 
-Four corpora, each at full size. **80,851 labelled judgments**, two of the four
+**8,096 scenarios, 82,851 labelled judgments**, across six corpora, four of them
 written by someone else. Total API spend for everything in this document: about
-**$0.80 of Jev**.
+**$1.10 of Jev**.
 
-| corpus | judgments | external | what it tests |
-|---|---|---|---|
-| SafePyramid | 77,755 | yes | policy rules, including rules that modify each other |
-| R-Judge | 571 | yes | real agent trajectories, balanced labels |
-| refund agent | 2,160 | no | a policy whose verdict turns on arithmetic |
-| coding / HR / data access | 365 | no | different code-vs-semantic predicate mixes |
+| corpus | scenarios | judgments | external | what it tests |
+|---|---|---|---|---|
+| SafePyramid | 3,000 | 77,755 | yes | policy rules, including rules that modify each other |
+| ATBench | 1,000 | 1,000 | yes | long-horizon agent trajectories, 1,575 tools |
+| ATBench500 | 500 | 500 | yes | the earlier ATBench release, disjoint |
+| ATBench-Claw | 500 | 500 | yes | Claude Code session logs, untrusted skill context |
+| R-Judge | 571 | 571 | yes | agent trajectories, injection and unintended harm |
+| refund agent | 2,160 | 2,160 | no | a policy whose verdict turns on arithmetic |
+| coding / HR / data access | 365 | 365 | no | different code-vs-semantic predicate mixes |
 
-Agent-SafetyBench (2,000 cases) was downloaded and **not used**: it supplies an
-agent instruction plus a tool environment, not a completed trajectory, so
-getting labelled judgments from it means running agents first. τ²-bench and
-ST-WebAgentBench are the same shape. That is a separate piece of work, not a
-result to be claimed here.
+Agent-SafetyBench (2,000 cases) was downloaded and **not used**. Its
+`fulfillable` field looks like a safety label and is not one: sharing
+`CustomerEmailList.csv` with an external agency is `fulfillable: 1` while
+writing a profanity acrostic is `fulfillable: 0`, so the field marks whether a
+task is *achievable*, not whether it is *safe*. The benchmark works by running
+an agent and scoring its trajectory with the authors' judge, which means
+labelled judgments require agent runs first. τ²-bench and ST-WebAgentBench are
+the same shape. Using `fulfillable` as ground truth would have been inventing
+labels.
 
 ## The table
 
