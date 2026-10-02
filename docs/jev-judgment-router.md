@@ -39,29 +39,54 @@ same values from a median 0.53 to 0.98.
 Meaning questions are unaffected: spread 0.00–0.01 across the same perturbation,
 against 0.45 for a predicate question.
 
-## Three representations of one policy, measured
+## Three representations of one policy, over 2,160 cases
 
-| | correct | false ALLOW | false block |
-|---|---|---|---|
-| R1 full policy text, one judgment | 21/24 | 3 | 0 |
-| R2 decomposed into prose sub-questions | **19/24** | **5** | 0 |
-| R3 routed — code for comparisons, Jev for meaning | 22/24 | 1 | 1 |
-| **R4 union — block if any representation blocks** | **23/24** | **0** | 1 |
+The first pass used 24 hand-written cases and one of its labels was wrong, which is
+the failure mode a hand-written suite has. `scripts/jev_corpus.py` generates 2,160
+instead: 20 answer templates x 9 amounts x 6 elapsed-day values x duplicate or not,
+with the expected verdict **computed** from those parts rather than decided case by
+case. 1,476 should be flagged, 684 allowed.
 
-Two things to take from this.
+| | accuracy | recall | precision | breaches (false allow) | false block |
+|---|---|---|---|---|---|
+| R1 full policy text, one judgment | 73.8% | 72.3% | 87.2% | 409 | 157 |
+| R2 decomposed into prose questions | 70.4% | 59.7% | 95.1% | 595 | 45 |
+| **R3 routed — code compares, Jev judges** | **93.0%** | **96.2%** | **93.7%** | **56** | 96 |
+| **R4 union — block if any representation blocks** | 88.2% | **99.9%** | 85.3% | **1** | 254 |
 
-**Decomposition alone makes it worse.** R2 scores below R1. Splitting a policy into
-more prose questions just creates more comparisons for the model to get wrong.
-Decomposition only helps when each piece is then routed to whoever can evaluate it.
+The 24-case suite put R1 at 87.5%. Over 2,160 it is 73.8%. Small suites flatter
+everything, and they hid the biggest finding here entirely.
 
-**The model-only representations fail in one direction.** R1 and R2 produced eight
-errors between them and every single one was a false allow. Zero false blocks. For a
-guardrail that is the worst possible bias: each error is a breach, none is an
-inconvenience. R3's single false block came from a threshold this code chose, not
-from the model.
+**R1 and R2 are completely blind to an undertaking that is not a refund.** Shipping,
+credit and callback: 108 of 108 missed, each, by both. Not noise — a systematic hole
+that the 24-case suite could not show because it contained one such case.
 
-The union is the safest configuration available here: zero false allows, at the cost
-of one over-block that is threshold-tunable.
+**R3's remaining misses are one template.** All 56 are the question-form
+presupposition ("Shall I confirm that your 42 USD has already been approved?"). Every
+other template is 0 of 96.
+
+**The blind spots are nearly disjoint**, which is the whole argument for the union:
+
+    missed by R1 only   408
+    missed by R3 only    55
+    missed by BOTH        1
+
+So the union recovers 463 of the 464 breaches that either representation alone would
+have let through.
+
+**Splitting a question that weighs two signals is worth more than better wording.**
+R3 first scored 89.2% with 96 breaches, all of them presupposition, even though its
+criteria said "or a question that presupposes it". That trailing clause made one
+question weigh two signals. Splitting `asserts` from `presupposes` took R3 to 93.0%
+and recall to 96.2% — the same one-signal rule the predicate types enforce.
+
+**The model-only representations fail in one direction.** R1 and R2 between them
+produced 1,004 breaches. That matters more than the accuracy column: for a guardrail
+a false allow is a breach and a false block is an inconvenience.
+
+Reproduce with `python scripts/jev_corpus.py && JEV_API_KEY=... python
+scripts/jev_corpus_run.py`. 2,160 cases take about 130 seconds at 49 requests a
+second and cost a few cents.
 
 ## What this package does
 
