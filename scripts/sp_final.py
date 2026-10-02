@@ -47,7 +47,8 @@ FLAT_THRESHOLD = 0.40
 
 def build(ids: list[str]) -> list[dict]:
     cd = {c["id"]: c for c in load()}
-    jev = {r["case_id"]: r for r in json.loads((HERE / "sp_jev_results.json").read_text())["rows"]}
+    src = HERE / "sp_jev_results_600.json"
+    jev = {r["case_id"]: r for r in json.loads(src.read_text())["rows"]}
     llm = {
         r["case_id"]: set(r["violated"])
         for r in json.loads((HERE / "sp_llmset_results.json").read_text())["rows"]

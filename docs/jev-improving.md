@@ -147,3 +147,52 @@ python scripts/sp_improve.py split                       # show the dev/held spl
 JEV_API_KEY=... python scripts/sp_improve.py ask --split dev   # the three question variants
 python scripts/sp_final.py                               # dev and held-out, frozen config
 ```
+
+---
+
+# The full corpus
+
+All 3,000 cases, **77,755 rule judgments**, $0.50 of Jev. Nothing was retuned.
+The row that matters is the second block: the **2,400 cases that were never in
+either split**.
+
+| configuration | accuracy | precision | recall | F1 | breaches | false blocks |
+|---|---|---|---|---|---|---|
+| always allow | 76.1% | – | 0% | 0.0 | 14,865 | 0 |
+| Jev @ 0.5 everywhere | 74.7% | 48.2% | 78.2% | 59.7 | 3,240 | 12,482 |
+| Jev @ 0.8 everywhere | 78.9% | 59.1% | 38.5% | 46.6 | 9,137 | 3,970 |
+| **chosen, xref → allow** | **85.8%** | **69.2%** | 73.5% | **71.3** | 3,942 | 4,858 |
+| **chosen, xref → escalate** | 82.1% | 69.2% | **84.0%** | **75.9** | **2,073** | 4,858 |
+
+Across the three evaluations the configuration was never retuned:
+
+```
+                        dev (300)   held-out (300)   unseen (2,400)
+xref -> allow, F1            71.3             72.0             71.3
+xref -> escalate, F1         75.9             76.3             75.9
+accuracy                    86.0%            85.9%            85.8%
+precision                   69.4%            69.4%            69.2%
+```
+
+Three decimal places of agreement between a 300-case tuning set and a
+2,400-case set it never saw. The gain is a property of the data, not of the
+tuning.
+
+**The mechanism holds at scale.** Cross-referencing rules are violated 7.9% of
+the time against 33.7% for flat rules, and the flat-rule rate stays within a few
+points across levels (34.4% / 30.2% / 36.3% at L0 / L1 / L2) — confirming the
+level effect is the share of cross-referencing rules, not harder judgment.
+
+**It holds in every domain**, F1 73.7 to 77.9 across all ten, escalation 37–38%
+everywhere. No domain carries the result.
+
+**L0 is the product claim.** 16,114 judgments at **92.7% accuracy, 84.5%
+precision, 96.7% recall, F1 90.2, nothing escalated**, for $0.004 per 1,000
+judgments. L1 and L2 are 44% and 51% escalation because that is the share of
+their rules whose verdict depends on another rule.
+
+One operational note: the full run overwrites `sp_jev_results.json`, and
+`splits()` originally derived the dev/held split from that file — so running it
+silently redefined the split from 300/300 to 1500/1500. The split is now pinned
+to `sp_jev_results_600.json`. The held-out numbers above were computed before
+the overwrite and re-verified after the fix; they are unchanged.

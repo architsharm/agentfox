@@ -56,8 +56,15 @@ WAIVES = re.compile(r"Rule\s+(\d+)\s+is\s+waived", re.I)
 
 
 def splits() -> tuple[list[str], list[str]]:
-    """Same 600 cases as the baseline run, halved by domain x level."""
-    ran = {r["case_id"] for r in json.loads((HERE / "sp_jev_results.json").read_text())["rows"]}
+    """The 600 baseline cases, halved by domain x level.
+
+    Pinned to sp_jev_results_600.json, never to sp_jev_results.json: the
+    full-corpus run overwrites the latter with 3,000 cases, which would
+    silently redefine this split into 1500/1500 and invalidate every held-out
+    number computed against it.
+    """
+    src = HERE / "sp_jev_results_600.json"
+    ran = {r["case_id"] for r in json.loads(src.read_text())["rows"]}
     cases = [c for c in load() if c["id"] in ran]
     by: dict[tuple[str, str], list[str]] = collections.defaultdict(list)
     for c in cases:
@@ -178,7 +185,8 @@ def main() -> int:
             lv = collections.Counter(c["level"] for c in cs)
             dm = collections.Counter(c["domain"] for c in cs)
             print(
-                f"  {name:5} levels {dict(sorted(lv.items()))}  domains/each {sorted(dm.values())[0]}-{sorted(dm.values())[-1]}"
+                f"  {name:5} levels {dict(sorted(lv.items()))}  "
+                f"domains/each {sorted(dm.values())[0]}-{sorted(dm.values())[-1]}"
             )
         return 0
 
