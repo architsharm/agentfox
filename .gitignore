@@ -29,3 +29,5 @@ dashboard/.npm-cache/
 # .git/info/exclude, so a checkout that has not pulled this file still ignores
 # it.
 local/
+scripts/jev_embeddings.npz
+scripts/jev_transfer_emb.npz
