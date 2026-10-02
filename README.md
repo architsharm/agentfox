@@ -473,6 +473,8 @@ agentfox init                      # SQLite by default; set NOMETRIA_DATABASE_UR
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080
 ```
 
+For a reboot-persistent gateway service, see the [systemd deployment guide](docs/deployment-systemd.md).
+
 **After any of them:** create a GitHub OAuth app and set its callback to
 `https://<your-host>/api/auth/github/callback`. The dashboard runbook is
 [`deploy/README-dashboard.md`](deploy/README-dashboard.md); a Fly.io config, with its commands in
