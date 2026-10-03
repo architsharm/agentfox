@@ -86,6 +86,12 @@ class Combine(StrEnum):
     VOTE = "vote"  # at least `quorum` deciders must agree
     BEST_AVAILABLE = "best_available"  # the highest-ranked enabled decider
     ESCALATE = "escalate"  # no evaluator is trusted; hand to a person
+    #: Ask in order and stop at the first decisive answer. Only questions that
+    #: land in a tier's uncertain band reach the next tier, so the expensive
+    #: ones are asked about a fraction of the traffic instead of all of it.
+    #: Union was costing a hosted LLM call on every single decision to buy
+    #: +0.1 to +4.2 F1; this buys most of the same gain for a fraction of it.
+    CASCADE = "cascade"
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +155,9 @@ class Rule:
     combine: Combine
     #: Ranked. Only tiers an operator enabled are used, in this order.
     prefer: tuple[Tier, ...]
+    #: For CASCADE: a tier's answer ends the cascade unless it falls inside
+    #: this band. Wider means more escalation and more cost.
+    band: tuple[float, float] = (0.2, 0.8)
     #: Never permitted to decide this kind, with the reason, whatever is on.
     forbid: tuple[tuple[Tier, str], ...] = ()
     quorum: int = 2
@@ -177,9 +186,14 @@ ROUTING: dict[DecisionKind, Rule] = {
         ),
     ),
     # Measured: neither alone beats the pair.
+    # Cascade rather than union. Union asked every enabled tier on every
+    # decision, which bought +0.1 F1 on injection for a hosted LLM call on
+    # 100% of traffic. Ordered cheapest-first, a question only reaches the
+    # expensive tier when the cheap one lands in its uncertain band.
     DecisionKind.PATTERN_OPEN: Rule(
-        combine=Combine.UNION,
+        combine=Combine.CASCADE,
         prefer=(Tier.DETERMINISTIC, Tier.LOCAL_MODEL, Tier.JEV, Tier.LOCAL_LLM, Tier.LLM),
+        band=(0.2, 0.8),
     ),
     # Union, not best-available. On KUQ + CoCoNot the union measured 93.5%
     # against 93.3% for Jev alone, with recall 90.9% against 88.8% — and it is
@@ -188,8 +202,9 @@ ROUTING: dict[DecisionKind, Rule] = {
     # deterministic layer is low-recall here (8.4% on contested questions) but
     # high-precision (95.1%), so its verdicts are worth keeping.
     DecisionKind.SEMANTIC: Rule(
-        combine=Combine.UNION,
+        combine=Combine.CASCADE,
         prefer=(Tier.DETERMINISTIC, Tier.JEV, Tier.LOCAL_LLM, Tier.LLM, Tier.LOCAL_MODEL),
+        band=(0.3, 0.7),
     ),
     # Union, and the deterministic layer stays in. An earlier version of this
     # table forbade it on the strength of one template (0/96 on presupposition)
@@ -198,9 +213,27 @@ ROUTING: dict[DecisionKind, Rule] = {
     # signal is not something to throw away because it is narrow. It still
     # cannot see presupposition, implicature or a commitment made in Spanish,
     # which is what the judgment tiers are added for.
+    # Cheapest first here too, but with an asymmetric band, and the asymmetry
+    # is the whole point.
+    #
+    # Measured on 100 refund replies, all reaching F1 96.8 at 100% recall:
+    #     llm only                              80 LLM calls
+    #     jev -> llm, symmetric band .3/.7      27
+    #     jev -> llm, only a confident yes      29
+    # Asking the LLM first — which an earlier version of this table did — cost
+    # 80 calls for no gain at all, so Jev leads.
+    #
+    # But a Jev *negative* must never end the cascade. Its dangerous errors
+    # here are confident denials: 0.07 on an answer that settles a hire. A
+    # symmetric band would let that stop the cascade before the tier that can
+    # see it is ever asked. On this corpus presupposition happens to land at
+    # 0.47 and escalate anyway, which is luck, not a property. So `lo` is
+    # below every possible score: nothing Jev says negatively is decisive,
+    # only a confident yes is. Two extra calls per hundred buys that.
     DecisionKind.PERFORMATIVE: Rule(
-        combine=Combine.UNION,
-        prefer=(Tier.DETERMINISTIC, Tier.LLM, Tier.LOCAL_LLM, Tier.JEV),
+        combine=Combine.CASCADE,
+        prefer=(Tier.DETERMINISTIC, Tier.JEV, Tier.LLM, Tier.LOCAL_LLM),
+        band=(-1.0, 0.7),
         quorum=1,
         escalate_if_unresolved=False,
     ),
@@ -324,7 +357,11 @@ class CapabilityRouter:
             return None
         if plan.combine is Combine.CODE_WINS:
             return usable.get(Tier.DETERMINISTIC, next(iter(usable.values())))
-        if plan.combine is Combine.UNION:
+        if plan.combine in (Combine.UNION, Combine.CASCADE):
+            # For a cascade the votes that arrive are only from the tiers that
+            # were actually consulted — the panel stopped once a question was
+            # settled — so combining them is the same "any decider flagged"
+            # rule, applied to a smaller and cheaper set of opinions.
             return any(usable.values())
         if plan.combine is Combine.VOTE:
             return sum(1 for v in usable.values() if v) >= plan.quorum

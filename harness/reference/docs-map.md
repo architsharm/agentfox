@@ -57,7 +57,7 @@ Quote coverage numbers only from these, and only after regenerating.
 |---|---|
 | `benchmarks/REPORT.md`, `benchmarks/*/README.md` (one per benchmark area) | running or changing that benchmark |
 | `benchmarks/data/README.md`, `benchmarks/data_generalization/README.md`, `docs/dataset-sourcing.md` | dataset provenance and licensing |
-| `docs/jev-*.md` (15 files) | evaluating the TypeSafe Jev judgment model: where a hosted judgment beats our detectors and where it loses. Start at `docs/jev-capabilities.md` for the tiers and what each may decide, `docs/jev-final-numbers.md` for the headline table, and `docs/jev-egress.md` before enabling a remote backend — judgment is egress and defaults to local |
+| `docs/jev-*.md` (16 files) | evaluating the TypeSafe Jev judgment model: where a hosted judgment beats our detectors and where it loses. Start at `docs/jev-capabilities.md` for the tiers and what each may decide, `docs/jev-final-numbers.md` for the headline table, and `docs/jev-egress.md` before enabling a remote backend — judgment is egress and defaults to local |
 | `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md` | running or deploying the live demos |
 | `CONTRIBUTING.md` | setting up to work on the code: the extras to install, the checks that must pass, and the two things that surprise people (vendored wheels, numbers bound to result files) |
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |
