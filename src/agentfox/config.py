@@ -186,6 +186,20 @@ class Settings(BaseSettings):
     # this is explicitly turned on.
     allow_egress: bool = False
 
+    # Where semantic judgments are made. "local" keeps every judgment in this
+    # process: questions no local detector covers come back UNKNOWN, which the
+    # judgment router already treats as "not authorised". "remote" and "auto"
+    # may call a hosted judgment model, but only with `allow_egress` on and
+    # only through `judgment.JudgmentGateway`, which redacts locally-detected
+    # PII first. Default is local, because asking a third party whether a
+    # string contains personal data discloses the string.
+    judgment_backend: str = "local"
+    # Redact before any judgment leaves, and refuse to send at all if the
+    # local redactor cannot load. "We could not check" must mean "we do not
+    # send"; see judgment/egress.py.
+    judgment_redact_before_egress: bool = True
+    judgment_fail_closed: bool = True
+
     # --- Enforcement (Pillar 3) -----------------------------------------
     # NFR-1: hard budget for the whole pre-flight pipeline, and per detector.
     # Was 100 — raised after benchmarking `injection.classifier`/`injection.similarity`

@@ -166,9 +166,8 @@ def main() -> int:
     cases = load()
     for g in ("entitlement", "adaptive", "tier_b", "tier_c"):
         sub = [c for c in cases if c["group"] == g]
-        print(
-            f"  {g:12} {len(sub):>5} rows, {100 * sum(c['want'] for c in sub) / len(sub):.0f}% positive"
-        )
+        pct = 100 * sum(c["want"] for c in sub) / len(sub)
+        print(f"  {g:12} {len(sub):>5} rows, {pct:.0f}% positive")
     out, t0, done = [], time.perf_counter(), 0
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         for row in pool.map(ask, cases):

@@ -105,8 +105,13 @@ def q(t: str) -> dict:
         "type": "noul",
         "instructions": f"Does `text` contain {d}?",
         "criteria": {
-            "what": f"{d[0].upper()}{d[1:]} appears somewhere in the text, in any format or language.",
-            "not_for": "The text does not contain one, or mentions the idea without giving an actual value.",
+            "what": (
+                f"{d[0].upper()}{d[1:]} appears somewhere in the text, in any format or language."
+            ),
+            "not_for": (
+                "The text does not contain one, or mentions the idea without "
+                "giving an actual value."
+            ),
         },
     }
 

@@ -79,13 +79,35 @@ class JevClient:
         self._timeout = timeout_s
 
     def available(self) -> bool:
-        return bool(self._key)
+        return bool(self._key) and self._egress_allowed()
+
+    @staticmethod
+    def _egress_allowed() -> bool:
+        """Zero egress by default, same gate every other outbound caller uses.
+
+        Defence in depth rather than the main control: `JudgmentGateway` is
+        what product code should call, because it also redacts. This check
+        exists so that a direct `JevClient` call — the mistake this codebase
+        already made once with presidio's model download — cannot quietly
+        reach the network with `allow_egress` off.
+        """
+        try:
+            from ..config import get_settings
+
+            return bool(get_settings().allow_egress)
+        except Exception:  # noqa: BLE001 - no settings, assume the safe answer
+            return False
 
     def ask(self, state: Any, questions: dict[str, dict[str, Any]]) -> JevResult:
         if not questions:
             return JevResult()
-        if not self.available():
+        if not self._key:
             raise JevUnavailable("no JEV_API_KEY configured")
+        if not self._egress_allowed():
+            raise JevUnavailable(
+                "allow_egress is off; judgment would have sent state off-box. "
+                "Use JudgmentGateway, or set allow_egress to opt in explicitly."
+            )
         if len(questions) > MAX_QUESTIONS:
             raise ValueError(f"{len(questions)} questions exceeds the {MAX_QUESTIONS} cap")
         body = {"model": self._model, "state": state, "questions": questions}
