@@ -34,17 +34,12 @@ import logging
 import re
 import time
 from typing import Any
-from urllib.parse import urlparse
 
+from ..providers.base import is_local_endpoint
 from .capability import Tier
 from .jev import JevAnswer, JevResult, JevUnavailable
 
 log = logging.getLogger(__name__)
-
-#: Loopback and link-local hosts. A judge pointed at one of these is running
-#: inside the customer's boundary, which is what distinguishes LOCAL_LLM from
-#: LLM — not the vendor's name and not the model's weights.
-_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"}
 
 PROMPT = """You are scoring questions about some content. Answer each one with a probability.
 
@@ -57,13 +52,6 @@ PROMPT = """You are scoring questions about some content. Answer each one with a
 Reply with one line per question, in the form `id: NN` where NN is 0-100, the
 probability that the answer to that question is yes. No other text, no
 explanation. Every id must appear exactly once."""
-
-
-def _is_local(url: str | None) -> bool:
-    if not url:
-        return False
-    host = (urlparse(url).hostname or "").lower()
-    return host in _LOCAL_HOSTS or host.endswith(".localhost")
 
 
 class LlmJudge:
@@ -90,7 +78,8 @@ class LlmJudge:
         misconfigured endpoint is gated rather than quietly exempted.
         """
         s = self._settings()
-        return Tier.LOCAL_LLM if _is_local(getattr(s, "litellm_base_url", None)) else Tier.LLM
+        url = getattr(s, "litellm_base_url", None)
+        return Tier.LOCAL_LLM if is_local_endpoint(url) else Tier.LLM
 
     def available(self) -> bool:
         try:

@@ -70,18 +70,19 @@ def test_enabling_more_never_shrinks_the_decider_set() -> None:
                 )
 
 
-def test_semantic_unions_so_an_abstention_can_only_be_added() -> None:
-    """Union measured better than Jev alone (93.5% vs 93.3%) and is safer.
+def test_semantic_cascades_so_an_abstention_can_only_be_added() -> None:
+    """Cheapest first, and an abstention can still only ever be added.
 
     The deterministic layer is low-recall on contested questions (8.4%) but
-    high-precision (95.1%), so keeping its verdicts costs nothing and a union
-    can never drop an abstention it asked for.
+    high-precision (95.1%), so it leads and costs nothing. A cascade stops at
+    the first decisive answer, so the hosted tiers see only what the cheap
+    ones left unsettled — and no tier can drop a refusal another asked for.
     """
     code_only = CapabilityRouter(frozenset(), allow_egress=True).plan(DecisionKind.SEMANTIC)
     assert code_only.deciders == (Tier.DETERMINISTIC,)
     with_jev = CapabilityRouter({Tier.JEV}, allow_egress=True).plan(DecisionKind.SEMANTIC)
-    assert with_jev.combine is Combine.UNION
-    assert set(with_jev.deciders) == {Tier.DETERMINISTIC, Tier.JEV}
+    assert with_jev.combine is Combine.CASCADE
+    assert with_jev.deciders == (Tier.DETERMINISTIC, Tier.JEV)  # order is the cascade
 
     r = CapabilityRouter({Tier.JEV}, allow_egress=True)
     # either layer wanting an abstention is enough
@@ -89,10 +90,12 @@ def test_semantic_unions_so_an_abstention_can_only_be_added() -> None:
     assert r.decide(DecisionKind.SEMANTIC, {Tier.DETERMINISTIC: False, Tier.JEV: True}) is True
 
 
-def test_pattern_open_unions_because_the_union_measured_better() -> None:
-    plan = CapabilityRouter({Tier.JEV}, allow_egress=True).plan(DecisionKind.PATTERN_OPEN)
-    assert plan.combine is Combine.UNION
-    assert set(plan.deciders) == {Tier.DETERMINISTIC, Tier.JEV}
+def test_pattern_open_cascades_cheapest_first() -> None:
+    """Union bought +0.1 F1 on injection for an LLM call on every request."""
+    plan = CapabilityRouter({Tier.JEV, Tier.LLM}, allow_egress=True).plan(DecisionKind.PATTERN_OPEN)
+    assert plan.combine is Combine.CASCADE
+    # deterministic and Jev are asked before the hosted LLM, never after
+    assert plan.deciders.index(Tier.JEV) < plan.deciders.index(Tier.LLM)
 
 
 # --- the hard egress gates ------------------------------------------------
@@ -128,7 +131,7 @@ def test_votes_from_excluded_tiers_are_discarded() -> None:
     assert r.decide(kind, {Tier.DETERMINISTIC: False, Tier.JEV: True}) is False
 
 
-def test_union_flags_when_any_permitted_decider_flags() -> None:
+def test_any_consulted_decider_flagging_is_a_flag() -> None:
     r = CapabilityRouter({Tier.JEV}, allow_egress=True)
     kind = DecisionKind.PATTERN_OPEN
     assert r.decide(kind, {Tier.DETERMINISTIC: False, Tier.JEV: True}) is True
@@ -144,7 +147,7 @@ def test_performative_keeps_the_narrow_but_perfect_deterministic_signal() -> Non
     """
     plan = CapabilityRouter(frozenset()).plan(DecisionKind.PERFORMATIVE)
     assert plan.deciders == (Tier.DETERMINISTIC,)
-    assert plan.combine is Combine.UNION
+    assert plan.combine is Combine.CASCADE
 
     both = CapabilityRouter({Tier.LLM}, allow_egress=True).plan(DecisionKind.PERFORMATIVE)
     assert set(both.deciders) == {Tier.DETERMINISTIC, Tier.LLM}
@@ -193,3 +196,23 @@ def test_from_settings_reads_the_opt_in_list(monkeypatch) -> None:
     r = CapabilityRouter.from_settings()
     assert Tier.JEV in r.enabled and Tier.LOCAL_MODEL in r.enabled
     assert Tier.LLM not in r.enabled  # unlisted stays off; junk is ignored
+
+
+def test_a_cheap_negative_cannot_end_the_performative_cascade() -> None:
+    """A band catches uncertainty, not error — so make it asymmetric.
+
+    Jev leads here because it is cheap, and asking the LLM first measured 80
+    calls per 100 for no gain at all. But Jev's dangerous errors on this kind
+    are confident *denials* — 0.07 on an answer that settles a hire — and a
+    symmetric band would let one of those stop the cascade before the tier
+    that can see it is ever asked. `lo` therefore sits below every possible
+    score: only a confident yes is decisive.
+    """
+    from agentfox.judgment.capability import ROUTING
+
+    plan = CapabilityRouter({Tier.JEV, Tier.LLM}, allow_egress=True).plan(DecisionKind.PERFORMATIVE)
+    assert plan.deciders.index(Tier.JEV) < plan.deciders.index(Tier.LLM)
+
+    lo, hi = ROUTING[DecisionKind.PERFORMATIVE].band
+    assert lo < 0.0, "a negative from the cheap tier must never be decisive"
+    assert 0.0 < hi < 1.0

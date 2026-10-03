@@ -34,7 +34,13 @@ from typing import Any
 
 import httpx
 
-from .base import CompletionRequest, CompletionResponse, StreamChunk, register_provider
+from .base import (
+    CompletionRequest,
+    CompletionResponse,
+    StreamChunk,
+    is_local_endpoint,
+    register_provider,
+)
 from .remote import OpenAIProvider, _HttpProvider, _sse_lines, estimate_cost
 
 log = logging.getLogger(__name__)
@@ -153,8 +159,16 @@ class LiteLLMProvider(OpenAIProvider):
     def available(self) -> bool:
         settings = self._settings()
         # A self-hosted LiteLLM proxy commonly runs without a master key, so the key
-        # is not required — only egress and a configured base URL.
-        return bool(settings.allow_egress and settings.litellm_base_url)
+        # is not required — only a configured base URL, and egress *unless the URL
+        # is loopback*. Requiring `allow_egress` to reach localhost was wrong:
+        # nothing crosses a network the customer does not control, so NFR-4 has
+        # nothing to gate, and the effect was that a fully self-hosted model could
+        # not be used by a deployment that had correctly turned egress off — the
+        # deployment most likely to want one.
+        url = settings.litellm_base_url
+        if not url:
+            return False
+        return bool(settings.allow_egress) or is_local_endpoint(url)
 
     def complete(self, request: CompletionRequest) -> CompletionResponse:
         settings = self._settings()

@@ -159,3 +159,99 @@ def test_the_panel_never_assembles_a_tier_for_a_forbidden_kind(fake_provider, mo
     monkeypatch.setattr(get_settings(), "judgment_tiers", ["deterministic", "jev", "llm"])
     assert judges_for(DecisionKind.STRUCTURAL_PARSED) == []
     assert judges_for(DecisionKind.STRUCTURAL_GRANT) == []
+
+
+# --- the cascade: the expensive tier should mostly not be called ---------
+class CountingJudge:
+    def __init__(self, scores: dict[str, float]) -> None:
+        self.scores = scores
+        self.calls: list[dict] = []
+
+    def available(self) -> bool:
+        return True
+
+    def ask(self, state, questions):
+        from agentfox.judgment.jev import JevAnswer, JevResult
+
+        self.calls.append(dict(questions))
+        return JevResult(
+            answers={
+                q: JevAnswer(q, "noul", self.scores.get(q, 0.5), 1.0)
+                for q in questions
+                if q in self.scores
+            }
+        )
+
+
+def test_a_decisive_cheap_answer_never_reaches_the_expensive_tier() -> None:
+    """The whole point: stop paying once the question is settled."""
+    from agentfox.judgment import panel
+    from agentfox.judgment.capability import DecisionKind
+
+    cheap = CountingJudge({"settles": 0.97})  # outside the band -> decisive
+    dear = CountingJudge({"settles": 0.5})
+    out = panel.ask(
+        DecisionKind.PATTERN_OPEN,
+        {"content": "x"},
+        {"settles": QUESTIONS["settles"]},
+        panel=[(Tier.JEV, cheap), (Tier.LLM, dear)],
+    )
+    assert out.answers["settles"].value == pytest.approx(0.97)
+    assert dear.calls == []  # never called
+    assert out.consulted == (Tier.JEV,)
+
+
+def test_an_uncertain_answer_is_carried_to_the_next_tier() -> None:
+    from agentfox.judgment import panel
+    from agentfox.judgment.capability import DecisionKind
+
+    cheap = CountingJudge({"settles": 0.5})  # inside the band -> unsettled
+    dear = CountingJudge({"settles": 0.95})
+    out = panel.ask(
+        DecisionKind.PATTERN_OPEN,
+        {"content": "x"},
+        {"settles": QUESTIONS["settles"]},
+        panel=[(Tier.JEV, cheap), (Tier.LLM, dear)],
+    )
+    assert out.answers["settles"].value == pytest.approx(0.95)
+    assert out.consulted == (Tier.JEV, Tier.LLM)
+
+
+def test_only_the_unsettled_questions_are_carried() -> None:
+    """A mixed batch sends the expensive tier the remainder, not the lot."""
+    from agentfox.judgment import panel
+    from agentfox.judgment.capability import DecisionKind
+
+    cheap = CountingJudge({"settles": 0.98, "undertakes": 0.5})
+    dear = CountingJudge({"undertakes": 0.9})
+    out = panel.ask(
+        DecisionKind.PATTERN_OPEN,
+        {"content": "x"},
+        QUESTIONS,
+        panel=[(Tier.JEV, cheap), (Tier.LLM, dear)],
+    )
+    assert list(dear.calls[0]) == ["undertakes"]  # the settled one is not re-asked
+    assert out.answers["settles"].value == pytest.approx(0.98)
+    assert out.answers["undertakes"].value == pytest.approx(0.9)
+
+
+def test_one_tier_failing_degrades_to_the_next() -> None:
+    from agentfox.judgment import panel
+    from agentfox.judgment.capability import DecisionKind
+
+    class Broken:
+        def available(self):
+            return True
+
+        def ask(self, state, questions):
+            raise JevUnavailable("down")
+
+    dear = CountingJudge({"settles": 0.9})
+    out = panel.ask(
+        DecisionKind.PATTERN_OPEN,
+        {"content": "x"},
+        {"settles": QUESTIONS["settles"]},
+        panel=[(Tier.JEV, Broken()), (Tier.LLM, dear)],
+    )
+    assert out.answers["settles"].value == pytest.approx(0.9)
+    assert Tier.JEV in out.failures

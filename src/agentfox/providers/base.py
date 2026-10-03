@@ -174,6 +174,32 @@ def register_provider(provider: ModelProvider) -> ModelProvider:
     return provider
 
 
+#: Hosts that are inside the customer's own boundary. Calling one of these is
+#: not egress: nothing crosses a network the customer does not control, so
+#: `allow_egress` (NFR-4) has nothing to gate. Defined here, once, because the
+#: provider layer and the judgment layer both decide things on it and a second
+#: copy that drifted would mean a self-hosted model being treated as a vendor
+#: by one of them and not the other.
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"})
+
+
+def is_local_endpoint(url: str | None) -> bool:
+    """True when `url` points inside this deployment.
+
+    Fails safe: anything not provably loopback is treated as remote, so a
+    malformed or unexpected URL is gated rather than quietly exempted.
+    """
+    if not url:
+        return False
+    from urllib.parse import urlparse
+
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return False
+    return host in _LOOPBACK_HOSTS or host.endswith(".localhost")
+
+
 def get_provider(key: str | None = None) -> ModelProvider:
     from ..config import get_settings
 
