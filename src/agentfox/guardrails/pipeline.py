@@ -69,6 +69,7 @@ _COST_ORDER = {
     "injection.heuristic": 1,
     # a network round trip; run it after every local detector
     "injection.judgment": 95,
+    "pii.judgment": 96,
     "pii.native": 2,
     "safety.lexicon": 3,
     "schema.json": 4,

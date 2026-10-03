@@ -177,9 +177,15 @@ ROUTING: dict[DecisionKind, Rule] = {
         combine=Combine.UNION,
         prefer=(Tier.DETERMINISTIC, Tier.LOCAL_MODEL, Tier.JEV, Tier.LOCAL_LLM, Tier.LLM),
     ),
+    # Union, not best-available. On KUQ + CoCoNot the union measured 93.5%
+    # against 93.3% for Jev alone, with recall 90.9% against 88.8% — and it is
+    # strictly safer for an abstention boundary, because a union can only *add*
+    # an abstention and never remove one the deterministic layer wanted. The
+    # deterministic layer is low-recall here (8.4% on contested questions) but
+    # high-precision (95.1%), so its verdicts are worth keeping.
     DecisionKind.SEMANTIC: Rule(
-        combine=Combine.BEST_AVAILABLE,
-        prefer=(Tier.JEV, Tier.LOCAL_LLM, Tier.LLM, Tier.LOCAL_MODEL, Tier.DETERMINISTIC),
+        combine=Combine.UNION,
+        prefer=(Tier.DETERMINISTIC, Tier.JEV, Tier.LOCAL_LLM, Tier.LLM, Tier.LOCAL_MODEL),
     ),
     # Everything is weak. Two must agree, or a person looks.
     DecisionKind.PERFORMATIVE: Rule(

@@ -199,3 +199,137 @@ class InjectionJudgmentDetector(BaseDetector):
             status="unavailable",
             raw={"reason": reason},
         )
+
+
+PII_QUESTIONS: dict[str, dict] = {
+    "personal_data": {
+        "type": "noul",
+        "instructions": (
+            "Does `content` contain personal data about an identifiable person — "
+            "a name, contact detail, identifier, location, date of birth, "
+            "financial or government number?"
+        ),
+        "criteria": {
+            "what": (
+                "An actual value appears that relates to a particular person, in "
+                "any format or language."
+            ),
+            "not_for": (
+                "The text discusses people or personal data in the abstract "
+                "without containing any actual value, or contains only "
+                "non-personal identifiers like product codes or order numbers."
+            ),
+        },
+    },
+}
+
+
+class PiiJudgmentDetector(BaseDetector):
+    """A presence gate for personal data, not a replacement for span detection.
+
+    Measured at presence level on presidio-research, 1,500 texts x 10 types:
+
+        pii.presidio.default (ships)   29.9 F1   17.8% recall
+        pii.presidio.full              69.8 F1   82.5% recall
+        judgment @0.8                  88.7 F1   97.9% recall
+
+    **It emits one unlocated signal, deliberately.** Redaction needs character
+    offsets and this cannot produce them, so it would be actively harmful to
+    emit `PII.EMAIL` without a span — downstream redaction would have nothing
+    to mask and might believe it had. `PII.PRESENT_UNLOCATED` says exactly what
+    is known: something personal is in here, somewhere. Use it to gate, route
+    or escalate, and keep the span detectors for redacting.
+
+    **The egress story is the awkward one and worth stating plainly.** Unlike
+    injection, the content here is the customer's own data, so asking a third
+    party about it is the disclosure this detector exists to prevent. Three
+    things make it defensible, and only together:
+
+      * `judgment_pii_egress = "redact"` (default) masks everything the local
+        detector found before sending. Measured: recall on the pairs local
+        *missed* is 98.7% redacted against 99.4% unredacted, so the gain
+        survives while the found data stays home.
+      * `judgment_pii_egress = "block"` refuses outright for any payload with
+        detected PII. That has a useful property rather than being merely
+        safe: the detector then runs *only* on text the local detector thinks
+        is clean, which is exactly the 82% blind spot it exists to cover, and
+        no text containing known personal data ever leaves.
+      * Either way, nothing runs unless the operator enabled a judgment tier
+        and `allow_egress`.
+    """
+
+    key = "pii.judgment"
+    version = "1"
+    #: Every surface personal data can appear on. Unlike injection this
+    #: includes `output`: a model leaking a customer's address in its own
+    #: reply is the case this is most useful for.
+    surfaces = ("input", "output", "tool_args", "tool_result", "retrieved", "memory_write")
+    timeout_ms = 2000
+    requires_budget_ms = 2500
+    handles_views = True
+
+    kind = DecisionKind.PATTERN_OPEN
+
+    #: 0.8, not the 0.5 injection uses. At presence level 0.8 measured 81.0%
+    #: precision against 72.9% at 0.5, for 97.9% recall against 99.4% — a
+    #: clear trade in favour of the higher bar, because this fires on ordinary
+    #: customer content rather than on untrusted input.
+    def __init__(self, gateway: JudgmentGateway | None = None, *, threshold: float = 0.8) -> None:
+        self._gateway = gateway
+        self._threshold = threshold
+
+    def _plan(self):
+        return CapabilityRouter.from_settings().plan(self.kind)
+
+    def available(self) -> bool:
+        if not any(t is not Tier.DETERMINISTIC for t in self._plan().deciders):
+            return False
+        return self._resolve_gateway() is not None
+
+    def _resolve_gateway(self) -> JudgmentGateway | None:
+        if self._gateway is not None:
+            return self._gateway
+        client = JevClient()
+        if not client.available():
+            return None
+        self._gateway = JudgmentGateway(client, backend="remote")
+        return self._gateway
+
+    def detect(self, content: str, context: DetectionContext) -> DetectorResult:
+        text = (content or "").strip()
+        if not text:
+            return DetectorResult(detector_key=self.key, version=self.version)
+        gateway = self._resolve_gateway()
+        if gateway is None:
+            return self._unavailable("no judgment gateway configured")
+        try:
+            answers = gateway.ask({"content": text}, PII_QUESTIONS).answers
+        except JevUnavailable as exc:
+            log.info("pii.judgment unavailable: %s", exc)
+            return self._unavailable(str(exc))
+
+        answer = answers.get("personal_data")
+        if answer is None or answer.value < self._threshold:
+            return DetectorResult(detector_key=self.key, version=self.version)
+        detection = Detection(
+            entity_type="PII.PRESENT_UNLOCATED",
+            score=float(answer.value),
+            sample="",  # no span is known, so there is nothing honest to sample
+            owasp_id="LLM02",
+            atlas_id="AML.T0057",
+            detail={"engine": "jev", "unlocated": True},
+        )
+        return DetectorResult(
+            detector_key=self.key,
+            version=self.version,
+            score=detection.score,
+            detections=[detection],
+        )
+
+    def _unavailable(self, reason: str) -> DetectorResult:
+        return DetectorResult(
+            detector_key=self.key,
+            version=self.version,
+            status="unavailable",
+            raw={"reason": reason},
+        )

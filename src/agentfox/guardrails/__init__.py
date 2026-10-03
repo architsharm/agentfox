@@ -35,7 +35,7 @@ from .base import (
     warm_all,
 )
 from .detectors.injection import InjectionHeuristicDetector
-from .detectors.judgment import InjectionJudgmentDetector
+from .detectors.judgment import InjectionJudgmentDetector, PiiJudgmentDetector
 from .detectors.pii import NativePiiDetector, redact_content
 from .detectors.safety import SafetyLexiconDetector
 from .detectors.schema import JsonSchemaDetector
@@ -64,6 +64,7 @@ register_detector(GuardrailsAiDetector())
 # judgment tier may answer PATTERN_OPEN at all, and `allow_egress` decides
 # whether anything may leave. See detectors/judgment.py.
 register_detector(InjectionJudgmentDetector())
+register_detector(PiiJudgmentDetector())
 
 # --- Guardrails AI Hub, one detector per validator (adapters/hub.py) ---
 # Registered even when not installed: the Detectors strip counts "not installed"

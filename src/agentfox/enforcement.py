@@ -1878,6 +1878,15 @@ class Enforcer:
 
         verdict = classify_answerability(question, boundary, known_entities=known_entities)
         if verdict.answerable:
+            # The deterministic check is precise (95.1%) but low-recall (38.1%),
+            # missing 8.4% of contested questions. An enabled judgment tier may
+            # add an abstention it found; it can never remove one, so the
+            # deterministic verdict above stays authoritative where it fired.
+            # No-ops entirely when no judgment tier is enabled.
+            from .judgment.answerability import augment as _judge_answerability
+
+            verdict = _judge_answerability(verdict, question)
+        if verdict.answerable:
             return None
 
         rule = _fired_rule(

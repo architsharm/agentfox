@@ -70,12 +70,23 @@ def test_enabling_more_never_shrinks_the_decider_set() -> None:
                 )
 
 
-def test_best_available_upgrades_rather_than_accumulates() -> None:
-    """On semantic work the best tier answers; piling on opinions is not better."""
+def test_semantic_unions_so_an_abstention_can_only_be_added() -> None:
+    """Union measured better than Jev alone (93.5% vs 93.3%) and is safer.
+
+    The deterministic layer is low-recall on contested questions (8.4%) but
+    high-precision (95.1%), so keeping its verdicts costs nothing and a union
+    can never drop an abstention it asked for.
+    """
     code_only = CapabilityRouter(frozenset(), allow_egress=True).plan(DecisionKind.SEMANTIC)
     assert code_only.deciders == (Tier.DETERMINISTIC,)
     with_jev = CapabilityRouter({Tier.JEV}, allow_egress=True).plan(DecisionKind.SEMANTIC)
-    assert with_jev.deciders == (Tier.JEV,)  # 93.3% replaces 83.5%
+    assert with_jev.combine is Combine.UNION
+    assert set(with_jev.deciders) == {Tier.DETERMINISTIC, Tier.JEV}
+
+    r = CapabilityRouter({Tier.JEV}, allow_egress=True)
+    # either layer wanting an abstention is enough
+    assert r.decide(DecisionKind.SEMANTIC, {Tier.DETERMINISTIC: True, Tier.JEV: False}) is True
+    assert r.decide(DecisionKind.SEMANTIC, {Tier.DETERMINISTIC: False, Tier.JEV: True}) is True
 
 
 def test_pattern_open_unions_because_the_union_measured_better() -> None:
