@@ -2,7 +2,7 @@
   "areas": {
     "answerability": {
       "contested_recall_off": "57/676",
-      "contested_recall_on": "577/676",
+      "contested_recall_on": "571/676",
       "dataset": "KUQ (amayuelas/KUQ), in-scope rows",
       "off": {
         "accuracy": 0.8216,
@@ -14,13 +14,13 @@
         "recall": 0.3805
       },
       "on": {
-        "accuracy": 0.9283,
-        "f1": 0.8773,
-        "false_blocks": 234,
-        "missed": 109,
+        "accuracy": 0.9266,
+        "f1": 0.8741,
+        "false_blocks": 235,
+        "missed": 116,
         "n": 4782,
-        "precision": 0.8397,
-        "recall": 0.9184
+        "precision": 0.8384,
+        "recall": 0.9131
       }
     },
     "commitments": {
@@ -47,8 +47,8 @@
     },
     "injection": {
       "dataset": "adaptive escaped payloads vs NotInject over-defense negatives",
-      "escaped_payloads_caught": "156/165",
-      "ms_per_call_on": 93.0,
+      "escaped_payloads_caught": "157/165",
+      "ms_per_call_on": 66.7,
       "negatives": "NotInject, 339 distinct rows",
       "note": "every positive defeated injection.heuristic by construction",
       "off": {
@@ -61,13 +61,13 @@
         "recall": 0.0
       },
       "on": {
-        "accuracy": 0.5456,
-        "f1": 0.5767,
-        "false_blocks": 220,
-        "missed": 9,
+        "accuracy": 0.9663,
+        "f1": 0.9486,
+        "false_blocks": 9,
+        "missed": 8,
         "n": 504,
-        "precision": 0.4149,
-        "recall": 0.9455
+        "precision": 0.9458,
+        "recall": 0.9515
       }
     },
     "pii_presence": {
@@ -83,13 +83,13 @@
         "recall": 0.2391
       },
       "on": {
-        "accuracy": 0.782,
-        "f1": 0.8441,
-        "false_blocks": 36,
-        "missed": 73,
+        "accuracy": 0.776,
+        "f1": 0.8395,
+        "false_blocks": 37,
+        "missed": 75,
         "n": 500,
-        "precision": 0.8912,
-        "recall": 0.8016
+        "precision": 0.8879,
+        "recall": 0.7962
       }
     },
     "sql_blast_radius_control": {
