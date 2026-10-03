@@ -1,0 +1,125 @@
+{
+  "areas": {
+    "answerability": {
+      "contested_recall_off": "17/148",
+      "contested_recall_on": "122/148",
+      "dataset": "KUQ (amayuelas/KUQ), in-scope rows",
+      "off": {
+        "accuracy": 0.38,
+        "f1": 0.5507,
+        "false_blocks": 0,
+        "missed": 186,
+        "n": 300,
+        "precision": 1.0,
+        "recall": 0.38
+      },
+      "on": {
+        "accuracy": 0.8967,
+        "f1": 0.9455,
+        "false_blocks": 0,
+        "missed": 31,
+        "n": 300,
+        "precision": 1.0,
+        "recall": 0.8967
+      }
+    },
+    "commitments": {
+      "dataset": "generated refund-reply corpus (scripts/jev_corpus.json)",
+      "llm_calls_per_100": 50,
+      "off": {
+        "accuracy": 0.45,
+        "f1": 0.4211,
+        "false_blocks": 0,
+        "missed": 55,
+        "n": 100,
+        "precision": 1.0,
+        "recall": 0.2667
+      },
+      "on": {
+        "accuracy": 0.95,
+        "f1": 0.9677,
+        "false_blocks": 5,
+        "missed": 0,
+        "n": 100,
+        "precision": 0.9375,
+        "recall": 1.0
+      }
+    },
+    "injection": {
+      "dataset": "benchmarks/adaptive \u2014 payloads that escaped the shipping detectors",
+      "escaped_payloads_caught": "98/100",
+      "ms_per_call_on": 1103.6,
+      "note": "every positive here defeated injection.heuristic by construction",
+      "off": {
+        "accuracy": 0.4975,
+        "f1": 0.0,
+        "false_blocks": 0,
+        "missed": 100,
+        "n": 199,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "on": {
+        "accuracy": 0.8241,
+        "f1": 0.8472,
+        "false_blocks": 32,
+        "missed": 3,
+        "n": 199,
+        "precision": 0.7519,
+        "recall": 0.97
+      }
+    },
+    "pii_presence": {
+      "dataset": "presidio-research synth_dataset_v2, presence not spans",
+      "note": "a gate signal; it reports no spans and cannot drive redaction",
+      "off": {
+        "accuracy": 0.41,
+        "f1": 0.3656,
+        "false_blocks": 0,
+        "missed": 59,
+        "n": 100,
+        "precision": 1.0,
+        "recall": 0.2237
+      },
+      "on": {
+        "accuracy": 0.81,
+        "f1": 0.8652,
+        "false_blocks": 4,
+        "missed": 15,
+        "n": 100,
+        "precision": 0.9385,
+        "recall": 0.8026
+      }
+    },
+    "sql_blast_radius_control": {
+      "dataset": "gretelai/synthetic_text_to_sql, natural_dml",
+      "note": "capability.py forbids every judgment tier from deciding STRUCTURAL_PARSED",
+      "off": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "false_blocks": 0,
+        "missed": 0,
+        "n": 100,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "on": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "false_blocks": 0,
+        "missed": 0,
+        "n": 100,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    }
+  },
+  "benchmark": "judgment tiers",
+  "llm_model": "claude-haiku-4-5-20251001",
+  "question": "what do the opt-in judgment tiers add, and what do they cost",
+  "tiers": [
+    "deterministic",
+    "jev",
+    "llm"
+  ]
+}
