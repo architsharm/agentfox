@@ -194,11 +194,27 @@ class Settings(BaseSettings):
     # PII first. Default is local, because asking a third party whether a
     # string contains personal data discloses the string.
     judgment_backend: str = "local"
+    # Which evaluators may be consulted, same opt-in shape as
+    # `enabled_detectors`. "deterministic" is always present whether listed or
+    # not — it needs no key, no weights and no network, and some decisions have
+    # no other permitted decider. Adding a tier can only widen coverage: the
+    # routing table in judgment/capability.py forbids each tier from deciding
+    # the kinds it measured *worse* on, so enabling everything cannot make a
+    # control worse than it is today.
+    judgment_tiers: list[str] = ["deterministic"]
     # Redact before any judgment leaves, and refuse to send at all if the
     # local redactor cannot load. "We could not check" must mean "we do not
     # send"; see judgment/egress.py.
     judgment_redact_before_egress: bool = True
     judgment_fail_closed: bool = True
+    # What happens when a payload bound for a hosted judgment tier contains
+    # personal data. "block" refuses to make the judgment remotely at all,
+    # "redact" masks what the local detector finds and sends the rest
+    # (default), "allow" sends it as-is and logs a warning. Only "block"
+    # guarantees a subject's data cannot reach a third party, because
+    # redaction can only mask what the local detector found — measured at
+    # 17.8% of it on presidio-research.
+    judgment_pii_egress: str = "redact"
 
     # --- Enforcement (Pillar 3) -----------------------------------------
     # NFR-1: hard budget for the whole pre-flight pipeline, and per detector.

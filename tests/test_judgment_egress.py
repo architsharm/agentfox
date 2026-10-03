@@ -151,3 +151,40 @@ def test_no_questions_is_not_an_egress_event() -> None:
     client = CapturingClient()
     assert JudgmentGateway(client).ask(SENSITIVE, {}).answers == {}
     assert client.sent == []
+
+
+# --- the explicit PII egress gate ----------------------------------------
+def test_block_mode_refuses_rather_than_redacting(egress_on) -> None:
+    """The only setting under which a subject's data cannot reach a vendor."""
+    from agentfox.judgment import PiiEgress
+
+    client = CapturingClient()
+    gate = JudgmentGateway(client, backend=Backend.REMOTE, pii_egress=PiiEgress.BLOCK)
+    with pytest.raises(EgressRefused, match="block"):
+        gate.ask(SENSITIVE, QUESTION)
+    assert client.sent == []
+
+
+def test_block_mode_still_allows_a_payload_with_no_personal_data(egress_on) -> None:
+    """Blocking PII is not blocking everything; clean payloads still go."""
+    from agentfox.judgment import PiiEgress
+
+    client = CapturingClient()
+    gate = JudgmentGateway(client, backend=Backend.REMOTE, pii_egress=PiiEgress.BLOCK)
+    gate.ask({"note": "the refund queue is four days long"}, QUESTION)
+    assert len(client.sent) == 1
+
+
+def test_allow_mode_is_a_deliberate_downgrade(egress_on) -> None:
+    from agentfox.judgment import PiiEgress
+
+    client = CapturingClient()
+    gate = JudgmentGateway(client, backend=Backend.REMOTE, pii_egress=PiiEgress.ALLOW, redact=False)
+    gate.ask(SENSITIVE, QUESTION)
+    assert "bob@example.com" in str(client.sent[0])
+
+
+def test_redact_is_the_default(egress_on) -> None:
+    client = CapturingClient()
+    JudgmentGateway(client, backend=Backend.REMOTE).ask(SENSITIVE, QUESTION)
+    assert "bob@example.com" not in str(client.sent[0])

@@ -3,7 +3,18 @@ evaluate it. Code owns comparisons and identity; Jev owns meaning."""
 
 from __future__ import annotations
 
-from .egress import Backend, EgressRefused, EgressReport, JudgmentGateway
+from .capability import (
+    EVIDENCE,
+    ROUTING,
+    CapabilityRouter,
+    Combine,
+    DecisionKind,
+    Evidence,
+    Measurement,
+    Plan,
+    Tier,
+)
+from .egress import Backend, EgressRefused, EgressReport, JudgmentGateway, PiiEgress
 from .jev import JevAnswer, JevClient, JevResult, JevUnavailable
 from .predicate import (
     Comparison,
@@ -19,6 +30,16 @@ from .predicate import (
 from .router import Decision, Outcome, PredicateResult, Router, resolve
 
 __all__ = [
+    "PiiEgress",
+    "ROUTING",
+    "EVIDENCE",
+    "Tier",
+    "Plan",
+    "Measurement",
+    "Evidence",
+    "DecisionKind",
+    "Combine",
+    "CapabilityRouter",
     "Backend",
     "Comparison",
     "Decision",

@@ -58,6 +58,28 @@ class Backend(StrEnum):
     AUTO = "auto"
 
 
+class PiiEgress(StrEnum):
+    """What happens when the payload turns out to contain personal data.
+
+    An explicit three-way operator choice rather than a single boolean,
+    because the right answer genuinely differs by deployment:
+
+        BLOCK    nothing containing detected PII leaves, redacted or not.
+                 The judgment is simply not made remotely. Pick this for
+                 regulated data; it is the only setting under which a remote
+                 tier cannot disclose a subject's data.
+        REDACT   mask what the local detector finds and send the remainder
+                 (default). Measured cost: about one point of the recall gain
+                 remote judgment exists for. Measured residual: the ~82% of
+                 PII the local detector does not find still leaves.
+        ALLOW    send as-is. A deliberate downgrade, logged at warning.
+    """
+
+    BLOCK = "block"
+    REDACT = "redact"
+    ALLOW = "allow"
+
+
 class EgressRefused(JevUnavailable):
     """The judgment was not made because the payload was not allowed to leave.
 
@@ -152,6 +174,7 @@ class JudgmentGateway:
         detector: SpanDetector | None = None,
         redact: bool = True,
         fail_closed: bool = True,
+        pii_egress: PiiEgress | str | None = None,
         local_answerable: Iterable[str] = (),
     ) -> None:
         self._client = client
@@ -161,8 +184,17 @@ class JudgmentGateway:
         self._redact = redact
         self._fail_closed = fail_closed
         self._local_answerable = set(local_answerable)
+        self._pii_egress = PiiEgress(pii_egress) if pii_egress else None
         self._detector = detector
         self._detector_tried = detector is not None
+
+    def _pii_mode(self) -> PiiEgress:
+        if self._pii_egress is not None:
+            return self._pii_egress
+        try:
+            return PiiEgress(_setting("judgment_pii_egress", "redact"))
+        except ValueError:
+            return PiiEgress.REDACT
 
     # -- redaction ---------------------------------------------------------
     def _local_detector(self) -> SpanDetector | None:
@@ -194,8 +226,12 @@ class JudgmentGateway:
             return EgressReport(False, "allow_egress is off")
         if self._client is None or not self._client.available():
             return EgressReport(False, "no judgment client configured")
-        if not self._redact:
-            return EgressReport(True, "sending unredacted (redact=False)", payload=state)
+        mode = self._pii_mode()
+        if mode is PiiEgress.ALLOW and not self._redact:
+            log.warning("judgment: sending unredacted payload (judgment_pii_egress=allow)")
+            return EgressReport(
+                True, "sending unredacted (pii egress policy: allow)", payload=state
+            )
 
         detector = self._local_detector()
         if detector is None and self._fail_closed:
@@ -206,6 +242,14 @@ class JudgmentGateway:
             )
         masker = _Masker(detector, self._context())
         payload = masker.walk(state)
+        if mode is PiiEgress.BLOCK and masker.count:
+            return EgressReport(
+                False,
+                f"payload contains {masker.count} detected personal-data span(s) and "
+                "judgment_pii_egress is 'block'; the judgment is not made remotely",
+                redactions=masker.count,
+                never_send_fields=tuple(masker.fields),
+            )
         return EgressReport(
             True,
             f"redacted {masker.count} span(s)",
