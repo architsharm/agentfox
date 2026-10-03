@@ -1878,6 +1878,15 @@ class Enforcer:
 
         verdict = classify_answerability(question, boundary, known_entities=known_entities)
         if verdict.answerable:
+            # The deterministic check is precise (95.1%) but low-recall (38.1%),
+            # missing 8.4% of contested questions. An enabled judgment tier may
+            # add an abstention it found; it can never remove one, so the
+            # deterministic verdict above stays authoritative where it fired.
+            # No-ops entirely when no judgment tier is enabled.
+            from .judgment.answerability import augment as _judge_answerability
+
+            verdict = _judge_answerability(verdict, question)
+        if verdict.answerable:
             return None
 
         rule = _fired_rule(
@@ -2242,7 +2251,16 @@ class Enforcer:
         # nothing else. `authorised` is the caller's statement that the agent genuinely
         # held the authority; the commitment is still recorded, it simply is not a
         # finding, which is the module's own documented behaviour.
-        commitments = detect_commitments(text, authorised=bool(evidence.get("authorised")))
+        authorised = bool(evidence.get("authorised"))
+        commitments = detect_commitments(text, authorised=authorised)
+        # The closed set reaches 26.7% recall at 100% precision on the refund
+        # corpus. The rest commit without a binding word — presupposition, a
+        # double negative, an oblique "that's sorted", or Spanish — which a
+        # regex cannot express. An enabled judgment tier adds those; it never
+        # drops a deterministic finding, and no-ops when no tier is enabled.
+        from .judgment.commitments import augment as _judge_commitments
+
+        commitments = _judge_commitments(commitments, text, authorised=authorised)
         if commitments:
             out["commitments"] = [c.to_json() for c in commitments]
             for commitment in commitments:

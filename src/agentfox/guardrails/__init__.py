@@ -35,6 +35,7 @@ from .base import (
     warm_all,
 )
 from .detectors.injection import InjectionHeuristicDetector
+from .detectors.judgment import InjectionJudgmentDetector, PiiJudgmentDetector
 from .detectors.pii import NativePiiDetector, redact_content
 from .detectors.safety import SafetyLexiconDetector
 from .detectors.schema import JsonSchemaDetector
@@ -56,6 +57,14 @@ register_detector(EmbeddingSimilarityDetector())
 register_detector(GraniteGuardianDetector())
 register_detector(NemoRailsDetector())
 register_detector(GuardrailsAiDetector())
+
+# --- Judgment-backed, available only when a judgment tier is enabled ---
+# Unlike the adapters above, this one's availability is a *policy* question as
+# well as an install question: `judgment/capability.py` decides whether a
+# judgment tier may answer PATTERN_OPEN at all, and `allow_egress` decides
+# whether anything may leave. See detectors/judgment.py.
+register_detector(InjectionJudgmentDetector())
+register_detector(PiiJudgmentDetector())
 
 # --- Guardrails AI Hub, one detector per validator (adapters/hub.py) ---
 # Registered even when not installed: the Detectors strip counts "not installed"

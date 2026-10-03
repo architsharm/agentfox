@@ -186,6 +186,49 @@ class Settings(BaseSettings):
     # this is explicitly turned on.
     allow_egress: bool = False
 
+    # Where semantic judgments are made. "local" keeps every judgment in this
+    # process: questions no local detector covers come back UNKNOWN, which the
+    # judgment router already treats as "not authorised". "remote" and "auto"
+    # may call a hosted judgment model, but only with `allow_egress` on and
+    # only through `judgment.JudgmentGateway`, which redacts locally-detected
+    # PII first. Default is local, because asking a third party whether a
+    # string contains personal data discloses the string.
+    judgment_backend: str = "local"
+    # Which evaluators may be consulted, same opt-in shape as
+    # `enabled_detectors`. "deterministic" is always present whether listed or
+    # not — it needs no key, no weights and no network, and some decisions have
+    # no other permitted decider. Adding a tier can only widen coverage: the
+    # routing table in judgment/capability.py forbids each tier from deciding
+    # the kinds it measured *worse* on, so enabling everything cannot make a
+    # control worse than it is today.
+    judgment_tiers: list[str] = ["deterministic"]
+    # Redact before any judgment leaves, and refuse to send at all if the
+    # local redactor cannot load. "We could not check" must mean "we do not
+    # send"; see judgment/egress.py.
+    judgment_redact_before_egress: bool = True
+    judgment_fail_closed: bool = True
+    # What happens when a payload bound for a hosted judgment tier contains
+    # personal data. "block" refuses to make the judgment remotely at all,
+    # "redact" masks what the local detector finds and sends the rest
+    # (default), "allow" sends it as-is and logs a warning. Only "block"
+    # guarantees a subject's data cannot reach a third party, because
+    # redaction can only mask what the local detector found — measured at
+    # 17.8% of it on presidio-research.
+    judgment_pii_egress: str = "redact"
+    # Which registered model provider answers when the `llm` or `local_llm`
+    # tier is enabled. Empty uses `default_provider`. The provider interface is
+    # the neutral one in providers/base.py, so this works with Azure, Bedrock,
+    # Vertex, LiteLLM or a self-hosted endpoint without any of them being
+    # special-cased. A LiteLLM/vLLM endpoint on loopback counts as `local_llm`
+    # and does not egress; anything else counts as `llm` and is gated.
+    judgment_llm_provider: str = ""
+    # Which model that provider should judge with. Empty hands the choice to
+    # the provider's own default — note that `CompletionRequest.model` defaults
+    # to the literal string "default", which the hosted adapters pass straight
+    # through and which is not a model name anywhere, so this sends "" instead
+    # when unset rather than letting that reach the API.
+    judgment_llm_model: str = ""
+
     # --- Enforcement (Pillar 3) -----------------------------------------
     # NFR-1: hard budget for the whole pre-flight pipeline, and per detector.
     # Was 100 — raised after benchmarking `injection.classifier`/`injection.similarity`

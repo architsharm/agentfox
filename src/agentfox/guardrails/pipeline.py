@@ -67,6 +67,9 @@ def _get_shared_pools(max_workers: int) -> tuple[ThreadPoolExecutor, ThreadPoolE
 _COST_ORDER = {
     "secrets.native": 0,
     "injection.heuristic": 1,
+    # a network round trip; run it after every local detector
+    "injection.judgment": 95,
+    "pii.judgment": 96,
     "pii.native": 2,
     "safety.lexicon": 3,
     "schema.json": 4,
@@ -170,6 +173,19 @@ class DetectorPipeline:
         still spend half a second on one request."""
         effective_budget = self.budget_ms if budget_ms is None else float(budget_ms)
         detectors = self.select(context.surface)
+        # A detector that cannot physically finish inside the default budget —
+        # currently only the judgment tiers, which make a network round trip
+        # measured at a 332ms median — declares `requires_budget_ms`. Without
+        # this the 300ms pre-flight budget (NFR-1) silently times it out on
+        # every call, so enabling a hosted tier would buy nothing while looking
+        # like it worked. Raising the budget is the honest alternative: an
+        # operator who enables a hosted tier is choosing latency for recall,
+        # and `PipelineResult.budget_ms` reports what was actually granted.
+        # Detectors nobody opted into cannot trigger this, so NFR-1 still holds
+        # for the default install.
+        required = max((getattr(d, "requires_budget_ms", 0) or 0 for d in detectors), default=0)
+        if required and required > effective_budget:
+            effective_budget = float(required)
         result = PipelineResult(budget_ms=effective_budget)
         if not detectors:
             return result
