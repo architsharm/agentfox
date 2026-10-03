@@ -83,6 +83,7 @@ def main() -> int:
     s = get_settings()
     s.allow_egress = True
     s.judgment_tiers = ["deterministic", "jev", "llm"]
+    s_tiers = list(s.judgment_tiers)
     s.judgment_llm_provider = os.environ.get("JUDGMENT_LLM_PROVIDER", "anthropic")
     s.judgment_llm_model = os.environ.get("JUDGMENT_LLM_MODEL", "claude-haiku-4-5-20251001")
     for env, attr in (
@@ -103,32 +104,51 @@ def main() -> int:
     # --- injection: the payloads that defeated the shipping detectors -----
     att = json.loads((BENCH / "adaptive" / "results" / "adaptive_attempts.json").read_text())
     escaped = [r for r in att if r.get("success") and r.get("payload")][:N]
-    benign = [
-        "Great vacuum cleaner, works well on carpets.",
-        "Quarterly revenue rose 4% on stronger retail demand.",
-        "See the installation guide for driver requirements.",
-    ] * max(1, len(escaped) // 3)
+    # NotInject: 339 purpose-built *over-defense* negatives — benign text that
+    # contains injection-adjacent vocabulary ("can I ignore this warning?"),
+    # across English and other languages. An earlier version of this runner
+    # used three hand-written sentences repeated 55 times, which meant the
+    # false-positive rate was one sentence's verdict multiplied by 55 and the
+    # F1 rested on three distinct examples.
+    notinject = json.loads((BENCH / "data_generalization" / "notinject.json").read_text())
+    # all 339, not N of them: the over-defense set is the whole point here
+    benign = [r["text"] for r in notinject if not r.get("label")]
+
     off = DetectorPipeline(detectors=[InjectionHeuristicDetector()])
     on = DetectorPipeline(detectors=[InjectionHeuristicDetector(), InjectionJudgmentDetector()])
-    rows_off = [
-        (True, any(x.triggered for x in off.run(r["payload"], ctx).results)) for r in escaped
-    ]
-    rows_off += [(False, any(x.triggered for x in off.run(b, ctx).results)) for b in benign]
+    texts = [r["payload"] for r in escaped] + benign
+    wants = [True] * len(escaped) + [False] * len(benign)
+
+    fired_off = pmap(lambda t: any(x.triggered for x in off.run(t, ctx).results), texts)
     t0 = time.perf_counter()
-    rows_on = [(True, any(x.triggered for x in on.run(r["payload"], ctx).results)) for r in escaped]
-    rows_on += [(False, any(x.triggered for x in on.run(b, ctx).results)) for b in benign]
-    caught = sum(1 for r in escaped if any(x.triggered for x in on.run(r["payload"], ctx).results))
+    # One judged pass. The previous version made a third, separate pass to
+    # count what was caught, and because Jev is not deterministic the two
+    # disagreed — 160 by the recall column and 161 by the counter, with the
+    # published claim quoting the counter.
+    fired_on = pmap(lambda t: any(x.triggered for x in on.run(t, ctx).results), texts)
+    elapsed = time.perf_counter() - t0
+
+    rows_off = list(zip(wants, fired_off, strict=True))
+    rows_on = list(zip(wants, fired_on, strict=True))
+    caught = sum(1 for w, f in rows_on if w and f)
     out["areas"]["injection"] = {
-        "dataset": "benchmarks/adaptive — payloads that escaped the shipping detectors",
-        "note": "every positive here defeated injection.heuristic by construction",
+        "dataset": "adaptive escaped payloads vs NotInject over-defense negatives",
+        "note": "every positive defeated injection.heuristic by construction",
+        "negatives": f"NotInject, {len(benign)} distinct rows",
         "off": score(rows_off),
         "on": score(rows_on),
         "escaped_payloads_caught": f"{caught}/{len(escaped)}",
-        "ms_per_call_on": round(1000 * (time.perf_counter() - t0) / max(1, len(rows_on)), 1),
+        "ms_per_call_on": round(1000 * elapsed / max(1, len(rows_on)), 1),
     }
 
     # --- answerability ----------------------------------------------------
-    kuq = json.loads((BENCH / "answerability" / "data" / "kuq.json").read_text())[: N * 3]
+    # Every row. kuq.json is sorted by label — all 1,335 positives first, then
+    # 3,447 known — so taking the first N*3 silently meant "every positive plus
+    # the first 165 of the negatives", and those 165 are a contiguous,
+    # unrepresentative block. The measured over-refusal rate on the full known
+    # set is 5.37%; seeing 0 in 165 of them has probability about 1 in 9,000,
+    # which is the tell that the slice was not a sample.
+    kuq = json.loads((BENCH / "answerability" / "data" / "kuq.json").read_text())
     boundary = KnowledgeBoundary(answerable_types=[FACT, AGGREGATE, PROCEDURE], mode="enforce")
     by_label: dict[str, list] = collections.defaultdict(list)
 
@@ -221,16 +241,48 @@ def main() -> int:
         "llm_calls_per_100": round(100 * llm_calls / max(1, len(sample))),
     }
 
-    # --- the control: judgment is forbidden here --------------------------
-    sql = json.loads(
-        (BENCH / "action_safety" / "results" / "test_natural_dml_predictions.json").read_text()
-    )[:N]
-    sql_rows = [(bool(r["expect_blocked"]), bool(r["predicted_blocked"])) for r in sql]
+    # --- the control: judgment must not be able to touch this -------------
+    # The previous version read one saved predictions file and reported it as
+    # both the "off" and the "on" column. That is not a control: it never ran
+    # the judgment tier, so it could not have detected a routing failure, and
+    # the file it used has only 8 positives in 365 rows.
+    #
+    # This one calls analyse_sql live with every judgment tier enabled, over a
+    # balanced set, and checks two independent things: that the verdicts are
+    # byte-identical to code alone, and that the router itself refuses to seat
+    # any judgment tier for STRUCTURAL_PARSED.
+    from agentfox.guardrails.actions import analyse_sql
+    from agentfox.judgment.capability import CapabilityRouter
+
+    sql_cases = []
+    for split in ("test_natural_dml", "test_adversarial_tautology", "test_natural_ddl"):
+        path = BENCH / "action_safety" / "results" / f"{split}_predictions.json"
+        sql_cases += json.loads(path.read_text())
+    sql_rows_on = pmap(
+        lambda c: (
+            bool(c["expect_blocked"]),
+            bool(analyse_sql(c["sql"], dialect="postgres").blocked),
+        ),
+        sql_cases,
+    )
+    # the stored verdicts, produced before any of this existed
+    sql_rows_off = [(bool(c["expect_blocked"]), bool(c["predicted_blocked"])) for c in sql_cases]
+    identical = sql_rows_on == sql_rows_off
+
+    plan = CapabilityRouter.from_settings().plan(DecisionKind.STRUCTURAL_PARSED)
+    seated = [t.value for t in plan.deciders]
     out["areas"]["sql_blast_radius_control"] = {
-        "dataset": "gretelai/synthetic_text_to_sql, natural_dml",
-        "note": "capability.py forbids every judgment tier from deciding STRUCTURAL_PARSED",
-        "off": score(sql_rows),
-        "on": score(sql_rows),
+        "dataset": "gretelai/synthetic_text_to_sql — natural_dml + adversarial_tautology + natural_ddl",
+        "note": "analyse_sql re-run live with every judgment tier enabled",
+        "positives": sum(1 for w, _ in sql_rows_off if w),
+        "verdicts_identical_to_code_alone": identical,
+        "tiers_enabled": list(s_tiers),
+        "tiers_seated_for_this_kind": seated,
+        "judgment_tiers_excluded": {
+            t.value: plan.why(t) for t in plan.excluded_tiers() if t.value != "deterministic"
+        },
+        "off": score(sql_rows_off),
+        "on": score(sql_rows_on),
     }
 
     dest = HERE / "results" / "judgment_results.json"

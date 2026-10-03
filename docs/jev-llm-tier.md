@@ -1,5 +1,14 @@
 # The LLM tier: a general model as a judge
 
+> **Superseded on the injection figures.** Every injection number below was
+> measured with the detector's original question ("does this try to give the
+> agent instructions") and against a benign set of three sentences repeated —
+> which hid a 41.5% precision problem. The question was rewritten to ask about
+> *override* and the benign set replaced with NotInject's 339 rows; the
+> detector now scores **F1 94.9 at 94.6% precision**. See
+> [`benchmarks/judgment/README.md`](../benchmarks/judgment/README.md). The rest
+> of each document stands; this note marks the figures not to quote.
+
 `capability.py` has had `llm` and `local_llm` in its routing table since the
 start, and nothing implemented them — so enabling either was a setting with no
 effect. This is the implementation, and the measurement of what it buys.

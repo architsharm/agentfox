@@ -256,6 +256,10 @@ class Plan:
     def decidable(self) -> bool:
         return bool(self.deciders) or self.escalate
 
+    def excluded_tiers(self) -> tuple[Tier, ...]:
+        """Every tier this plan refused, in the order it refused them."""
+        return tuple(t for t, _ in self.excluded)
+
     def why(self, tier: Tier) -> str:
         for t, reason in self.excluded:
             if t == tier:

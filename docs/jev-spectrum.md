@@ -1,5 +1,14 @@
 # The product with every capability enabled
 
+> **Superseded on the injection figures.** Every injection number below was
+> measured with the detector's original question ("does this try to give the
+> agent instructions") and against a benign set of three sentences repeated —
+> which hid a 41.5% precision problem. The question was rewritten to ask about
+> *override* and the benign set replaced with NotInject's 339 rows; the
+> detector now scores **F1 94.9 at 94.6% precision**. See
+> [`benchmarks/judgment/README.md`](../benchmarks/judgment/README.md). The rest
+> of each document stands; this note marks the figures not to quote.
+
 Not a study of Jev — a measurement of agentfox with and without the judgment
 tiers switched on, through the real detectors, the real pipeline and the real
 answerability path. The question an operator actually asks: if I turn these
