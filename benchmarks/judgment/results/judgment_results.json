@@ -2,25 +2,25 @@
   "areas": {
     "answerability": {
       "contested_recall_off": "57/676",
-      "contested_recall_on": "572/676",
+      "contested_recall_on": "577/676",
       "dataset": "KUQ (amayuelas/KUQ), in-scope rows",
       "off": {
-        "accuracy": 0.4487,
-        "f1": 0.5513,
-        "false_blocks": 0,
+        "accuracy": 0.8216,
+        "f1": 0.5436,
+        "false_blocks": 26,
         "missed": 827,
-        "n": 1500,
-        "precision": 1.0,
+        "n": 4782,
+        "precision": 0.9513,
         "recall": 0.3805
       },
       "on": {
-        "accuracy": 0.9227,
-        "f1": 0.9546,
-        "false_blocks": 0,
-        "missed": 116,
-        "n": 1500,
-        "precision": 1.0,
-        "recall": 0.9131
+        "accuracy": 0.9283,
+        "f1": 0.8773,
+        "false_blocks": 234,
+        "missed": 109,
+        "n": 4782,
+        "precision": 0.8397,
+        "recall": 0.9184
       }
     },
     "commitments": {
@@ -46,27 +46,28 @@
       }
     },
     "injection": {
-      "dataset": "benchmarks/adaptive \u2014 payloads that escaped the shipping detectors",
-      "escaped_payloads_caught": "161/165",
-      "ms_per_call_on": 1018.7,
-      "note": "every positive here defeated injection.heuristic by construction",
+      "dataset": "adaptive escaped payloads vs NotInject over-defense negatives",
+      "escaped_payloads_caught": "156/165",
+      "ms_per_call_on": 93.0,
+      "negatives": "NotInject, 339 distinct rows",
+      "note": "every positive defeated injection.heuristic by construction",
       "off": {
-        "accuracy": 0.5,
+        "accuracy": 0.6726,
         "f1": 0.0,
         "false_blocks": 0,
         "missed": 165,
-        "n": 330,
+        "n": 504,
         "precision": 0.0,
         "recall": 0.0
       },
       "on": {
-        "accuracy": 0.8182,
-        "f1": 0.8421,
-        "false_blocks": 55,
-        "missed": 5,
-        "n": 330,
-        "precision": 0.7442,
-        "recall": 0.9697
+        "accuracy": 0.5456,
+        "f1": 0.5767,
+        "false_blocks": 220,
+        "missed": 9,
+        "n": 504,
+        "precision": 0.4149,
+        "recall": 0.9455
       }
     },
     "pii_presence": {
@@ -82,24 +83,29 @@
         "recall": 0.2391
       },
       "on": {
-        "accuracy": 0.772,
-        "f1": 0.8367,
-        "false_blocks": 38,
-        "missed": 76,
+        "accuracy": 0.782,
+        "f1": 0.8441,
+        "false_blocks": 36,
+        "missed": 73,
         "n": 500,
-        "precision": 0.8848,
-        "recall": 0.7935
+        "precision": 0.8912,
+        "recall": 0.8016
       }
     },
     "sql_blast_radius_control": {
-      "dataset": "gretelai/synthetic_text_to_sql, natural_dml",
-      "note": "capability.py forbids every judgment tier from deciding STRUCTURAL_PARSED",
+      "dataset": "gretelai/synthetic_text_to_sql \u2014 natural_dml + adversarial_tautology + natural_ddl",
+      "judgment_tiers_excluded": {
+        "jev": "98.3% vs code's 100.0% on 5,528 SQL statements; 819 false blocks at 0.5",
+        "llm": "no measurement; a parse tree is not a judgment",
+        "local_llm": "no measurement; a parse tree is not a judgment"
+      },
+      "note": "analyse_sql re-run live with every judgment tier enabled",
       "off": {
         "accuracy": 1.0,
         "f1": 1.0,
         "false_blocks": 0,
         "missed": 0,
-        "n": 365,
+        "n": 768,
         "precision": 1.0,
         "recall": 1.0
       },
@@ -108,10 +114,20 @@
         "f1": 1.0,
         "false_blocks": 0,
         "missed": 0,
-        "n": 365,
+        "n": 768,
         "precision": 1.0,
         "recall": 1.0
-      }
+      },
+      "positives": 377,
+      "tiers_enabled": [
+        "deterministic",
+        "jev",
+        "llm"
+      ],
+      "tiers_seated_for_this_kind": [
+        "deterministic"
+      ],
+      "verdicts_identical_to_code_alone": true
     }
   },
   "benchmark": "judgment tiers",
