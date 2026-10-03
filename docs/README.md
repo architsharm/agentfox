@@ -20,6 +20,9 @@ that matches why you are here.
 | [benchmarking-whitepaper.md](benchmarking-whitepaper.md) | The product capability by capability: what it does, how it was measured, every round including the ones that went badly, and how it differs from the market. | Evaluators, and anyone who wants the methodology rather than the headline. |
 | [responding-to-the-critique.md](responding-to-the-critique.md) | What the strongest public criticism of this category gets right, what it gets wrong, and what we changed because of it. | A buyer who has read the critique and is sceptical, reasonably. |
 | [../benchmarks/README.md](../benchmarks/README.md) | The benchmark index: every harness, its dataset, its licence and how to re-run it. | Anyone reproducing a result. |
+| [jev-capabilities.md](jev-capabilities.md) | The optional judgment tiers — Jev, a hosted LLM, a self-hosted LLM — what each may decide and what the routing table forbids it from deciding. | Anyone deciding which capabilities to switch on. |
+| [jev-final-numbers.md](jev-final-numbers.md) | The study behind those tiers: 19,558 scenarios across six corpora, four of them external, and where a hosted judgment beats our detectors and where it loses. | Evaluators who want the evidence, not the summary. |
+| [jev-egress.md](jev-egress.md) | What leaves the boundary when a hosted tier is enabled, and the three-way PII choice. | Read before enabling any hosted tier on regulated data. |
 
 ## If you are evaluating this for an organisation
 

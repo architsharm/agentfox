@@ -111,3 +111,32 @@ claims:
     quoted_in:
       - {file: README.md, text: "reaches {pct}% and"}
       - {file: docs/benchmarking-whitepaper.md, text: "recall of {pct}% and"}
+
+  # --- Judgment tiers (opt-in; a default install scores the "off" column) ---
+  - id: judgment.escaped_payloads_caught
+    source: benchmarks/judgment/results/judgment_results.json
+    path: [areas, injection, escaped_payloads_caught]
+    render: fraction
+    quoted_in:
+      - {file: README.md, text: "{n}/{d} of the injection payloads that defeated our own pattern detectors"}
+      - {file: benchmarks/README.md, text: "{n}/{d} injection payloads that defeated our pattern detectors"}
+      - {file: benchmarks/judgment/README.md, text: "**{n} of {d} injection payloads that escaped the shipping detectors are caught**"}
+
+  - id: judgment.contested_recall_on
+    source: benchmarks/judgment/results/judgment_results.json
+    path: [areas, answerability, contested_recall_on]
+    render: fraction
+    quoted_in:
+      - {file: README.md, text: "contested-question abstention from 17/148 to {n}/{d}"}
+      - {file: benchmarks/judgment/README.md, text: "from **17/148 to {n}/{d}**"}
+
+  - id: judgment.sql_control_unchanged
+    source: benchmarks/judgment/results/judgment_results.json
+    # "on" must be quoted: YAML 1.1 parses the bare word as boolean true,
+    # which silently turns this path into [areas, ..., True, accuracy].
+    path: [areas, sql_blast_radius_control, "on", accuracy]
+    render: percent
+    decimals: 1
+    quoted_in:
+      - {file: benchmarks/judgment/README.md, text: "**F1 {pct}**"}
+
