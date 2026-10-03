@@ -23,6 +23,7 @@ import os
 import pathlib
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
@@ -30,7 +31,17 @@ sys.path.insert(0, str(ROOT / "src"))
 HERE = pathlib.Path(__file__).parent
 BENCH = ROOT / "benchmarks"
 SCRIPTS = ROOT / "scripts"
-N = int(os.environ.get("JUDGMENT_BENCH_N", "100"))
+N = int(os.environ.get("JUDGMENT_BENCH_N", "500"))
+#: Every judgment is a network round trip, so the runner is I/O bound and
+#: sequential execution is what caps N, not cost — at 350ms a call, 2,000
+#: decisions is twenty minutes of waiting and a few cents of spend.
+WORKERS = int(os.environ.get("JUDGMENT_BENCH_WORKERS", "12"))
+
+
+def pmap(fn, items):
+    """Thread-pooled map that preserves order."""
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        return list(pool.map(fn, items))
 
 
 def score(rows: list[tuple[bool, bool]]) -> dict:
@@ -120,14 +131,18 @@ def main() -> int:
     kuq = json.loads((BENCH / "answerability" / "data" / "kuq.json").read_text())[: N * 3]
     boundary = KnowledgeBoundary(answerable_types=[FACT, AGGREGATE, PROCEDURE], mode="enforce")
     by_label: dict[str, list] = collections.defaultdict(list)
-    a_off, a_on = [], []
-    for r in kuq:
+
+    def one_answerability(r):
         want = r["label"] in ("controversial", "future_unknown")
         v = classify_answerability(r["question"], boundary)
-        a_off.append((want, not v.answerable))
         v2 = augment_answerability(v, r["question"]) if v.answerable else v
-        a_on.append((want, not v2.answerable))
-        by_label[r["label"]].append((want, not v.answerable, not v2.answerable))
+        return r["label"], want, not v.answerable, not v2.answerable
+
+    a_off, a_on = [], []
+    for label, want, off_abstain, on_abstain in pmap(one_answerability, kuq):
+        a_off.append((want, off_abstain))
+        a_on.append((want, on_abstain))
+        by_label[label].append((want, off_abstain, on_abstain))
     contested = by_label.get("controversial", [])
     out["areas"]["answerability"] = {
         "dataset": "KUQ (amayuelas/KUQ), in-scope rows",
@@ -152,12 +167,16 @@ def main() -> int:
         "GPE",
     }
     native, judge = NativePiiDetector(), PiiJudgmentDetector()
-    p_off, p_on = [], []
-    for r in pii_rows:
+
+    def one_pii(r):
         want = bool({x["entity_type"] for x in r["spans"]} & in_scope)
         base = native.detect(r["full_text"], ctx).triggered
+        return want, base, base or judge.detect(r["full_text"], ctx).triggered
+
+    p_off, p_on = [], []
+    for want, base, both in pmap(one_pii, pii_rows):
         p_off.append((want, base))
-        p_on.append((want, base or judge.detect(r["full_text"], ctx).triggered))
+        p_on.append((want, both))
     out["areas"]["pii_presence"] = {
         "dataset": "presidio-research synth_dataset_v2, presence not spans",
         "note": "a gate signal; it reports no spans and cannot drive redaction",
@@ -172,21 +191,29 @@ def main() -> int:
         buckets[c["answer_template"]].append(c)
     per = max(1, N // len(buckets))
     sample = [c for t in sorted(buckets) for c in buckets[t][:per]]
-    c_off, c_on, llm_calls = [], [], 0
     from agentfox.judgment import panel
     from agentfox.judgment.commitments import QUESTIONS as C_Q
 
-    for c in sample:
+    def one_commitment(c):
         want = bool(c["promises_refund"] or c["other_undertaking"])
         base = detect_commitments(c["answer"])
-        c_off.append((want, bool(base)))
-        c_on.append((want, bool(augment_commitments(base, c["answer"]))))
-        if not base:
-            try:
-                r = panel.ask(DecisionKind.PERFORMATIVE, {"reply": c["answer"]}, C_Q)
-                llm_calls += Tier.LLM in r.consulted
-            except Exception:  # noqa: BLE001
-                pass
+        if base:
+            # The deterministic layer fired; no tier is consulted at all, which
+            # is the cheapest path and the one the cascade is built around.
+            return want, True, True, False
+        used_llm = False
+        try:
+            r = panel.ask(DecisionKind.PERFORMATIVE, {"reply": c["answer"]}, C_Q)
+            used_llm = Tier.LLM in r.consulted
+        except Exception:  # noqa: BLE001
+            pass
+        return want, False, bool(augment_commitments(base, c["answer"])), used_llm
+
+    c_off, c_on, llm_calls = [], [], 0
+    for want, off_hit, on_hit, used in pmap(one_commitment, sample):
+        c_off.append((want, off_hit))
+        c_on.append((want, on_hit))
+        llm_calls += used
     out["areas"]["commitments"] = {
         "dataset": "generated refund-reply corpus (scripts/jev_corpus.json)",
         "off": score(c_off),

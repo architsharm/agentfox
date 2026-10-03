@@ -122,13 +122,21 @@ claims:
       - {file: benchmarks/README.md, text: "{n}/{d} injection payloads that defeated our pattern detectors"}
       - {file: benchmarks/judgment/README.md, text: "**{n} of {d} injection payloads that escaped the shipping detectors are caught**"}
 
+  - id: judgment.contested_recall_off
+    source: benchmarks/judgment/results/judgment_results.json
+    path: [areas, answerability, contested_recall_off]
+    render: fraction
+    quoted_in:
+      - {file: README.md, text: "abstains on {n}/{d} contested questions"}
+      - {file: benchmarks/judgment/README.md, text: "abstains on **{n}/{d}** contested questions"}
+
   - id: judgment.contested_recall_on
     source: benchmarks/judgment/results/judgment_results.json
     path: [areas, answerability, contested_recall_on]
     render: fraction
     quoted_in:
-      - {file: README.md, text: "contested-question abstention from 17/148 to {n}/{d}"}
-      - {file: benchmarks/judgment/README.md, text: "from **17/148 to {n}/{d}**"}
+      - {file: README.md, text: "with a judgment tier that becomes {n}/{d}"}
+      - {file: benchmarks/judgment/README.md, text: "with a judgment tier that becomes **{n}/{d}**"}
 
   - id: judgment.sql_control_unchanged
     source: benchmarks/judgment/results/judgment_results.json

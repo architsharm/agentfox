@@ -22,9 +22,9 @@ judgment tier is permitted to answer, and one where it is forbidden.
 
 | Area | Default | Tiers enabled |
 |---|---|---|
-| Injection payloads that defeated our pattern detectors | F1 0.0 | **F1 84.7** |
-| Answerability (KUQ) | F1 55.1 | **F1 94.6** |
-| PII presence (presidio-research) | F1 36.6 | **F1 86.5** |
+| Injection payloads that defeated our pattern detectors | F1 0.0 | **F1 84.2** |
+| Answerability (KUQ) | F1 55.1 | **F1 95.5** |
+| PII presence (presidio-research) | F1 38.6 | **F1 83.7** |
 | Commitments (refund replies) | F1 42.1 | **F1 96.8** |
 | **SQL blast radius — the control** | **F1 100.0** | **F1 100.0** |
 
@@ -38,7 +38,7 @@ it cannot.
 
 ## The headline, stated precisely
 
-**98 of 100 injection payloads that escaped the shipping detectors are caught**
+**161 of 165 injection payloads that escaped the shipping detectors are caught**
 once a judgment tier is on — including the whole `requires_decode` subset that
 the [adaptive benchmark](../adaptive/README.md) attributes nearly all of its
 74% attack-success figure to.
@@ -54,7 +54,7 @@ a representative one, and the figure should never be quoted as general recall.
 
 ## Answerability
 
-Contested-question abstention goes from **17/148 to 122/148**. Deciding
+The deterministic classifier abstains on **57/676** contested questions; with a judgment tier that becomes **572/676**. Deciding
 whether reasonable people disagree is a judgment about meaning, and the
 deterministic classifier was never going to reach it.
 
@@ -101,8 +101,10 @@ timeout. Operators who do not opt in keep the 300ms pre-flight budget (NFR-1).
 
 ## Limits
 
-- Sample sizes are 100–300 rows per area; these are capability measurements,
-  not the 2,160- and 77,755-row studies behind them (see `docs/jev-*.md`).
+- Areas are 330–1,500 rows. The injection and contested-question rows are
+  the *complete* sets (all 165 escaped payloads, all 676 contested
+  questions); the others are samples. These are capability measurements, not
+  the 2,160- and 77,755-row studies behind them (see `docs/jev-*.md`).
 - The injection row's positives all defeated the pattern detector by
   construction.
 - PII presence degrades badly on non-English text: 42.5% precision across
