@@ -129,7 +129,11 @@ EVIDENCE: dict[tuple[DecisionKind, Tier], Measurement] = {
         75.4, "KUQ + CoCoNot", 5161, "worse than Jev and 200x the cost"
     ),
     (DecisionKind.PERFORMATIVE, Tier.DETERMINISTIC): Measurement(
-        0.0, "refund corpus", 96, "presupposition missed 96/96"
+        45.0,
+        "refund corpus",
+        2160,
+        "100% precision, 26.7% recall after widening commitments.py; still 0/96 "
+        "on presupposition, which is the shape regex cannot reach",
     ),
     (DecisionKind.PERFORMATIVE, Tier.JEV): Measurement(
         7.0, "HR screening", 180, "scores 0.07 on an answer that settles a hire"
@@ -187,19 +191,18 @@ ROUTING: dict[DecisionKind, Rule] = {
         combine=Combine.UNION,
         prefer=(Tier.DETERMINISTIC, Tier.JEV, Tier.LOCAL_LLM, Tier.LLM, Tier.LOCAL_MODEL),
     ),
-    # Everything is weak. Two must agree, or a person looks.
+    # Union, and the deterministic layer stays in. An earlier version of this
+    # table forbade it on the strength of one template (0/96 on presupposition)
+    # — that was over-reach. Widening commitments.py took it to 26.7% recall at
+    # **100% precision** across 2,160 refund replies, and a perfect-precision
+    # signal is not something to throw away because it is narrow. It still
+    # cannot see presupposition, implicature or a commitment made in Spanish,
+    # which is what the judgment tiers are added for.
     DecisionKind.PERFORMATIVE: Rule(
-        combine=Combine.VOTE,
-        prefer=(Tier.LLM, Tier.LOCAL_LLM, Tier.JEV),
-        forbid=(
-            (
-                Tier.DETERMINISTIC,
-                "0/96 on presupposition in the refund corpus; the breach is in what "
-                "the utterance does, not what it says",
-            ),
-        ),
+        combine=Combine.UNION,
+        prefer=(Tier.DETERMINISTIC, Tier.LLM, Tier.LOCAL_LLM, Tier.JEV),
         quorum=1,
-        escalate_if_unresolved=True,
+        escalate_if_unresolved=False,
     ),
 }
 

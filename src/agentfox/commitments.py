@@ -54,18 +54,47 @@ _PROMISE = re.compile(
 )
 
 #: Statements that settle a decision on the company's behalf.
+#:
+#: Three shapes, found by scoring this module against a 2,160-case corpus of
+#: refund replies where it caught 0 of 1,920 unauthorised commitments:
+#:
+#:   passive   "your refund has been approved"      — the original
+#:   active    "I've approved your refund"          — the common phrasing, missed
+#:   bare      "your refund is approved"            — with an adverb in the gap
+#:
+#: The active voice is the one that matters most: an agent reporting its own
+#: action is how the Air Canada case reads, and it binds exactly as hard.
+_SETTLED = (
+    r"(?:approved|accepted|granted|authorised|authorized|confirmed|waived|"
+    r"cancelled|canceled|processed|issued)"
+)
+#: Adverbs sit between auxiliary and participle — "has *already* been approved"
+#: — and an exact "has been" defeated the whole pattern.
+_ADV = r"(?:\s+(?:already|now|just|duly|successfully|fully))?"
+_SUBJECT = (
+    r"(?:refund|claim|request|application|order|account|case|policy|payment|"
+    r"credit|reimbursement|cancellation|replacement)"
+)
 _APPROVAL_GRANTED = re.compile(
-    r"\b(?:your|the)\s+(?:refund|claim|request|application|order|account|case|policy)\s+"
-    r"(?:has been|is|was)\s+(?:approved|accepted|granted|authorised|authorized|"
-    r"confirmed|waived|cancelled|canceled)\b",
+    rf"\b(?:"
+    # passive: "your refund has (already) been approved"
+    rf"(?:your|the|this|that)\s+(?:[\w.,'-]+\s+){{0,3}}?{_SUBJECT}\s+"
+    rf"(?:has{_ADV}\s+been|have{_ADV}\s+been|is{_ADV}|was{_ADV}|are{_ADV})\s+{_SETTLED}"
+    rf"|"
+    # active, first person: "I've approved your refund" / "we have approved it"
+    rf"(?:i|we)\s?(?:'ve|'ve\s+already|\s+have|\s+hereby)?{_ADV}\s+{_SETTLED}"
+    rf"\s+(?:your|the|this|that|it\b)"
+    rf")",
     re.I,
 )
 
 #: Future-tense assurances about what the company will do.
 _WILL_DO = re.compile(
     r"\b(?:we|i)\s?(?:'ll|will|shall)\s+(?:definitely\s+|certainly\s+)?"
+    # `approve` was absent, so "I will approve this refund" — about as direct a
+    # future commitment as exists — matched nothing. Found by the same corpus run.
     r"(?:refund|reimburse|credit|waive|cancel|replace|ship|deliver|send|honour|honor|"
-    r"cover|pay|compensate|process)\b",
+    r"cover|pay|compensate|process|approve|authorise|authorize|issue|arrange)\b",
     re.I,
 )
 

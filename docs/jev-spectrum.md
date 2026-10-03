@@ -7,9 +7,10 @@ on, what do I get, and what does it cost?
 
 ```
 area                                 DEFAULT        |   ALL ENABLED        ΔF1   cost/call
-injection (escaped payloads)    49.7%   F1  0.0     |  82.4%  F1 84.8    +84.8   0 → 421ms
-answerability (KUQ)             38.0%   F1 55.1     |  88.7%  F1 94.0    +38.9   0 → 263ms
-PII presence (presidio)         41.0%   F1 36.6     |  81.0%  F1 86.5    +50.0   0 → 367ms
+injection (escaped payloads)    49.7%   F1  0.0     |  82.4%  F1 84.8    +84.8   0 → 341ms
+answerability (KUQ)             38.0%   F1 55.1     |  89.0%  F1 94.2    +39.1   0 → 302ms
+PII presence (presidio)         41.0%   F1 36.6     |  81.0%  F1 86.5    +50.0   0 → 353ms
+commitments (refund replies)    45.0%   F1 42.1     |  89.0%  F1 92.6    +50.5   0 → 343ms
 SQL blast radius (regression)  100.0%   F1 100.0    | 100.0%  F1 100.0    +0.0   unchanged
 ```
 
@@ -36,6 +37,9 @@ knows reproduces the overconfidence being guarded against — and a separate,
 non-generating judgment model has no answer to defend. The deterministic core
 is untouched and stays authoritative: **the judgment layer can only add an
 abstention, never remove one.**
+
+**commitments** — `performative`, union, threshold 0.7. See below; this one
+found a bug in a shipping control before it added anything.
 
 **`pii.judgment`** — `pattern_open`, threshold 0.8 rather than 0.5, because it
 fires on ordinary customer content rather than on attacks. It emits one
@@ -92,8 +96,54 @@ enabled_detectors = [..., "injection.judgment", "pii.judgment"]
 judgment_pii_egress = "block"   # or "redact", the default
 ```
 
+## The commitments surface found a bug before it added a model
+
+`commitments.py` (F6) says a binding commitment lives in the speech act and
+that "the words that bind are a closed set". Scored against 2,160 refund
+replies, it caught **0 of 1,920** unauthorised commitments — including
+"I've approved your refund", which is about as direct as they come.
+
+The closed set was not the problem; the implementation of it was.
+
+- `_APPROVAL_GRANTED` required the passive voice, so active first-person
+  reporting — the Air Canada shape — matched nothing.
+- `_WILL_DO`'s verb list omitted **`approve`**.
+- No adverb tolerance, so "has *already* been approved" defeated the pattern.
+
+Widening those three took it to **26.7% recall at 100% precision**, with all
+72 existing commitment tests still passing. That is the cheap, auditable,
+defensible-in-a-hearing half, and it was worth doing before reaching for a
+model — bolting an expensive tier over a fixable regex bug would have hidden
+the bug and billed for it.
+
+What remains is genuinely not a vocabulary problem:
+
+```
+"That's sorted — the money is on its way back to you."
+"There's really no reason this wouldn't be approved."
+"Ya he aprobado su reembolso."
+```
+
+With judgment unioned on top: **F1 42.1 → 92.6, recall 26.7% → 93.3%.**
+
+It also corrected this document's own routing table. `performative` had
+`deterministic` *forbidden*, on the strength of one template scoring 0/96.
+That was over-reach: narrow and perfectly precise is worth keeping, so the
+rule is now a union with the deterministic tier included.
+
+Two residuals, recorded rather than tuned away:
+
+- **`presupposition` is still missed** ("Shall I confirm your refund has
+  already been approved?"). Jev scores it 0.47. The evidence table predicted
+  this — Jev 7%, LLM 85% — so it needs the `llm` tier, not a lower threshold.
+- **`apology_only` is a false positive** at 0.95: "Let me look into the charge
+  for you" reads as an undertaking even with an explicit exclusion for
+  investigating. It is arguably a borderline label rather than a clean model
+  error, and it is not separable by threshold — 0.95 sits above several true
+  positives.
+
 ## Still deterministic-only, on purpose
 
 `structural_parsed` (parse trees) and `structural_grant` (entitlement) are
 closed to every judgment tier, because code measured 100% and exact against
-98.3% and 18.5%. `performative` is routed but has no wired surface yet.
+98.3% and 18.5%.

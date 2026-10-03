@@ -122,3 +122,68 @@ def test_the_pii_block_gate_refuses_rather_than_returning_clean(judgment_on, mon
 def test_it_covers_output_where_injection_does_not() -> None:
     """A model leaking a customer's address in its own reply is the main case."""
     assert "output" in PiiJudgmentDetector.surfaces
+
+
+# --- commitments: the fourth surface -------------------------------------
+def _commit_gateway(**scores):
+    return FakeGateway(scores)
+
+
+def test_the_widened_regexes_catch_active_voice() -> None:
+    """Found by benchmarking: the closed set only matched the passive form."""
+    from agentfox.commitments import detect_commitments
+
+    assert detect_commitments("I've approved your refund of 50 USD.")
+    assert detect_commitments("Your refund has already been approved.")
+    assert detect_commitments("I will approve this refund today.")
+
+
+def test_the_widened_regexes_still_leave_the_hedges_alone() -> None:
+    from agentfox.commitments import detect_commitments
+
+    assert not detect_commitments("Refunds are usually approved within two days.")
+    assert not detect_commitments("Your refund may be approved once a reviewer checks it.")
+
+
+def test_judgment_adds_a_commitment_with_no_binding_word(judgment_on) -> None:
+    from agentfox.judgment.commitments import augment
+
+    text = "That's sorted — the 50 USD is on its way back to you."
+    from agentfox.commitments import detect_commitments
+
+    assert detect_commitments(text) == []  # no binding word; the regexes cannot see it
+    out = augment([], text, gateway=_commit_gateway(settles_outcome=0.9))
+    assert len(out) == 1
+    assert out[0].kind == "implied"
+    assert "judgment" in out[0].why
+
+
+def test_judgment_never_drops_a_deterministic_finding(judgment_on) -> None:
+    """Those are the findings that survive a hearing."""
+    from agentfox.commitments import Commitment
+    from agentfox.judgment.commitments import augment
+
+    existing = [Commitment("promise", "I guarantee", "binds the company")]
+    out = augment(existing, "I guarantee a refund.", gateway=_commit_gateway(settles_outcome=0.0))
+    assert out == existing
+
+
+def test_an_authorised_agent_is_not_second_guessed(judgment_on) -> None:
+    from agentfox.judgment.commitments import augment
+
+    out = augment(
+        [], "I've approved it.", authorised=True, gateway=_commit_gateway(settles_outcome=1.0)
+    )
+    assert out == []
+
+
+def test_it_no_ops_with_no_tier_enabled() -> None:
+    from agentfox.judgment.commitments import augment
+
+    assert augment([], "That's sorted, money's on its way.") == []
+
+
+def test_an_outage_leaves_the_deterministic_answer(judgment_on) -> None:
+    from agentfox.judgment.commitments import augment
+
+    assert augment([], "That's sorted.", gateway=FakeGateway(refuse="down")) == []

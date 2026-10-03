@@ -168,7 +168,40 @@ def main() -> int:
         f"{1000 * (mid - t0) / len(rows):.0f}ms -> {1000 * (end - mid) / len(rows):.0f}ms",
     )
 
-    # 4. the regression check — judgment must not be allowed near this
+    # 4. commitments — the performative surface
+    corpus = json.loads((HERE / "jev_corpus.json").read_text())["cases"]
+    import collections as _c
+
+    from agentfox.commitments import detect_commitments
+    from agentfox.judgment.commitments import augment as augment_commitments
+
+    buckets: dict[str, list] = _c.defaultdict(list)
+    for c in corpus:
+        buckets[c["answer_template"]].append(c)
+    per = max(1, n // len(buckets))
+    sample = [c for t in sorted(buckets) for c in buckets[t][:per]]
+    t0 = time.perf_counter()
+    off_c = [
+        ((r["promises_refund"] or r["other_undertaking"]), bool(detect_commitments(r["answer"])))
+        for r in sample
+    ]
+    mid = time.perf_counter()
+    on_c = [
+        (
+            (r["promises_refund"] or r["other_undertaking"]),
+            bool(augment_commitments(detect_commitments(r["answer"]), r["answer"])),
+        )
+        for r in sample
+    ]
+    end = time.perf_counter()
+    _row(
+        "commitments (refund replies)",
+        _score(off_c),
+        _score(on_c),
+        f"{1000 * (mid - t0) / len(sample):.0f}ms -> {1000 * (end - mid) / len(sample):.0f}ms",
+    )
+
+    # 5. the regression check — judgment must not be allowed near this
     sql = json.loads(
         (BENCH / "action_safety" / "results" / "test_natural_dml_predictions.json").read_text()
     )[:n]

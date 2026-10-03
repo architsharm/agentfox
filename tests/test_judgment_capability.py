@@ -135,12 +135,19 @@ def test_union_flags_when_any_permitted_decider_flags() -> None:
     assert r.decide(kind, {Tier.DETERMINISTIC: False, Tier.JEV: False}) is False
 
 
-def test_performative_escalates_when_no_capable_tier_is_on() -> None:
-    """Deterministic scored 0/96 here, so code-only means nobody can answer."""
+def test_performative_keeps_the_narrow_but_perfect_deterministic_signal() -> None:
+    """Code-only still answers here, at 26.7% recall and 100% precision.
+
+    An earlier table forbade the deterministic tier on the strength of one
+    template. Widening commitments.py showed that was over-reach: narrow and
+    perfectly precise is worth keeping, and the judgment tiers union on top.
+    """
     plan = CapabilityRouter(frozenset()).plan(DecisionKind.PERFORMATIVE)
-    assert plan.escalate
-    assert plan.combine is Combine.ESCALATE
-    assert CapabilityRouter(frozenset()).decide(DecisionKind.PERFORMATIVE, {}) is None
+    assert plan.deciders == (Tier.DETERMINISTIC,)
+    assert plan.combine is Combine.UNION
+
+    both = CapabilityRouter({Tier.LLM}, allow_egress=True).plan(DecisionKind.PERFORMATIVE)
+    assert set(both.deciders) == {Tier.DETERMINISTIC, Tier.LLM}
 
 
 def test_performative_is_answerable_once_a_capable_tier_is_on() -> None:
