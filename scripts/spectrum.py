@@ -53,8 +53,17 @@ def _row(label, off, on, cost):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=120)
+    ap.add_argument(
+        "--tiers",
+        default="deterministic,jev",
+        help="judgment tiers to enable for the ALL ENABLED column",
+    )
+    ap.add_argument("--llm-provider", default="anthropic")
+    ap.add_argument("--llm-model", default="claude-haiku-4-5-20251001")
     args = ap.parse_args()
     n = args.n
+
+    import os
 
     from agentfox.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability
     from agentfox.config import get_settings
@@ -71,11 +80,19 @@ def main() -> int:
 
     s = get_settings()
     s.allow_egress = True
-    s.judgment_tiers = ["deterministic", "jev"]
+    s.judgment_tiers = [t.strip() for t in args.tiers.split(",") if t.strip()]
+    s.judgment_llm_provider = args.llm_provider
+    s.judgment_llm_model = args.llm_model
+    for name, attr in (
+        ("ANTHROPIC_API_KEY", "anthropic_api_key"),
+        ("OPENAI_API_KEY", "openai_api_key"),
+    ):
+        if os.environ.get(name):
+            setattr(s, attr, os.environ[name])
     ctx_in = DetectionContext(surface="input")
 
     print("=" * 104)
-    print("agentfox, default versus all judgment tiers enabled")
+    print(f"agentfox, default versus tiers enabled: {', '.join(s.judgment_tiers)}")
     print("=" * 104)
     print(f"  {'area':34} {'DEFAULT':>14}  |  {'ALL ENABLED':>14}  {'ΔF1':>6}  cost/call")
     print("-" * 104)

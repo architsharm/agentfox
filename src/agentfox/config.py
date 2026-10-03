@@ -215,6 +215,19 @@ class Settings(BaseSettings):
     # redaction can only mask what the local detector found — measured at
     # 17.8% of it on presidio-research.
     judgment_pii_egress: str = "redact"
+    # Which registered model provider answers when the `llm` or `local_llm`
+    # tier is enabled. Empty uses `default_provider`. The provider interface is
+    # the neutral one in providers/base.py, so this works with Azure, Bedrock,
+    # Vertex, LiteLLM or a self-hosted endpoint without any of them being
+    # special-cased. A LiteLLM/vLLM endpoint on loopback counts as `local_llm`
+    # and does not egress; anything else counts as `llm` and is gated.
+    judgment_llm_provider: str = ""
+    # Which model that provider should judge with. Empty hands the choice to
+    # the provider's own default — note that `CompletionRequest.model` defaults
+    # to the literal string "default", which the hosted adapters pass straight
+    # through and which is not a model name anywhere, so this sends "" instead
+    # when unset rather than letting that reach the API.
+    judgment_llm_model: str = ""
 
     # --- Enforcement (Pillar 3) -----------------------------------------
     # NFR-1: hard budget for the whole pre-flight pipeline, and per detector.

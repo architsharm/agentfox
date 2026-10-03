@@ -16,6 +16,8 @@ from .capability import (
 )
 from .egress import Backend, EgressRefused, EgressReport, JudgmentGateway, PiiEgress
 from .jev import JevAnswer, JevClient, JevResult, JevUnavailable
+from .llm import LlmJudge
+from .panel import PanelResult, judges_for
 from .predicate import (
     Comparison,
     Identity,
@@ -30,6 +32,9 @@ from .predicate import (
 from .router import Decision, Outcome, PredicateResult, Router, resolve
 
 __all__ = [
+    "LlmJudge",
+    "PanelResult",
+    "judges_for",
     "PiiEgress",
     "ROUTING",
     "EVIDENCE",

@@ -38,9 +38,10 @@ from __future__ import annotations
 
 import logging
 
-from ...judgment.capability import CapabilityRouter, DecisionKind, Tier
+from ...judgment import panel
+from ...judgment.capability import DecisionKind
 from ...judgment.egress import JudgmentGateway
-from ...judgment.jev import JevClient, JevUnavailable
+from ...judgment.jev import JevUnavailable
 from ..base import BaseDetector, Detection, DetectionContext, DetectorResult, redact_sample
 
 log = logging.getLogger(__name__)
@@ -129,28 +130,24 @@ class InjectionJudgmentDetector(BaseDetector):
         self._threshold = threshold
 
     # -- gating ----------------------------------------------------------
-    def _plan(self):
-        return CapabilityRouter.from_settings().plan(self.kind)
-
     def available(self) -> bool:
-        """True only when a judgment tier is permitted to decide this kind.
+        """True only when some judgment tier can actually answer this kind.
 
         Being listed in `enabled_detectors` is not enough. The operator also
-        has to have enabled a judgment tier and allowed egress, and the
-        routing table has to permit that tier for `PATTERN_OPEN`.
+        has to have enabled a tier, the routing table has to permit it for
+        this kind, and that tier has to be reachable.
         """
-        if not any(t is not Tier.DETERMINISTIC for t in self._plan().deciders):
-            return False
-        return self._resolve_gateway() is not None
-
-    def _resolve_gateway(self) -> JudgmentGateway | None:
+        if not panel.permitted_tiers(self.kind):
+            return False  # policy says no; an injected transport cannot override it
         if self._gateway is not None:
-            return self._gateway
-        client = JevClient()
-        if not client.available():
-            return None
-        self._gateway = JudgmentGateway(client, backend="remote")
-        return self._gateway
+            return True
+        return bool(panel.judges_for(self.kind))
+
+    def _ask(self, state, questions):
+        """One judgment, from every enabled tier, unioned by score."""
+        if self._gateway is not None:  # injected for tests
+            return self._gateway.ask(state, questions).answers
+        return panel.ask(self.kind, state, questions).answers
 
     # -- detection -------------------------------------------------------
     def detect(self, content: str, context: DetectionContext) -> DetectorResult:
@@ -158,11 +155,8 @@ class InjectionJudgmentDetector(BaseDetector):
         if not text:
             return DetectorResult(detector_key=self.key, version=self.version)
 
-        gateway = self._resolve_gateway()
-        if gateway is None:
-            return self._unavailable("no judgment gateway configured")
         try:
-            answers = gateway.ask({"content": text}, QUESTIONS).answers
+            answers = self._ask({"content": text}, QUESTIONS)
         except JevUnavailable as exc:
             # Covers egress refusal, the PII gate, a missing key and an outage
             # alike. All of them mean "this check did not run", which the
@@ -278,32 +272,31 @@ class PiiJudgmentDetector(BaseDetector):
         self._gateway = gateway
         self._threshold = threshold
 
-    def _plan(self):
-        return CapabilityRouter.from_settings().plan(self.kind)
-
     def available(self) -> bool:
-        if not any(t is not Tier.DETERMINISTIC for t in self._plan().deciders):
-            return False
-        return self._resolve_gateway() is not None
+        """True only when some judgment tier can actually answer this kind.
 
-    def _resolve_gateway(self) -> JudgmentGateway | None:
+        Being listed in `enabled_detectors` is not enough. The operator also
+        has to have enabled a tier, the routing table has to permit it for
+        this kind, and that tier has to be reachable.
+        """
+        if not panel.permitted_tiers(self.kind):
+            return False  # policy says no; an injected transport cannot override it
         if self._gateway is not None:
-            return self._gateway
-        client = JevClient()
-        if not client.available():
-            return None
-        self._gateway = JudgmentGateway(client, backend="remote")
-        return self._gateway
+            return True
+        return bool(panel.judges_for(self.kind))
+
+    def _ask(self, state, questions):
+        """One judgment, from every enabled tier, unioned by score."""
+        if self._gateway is not None:  # injected for tests
+            return self._gateway.ask(state, questions).answers
+        return panel.ask(self.kind, state, questions).answers
 
     def detect(self, content: str, context: DetectionContext) -> DetectorResult:
         text = (content or "").strip()
         if not text:
             return DetectorResult(detector_key=self.key, version=self.version)
-        gateway = self._resolve_gateway()
-        if gateway is None:
-            return self._unavailable("no judgment gateway configured")
         try:
-            answers = gateway.ask({"content": text}, PII_QUESTIONS).answers
+            answers = self._ask({"content": text}, PII_QUESTIONS)
         except JevUnavailable as exc:
             log.info("pii.judgment unavailable: %s", exc)
             return self._unavailable(str(exc))

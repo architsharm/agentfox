@@ -35,9 +35,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .capability import CapabilityRouter, DecisionKind, Tier
+from . import panel
+from .capability import DecisionKind
 from .egress import JudgmentGateway
-from .jev import JevClient, JevUnavailable
+from .jev import JevUnavailable
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..commitments import Commitment
@@ -104,16 +105,22 @@ WHY = {
 }
 
 
-def _gateway() -> JudgmentGateway | None:
-    client = JevClient()
-    if not client.available():
-        return None
-    return JudgmentGateway(client, backend="remote")
+def enabled(gateway: JudgmentGateway | None = None) -> bool:
+    """True when some enabled tier can answer this kind — Jev, an LLM, or both.
+
+    An injected `gateway` supplies the transport, never the permission: the
+    routing table still has to allow a judgment tier for this kind.
+    """
+    if not panel.permitted_tiers(DecisionKind.PERFORMATIVE):
+        return False
+    return gateway is not None or bool(panel.judges_for(DecisionKind.PERFORMATIVE))
 
 
-def enabled() -> bool:
-    plan = CapabilityRouter.from_settings().plan(DecisionKind.PERFORMATIVE)
-    return any(t is not Tier.DETERMINISTIC for t in plan.deciders)
+def _ask(state, questions, gateway: JudgmentGateway | None):
+    """Every enabled tier, unioned by score. `gateway` is for tests."""
+    if gateway is not None:
+        return gateway.ask(state, questions).answers
+    return panel.ask(DecisionKind.PERFORMATIVE, state, questions).answers
 
 
 def augment(
@@ -131,17 +138,14 @@ def augment(
     """
     from ..commitments import Commitment
 
-    if authorised or not text.strip() or not enabled():
+    if authorised or not text.strip() or not enabled(gateway):
         return found
     # Something already fired, in a vocabulary that survives a hearing. Paying
     # for a second opinion to re-find it adds cost and no finding.
     if found:
         return found
-    gw = gateway or _gateway()
-    if gw is None:
-        return found
     try:
-        answers = gw.ask({"reply": text}, QUESTIONS).answers
+        answers = _ask({"reply": text}, QUESTIONS, gateway)
     except JevUnavailable as exc:
         log.info("commitment judgment unavailable: %s", exc)
         return found

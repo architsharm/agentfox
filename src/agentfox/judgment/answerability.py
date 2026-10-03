@@ -33,9 +33,10 @@ import logging
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
-from .capability import CapabilityRouter, DecisionKind, Tier
+from . import panel
+from .capability import DecisionKind
 from .egress import JudgmentGateway
-from .jev import JevClient, JevUnavailable
+from .jev import JevUnavailable
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..answerability import AnswerabilityVerdict
@@ -104,16 +105,22 @@ RESPONSE = {
 }
 
 
-def _gateway() -> JudgmentGateway | None:
-    client = JevClient()
-    if not client.available():
-        return None
-    return JudgmentGateway(client, backend="remote")
+def enabled(gateway: JudgmentGateway | None = None) -> bool:
+    """True when some enabled tier can answer this kind — Jev, an LLM, or both.
+
+    An injected `gateway` supplies the transport, never the permission: the
+    routing table still has to allow a judgment tier for this kind.
+    """
+    if not panel.permitted_tiers(DecisionKind.SEMANTIC):
+        return False
+    return gateway is not None or bool(panel.judges_for(DecisionKind.SEMANTIC))
 
 
-def enabled() -> bool:
-    plan = CapabilityRouter.from_settings().plan(DecisionKind.SEMANTIC)
-    return any(t is not Tier.DETERMINISTIC for t in plan.deciders)
+def _ask(state, questions, gateway: JudgmentGateway | None):
+    """Every enabled tier, unioned by score. `gateway` is for tests."""
+    if gateway is not None:
+        return gateway.ask(state, questions).answers
+    return panel.ask(DecisionKind.SEMANTIC, state, questions).answers
 
 
 def augment(
@@ -130,13 +137,10 @@ def augment(
     """
     if not verdict.answerable:
         return verdict  # already abstaining; nothing to add
-    if not question.strip() or not enabled():
-        return verdict
-    gw = gateway or _gateway()
-    if gw is None:
+    if not question.strip() or not enabled(gateway):
         return verdict
     try:
-        answers = gw.ask({"question": question}, QUESTIONS).answers
+        answers = _ask({"question": question}, QUESTIONS, gateway)
     except JevUnavailable as exc:
         # Degrading to the deterministic verdict is the safe direction here:
         # it is the behaviour the product has today.
