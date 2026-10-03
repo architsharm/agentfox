@@ -221,7 +221,7 @@ contributed nothing, by construction.
 
 **Optionally, detection gets much better.** The judgment tiers are off by default and add a model
 to the decisions where measurement says a model wins — and are forbidden from the ones where it
-loses. With them on, agentfox catches 98/100 of the injection payloads that defeated our own
+loses. With them on, agentfox catches 161/165 of the injection payloads that defeated our own
 pattern detectors, including every one of the encoded payloads the
 [adaptive benchmark](benchmarks/adaptive/README.md) attributes nearly all of its 74%
 attack-success figure to. SQL blast-radius analysis is byte-for-byte unchanged, because the
@@ -239,12 +239,12 @@ detector switched off, and [holds](#what-we-measured). These are the open fronts
 - Held-out injection recall is **66.7%**, at 100% precision, in the default configuration. An
   [adaptive attacker](benchmarks/adaptive/README.md) that reads our verdict and retries gets
   **73% of the attacks we catch through within 50 attempts** — though an enabled
-  [judgment tier](benchmarks/judgment/README.md) catches 98 of 100 of the payloads that get
+  [judgment tier](benchmarks/judgment/README.md) catches 161 of the 165 payloads that get
   through, at the cost of a network round trip per guarded call.
-- Enabling a judgment tier moves contested-question abstention from 17/148 to 122/148, and costs
-  precision: over-refusal on genuinely answerable questions rises from 0.75% to 5.37%. That is the
-  right trade for an abstention boundary and the wrong one for a hard block, which is why it is
-  opt-in.
+- The deterministic answerability classifier abstains on 57/676 contested questions; with a
+  judgment tier that becomes 572/676. It costs precision: over-refusal on genuinely answerable
+  questions rises from 0.75% to 5.37%. That is the right trade for an abstention boundary and the
+  wrong one for a hard block, which is why it is opt-in.
 - Against a real, independently installed `llm-guard` on indirect injection via tool output, it is
   more precise than us: **81.8% against our 66.7%**, on the same 20 cases — while we catch all 20
   and it catches 18. The cost is ours: a round-4 ensemble backstop bought recall everywhere and
