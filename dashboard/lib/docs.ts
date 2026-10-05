@@ -89,18 +89,3 @@ export const DOC_PAGES: { href: string; title: string; description: string }[] =
       description: item.description ?? "",
     })),
 );
-
-/** Pages that moved. The old URLs redirect (see each old page.tsx). */
-export const MOVED: Record<string, string> = {
-  "/docs/commands": "/docs/reference/cli",
-  "/docs/connect": "/docs/guides/python-auto",
-  "/docs/control-points": "/docs/concepts",
-  "/docs/discovery": "/docs/guides/scan-a-repo",
-  "/docs/access": "/docs/guides/contain-tool-calls",
-  "/docs/runtime": "/docs/reference/policies",
-  "/docs/hooks": "/docs/guides/coding-agents",
-  "/docs/mcp": "/docs/guides/mcp",
-  "/docs/test": "/docs/guides/red-team-and-evals",
-  "/docs/evidence": "/docs/guides/audit-evidence",
-  "/docs/compliance": "/docs/guides/audit-evidence",
-};

@@ -54,7 +54,7 @@ export default function Page() {
       kicker="Agent hooks"
       title={["Which hooks can", "stop a call"]}
       lede="Claude Code has three. Two can stop a call. One cannot."
-      docs="/docs/hooks"
+      docs="/docs/guides/coding-agents"
       challenge={
         <p>
           A coding agent on a laptop can reach production. It reads comments and logs

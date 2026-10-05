@@ -3814,3 +3814,12 @@
   .docs-doc .docs-params td:first-child,
   .docs-doc .docs-tasks td:last-child { white-space: normal; }
 }
+/* Inline-code styling (`.docs-doc li code`) must not reach a code block that sits
+   inside a list item, such as a <Step>: it painted a light chip behind light text. */
+.docs-doc pre code,
+.docs-doc li pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+}
