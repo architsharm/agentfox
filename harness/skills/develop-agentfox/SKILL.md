@@ -45,7 +45,7 @@ Fixtures live in `tests/conftest.py`: `session`, `seeded`, `enforcer`, `client`,
    (`alembic revision --autogenerate -m "<slug>"`), a tested downgrade, and a deploy that runs
    `agentfox admin db upgrade` before the new wheel ships.
 3. **Offline by default.** A new dependency is an optional extra unless it's pure-Python and
-   tiny. Check `docs/appendix-a-oss-register.md` and update `THIRD_PARTY_NOTICES.md`.
+   tiny. Check `docs/design/oss-register.md` and update `THIRD_PARTY_NOTICES.md`.
 
 ## 4. Docs and harness: same commit
 
@@ -56,7 +56,7 @@ Fixtures live in `tests/conftest.py`: `session`, `seeded`, `enforcer`, `client`,
 | a gateway route | `harness/reference/http-api.md` (and ideally Appendix C) |
 | the policy schema or shipped packs | `harness/reference/policy-schema.md` |
 | fixed a known issue | delete its entry in `harness/reference/known-issues.md` |
-| a requirement's implementation | `docs/traceability.md` |
+| a requirement's implementation | `docs/design/traceability.md` |
 | added a doc anywhere | `harness/reference/docs-map.md` |
 | a benchmark number that a doc quotes | `benchmarks/claims.yaml`; `scripts/claims.py --check` fails CI if a quote drifts from its result |
 

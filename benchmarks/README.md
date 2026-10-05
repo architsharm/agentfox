@@ -26,10 +26,10 @@ One entry per capability area. Each links to a self-contained directory with its
 ## Reading this table honestly
 
 The standing version of this, including the limits that apply before any number and how to report a
-bypass: [`docs/evidence-standards.md`](../docs/evidence-standards.md).
+bypass: [`docs/evaluation/evidence-standards.md`](../docs/evaluation/evidence-standards.md).
 
 - **"Benchmarked" rows** score existing code against a public dataset's own independently-authored ground truth — the strongest form of evidence in this list.
 - **The F4 row is a self-constructed scenario benchmark**, not a labeled-dataset score — real content, mechanically-derived scenarios. Its 100%/100% result is expected-by-construction, not a stress-test finding; see `entitlement/README.md` for exactly what it does and doesn't establish.
 - **The "investigated" rows (F2, secrets) are real findings, not gaps in effort.** Each required fetching and directly inspecting the candidate dataset's actual schema before concluding it didn't fit (or, for secrets, before confirming a genuine licensing/access blocker) — the same discipline that caught (and then fixed) real precision problems everywhere else in this table. F3.8 is a different outcome from the same discipline: the dataset didn't fit, but the code gap it surfaced turned out to be closeable, and was closed.
 
-See `docs/dataset-sourcing.md` for the original research this build-out worked through, and `docs/failure-modes.md` / `docs/gap-analysis.md` for how these findings map onto the product's own tracked capability status.
+See `docs/evaluation/dataset-sourcing.md` for the original research this build-out worked through, and `docs/design/failure-modes.md` / `docs/design/gap-analysis.md` for how these findings map onto the product's own tracked capability status.

@@ -55,7 +55,7 @@ doc to open.
    UNVERIFIED / NOT LEGAL ADVICE` caveat, never as legal conclusions.
 6. **Never quote a benchmark number without its limit.** Detection numbers are not robustness
    claims, containment depends on declarations, and compliance mappings are drafts. The standing
-   rules are in `docs/evidence-standards.md` in the AgentFox repository; the one-line version is
+   rules are in `docs/evaluation/evidence-standards.md` in the AgentFox repository; the one-line version is
    that we do not claim adversarial robustness and nobody should.
 7. **Code wins.** If a doc and the code disagree, trust the code and check
    [reference/known-issues.md](reference/known-issues.md) before assuming a bug is yours.

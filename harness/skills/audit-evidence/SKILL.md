@@ -54,7 +54,7 @@ Summarise four things:
 - which controls are effective, partial or failing
 - which obligations are coming due, from the dated calendar
 - which agents are high-risk in the risk register
-- **what the mapping does not cover**, from Appendix B §B.4 (`docs/appendix-b-control-catalog.md`)
+- **what the mapping does not cover**, from Appendix B §B.4 (`docs/design/control-catalog.md`)
 
 For executives, run `compliance board`, or `agentfox report --since 90d --format html --out
 summary.html` for a one-page plain-language summary. Both compute control status themselves if

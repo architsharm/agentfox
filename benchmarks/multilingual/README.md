@@ -9,9 +9,9 @@ PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
 
 ## Why this benchmark exists
 
-AI-security products are evaluated in English and sold worldwide. [`docs/coverage-map.md`](../../docs/coverage-map.md) row **L0.10** says so about this product too — *"Quality degrades in non-English"*, `✗ absent`, with the note that detectors are multilingual for injection but **nothing measures answer quality per language**.
+AI-security products are evaluated in English and sold worldwide. [`docs/design/coverage-map.md`](../../docs/design/coverage-map.md) row **L0.10** says so about this product too — *"Quality degrades in non-English"*, `✗ absent`, with the note that detectors are multilingual for injection but **nothing measures answer quality per language**.
 
-The obvious benchmark — "is this answer good in German?" — is the kind of subjective, LLM-judged check this codebase avoids everywhere else. [`docs/failure-modes.md`](../../docs/failure-modes.md) **F9.3** says so explicitly and prescribes the reframe this benchmark implements:
+The obvious benchmark — "is this answer good in German?" — is the kind of subjective, LLM-judged check this codebase avoids everywhere else. [`docs/design/failure-modes.md`](../../docs/design/failure-modes.md) **F9.3** says so explicitly and prescribes the reframe this benchmark implements:
 
 > This turns "is quality worse in German" (hard, subjective) into "do the same deterministic checks fire more often in German because a parser is English-only" (tractable, and each divergence points at a specific parser to fix).
 

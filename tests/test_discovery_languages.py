@@ -312,3 +312,29 @@ def test_a_spec_scans_next_step_quotes_no_file_count():
 
     assert "None source file" not in step
     assert step.startswith("No model calls found.")
+
+
+def test_a_call_shown_in_a_string_or_comment_is_not_a_call(tmp_path):
+    """A docs page that prints `client.chat.completions.create(...)` in a template
+    string calls no model. Only code counts; an expression inside `${...}` is code."""
+    (tmp_path / "page.tsx").write_text(
+        "import OpenAI from 'openai';\n"
+        "const example = `client.chat.completions.create({ model: 'gpt-4o' })`;\n"
+        'const quoted = "openai.chat.completions.create(";\n'
+        "// openai.chat.completions.create(\n"
+        "/* openai.chat.completions.create( */\n"
+        "const real = await client.chat.completions.create({ model: 'gpt-4o' });\n"
+        "const inner = `${await client.chat.completions.create({ model: 'x' })}`;\n"
+    )
+    report = scan(tmp_path)
+    assert sorted(s.line for s in report.model_calls) == [6, 7]
+
+
+def test_a_call_shown_in_jsx_code_text_is_not_a_call(tmp_path):
+    (tmp_path / "page.tsx").write_text(
+        "import OpenAI from 'openai';\n"
+        "export const P = () => <p>A plain\n"
+        "  <code>client.chat.completions.create(...)</code> call.</p>;\n"
+        "const real = await client.chat.completions.create({ model: 'gpt-4o' });\n"
+    )
+    assert [s.line for s in scan(tmp_path).model_calls] == [4]

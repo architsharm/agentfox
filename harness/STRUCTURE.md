@@ -60,7 +60,7 @@ never copies them.
    is (a) marked **BLK** in `reference/cli.md`, (b) gated in `hooks/hooks.json`, and (c) an
    explicit confirm step in every skill that reaches it. All three change together.
 6. **Generated docs are regenerated, never edited.** `docs/status.md` and
-   `docs/coverage-map.md` have commands in `reference/docs-map.md`.
+   `docs/design/coverage-map.md` have commands in `reference/docs-map.md`.
 7. **Same-commit rule.** A change to `src/agentfox/cli/`, `config.py`, `gateway/routes/`,
    `policy/model.py` or `policies_data/` updates the matching `reference/` file in the same
    commit. Fixing a bug in `known-issues.md` deletes its entry in the same commit.

@@ -19,8 +19,8 @@ there. Probes are shallow by design: they prove a capability is *wired*, not tha
 | **Failure modes covered** | **96%** — 54 of 57 outright, 2 partial |
 | **Injection recall, regression corpus** | **100%** — 33/33 adversarial, 0 false positive(s) on 18 benign. Our own test strings, so a regression check, not a recall estimate; held-out and external numbers are in benchmarks/REPORT.md |
 
-Requirement detail lives in [the PRD](PRD.md); requirement→test mapping
-in [traceability.md](traceability.md).
+Requirement detail lives in [the PRD](design/PRD.md); requirement→test mapping
+in [design/traceability.md](design/traceability.md).
 
 | ID | Pillar | Capability | Status | Tests | Note |
 |---|---|---|---|---|---|
@@ -71,7 +71,7 @@ in [traceability.md](traceability.md).
 Pillars are how the build is organised; **families are what actually goes wrong in
 production**. A pillar can read "built" while the failure it exists to prevent is still
 uncovered, so this table is computed independently rather than derived from the rows
-above. The modes come from [failure-modes.md](failure-modes.md).
+above. The modes come from [design/failure-modes.md](design/failure-modes.md).
 
 | Family | Modes | Covered | Partial | Score | Not yet covered |
 |---|---|---|---|---|---|

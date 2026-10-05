@@ -4787,8 +4787,8 @@
    "path": "/api/memory/{entry_id}/revoke",
    "section": "memory",
    "audience": "operator",
-   "summary": "Pull an entry immediately — the concrete fix for 'no way to find and remove a bad memory' (`enterprise-infrastructure-analysis.md` Gap 6).",
-   "description": "Pull an entry immediately — the concrete fix for 'no way to find and\nremove a bad memory' (`enterprise-infrastructure-analysis.md` Gap 6).",
+   "summary": "Pull an entry immediately — the concrete fix for 'no way to find and remove a bad memory'.",
+   "description": "Pull an entry immediately — the concrete fix for 'no way to find and\nremove a bad memory'.",
    "params": [
     {
      "name": "entry_id",

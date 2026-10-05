@@ -13,10 +13,10 @@ export const dynamic = "force-dynamic";
  * Two rules govern every line below, and they are the reason the page is worth
  * publishing at all:
  *
- *  1. No claim about a competitor appears here unless it is in
- *     `docs/competitor-analysis.md` (dated 2026-09-04), in README.md's "Where this
+ *  1. No claim about a competitor appears here unless it is in our market research
+ *     (dated 2026-09-04, kept outside this repository), in README.md's "Where this
  *     sits in the market" section, or measured in `benchmarks/`. The source is named
- *     in the copy, not just in this comment, so a reader can check it.
+ *     in the copy, not just in this comment.
  *  2. No ticks and crosses against a named company. We cannot verify what any vendor
  *     ships from their marketing pages. The table compares categories. One vendor is
  *     named, `llm-guard`, because `benchmarks/agent_security/` scores it from a real,
@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
  *
  * The concessions come before the differences on purpose. Every figure in the
  * concessions section is either a measurement of ours that is worse than someone
- * else's, or a capability we do not have. `docs/competitor-analysis.md` Â§5 is the
+ * else's, or a capability we do not have. Section 5 of the market research is the
  * source for most of them and says the same thing in the same order.
  */
 
@@ -35,7 +35,6 @@ export const metadata: Metadata = publicPageMetadata({
   path: "/compare",
 });
 
-const ANALYSIS = "https://github.com/architsharm/agentfox/blob/main/docs/competitor-analysis.md";
 const TIER_README =
   "https://github.com/architsharm/agentfox/blob/main/benchmarks/agent_security/README.md";
 
@@ -131,7 +130,7 @@ const LOSSES: { title: string; body: React.ReactNode; source: string }[] = [
         our own competitor analysis records them as benchmarked ahead of our lexical scorer.
       </>
     ),
-    source: "docs/competitor-analysis.md, sections 4.3 and 5",
+    source: "our market research (2026-09-04), sections 4.3 and 5",
   },
   {
     title: "A model provider bundles this with the runtime",
@@ -142,7 +141,7 @@ const LOSSES: { title: string; body: React.ReactNode; source: string }[] = [
         simply wins agent identity, and that the plumbing layer gets commoditised.
       </>
     ),
-    source: "docs/competitor-analysis.md, sections 2 and 8",
+    source: "our market research (2026-09-04), sections 2 and 8",
   },
   {
     title: "A GRC incumbent has the auditor relationships",
@@ -153,7 +152,7 @@ const LOSSES: { title: string; body: React.ReactNode; source: string }[] = [
         engineers and unreviewed by compliance counsel.
       </>
     ),
-    source: "docs/competitor-analysis.md, section 5",
+    source: "our market research (2026-09-04), section 5",
   },
   {
     title: "OneTrust and IBM have what procurement asks for",
@@ -164,7 +163,7 @@ const LOSSES: { title: string; body: React.ReactNode; source: string }[] = [
         FedRAMP GovCloud. We have none of that.
       </>
     ),
-    source: "docs/competitor-analysis.md, section 5",
+    source: "our market research (2026-09-04), section 5",
   },
   {
     title: "Three capabilities we simply do not have",
@@ -175,7 +174,7 @@ const LOSSES: { title: string; body: React.ReactNode; source: string }[] = [
         all. Zenity prevents inline inside Copilot Studio; we have zero coverage of that surface.
       </>
     ),
-    source: "docs/competitor-analysis.md, section 5",
+    source: "our market research (2026-09-04), section 5",
   },
 ];
 
@@ -254,10 +253,9 @@ export default function Compare() {
               Where a governance platform is ahead of us, and where a runtime tool is.
             </p>
             <p className="mk-fine mk-up mk-d3" style={{ marginTop: 18 }}>
-              Every competitor statement below comes from{" "}
-              <Out href={ANALYSIS}>docs/competitor-analysis.md</Out> or a benchmark in this
-              repository, named next to the claim. No vendor is scored from its own marketing
-              pages.
+              Every competitor statement below comes from our market research (dated
+              2026-09-04) or a benchmark in this repository, named next to the claim. No vendor
+              is scored from its own marketing pages.
             </p>
           </div>
         </section>

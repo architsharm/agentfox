@@ -32,3 +32,30 @@ local/
 scripts/jev_embeddings.npz
 scripts/jev_transfer_emb.npz
 scripts/sp_emb.npz
+
+# Internal material: research notes, experiment scripts, audit trackers, market and
+# pricing notes. Kept locally in internal/ until it moves to its own repository.
+internal/
+/agent-governance-roadmap.html
+/agent-harness-dashboard.html
+/oss-guardrails-catalog.html
+docs/research/
+docs/jev-*.md
+docs/audit-tracker*.md
+docs/competitor-analysis.md
+docs/pricing-and-procurement.md
+docs/production-readiness-review.md
+scripts/jev_*
+scripts/sp_*
+scripts/*_jev_results*.json
+scripts/ag_run2.py
+scripts/ans_run.py
+scripts/as_run.py
+scripts/at_run.py
+scripts/rest_run.py
+scripts/rj_run.py
+scripts/final_numbers.*
+scripts/bench_compare.py
+scripts/pii_*.py
+scripts/spectrum.py
+scripts/file_first_issues.sh

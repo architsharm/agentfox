@@ -183,6 +183,11 @@ curl -s -o /dev/null -w "%{http_code}\\n" -H "Authorization: Bearer $AGENTFOX_TO
           </p>
         </Step>
       </Steps>
+      <p>
+        To keep it running across reboots on Linux, the{" "}
+        <a href="https://github.com/architsharm/agentfox/blob/main/docs/deployment/systemd.md">systemd guide</a>{" "}
+        runs the gateway as a user service, with schema upgrades as a separate one-shot unit.
+      </p>
 
       <h2 id="compose">Docker Compose</h2>
       <Code>{`git clone https://github.com/architsharm/agentfox.git && cd agentfox

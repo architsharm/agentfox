@@ -772,6 +772,93 @@ def _js_framework(specifier: str) -> str | None:
     return None
 
 
+def _js_code_only(source: str) -> list[str]:
+    """The source's lines with everything inside string, template and comment
+    literals blanked to spaces, so columns and line numbers are unchanged.
+
+    A pattern found in a literal is text about code, not code: a docs page that
+    shows `client.chat.completions.create(...)` in a template string calls no model.
+    Expressions inside a template literal's `${...}` stay code. JSX `<code>` and
+    `<pre>` contents are blanked too: they are text a page shows, never executed.
+    """
+    out = list(source)
+    i, n = 0, len(source)
+    stack: list[str] = []  # open template literals and the `${` braces inside them
+    depth: list[int] = []
+    while i < n:
+        c = source[i]
+        nxt = source[i + 1] if i + 1 < n else ""
+        in_template = bool(stack) and stack[-1] == "`"
+        if in_template:
+            if c == "\\":
+                out[i] = " "
+                if i + 1 < n and source[i + 1] != "\n":
+                    out[i + 1] = " "
+                i += 2
+                continue
+            if c == "`":
+                stack.pop()
+                i += 1
+                continue
+            if c == "$" and nxt == "{":
+                stack.append("{")
+                depth.append(0)
+                i += 2
+                continue
+            if c != "\n":
+                out[i] = " "
+            i += 1
+            continue
+        if stack and stack[-1] == "{":
+            if c == "{":
+                depth[-1] += 1
+            elif c == "}":
+                if depth[-1] == 0:
+                    stack.pop()
+                    depth.pop()
+                    i += 1
+                    continue
+                depth[-1] -= 1
+        if c == "<" and (source.startswith("<code", i) or source.startswith("<pre", i)):
+            # JSX <code>/<pre> content is text shown to a reader, never executed.
+            tag = "code" if source.startswith("<code", i) else "pre"
+            start = source.find(">", i)
+            end = source.find(f"</{tag}>", start)
+            if start != -1 and end != -1:
+                for k in range(start + 1, end):
+                    if source[k] != "\n":
+                        out[k] = " "
+                i = end + len(tag) + 3
+                continue
+        if c == "/" and nxt == "/":
+            j = source.find("\n", i)
+            j = n if j == -1 else j
+            for k in range(i, j):
+                out[k] = " "
+            i = j
+            continue
+        if c == "/" and nxt == "*":
+            j = source.find("*/", i + 2)
+            j = n if j == -1 else j + 2
+            for k in range(i, j):
+                if source[k] != "\n":
+                    out[k] = " "
+            i = j
+            continue
+        if c in "'\"":
+            j = i + 1
+            while j < n and source[j] != c and source[j] != "\n":
+                j += 2 if source[j] == "\\" else 1
+            for k in range(i + 1, min(j, n)):
+                out[k] = " "
+            i = j + 1
+            continue
+        if c == "`":
+            stack.append("`")
+        i += 1
+    return "".join(out).splitlines()
+
+
 def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
     """Find model calls, agent definitions and tool declarations in one TS/JS file.
 
@@ -792,14 +879,17 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
     def gated(required: tuple[str, ...] | None) -> bool:
         return required is None or bool(frameworks.intersection(required))
 
+    code_lines = _js_code_only(source)
     sites: list[Site] = []
     for line_no, line in enumerate(lines, start=1):
         if _JS_COMMENT_LINE.match(line):
             continue
+        code = code_lines[line_no - 1] if line_no <= len(code_lines) else line
         # One site per line, most specific pattern first, so `.chat.completions.create`
-        # is not also counted by `.completions.create`.
+        # is not also counted by `.completions.create`. Matched against `code`, so a
+        # call shown inside a string or a comment is not counted as one.
         for pattern, provider, required in _JS_MODEL_CALLS:
-            match = pattern.search(line)
+            match = pattern.search(code)
             if match and gated(required):
                 sites.append(
                     Site(
@@ -813,7 +903,7 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
                 )
                 break
         for pattern, framework, required in _JS_AGENT_DEFINITIONS:
-            match = pattern.search(line)
+            match = pattern.search(code)
             if match and gated(required):
                 sites.append(
                     Site(
@@ -828,7 +918,9 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
                 break
         for pattern, label, required in _JS_TOOLS:
             match = pattern.search(line)
-            if match and gated(required):
+            # Tool names live in string literals, so the line is matched as written,
+            # but the match has to start in code.
+            if match and code[match.start()] == line[match.start()] and gated(required):
                 name = match.group(1) if match.groups() else None
                 if name is None:
                     # `const sendEmail = tool({` / `sendEmail: tool({` names the tool.

@@ -17,7 +17,7 @@
  * `prefers-reduced-motion` turns it off — a security product that makes a reader
  * wait for an animation to learn what it does has failed twice.
  *
- * The sequence is docs/hld.md §6, which is itself verified against
+ * The sequence is docs/architecture/high-level-design.md §6, which is itself verified against
  * enforcement.py's preflight/evaluate/call_provider and the gateway's
  * chat_completions handler. Nothing here is added to that sequence.
  */

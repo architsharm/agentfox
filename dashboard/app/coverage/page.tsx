@@ -276,8 +276,8 @@ export default function CoveragePage() {
               executable says so rather than borrowing the others&apos;
               credibility. The full table, with the control behind each row, is
               in{" "}
-              <a href="https://github.com/architsharm/agentfox/blob/main/docs/coverage-map.md">
-                docs/coverage-map.md
+              <a href="https://github.com/architsharm/agentfox/blob/main/docs/design/coverage-map.md">
+                docs/design/coverage-map.md
               </a>
               .
             </p>

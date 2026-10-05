@@ -66,7 +66,7 @@ agentfox report evidence --agent <slug> --since-days 7 --requested-by "incident 
 ```
 
 If `audit verify` failed in step 1, **don't checkpoint**. Export the evidence and record the
-first broken entry; the break is itself evidence. See `docs/appendix-e-threat-model.md` §E.2.
+first broken entry; the break is itself evidence. See `docs/architecture/threat-model.md` §E.2.
 
 ## 5. Fix, then restore deliberately
 

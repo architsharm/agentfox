@@ -13,6 +13,11 @@ pip install -e ".[dev]"
 Do not install with `--all-extras`. It pulls transitive versions that break a handful of
 tests. The extras this project is tested with are in the CI workflow.
 
+Before changing behaviour, read the [high-level design](docs/architecture/high-level-design.md).
+[docs/README.md](docs/README.md) indexes the rest of the design material: requirements, threat
+model, traceability and how benchmarks are measured. User-facing documentation is the website's,
+and its source is in `dashboard/app/docs/`.
+
 ## Before you open a pull request
 
 ```bash

@@ -4,10 +4,10 @@
       python benchmarks/multilingual/run_multilingual_parity.py
 
 **The criticism this answers.** AI-security products are evaluated in English and
-sold worldwide. `docs/coverage-map.md` row L0.10 says so about this product too:
+sold worldwide. `docs/design/coverage-map.md` row L0.10 says so about this product too:
 non-English answer quality is `✗ absent`.
 
-**The reframe (docs/failure-modes.md F9.3).** "Is this answer good in German" is a
+**The reframe (docs/design/failure-modes.md F9.3).** "Is this answer good in German" is a
 subjective, LLM-judged question, and this codebase avoids those. F9.3 says to ask a
 tractable version instead: *do the same deterministic checks reach the same verdict
 on the same content when the content is localised?* That is a **parity** question. It

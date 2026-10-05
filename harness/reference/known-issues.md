@@ -74,12 +74,12 @@ it still doesn't do:
 
 ## Docs that disagree with the code (code wins)
 
-- Coverage numbers differ across `README.md`, `docs/failure-modes.md`, `docs/status.md` and
-  `docs/coverage-map.md`, because only the last two are generated. Quote only the generated
+- Coverage numbers differ across `README.md`, `docs/design/failure-modes.md`, `docs/status.md` and
+  `docs/design/coverage-map.md`, because only the last two are generated. Quote only the generated
   ones, and regenerate first.
-- `docs/appendix-c-api-spec.md` route tables are generated (`scripts/api_routes.py`) and
+- `docs/architecture/api-spec.md` route tables are generated (`scripts/api_routes.py`) and
   checked in CI. Its prose sections are hand-written and may lag the code.
 
 Fixed on 2026-09-15: Appendix B's catalog path, control count and missing rows; Appendix C's
-phantom routes; Appendix D's model path; the stale-wheel claims in `docs/hld.md` and
-`docs/production-readiness-review.md`; and the migration count in `docs/lld.md`.
+phantom routes; Appendix D's model path; the stale-wheel claims in `docs/architecture/high-level-design.md`; and the
+migration count in `docs/architecture/low-level-design.md`.
