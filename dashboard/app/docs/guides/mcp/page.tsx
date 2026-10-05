@@ -223,15 +223,16 @@ refused: the tool's schema or description changed after this agent was authorise
           </p>
         </Step>
       </Steps>
-      <Callout kind="warning" title="register_tools() accepts the change">
+      <Callout kind="note" title="register_tools() holds the change until you accept it">
         <p>
-          <code>gov.register_tools(tools)</code> snapshots the listing and also re-registers
-          each tool with the listed description. So when your agent passes a changed listing
-          to <code>register_tools</code> itself, a <code>schema_drift</code> finding is
-          raised but later calls are <em>not</em> refused: the registry now matches the new
-          listing. The call-time block works when the new listing is recorded by{" "}
-          <code>agentfox scan mcp --file</code> and the agent does not re-register. Review
-          drift findings (<code>agentfox findings</code>) rather than relying on the block.
+          When your agent passes a changed listing to <code>gov.register_tools(tools)</code>{" "}
+          itself, the new listing is snapshotted and a <code>schema_drift</code> finding is
+          raised, but the registered tool keeps its reviewed description and schema, so calls
+          stay refused with <code>mcp.schema_drift</code>. The changed tools come back in the
+          result&apos;s <code>held</code> list. To accept the change after reviewing it, call{" "}
+          <code>gov.register_tools(tools, accept_changes=True)</code> or{" "}
+          <code>POST /api/mcp-servers/&#123;name&#125;/tools</code> with{" "}
+          <code>&quot;accept_changes&quot;: true</code>.
         </p>
       </Callout>
       <p>
@@ -318,7 +319,7 @@ refused: the tool's schema or description changed after this agent was authorise
       <ul>
         <li><strong><code>No MCP servers declared in this directory</code></strong>: run from the directory with the config, or pass <code>--config</code>.</li>
         <li><strong><code>name the server the tool list belongs to</code></strong>: <code>--file</code> needs a server name argument.</li>
-        <li><strong>Every MCP call refused with <code>mcp.schema_drift</code></strong>: the server changed after it was registered. Review the change; once you accept it, re-register the tools (<code>register_tools</code>) to make the new listing the reviewed one.</li>
+        <li><strong>Every MCP call refused with <code>mcp.schema_drift</code></strong>: the server changed after it was registered. Review the change; once you accept it, re-register the tools with <code>register_tools(tools, accept_changes=True)</code> to make the new listing the reviewed one.</li>
         <li><strong><code>unknown agent</code> on <code>permit grant</code></strong>: run the agent once so it registers, then grant.</li>
       </ul>
 

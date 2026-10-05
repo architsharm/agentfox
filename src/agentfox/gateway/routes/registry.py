@@ -464,10 +464,16 @@ def scan_mcp(
     return scan_mcp_server(session, server, payload.tools)
 
 
+class McpRegisterIn(McpScanIn):
+    #: The caller's statement that a changed listing has been reviewed. Without it a
+    #: tool already registered keeps its reviewed listing and calls stay refused.
+    accept_changes: bool = False
+
+
 @router.post("/mcp-servers/{name}/tools")
 def register_mcp_tools(
     name: str,
-    payload: McpScanIn,
+    payload: McpRegisterIn,
     session: Session = Depends(db),
     _user: User = Depends(require("registry")),
 ) -> dict[str, Any]:
@@ -476,12 +482,21 @@ def register_mcp_tools(
     Distinct from ``/scan``, which only reports hygiene. Registration is what gives
     the tool a policy identity and a digest to compare against at call time; without
     it the rug-pull check has no baseline.
+
+    A changed listing for an already-registered tool is held (reported in ``held``,
+    not registered) unless ``accept_changes`` is true.
     """
     from agentfox.integrations.mcp import McpGovernor
 
     governor = McpGovernor(session=session, agent_slug="", server_name=name)
-    report = governor.register_tools(payload.tools)
-    return {**report, "registered": [t.get("name") for t in payload.tools if t.get("name")]}
+    report = governor.register_tools(payload.tools, accept_changes=payload.accept_changes)
+    held = set(report.get("held", []))
+    return {
+        **report,
+        "registered": [
+            t.get("name") for t in payload.tools if t.get("name") and t.get("name") not in held
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
