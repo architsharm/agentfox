@@ -244,7 +244,7 @@ PROBES: list[Probe] = [
     ),
     Probe(
         "P3",
-        "Runtime detectors across five surfaces + taint",
+        "Runtime detectors across nine surfaces + taint",
         "3 Guardrails",
         [
             "class InjectionHeuristicDetector",

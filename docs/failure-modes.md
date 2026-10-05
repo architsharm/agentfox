@@ -2,6 +2,8 @@
 
 **Companion to [gap-analysis.md](gap-analysis.md).** That document benchmarked us against vendor feature lists. This one benchmarks us against **how enterprise agents actually fail in production** — which turns out to be a very different, and more useful, target.
 
+**Current figures** (tests, lines, failure modes covered) are generated into [status.md](status.md); the dated updates below record what was true on their date.
+
 **Update, 2026-08-29:** the taxonomy below was written 2026-08-18 against an 18.7k-LOC codebase that covered 1 of 50 modes. Since then the codebase grew to 50k+ LOC / 1,131 tests, and a grep/execution-verified re-audit (methodology unchanged: every status below is either a passing test, a direct code citation, or an explicit import-graph check — not an inference) found **40 of 50 original modes now ✅, 3 ◐, 5 ◐-unwired, 2 still ✗** (F3.8 composed privilege escalation, F7.7 cross-turn self-contradiction). One status appears for the first time: **◐-unwired** — real, unit-tested logic that is never imported or called from the live enforcement path (`enforcement.py`, `gateway/app.py`, `guardrails/pipeline.py`, or any gateway route reachable on the inline request), so it does nothing for a production request today despite passing its own tests. That is a distinct, worse state than a normal ◐ partial, and it applies to all of F6 (F6.1–F6.5).
 
 Two further corrections on top of that re-audit, done independently and cross-checked against it line by line:

@@ -1,6 +1,6 @@
 # Gap Analysis — Enterprise Readiness & Competitive Position
 
-**Date:** 2026-08-18, updated 2026-08-29 · **Scope:** AgentFox Control Plane (grown from 18.7k LOC/178 tests to 50k+ LOC/1,131 tests over that window)
+**Date:** 2026-08-18, updated 2026-08-29 · **Scope:** AgentFox Control Plane (grown from 18.7k LOC/178 tests to 50k+ LOC/1,131 tests over that window; those are dated figures, and current counts are in [status.md](status.md))
 **Question:** what stops us selling this to an enterprise, and where do we stand against the field?
 
 **2026-08-29 update:** a full grep/execution-verified re-audit (same discipline as the original —

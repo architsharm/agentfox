@@ -89,7 +89,7 @@ fixture corpus, not a test file). **No frontend (`dashboard/`) test files exist 
 the repo** — this is a real gap, tracked in
 [production-readiness-review.md](production-readiness-review.md).
 
-Per `docs/status.md`: **1,236 tests total, 62,152 lines** across `src/` + `tests/` combined.
+Current test and line counts are in [`docs/status.md`](status.md), which `scripts/coverage.py --write` regenerates from the source tree; they are not restated here because they go stale.
 
 ---
 
