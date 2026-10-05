@@ -342,3 +342,29 @@ def test_default_deny_names_the_command_that_proposes_grants(session, bot):
     assert "default deny" in result.reason
     assert f"agentfox proposals from-traffic --agent {AGENT}" in result.reason
     assert f"agentfox capability grant {AGENT} {REFUND}" in result.reason
+
+
+def test_a_database_that_has_not_run_the_migration_still_serves_tool_calls(tmp_path, monkeypatch):
+    """New code reaches a deployment before its migration does. Startup's init_db adds
+    the defaulted column, so `select(Tool)` does not fail on every call meanwhile."""
+    import sqlalchemy as sa
+
+    from agentfox.config import reset_settings_cache
+    from agentfox.db import init_db, reset_engine, upgrade_db
+
+    url = f"sqlite:///{tmp_path / 'pre.db'}"
+    monkeypatch.setenv("NOMETRIA_DATABASE_URL", url)
+    reset_settings_cache()
+    reset_engine()
+    try:
+        upgrade_db("a7c2e5b91d84")  # the revision before output_trust
+        columns = {c["name"] for c in sa.inspect(sa.create_engine(url)).get_columns("tools")}
+        assert "output_trust" not in columns
+        init_db(stamp=False)
+        init_db(stamp=False)  # idempotent
+        columns = {c["name"] for c in sa.inspect(sa.create_engine(url)).get_columns("tools")}
+        assert "output_trust" in columns
+        upgrade_db("head")  # and the migration does not fight it
+    finally:
+        reset_settings_cache()
+        reset_engine()
