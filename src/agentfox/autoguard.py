@@ -158,6 +158,9 @@ class AutoState:
     #: separate single-turn conversation, and turn-depth and repeated-failure
     #: conditions can never fire.
     session_id: str | None = None
+    #: The task this agent does, in a sentence. Policy judges an irreversible tool call
+    #: against it; without one, `intent.undeclared_irreversible` escalates every one.
+    intent: str | None = None
 
     @property
     def active(self) -> bool:
@@ -884,6 +887,7 @@ def _run_preflight(
             model=str(kwargs.get("model") or "default"),
             environment=state.environment,
             session_id=state.session_id,
+            intent=state.intent,
         )
         trace = outcome.trace
         result = outcome.result
@@ -1076,8 +1080,9 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     (`integrations.mcp.infer_impact`, the guess MCP governance already makes, read
     cautiously: a name that moves money or sends a message is irreversible, as the
     learned-permissions guess has it — an unconfirmed `issue_refund` guessed `read`
-    is containment switched off for the one tool that needed it) and recorded as ``impact_source="inferred"``, for a human to confirm with
-    `agentfox declare tool`. A declaration made in code (`@fox.tool(impact=...)`)
+    is containment switched off for the one tool that needed it) and recorded as
+    ``impact_source="inferred"``, for a human to confirm with `agentfox declare tool`.
+    A declaration made in code (`@fox.tool(impact=...)`)
     beats the guess. An existing row is never overwritten — except an inferred one
     that code has since declared.
     """
@@ -1239,6 +1244,7 @@ def _govern_tool_calls(
             in_process=in_process,
             exempt_rules=exempt,
             agent_slug=state.agent,
+            intent=state.intent,
             tool_key=tool_call.name,
             arguments=tool_call.arguments,
             trace=trace,
@@ -1797,6 +1803,7 @@ def auto(
     mode: str = "policy",
     environment: str | None = None,
     session_id: str | None = None,
+    intent: str | None = None,
     register: bool = True,
     quiet: bool = False,
 ) -> AutoState:
@@ -1811,14 +1818,20 @@ def auto(
     * ``"policy"`` (default) — the policies decide: `Blocked` is raised exactly when
       the enforced verdict stops the call (an enforce-mode policy, the kill switch,
       quarantine or a hard budget cap) — what the gateway would refuse. The shipped
-      baseline observes, so this blocks nothing until
-      ``agentfox policy enforce baseline``.
+      detector packs observe, so model traffic is not refused until
+      ``agentfox policy enforce baseline``; tool containment enforces from
+      ``agentfox init``, so a tool call it stops is refused. Start with
+      ``mode="observe"`` to see what that would be first.
     * ``"observe"`` — never raise; would-have-blocked is logged and counted.
     * ``"enforce"`` — strict: raise whenever the effective verdict blocks, even for a
       policy still in observe. For tests and CI.
 
     Tool calls in a response are authorised under the same mode before the response
     is returned (see the module docstring); a refused one raises `Blocked`.
+
+    ``intent`` is the agent's task in a sentence ("answer a customer's support
+    request"). An irreversible tool call with no declared task is escalated by
+    tool containment, since it cannot be judged against one.
 
     Returns the state, so a developer can assert on it in a test rather than trusting
     that it worked.
@@ -1834,6 +1847,7 @@ def auto(
         environment=environment or settings.environment,
         frameworks=detect_frameworks(),
         session_id=session_id,
+        intent=intent,
     )
 
     try:

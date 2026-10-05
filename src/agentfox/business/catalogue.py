@@ -344,7 +344,9 @@ CATALOGUE: list[GuardrailKind] = [
             "coverage_months": "int",
             "answerable_types": "fact | aggregate | prediction | opinion | procedure",
         },
-        example="agentfox declare boundary support-triage --systems CRM --answerable fact,aggregate",
+        example=(
+            "agentfox declare boundary support-triage --systems CRM --answerable fact,aggregate"
+        ),
         stage="input",
         signals=[
             "do not answer",
@@ -470,7 +472,9 @@ CATALOGUE: list[GuardrailKind] = [
             "regulated_topics": "[]",
             "sla_minutes": "int",
         },
-        example="agentfox declare escalation --agent support-triage --turn-depth 6 --sla-minutes 30",
+        example=(
+            "agentfox declare escalation --agent support-triage --turn-depth 6 --sla-minutes 30"
+        ),
         stage="conversation",
         signals=[
             "escalate",

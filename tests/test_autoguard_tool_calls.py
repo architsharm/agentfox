@@ -670,3 +670,28 @@ def test_a_response_with_no_tool_calls_writes_no_tool_decision(fake_openai):
     with _db() as session:
         assert session.query(Decision).filter(Decision.surface == "tool_args").count() == 0
         assert session.query(Tool).count() == 0
+
+
+def test_a_declared_intent_lets_a_granted_untainted_irreversible_call_run(fake_openai):
+    """Without a way to say what the agent is for, tool containment escalates every
+    irreversible call (`intent.undeclared_irreversible`), forever. `auto(intent=...)`
+    is that way."""
+    _bind_shipped_policies()
+    _grant("support-bot", "send_email")
+    client, script, _calls = fake_openai
+    call = _openai_tool_call("c1", "send_email", {"to": "ada@example.com", "body": "Done."})
+
+    script.append(_openai_response(call))
+    auto(agent="support-bot", quiet=True)
+    with pytest.raises(Blocked) as excinfo:
+        client().create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}], tools=TOOLS)
+    assert "intent.undeclared_irreversible" in str(excinfo.value)
+    off()
+
+    reply = _openai_response(call)
+    script.append(reply)
+    auto(agent="support-bot", intent="answer a customer's support request", quiet=True)
+    assert (
+        client().create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}], tools=TOOLS)
+        is reply
+    )

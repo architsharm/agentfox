@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .compliance.status import ensure_compliance_computed
-from .containment import CAUSES, cause_of, is_detector_rule
+from .containment import CAUSES, cause_of, decision_scope, is_detector_rule, rule_applied
 from .models import (
     Agent,
     Capability,
@@ -306,8 +306,7 @@ def _outcomes(
         for rule in d.rules_fired_json or []:
             if rule.get("effect") not in ("block", "escalate"):
                 continue
-            rule_applied = rule.get("mode", "enforce") == "enforce" and d.verdict != "allow"
-            if rule_applied != applied:
+            if rule_applied(rule, d.verdict, decision_scope(d.taint_summary_json)) != applied:
                 continue
             if is_detector_rule(rule):
                 causes.add(DETECTOR_CAUSE)

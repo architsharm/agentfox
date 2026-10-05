@@ -101,9 +101,7 @@ def _conversation(session, email, order, amount, *, crm=True, refund=True, email
 def _trust_crm(session):
     """The customer record comes from the system of record. Declared trusted, the
     refunds and emails built from it are clean calls, so their values can be limits."""
-    upsert_tool(
-        session, "read_customer_record", kind="tool", impact="read", output_trust="trusted"
-    )
+    upsert_tool(session, "read_customer_record", kind="tool", impact="read", output_trust="trusted")
     session.flush()
 
 

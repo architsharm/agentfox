@@ -1123,7 +1123,20 @@ class Enforcer:
         # over every rule, so on a call a capability or taint rule refused, a PII
         # rule that merely fired alongside it was titled as the cause — "Blocked on
         # tool_args: PII.EMAIL" for an exfiltration attempt default-deny stopped.
+        # What the caller does with the verdict (auto() in observe mode, a dry run)
+        # decides whether anything was actually stopped. Recorded on the decision so
+        # the report reads the same answer the findings below are titled with.
+        scope = getattr(self, "_containment_scope", ("enforced", frozenset()))
+        if surface == "tool_args" and scope != ("enforced", frozenset()):
+            decision_row.taint_summary_json = {
+                **(decision_row.taint_summary_json or {}),
+                "in_process": scope[0],
+                "exempt_rules": sorted(scope[1]),
+            }
+
         det_effective, det_applied = detector_verdict(rules_fired)
+        if surface == "tool_args" and scope[0] == "none":
+            det_applied = "allow"  # recorded, and the call ran
         if det_effective != "allow" and pipeline_result.detections:
             self._raise_detection_finding(
                 agent=agent,
@@ -1155,7 +1168,7 @@ class Enforcer:
                 trace_id=trace_id,
                 decision_id=decision_row.id,
                 decision_verdict=verdict,
-                scope=getattr(self, "_containment_scope", ("enforced", frozenset())),
+                scope=scope,
             )
 
         # --- 6. escalation (P2-3) ----------------------------------------

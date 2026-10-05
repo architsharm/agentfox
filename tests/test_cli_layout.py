@@ -259,9 +259,10 @@ def test_bare_report_is_the_one_page_summary(isolated_db):
     bare = runner.invoke(app, ["report"])
     assert bare.exit_code == summary.exit_code == 0
     assert bare.output.startswith("# AgentFox summary")
-    assert runner.invoke(app, ["report", "status"]).output == runner.invoke(
-        app, ["compliance", "status"]
-    ).output
+    assert (
+        runner.invoke(app, ["report", "status"]).output
+        == runner.invoke(app, ["compliance", "status"]).output
+    )
 
 
 # ---------------------------------------------------------------------------

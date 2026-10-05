@@ -267,6 +267,36 @@ def story(
     return f"{who} {body} ({outcome})"
 
 
+def rule_applied(
+    rule: dict[str, Any],
+    decision_verdict: str,
+    scope: tuple[str, frozenset[str]] = ("enforced", frozenset()),
+) -> bool:
+    """Whether this rule's effect actually stopped the call.
+
+    Its own mode was enforce AND the decision went that way — unless the caller let
+    the call run anyway (``scope``: a dry run or auto() in observe mode is
+    ``"none"``; a rule the caller exempts), and except that strict
+    auto(mode="enforce") stops on any rule that fired (``"all"``). Findings and the
+    one-page report both ask this, so they never disagree about what was contained.
+    """
+    in_process, exempt = scope
+    if in_process == "none" or str(rule.get("rule_id") or "") in exempt:
+        return False
+    if in_process == "all":
+        return True
+    return rule.get("mode", "enforce") == "enforce" and decision_verdict != "allow"
+
+
+def decision_scope(taint_summary: dict[str, Any] | None) -> tuple[str, frozenset[str]]:
+    """The caller's in-process scope as the enforcer recorded it on the decision."""
+    summary = taint_summary or {}
+    return (
+        str(summary.get("in_process") or "enforced"),
+        frozenset(summary.get("exempt_rules") or ()),
+    )
+
+
 def raise_containment_findings(
     session: Any,
     *,
@@ -296,17 +326,7 @@ def raise_containment_findings(
         if rule_id in seen:
             continue
         seen.add(rule_id)
-        # A rule's effect was applied when the call was actually stopped: its own mode
-        # was enforce AND the decision went that way — unless the caller lets the call
-        # run anyway (`scope`: a dry run, auto() in observe mode, or a rule the caller
-        # exempts), and except that strict auto(mode="enforce") stops on any rule.
-        in_process, exempt = scope
-        if in_process == "none" or rule_id in exempt:
-            applied = False
-        elif in_process == "all":
-            applied = True
-        else:
-            applied = rule.get("mode", "enforce") == "enforce" and decision_verdict != "allow"
+        applied = rule_applied(rule, decision_verdict, scope)
         cause = cause_of(rule_id)
         severity = str(rule.get("severity") or ("high" if rule["effect"] == "block" else "medium"))
         raise_finding(

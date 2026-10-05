@@ -2810,8 +2810,9 @@ def proposals_from_traffic(
         console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
     if body["filed"] or body["refreshed"]:
         console.print(
-            "\n  [dim]Next: `agentfox policy proposals show <id>`, then `agentfox policy proposals approve "
-            "<id> --actor you@example.com --note why` and `agentfox policy proposals apply <id> "
+            "\n  [dim]Next: `agentfox policy proposals show <id>`, then "
+            "`agentfox policy proposals approve <id> --actor you@example.com --note why` and "
+            "`agentfox policy proposals apply <id> "
             "--actor you@example.com`. Tool declarations are org-wide loosenings and need "
             "two different approvers.[/]"
         )
