@@ -16,7 +16,8 @@ Everything here is checkable from this repository.
 
 **1. Adversarial robustness is unsolved, and adaptive attacks defeat published defences.** The paper reports
 over 90% attack success against twelve defences once the attacker adapts. We do not claim to be the
-exception. Our own held-out injection recall is **66.7%**, published in
+exception. Our own held-out injection recall is **26.7%** with the default heuristic detector and
+**66.7%** with the opt-in classifier ensemble, both published in
 [`benchmarks/REPORT.md`](../benchmarks/REPORT.md) alongside the rounds where it was 0%.
 
 **2. Static guardrail benchmarks are misleading.** They are, and we have first-hand evidence. Swapping our
@@ -72,7 +73,7 @@ encoded in the platform, which is what our [agent harness](../harness/README.md)
 | Change | Where |
 |---|---|
 | Built a benchmark that **deletes the detection layer entirely** and measures what still holds | [`benchmarks/containment/`](../benchmarks/containment/README.md) |
-| Replayed AgentDojo's 617 ground-truth calls end to end, reporting benign utility alongside containment | [`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) |
+| Replayed AgentDojo's ground truth end to end, 97 user tasks and 949 attack pairs, with provenance inferred from the real tool outputs, reporting benign utility alongside containment | [`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) |
 | Published our own adaptive-attack success rate against ourselves (**73% at 50 attempts**), using the critique's own protocol — and fixed the three detector bugs it found | [`benchmarks/adaptive/`](../benchmarks/adaptive/README.md) |
 | Measured non-English parity instead of claiming multilingual support | [`benchmarks/multilingual/`](../benchmarks/multilingual/README.md) |
 | Measured gradual multi-turn (crescendo) attacks, which per-message detection cannot see | [`benchmarks/crescendo/`](../benchmarks/crescendo/README.md) |

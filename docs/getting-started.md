@@ -54,17 +54,18 @@ agentfox init
 ```
   ✓ database ready
   ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
-  ✓ 3 policy pack(s) loaded
+  ✓ 4 policy pack(s) loaded
       baseline                 observe  recorded, nothing blocked
+      coding-agent             observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
       tool-containment         enforce  violations are blocked now
 ```
 
-This creates a SQLite database in the current directory, loads the control catalogue and three
+This creates a SQLite database in the current directory, loads the control catalogue and four
 policy packs, and writes a `agentfox.toml` if there isn't one. It is idempotent and offline, so it
 is safe to run again.
 
-Read the mode column carefully, because it is the whole shape of the product. The two
+Read the mode column carefully, because it is the whole shape of the product. The three
 detector-driven packs start in **observe**: they record what they would have done and block
 nothing. `tool-containment` starts in **enforce**, because it does not guess. It refuses calls that
 no capability grants, and calls that carry untrusted arguments into an irreversible tool. Those are

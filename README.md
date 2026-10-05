@@ -33,7 +33,7 @@ pip install agentfox
 agentfox init && agentfox demo
 ```
 
-`init` creates a SQLite database and loads 43 controls and three policy packs, in about a second.
+`init` creates a SQLite database and loads 43 controls and four policy packs, in about a second.
 `demo` runs a thirteen-step walkthrough in about five. Both are offline — no API key, no downloaded
 weights, no network egress.
 
@@ -224,9 +224,9 @@ look the same as an attack, and they are escalated.
 **Optionally, detection gets substantially better.** The judgment tiers are off by default and
 add a model to the decisions where measurement says a model wins — and are forbidden from the ones
 where it loses. With them on, agentfox catches 160/165 of the injection payloads that defeated our
-own pattern detectors, including the encoded ones the
-[adaptive benchmark](benchmarks/adaptive/README.md) attributes nearly all of its 74%
-attack-success figure to, at 94.7% precision against the
+own pattern detectors, including encoded ones (base64, hex, reversal) that a text detector cannot read: the
+[adaptive red team](benchmarks/redteam/README.md) got 74% of its decode-requiring payloads past
+our detectors. It does this at 94.7% precision against the
 [NotInject](benchmarks/data_generalization/README.md) over-defense set. SQL blast-radius analysis
 is byte-for-byte unchanged, because the routing table forbids any model from deciding it.
 [What each tier is worth, and what it costs](benchmarks/judgment/README.md).
@@ -255,18 +255,21 @@ Detection is the layer we trust least. We publish its numbers rather than omit t
 product is designed so that this layer failing is survivable — containment is measured with every
 detector switched off, and [holds](#what-we-measured). These are the open fronts.
 
-- Held-out injection recall is **66.7%**, at 100% precision, in the default configuration. An
-  [adaptive attacker](benchmarks/adaptive/README.md) that reads our verdict and retries gets
-  **73% of the attacks we catch through within 50 attempts** — though an enabled
-  [judgment tier](benchmarks/judgment/README.md) catches 157 of the 165 payloads that get
+- The default heuristic detector's held-out injection recall is **26.7%**, at 100% precision.
+  The opt-in classifier ensemble reaches **66.7%** at the same precision, but needs
+  `agentfox[classifiers]` and a one-time weights download
+  ([REPORT.md](benchmarks/REPORT.md)). An [adaptive attacker](benchmarks/adaptive/README.md)
+  that reads our verdict and retries gets **73% of the attacks we catch through within 50
+  attempts**, measured against the default stack without the ensemble — though an enabled
+  [judgment tier](benchmarks/judgment/README.md) catches 160 of the 165 payloads that get
   through, at 94.7% precision, at the cost of a network round trip per guarded call.
 - The deterministic answerability classifier abstains on 57/676 contested questions; with a
   judgment tier that becomes 572/676. It costs precision: over-refusal on genuinely answerable
   questions rises from 0.75% to 6.8% across all 3,447 of them. That is the right trade for an abstention boundary and the
   wrong one for a hard block, which is why it is opt-in.
 - Against a real, independently installed `llm-guard` on indirect injection via tool output, it is
-  more precise than us: **81.8% against our 66.7%**, on the same 20 cases — while we catch all 20
-  and it catches 18. The cost is ours: a round-4 ensemble backstop bought recall everywhere and
+  more precise than us: **81.8% against our 66.7%**, on the same 20 cases — while of the 10 attacks
+  among them we catch all 10 and it catches 9. The cost is ours: a round-4 ensemble backstop bought recall everywhere and
   paid for it in false positives everywhere. Narrowing that trade is open work.
 - On AgentDojo, per-argument taint misses 61 of 702 attacker write calls: identifiers shorter than
   six characters are never matched, and attacker text embedded inside a longer argument is not

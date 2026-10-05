@@ -136,10 +136,11 @@ def init(
     """Set everything up. Idempotent, offline, and safe to run twice.
 
     Creates the database, applies migrations, loads the control catalog and the
-    shipped policy packs, each in the mode it declares (baseline and
+    shipped policy packs, each in the mode it declares (baseline, coding-agent and
     eu-ai-act-high-risk observe; tool-containment enforces), and writes a
     agentfox.toml carrying the real runtime defaults so they are visible rather than
-    implicit. NOMETRIA_* environment variables override that file.
+    implicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)
+    override that file.
     """
     from ..compliance import load_catalog, sync_catalog
     from ..config import get_settings
