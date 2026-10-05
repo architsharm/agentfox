@@ -264,6 +264,7 @@ export function Severity({ value }: { value: string }) {
  */
 const FINDING_TYPE_INFO: Record<string, { label: string; blurb?: string }> = {
   guardrail_detection: { label: "Guardrail catch", blurb: "A detector caught something in a request or response and it changed the outcome — see the masked excerpt below." },
+  containment: { label: "Contained action", blurb: "A tool call was stopped or held by a permission, data-provenance or blast-radius rule — not by a content detector. The title says which, and whether it was enforced or only observed." },
   redteam: { label: "Security test", blurb: "Simulated attacks got through without being blocked." },
   // Was absent, so it rendered through the humanize fallback as the bare slug
   // "redteam over block" — which reads as a typo rather than as a category.
