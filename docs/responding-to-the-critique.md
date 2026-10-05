@@ -85,14 +85,20 @@ With **every detector disabled** — a total bypass, not a simulated miss:
 
 - 8 of 8 attack scenarios were still contained, with zero detector signal, while 4 of 4 legitimate calls were
   still allowed.
-- Across AgentDojo's 617 ground-truth calls, **42 of 42 attacker calls that act** were contained and **552 of
-  552 legitimate calls** were allowed. Results were identical with detectors on and off.
+- On AgentDojo (97 user tasks, 949 attack pairs, ground truth executed and replayed), with argument
+  provenance inferred from the real tool outputs, **588 of 588 attack pairs** were contained at
+  session-level taint. The price was benign utility: **24 of 97 benign tasks** ran without escalation to
+  a human. Per-argument taint ran 37 of 97 benign tasks and contained 527 of 588 attack pairs.
+- Our earlier AgentDojo figures (every acting attacker call contained, 42 of the 42; every legitimate
+  call allowed, 552 of the 552) took provenance from the benchmark's labels and counted each task once per registered AgentDojo
+  version. They are withdrawn; read them as the policy's behaviour given perfect provenance.
 
 Check it yourself:
 
 ```bash
 uv run python benchmarks/containment/run_containment_benchmark.py
-uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py
+uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py   # label-assigned upper bound
+# inferred provenance: benchmarks/agentdojo_e2e/README.md, "Reproducing"
 ```
 
 ## What we still do not claim

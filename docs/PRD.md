@@ -122,9 +122,9 @@ scenarios verified by executing against the real product, with the harness faili
 any claim disagrees with what happens.
 
 **The claim that now leads, because it is the one that survives a successful attack:**
-with **every detector disabled**, 8 of 8 attack scenarios are still contained and 42 of 42
-attacker calls that act across AgentDojo's 617 ground-truth calls are still contained, while
-552 of 552 legitimate calls are allowed. We separately publish our own adaptive-attack
+with **every detector disabled**, 8 of 8 attack scenarios are still contained, and on AgentDojo,
+with argument provenance inferred from the real tool outputs, 588 of 588 attack pairs are
+contained at session-level taint, at a cost of 24 of 97 benign tasks running without escalation. We separately publish our own adaptive-attack
 success rate against our detectors (**73% at 50 attempts**), because a vendor that only
 publishes the flattering half of that pair should not be believed. See
 [`benchmarks/containment/`](../benchmarks/containment/README.md),

@@ -214,10 +214,12 @@ were measured with **every detector switched off** — a total bypass, not a sim
 | Evidence | Result |
 |---|---|
 | [Containment under total detector bypass](benchmarks/containment/README.md) | **8/8 attacks contained with zero detector signal**; 4/4 legitimate calls still allowed |
-| [AgentDojo, replayed end to end](benchmarks/agentdojo_e2e/README.md) over 617 ground-truth calls | **42/42 attacker calls that act, contained**; **552/552 legitimate calls allowed** — identical with detectors disabled |
+| [AgentDojo, replayed end to end](benchmarks/agentdojo_e2e/README.md): 97 user tasks and 949 attack pairs, with argument provenance inferred from the real tool outputs | **588/588 attack pairs contained** with session-level taint, but only **24/97 benign tasks (24.7% [17.2, 34.2]) run without escalating to a human**. Per-argument taint: 37/97 benign tasks, 527/588 attack pairs contained. Taking provenance from the benchmark's own labels gives 97/97 and 588/588; that is an upper bound, not a measurement |
 
 Capability grants, argument provenance and declared impact tiers did all of that work. Detection
-contributed nothing, by construction.
+contributed nothing, by construction. The cost is benign utility: when provenance has to be
+inferred rather than read from a label, legitimate actions that copy a value out of a tool output
+look the same as an attack, and they are escalated.
 
 **Optionally, detection gets substantially better.** The judgment tiers are off by default and
 add a model to the decisions where measurement says a model wins — and are forbidden from the ones
@@ -266,8 +268,9 @@ detector switched off, and [holds](#what-we-measured). These are the open fronts
   more precise than us: **81.8% against our 66.7%**, on the same 20 cases — while we catch all 20
   and it catches 18. The cost is ours: a round-4 ensemble backstop bought recall everywhere and
   paid for it in false positives everywhere. Narrowing that trade is open work.
-- AgentDojo's read-only attack calls are contained 20/23. A compromised agent asked to read
-  something it legitimately may read is indistinguishable from one doing its job.
+- On AgentDojo, per-argument taint misses 61 of 702 attacker write calls: identifiers shorter than
+  six characters are never matched, and attacker text embedded inside a longer argument is not
+  found. Session-level taint misses none of them and escalates three in four benign tasks.
 - The opt-in classifier ensemble reaches 85.6% and 98.6% recall on two independent datasets, but it
   is **not the shipped default** — the default stack scores far lower on those same two, and on long
   prompts the ensemble mostly times out. Making it fast enough to ship on is open work.

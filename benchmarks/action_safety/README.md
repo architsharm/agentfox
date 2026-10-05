@@ -79,6 +79,10 @@ This is **not** a precision/recall benchmark against a binary label the way the 
 | `injection` (compromised-agent calls) | 65 | 0.0% |
 | `user` (legitimate calls) | 552 | 0.0% — **after a fix; was 2.9% before it** |
 
+The extraction behind these counts reads every registered version of each AgentDojo task, so a task
+that exists in v1, v1.1 and v1.2 is counted up to three times: the 552 user calls are 339 unique
+ones and the 65 injection calls are 45. The flag rates are unaffected (zero either way).
+
 Zero injection-task calls flagged is expected and correct — none of AgentDojo's realistic attacker-controlled values (IBANs, dates, file paths, Slack channel names) are wildcard-, SQL-injection-, or path-traversal-shaped, so there's nothing for a syntax-level check to catch. That's the F3/F4 boundary working as designed, not a gap in this control.
 
 ### A real, larger false-positive class found — and fixed

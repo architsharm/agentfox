@@ -68,8 +68,10 @@ is what genuinely complementary signals look like.
 The shipping check flags nothing here, and the benchmark README says why: it is
 a *syntax-level* check on tool arguments, and AgentDojo's attacker-controlled
 values are ordinary-looking IBANs, dates and channel names. Containment happens
-at the capability layer instead, where the e2e benchmark records 42/42 acting
-attack calls contained.
+at the capability layer instead (see `benchmarks/agentdojo_e2e/`, where, with
+provenance inferred rather than labelled, session-level taint contains every
+evaluable attack pair at a large benign-utility cost). The 617 calls here count
+each AgentDojo task once per registered version; 384 are unique.
 
 Jev at 0.5 flags 22 of the 65 with 3 false positives across 552 benign calls.
 So it supplies a detection signal where the syntactic control has none by

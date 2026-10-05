@@ -36,15 +36,12 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from jev_data import data_dir  # noqa: E402
 from rj_run import QUESTIONS  # noqa: E402  - frozen, do not edit here
 from sp_run import JEV_URL, _errors, _post  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-DATA = pathlib.Path(
-    "/private/tmp/claude-501/-Users-architsharma-guardrails--claude-worktrees-"
-    "gap-analysis-failure-modes-2a3ba9/51690438-15cf-42ec-80c2-29ce269bcca9/"
-    "scratchpad/data"
-)
+DATA = data_dir()
 #: Jev's own guidance is that accuracy falls as unrelated state grows, and the
 #: longest trajectory here is 357k characters. Keep the tail, which is where an
 #: unsafe act usually lands.

@@ -355,10 +355,9 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "Where does this sit relative to a gateway or a web application firewall?",
     a: (
       <>
-        A network firewall reads HTTP at the edge; a gateway routes and rate-limits it.
-        Neither knows which agent made the call, what it was granted, or where an
-        argument&rsquo;s value came from. AgentFox is a firewall one layer in, on the
-        agent&rsquo;s own actions rather than on its traffic, and it replaces neither.
+        A firewall reads HTTP. A gateway routes it. Neither knows which agent made the
+        call, what it was granted, or where an argument came from. This checks the
+        action. It does not replace either of those.
       </>
     ),
   },
@@ -375,11 +374,9 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "What happens if the control plane is slow or down?",
     a: (
       <>
-        You declare per service whether it fails open or closed; the shipped default is open.
-        Fail open serves the request, writes a degradation record, stamps the response with a
-        header naming the control that was down, and converts to closed once the degradation
-        outlasts its budget. Four controls can never fail open: tenant isolation, entitlement
-        filtering, data access scope and the audit chain.
+        You choose fail open or closed per service. The default is open: the request
+        proceeds, and the gap is written down. Tenant isolation, entitlement, data
+        access scope, and the audit chain cannot fail open.
       </>
     ),
   },

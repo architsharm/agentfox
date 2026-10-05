@@ -549,6 +549,8 @@
 .mk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .mk-grid { display: grid; gap: var(--gap-grid); }
 .mk-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.mk-grid-pair { grid-template-columns: 1fr; }
+@media (min-width: 760px) { .mk-grid-pair { grid-template-columns: 1fr 1fr; } }
 .mk-grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 /* Counted grids. auto-fit picks its column count from the viewport, which strands
    one card alone on a second row for the five-figure evidence band and the
