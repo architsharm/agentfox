@@ -15,7 +15,6 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 
-import httpx
 import pytest
 from sqlalchemy import select
 
@@ -160,7 +159,7 @@ def test_a_url_source_is_hashed_and_marked_valid_on_first_check(seeded, monkeypa
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr("agentfox.grounding.provenance.httpx.get", lambda *a, **k: _Resp())
+    monkeypatch.setattr("agentfox.core.outbound.guarded_get", lambda *a, **k: _Resp())
     result = validate_source(seeded, url)
     assert result["status"] == VALID
     assert result["content_hash"] == hashlib.sha256(b"pricing content v1").hexdigest()
@@ -178,7 +177,7 @@ def test_changed_content_is_flagged_against_the_previously_recorded_hash(seeded,
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr("agentfox.grounding.provenance.httpx.get", lambda *a, **k: _RespV1())
+    monkeypatch.setattr("agentfox.core.outbound.guarded_get", lambda *a, **k: _RespV1())
     first = validate_source(seeded, url)
     assert first["status"] == VALID
 
@@ -188,7 +187,7 @@ def test_changed_content_is_flagged_against_the_previously_recorded_hash(seeded,
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr("agentfox.grounding.provenance.httpx.get", lambda *a, **k: _RespV2())
+    monkeypatch.setattr("agentfox.core.outbound.guarded_get", lambda *a, **k: _RespV2())
     second = validate_source(seeded, url)
     assert second["status"] == CHANGED
 
@@ -198,9 +197,11 @@ def test_an_unreachable_url_is_reported_rather_than_silently_passed(seeded, monk
     register_source(seeded, url, tier=APPROVED)
 
     def _explode(*a, **k):
-        raise httpx.ConnectError("no route to host")
+        from agentfox.core.outbound import OutboundRefused
 
-    monkeypatch.setattr("agentfox.grounding.provenance.httpx.get", _explode)
+        raise OutboundRefused("could not fetch the source: no route to host")
+
+    monkeypatch.setattr("agentfox.core.outbound.guarded_get", _explode)
     result = validate_source(seeded, url)
     assert result["status"] == UNREACHABLE
     record = seeded.scalar(select(SourceRecord).where(SourceRecord.key == url))
@@ -306,7 +307,7 @@ def test_an_api_connection_sends_the_decrypted_credential(seeded, encryption_key
 
     seen = {}
 
-    def fake_get(url, *, headers=None, timeout=None, follow_redirects=None):
+    def fake_get(url, *, headers=None, **_):
         seen["url"] = url
         seen["headers"] = headers
 
@@ -318,7 +319,7 @@ def test_an_api_connection_sends_the_decrypted_credential(seeded, encryption_key
 
         return _Resp()
 
-    monkeypatch.setattr("agentfox.grounding.provenance.httpx.get", fake_get)
+    monkeypatch.setattr("agentfox.core.outbound.guarded_get", fake_get)
     result = validate_source(seeded, "confluence-space")
     assert result["status"] == VALID
     assert seen["url"] == "https://wiki.example.com/api/space"
@@ -336,7 +337,7 @@ def test_a_source_with_no_connection_still_falls_back_to_a_plain_url_check(seede
         def raise_for_status(self):
             pass
 
-    monkeypatch.setattr("agentfox.grounding.provenance.httpx.get", lambda *a, **k: _Resp())
+    monkeypatch.setattr("agentfox.core.outbound.guarded_get", lambda *a, **k: _Resp())
     result = validate_source(seeded, "https://docs.example.com/plain")
     assert result["status"] == VALID
 

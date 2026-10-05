@@ -28,11 +28,11 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-import httpx
 from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import Session
 
+from agentfox.core import outbound
 from agentfox.core.crypto import decrypt_secret, encrypt_secret
 from agentfox.core.models import SourceConnection, SourceRecord, utcnow
 
@@ -223,11 +223,15 @@ def _validate_api(
         headers[header_name] = f"{prefix}{token}" if header_name == "Authorization" else token
 
     try:
-        resp = httpx.get(
-            base_url, headers=headers, timeout=VALIDATE_TIMEOUT_SECONDS, follow_redirects=True
+        resp = outbound.guarded_get(
+            base_url,
+            what="the source",
+            headers=headers,
+            timeout=VALIDATE_TIMEOUT_SECONDS,
+            max_bytes=VALIDATE_MAX_BYTES,
+            truncate=True,
         )
-        resp.raise_for_status()
-    except httpx.HTTPError as exc:
+    except outbound.OutboundRefused as exc:
         return _finish(
             session, record, now, UNREACHABLE, reason=f"'{base_url}' could not be fetched: {exc}"
         )
@@ -283,9 +287,14 @@ def validate_source(
         )
 
     try:
-        resp = httpx.get(key, timeout=VALIDATE_TIMEOUT_SECONDS, follow_redirects=True)
-        resp.raise_for_status()
-    except httpx.HTTPError as exc:
+        resp = outbound.guarded_get(
+            key,
+            what="the source",
+            timeout=VALIDATE_TIMEOUT_SECONDS,
+            max_bytes=VALIDATE_MAX_BYTES,
+            truncate=True,
+        )
+    except outbound.OutboundRefused as exc:
         return _finish(
             session, record, now, UNREACHABLE, reason=f"'{key}' could not be fetched: {exc}"
         )

@@ -21,6 +21,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from agentfox.core import outbound
 from agentfox.core.db import session_scope
 from agentfox.core.tenancy import system_scope
 
@@ -201,7 +202,7 @@ def test_spec_fetch_refuses_internal_targets_and_other_schemes(url, monkeypatch)
     def _no_network(*a, **k):  # the refusal must happen before any connection
         raise AssertionError(f"a connection was attempted for {url}")
 
-    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(_no_network))
+    monkeypatch.setattr(outbound, "_TRANSPORT", httpx.MockTransport(_no_network))
     with pytest.raises(openapi.SpecFetchError):
         openapi.fetch_spec(url)
 
@@ -211,10 +212,10 @@ def test_spec_fetch_refuses_a_name_that_resolves_to_a_private_address(monkeypatc
 
     # One public and one private answer: every resolved address must be public.
     monkeypatch.setattr(
-        openapi, "_getaddrinfo", _fake_dns({"evil.example": ["93.184.216.34", "10.1.2.3"]})
+        outbound, "_getaddrinfo", _fake_dns({"evil.example": ["93.184.216.34", "10.1.2.3"]})
     )
     monkeypatch.setattr(
-        openapi, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(200, json=SPEC))
+        outbound, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(200, json=SPEC))
     )
     with pytest.raises(openapi.SpecFetchError, match="private|internal|not allowed"):
         openapi.fetch_spec("https://evil.example/openapi.json")
@@ -230,8 +231,8 @@ def test_spec_fetch_connects_to_the_vetted_address_not_a_second_lookup(monkeypat
         seen.append(request)
         return httpx.Response(200, json=SPEC)
 
-    monkeypatch.setattr(openapi, "_getaddrinfo", _fake_dns({"api.example": ["93.184.216.34"]}))
-    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(handler))
+    monkeypatch.setattr(outbound, "_getaddrinfo", _fake_dns({"api.example": ["93.184.216.34"]}))
+    monkeypatch.setattr(outbound, "_TRANSPORT", httpx.MockTransport(handler))
     assert openapi.fetch_spec("https://api.example/openapi.json") == SPEC
     assert seen[0].url.host == "93.184.216.34"
     assert seen[0].headers["host"] == "api.example"
@@ -244,8 +245,8 @@ def test_spec_fetch_revalidates_every_redirect(monkeypatch):
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(302, headers={"location": "http://169.254.169.254/latest/"})
 
-    monkeypatch.setattr(openapi, "_getaddrinfo", _fake_dns({"api.example": ["93.184.216.34"]}))
-    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(handler))
+    monkeypatch.setattr(outbound, "_getaddrinfo", _fake_dns({"api.example": ["93.184.216.34"]}))
+    monkeypatch.setattr(outbound, "_TRANSPORT", httpx.MockTransport(handler))
     with pytest.raises(openapi.SpecFetchError):
         openapi.fetch_spec("https://api.example/openapi.json")
 
@@ -259,11 +260,11 @@ def test_spec_fetch_follows_a_redirect_to_another_public_host(monkeypatch):
         return httpx.Response(200, json=SPEC)
 
     monkeypatch.setattr(
-        openapi,
+        outbound,
         "_getaddrinfo",
         _fake_dns({"api.example": ["93.184.216.34"], "cdn.example": ["151.101.1.1"]}),
     )
-    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(handler))
+    monkeypatch.setattr(outbound, "_TRANSPORT", httpx.MockTransport(handler))
     assert openapi.fetch_spec("https://api.example/openapi.json") == SPEC
 
 
@@ -273,9 +274,9 @@ def test_spec_fetch_private_hosts_are_an_explicit_opt_in(monkeypatch):
     from agentfox.core.config import get_settings
     from agentfox.discovery import openapi
 
-    monkeypatch.setattr(get_settings(), "spec_fetch_allow_private_hosts", True)
+    monkeypatch.setattr(get_settings(), "outbound_allow_private_hosts", True)
     monkeypatch.setattr(
-        openapi, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(200, json=SPEC))
+        outbound, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(200, json=SPEC))
     )
     assert openapi.fetch_spec("http://10.0.0.5/openapi.json") == SPEC
     with pytest.raises(openapi.SpecFetchError):
@@ -468,3 +469,44 @@ def test_the_registry_route_holds_changes_unless_accepted(seeded_app):
         headers=admin,
     )
     assert accepted.json()["held"] == []
+
+
+# ---------------------------------------------------------------------------
+# 5. Source validation fetches through the same guard
+# ---------------------------------------------------------------------------
+
+
+def test_validating_a_source_url_never_reaches_cloud_metadata(seeded_app, monkeypatch):
+    """A source key or a knowledge-base `base_url` is operator input, fetched by the
+    server: the same guard as the spec fetch applies, so it cannot read the
+    instance metadata endpoint or this deployment's own network."""
+    from agentfox.grounding.provenance import UNREACHABLE, register_source, validate_source
+
+    def _no_network(request):
+        raise AssertionError(f"connected to {request.url}")
+
+    monkeypatch.setattr(outbound, "_TRANSPORT", httpx.MockTransport(_no_network))
+    with system_scope("test"), session_scope() as session:
+        for url in (
+            "http://169.254.169.254/latest/meta-data/iam/",
+            "http://127.0.0.1:8080/api/tokens",
+            "http://10.0.0.7/internal",
+        ):
+            register_source(session, url)
+            result = validate_source(session, url)
+            assert result["status"] == UNREACHABLE, url
+            assert "refusing to fetch the source" in result["reason"]
+
+
+def test_a_large_source_is_hashed_on_its_first_bytes_not_refused(seeded_app, monkeypatch):
+    from agentfox.grounding import provenance
+
+    monkeypatch.setattr(outbound, "_getaddrinfo", _fake_dns({"docs.example": ["93.184.216.34"]}))
+    big = b"x" * (provenance.VALIDATE_MAX_BYTES + 10_000)
+    monkeypatch.setattr(
+        outbound, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(200, content=big))
+    )
+    with system_scope("test"), session_scope() as session:
+        provenance.register_source(session, "https://docs.example/handbook")
+        result = provenance.validate_source(session, "https://docs.example/handbook")
+    assert result["status"] == provenance.VALID
