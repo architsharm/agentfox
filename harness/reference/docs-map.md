@@ -48,7 +48,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | File | Known drift | Use instead |
 |---|---|---|
 | `docs/architecture/api-spec.md` | missing and phantom routes | `harness/reference/http-api.md`, live `/docs` |
-| `docs/architecture/data-model.md` | wrong model path | `src/agentfox/core/models.py` |
+| `docs/architecture/data-model.md` | wrong model path | `src/agentfox/core/models/` |
 
 ## Class D — task-scoped: read only when working on that thing
 

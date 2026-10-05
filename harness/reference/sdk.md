@@ -2,7 +2,7 @@
 title: Python SDK and integrations
 layer: reference
 audience: agents wiring AgentFox into a user's codebase
-source_of_truth: src/agentfox/__init__.py, autoguard.py, sdk/, integrations/
+source_of_truth: src/agentfox/__init__.py, runtime/autoguard/, sdk/, integrations/
 verified_against: commit 6863b8b, 2026-09-15
 ---
 
