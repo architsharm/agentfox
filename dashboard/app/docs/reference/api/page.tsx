@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code } from "@/components/docs/blocks";
+import { Callout, Code, Output } from "@/components/docs/blocks";
 import { API_COUNT, ApiReference } from "@/components/docs/reference";
 import { publicPageMetadata } from "@/lib/site";
 
@@ -38,6 +38,19 @@ export default function Page() {
        "arguments": {"ticket_id": "T-1042"},
        "provenance": {"ticket_id": "user"},
        "intent": "close tickets the customer asked to close"}'`}</Code>
+      <Output title="On a fresh install (trimmed)">{`HTTP/1.1 200 OK
+{"verdict":"block", "mode":"enforce",
+ "rules_fired":[{"rule_id":"capability.denied", ...},
+                {"rule_id":"tool.not_declared", "effect":"escalate", ...}],
+ "reason":"no resolved identity for the caller, so it holds no grants (default deny).
+   To have grants proposed from the calls this agent has made, run
+   \`agentfox policy proposals from-traffic\` and approve them; ...",
+ "explanation":{..., "dispute":{"endpoint":"POST /api/guardrails/feedback", ...}}}`}</Output>
+      <p>
+        A verdict is a 200 with a body, not an error status: your code reads{" "}
+        <code>verdict</code> and decides. Nothing is granted on a fresh install, so the
+        first call is refused by default-deny, and the reason says how to fix it.
+      </p>
       <p>
         Worked examples for each endpoint are in the guides:{" "}
         <Link href="/docs/guides/gateway">Any language: the gateway</Link> covers the

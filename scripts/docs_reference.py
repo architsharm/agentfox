@@ -226,7 +226,7 @@ def build_api() -> dict[str, Any]:
 # Checking the pages
 # ---------------------------------------------------------------------------
 
-CODE_BLOCK = re.compile(r"<(code|Code|Terminal)\b[^>]*>(.*?)</\1>", re.S)
+CODE_BLOCK = re.compile(r"<(code|Code|Output|Terminal)\b[^>]*>(.*?)</\1>", re.S)
 CODE_PROP = re.compile(
     r"\b(?:code|command|cmd)=\{?`([^`]*)`\}?|\b(?:code|command|cmd)=\"([^\"]*)\"", re.S
 )
