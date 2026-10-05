@@ -6,6 +6,7 @@ import { ApiDown, Empty, InfoTip, InventoryStrip, Panel, Severity, Stat, agentNa
 import { PageHeader } from "@/components/PageHeader";
 import { Countdown } from "@/components/Countdown";
 import { DetectorCatalogue } from "@/components/DetectorCatalogue";
+import { JudgmentPosture } from "@/components/JudgmentPosture";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -272,6 +273,7 @@ async function RulesTab({ agent }: { agent?: string }) {
           exact command, because "install the package" without the name is the
           same dead end the count was. */}
       <DetectorCatalogue detectors={detectors.detectors} />
+      <JudgmentPosture posture={detectors.judgment} />
 
       {/* Was a heading, a sentence pointing elsewhere, and a 22-row reference
           table open on every load — a catalogue you could read but not act on.
