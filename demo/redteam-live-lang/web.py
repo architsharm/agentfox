@@ -34,8 +34,8 @@ from recorded_scenarios import (
     ESCALATE_TURNS,
 )
 
-from agentfox.runtime.autoguard import Blocked
 from agentfox.core.db import init_db, session_scope
+from agentfox.runtime.autoguard import Blocked
 
 app = FastAPI(title="AgentFox red-team live demo (LangChain)")
 

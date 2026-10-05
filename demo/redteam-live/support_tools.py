@@ -27,9 +27,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from agentfox.integrations.mcp import McpCallOutcome, McpGovernor, tool_key
 from agentfox.prove.audit.trace import start_trace
 from agentfox.runtime.enforcement import Enforcer
-from agentfox.integrations.mcp import McpCallOutcome, McpGovernor, tool_key
 
 AGENT_SLUG = "support-crew-live"
 SERVER_NAME = "support-tools"
