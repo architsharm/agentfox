@@ -5,7 +5,8 @@
 checked into their own `vendor/` directory, not an editable install — see
 docs/architecture/high-level-design.md's deployment-shape section for why. That makes
 the wheel a second copy of the package that a commit can update `src/agentfox/`
-without touching, and nothing before this hook noticed when that happened. It already happened twice on 2026-09-04: the demo
+without touching, and nothing before this hook noticed when that happened. It already
+happened twice on 2026-09-04: the demo
 crashed in production on a schema change its wheel never picked up, and
 `guardrails-api` served week-old code for long enough that a completely new route
 returned 404 in production.
