@@ -523,7 +523,14 @@
    "audience": "public",
    "summary": "OTLP/HTTP trace ingest",
    "description": "",
-   "params": [],
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
    "body": null
   },
   {
@@ -4685,7 +4692,7 @@
    "section": "mcp-servers",
    "audience": "operator",
    "summary": "snapshot a listing *and* register each tool in the registry.",
-   "description": "snapshot a listing *and* register each tool in the registry.\n\nDistinct from ``/scan``, which only reports hygiene. Registration is what gives\nthe tool a policy identity and a digest to compare against at call time; without\nit the rug-pull check has no baseline.",
+   "description": "snapshot a listing *and* register each tool in the registry.\n\nDistinct from ``/scan``, which only reports hygiene. Registration is what gives\nthe tool a policy identity and a digest to compare against at call time; without\nit the rug-pull check has no baseline.\n\nA changed listing for an already-registered tool is held (reported in ``held``,\nnot registered) unless ``accept_changes`` is true.",
    "params": [
     {
      "name": "name",
@@ -4707,11 +4714,17 @@
     }
    ],
    "body": {
-    "model": "McpScanIn",
+    "model": "McpRegisterIn",
     "fields": [
      {
       "name": "tools",
       "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "accept_changes",
+      "type": "boolean",
       "required": false,
       "description": ""
      }
