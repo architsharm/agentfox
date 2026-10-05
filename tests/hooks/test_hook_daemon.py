@@ -241,7 +241,7 @@ def test_a_missing_daemon_raises_rather_than_deciding(tmp_path):
     """The client does not get to decide the verdict. It says it could not
     ask, and the caller chooses — which is a decision worth making once, in
     one place, rather than implicitly here."""
-    with pytest.raises(DaemonUnavailable, match="agentfox daemon"):
+    with pytest.raises(DaemonUnavailable, match="agentfox admin hooks daemon"):
         guard_tool_call(agent="a", tool="t", arguments={}, path=tmp_path / "nothing.sock")
 
 
