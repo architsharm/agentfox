@@ -132,6 +132,16 @@ class BaseDetector:
     #: Set by detectors that normalise internally, so this class does not do it twice.
     handles_views: bool = False
 
+    #: Published threat identifiers this detector looks for — OWASP LLM / Agentic
+    #: and MITRE ATLAS. Declared rather than inferred from the `owasp_id` it happens
+    #: to stamp on a detection, because the coverage question is "is anything
+    #: watching for this", and a detector that has never fired still is.
+    #:
+    #: Empty is a real answer: several adapters wrap a third-party check whose threat
+    #: mapping is somebody else's to assert. An undeclared detector is reported as
+    #: contributing no coverage rather than being quietly credited with some.
+    covers_threats: tuple[str, ...] = ()
+
     #: None means "use the pipeline's default (`detector_timeout_ms`)". A detector
     #: that genuinely needs longer — a real model forward pass, not a regex scan —
     #: declares that here rather than the pipeline granting everyone more rope,

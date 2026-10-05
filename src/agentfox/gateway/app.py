@@ -32,6 +32,7 @@ from ..providers import all_providers, available_providers
 from .deps import current_user, db
 from .routes import (
     answerability,
+    coverage,
     discovery,
     entitlement,
     escalation,
@@ -296,6 +297,7 @@ def create_app() -> FastAPI:
     app.include_router(messaging.router)
     app.include_router(proposals.router)
     app.include_router(posture.router)
+    app.include_router(coverage.router)
     # Unauthenticated by design (see playground.py's module docstring) — the only
     # router in this app that never depends on `current_user`. It keeps no state in
     # this process: a sandbox is a tenant in the deployment database, so any instance

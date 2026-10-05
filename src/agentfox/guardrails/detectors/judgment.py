@@ -182,6 +182,7 @@ def _why_unavailable(kind: DecisionKind) -> str:
 
 
 class InjectionJudgmentDetector(BaseDetector):
+    covers_threats = ("LLM01", "AML.T0051")
     key = "injection.judgment"
     version = "1"
     #: The surfaces where content arrives from outside the trust boundary.
@@ -337,6 +338,7 @@ class PiiJudgmentDetector(BaseDetector):
         and `allow_egress`.
     """
 
+    covers_threats = ("LLM02", "AML.T0057")
     key = "pii.judgment"
     version = "1"
     #: Every surface personal data can appear on. Unlike injection this

@@ -48,6 +48,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: "Monitor",
     items: [
+      // First in the group, because it is the question that comes before the other
+      // two: "am I covered", then "did something happen", then "what happened on
+      // this one request". That is the order a security engineer works in, and the
+      // product had no answer to the first one at all.
+      ["Threat coverage", "/app/coverage"],
       ["Findings", "/app/findings"],
       ["Traces", "/app/traces"],
     ],
@@ -81,6 +86,9 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
   { label: "API tokens", href: "/app/start?tab=tokens", group: "Start here" },
   { label: "Guardrail tuning", href: "/app/policies?tab=guardrails", group: "Policies" },
   { label: "Judgment posture", href: "/app/policies?tab=judgment", group: "Policies" },
+  { label: "OWASP LLM Top 10", href: "/app/coverage", group: "Threat coverage" },
+  { label: "OWASP Agentic", href: "/app/coverage", group: "Threat coverage" },
+  { label: "MITRE ATLAS", href: "/app/coverage", group: "Threat coverage" },
   { label: "Egress", href: "/app/policies?tab=judgment", group: "Policies" },
   { label: "Escalation", href: "/app/approvals?tab=escalation", group: "Approvals" },
   { label: "Board view", href: "/app/compliance?tab=board", group: "Compliance" },

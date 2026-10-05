@@ -229,6 +229,15 @@ attack-success figure to, at 94.7% precision against the
 is byte-for-byte unchanged, because the routing table forbids any model from deciding it.
 [What each tier is worth, and what it costs](benchmarks/judgment/README.md).
 
+**Threat coverage is a page, not a claim.** Every entry in the OWASP LLM Top 10, OWASP
+Agentic T1–T15 and the runtime-reachable part of MITRE ATLAS, with what this deployment
+actually does about each one: which detectors watch for it, which rules act on it and
+whether they are enforcing or only observing, what was caught, and what the red team got
+through. A threat counts as covered only when a rule is *enforcing* — observe mode stops
+nothing, and a product that counted it would let a fresh install report full coverage
+while blocking nothing. Threats with no control mapped to them appear as gaps rather
+than not appearing at all.
+
 Which tiers run, and what may leave the machine, is editable in the product — Policies →
 Judgment posture — with the deployment acting as a ceiling the product cannot raise. An admin
 can tighten personal-data handling or turn a hosted tier off; nobody can enable one on a

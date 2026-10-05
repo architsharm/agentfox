@@ -80,6 +80,7 @@ def _luhn(digits: str) -> bool:
 
 
 class NativePiiDetector(BaseDetector):
+    covers_threats = ("LLM02", "AML.T0057")
     key = "pii.native"
     version = "1.1"
     surfaces = (
