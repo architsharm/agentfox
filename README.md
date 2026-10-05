@@ -460,6 +460,12 @@ Everything runs on your own infrastructure. There is no licence check, no phone-
 default egress: a fresh install ships with `NOMETRIA_ALLOW_EGRESS=false` and the `echo` provider,
 so it runs end to end with no model and no API key. Point it at a model when you want one.
 
+Set `NOMETRIA_CONSOLE_URL` to wherever your dashboard is reachable and every governed response
+carries an `explain_url` — and an `X-Nometria-Explain` header — pointing at the decision it
+describes, so a block in a log is one click from the reason for it. It is left empty by default
+and never inferred from the request: behind a proxy the `Host` header is whatever the proxy sent,
+and a link to somewhere that does not exist is worse than no link.
+
 **1. One click** — provisions Postgres, the gateway and the dashboard, wired together:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/architsharm/agentfox)

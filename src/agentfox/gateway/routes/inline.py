@@ -132,6 +132,29 @@ def _evidence_from_body(session: Session, body: dict[str, Any]) -> dict[str, Any
     return {"principal": principal, "chunks": chunks or [], "purpose": body.get("purpose")}
 
 
+def _explain_url(result) -> str:
+    """Where a person can go to read this decision, or "" when nobody has said.
+
+    The single cheapest thing this response can do for the engineer who receives
+    it. They meet a block as a line in a log, holding a decision id and a trace id,
+    and until now had to know that a dashboard exists, that it has a Traces page,
+    and how to get from an opaque identifier to the right row on it. Most of them
+    will instead file a ticket saying the gateway is broken.
+
+    Built only from `console_url`, which an operator sets explicitly. Deriving it
+    from the request's Host header would be guessing: behind a proxy that is
+    whatever the proxy sent, and a link to somewhere that does not exist is worse
+    than no link at all.
+    """
+    from ...config import get_settings
+
+    base = (getattr(get_settings(), "console_url", "") or "").rstrip("/")
+    trace_id = getattr(result, "trace_id", None)
+    if not base or not trace_id:
+        return ""
+    return f"{base}/app/traces/{trace_id}"
+
+
 def _blocked_response(result, status: int = 403) -> JSONResponse:
     return JSONResponse(
         status_code=status,
@@ -157,6 +180,9 @@ def _blocked_response(result, status: int = 403) -> JSONResponse:
                 # turning the detector off — so the dispute route ships in the error.
                 "explanation": result.explanation,
                 "suppressed": result.suppressed,
+                # Omitted rather than empty when `console_url` is unset: a null link
+                # in a response is a thing to handle, an absent key is not.
+                **({"explain_url": url} if (url := _explain_url(result)) else {}),
             }
         },
         headers=_headers(result),
@@ -178,6 +204,9 @@ def _headers(result) -> dict[str, str]:
         "X-Nometria-Decision": result.decision_id or "",
         "X-Nometria-Mode": result.mode,
         "X-Nometria-Latency-Ms": f"{result.latency_ms:.2f}",
+        # In the headers too, because the response body of a streamed completion is
+        # a sequence of SSE frames and the engineer debugging one is reading curl -i.
+        **({"X-Nometria-Explain": url} if (url := _explain_url(result)) else {}),
     }
 
 
@@ -826,6 +855,7 @@ def guard_content(
     mode is the one that did not take effect. Gate on the applied one.
     """
     from ...audit.trace import end_trace, start_trace
+    from ...config import get_settings
     from ...models import Trace
     from ...registry.service import slugify
 
@@ -881,6 +911,12 @@ def guard_content(
     # it, so ending it must not overwrite that with the default: a second guard call
     # on the same trace_id that allows must not erase the first one that blocked.
     end_trace(session, trace, verdict=trace.verdict, status=trace.status)
+    # On this route too, and on every verdict rather than only the blocking ones:
+    # the commonest question about an *allowed* request is "why did you flag it and
+    # let it through", which is the same page.
+    console = (getattr(get_settings(), "console_url", "") or "").rstrip("/")
+    if console:
+        result["explain_url"] = f"{console}/app/traces/{trace.id}"
     return with_verdict_aliases(result)
 
 

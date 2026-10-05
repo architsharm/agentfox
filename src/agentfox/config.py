@@ -182,6 +182,19 @@ class Settings(BaseSettings):
     # --- Deployment ------------------------------------------------------
     org_id: str = "org_default"
     environment: str = "development"
+    # Where this deployment's dashboard is reachable, used to turn a decision id in
+    # a blocked response into a link somebody can open.
+    #
+    # Empty by default and never guessed: the gateway cannot see how it is reached.
+    # Behind a load balancer, in a container, or on a private network, the Host
+    # header is whatever the proxy chose to send, and a link built from it sends an
+    # engineer somewhere that does not exist — which is worse than no link, because
+    # they conclude the dashboard is broken rather than unconfigured. So this is a
+    # deliberate statement by whoever runs the deployment, and the response simply
+    # omits the field until they make it.
+    #
+    # The gateway makes no request to it and does not check that it resolves.
+    console_url: str = ""
     # NFR-4: zero egress by default. Nothing leaves the customer boundary unless
     # this is explicitly turned on.
     allow_egress: bool = False
