@@ -514,3 +514,24 @@ def test_the_scheduled_job_files_proposals(session, packs):
     result = handler(session, {"days": 30})
     assert len(result["filed"]) == 6
     assert session.scalars(select(Identity)).first() is None, "filing never grants anything"
+
+
+def test_a_composition_block_points_at_output_trust_not_the_queue(session, packs):
+    """Composition blocks rather than escalating, so there is no approval to give. The
+    report says what would make the flow legitimate instead."""
+    _traffic(session)
+    propose_from_traffic(session, agent=AGENT)
+    for proposal in _by_tool(session, DECLARE_KIND).values():
+        _approve_and_apply(session, proposal, second=True)
+    _approve_and_apply(session, _by_tool(session, GRANT_KIND)["send_email"])
+    blocked = _conversation(session, "ada@example.com", "ORD-77812", 112.0, refund=False)[-1]
+    assert "composition.escalation" in {r["rule_id"] for r in blocked.rules_fired}
+
+    report = propose_from_traffic(session, agent=AGENT)
+    [held] = [
+        s
+        for s in report.skipped
+        if s.get("tool_key") == "send_email" and "nobody approved" in s["reason"]
+    ]
+    assert "composition.escalation" in held["reason"]
+    assert "--output-trust trusted" in held["reason"]

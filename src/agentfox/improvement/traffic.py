@@ -231,8 +231,8 @@ def classify(
     approved = approval is not None and approval.status == "approved"
     if provenance:
         if approved:
-            return "benign", f"{provenance[0]} fired and a person approved the call"
-        return "held", provenance[0]
+            return "benign", f"{' and '.join(provenance)} fired and a person approved the call"
+        return "held", " and ".join(provenance)
     unassessed = (
         impact not in (None, "read")
         and str(taint.get("tool_impact") or "read") == "read"
@@ -692,7 +692,7 @@ def propose_from_traffic(
         if recent_held:
             reasons = sorted({c.why for c in recent_held})
             hint = ""
-            if "composition.escalation" in reasons:
+            if any("composition.escalation" in r for r in reasons):
                 # Composition blocks rather than escalates, so there is no approval to
                 # give; the flow is either an attack or a source someone should trust.
                 hint = (
