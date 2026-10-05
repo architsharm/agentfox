@@ -201,6 +201,9 @@ class Tool(Base, TimestampMixin):
     kind: Mapped[str] = mapped_column(String(32), default="function")
     # The axis policy reasons over. `irreversible` is the class that warrants HITL.
     impact: Mapped[str] = mapped_column(String(24), default="read")
+    # The tool's input schema. May carry `x-agentfox-impact-source: inferred` (a JSON
+    # Schema vendor keyword, ignored by validators) — see
+    # `registry.service.impact_source_of`.
     schema_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     mcp_server_id: Mapped[str | None] = mapped_column(String(40))
     description: Mapped[str] = mapped_column(Text, default="")

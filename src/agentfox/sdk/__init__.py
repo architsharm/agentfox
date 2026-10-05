@@ -30,6 +30,7 @@ call has no network hop to spend against the latency budget (NFR-1).
 from __future__ import annotations
 
 import functools
+import logging
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -42,6 +43,8 @@ from ..db import session_scope
 from ..enforcement import EnforcementResult, Enforcer
 from ..guardrails import TaintTracker
 from ..integrations.correlation import refs_from_env
+
+log = logging.getLogger(__name__)
 
 
 class PolicyViolation(Exception):
@@ -285,11 +288,21 @@ class AgentFox:
         The decorated function's *keyword arguments* become the policy input, which is
         why argument-level constraints and provenance work without the caller doing
         anything special.
+
+        ``impact`` is a declaration, and is written to the tool registry: every
+        impact-based containment rule reads `Tool.impact`, so an impact that lived
+        only on this wrapper was one no policy ever saw.
         """
 
         def decorator(fn: Callable) -> Callable:
+            description = (fn.__doc__ or "").strip().split("\n")[0]
+            declared = self._declare_tool(key, impact, description)
+
             @functools.wraps(fn)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
+                nonlocal declared
+                if not declared:  # the database was not there at import time
+                    declared = self._declare_tool(key, impact, description)
                 target = session or getattr(wrapper, "_nometria_session", None)
                 if target is None:
                     with self.session() as ad_hoc:
@@ -352,6 +365,30 @@ class AgentFox:
             )
 
     # -- internals ---------------------------------------------------------
+    def _declare_tool(self, key: str, impact: str, description: str = "") -> bool:
+        """Record a code-level tool declaration. Returns whether the row was written.
+
+        Best effort, because a decorator runs at import time and must never be the
+        reason an application fails to import: if the database is not reachable yet
+        the declaration is kept in-process (`DECLARED_TOOL_IMPACTS`, which `auto()`
+        consults) and the write is retried on the tool's first call. Remote mode
+        writes nothing locally — the gateway's registry is that deployment's record.
+        """
+        from ..registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
+
+        DECLARED_TOOL_IMPACTS[key] = impact
+        if self.remote:
+            return True
+        try:
+            with self._db() as session:
+                upsert_tool(
+                    session, key, impact=impact, description=description, impact_source="declared"
+                )
+            return True
+        except Exception as exc:
+            log.debug("agentfox: tool '%s' not yet written to the registry: %s", key, exc)
+            return False
+
     def _complete(self, **kwargs: Any) -> tuple[EnforcementResult, Any]:
         if self.remote:
             return self._remote_complete(**kwargs)

@@ -88,9 +88,21 @@ import agentfox
 agentfox.auto()
 ```
 
-Every model call in the process (OpenAI, Anthropic, LiteLLM, LangChain — sync, async, streamed) is
-traced, evaluated against policy and written to the audit log. Nothing else changes, and no model
-call is blocked: `auto()` follows each policy's own mode, and `baseline` starts in observe.
+Every model call in the process (OpenAI chat completions, Anthropic messages, LiteLLM, LangChain —
+sync, async, streamed) is traced, evaluated against policy and written to the audit log: the request
+messages, the response text, and every tool call in the response (OpenAI `tool_calls`, Anthropic
+`tool_use`). Each tool call goes through the same check as `/v1/guard/tool_call` before your code
+can run it, with argument provenance read from the conversation — a value copied out of a
+`role="tool"` message counts as tool output. A tool seen for the first time is registered with an
+impact guessed from its name and marked `inferred` until you confirm it (`agentfox tools list`,
+`agentfox tools declare`); `@fox.tool(impact=...)` in code counts as a declaration.
+
+Nothing is blocked by the line itself: `auto()` follows each policy's own mode, `baseline` starts in
+observe, and capability default-deny on tool calls applies once the agent holds its first grant.
+After `agentfox init`, `tool-containment` enforces, so an irreversible tool whose arguments came from
+a tool result raises `agentfox.Blocked` instead of returning the response, and your code never gets
+to run it. `auto(mode="observe")` never raises. Not covered: the OpenAI Responses API, and tools
+your code calls without the model asking.
 
 </details>
 

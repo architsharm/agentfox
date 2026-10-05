@@ -235,9 +235,19 @@ session_id=None, register=True, quiet=False)` at line 674:
    LLM calls (e.g. an LLM-judge scorer inside the eval subsystem) from recursively governing
    themselves — without this, an eval run would try to enforce policy on its own scoring
    calls.
+6. Post-flight reads the tool calls out of the response (`_tool_calls_of`: OpenAI/LiteLLM
+   `tool_calls`, Anthropic `tool_use`, LangChain `AIMessage.tool_calls`; `_chunk_tool_calls`
+   reassembles streamed ones) and runs each through `Enforcer.guard_tool_call` on the call's
+   trace (`_govern_tool_calls`). Provenance comes from a `TaintTracker` rebuilt from the
+   request's conversation (`_provenance_of`); unseen tools are upserted with
+   `infer_impact` and `impact_source="inferred"` (`_register_tool`). A refused call raises
+   `Blocked` in place of the response. In `policy` mode a refusal that is only capability
+   default-deny is not raised for an agent with no grants at all.
 
-Starts in **observe mode only** — `mode="enforce"` is required to raise `Blocked` on a
-violation; this is the concrete mechanism behind HLD principle #1. `off()` (line 752)
+The default mode is `policy`: `Blocked` is raised only when an enforce-mode policy, the kill
+switch or a budget cap stops the call, and the shipped `baseline` observes. `mode="observe"`
+never raises; `mode="enforce"` raises on anything a policy would block. This is the concrete
+mechanism behind HLD principle #1. `off()` (line 752)
 reverses every patch (used primarily by the test suite).
 
 ---

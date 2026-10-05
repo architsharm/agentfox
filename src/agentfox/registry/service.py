@@ -359,6 +359,33 @@ def unowned_agents(session: Session) -> list[Finding]:
 # Tools & lineage
 # ---------------------------------------------------------------------------
 
+#: Tool key -> impact, for every `@fox.tool(key, impact=...)` declared in this
+#: process. The decorator also writes the row, but it runs at import time, which can
+#: be before the database exists; this is what `auto()` consults when it registers a
+#: tool the model called, so a declaration made in code beats a guess from the name
+#: even when that write could not happen yet.
+DECLARED_TOOL_IMPACTS: dict[str, str] = {}
+
+#: Marks a tool whose `impact` was guessed — from its name and description, when
+#: `auto()` or MCP governance first saw it — rather than declared by an operator,
+#: the CLI/API or code. Kept as a JSON Schema vendor keyword in `schema_json`
+#: rather than a column of its own on purpose: a deployment runs new code before
+#: anyone runs its migration (tests/test_playground.py pins that window), and a
+#: new column on `tools` would break every tool lookup in it, the enforcement path
+#: included. Validators ignore `x-` keywords; `tool_input_schema` strips it.
+IMPACT_SOURCE_KEY = "x-agentfox-impact-source"
+
+
+def impact_source_of(tool: Tool) -> str:
+    """``inferred`` for a guessed impact awaiting confirmation, else ``declared``."""
+    schema = tool.schema_json or {}
+    return "inferred" if schema.get(IMPACT_SOURCE_KEY) == "inferred" else "declared"
+
+
+def tool_input_schema(tool: Tool) -> dict[str, Any]:
+    """The tool's input schema as the tool itself declared it, without our marker."""
+    return {k: v for k, v in (tool.schema_json or {}).items() if k != IMPACT_SOURCE_KEY}
+
 
 def upsert_tool(
     session: Session,
@@ -370,12 +397,20 @@ def upsert_tool(
     schema: dict[str, Any] | None = None,
     description: str = "",
     mcp_server_id: str | None = None,
+    impact_source: str = "declared",
 ) -> Tool:
     tool = _get_or_create(session, Tool, key=key)
     tool.name = name or tool.name or key
     tool.kind = kind
     tool.impact = impact
-    tool.schema_json = schema or tool.schema_json or {}
+    # A fresh dict, so the JSON column registers the change; a declaration clears
+    # the inferred marker, which is how `agentfox tools declare` confirms a guess.
+    schema_json = dict(schema or tool.schema_json or {})
+    if impact_source == "inferred":
+        schema_json[IMPACT_SOURCE_KEY] = "inferred"
+    else:
+        schema_json.pop(IMPACT_SOURCE_KEY, None)
+    tool.schema_json = schema_json
     tool.description = description or tool.description
     tool.mcp_server_id = mcp_server_id or tool.mcp_server_id
     session.flush()

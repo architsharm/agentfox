@@ -26,11 +26,21 @@ agentfox.auto()`}</code>
       </pre>
       <p>
         One line in the entry point. Every model call in the process is traced,
-        evaluated, and written to the audit log: OpenAI, Anthropic, LiteLLM, and
-        LangChain, sync, async, and streamed. Nothing else in the application changes.
-        No model call is blocked by the line itself. <code>auto()</code> follows each
-        policy&apos;s own mode, and <code>baseline</code> starts in observe. It does
-        not see tool calls the agent makes on its own.
+        evaluated, and written to the audit log: OpenAI chat completions, Anthropic
+        messages, LiteLLM, and LangChain, sync, async, and streamed. Nothing else in
+        the application changes. The tool calls in each response (OpenAI{" "}
+        <code>tool_calls</code>, Anthropic <code>tool_use</code>) are checked before
+        your code can run them, with argument provenance read from the conversation,
+        and a tool seen for the first time is registered with an inferred impact for
+        you to confirm.
+      </p>
+      <p>
+        Nothing is blocked by the line itself. <code>auto()</code> follows each
+        policy&apos;s own mode, <code>baseline</code> starts in observe, and capability
+        default-deny applies once the agent holds its first grant. When a tool call is
+        refused, <code>agentfox.Blocked</code> is raised in place of the response. It
+        does not see the OpenAI Responses API, or tools your code calls without the
+        model asking.
       </p>
 
       <h2>Any language, over HTTP</h2>

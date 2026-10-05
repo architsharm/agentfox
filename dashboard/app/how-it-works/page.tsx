@@ -18,7 +18,7 @@ export const metadata: Metadata = publicPageMetadata({
 const CONNECTS = [
   {
     where: "Python",
-    what: "One line in the entry point. It sees prompts and replies. It does not see tool calls the agent makes on its own.",
+    what: "One line in the entry point. It sees prompts, replies, and the tool calls the model asks for. It does not see tools your code calls on its own.",
   },
   {
     where: "Any language",
