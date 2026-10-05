@@ -336,7 +336,7 @@ PROBES: list[Probe] = [
         "gates the ingestion and assembly path. Semantic chunk-boundary repair and "
         "automatic re-extraction of a corrupt document are not built — a finding is "
         "reported and the decision to drop the document belongs to the operator",
-        test_files=("test_context_integrity.py",),
+        test_files=("grounding/test_context_integrity.py",),
     ),
     # --- Layer D: Judge
     Probe(
@@ -365,7 +365,7 @@ PROBES: list[Probe] = [
         "each handoff dropped. Both work on constraints that were written down — an "
         "expectation the human held and never typed is invisible here, and no trace "
         "analysis recovers it",
-        test_files=("test_attribution.py",),
+        test_files=("prove/test_attribution.py",),
     ),
     Probe(
         "P11",
@@ -449,7 +449,7 @@ PROBES: list[Probe] = [
         "cycles, and steps producing no new observation. All three are visible without "
         "understanding the task, which is what keeps it deterministic — an agent that "
         "is wrong but varied still looks like an agent working",
-        test_files=("test_platform_runtime.py",),
+        test_files=("runtime/test_platform_runtime.py",),
     ),
     Probe(
         "PL-5",
@@ -485,7 +485,7 @@ PROBES: list[Probe] = [
         "controls. Admission control sheds work rather than governance. What is not "
         "built: distributed state, so the fail-open budget and the rate limit are "
         "per-process and a multi-worker deployment gets N times the declared budget",
-        test_files=("test_availability.py",),
+        test_files=("runtime/test_availability.py",),
     ),
     # --- Integrations
     # --- Adoption surface: the reason any of the above gets installed at all.
@@ -517,10 +517,10 @@ PROBES: list[Probe] = [
         "are lexical and licensed per domain; they judge standing, not content, and a "
         "licensed operator turns them off deliberately",
         test_files=(
-            "test_data_access.py",
-            "test_tool_contract.py",
-            "test_register.py",
-            "test_arbitration.py",
+            "containment/test_data_access.py",
+            "grounding/test_tool_contract.py",
+            "grounding/test_register.py",
+            "grounding/test_arbitration.py",
         ),
     ),
     Probe(
@@ -541,7 +541,7 @@ PROBES: list[Probe] = [
         "The registry that makes operator actions structural has no equivalent yet for "
         "which system_scope call sites must write to that chain — this one is wired by "
         "hand, not enforced by an import-time check",
-        test_files=("test_operator_log.py", "test_system_log.py"),
+        test_files=("prove/test_operator_log.py", "prove/test_system_log.py"),
     ),
     Probe(
         "PL-8",
