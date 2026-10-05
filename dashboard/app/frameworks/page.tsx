@@ -32,7 +32,7 @@ export default function Page() {
       kicker="Compliance"
       title={["EU AI Act, NIST,", "OWASP and ATLAS"]}
       lede="43 controls. Standing comes from what the agent did, not from a form. The mappings are drafts, not reviewed by counsel and not legal advice."
-      docs="/docs/compliance"
+      docs="/docs/guides/audit-evidence"
       challenge={
         <p>Usually this is a document describing controls someone believes are in place.</p>
       }

@@ -19,6 +19,7 @@
  */
 
 import type { MetadataRoute } from "next";
+import { DOC_PAGES } from "@/lib/docs";
 import { ALL_PAGES } from "@/lib/nav";
 import { SITE_URL } from "@/lib/site";
 
@@ -32,10 +33,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // A page without a `sitemap` hint is deliberately absent — /login is public
   // and crawlable so its own `noindex` can be read, and listing a noindex page
   // in a sitemap is a Search Console error for a page behaving as intended.
-  return ALL_PAGES.filter((page) => page.sitemap).map((page) => ({
+  const pages: MetadataRoute.Sitemap = ALL_PAGES.filter((page) => page.sitemap).map((page) => ({
     url: `${SITE_URL}${page.href}`,
     lastModified: BUILT_AT,
     changeFrequency: page.sitemap!.changeFrequency,
     priority: page.sitemap!.priority,
   }));
+  // Every docs page, from lib/docs.ts (the docs sidebar's own list). /docs itself is
+  // already in the site nav above.
+  const listed = new Set(pages.map((p) => p.url));
+  const docs: MetadataRoute.Sitemap = DOC_PAGES.map((page) => ({
+    url: `${SITE_URL}${page.href}`,
+    lastModified: BUILT_AT,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  })).filter((page) => !listed.has(page.url));
+  return [...pages, ...docs];
 }

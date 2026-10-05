@@ -34,7 +34,7 @@ export default function Page() {
       kicker="Runtime guardrails"
       title={["The tool call", "is checked too"]}
       lede="So are the prompt, the reply, the document the agent read, and what it saves. If a detector runs out of time, that is written down."
-      docs="/docs/runtime"
+      docs="/docs/reference/policies"
       challenge={
         <p>A scanner gives you a score. You still have to decide what to do with it.</p>
       }

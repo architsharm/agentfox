@@ -1,0 +1,4170 @@
+{
+ "generated_by": "scripts/docs_reference.py",
+ "root": {
+  "path": "",
+  "name": "agentfox",
+  "summary": "",
+  "help": "Agent-native, vendor-neutral governance for AI agents in production.",
+  "panel": null,
+  "params": [
+   {
+    "kind": "option",
+    "name": "version",
+    "opts": [
+     "--version"
+    ],
+    "type": "flag",
+    "choices": [],
+    "required": false,
+    "multiple": false,
+    "default": null,
+    "help": "Print the version and exit."
+   }
+  ],
+  "default_subcommand": null,
+  "commands": [
+   {
+    "path": "init",
+    "name": "init",
+    "summary": "Set everything up.",
+    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, each in the mode it declares (baseline and\neu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for\nagents this repo's coding-harness hooks govern), and writes a\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)\noverride that file.",
+    "panel": "Start",
+    "params": [
+     {
+      "kind": "option",
+      "name": "path",
+      "opts": [
+       "--path",
+       "-p"
+      ],
+      "type": "path",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": ".",
+      "help": "Where to write agentfox.toml. Default: here."
+     },
+     {
+      "kind": "option",
+      "name": "environment",
+      "opts": [
+       "--env",
+       "-e"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": "development",
+      "help": "Name this deployment: development, staging or production. It decides how strictly `agentfox doctor` grades authentication."
+     },
+     {
+      "kind": "option",
+      "name": "demo",
+      "opts": [
+       "--demo"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Also load the demo fixtures: three agents, an eval suite and sample traffic."
+     }
+    ],
+    "default_subcommand": null,
+    "commands": []
+   },
+   {
+    "path": "demo",
+    "name": "demo",
+    "summary": "Run the end-to-end walkthrough (offline).",
+    "help": "Run the end-to-end walkthrough (offline).",
+    "panel": "Start",
+    "params": [],
+    "default_subcommand": null,
+    "commands": []
+   },
+   {
+    "path": "scan",
+    "name": "scan",
+    "summary": "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.",
+    "help": "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `mcp`, `skills` and `runtime` scan the rest.",
+    "panel": "See",
+    "params": [],
+    "default_subcommand": "repo",
+    "commands": [
+     {
+      "path": "scan skills",
+      "name": "skills",
+      "summary": "Scan agent skills for planted instructions and declared danger.",
+      "help": "Scan agent skills for planted instructions and declared danger.\n\nA skill is the same object as an MCP tool one layer up: a description the\nmodel reads to decide whether to invoke it, and instructions it then obeys.\nOWASP published an Agentic Skills Top 10 in 2026 and we scanned servers but\nnot skills.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "path",
+        "opts": [
+         "path"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": ".",
+        "help": "Directory to search for SKILL.md files."
+       },
+       {
+        "kind": "option",
+        "name": "persist",
+        "opts": [
+         "--persist",
+         "--no-persist"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": true,
+        "help": "Raise findings, or just print."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "scan mcp",
+      "name": "mcp",
+      "summary": "Check an MCP server: what it can reach, how it is pinned, and its tools.",
+      "help": "Check an MCP server: what it can reach, how it is pinned, and its tools.\n\nReads your MCP client config and registers every server it declares, so there is\nnothing to set up first. Nothing is started: without --file the check covers\nwhat the config shows (version pinning, remote auth, credentials in the file) and\nwhat the server can reach. With --file (the server's tools/list output) it also\nsnapshots the tools and flags poisoned descriptions and changes since last time.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "server",
+        "opts": [
+         "server"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Server name as your MCP config declares it. Omit to scan every one."
+       },
+       {
+        "kind": "option",
+        "name": "file",
+        "opts": [
+         "--file"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Tool list JSON (what the server's tools/list returned)."
+       },
+       {
+        "kind": "option",
+        "name": "config",
+        "opts": [
+         "--config"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "MCP client config to read servers from. Default: the first of .mcp.json, .cursor/mcp.json, .claude/settings.json, .claude.json and claude_desktop_config.json found in this directory."
+       },
+       {
+        "kind": "option",
+        "name": "seed_fixture",
+        "opts": [
+         "--seed-fixture"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Scan the built-in demo tool list instead of --file. For demos only."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Machine-readable output for scripts."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "scan repo",
+      "name": "repo",
+      "summary": "Scan a repository and highlight everything worth governing.",
+      "help": "Scan a repository and highlight everything worth governing.\n\nStatic only: reads the source, never imports or runs it. Importing the target\nwould execute arbitrary code from a repo the operator may not trust, and would\nfail on anything with an import-time side effect — which is most real\napplications. Stays entirely local unless `--submit` (or an interactive \"yes\")\nopts into sending a redacted summary — see `cli/submit.py`.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "path",
+        "opts": [
+         "path"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": ".",
+        "help": "Directory to scan. Default: here."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Full records for scripts: every site, whole paths, no table."
+       },
+       {
+        "kind": "option",
+        "name": "limit",
+        "opts": [
+         "--limit",
+         "-n"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 15,
+        "help": "How many sites to show, worst first."
+       },
+       {
+        "kind": "option",
+        "name": "fail_on_ungoverned",
+        "opts": [
+         "--fail"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Exit non-zero if any model call is ungoverned (for CI)."
+       },
+       {
+        "kind": "option",
+        "name": "submit",
+        "opts": [
+         "--submit",
+         "--no-submit"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Send a redacted summary (counts and structure only, never file contents) to a running control plane for a fuller dashboard report. Optional — omit both flags to be asked interactively."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "scan runtime",
+      "name": "runtime",
+      "summary": "Sweep for shadow agents, unowned agents, registry drift, identity posture and delegation cycles/depth.",
+      "help": "Sweep for shadow agents, unowned agents, registry drift, identity posture and\ndelegation cycles/depth.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "agents",
+    "name": "agents",
+    "summary": "Find every agent that is running, and who owns it.",
+    "help": "Find every agent that is running, and who owns it.",
+    "panel": "See",
+    "params": [],
+    "default_subcommand": null,
+    "commands": [
+     {
+      "path": "agents list",
+      "name": "list",
+      "summary": "List every agent, registered or shadow.",
+      "help": "List every agent, registered or shadow.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "stopped",
+        "opts": [
+         "--stopped"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Only agents that are quarantined or killed, and why."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "agents lineage",
+      "name": "lineage",
+      "summary": "Show what an agent reaches — the blast radius.",
+      "help": "Show what an agent reaches — the blast radius.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "slug",
+        "opts": [
+         "slug"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "depth",
+        "opts": [
+         "--depth"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 2,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "agents quarantine",
+      "name": "quarantine",
+      "summary": "Stop an agent while you investigate.",
+      "help": "Stop an agent while you investigate. Reversible and audited.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "slug",
+        "opts": [
+         "slug"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "reason",
+        "opts": [
+         "--reason",
+         "-r"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "agents kill",
+      "name": "kill",
+      "summary": "Stop an agent now.",
+      "help": "Stop an agent now.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "slug",
+        "opts": [
+         "slug"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "reason",
+        "opts": [
+         "--reason",
+         "-r"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "agents resume",
+      "name": "resume",
+      "summary": "Restart a stopped agent.",
+      "help": "Restart a stopped agent.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "slug",
+        "opts": [
+         "slug"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "reason",
+        "opts": [
+         "--reason",
+         "-r"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "serve",
+    "name": "serve",
+    "summary": "Run the gateway and control-plane API, or the MCP server for AI clients.",
+    "help": "Run the gateway and control-plane API, or the MCP server for AI clients.\n\n`agentfox serve [--host] [--port] [--reload]` starts the API (the default); `agentfox serve mcp` speaks MCP over stdio.",
+    "panel": "Watch",
+    "params": [],
+    "default_subcommand": "api",
+    "commands": [
+     {
+      "path": "serve api",
+      "name": "api",
+      "summary": "Start the gateway and control-plane API.",
+      "help": "Start the gateway and control-plane API.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "host",
+        "opts": [
+         "--host"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "127.0.0.1",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "port",
+        "opts": [
+         "--port"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 8080,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "reload",
+        "opts": [
+         "--reload",
+         "--no-reload"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "serve mcp",
+      "name": "mcp",
+      "summary": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).",
+      "help": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).\n\nRead-only by design: nothing that changes enforcement or stops an agent is exposed.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "findings",
+    "name": "findings",
+    "summary": "What the platform found.",
+    "help": "What the platform found. The list `agentfox.auto()` tells you to read.\n\nOrdered worst first, then most recently seen. A finding that keeps happening is\none row with a count, not one row per occurrence, so the length of this list is\nthe number of distinct problems.",
+    "panel": "Watch",
+    "params": [
+     {
+      "kind": "option",
+      "name": "severity",
+      "opts": [
+       "--severity",
+       "-s"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Show only this severity: critical, high, medium, low or info."
+     },
+     {
+      "kind": "option",
+      "name": "limit",
+      "opts": [
+       "--limit",
+       "-n"
+      ],
+      "type": "integer",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": 20,
+      "help": "How many findings to show, worst first."
+     },
+     {
+      "kind": "option",
+      "name": "as_json",
+      "opts": [
+       "--json"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Full records for scripts: whole ids, fingerprints, subjects and timestamps."
+     }
+    ],
+    "default_subcommand": null,
+    "commands": []
+   },
+   {
+    "path": "permit",
+    "name": "permit",
+    "summary": "Grant, list and withdraw what an agent — or an end user — may do.",
+    "help": "Grant, list and withdraw what an agent — or an end user — may do.",
+    "panel": "Contain",
+    "params": [],
+    "default_subcommand": null,
+    "commands": [
+     {
+      "path": "permit grant",
+      "name": "grant",
+      "summary": "Allow an agent to call a tool, and say under what limits.",
+      "help": "Allow an agent to call a tool, and say under what limits.\n\nLeast privilege is default deny: an agent with no grant for a tool cannot call\nit, whether or not a detector fires. This command is the only thing that widens\nthat, so it asks before it writes and records the result in the audit chain.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "agent",
+        "opts": [
+         "agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Agent slug, e.g. payments-ops."
+       },
+       {
+        "kind": "argument",
+        "name": "tool",
+        "opts": [
+         "tool"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Tool key this grant covers. A glob is allowed: tickets.* or *."
+       },
+       {
+        "kind": "option",
+        "name": "action",
+        "opts": [
+         "--action",
+         "-a"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": true,
+        "default": null,
+        "help": "Action on the tool this grant covers, repeatable. Default: every action."
+       },
+       {
+        "kind": "option",
+        "name": "limit",
+        "opts": [
+         "--limit",
+         "-l"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": true,
+        "default": null,
+        "help": "Argument limit, repeatable. path=value, or path:op=value — for example --limit amount:lt=1000 --limit currency:in=USD,EUR."
+       },
+       {
+        "kind": "option",
+        "name": "max_taint",
+        "opts": [
+         "--max-taint"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "user",
+        "help": "Worst provenance an argument may carry and still go through without an approval. One of: none, user, retrieved, tool_result, subagent, memory."
+       },
+       {
+        "kind": "option",
+        "name": "requires_approval",
+        "opts": [
+         "--requires-approval",
+         "--no-requires-approval"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Send every matching call to a human before it runs."
+       },
+       {
+        "kind": "option",
+        "name": "expires_in_days",
+        "opts": [
+         "--expires-in-days"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Withdraw the grant automatically after this many days. Default: no expiry."
+       },
+       {
+        "kind": "option",
+        "name": "granted_by",
+        "opts": [
+         "--granted-by"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "cli",
+        "help": "Who is accountable for this grant. Recorded in the audit."
+       },
+       {
+        "kind": "option",
+        "name": "yes",
+        "opts": [
+         "--yes",
+         "-y"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Skip the confirmation prompt (for scripts and CI)."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "permit list",
+      "name": "list",
+      "summary": "What each agent is allowed to do.",
+      "help": "What each agent is allowed to do. Anything not listed here is refused.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "agent",
+        "opts": [
+         "agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Agent slug. Omit to list every agent's grants."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Machine-readable output for scripts."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "permit revoke",
+      "name": "revoke",
+      "summary": "Withdraw a grant.",
+      "help": "Withdraw a grant. The agent's calls to that tool are refused from now on.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "capability_id",
+        "opts": [
+         "capability_id"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Grant id from `agentfox permit list`, e.g. cap_01h...."
+       },
+       {
+        "kind": "option",
+        "name": "yes",
+        "opts": [
+         "--yes",
+         "-y"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Skip the confirmation prompt (for scripts and CI)."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "permit user",
+      "name": "user",
+      "summary": "Grant access to a resource pattern.",
+      "help": "Grant access to a resource pattern.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "resource",
+        "opts": [
+         "resource"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Resource pattern, e.g. 'hr/*'."
+       },
+       {
+        "kind": "argument",
+        "name": "principal",
+        "opts": [
+         "principal"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Group or subject the grant is for."
+       },
+       {
+        "kind": "option",
+        "name": "kind",
+        "opts": [
+         "--kind"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "group",
+        "help": "group | subject"
+       },
+       {
+        "kind": "option",
+        "name": "classes",
+        "opts": [
+         "--classes"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "mnpi, legal_hold, pii_sensitive…"
+       },
+       {
+        "kind": "option",
+        "name": "purposes",
+        "opts": [
+         "--purposes"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "GDPR Art. 5(1)(b) purposes."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "declare",
+    "name": "declare",
+    "summary": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.",
+    "help": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.\n\nWhat a tool can do, which column says whose row it is, what an agent has no data for, which sources are authoritative, and when to hand off to a person.",
+    "panel": "Contain",
+    "params": [],
+    "default_subcommand": null,
+    "commands": [
+     {
+      "path": "declare tool",
+      "name": "tool",
+      "summary": "Declare a tool and what it can do.",
+      "help": "Declare a tool and what it can do.\n\nContainment is declared, not detected: an irreversible tool recorded as `read` is one\na tainted argument can reach. This is the command that makes least privilege real, and\nit is deliberately the first thing `agentfox init` points at.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "key",
+        "opts": [
+         "key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "impact",
+        "opts": [
+         "--impact"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "read | write | high_impact | irreversible — the axis every containment rule reasons over."
+       },
+       {
+        "kind": "option",
+        "name": "name",
+        "opts": [
+         "--name"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "description",
+        "opts": [
+         "--description"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "triggers",
+        "opts": [
+         "--triggers"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "Comma-separated downstream effects."
+       },
+       {
+        "kind": "option",
+        "name": "output_trust",
+        "opts": [
+         "--output-trust"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "untrusted | trusted — whether values copied out of this tool's output taint the arguments they land in. Default for a new tool: untrusted. Declare trusted only for a system of record you control, such as a CRM read."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare triggers",
+      "name": "triggers",
+      "summary": "declare what a tool call sets off downstream (a DB trigger, a webhook, a fan-out), so `cascade_risk()` can actually see it.",
+      "help": "declare what a tool call sets off downstream (a DB trigger, a webhook, a\nfan-out), so `cascade_risk()` can actually see it. An undeclared trigger stays\ninvisible by design (see `effects.cascade_risk`'s own docstring) — this is how\nan operator closes that gap for one tool.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "key",
+        "opts": [
+         "key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Tool key, e.g. demo.delete_user"
+       },
+       {
+        "kind": "option",
+        "name": "triggers",
+        "opts": [
+         "--triggers"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "Comma-separated tool keys this call sets off downstream"
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare scope",
+      "name": "scope",
+      "summary": "declare which column on a table decides whose row it is, so `analyse_access()` can prove a query is scoped instead of assuming it.",
+      "help": "declare which column on a table decides whose row it is, so\n`analyse_access()` can prove a query is scoped instead of assuming it. An\nundeclared table is reported, never assumed safe (see `data_access`'s own\ndocstring).",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "table",
+        "opts": [
+         "table"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Table name"
+       },
+       {
+        "kind": "option",
+        "name": "column",
+        "opts": [
+         "--column"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Column that decides whose row it is"
+       },
+       {
+        "kind": "option",
+        "name": "principal_key",
+        "opts": [
+         "--principal-key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "id",
+        "help": "Attribute of the calling principal the column must equal"
+       },
+       {
+        "kind": "option",
+        "name": "restricted_columns",
+        "opts": [
+         "--restricted-columns"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "Comma-separated columns nobody should receive even for their own row"
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare reference",
+      "name": "reference",
+      "summary": "declare a table that belongs to nobody, so `analyse_access()` does not flag it as an undeclared/unscoped table.",
+      "help": "declare a table that belongs to nobody, so `analyse_access()` does not\nflag it as an undeclared/unscoped table.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "table",
+        "opts": [
+         "table"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Table name — belongs to nobody (currencies, statuses, postcodes)"
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare boundary",
+      "name": "boundary",
+      "summary": "Declare what an agent is allowed to answer from.",
+      "help": "Declare what an agent is allowed to answer from.\n\nUntil this exists nothing stops the agent inventing an answer to a question it has\nno data for, which is the single failure most likely to reach a customer.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "agent",
+        "opts": [
+         "agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Agent slug."
+       },
+       {
+        "kind": "option",
+        "name": "systems",
+        "opts": [
+         "--systems"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "Comma-separated systems of record."
+       },
+       {
+        "kind": "option",
+        "name": "months",
+        "opts": [
+         "--coverage-months"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Rolling window."
+       },
+       {
+        "kind": "option",
+        "name": "answerable",
+        "opts": [
+         "--answerable"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "fact,aggregate,procedure",
+        "help": "Question types this agent may answer."
+       },
+       {
+        "kind": "option",
+        "name": "out_of_scope",
+        "opts": [
+         "--out-of-scope"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "Comma-separated topics."
+       },
+       {
+        "kind": "option",
+        "name": "mode",
+        "opts": [
+         "--mode"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "observe",
+        "help": "observe | enforce"
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare source",
+      "name": "source",
+      "summary": "Register a source and its authority tier.",
+      "help": "Register a source and its authority tier.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "key",
+        "opts": [
+         "key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Identifier the retriever emits."
+       },
+       {
+        "kind": "option",
+        "name": "tier",
+        "opts": [
+         "--tier",
+         "-t"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "unverified",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "owner",
+        "opts": [
+         "--owner"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "domain",
+        "opts": [
+         "--domain"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "sla_hours",
+        "opts": [
+         "--sla-hours"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Freshness SLA."
+       },
+       {
+        "kind": "option",
+        "name": "updated",
+        "opts": [
+         "--updated"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "When the source last changed (ISO, or 'now')."
+       },
+       {
+        "kind": "option",
+        "name": "title",
+        "opts": [
+         "--title"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare import-sources",
+      "name": "import-sources",
+      "summary": "Bulk-register from a JSON file.",
+      "help": "Bulk-register from a JSON file.\n\nTiering a corpus is inherently a bulk act. Nobody classifies four hundred sources\none command at a time, and making them try is how the tiering never happens.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "file",
+        "opts": [
+         "file"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "JSON list of sources."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare escalation",
+      "name": "escalation",
+      "summary": "Declare when this agent must hand off to a human.",
+      "help": "Declare when this agent must hand off to a human.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "agent",
+        "opts": [
+         "--agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Agent slug; omit for the default."
+       },
+       {
+        "kind": "option",
+        "name": "turn_depth",
+        "opts": [
+         "--turn-depth"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "repeated_failure",
+        "opts": [
+         "--repeated-failure"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "sla_minutes",
+        "opts": [
+         "--sla-minutes"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 60,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "owner_role",
+        "opts": [
+         "--owner"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "support",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "mode",
+        "opts": [
+         "--mode"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "observe",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare principal",
+      "name": "principal",
+      "summary": "Register the human an agent acts for.",
+      "help": "Register the human an agent acts for.\n\nEverything else in this pillar depends on this. The Copilot failure is its absence:\nthe agent runs under its own identity, inherits everything that identity can reach,\nand every permission check passes.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "subject",
+        "opts": [
+         "subject"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "IdP subject — an OIDC `sub` or employee id."
+       },
+       {
+        "kind": "option",
+        "name": "groups",
+        "opts": [
+         "--groups",
+         "-g"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "Comma-separated groups."
+       },
+       {
+        "kind": "option",
+        "name": "clearances",
+        "opts": [
+         "--clearances"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": "Restricted classes they may see."
+       },
+       {
+        "kind": "option",
+        "name": "residency",
+        "opts": [
+         "--residency"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "display",
+        "opts": [
+         "--display"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "declare list",
+      "name": "list",
+      "summary": "Everything declared so far: tools and their impact, sources and their tier.",
+      "help": "Everything declared so far: tools and their impact, sources and their tier.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "kind",
+        "opts": [
+         "kind"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "all",
+        "help": "tools, sources, or all (the default; not with --json)."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "policy",
+    "name": "policy",
+    "summary": "Write the rules, try them against recorded traffic, then turn them on.",
+    "help": "Write the rules, try them against recorded traffic, then turn them on.",
+    "panel": "Contain",
+    "params": [],
+    "default_subcommand": null,
+    "commands": [
+     {
+      "path": "policy packs",
+      "name": "packs",
+      "summary": "Policy packs on disk, and where each came from.",
+      "help": "Policy packs on disk, and where each came from.\n\n`policy list` reads the database: what is installed and what mode it is in.\nThis reads the filesystem and answers the question an operator has about a\npolicy they did not write — which file is this, and did something override\nit. A project pack replacing a shipped one is invisible in `policy list`,\nbecause by then they are the same row.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy list",
+      "name": "list",
+      "summary": "List policies and their enforcement mode.",
+      "help": "List policies and their enforcement mode.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy lint",
+      "name": "lint",
+      "summary": "Lint the policy hierarchy.",
+      "help": "Lint the policy hierarchy. Exits 1 on critical or high findings.\n\nThis is the half of hierarchical policy that produces the 87% misconfiguration\nreduction — composition without a linter just moves the confusion somewhere\nharder to see.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy effective",
+      "name": "effective",
+      "summary": "Show the policy actually in force for a subject, and where each rule came from.",
+      "help": "Show the policy actually in force for a subject, and where each rule came from.\n\nOpacity is what makes layered policy dangerous, so the resolver explains itself.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "agent",
+        "opts": [
+         "--agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "team",
+        "opts": [
+         "--team"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "user",
+        "opts": [
+         "--user"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "environment",
+        "opts": [
+         "--environment"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Environment to resolve for. Defaults to the configured environment (NOMETRIA_ENVIRONMENT), which is what the runtime itself uses."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy simulate",
+      "name": "simulate",
+      "summary": "Replay recorded traffic against a candidate policy.",
+      "help": "Replay recorded traffic against a candidate policy.\n\nExits non-zero when the change would newly block production traffic, so it can\ngate a policy PR the same way `eval gate` gates a code PR.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "file",
+        "opts": [
+         "--file",
+         "-f"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Candidate policy YAML."
+       },
+       {
+        "kind": "option",
+        "name": "agent",
+        "opts": [
+         "--agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "since_days",
+        "opts": [
+         "--since-days"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 30,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "limit",
+        "opts": [
+         "--limit"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 1000,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy enforce",
+      "name": "enforce",
+      "summary": "Promote a policy from observe to enforce.",
+      "help": "Promote a policy from observe to enforce.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "key",
+        "opts": [
+         "key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy observe",
+      "name": "observe",
+      "summary": "Demote a policy from enforce to observe.",
+      "help": "Demote a policy from enforce to observe.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "key",
+        "opts": [
+         "key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy validate",
+      "name": "validate",
+      "summary": "Lint and compile a policy without saving it.",
+      "help": "Lint and compile a policy without saving it.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "file",
+        "opts": [
+         "file"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy catalogue",
+      "name": "catalogue",
+      "summary": "Every kind of guardrail this product can enforce.",
+      "help": "Every kind of guardrail this product can enforce.\n\nThe answer to \"can we express our policy?\" — asked before anyone writes YAML.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "intent",
+        "opts": [
+         "--intent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy compile",
+      "name": "compile",
+      "summary": "Turn a written policy into executable guardrails.",
+      "help": "Turn a written policy into executable guardrails.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "file",
+        "opts": [
+         "file"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Policy document (.txt or .md)."
+       },
+       {
+        "kind": "option",
+        "name": "apply",
+        "opts": [
+         "--apply"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Save the compiled rules."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy rules",
+      "name": "rules",
+      "summary": "Business rules in plain terms: apply, show, check, explain, suggest, graph.",
+      "help": "Business rules in plain terms: apply, show, check, explain, suggest, graph.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "policy rules apply",
+        "name": "apply",
+        "summary": "Author or update a business rule from a YAML file.",
+        "help": "Author or update a business rule from a YAML file.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "file",
+          "opts": [
+           "file"
+          ],
+          "type": "path",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "YAML ladder definition."
+         },
+         {
+          "kind": "option",
+          "name": "agent",
+          "opts": [
+           "--agent"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "mode",
+          "opts": [
+           "--mode"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "observe | enforce"
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules show",
+        "name": "show",
+        "summary": "Show the resolved bands, so an author sees exactly what they wrote.",
+        "help": "Show the resolved bands, so an author sees exactly what they wrote.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "key",
+          "opts": [
+           "key"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Rule key; omit for all."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules check",
+        "name": "check",
+        "summary": "Find where two teams' rules disagree.",
+        "help": "Find where two teams' rules disagree.\n\nTwo authors setting different thresholds on the same field is not a merge to be\nresolved by precedence — it is a disagreement between two people, and resolving it\nsilently means one of them is wrong and does not know.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules test",
+        "name": "test",
+        "summary": "Try values against a rule without running anything.",
+        "help": "Try values against a rule without running anything.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "key",
+          "opts": [
+           "key"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Rule key."
+         },
+         {
+          "kind": "argument",
+          "name": "values",
+          "opts": [
+           "values"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Comma-separated values to try."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules catalogue",
+        "name": "catalogue",
+        "summary": "Every kind of guardrail this product can enforce.",
+        "help": "Every kind of guardrail this product can enforce.\n\nThe answer to \"can we express our policy?\" — asked before anyone writes YAML.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "intent",
+          "opts": [
+           "--intent"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules explain",
+        "name": "explain",
+        "summary": "Parameters, inputs and a worked example for one guardrail kind.",
+        "help": "Parameters, inputs and a worked example for one guardrail kind.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "kind_id",
+          "opts": [
+           "kind_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Guardrail kind id."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules suggest",
+        "name": "suggest",
+        "summary": "Which guardrail kinds a written instruction probably needs.",
+        "help": "Which guardrail kinds a written instruction probably needs.\n\nDeterministic signal matching, not a model — a starting point an operator confirms,\nso a wrong suggestion costs a glance rather than a silent misconfiguration.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "instruction",
+          "opts": [
+           "instruction"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "A sentence from a policy document."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules graph",
+        "name": "graph",
+        "summary": "The decision path as it will actually run, stage by stage.",
+        "help": "The decision path as it will actually run, stage by stage.",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy rules compile",
+        "name": "compile",
+        "summary": "Turn a written policy into executable guardrails.",
+        "help": "Turn a written policy into executable guardrails.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "file",
+          "opts": [
+           "file"
+          ],
+          "type": "path",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Policy document (.txt or .md)."
+         },
+         {
+          "kind": "option",
+          "name": "apply",
+          "opts": [
+           "--apply"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Save the compiled rules."
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "policy proposals",
+      "name": "proposals",
+      "summary": "Proposed changes to governance configuration: review, decide, apply, undo.",
+      "help": "Proposed changes to governance configuration: review, decide, apply, undo.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "policy proposals list",
+        "name": "list",
+        "summary": "List proposals, newest first.",
+        "help": "List proposals, newest first.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "status",
+          "opts": [
+           "--status"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Filter by lifecycle status"
+         },
+         {
+          "kind": "option",
+          "name": "kind",
+          "opts": [
+           "--kind"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Filter by change kind"
+         },
+         {
+          "kind": "option",
+          "name": "scope_level",
+          "opts": [
+           "--scope"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "org | team | agent | user"
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals show",
+        "name": "show",
+        "summary": "Show one proposal: its diff, evidence, proof and decisions.",
+        "help": "Show one proposal: its diff, evidence, proof and decisions.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "proposal_id",
+          "opts": [
+           "proposal_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals approve",
+        "name": "approve",
+        "summary": "Approve a proven proposal.",
+        "help": "Approve a proven proposal. An org-level loosening needs two different people.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "proposal_id",
+          "opts": [
+           "proposal_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "actor",
+          "opts": [
+           "--actor"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Your name or email — decisions are named"
+         },
+         {
+          "kind": "option",
+          "name": "note",
+          "opts": [
+           "--note"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Why"
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals reject",
+        "name": "reject",
+        "summary": "Reject a proposal.",
+        "help": "Reject a proposal.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "proposal_id",
+          "opts": [
+           "proposal_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "actor",
+          "opts": [
+           "--actor"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Your name or email — decisions are named"
+         },
+         {
+          "kind": "option",
+          "name": "note",
+          "opts": [
+           "--note"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Why"
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals apply",
+        "name": "apply",
+        "summary": "Apply an approved proposal (or settle one whose canary has finished).",
+        "help": "Apply an approved proposal (or settle one whose canary has finished).",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "proposal_id",
+          "opts": [
+           "proposal_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "actor",
+          "opts": [
+           "--actor"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Your name or email"
+         },
+         {
+          "kind": "option",
+          "name": "automated",
+          "opts": [
+           "--automated"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Apply as the improvement loop, subject to autonomy, freeze and daily cap"
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals rollback",
+        "name": "rollback",
+        "summary": "Undo an applied or canaried proposal.",
+        "help": "Undo an applied or canaried proposal.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "proposal_id",
+          "opts": [
+           "proposal_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "actor",
+          "opts": [
+           "--actor"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Your name or email"
+         },
+         {
+          "kind": "option",
+          "name": "reason",
+          "opts": [
+           "--reason"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Why it is being undone"
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals verify",
+        "name": "verify",
+        "summary": "Close the loop on an applied change: did it do what it promised?",
+        "help": "Close the loop on an applied change: did it do what it promised?\n\n`--failed` rolls the change back. If undoing it would loosen a control, it stays\napplied with the failure recorded, because that rollback is a person's decision.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "proposal_id",
+          "opts": [
+           "proposal_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "actor",
+          "opts": [
+           "--actor"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Your name or email"
+         },
+         {
+          "kind": "option",
+          "name": "note",
+          "opts": [
+           "--note"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "What the evidence showed"
+         },
+         {
+          "kind": "option",
+          "name": "failed",
+          "opts": [
+           "--failed"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "The change did not do what it promised: record it and roll back."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals from-labels",
+        "name": "from-labels",
+        "summary": "File rule cut-off proposals from labelled false positives.",
+        "help": "File rule cut-off proposals from labelled false positives. Nothing is applied.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "days",
+          "opts": [
+           "--days"
+          ],
+          "type": "integer",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": 30,
+          "help": "Label window in days"
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "policy proposals from-traffic",
+        "name": "from-traffic",
+        "summary": "Propose tool declarations and grants from what your agents have called.",
+        "help": "Propose tool declarations and grants from what your agents have called.\n\nLearned permissions: observe, propose, approve. Reads every recorded tool call —\nrefused ones included — and files a `tool.declare` for each undeclared tool and a\n`capability.grant` per agent and tool, with argument limits read off the calls and\na provenance ceiling from benign calls only. A call a detector matched, or that was\nstopped for where its arguments came from and nobody approved, is never learned\nfrom. Nothing is applied: approve and apply each proposal.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "agent",
+          "opts": [
+           "--agent"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Only this agent's calls (slug)."
+         },
+         {
+          "kind": "option",
+          "name": "since",
+          "opts": [
+           "--since"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Window: 7d, 24h, 30m or an ISO date. Default: the last 30 days."
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "path": "test",
+    "name": "test",
+    "summary": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
+    "help": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
+    "panel": "Prove",
+    "params": [],
+    "default_subcommand": null,
+    "commands": [
+     {
+      "path": "test run",
+      "name": "run",
+      "summary": "Run an evaluation suite.",
+      "help": "Run an evaluation suite.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "suite",
+        "opts": [
+         "suite"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "provider",
+        "opts": [
+         "--provider"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "echo",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "model",
+        "opts": [
+         "--model"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "echo-1",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "agent",
+        "opts": [
+         "--agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "scorers",
+        "opts": [
+         "--scorers"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Comma-separated scorer keys."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test gate",
+      "name": "gate",
+      "summary": "Run the suite and fail the build on regression.",
+      "help": "Run the suite and fail the build on regression. Exits 1 on failure.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "suite",
+        "opts": [
+         "suite"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "provider",
+        "opts": [
+         "--provider"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "echo",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "model",
+        "opts": [
+         "--model"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "echo-1",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "baseline",
+        "opts": [
+         "--baseline"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Baseline run id."
+       },
+       {
+        "kind": "option",
+        "name": "min_pass_rate",
+        "opts": [
+         "--min-pass-rate"
+        ],
+        "type": "float",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "junit",
+        "opts": [
+         "--junit"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Write JUnit XML here."
+       },
+       {
+        "kind": "option",
+        "name": "sarif",
+        "opts": [
+         "--sarif"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Write SARIF here."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test baseline",
+      "name": "baseline",
+      "summary": "Mark a run as the regression baseline.",
+      "help": "Mark a run as the regression baseline.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "run_id",
+        "opts": [
+         "run_id"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "label",
+        "opts": [
+         "--label"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "main",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test suites",
+      "name": "suites",
+      "summary": "List the evaluation suites in this deployment.",
+      "help": "List the evaluation suites in this deployment.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test online",
+      "name": "online",
+      "summary": "Sample production traffic and score it with the offline scorers.",
+      "help": "Sample production traffic and score it with the offline scorers.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "agent",
+        "opts": [
+         "agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "since_days",
+        "opts": [
+         "--since-days"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 7,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "rate",
+        "opts": [
+         "--rate"
+        ],
+        "type": "float",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test redteam",
+      "name": "redteam",
+      "summary": "Run adversarial probes against the deployed configuration.",
+      "help": "Run adversarial probes against the deployed configuration.\n\nThis measures whether *this configuration* got weaker, against known attack classes.\nIt is not a robustness certificate, and `--adaptive` does not make it one: every\npublished result says an attacker who adapts eventually gets through.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "agent",
+        "opts": [
+         "agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "probes",
+        "opts": [
+         "--probes"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "adaptive",
+        "opts": [
+         "--adaptive"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Mutate a blocked probe and try again, steering from the failure. Reports a posture delta against the last comparable campaign, not a pass rate."
+       },
+       {
+        "kind": "option",
+        "name": "budget",
+        "opts": [
+         "--budget"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 3,
+        "help": "Attempts per probe in adaptive mode."
+       },
+       {
+        "kind": "option",
+        "name": "seed",
+        "opts": [
+         "--seed"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 1337,
+        "help": "Fixes the mutation program."
+       },
+       {
+        "kind": "option",
+        "name": "deployment_probes",
+        "opts": [
+         "--deployment-probes",
+         "--no-deployment-probes"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": true,
+        "help": "Generate probes from this deployment's own grants, impacts and bound policies."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test probes",
+      "name": "probes",
+      "summary": "List the built-in probe suite and available wrapped runners.",
+      "help": "List the built-in probe suite and available wrapped runners.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test action",
+      "name": "action",
+      "summary": "Read an artefact and say what running it would actually do.",
+      "help": "Read an artefact and say what running it would actually do.\n\nDeterministic, offline and immediate: no database, no model, no network. The point\nis that an engineer can check a generated statement before it is ever executed.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "statement",
+        "opts": [
+         "statement"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "SQL, shell command or URL to analyse"
+       },
+       {
+        "kind": "option",
+        "name": "kind",
+        "opts": [
+         "--kind"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "sql",
+        "help": "sql | shell | http"
+       },
+       {
+        "kind": "option",
+        "name": "method",
+        "opts": [
+         "--method"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "GET",
+        "help": "HTTP method, when kind=http"
+       },
+       {
+        "kind": "option",
+        "name": "dialect",
+        "opts": [
+         "--dialect"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "postgres",
+        "help": "SQL dialect"
+       },
+       {
+        "kind": "option",
+        "name": "environment",
+        "opts": [
+         "--environment"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "production",
+        "help": "environment the action binds to"
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test boundary",
+      "name": "boundary",
+      "summary": "Would this question be refused, and what would we say instead?",
+      "help": "Would this question be refused, and what would we say instead?\n\nChanges nothing, so it is safe to replay real traffic through before enforcing —\nwhich matters more here than anywhere else, because the false positives of this\ncontrol are refusals shown to customers.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "agent",
+        "opts": [
+         "agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Agent slug."
+       },
+       {
+        "kind": "argument",
+        "name": "question",
+        "opts": [
+         "question"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "A question to test."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "test rule",
+      "name": "rule",
+      "summary": "Try values against a rule without running anything.",
+      "help": "Try values against a rule without running anything.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "key",
+        "opts": [
+         "key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Rule key."
+       },
+       {
+        "kind": "argument",
+        "name": "values",
+        "opts": [
+         "values"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Comma-separated values to try."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "report",
+    "name": "report",
+    "summary": "What you can show an auditor: posture, evidence, risk, sign-off.",
+    "help": "What you can show an auditor: posture, evidence, risk, sign-off.\n\nBare `agentfox report` prints the summary; the subcommands go deeper.",
+    "panel": "Prove",
+    "params": [],
+    "default_subcommand": "summary",
+    "commands": [
+     {
+      "path": "report summary",
+      "name": "summary",
+      "summary": "A one-page summary of what your agents did and what was contained.",
+      "help": "A one-page summary of what your agents did and what was contained.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "agent",
+        "opts": [
+         "--agent",
+         "-a"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": true,
+        "default": null,
+        "help": "Only this agent. Repeat for several. Default: all."
+       },
+       {
+        "kind": "option",
+        "name": "since",
+        "opts": [
+         "--since"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "7d",
+        "help": "How far back: 24h, 7d, 2w, 30d."
+       },
+       {
+        "kind": "option",
+        "name": "fmt",
+        "opts": [
+         "--format",
+         "-f"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "md",
+        "help": "md or html."
+       },
+       {
+        "kind": "option",
+        "name": "out",
+        "opts": [
+         "--out",
+         "-o"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Write to this file instead of printing."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report status",
+      "name": "status",
+      "summary": "Show control posture, optionally for one framework.",
+      "help": "Show control posture, optionally for one framework.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "framework",
+        "opts": [
+         "--framework"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "verbose",
+        "opts": [
+         "--verbose",
+         "--no-verbose"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report evidence",
+      "name": "evidence",
+      "summary": "Build an auditor-ready evidence package.",
+      "help": "Build an auditor-ready evidence package.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "agent",
+        "opts": [
+         "--agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": true,
+        "default": null,
+        "help": "Repeatable; default all."
+       },
+       {
+        "kind": "option",
+        "name": "from_",
+        "opts": [
+         "--from"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Start of the period, YYYY-MM-DD or ISO-8601. Default: --since-days."
+       },
+       {
+        "kind": "option",
+        "name": "to",
+        "opts": [
+         "--to"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "End of the period, inclusive of a whole day given as YYYY-MM-DD."
+       },
+       {
+        "kind": "option",
+        "name": "since_days",
+        "opts": [
+         "--since-days"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 30,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "control",
+        "opts": [
+         "--control"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": true,
+        "default": null,
+        "help": "Repeatable; default all."
+       },
+       {
+        "kind": "option",
+        "name": "requested_by",
+        "opts": [
+         "--requested-by"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "cli",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report verify",
+      "name": "verify",
+      "summary": "Verify the tamper-evident audit chain.",
+      "help": "Verify the tamper-evident audit chain. Exits 1 if broken.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "start",
+        "opts": [
+         "--start"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "end",
+        "opts": [
+         "--end"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report risk",
+      "name": "risk",
+      "summary": "Show the agent risk register.",
+      "help": "Show the agent risk register.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report obligations",
+      "name": "obligations",
+      "summary": "Regulatory obligation calendar against the agent inventory.",
+      "help": "Regulatory obligation calendar against the agent inventory.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report frameworks",
+      "name": "frameworks",
+      "summary": "List frameworks, coverage and review status.",
+      "help": "List frameworks, coverage and review status.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report board",
+      "name": "board",
+      "summary": "Executive risk view.",
+      "help": "Executive risk view.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report review-packet",
+      "name": "review-packet",
+      "summary": "Everything a qualified reviewer needs to sign off one framework, in one file.",
+      "help": "Everything a qualified reviewer needs to sign off one framework, in one file.\n\nEvery mapping ships `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a named human reviews\nit, and that is the loudest \"not ready\" signal in an audit conversation. The blocker has\nnever been the workflow, it has been that nobody could hand a reviewer a reviewable\nartefact. This is that artefact: the control, what implements it, what evidence it\nproduces, and the exact clause claimed — one row per decision the reviewer has to make.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "framework",
+        "opts": [
+         "--framework"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Framework key, e.g. eu-ai-act."
+       },
+       {
+        "kind": "option",
+        "name": "out",
+        "opts": [
+         "--out"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Write markdown here instead of stdout."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report signoff",
+      "name": "signoff",
+      "summary": "Record a qualified reviewer's sign-off on a control's framework mapping(s).",
+      "help": "Record a qualified reviewer's sign-off on a control's framework mapping(s).\n\nThis is an attestation by a named person, recorded and auditable. It is the step that\nmoves a mapping from `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` to reviewed, and it should\nbe run by whoever is actually accountable for the claim — not by whoever runs the CLI.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "control",
+        "opts": [
+         "control"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "framework",
+        "opts": [
+         "--framework"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "reviewer",
+        "opts": [
+         "--reviewer"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "The human accountable for this sign-off."
+       },
+       {
+        "kind": "option",
+        "name": "reference",
+        "opts": [
+         "--reference"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Sign off one clause only; default is every clause for the control."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report entitlement",
+      "name": "entitlement",
+      "summary": "How much more the agent can reach than its callers are entitled to.",
+      "help": "How much more the agent can reach than its callers are entitled to.\n\nWorth running before any entitlement model exists — a ratio of 1.0 with no grants\nconfigured is exactly the point.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "days",
+        "opts": [
+         "--days"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 7,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report escalations",
+      "name": "escalations",
+      "summary": "Which conversations qualified for a human and never got one.",
+      "help": "Which conversations qualified for a human and never got one.\n\nThe largest single failure family at 31%, and invisible from inside the system: a\nconversation where the agent kept going instead of handing off looks entirely\nordinary in the telemetry.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "hours",
+        "opts": [
+         "--hours"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 24,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "apply",
+        "opts": [
+         "--apply"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Raise findings and retroactive hand-offs."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "report drift",
+      "name": "drift",
+      "summary": "Compare recent production scores against the baseline window.",
+      "help": "Compare recent production scores against the baseline window.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "agent",
+        "opts": [
+         "agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "scorer",
+        "opts": [
+         "--scorer"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "groundedness",
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "doctor",
+    "name": "doctor",
+    "summary": "Is the runtime configured the way you think it is?",
+    "help": "Is the runtime configured the way you think it is?\n\nReports only — it changes nothing. Every line is a fact about this deployment, and\neach one names the consequence rather than the setting, because \"fail_mode=open\"\nmeans nothing to someone who has not read the PRD.",
+    "panel": "Operate",
+    "params": [
+     {
+      "kind": "option",
+      "name": "as_json",
+      "opts": [
+       "--json"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "One record per check, for CI. Exits non-zero on a failed check either way."
+     }
+    ],
+    "default_subcommand": null,
+    "commands": []
+   },
+   {
+    "path": "admin",
+    "name": "admin",
+    "summary": "Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.",
+    "help": "Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.",
+    "panel": "Operate",
+    "params": [],
+    "default_subcommand": null,
+    "commands": [
+     {
+      "path": "admin checkpoint",
+      "name": "checkpoint",
+      "summary": "Write a signed checkpoint over the current chain head.",
+      "help": "Write a signed checkpoint over the current chain head.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "admin seed",
+      "name": "seed",
+      "summary": "Load a demonstrable environment: three agents, policies, controls and an eval suite, with traffic already recorded against them.",
+      "help": "Load a demonstrable environment: three agents, policies, controls and an\neval suite, with traffic already recorded against them.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "show_keys",
+        "opts": [
+         "--show-keys"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Print newly issued agent API keys in full. Keys are shown only once, when first issued; this flag is the only way to see them."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "admin version",
+      "name": "version",
+      "summary": "Show the version of everything that takes part in a decision.",
+      "help": "Show the version of everything that takes part in a decision.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "admin auth",
+      "name": "auth",
+      "summary": "Operator tokens and authentication mode.",
+      "help": "Operator tokens and authentication mode.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin auth issue",
+        "name": "issue",
+        "summary": "Mint an API token.",
+        "help": "Mint an API token. The value is shown once and cannot be retrieved again.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "email",
+          "opts": [
+           "email"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Operator the token acts as."
+         },
+         {
+          "kind": "option",
+          "name": "name",
+          "opts": [
+           "--name",
+           "-n"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "What this token is for."
+         },
+         {
+          "kind": "option",
+          "name": "days",
+          "opts": [
+           "--days"
+          ],
+          "type": "integer",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": 365,
+          "help": "Lifetime; 0 for no expiry."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin auth tokens",
+        "name": "tokens",
+        "summary": "List tokens.",
+        "help": "List tokens. Never shows a secret — there is nothing stored that could.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin auth revoke",
+        "name": "revoke",
+        "summary": "Revoke a token immediately.",
+        "help": "Revoke a token immediately.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "token_id",
+          "opts": [
+           "token_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Token id from `agentfox admin auth tokens`."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin auth status",
+        "name": "status",
+        "summary": "How this deployment authenticates, and whether that is what you intended.",
+        "help": "How this deployment authenticates, and whether that is what you intended.",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "admin db",
+      "name": "db",
+      "summary": "Apply, roll back and inspect the database schema.",
+      "help": "Apply, roll back and inspect the database schema.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin db upgrade",
+        "name": "upgrade",
+        "summary": "Apply migrations.",
+        "help": "Apply migrations. This is how a deployed instance is upgraded.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "revision",
+          "opts": [
+           "--revision"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "head",
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin db downgrade",
+        "name": "downgrade",
+        "summary": "Roll back migrations.",
+        "help": "Roll back migrations. Every migration ships with a tested downgrade.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "revision",
+          "opts": [
+           "revision"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Target revision, or 'base'."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin db current",
+        "name": "current",
+        "summary": "Show the applied schema revision.",
+        "help": "Show the applied schema revision.",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "admin catalog",
+      "name": "catalog",
+      "summary": "Keep the control catalog and its computed status current.",
+      "help": "Keep the control catalog and its computed status current.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin catalog sync",
+        "name": "sync",
+        "summary": "Load the control catalog and obligation calendar from YAML.",
+        "help": "Load the control catalog and obligation calendar from YAML.",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin catalog compute",
+        "name": "compute",
+        "summary": "Recompute control status from telemetry.",
+        "help": "Recompute control status from telemetry.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "window_days",
+          "opts": [
+           "--window-days"
+          ],
+          "type": "integer",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": 30,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin catalog validate",
+        "name": "validate",
+        "summary": "Check the control catalog and obligation calendar are internally consistent.",
+        "help": "Check the control catalog and obligation calendar are internally consistent.\n\nRead-only and offline: parses controls.yaml and obligations.yaml under the\nconfigured compliance directory and never touches the database. Exits 1 on any\nproblem, so it can gate a catalog change the way `policy lint` gates a policy.",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "admin hooks",
+      "name": "hooks",
+      "summary": "Run AgentFox where the agent already is: a warm daemon and a thin per-call hook.",
+      "help": "Run AgentFox where the agent already is: a warm daemon and a thin per-call hook.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin hooks daemon",
+        "name": "daemon",
+        "summary": "Run the warm process a hook talks to.",
+        "help": "Run the warm process a hook talks to.\n\nA harness spawns its hook as a fresh process per tool call, and importing\nAgentFox costs seconds — measured here at 3.9s on the first call against a\ncold daemon, then 6ms once warm. That gap is the whole reason this exists:\na hook that costs two seconds a call is a hook the operator removes.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "socket",
+          "opts": [
+           "--socket"
+          ],
+          "type": "path",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Override the socket path."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin hooks run",
+        "name": "run",
+        "summary": "The per-call hook.",
+        "help": "The per-call hook. Reads the harness payload on stdin, writes its reply.\n\nEverything in this path runs in a process the harness creates and destroys\nper tool call, so it does the least possible: parse, ask the daemon, print.\nMeasured against a warm daemon, the round trip is about 6ms; the same work\nwithout one is 3.9 seconds, because `import agentfox` is.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "harness",
+          "opts": [
+           "--harness"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Which harness is calling."
+         },
+         {
+          "kind": "option",
+          "name": "agent",
+          "opts": [
+           "--agent"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "Agent slug to govern this session as."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin hooks install",
+        "name": "install",
+        "summary": "Show, or write, the hook configuration for a harness.",
+        "help": "Show, or write, the hook configuration for a harness.\n\nDry by default. This edits a file that decides whether the operator's agent\nruns at all, so it prints what it would do and waits to be told twice.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "harness",
+          "opts": [
+           "--harness"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "claude",
+          "help": ""
+         },
+         {
+          "kind": "option",
+          "name": "agent",
+          "opts": [
+           "--agent"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Agent slug these calls are governed as."
+         },
+         {
+          "kind": "option",
+          "name": "path",
+          "opts": [
+           "--path"
+          ],
+          "type": "path",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": ".",
+          "help": "Project to install into."
+         },
+         {
+          "kind": "option",
+          "name": "write",
+          "opts": [
+           "--write"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Actually write the settings file."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin hooks status",
+        "name": "status",
+        "summary": "Is the daemon up, and does a deny on this harness actually stop anything?",
+        "help": "Is the daemon up, and does a deny on this harness actually stop anything?",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "admin mcp",
+      "name": "mcp",
+      "summary": "Inspect the MCP server.",
+      "help": "Inspect the MCP server. To run it: `agentfox serve mcp`.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin mcp tools",
+        "name": "tools",
+        "summary": "List the tools an MCP client gets, with a one-line description of each.",
+        "help": "List the tools an MCP client gets, with a one-line description of each.",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "renamed": {
+  "access": "agentfox declare scope / declare reference",
+  "analyse-action": "agentfox test action",
+  "audit": "agentfox report verify / agentfox admin checkpoint",
+  "auth": "agentfox admin auth",
+  "boundary": "agentfox declare boundary / agentfox test boundary",
+  "capability": "agentfox permit",
+  "check": "agentfox scan",
+  "compliance": "agentfox report (catalog upkeep: `agentfox admin catalog`)",
+  "db": "agentfox admin db",
+  "entitlement": "agentfox permit user / declare principal / report entitlement",
+  "escalation": "agentfox declare escalation / agentfox report escalations",
+  "eval": "agentfox test (drift: `agentfox report drift`)",
+  "evidence": "agentfox report evidence",
+  "guardrails": "agentfox policy rules",
+  "proposals": "agentfox policy proposals",
+  "quickscan": "agentfox scan --sessions",
+  "quickstart": "agentfox init",
+  "redteam": "agentfox test redteam / agentfox test probes",
+  "seed": "agentfox admin seed",
+  "sources": "agentfox declare source / declare list sources",
+  "tools": "agentfox declare tool / declare triggers / declare list",
+  "version": "agentfox --version (or `agentfox admin version`)"
+ }
+}

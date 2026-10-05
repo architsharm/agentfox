@@ -379,7 +379,7 @@ export function Discovery() {
             <Items items={DISCOVERY_ITEMS} />
             <p className="mk-fine" style={{ marginTop: 22 }}>
               The first look at a directory stays on the machine.{" "}
-              <Link href="/docs/discovery">The commands are in the docs.</Link>
+              <Link href="/docs/guides/scan-a-repo">The commands are in the docs.</Link>
             </p>
           </Half>
           <Half className="mk-up mk-d2">
