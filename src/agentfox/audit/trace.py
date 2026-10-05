@@ -195,6 +195,59 @@ def full_trace(session: Session, trace_id: str) -> dict[str, Any] | None:
             }
         )
 
+    decision_rows = [
+        {
+            "id": d.id,
+            "surface": d.surface,
+            "tool": d.tool_key,
+            "verdict": d.verdict,
+            "mode": d.mode,
+            "rules_fired": d.rules_fired_json,
+            "policy_version_id": d.policy_version_id,
+            "latency_ms": d.latency_ms,
+            "approval_id": d.approval_id,
+            "taint": d.taint_summary_json,
+            "detector_run_ids": d.detector_run_ids or [],
+        }
+        for d in decisions
+    ]
+    run_rows = [
+        {
+            "id": r.id,
+            "detector": r.detector_key,
+            "version": r.detector_version,
+            "surface": r.surface,
+            # Two different facts, and one field was being asked to carry both.
+            # `status` answers "did this detector execute" — ok, timeout,
+            # skipped_budget — and other code (P3-6 degradation) depends on that
+            # meaning, so it is untouched. `matched` answers "did it find
+            # anything", which is what a reader of the run table actually wants
+            # and could not previously tell: the detector that drove a block and
+            # the three that saw nothing all read `ok`.
+            "status": r.status,
+            "matched": bool(findings_by_run.get(r.id)),
+            "duration_ms": r.duration_ms,
+            "score": r.score,
+            "findings": findings_by_run.get(r.id, []),
+            "decision_id": decision_by_run.get(r.id),
+        }
+        for r in runs
+    ]
+
+    # The "why", rebuilt from what was recorded. Attached per decision rather than
+    # once per trace because a trace can hold several — an input that escalated and
+    # an output that blocked are two different answers to "why", and merging them
+    # would produce a third that is true of neither.
+    #
+    # Imported here rather than at module scope: `guardrails.tuning` reaches
+    # `operator_log`, which reaches `audit.chain`, which is this package — a cycle
+    # that the test suite's import order happened to avoid and starting the gateway
+    # did not.
+    from ..guardrails.tuning import explain_recorded
+
+    for row in decision_rows:
+        row["explanation"] = explain_recorded(row, run_rows)
+
     return {
         "trace": {
             "id": trace.id,
@@ -227,43 +280,8 @@ def full_trace(session: Session, trace_id: str) -> dict[str, Any] | None:
             }
             for s in spans
         ],
-        "decisions": [
-            {
-                "id": d.id,
-                "surface": d.surface,
-                "tool": d.tool_key,
-                "verdict": d.verdict,
-                "mode": d.mode,
-                "rules_fired": d.rules_fired_json,
-                "policy_version_id": d.policy_version_id,
-                "latency_ms": d.latency_ms,
-                "approval_id": d.approval_id,
-                "taint": d.taint_summary_json,
-            }
-            for d in decisions
-        ],
-        "detector_runs": [
-            {
-                "id": r.id,
-                "detector": r.detector_key,
-                "version": r.detector_version,
-                "surface": r.surface,
-                # Two different facts, and one field was being asked to carry both.
-                # `status` answers "did this detector execute" — ok, timeout,
-                # skipped_budget — and other code (P3-6 degradation) depends on that
-                # meaning, so it is untouched. `matched` answers "did it find
-                # anything", which is what a reader of the run table actually wants
-                # and could not previously tell: the detector that drove a block and
-                # the three that saw nothing all read `ok`.
-                "status": r.status,
-                "matched": bool(findings_by_run.get(r.id)),
-                "duration_ms": r.duration_ms,
-                "score": r.score,
-                "findings": findings_by_run.get(r.id, []),
-                "decision_id": decision_by_run.get(r.id),
-            }
-            for r in runs
-        ],
+        "decisions": decision_rows,
+        "detector_runs": run_rows,
         "taint": [
             {"path": t.path, "source": t.source, "trust": t.trust, "from": t.propagated_from}
             for t in taints

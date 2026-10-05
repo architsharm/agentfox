@@ -933,3 +933,114 @@ def agent_id_for(session: Session, slug: str | None) -> str | None:
         return None
     agent = session.scalar(select(Agent).where(Agent.slug == slug))
     return agent.id if agent else None
+
+
+# ---------------------------------------------------------------------------
+# Reconstructing an explanation after the fact
+# ---------------------------------------------------------------------------
+
+
+def explain_recorded(
+    decision: dict[str, Any],
+    detector_runs: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Rebuild the "why" of a decision from what was stored, long after the request.
+
+    `explain()` runs on the live request and its output goes back in the HTTP
+    response. Nothing persists it, which was fine while the only reader was the
+    caller holding that response — and is not fine for the person this product is
+    most used by. A platform engineer meets a block in a log line hours later, with
+    a decision id and no idea what it means; the dashboard could show them the rules
+    that fired and the detectors that ran, and left them to work out for themselves
+    which of five detections was the one that mattered and what to do about it.
+
+    Rebuilt rather than stored, for two reasons. Storing it would duplicate every
+    span and score that `DetectionFinding` already holds, on the hottest table in
+    the schema. And the rule's own entity predicate is now recorded in
+    `rules_fired`, so the reconstruction selects the decisive match by the same test
+    the live path uses and cannot quietly disagree with it.
+
+    What is genuinely lost and not faked: the masked excerpt, which needs the
+    original content, and per-detector timings beyond what the run rows carry. The
+    caller gets `None` for the excerpt rather than a plausible-looking blank.
+    """
+    from ..policy.model import EFFECT_RANK
+
+    rules = list(decision.get("rules_fired") or [])
+    # The *effective* verdict, which is what the live explanation describes and what
+    # the reader is asking about: in observe mode the applied verdict is `allow` and
+    # the interesting sentence is the one about what would have happened. The
+    # decision row stores only the applied verdict, so recover the other the same way
+    # the policy engine computed it — the strongest effect among the rules that fired.
+    applied = decision.get("verdict") or "allow"
+    target = applied
+    for fired in rules:
+        effect = str(fired.get("effect") or "")
+        if EFFECT_RANK.get(effect, -1) > EFFECT_RANK.get(target, -1):
+            target = effect
+    rule = next((r for r in rules if r.get("effect") == target), rules[0] if rules else None)
+
+    exact = {str(e).upper() for e in (rule or {}).get("entities", []) or []}
+    prefixes = tuple(str(e).upper() for e in (rule or {}).get("entity_prefixes", []) or [])
+
+    run_ids = set(decision.get("detector_run_ids") or [])
+    matches: list[dict[str, Any]] = []
+    for run in detector_runs:
+        # When the decision names its runs, honour that; a trace with several
+        # decisions must not attribute one decision's matches to another.
+        if run_ids and run.get("id") not in run_ids:
+            continue
+        for finding in run.get("findings") or []:
+            matches.append(
+                {
+                    "detector": run.get("detector"),
+                    "entity_type": finding.get("entity_type"),
+                    "span": [finding.get("start"), finding.get("end")],
+                    "score": finding.get("score"),
+                    "owasp_id": finding.get("owasp_id"),
+                    "atlas_id": finding.get("atlas_id"),
+                    "decisive": False,
+                }
+            )
+
+    relevant = [m for m in matches if _names(exact, prefixes, str(m["entity_type"] or ""))]
+    decisive = max(relevant or matches, key=lambda m: m.get("score") or 0.0, default=None)
+    if decisive is not None:
+        decisive["decisive"] = True
+
+    entity_types = [str(m["entity_type"]) for m in matches if m["decisive"]] or [
+        str(m["entity_type"]) for m in matches
+    ]
+    summary = ""
+    if decisive is not None:
+        start, end = decisive["span"]
+        summary = (
+            f"{target} on {decision.get('surface', 'input')}: {decisive['entity_type']} "
+            f"matched at offset {start}–{end} with score {decisive.get('score') or 0:.2f}"
+        )
+        if rule:
+            summary += f", which rule `{rule.get('rule_id')}` treats as {rule.get('effect')}"
+    elif rule:
+        # A tool, capability or taint rule fires on no detection at all. Saying so is
+        # the explanation; an empty panel is not.
+        summary = (
+            f"{target} on {decision.get('surface', 'input')}: rule "
+            f"`{rule.get('rule_id')}` fired on something other than a detector match"
+        )
+
+    return {
+        "summary": summary,
+        "rule": rule,
+        "matches": matches,
+        "remedy": _remedy_for(entity_types) if entity_types else "",
+        "dispute": {
+            "endpoint": "POST /api/guardrails/feedback",
+            "payload": {
+                "decision_id": decision.get("id"),
+                "label": "false_positive",
+                "detector_key": decisive.get("detector") if decisive else None,
+                "entity_type": decisive.get("entity_type") if decisive else None,
+                "note": "why this was wrong",
+            },
+        },
+    }

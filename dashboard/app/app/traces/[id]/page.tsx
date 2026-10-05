@@ -3,6 +3,7 @@ import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { ApiError, api, apiErrorProps } from "@/lib/api";
 import { ApiDown, ControlChip, InfoTip, NotFound, Panel, Verdict, ts } from "@/components/ui";
+import { WhyBlocked } from "@/components/WhyBlocked";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { controlTitleMap } from "@/lib/controls";
 
@@ -72,7 +73,12 @@ export default async function TraceDetail({
     <>
       <Breadcrumbs crumbs={[{ label: "Traces", href: "/app/traces" }]} />
       <h1>
-        {t.intent || "Untitled trace"}{" "}
+        {/* "Untitled trace" was accurate and useless, and this is the page the
+            primary reader arrives on from a link in their own logs. An intent is
+            only present when the caller sent one, which the content-guard path
+            usually does not, so fall back to what the trace actually was: the
+            surfaces that were checked. */}
+        {t.intent || surfacesChecked(d) || "Untitled trace"}{" "}
         {empty ? (
           <span className="tag" title="No check ran on this request, so there is no verdict to report.">
             nothing checked
@@ -125,6 +131,22 @@ export default async function TraceDetail({
           </p>
         </div>
       )}
+
+      {/* Before the span timeline, deliberately. The timeline answers "what
+          happened"; this answers "why", and the person who followed a link here
+          from a blocked response came for the second one. Rendered per decision
+          because a trace can hold several and they can disagree. */}
+      {!empty &&
+        d.decisions
+          .filter((x: any) => x.verdict !== "allow" || (x.rules_fired || []).length > 0)
+          .map((x: any) => (
+            <WhyBlocked
+              key={x.id}
+              explanation={x.explanation}
+              decision={x}
+              returnTo={`/app/traces/${id}`}
+            />
+          ))}
 
       {!empty && (
       <>
@@ -295,4 +317,23 @@ export default async function TraceDetail({
       )}
     </>
   );
+}
+
+/**
+ * A readable name for a trace nobody gave an intent to.
+ *
+ * "Checked input and output" tells the reader what this request was; "Untitled
+ * trace" tells them the product has a field they did not fill in.
+ */
+function surfacesChecked(d: any): string {
+  const surfaces: string[] = Array.from(
+    new Set((d.decisions || []).map((x: any) => String(x.surface))),
+  );
+  if (surfaces.length === 0) return "";
+  const names = surfaces.map((s) => s.replace(/_/g, " "));
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `Checked ${list}`;
 }
