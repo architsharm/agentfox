@@ -32,35 +32,35 @@ app = typer.Typer(
 console = Console()
 
 agents_app = typer.Typer(
-    help="Find every agent that is running, and who owns it (Pillar 1).",
+    help="Find every agent that is running, and who owns it.",
     no_args_is_help=True,
 )
 policy_app = typer.Typer(
-    help="Write the rules, try them against recorded traffic, then turn them on (Pillar 6).",
+    help="Write the rules, try them against recorded traffic, then turn them on.",
     no_args_is_help=True,
 )
 eval_app = typer.Typer(
-    help="Score an agent, fail the build on a regression, watch for drift (Pillar 4).",
+    help="Score an agent, fail the build on a regression, watch for drift.",
     no_args_is_help=True,
 )
 audit_app = typer.Typer(
-    help="Check that the recorded history has not been altered (Pillar 5).",
+    help="Check that the recorded history has not been altered.",
     no_args_is_help=True,
 )
 evidence_app = typer.Typer(
-    help="Export a package an auditor can verify without us (Pillar 5).",
+    help="Export a package an auditor can verify without us.",
     no_args_is_help=True,
 )
 compliance_app = typer.Typer(
-    help="Where this deployment stands against each framework, computed from telemetry (Pillar 6).",
+    help="Where this deployment stands against each framework, computed from telemetry.",
     no_args_is_help=True,
 )
 redteam_app = typer.Typer(
-    help="Attack your own configuration and score what got through (Pillar 4).",
+    help="Attack your own configuration and score what got through.",
     no_args_is_help=True,
 )
 scan_app = typer.Typer(
-    help="Snapshot an MCP server's tools and check them for hygiene (Pillar 1).",
+    help="Snapshot an MCP server's tools and check them for hygiene.",
     no_args_is_help=True,
 )
 hooks_app = typer.Typer(
@@ -69,12 +69,12 @@ hooks_app = typer.Typer(
 )
 db_app = typer.Typer(help="Apply, roll back and inspect the database schema.", no_args_is_help=True)
 tools_app = typer.Typer(
-    help="Declare what each tool can do, so containment has something to reason over (P9).",
+    help="Declare what each tool can do, so containment has something to reason over.",
     no_args_is_help=True,
 )
 access_app = typer.Typer(
     help="Declare which column decides whose row it is, so a query across every "
-    "customer stops reading as ordinary (P18).",
+    "customer stops reading as ordinary.",
     no_args_is_help=True,
 )
 
@@ -553,7 +553,7 @@ def policy_list() -> None:
 
 @policy_app.command("lint")
 def policy_lint() -> None:
-    """Lint the policy hierarchy (P12-4). Exits 1 on critical or high findings.
+    """Lint the policy hierarchy. Exits 1 on critical or high findings.
 
     This is the half of hierarchical policy that produces the 87% misconfiguration
     reduction — composition without a linter just moves the confusion somewhere
@@ -651,7 +651,7 @@ def policy_simulate(
     since_days: int = 30,
     limit: int = 1000,
 ) -> None:
-    """Replay recorded traffic against a candidate policy (P2-7).
+    """Replay recorded traffic against a candidate policy.
 
     Exits non-zero when the change would newly block production traffic, so it can
     gate a policy PR the same way `eval gate` gates a code PR.
@@ -875,7 +875,7 @@ def eval_gate(
     junit: Path | None = typer.Option(None, help="Write JUnit XML here."),
     sarif: Path | None = typer.Option(None, help="Write SARIF here."),
 ) -> None:
-    """Run the suite and fail the build on regression (P4-1). Exits 1 on failure."""
+    """Run the suite and fail the build on regression. Exits 1 on failure."""
     from sqlalchemy import select
 
     from ..evaluation import gate, to_junit, to_sarif
@@ -960,7 +960,7 @@ def eval_drift(agent: str, scorer: str = "groundedness") -> None:
 
 @eval_app.command("online")
 def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> None:
-    """Sample production traffic and score it with the offline scorers (P4-2)."""
+    """Sample production traffic and score it with the offline scorers."""
     from ..evaluation import sample_production
 
     with _session() as session:
@@ -989,7 +989,7 @@ def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> N
 
 @audit_app.command("verify")
 def audit_verify(start: int | None = None, end: int | None = None) -> None:
-    """Verify the tamper-evident audit chain (P5-2). Exits 1 if broken."""
+    """Verify the tamper-evident audit chain. Exits 1 if broken."""
     from ..audit import chain
 
     with _session() as session:
@@ -1075,7 +1075,7 @@ def evidence_export(
     control: list[str] = typer.Option(None, "--control", help="Repeatable; default all."),
     requested_by: str = "cli",
 ) -> None:
-    """Build an auditor-ready evidence package (P5-3)."""
+    """Build an auditor-ready evidence package."""
     from ..audit import evidence
 
     period_from, period_to = _evidence_period(from_, to, since_days)
@@ -1129,7 +1129,7 @@ def compliance_sync() -> None:
 
 @compliance_app.command("compute")
 def compliance_compute(window_days: int = 30) -> None:
-    """Recompute control status from telemetry (P6-4)."""
+    """Recompute control status from telemetry."""
     from ..compliance import compute_all, posture
 
     with _session() as session:
@@ -1339,7 +1339,7 @@ def compliance_review_packet(
     framework: str = typer.Option(..., "--framework", help="Framework key, e.g. eu-ai-act."),
     out: Path | None = typer.Option(None, "--out", help="Write markdown here instead of stdout."),
 ) -> None:
-    """Everything a qualified reviewer needs to sign off one framework, in one file (B.6).
+    """Everything a qualified reviewer needs to sign off one framework, in one file.
 
     Every mapping ships `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a named human reviews
     it, and that is the loudest "not ready" signal in an audit conversation. The blocker has
@@ -1478,7 +1478,7 @@ def compliance_frameworks() -> None:
 
 @compliance_app.command("risk")
 def compliance_risk() -> None:
-    """Show the agent risk register (P6-3)."""
+    """Show the agent risk register."""
     from ..compliance import register
 
     with _session() as session:
@@ -1500,7 +1500,7 @@ def compliance_risk() -> None:
 
 @compliance_app.command("obligations")
 def compliance_obligations() -> None:
-    """Regulatory obligation calendar against the agent inventory (P6-5)."""
+    """Regulatory obligation calendar against the agent inventory."""
     from ..compliance import obligation_calendar
 
     with _session() as session:
@@ -1523,7 +1523,7 @@ def compliance_obligations() -> None:
 
 @compliance_app.command("board")
 def compliance_board() -> None:
-    """Executive risk view (P6-6)."""
+    """Executive risk view."""
     from ..compliance import board_view
 
     with _session() as session:
@@ -1582,7 +1582,7 @@ def redteam_run(
         help="Generate probes from this deployment's own grants, impacts and bound policies.",
     ),
 ) -> None:
-    """Run adversarial probes against the deployed configuration (P4-4).
+    """Run adversarial probes against the deployed configuration.
 
     This measures whether *this configuration* got weaker, against known attack classes.
     It is not a robustness certificate, and `--adaptive` does not make it one: every
@@ -1720,7 +1720,7 @@ def scan_skills(
         True, "--persist/--no-persist", help="Raise findings, or just print."
     ),
 ) -> None:
-    """Scan agent skills for planted instructions and declared danger (P1-5).
+    """Scan agent skills for planted instructions and declared danger.
 
     A skill is the same object as an MCP tool one layer up: a description the
     model reads to decide whether to invoke it, and instructions it then obeys.
@@ -2300,7 +2300,7 @@ def analyse_action(
     dialect: str = typer.Option("postgres", help="SQL dialect"),
     environment: str = typer.Option("production", help="environment the action binds to"),
 ) -> None:
-    """Read an artefact and say what running it would actually do (P9).
+    """Read an artefact and say what running it would actually do.
 
     Deterministic, offline and immediate: no database, no model, no network. The point
     is that an engineer can check a generated statement before it is ever executed.
@@ -2354,7 +2354,7 @@ def tools_declare(
         ),
     ),
 ) -> None:
-    """Declare a tool and what it can do (P9).
+    """Declare a tool and what it can do.
 
     Containment is declared, not detected: an irreversible tool recorded as `read` is one
     a tainted argument can reach. This is the command that makes least privilege real, and
