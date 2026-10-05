@@ -243,7 +243,7 @@ than not appearing at all.
 Which tiers run, and what may leave the machine, is editable in the product — Policies →
 Judgment posture — with the deployment acting as a ceiling the product cannot raise. An admin
 can tighten personal-data handling or turn a hosted tier off; nobody can enable one on a
-deployment whose `NOMETRIA_ALLOW_EGRESS` is false, and attempting it is a refusal with a reason
+deployment whose `AGENTFOX_ALLOW_EGRESS` is false, and attempting it is a refusal with a reason
 rather than a preference that silently does nothing. Every change is recorded with who, why and
 what it was before. [How the two layers relate](docs/jev-capabilities.md).
 
@@ -472,10 +472,15 @@ promise is that it does not phone home.
 ## Self-hosting
 
 Everything runs on your own infrastructure. There is no licence check, no phone-home, and no
-default egress: a fresh install ships with `NOMETRIA_ALLOW_EGRESS=false` and the `echo` provider,
+default egress: a fresh install ships with `AGENTFOX_ALLOW_EGRESS=false` and the `echo` provider,
 so it runs end to end with no model and no API key. Point it at a model when you want one.
 
-Set `NOMETRIA_CONSOLE_URL` to wherever your dashboard is reachable and every governed response
+Settings are `AGENTFOX_*` environment variables. The pre-rename `NOMETRIA_*` names still work, so
+an existing deployment does not need to change; where both are set, `AGENTFOX_*` wins. The full
+list, including the few still read only under the old name, is
+[harness/reference/config.md](harness/reference/config.md).
+
+Set `AGENTFOX_CONSOLE_URL` to wherever your dashboard is reachable and every governed response
 carries an `explain_url` — and an `X-Nometria-Explain` header — pointing at the decision it
 describes, so a block in a log is one click from the reason for it. It is left empty by default
 and never inferred from the request: behind a proxy the `Host` header is whatever the proxy sent,
@@ -508,14 +513,14 @@ never needs network access for them. The licence-gated Llama Guard tier is off b
 never in the published image; the compose file's header has the opt-in steps.
 
 [`deploy/docker-compose.yml`](deploy/docker-compose.yml) is commented line by line, including which
-values you must change before a real deployment — `NOMETRIA_AUDIT_SIGNING_KEY` above all, since the
+values you must change before a real deployment — `AGENTFOX_AUDIT_SIGNING_KEY` above all, since the
 audit chain is only as trustworthy as the key that signs it.
 
 **3. Python, no containers** — the gateway is an ordinary ASGI app:
 
 ```bash
 pip install "agentfox[postgres] @ git+https://github.com/architsharm/agentfox.git"
-agentfox init                      # SQLite by default; set NOMETRIA_DATABASE_URL for Postgres
+agentfox init                      # SQLite by default; set AGENTFOX_DATABASE_URL for Postgres
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080
 ```
 

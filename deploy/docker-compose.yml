@@ -16,10 +16,14 @@
 #        export HF_TOKEN=hf_...
 #        docker compose -f deploy/docker-compose.yml build gateway
 #   3. add "safety.restricted" to AGENTFOX_ENABLED_DETECTORS below, and
-#   4. set NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES to "1".
+#   4. set AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES to "1".
 # Without the token the build skips that tier and everything else still builds.
 #
 #   docker compose -f deploy/docker-compose.yml up
+#
+# Settings are read as AGENTFOX_*. The pre-rename NOMETRIA_* names still work as a
+# fallback, so an existing deployment's environment does not need to change. The
+# dashboard service is the exception: it reads only the NOMETRIA_* names below.
 #
 #   control plane   http://localhost:3000
 #   API + gateway   http://localhost:8080
@@ -49,7 +53,7 @@ services:
       retries: 20
 
   # Appendix A.1: OPA is the wrapped policy decision engine. It is optional —
-  # NOMETRIA_POLICY_ENGINE defaults to `native`, and the OPA adapter falls back to
+  # AGENTFOX_POLICY_ENGINE defaults to `native`, and the OPA adapter falls back to
   # the native evaluator if this container is unreachable, because a policy-engine
   # outage must never take the customer's agent down (NFR-2).
   opa:
@@ -69,20 +73,22 @@ services:
         - hf_token
     environment:
       # The password must match POSTGRES_PASSWORD on the db service above.
-      NOMETRIA_DATABASE_URL: postgresql+psycopg://agentfox:agentfox@db:5432/agentfox
-      NOMETRIA_ORG_ID: org_default
-      NOMETRIA_ENVIRONMENT: production
+      AGENTFOX_DATABASE_URL: postgresql+psycopg://agentfox:agentfox@db:5432/agentfox
+      AGENTFOX_ORG_ID: org_default
+      AGENTFOX_ENVIRONMENT: production
       # Zero egress by default. Set to "true" and supply a key to use a hosted model.
-      NOMETRIA_ALLOW_EGRESS: "false"
-      NOMETRIA_DEFAULT_PROVIDER: echo
-      # Observe by default: enforcement is something the customer turns on
-      # deliberately, after simulating it (PRD R3).
-      NOMETRIA_DEFAULT_POLICY_MODE: observe
-      NOMETRIA_FAIL_MODE: open
-      NOMETRIA_ENFORCEMENT_BUDGET_MS: "100"
-      NOMETRIA_DETECTOR_TIMEOUT_MS: "40"
-      NOMETRIA_POLICY_ENGINE: native
-      NOMETRIA_OPA_URL: http://opa:8181
+      AGENTFOX_ALLOW_EGRESS: "false"
+      AGENTFOX_DEFAULT_PROVIDER: echo
+      # The mode used when no bound policy decides. Detector-backed policy is
+      # something the customer turns on deliberately, after simulating it (PRD R3).
+      # Tool containment still ships enforcing, and a missing grant is refused
+      # whatever this says.
+      AGENTFOX_DEFAULT_POLICY_MODE: observe
+      AGENTFOX_FAIL_MODE: open
+      AGENTFOX_ENFORCEMENT_BUDGET_MS: "100"
+      AGENTFOX_DETECTOR_TIMEOUT_MS: "40"
+      AGENTFOX_POLICY_ENGINE: native
+      AGENTFOX_OPA_URL: http://opa:8181
       # Every detector the published image has weights for (deploy/Dockerfile), on
       # top of the 5 zero-dependency defaults. `safety.restricted` (Llama Guard 3-8B)
       # is left out on purpose: see the opt-in steps at the top of this file.
@@ -92,17 +98,17 @@ services:
       # Appendix A.4: Llama Guard's licence is non-OSI (acceptable-use policy, a
       # >700M-MAU clause) and the code refuses to load it unless this is "1". Turning
       # it on is a legal decision, not a technical one, so it ships off.
-      NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES: "0"
+      AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES: "0"
       # CHANGE THIS. The checkpoint signing key should live outside the application
       # database and be held by the customer (NFR-7, Appendix E.2.2).
-      NOMETRIA_AUDIT_SIGNING_KEY: change-me-before-any-real-deployment
-      NOMETRIA_EVIDENCE_DIR: /var/agentfox/evidence
+      AGENTFOX_AUDIT_SIGNING_KEY: change-me-before-any-real-deployment
+      AGENTFOX_EVIDENCE_DIR: /var/agentfox/evidence
       # The public playground page (dashboard/app/playground) calls this origin
       # directly from the visitor's browser, unauthenticated — additive to the
       # hardcoded localhost origins in gateway/app.py, not a replacement. Only
       # needed once the dashboard is actually reachable from somewhere other than
       # this same machine.
-      NOMETRIA_PLAYGROUND_CORS_ORIGIN: http://localhost:3000
+      AGENTFOX_PLAYGROUND_CORS_ORIGIN: http://localhost:3000
     ports:
       - "8080:8080"
     volumes:
@@ -123,6 +129,8 @@ services:
       context: ../dashboard
       dockerfile: ../deploy/Dockerfile.dashboard
     environment:
+      # The dashboard reads these under the NOMETRIA_ names only (dashboard/lib/api.ts),
+      # so they keep the old prefix until the dashboard reads AGENTFOX_ too.
       # Read at request time, not baked at build time — so one image can be pointed
       # at any control plane.
       NOMETRIA_API_URL: http://gateway:8080
