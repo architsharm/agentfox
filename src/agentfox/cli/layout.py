@@ -30,7 +30,7 @@ from typing import Any
 
 import click
 import typer
-from typer.core import TyperGroup
+from typer.core import TyperGroup, TyperOption
 from typer.main import get_command_name
 from typer.models import CommandInfo, TyperInfo
 
@@ -149,10 +149,12 @@ class RootGroup(TyperGroup):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        # TyperOption, not click.Option: newer typer (0.27 here) runs on its own vendored click,
+        # whose Context a stock click.Option cannot parse against.
         self.params.insert(
             0,
-            click.Option(
-                ["--version"],
+            TyperOption(
+                param_decls=["--version"],
                 is_flag=True,
                 expose_value=False,
                 is_eager=True,
