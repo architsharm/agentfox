@@ -30,7 +30,6 @@ sys.path.insert(0, str(ROOT / "src"))
 
 HERE = pathlib.Path(__file__).parent
 BENCH = ROOT / "benchmarks"
-SCRIPTS = ROOT / "scripts"
 N = int(os.environ.get("JUDGMENT_BENCH_N", "500"))
 #: Every judgment is a network round trip, so the runner is I/O bound and
 #: sequential execution is what caps N, not cost — at 350ms a call, 2,000
@@ -258,7 +257,7 @@ def main() -> int:
     }
 
     # --- commitments ------------------------------------------------------
-    corpus = json.loads((SCRIPTS / "jev_corpus.json").read_text())["cases"]
+    corpus = json.loads((HERE / "data" / "jev_corpus.json").read_text())["cases"]
     buckets: dict[str, list] = collections.defaultdict(list)
     for c in corpus:
         buckets[c["answer_template"]].append(c)
@@ -288,7 +287,7 @@ def main() -> int:
         c_on.append((want, on_hit))
         llm_calls += used
     out["areas"]["commitments"] = {
-        "dataset": "generated refund-reply corpus (scripts/jev_corpus.json)",
+        "dataset": "generated refund-reply corpus (benchmarks/judgment/data/jev_corpus.json)",
         "off": score(c_off),
         "on": score(c_on),
         "llm_calls_per_100": round(100 * llm_calls / max(1, len(sample))),

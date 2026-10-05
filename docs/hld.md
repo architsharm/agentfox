@@ -6,8 +6,7 @@ shape of the system before the detail. It is synthesized from the codebase (grou
 by direct inspection, 2026-09-04) and from [docs/PRD.md](PRD.md), which remains the
 canonical product document — if the two disagree, re-run the check this document describes
 and trust the code. Companion documents: [docs/lld.md](lld.md) (module/class/API/schema
-detail), [docs/production-readiness-review.md](production-readiness-review.md) (gaps),
-[docs/competitor-analysis.md](competitor-analysis.md) (market position).
+detail).
 
 ---
 
@@ -36,8 +35,7 @@ Twelve further pillars (7–18: Answerability, Provenance, Action Assurance, Ent
 Escalation, Failure Attribution, Business/Policy Composition, Context Integrity, Cost &
 Reliability, Memory-write governance, Inter-agent messaging security, Tool Contract) sit
 underneath and across these six — see §3. The product's own framing is that pillars 7–13 are
-where genuine, currently-unclaimed differentiation lives (detail in
-[competitor-analysis.md](competitor-analysis.md)), while 1–6 are table stakes done well.
+where genuine, currently-unclaimed differentiation lives, while 1–6 are table stakes done well.
 
 ---
 
@@ -269,7 +267,7 @@ into an actual governance *decision* (`docs/README.md`, Appendix A §A.5):
 | | Examples | Status |
 |---|---|---|
 | **Wrapped OSS primitives** | Presidio (PII), Granite Guardian (safety classifier), sqlglot (SQL parsing), OPA/Rego (policy), OpenTelemetry (tracing), Garak/PyRIT (red-team probes) | Swappable behind an adapter interface (§2) — full licence/health register in [Appendix A](appendix-a-oss-register.md) |
-| **Proprietary, built here** | Argument-provenance taint tracking; deterministic blast-radius/action-semantics analysis on generated SQL; answerability & abstention against a declared knowledge boundary; end-user entitlement propagation through retrieval and tool calls; escalation-failure counterfactual detection; the tamper-evident audit chain and its independent verifier; the PIGuard+backstop ensemble tuning | This is the moat — none of it exists as an off-the-shelf OSS or commercial primitive today (validated against a live competitive scan — see [competitor-analysis.md](competitor-analysis.md)) |
+| **Proprietary, built here** | Argument-provenance taint tracking; deterministic blast-radius/action-semantics analysis on generated SQL; answerability & abstention against a declared knowledge boundary; end-user entitlement propagation through retrieval and tool calls; escalation-failure counterfactual detection; the tamper-evident audit chain and its independent verifier; the PIGuard+backstop ensemble tuning | This is the moat — none of it exists as an off-the-shelf OSS or commercial primitive today (validated against a live competitive scan) |
 
 Three OSS dependencies have already changed status underneath the project within twelve
 months (promptfoo acquired by OpenAI, Langfuse acquired by ClickHouse, LLM Guard archived) —
@@ -297,7 +295,6 @@ last known-good vendored wheel — production DB migration gap`). Since commit `
 risk is controlled rather than open: a pre-commit hook (`scripts/rebuild_vendored_wheels.py`)
 rebuilds both vendored wheels whenever `src/agentfox/` changes, and CI's
 `vendored-wheel-freshness` job fails any push that changes `src/agentfox/` without them.
-The original finding is recorded in [production-readiness-review.md](production-readiness-review.md) §1.2.
 
 A related consequence: because the serverless deployment cannot run `alembic upgrade head`
 through normal channels (the deployed wheel doesn't bundle `migrations/`), `gateway/app.py`
@@ -319,8 +316,7 @@ The project does not build, and does not intend to build (`docs/PRD.md` §10.3, 
   traces, it doesn't compete on trace UX.
 - Sandboxed code execution (that's E2B/Modal/Daytona's job).
 - Business-platform coverage — Microsoft Copilot Studio, Power Platform, Salesforce
-  Agentforce are explicitly out of scope today (this cedes real ground to Zenity; see
-  [competitor-analysis.md](competitor-analysis.md) §5).
+  Agentforce are explicitly out of scope today (this cedes real ground to Zenity).
 - Network-level agent discovery (as opposed to code/config-based discovery).
 - Non-text modalities.
 
@@ -329,6 +325,5 @@ The project does not build, and does not intend to build (`docs/PRD.md` §10.3, 
 ## 11. Where to go next
 
 - **Module-by-module detail, class signatures, DB schema, API endpoints**: [docs/lld.md](lld.md)
-- **Is this actually production-ready, and what's missing**: [docs/production-readiness-review.md](production-readiness-review.md)
-- **How this compares to the market**: [docs/competitor-analysis.md](competitor-analysis.md)
+- **What is built, partial and absent**: [docs/status.md](status.md)
 - **The full product reasoning this HLD condenses**: [docs/PRD.md](PRD.md)

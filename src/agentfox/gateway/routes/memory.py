@@ -91,7 +91,7 @@ def revoke_entry(
     user: User = Depends(require("registry")),
 ) -> dict[str, Any]:
     """Pull an entry immediately — the concrete fix for 'no way to find and
-    remove a bad memory' (`enterprise-infrastructure-analysis.md` Gap 6)."""
+    remove a bad memory'."""
     entry = session.get(MemoryEntry, entry_id)
     if entry is None:
         raise HTTPException(404, f"unknown memory entry '{entry_id}'")

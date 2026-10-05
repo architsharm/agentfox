@@ -28,7 +28,7 @@
       }
     },
     "commitments": {
-      "dataset": "generated refund-reply corpus (scripts/jev_corpus.json)",
+      "dataset": "generated refund-reply corpus (benchmarks/judgment/data/jev_corpus.json)",
       "llm_calls_per_100": 50,
       "off": {
         "accuracy": 0.45,

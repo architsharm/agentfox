@@ -24,7 +24,6 @@ commit; `scripts/check_harness.py` fails if a repo `.md` file is unclassified.
 | `docs/failure-modes.md` | how deployed agents fail (F1–F9) and which are covered | Living scorecard |
 | `docs/gap-analysis.md` | enterprise-readiness gaps, Tier 0–3 | Canonical gap register |
 | `docs/responding-to-the-critique.md` | answering the "AI security is bullshit" argument: what we accept, what we dispute, what we changed | Sales-facing; keep claims checkable |
-| `docs/pricing-and-procurement.md` | draft pricing model and the procurement-readiness checklist | **Draft for a human decision** — do not quote as policy |
 | `docs/appendix-b-control-catalog.md` | NOM-* controls and their framework mappings | All mappings DRAFT; YAML path in the doc is stale |
 | `docs/appendix-e-threat-model.md` | threats to customers' agents and to the product | |
 | `docs/appendix-a-oss-register.md` | why an OSS project is (not) used, licences | Check before adding a dependency |
@@ -50,7 +49,6 @@ Quote coverage numbers only from these, and only after regenerating.
 |---|---|---|
 | `docs/appendix-c-api-spec.md` | missing and phantom routes | `harness/reference/http-api.md`, live `/docs` |
 | `docs/appendix-d-data-model.md` | wrong model path | `src/agentfox/models.py` |
-| `docs/production-readiness-review.md` | 🔴 1.1, 1.2 and §1.4 fixed since | `docs/gap-analysis.md` + `git log` |
 
 ## Class D — task-scoped: read only when working on that thing
 
@@ -58,7 +56,6 @@ Quote coverage numbers only from these, and only after regenerating.
 |---|---|
 | `benchmarks/REPORT.md`, `benchmarks/*/README.md` (one per benchmark area) | running or changing that benchmark |
 | `benchmarks/data/README.md`, `benchmarks/data_generalization/README.md`, `docs/dataset-sourcing.md` | dataset provenance and licensing |
-| `docs/jev-*.md` (16 files) | evaluating the TypeSafe Jev judgment model: where a hosted judgment beats our detectors and where it loses. Start at `docs/jev-capabilities.md` for the tiers and what each may decide, `docs/jev-final-numbers.md` for the headline table, and `docs/jev-egress.md` before enabling a remote backend — judgment is egress and defaults to local |
 | `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md` | running or deploying the live demos |
 | `CONTRIBUTING.md` | setting up to work on the code: the extras to install, the checks that must pass, and the two things that surprise people (vendored wheels, numbers bound to result files) |
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |
@@ -66,15 +63,12 @@ Quote coverage numbers only from these, and only after regenerating.
 | `CHANGELOG.md` | what changed in a release, and the section `.github/workflows/release.yml` turns into release notes |
 | `.github/PULL_REQUEST_TEMPLATE.md` | opening a pull request: the four checks that gate it and the vendored-wheel rule |
 | `deploy/README-dashboard.md` | deploying the hosted dashboard (Render/Fly/Vercel), its shared secrets and the Neon migration state |
-| `docs/audit-tracker-pmlanguage.md`, `docs/audit-tracker-designreview.md` | dashboard copy/UX work (open backlogs) |
 
 ## Class E — human-only: do not load into agent context
 
 | Files | Why |
 |---|---|
-| `docs/research/*.md` | Raw research inputs kept for provenance; two files contain real people's career data |
-| `docs/competitor-analysis.md`, `docs/benchmarking-whitepaper.md` | Positioning and marketing; an agent should cite primary benchmark docs, not these |
-| `docs/audit-tracker.md`, `docs/audit-tracker-newuser.md` | Closed historical trackers |
+| `docs/benchmarking-whitepaper.md` | Positioning and marketing; an agent should cite primary benchmark docs, not these |
 
 ## Harness files (Class H — owned by `harness/`)
 

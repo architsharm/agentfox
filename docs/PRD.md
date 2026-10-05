@@ -180,7 +180,7 @@ Four independent sources. Where they disagree, the disagreement is noted rather 
 ### 2.1 Practitioner CVs — 11 senior AI engineers (strongest source)
 
 Not a vendor survey. A record of what senior engineers were **paid to build** in production, in
-regulated enterprises, 2023–2026. Full analysis: [research/practitioner-signal.md](research/practitioner-signal.md).
+regulated enterprises, 2023–2026.
 
 **Technology frequency (n=11):**
 
@@ -1116,7 +1116,6 @@ coverage we lack — every framework mapping ships with a declared gap list.
 
 **Internal:** [Gap analysis](gap-analysis.md) · [Failure modes](failure-modes.md) ·
 [Benchmarking white paper](benchmarking-whitepaper.md) ·
-[Practitioner signal](research/practitioner-signal.md) (raw evidence — 11 practitioner CVs) ·
 [Appendix A — OSS register](appendix-a-oss-register.md) ·
 [Appendix B — Control catalog](appendix-b-control-catalog.md) ·
 [Appendix C — API spec](appendix-c-api-spec.md) · [Appendix D — Data model](appendix-d-data-model.md) ·

@@ -40,7 +40,7 @@ central modules live at the package root.
 | `tenancy.py` | 270 | Multi-tenant isolation — session-level `with_loader_criteria` enforcement, not per-query filtering. |
 | `tool_contract.py` | 264 | Pillar 18 — semantic tool-contract governance (data access, result fidelity, source arbitration). |
 | `config.py` / `db.py` | 259 / 225 | Settings (env-var driven) and engine/session setup. |
-| `agent_loop.py` | 222 | Pillar 15 (PL-4) — `LoopGovernor`: alternating-cycle and stalled-run detection across a multi-turn tool-calling loop. Called from `enforcement.py:2367`. As of 2026-09-04, actively being extended (uncommitted diff) to accept a full step-history (`prior_steps`) from callers, not just a per-tool repeat count — see [production-readiness-review.md](production-readiness-review.md). |
+| `agent_loop.py` | 222 | Pillar 15 (PL-4) — `LoopGovernor`: alternating-cycle and stalled-run detection across a multi-turn tool-calling loop. Called from `enforcement.py:2367`. As of 2026-09-04, actively being extended (uncommitted diff) to accept a full step-history (`prior_steps`) from callers, not just a per-tool repeat count. |
 | `jobs.py` | 178 | Async job-queue interface. **Zero callers outside itself and tests as of 2026-09-04** — a genuinely stub-only module (built, tested, not wired to anything on a live path). |
 | `system_log.py` / `operator_log.py` | 132 / 218 | Structured operator-action logging (distinct from the audit chain — these are operational logs, not the tamper-evident record). |
 | `session_scan.py` | 124 | `agentfox quickscan`'s local AI-tool-session transcript scan. |
@@ -86,8 +86,7 @@ module inventory above almost 1:1: `test_enforcement_and_api.py`, `test_autoguar
 `test_session_scan.py`, `test_system_log.py`, `test_tenancy.py`, `test_tool_contract.py`,
 `test_tranche0.py`, `test_tuning.py`, `test_auth.py`, plus `tests/corpus/injection.py` (a
 fixture corpus, not a test file). **No frontend (`dashboard/`) test files exist anywhere in
-the repo** — this is a real gap, tracked in
-[production-readiness-review.md](production-readiness-review.md).
+the repo** — this is a real gap.
 
 Current test and line counts are in [`docs/status.md`](status.md), which `scripts/coverage.py --write` regenerates from the source tree; they are not restated here because they go stale.
 
@@ -173,7 +172,7 @@ by remembering to filter every query by `org_id`.
 | **Guardrails** (Pillar 3) | `detector_runs`, `detection_findings`, `taint_tags`, `budgets` | `detector_runs.status` records degradation (§4); `detection_findings` are redacted at capture, never store raw sensitive spans |
 | **Evaluation** (Pillar 4) | `eval_suites/cases/scorers/runs/results`, `baselines`, `drift_windows`, `slos`, `redteam_campaigns/findings` | `baselines` hold a per-scorer regression tolerance; `drift_windows` use PSI/KS statistics; red-team findings map to `owasp_id`/`atlas_id` |
 | **Audit** (Pillar 5) | `traces`/`spans`, `audit_entries`, `audit_checkpoints`, `evidence_packages`, `retention_policies`, `legal_holds` | See §6 for the hash-chain invariants |
-| **Compliance** (Pillar 6) | `policies`/`policy_versions`/`policy_bindings`, `decisions`, `simulation_runs`, `controls`, `framework_mappings`, `control_statuses`, `risk_assessments`, `obligations` | `policy_versions` are immutable; `decisions` always bind the exact policy version in force at decision time; `framework_mappings.review_status` is `draft \| reviewed` — **as of the last audit, all mappings remain `draft`**, see [production-readiness-review.md](production-readiness-review.md) for current status and a documented inconsistency about whether draft mappings are excluded from or chip-labeled-and-included in evidence packages |
+| **Compliance** (Pillar 6) | `policies`/`policy_versions`/`policy_bindings`, `decisions`, `simulation_runs`, `controls`, `framework_mappings`, `control_statuses`, `risk_assessments`, `obligations` | `policy_versions` are immutable; `decisions` always bind the exact policy version in force at decision time; `framework_mappings.review_status` is `draft \| reviewed` — **as of the last audit, all mappings remain `draft`**, with a documented inconsistency about whether draft mappings are excluded from or chip-labeled-and-included in evidence packages |
 
 ---
 
@@ -367,8 +366,7 @@ policy hierarchy/agent controls → guardrail feedback/suppressions → per-tena
 escalation policy handoffs → source records → business rules → knowledge boundary →
 entitlement principals/grants → **a cluster of four "org-scoped uniqueness was global"
 hardening migrations** (control-key, more-tenant-scoped-uniqueness, cascade/access-scoping,
-lineage-edge-uniqueness — direct evidence of the multi-tenancy hardening effort referenced in
-[production-readiness-review.md](production-readiness-review.md)) → GitHub integration →
+lineage-edge-uniqueness — direct evidence of the multi-tenancy hardening effort) → GitHub integration →
 hosted-API integration → source-content validation/connections → seed-data flag →
 inter-agent-message security → memory-write governance → policy canary rollout → eval
 annotation queue.
@@ -426,8 +424,7 @@ Three files only, no Kubernetes manifests anywhere in the repo.
   on 2026-09-04, neither `compliance/` nor `policies/` exists at the repo root; the actual
   YAML data already ships via the preceding `COPY src ./src` at
   `src/agentfox/compliance_data/` and `src/agentfox/policies_data/`. As written, this build
-  step targets a path that doesn't exist in the current tree — flagged in detail in
-  [production-readiness-review.md](production-readiness-review.md).
+  step targets a path that doesn't exist in the current tree.
 - **`Dockerfile.dashboard`** — `node:22-alpine`, standard Next.js standalone-output
   multi-stage build, runs `node server.js`.
 
@@ -441,4 +438,3 @@ Three files only, no Kubernetes manifests anywhere in the repo.
 - [docs/appendix-c-api-spec.md](appendix-c-api-spec.md) — full API specification
 - [docs/appendix-d-data-model.md](appendix-d-data-model.md) — full data model
 - [docs/appendix-e-threat-model.md](appendix-e-threat-model.md) — full threat model
-- [docs/production-readiness-review.md](production-readiness-review.md) — gaps and priorities

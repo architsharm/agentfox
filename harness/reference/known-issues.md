@@ -81,5 +81,5 @@ it still doesn't do:
   checked in CI. Its prose sections are hand-written and may lag the code.
 
 Fixed on 2026-09-15: Appendix B's catalog path, control count and missing rows; Appendix C's
-phantom routes; Appendix D's model path; the stale-wheel claims in `docs/hld.md` and
-`docs/production-readiness-review.md`; and the migration count in `docs/lld.md`.
+phantom routes; Appendix D's model path; the stale-wheel claims in `docs/hld.md`; and the
+migration count in `docs/lld.md`.
