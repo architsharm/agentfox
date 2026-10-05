@@ -143,7 +143,7 @@ def test_the_migrations_resolve_from_the_package_when_the_repository_is_not_ther
 
     monkeypatch.setattr(config, "REPO_ROOT", tmp_path / "not-a-checkout")
 
-    packaged = Path(db.__file__).resolve().parent
+    packaged = Path(db.__file__).resolve().parents[1]  # the agentfox package
     ini, scripts = packaged / "_alembic.ini", packaged / "_migrations"
     if not ini.is_file():  # a checkout has no copied-in pair; stand one in
         scripts.mkdir(exist_ok=True)
