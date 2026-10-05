@@ -238,7 +238,7 @@ def governed(client):
 
 
 def test_gateway_captures_headers_from_the_live_proxy(client, governed):
-    body = client.get(f"/api/traces/{governed}/links", headers=as_user("admin@example.com")).json()
+    body = client.get(f"/api/traces/{governed}", headers=as_user("admin@example.com")).json()
     assert body["links"][0]["external_trace_id"] == "lf-api"
     assert body["links"][0]["url"] == "https://cloud.langfuse.com/trace/lf-api"
 

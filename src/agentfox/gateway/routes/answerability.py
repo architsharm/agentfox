@@ -20,7 +20,6 @@ from ...answerability import (
     QUESTION_TYPES,
     abstention_report,
     classify_answerability,
-    completeness_signal,
     declare_boundary,
     get_boundary,
     question_type,
@@ -67,25 +66,24 @@ def write_boundary(
     return _boundary_json(boundary, payload.agent)
 
 
-@router.get("/boundary")
-def read_boundary(
-    agent: str, session: Session = Depends(db), _user: User = Depends(current_user)
-) -> dict[str, Any]:
-    boundary = get_boundary(session, get_agent_or_404(session, agent).id)
-    if boundary is None:
-        raise HTTPException(404, f"no knowledge boundary declared for '{agent}'")
-    return _boundary_json(boundary, agent)
-
-
 @router.get("/boundaries")
 def list_boundaries(
-    session: Session = Depends(db), _user: User = Depends(current_user)
+    agent: str | None = None,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
 ) -> dict[str, Any]:
+    """Every declared knowledge boundary, or one agent's with `?agent=<slug>`.
+
+    A filtered read 404s on an unknown agent; a known agent with no declaration
+    returns an empty list rather than an error.
+    """
+    stmt = select(KnowledgeBoundary)
+    if agent is not None:
+        stmt = stmt.where(KnowledgeBoundary.agent_id == get_agent_or_404(session, agent).id)
     agents = {a.id: a.slug for a in session.scalars(select(Agent))}
     return {
         "boundaries": [
-            _boundary_json(b, agents.get(b.agent_id, "?"))
-            for b in session.scalars(select(KnowledgeBoundary))
+            _boundary_json(b, agents.get(b.agent_id, "?")) for b in session.scalars(stmt)
         ],
         "question_types": list(QUESTION_TYPES),
     }
@@ -119,20 +117,6 @@ def check(
         "boundary_declared": boundary is not None,
         **verdict.to_json(),
     }
-
-
-class CompletenessIn(BaseModel):
-    answer: str
-    retrieved: int | None = None
-    available: int | None = None
-
-
-@router.post("/completeness")
-def completeness(payload: CompletenessIn, _user: User = Depends(current_user)) -> dict[str, Any]:
-    """F1.6 — retrieved 3 of 50 and answered as though exhaustive."""
-    return completeness_signal(
-        payload.answer, retrieved=payload.retrieved, available=payload.available
-    )
 
 
 @router.get("/report")

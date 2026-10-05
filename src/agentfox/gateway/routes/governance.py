@@ -132,27 +132,6 @@ def resolve_trace(
     return {"matches": out}
 
 
-@router.get("/traces/{trace_id}/links")
-def trace_links(
-    trace_id: str, session: Session = Depends(db), _user: User = Depends(current_user)
-) -> dict[str, Any]:
-    """Our decision → their trace, with a clickable URL where one can be built."""
-    return {
-        "trace_id": trace_id,
-        "links": [
-            {
-                "system": link.system,
-                "external_trace_id": link.external_trace_id,
-                "external_run_id": link.external_run_id,
-                "project": link.project,
-                "url": link.url,
-                "direction": link.direction,
-            }
-            for link in links_for(session, trace_id)
-        ],
-    }
-
-
 @router.get("/traces/{trace_id}")
 def get_trace(
     trace_id: str, session: Session = Depends(db), _user: User = Depends(current_user)
@@ -161,7 +140,14 @@ def get_trace(
     if detail is None:
         raise HTTPException(404, "unknown trace")
     detail["links"] = [
-        {"system": link.system, "external_trace_id": link.external_trace_id, "url": link.url}
+        {
+            "system": link.system,
+            "external_trace_id": link.external_trace_id,
+            "external_run_id": link.external_run_id,
+            "project": link.project,
+            "url": link.url,
+            "direction": link.direction,
+        }
         for link in links_for(session, trace_id)
     ]
     return detail

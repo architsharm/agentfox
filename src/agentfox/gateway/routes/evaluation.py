@@ -25,7 +25,6 @@ from ...evaluation import (
     gate,
     run_campaign,
     sample_production,
-    set_baseline,
     set_slo,
     to_junit,
     to_sarif,
@@ -450,32 +449,6 @@ def run_gate(
     }
 
 
-class BaselineIn(BaseModel):
-    run_id: str
-    label: str = "main"
-    thresholds: dict[str, float] = Field(default_factory=dict)
-
-
-@router.post("/eval/baselines", status_code=201)
-def create_baseline(
-    payload: BaselineIn, session: Session = Depends(db), user: User = Depends(require("eval"))
-) -> dict[str, Any]:
-    run = session.get(EvalRun, payload.run_id)
-    if run is None:
-        raise HTTPException(404, "unknown run")
-    baseline = set_baseline(session, run, payload.label, payload.thresholds)
-    chain.append(
-        session,
-        "eval.baseline_set",
-        actor_type="user",
-        actor_id=user.email or user.id,
-        subject_type="baseline",
-        subject_id=baseline.id,
-        payload={"run_id": run.id, "label": payload.label},
-    )
-    return {"id": baseline.id, "label": baseline.label, "run_id": run.id}
-
-
 # ---------------------------------------------------------------------------
 # Online eval, drift, SLOs
 # ---------------------------------------------------------------------------
@@ -513,8 +486,8 @@ def drift(
 ) -> dict[str, Any]:
     """Read-only. Viewing drift used to persist a DriftWindow — and a Finding when
     drifted — on every page load, so the number of drift findings measured how often
-    someone looked, not how often the agent drifted. Recording is `POST /eval/drift`
-    or the scheduled `drift.check` job."""
+    someone looked, not how often the agent drifted. Recording is the scheduled
+    `drift.check` job (or `agentfox eval drift` locally)."""
     report = compute_drift(session, agent, scorer, persist=False)
     if report is None:
         return {
@@ -522,26 +495,6 @@ def drift(
             "note": "insufficient online samples in the current and baseline windows",
         }
     return report.to_json()
-
-
-class DriftIn(BaseModel):
-    agent: str
-    scorer: str = "groundedness"
-
-
-@router.post("/eval/drift")
-def record_drift(
-    payload: DriftIn, session: Session = Depends(db), _user: User = Depends(require("eval"))
-) -> dict[str, Any]:
-    """Compute drift and record it: a DriftWindow row, and a drift Finding when drifted."""
-    report = compute_drift(session, payload.agent, payload.scorer, persist=True)
-    if report is None:
-        return {
-            "drifted": None,
-            "recorded": False,
-            "note": "insufficient online samples in the current and baseline windows",
-        }
-    return {**report.to_json(), "recorded": True}
 
 
 @router.get("/eval/slos")

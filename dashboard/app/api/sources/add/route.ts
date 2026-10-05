@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/api";
+import { connectionBody } from "@/lib/sourceConnection";
 
 const API_BASE = process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
 
@@ -50,30 +51,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.redirect(target);
     }
 
-    const config: Record<string, unknown> =
-      type === "database"
-        ? {
-            dialect: str("dialect") || "postgresql",
-            host: str("host") || undefined,
-            port: str("port") ? Number(str("port")) : undefined,
-            database: str("database") || undefined,
-            username: str("username") || undefined,
-            check_table: str("check_table") || undefined,
-          }
-        : {
-            base_url: str("base_url"),
-            auth_header: str("auth_header") || "Authorization",
-            auth_prefix: str("auth_prefix") || "Bearer ",
-          };
-
-    const connectionBody: Record<string, unknown> = { key, kind: type, config };
-    const credential = str("credential");
-    if (credential) connectionBody.credential = credential;
+    const connection = connectionBody(form, key, type);
 
     const connectionRes = await fetch(`${API_BASE}/api/sources/connections`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(connectionBody),
+      body: JSON.stringify(connection),
     });
     if (!connectionRes.ok) {
       const body = await connectionRes.json().catch(() => ({}));
