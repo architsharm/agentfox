@@ -131,6 +131,7 @@ from .models import (
     utcnow,
 )
 from .policy import EFFECT_RANK, PolicyInput, active_policies, combine, get_engine
+from .policy.taint_view import policy_taint
 from .provenance import assess_provenance
 from .providers import CompletionRequest, get_provider
 from .register import check_register
@@ -746,6 +747,10 @@ class Enforcer:
             "business": ladder_decision.to_json() if ladder_decision else {},
             **evidence,
         }
+        if surface == "tool_args":
+            # Recorded on the decision, not only read from settings, so a replay
+            # reasons about this call the way the live path did (policy/taint_view.py).
+            taint_summary["scope"] = self.settings.taint_scope
 
         # --- 5. policy decision (P6-1) -----------------------------------
         pinput = PolicyInput(
@@ -759,7 +764,9 @@ class Enforcer:
             arguments=arguments or {},
             intent=intent,
             detections=detections,
-            taint=taint_summary,
+            # What policy reasons over: the configured taint scope, and provenance an
+            # explicit grant accepts. The record keeps the unmodified summary.
+            taint=policy_taint(taint_summary, capability),
             capability=capability,
             budget=budget,
             prior_tools=prior_tools or [],

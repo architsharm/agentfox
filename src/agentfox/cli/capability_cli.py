@@ -253,6 +253,7 @@ def capability_grant(
     console.print(
         f"  expires        {expires_at.isoformat(timespec='seconds') if expires_at else 'never'}"
     )
+    _explain_taint_ceiling(tool, max_taint)
     if not yes and not typer.confirm(
         "\nThis widens what the agent may do. Grant it?", default=False
     ):
@@ -446,6 +447,30 @@ def capability_revoke(
     console.print(f"\n[green]revoked[/] {tool_key} from [bold]{name}[/]")
     console.print(
         "  [dim]The grant is gone from the live set; the audit chain keeps what it was.[/]"
+    )
+
+
+def _explain_taint_ceiling(tool: str, max_taint: str) -> None:
+    """Say what a provenance ceiling above `user` does and, as plainly, what it does not.
+
+    Within the ceiling, the shipped taint rules (`taint.irreversible_tool` and its
+    siblings) defer to the grant: it is the more specific declaration. Composed
+    escalation does not, and a grant that looked like it allowed a flow which is then
+    blocked anyway is exactly the surprise this warning exists to remove.
+    """
+    from ..guardrails.base import taint_rank
+
+    if taint_rank(max_taint) <= taint_rank("user"):
+        return
+    console.print(
+        f"  [dim]taint rules defer to this grant for arguments up to '{max_taint}'; "
+        "provenance beyond it is still escalated.[/]"
+    )
+    console.print(
+        "  [yellow]note[/] composition.escalation still applies: a value copied out of a "
+        f"lower-impact tool's output into {tool} is blocked whatever this grant says. "
+        "If that flow is intended, declare the producing tool's output trusted: "
+        "`agentfox tools declare <tool> --impact read --output-trust trusted`."
     )
 
 

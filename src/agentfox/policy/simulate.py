@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from ..models import Decision, SimulationRun, Trace
 from .engine import NativePolicyEngine
 from .model import PolicyDecision, PolicyDocument, PolicyInput
+from .taint_view import policy_taint
 
 
 @dataclass
@@ -72,7 +73,9 @@ def _policy_input_from_decision(session: Session, decision: Decision) -> PolicyI
         arguments=dict(taint.get("arguments_snapshot") or {}),
         intent=trace.intent if trace else None,
         detections=list(taint.get("detections") or []),
-        taint=taint,
+        # The same view the live path gave the engine (scope as recorded, provenance
+        # an explicit grant accepted), or a replay would disagree with the decision.
+        taint=policy_taint(taint, dict(taint.get("capability") or {})),
         capability=dict(taint.get("capability") or {}),
         budget=dict(taint.get("budget") or {}),
         prior_tools=list(taint.get("prior_tools") or []),
