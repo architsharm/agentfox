@@ -200,6 +200,15 @@ class Settings(BaseSettings):
     # NFR-4: zero egress by default. Nothing leaves the customer boundary unless
     # this is explicitly turned on.
     allow_egress: bool = False
+    # The hosted-API scan fetches the OpenAPI document an operator names. That fetch
+    # is not gated by `allow_egress`: like the GitHub connect flow it is a one-off
+    # request an operator makes deliberately, and it carries no customer data out —
+    # only the URL they typed. What it must never be is a way to make this server
+    # read its own network, so loopback, private, link-local and reserved addresses
+    # are refused. A self-hosted deployment whose spec lives on its own network can
+    # turn this on; link-local (cloud metadata), multicast and reserved addresses
+    # stay refused regardless.
+    spec_fetch_allow_private_hosts: bool = False
 
     # Where semantic judgments are made. "local" keeps every judgment in this
     # process: questions no local detector covers come back UNKNOWN, which the

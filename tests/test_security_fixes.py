@@ -13,6 +13,9 @@ failed before its fix.
 
 from __future__ import annotations
 
+import socket
+
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -151,3 +154,140 @@ def test_otlp_ingest_is_unchanged_in_development(seeded_app, monkeypatch):
     response = seeded_app.post("/v1/traces", json=OTLP_PAYLOAD)
     assert response.status_code == 200, response.text
     assert response.json()["spans_ingested"] == 1
+
+
+# ---------------------------------------------------------------------------
+# 2. The OpenAPI spec fetch is not a server-side request forgery primitive
+# ---------------------------------------------------------------------------
+
+SPEC = {"openapi": "3.0.0", "info": {"title": "x"}, "paths": {}}
+
+
+def _fake_dns(mapping: dict[str, list[str]]):
+    def getaddrinfo(host, port, *args, **kwargs):
+        if host not in mapping:
+            raise socket.gaierror(f"no such host {host}")
+        out = []
+        for ip in mapping[host]:
+            family = socket.AF_INET6 if ":" in ip else socket.AF_INET
+            out.append((family, socket.SOCK_STREAM, 6, "", (ip, port or 0)))
+        return out
+
+    return getaddrinfo
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1:8000/openapi.json",
+        "http://localhost/openapi.json",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://10.0.0.5/openapi.json",
+        "http://192.168.1.1/openapi.json",
+        "http://172.16.0.1/openapi.json",
+        "http://[::1]/openapi.json",
+        "http://[::ffff:127.0.0.1]/openapi.json",
+        "http://0.0.0.0/openapi.json",
+        "http://2130706433/openapi.json",  # 127.0.0.1 as a decimal integer
+        "file:///etc/passwd",
+        "ftp://example.com/openapi.json",
+        "gopher://example.com/",
+    ],
+)
+def test_spec_fetch_refuses_internal_targets_and_other_schemes(url, monkeypatch):
+    from agentfox.discovery import openapi
+
+    def _no_network(*a, **k):  # the refusal must happen before any connection
+        raise AssertionError(f"a connection was attempted for {url}")
+
+    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(_no_network))
+    with pytest.raises(openapi.SpecFetchError):
+        openapi.fetch_spec(url)
+
+
+def test_spec_fetch_refuses_a_name_that_resolves_to_a_private_address(monkeypatch):
+    from agentfox.discovery import openapi
+
+    # One public and one private answer: every resolved address must be public.
+    monkeypatch.setattr(
+        openapi, "_getaddrinfo", _fake_dns({"evil.example": ["93.184.216.34", "10.1.2.3"]})
+    )
+    monkeypatch.setattr(
+        openapi, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(200, json=SPEC))
+    )
+    with pytest.raises(openapi.SpecFetchError, match="private|internal|not allowed"):
+        openapi.fetch_spec("https://evil.example/openapi.json")
+
+
+def test_spec_fetch_connects_to_the_vetted_address_not_a_second_lookup(monkeypatch):
+    """DNS rebinding: the address that was checked is the one connected to."""
+    from agentfox.discovery import openapi
+
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json=SPEC)
+
+    monkeypatch.setattr(openapi, "_getaddrinfo", _fake_dns({"api.example": ["93.184.216.34"]}))
+    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(handler))
+    assert openapi.fetch_spec("https://api.example/openapi.json") == SPEC
+    assert seen[0].url.host == "93.184.216.34"
+    assert seen[0].headers["host"] == "api.example"
+    assert seen[0].extensions.get("sni_hostname") == "api.example"
+
+
+def test_spec_fetch_revalidates_every_redirect(monkeypatch):
+    from agentfox.discovery import openapi
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(302, headers={"location": "http://169.254.169.254/latest/"})
+
+    monkeypatch.setattr(openapi, "_getaddrinfo", _fake_dns({"api.example": ["93.184.216.34"]}))
+    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(handler))
+    with pytest.raises(openapi.SpecFetchError):
+        openapi.fetch_spec("https://api.example/openapi.json")
+
+
+def test_spec_fetch_follows_a_redirect_to_another_public_host(monkeypatch):
+    from agentfox.discovery import openapi
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.headers["host"] == "api.example":
+            return httpx.Response(301, headers={"location": "https://cdn.example/spec.json"})
+        return httpx.Response(200, json=SPEC)
+
+    monkeypatch.setattr(
+        openapi,
+        "_getaddrinfo",
+        _fake_dns({"api.example": ["93.184.216.34"], "cdn.example": ["151.101.1.1"]}),
+    )
+    monkeypatch.setattr(openapi, "_TRANSPORT", httpx.MockTransport(handler))
+    assert openapi.fetch_spec("https://api.example/openapi.json") == SPEC
+
+
+def test_spec_fetch_private_hosts_are_an_explicit_opt_in(monkeypatch):
+    """A self-hosted deployment scanning a spec on its own network can say so — but
+    the metadata address stays refused even then."""
+    from agentfox.core.config import get_settings
+    from agentfox.discovery import openapi
+
+    monkeypatch.setattr(get_settings(), "spec_fetch_allow_private_hosts", True)
+    monkeypatch.setattr(
+        openapi, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(200, json=SPEC))
+    )
+    assert openapi.fetch_spec("http://10.0.0.5/openapi.json") == SPEC
+    with pytest.raises(openapi.SpecFetchError):
+        openapi.fetch_spec("http://169.254.169.254/latest/meta-data/")
+
+
+def test_hosted_api_route_refuses_a_metadata_url(seeded_app):
+    response = seeded_app.post(
+        "/api/integrations/hosted-api/scan",
+        json={
+            "endpoint_url": "https://petstore.example.com/v1",
+            "openapi_spec_url": "http://169.254.169.254/latest/meta-data/",
+        },
+        headers={"X-Nometria-User": "admin@example.com"},
+    )
+    assert response.status_code == 422, response.text
