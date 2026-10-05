@@ -49,7 +49,7 @@ from . import chain
 from .trace import full_trace
 
 VERIFIER_SCRIPT = '''#!/usr/bin/env python3
-"""Standalone verifier for a AgentFox evidence package.
+"""Standalone verifier for an AgentFox evidence package.
 
 Stdlib only. Run from inside the extracted package:
 
@@ -175,6 +175,13 @@ def build(
         "controls": controls or ["*"],
     }
 
+    # The one page a person reads first. Built before anything is collected,
+    # because it computes control status when nobody has — and that should land
+    # in control_status.json too, not only in the summary.
+    from ..report import build_summary, render_html, render_markdown
+
+    summary = build_summary(session, agents=agents, period_from=period_from, period_to=period_to)
+
     # --- collect ---------------------------------------------------------
     agent_query = select(Agent)
     if agents and agents != ["*"]:
@@ -269,6 +276,9 @@ def build(
 
     # --- serialise -------------------------------------------------------
     files: dict[str, str] = {
+        # First in the archive, so it is the first thing anyone opening it sees.
+        "SUMMARY.md": render_markdown(summary),
+        "SUMMARY.html": render_html(summary),
         "audit_entries.json": json.dumps(
             [chain.entry_to_row(e) for e in audit_entries], indent=2, default=str
         ),
@@ -510,8 +520,12 @@ def _readme(
     draft_mappings: int,
 ) -> str:
     status = "INTACT" if verification.valid else "TAMPERED"
-    return f"""NOMETRIA EVIDENCE PACKAGE
+    return f"""AGENTFOX EVIDENCE PACKAGE
 =========================
+
+Start with SUMMARY.md (or SUMMARY.html): one page, in plain language, on what
+was running, what was contained and what is still only observed. Everything
+below is the machine-readable record that page is built from.
 
 Scope
 -----
@@ -521,6 +535,8 @@ Controls : {", ".join(scope["controls"])}
 
 Contents
 --------
+SUMMARY.md / .html       The one-page summary. Its framework coverage section is a
+                         DRAFT — UNVERIFIED mapping, labelled as such.
 traces.json              Full execution paths: prompts, retrievals, tool calls,
                          delegations, guardrail decisions, errors (control NOM-AUD-01).
 decisions.json           Every policy decision with the rules that fired and the

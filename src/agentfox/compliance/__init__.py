@@ -17,7 +17,13 @@ from .catalog import (
     sync_obligations,
 )
 from .risk import assess, board_view, classify, obligation_calendar, register
-from .status import compute_all, evaluate_control, latest_statuses, posture
+from .status import (
+    compute_all,
+    ensure_compliance_computed,
+    evaluate_control,
+    latest_statuses,
+    posture,
+)
 
 __all__ = [
     "FRAMEWORK_TITLES",
@@ -27,6 +33,7 @@ __all__ = [
     "catalog",
     "classify",
     "compute_all",
+    "ensure_compliance_computed",
     "controls_for_framework",
     "evaluate_control",
     "framework_coverage",

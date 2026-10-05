@@ -101,6 +101,7 @@ from .controls_cli import register as _register_controls  # noqa: E402
 from .mcp_cli import register as _register_mcp  # noqa: E402
 from .onboarding import register as _register_onboarding  # noqa: E402
 from .quickscan import register as _register_quickscan  # noqa: E402
+from .report_cli import register as _register_report  # noqa: E402
 
 _register_onboarding(app)
 _register_quickscan(app)
@@ -109,6 +110,7 @@ _register_controls(app)
 _register_business(app)
 _register_mcp(app)
 _register_capability(app)
+_register_report(app)
 
 
 def _session():
@@ -1532,10 +1534,15 @@ def compliance_board() -> None:
     findings = view["open_findings"]
     console.print(f"  open findings            {findings['total']} {findings['by_severity']}")
     overall = view["overall_posture"]
+    counts = overall["counts"]
+    assessed = sum(counts.get(k, 0) for k in ("effective", "degraded", "failing"))
+    # Counts, not the ratio alone: "100%" over 5 assessed controls of 43 read as
+    # full coverage on a deployment with almost no evidence yet.
     console.print(
-        f"  control effectiveness    "
-        f"{(overall['effectiveness'] or 0):.0%} of "
-        f"{overall['controls']} controls"
+        f"  controls with evidence   {counts.get('effective', 0)} of {overall['controls']} "
+        f"effective [dim]({assessed} assessed, "
+        f"{counts.get('not_implemented', 0) + counts.get('not_computed', 0)} with no "
+        "evidence yet)[/]"
     )
     console.print(f"  live obligations         {len(view['live_obligations'])}")
     console.print(f"  upcoming (24mo)          {len(view['upcoming_obligations'])}")
