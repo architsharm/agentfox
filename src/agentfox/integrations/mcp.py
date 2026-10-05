@@ -163,20 +163,43 @@ class McpGovernor:
 
     # -- discovery -------------------------------------------------------
 
-    def register_tools(self, tools: list[dict[str, Any]]) -> dict[str, Any]:
+    def register_tools(
+        self, tools: list[dict[str, Any]], *, accept_changes: bool = False
+    ) -> dict[str, Any]:
         """Snapshot the listing and register each tool.
 
         Called on every listing rather than only on a manual scan, because the drift
         that matters is the one that happens between review and use.
+
+        A tool registered for the first time is recorded as listed. A tool that is
+        already registered from an earlier listing and now lists *differently* is
+        **held**: the snapshot records the new listing (so the change is a
+        ``schema_drift`` finding and calls are refused with ``mcp.schema_drift``),
+        but the registered record — the reviewed one — is left as it was. Before
+        this, re-registering silently replaced it, so an agent that passed each
+        listing it received straight back to ``register_tools`` turned the rug-pull
+        block off for itself.
+
+        ``accept_changes=True`` is the person's decision that the new listing has
+        been reviewed: changed tools are re-recorded and calls resume. The operator
+        route ``POST /api/mcp-servers/{name}/tools`` takes the same flag.
         """
         report = scan_mcp_server(self.session, self.server, tools)
+        held: list[str] = []
         for descriptor in tools:
             name = descriptor.get("name")
             if not name:
                 continue
+            key = tool_key(self.server_name, name)
+            if not accept_changes:
+                existing = self.session.scalar(select(Tool).where(Tool.key == key))
+                pinned = _registered_digest(existing) if existing is not None else None
+                if pinned is not None and pinned != tool_digest(descriptor):
+                    held.append(name)
+                    continue
             upsert_tool(
                 self.session,
-                tool_key(self.server_name, name),
+                key,
                 name=name,
                 kind="mcp",
                 impact=infer_impact(name, descriptor),
@@ -185,6 +208,14 @@ class McpGovernor:
                 description=str(descriptor.get("description", "")),
                 mcp_server_id=self.server.id,
             )
+        if held:
+            log.warning(
+                "MCP server '%s' listed changed tools %s; the registered listing stays in "
+                "force and calls are refused until the change is accepted",
+                self.server_name,
+                held,
+            )
+        report["held"] = held
         return report
 
     def _descriptor(self, tool: str) -> dict[str, Any] | None:
@@ -210,13 +241,7 @@ class McpGovernor:
         if registered is None:
             return None
         current = tool_digest(descriptor)
-        known = tool_digest(
-            {
-                "name": registered.name,
-                "description": registered.description,
-                "inputSchema": tool_input_schema(registered),
-            }
-        )
+        known = _tool_record_digest(registered)
         if current == known:
             return None
         return {
@@ -434,6 +459,30 @@ class McpGovernor:
             ],
             reason=drift["detail"],
         )
+
+
+def _tool_record_digest(tool: Tool) -> str:
+    """The digest of a registered tool, in the same terms as `tool_digest`."""
+    return tool_digest(
+        {
+            "name": tool.name,
+            "description": tool.description,
+            "inputSchema": tool_input_schema(tool),
+        }
+    )
+
+
+def _registered_digest(tool: Tool) -> str | None:
+    """The digest a registered tool is pinned to, or None if nothing pins it.
+
+    A record with neither a description nor an input schema was never registered
+    from a listing — it was declared by key, or observed being called before any
+    listing arrived — so there is no reviewed content for a new listing to differ
+    from, and the first listing is recorded as a first registration.
+    """
+    if not (tool.description or tool_input_schema(tool)):
+        return None
+    return _tool_record_digest(tool)
 
 
 def _reproject(raw: Any, redacted: str | None) -> Any:

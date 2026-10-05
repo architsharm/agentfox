@@ -89,6 +89,8 @@ Direct enforcement without proxying — for teams that keep their own provider c
 
 Passive ingestion of existing OpenTelemetry spans. Accepts OTLP/JSON. Spans following OpenLLMetry semantic conventions are mapped into the agent-native span model; unrecognised spans are retained as context. This is how a team gets Pillar 1 and 5 value with *zero* integration.
 
+Outside development the route requires a credential: an agent key (`Bearer nom_agt_…`, bound to that agent's tenant) or an operator token (`Bearer nom_api_…`) whose role may write to the registry. No credential, or an unrecognised one, is `401`; a read-only operator role is `403`. In development it accepts spans without a credential.
+
 ---
 
 ## C.3 Routes (generated)

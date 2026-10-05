@@ -65,7 +65,9 @@ def main() -> None:
         governor = McpGovernor(
             session=session, agent_slug=AGENT_SLUG, server_name=SERVER_NAME, trust_level="internal"
         )
-        governor.register_tools(TOOL_DESCRIPTORS)
+        # The listing is defined in this repo, so re-seeding after it changes is the
+        # reviewed change: accept it rather than holding it as drift.
+        governor.register_tools(TOOL_DESCRIPTORS, accept_changes=True)
         # `register_tools` infers each tool's impact from its name/description
         # (`integrations/mcp.py`'s `infer_impact` — no DB access, just keyword
         # hints). "issue_refund" contains neither a write nor an irreversible hint

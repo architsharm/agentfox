@@ -33,6 +33,7 @@ Usage::
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -284,6 +285,36 @@ class AgentFoxGuard:
         return decorator(fn) if fn else decorator
 
     # -- escalation -------------------------------------------------------
+    def _denial(self, answer: Any) -> str | None:
+        """Why a resume value does not authorise the paused step, or None if it does.
+
+        Fails closed: only ``True`` or ``{"approved": True}`` (the boolean, not a
+        truthy string) approves. Anything else — ``{"approved": False}``, ``None``, an
+        empty dict, ``"yes"`` — is a denial, because an answer we cannot read is not
+        an approval.
+
+        When the answer names an ``approval_id``, the stored approval must say
+        ``approved`` too, so a resume cannot claim an approval the approver denied,
+        that expired, or that does not exist.
+        """
+        if answer is True:
+            return None
+        if not isinstance(answer, dict) or answer.get("approved") is not True:
+            return "approval denied: the resume value did not approve this step"
+        approval_id = answer.get("approval_id")
+        if approval_id is None:
+            return None
+        from agentfox.core.models import ApprovalRequest
+
+        with self._db() as session:
+            stored = session.get(ApprovalRequest, str(approval_id))
+            status = stored.status if stored is not None else None
+        if status == "approved":
+            return None
+        if status is None:
+            return f"approval denied: no approval '{approval_id}' exists"
+        return f"approval denied: approval '{approval_id}' is {status}, not approved"
+
     def _stop(self, result: EnforcementResult) -> None:
         if result.escalated and self.raise_on_escalate:
             interrupt = _langgraph_interrupt()
@@ -291,7 +322,13 @@ class AgentFoxGuard:
                 # LangGraph already models "pause and ask a human". Reusing it means
                 # the graph has one pause mechanism, not two — and the approval
                 # resumes through the checkpointer the team already configured.
-                interrupt(
+                #
+                # On resume LangGraph re-runs the node and `interrupt()` returns the
+                # value given to `Command(resume=...)`. That value *is* the human's
+                # answer, so it decides whether the node continues: only an explicit
+                # approval does. Ignoring it — as this did — ran the tool after a
+                # `{"approved": False}` resume.
+                answer = interrupt(
                     {
                         "agentfox": "approval_required",
                         "approval_id": result.approval_id,
@@ -300,7 +337,16 @@ class AgentFoxGuard:
                         "rules_fired": result.rules_fired,
                     }
                 )
-                return
+                denial = self._denial(answer)
+                if denial is None:
+                    return
+                raise PolicyViolation(
+                    dataclasses.replace(
+                        result,
+                        verdict="block",
+                        reason=f"{denial} ({result.reason})" if result.reason else denial,
+                    )
+                )
             raise ApprovalRequired(result)
         if result.blocked:
             raise PolicyViolation(result)

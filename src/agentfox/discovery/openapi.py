@@ -16,8 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from agentfox.core import outbound
 from agentfox.discovery.repo import ScanReport, Site
 
 #: A fetched spec document beyond this is refused outright — a resource-exhaustion
@@ -42,14 +41,15 @@ class SpecFetchError(ValueError):
 
 
 def fetch_spec(spec_url: str) -> dict[str, Any]:
-    """Fetch and parse an OpenAPI document (JSON or YAML) from a URL."""
+    """Fetch and parse an OpenAPI document (JSON or YAML) from a URL.
+
+    Only public http(s) addresses are fetched, redirects are re-vetted hop by hop,
+    and the connection goes to the address that was checked (`core.outbound`).
+    """
     try:
-        resp = httpx.get(spec_url, timeout=20.0, follow_redirects=True)
-        resp.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise SpecFetchError(f"could not fetch the OpenAPI spec: {exc}") from exc
-    if len(resp.content) > _MAX_SPEC_BYTES:
-        raise SpecFetchError("OpenAPI spec is too large to scan")
+        resp = outbound.guarded_get(spec_url, what="the OpenAPI spec", max_bytes=_MAX_SPEC_BYTES)
+    except outbound.OutboundRefused as exc:
+        raise SpecFetchError(str(exc)) from exc
 
     content_type = resp.headers.get("content-type", "")
     looks_like_yaml = "yaml" in content_type or spec_url.lower().endswith((".yaml", ".yml"))

@@ -731,7 +731,7 @@ PolicyViolation: capability.denied`}</Output>
 McpGovernor(session: Session, agent_slug: str, server_name: str,
             transport: Callable[[str, dict], Any] | None = None, trust_level: str = "untrusted",
             trace=None, tracker=None, intent: str | None = None, credential: str | None = None)
-gov.register_tools(tools: list[dict]) -> dict
+gov.register_tools(tools: list[dict], *, accept_changes: bool = False) -> dict
 gov.call(tool, arguments=None, *, provenance=None, transport=None, raise_on_block=False) -> McpCallOutcome
 tool_key(server, tool) -> str      # "mcp:{server}/{tool}"`}</Code>
       <p>
@@ -799,14 +799,16 @@ with session_scope() as db:
         print("McpCallBlocked:", exc, [r["rule_id"] for r in exc.result.rules_fired])`}</Code>
       <Output>{`before: True
 McpCallBlocked: the tool's schema or description changed after this agent was authorised against it ['mcp.schema_drift']`}</Output>
-      <Callout kind="note" title="register_tools accepts what it is given">
+      <Callout kind="note" title="register_tools holds a changed listing">
         <p>
-          Calling <code>register_tools</code> with a changed listing raises a{" "}
-          <code>schema_drift</code> finding but also re-records the tools, so later calls
-          are judged against the new listing. Call it with listings you have reviewed,
-          and snapshot unreviewed ones with a scan. A description change that adds
-          words like &quot;send&quot; or &quot;delete&quot; also changes the inferred
-          impact. See the <Link href="/docs/guides/mcp">MCP guide</Link>.
+          Calling <code>register_tools</code> with a changed listing for a tool that is
+          already registered records the new listing as a snapshot (a{" "}
+          <code>schema_drift</code> finding) but keeps the registered tool as it was, so
+          calls stay refused with <code>mcp.schema_drift</code>. The held tool names are in
+          the returned <code>held</code> list. Once a person has reviewed the change,{" "}
+          <code>register_tools(tools, accept_changes=True)</code> records it and calls
+          resume. Tools registered for the first time are recorded as listed. See the{" "}
+          <Link href="/docs/guides/mcp">MCP guide</Link>.
         </p>
       </Callout>
 

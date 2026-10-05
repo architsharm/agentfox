@@ -144,7 +144,19 @@ export default function Page() {
         proposes one draft agent named after the host and one observe-mode policy. With no
         spec URL, the endpoint is still registered as a draft agent with no known operations.
       </p>
-      <p>The same call over HTTP, against a local gateway&apos;s own OpenAPI document:</p>
+      <p>
+        The spec URL must be <code>http</code> or <code>https</code> and resolve to a public
+        address; every redirect is checked the same way. Loopback and private-network
+        addresses are refused unless the gateway runs with{" "}
+        <code>AGENTFOX_SPEC_FETCH_ALLOW_PRIVATE_HOSTS=true</code>, for a self-hosted
+        deployment whose spec lives on its own network. Link-local addresses, including the
+        cloud metadata address <code>169.254.169.254</code>, are always refused.
+      </p>
+      <p>
+        The same call over HTTP, against a local gateway&apos;s own OpenAPI document (started
+        with <code>AGENTFOX_SPEC_FETCH_ALLOW_PRIVATE_HOSTS=true</code>, since the spec is on
+        loopback):
+      </p>
       <Code>{`curl -s -X POST http://127.0.0.1:8080/api/integrations/hosted-api/scan \\
   -H "Authorization: Bearer $AGENTFOX_API_TOKEN" -H 'Content-Type: application/json' \\
   -d '{"endpoint_url":"http://127.0.0.1:8080","openapi_spec_url":"http://127.0.0.1:8080/openapi.json","purpose":"local test"}'`}</Code>
@@ -236,7 +248,8 @@ agentfox admin auth revoke tok_01m469mm9pt4qcfghd`}</Code>
           <strong>&quot;Scan failed: …&quot; at the top of Connect.</strong> The gateway could not
           download the repository (no GitHub connection, a revoked grant, an archive over the
           size limit) or could not fetch the spec. Use <strong>reconnect</strong>, or check the
-          spec URL loads in a browser.
+          spec URL loads in a browser. &quot;refusing to fetch the spec&quot; means the URL
+          resolves to a loopback, private or link-local address (see above).
         </li>
         <li>
           <strong>Connecting GitHub returns a 503.</strong> The gateway has no{" "}

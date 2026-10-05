@@ -37,7 +37,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
-from agentfox.gateway.deps import agent_credential, db
+from agentfox.gateway.deps import agent_credential, db, ingest_credential
 from agentfox.gateway.verdicts import verdict_headers, with_verdict_aliases
 from agentfox.prove.audit.otel import ingest_otlp
 from agentfox.registry.service import detect_shadow_agents
@@ -1041,7 +1041,11 @@ def guard_agent_message(
 
 
 @router.post("/v1/traces", summary="OTLP/HTTP trace ingest")
-async def ingest_traces(request: Request, session: Session = Depends(db)) -> dict[str, Any]:
+async def ingest_traces(
+    request: Request,
+    session: Session = Depends(db),
+    _credential: str | None = Depends(ingest_credential),
+) -> dict[str, Any]:
     payload = await request.json()
     summary = ingest_otlp(session, payload)
 

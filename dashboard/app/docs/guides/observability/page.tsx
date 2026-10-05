@@ -83,12 +83,13 @@ agentfox admin auth status`}</Code>
         </Link>
         . The examples below show the header that worked in each case.
       </p>
-      <Callout kind="warning" title="Two routes never ask for credentials">
+      <Callout kind="warning" title="Credentials for metrics and trace ingest">
         <code>GET /metrics</code> is unauthenticated on purpose: it carries counts, not
-        content. <code>POST /v1/traces</code> is also unauthenticated, in token mode too, and
-        anything that can reach it can register agents and add traces. Keep the API on a
-        private network, or put both routes behind a proxy that only your collector and
-        Prometheus can reach.
+        content. Keep it on a private network or behind a proxy only Prometheus can reach.{" "}
+        <code>POST /v1/traces</code> needs a credential outside development: an agent key
+        (<code>Authorization: Bearer nom_agt_…</code>) or an operator token whose role may
+        write to the registry (<code>Bearer nom_api_…</code>). Without one it returns 401.
+        In development it accepts spans without a credential, as before.
       </Callout>
 
       <h2 id="otlp">Send OpenTelemetry spans in</h2>
