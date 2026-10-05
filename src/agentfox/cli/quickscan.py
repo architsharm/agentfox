@@ -78,6 +78,7 @@ def quickscan(
     work — no account, nothing leaves this machine unless you explicitly submit."""
     from ..discovery import scan as discovery_scan
     from ..session_scan import scan_all
+    from ._scan_view import print_trifectas, surface_line
     from .submit import maybe_submit_report
 
     repo_report = discovery_scan(path)
@@ -112,6 +113,9 @@ def quickscan(
         )
     )
 
+    # The trifecta, if there is one, before anything else: it is the finding.
+    print_trifectas(console, repo_report)
+
     # -- 1. Committed --------------------------------------------------------
     console.print("\n[bold]Committed[/]  [dim]what's in this directory[/]")
     console.print(f"  Scanned {repo_report.files_scanned} files in [dim]{repo_report.root}[/]")
@@ -126,6 +130,11 @@ def quickscan(
         )
     else:
         console.print("  [dim]no model call sites found[/]")
+    console.print(f"  [dim]can reach:[/] {surface_line(repo_report)}")
+    if repo_report.trifectas:
+        console.print(
+            f"  [red]{len(repo_report.trifectas)} lethal trifecta(s)[/] [dim](shown above)[/]"
+        )
     counts = repo_report.by_kind()
     secrets = counts.get("secret", 0)
     if secrets:

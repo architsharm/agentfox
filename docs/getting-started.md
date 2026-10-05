@@ -87,15 +87,43 @@ agentfox check
 ```
 
 ```
-Scanned 551 files
-  built on: AWS SDK, Anthropic SDK, CrewAI, FastAPI, LangChain, LangGraph, LiteLLM, OpenAI SDK
-  10 of 55 model call sites are ungoverned  (82% covered)
-  also found: 2 agent definition, 1 mcp server, 4 secret, 30 shell call, 7 sql build, 9 tool
+╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────╮
+│ bot.py: can read customer records (read_customer_record), reads untrusted    │
+│ web pages (fetch_url), and can send email (send_email) or can move money     │
+│ (issue_refund). An instruction hidden in a web page could send customer data │
+│ out.                                                                         │
+│                                                                              │
+│ Contain it: `agentfox capability grant <agent> send_email --max-taint user`  │
+│ (...), or run with `agentfox.auto(mode="observe")` to watch it happen.       │
+╰─ private data + untrusted content + a way out ───────────────────────────────╯
+Scanned 2 files in /path/to/your/project
+  built on: OpenAI SDK
+
+  1 of 1 model call sites are ungoverned  (0% covered)
+  can reach: 4 tools · 2 MCP servers (filesystem, fetch)
+     read_customer_record  bot.py     private data
+     fetch_url             bot.py     untrusted input
+     send_email            bot.py     sends out / irreversible
+     ...
 ```
 
-It is a static read of the source. It finds every place the code calls a model, every tool and MCP
-server definition, hard-coded credentials, and shell and SQL construction near model output. It
-writes nothing to your project and sends nothing anywhere.
+It is a static read of the source. It finds every place the code calls a model, every tool —
+decorated functions, OpenAI function schemas (`tools=[{"type": "function", ...}]`, inline or in a
+list passed later) and Anthropic tool dicts (`name` + `input_schema`) — every MCP server your client
+configs declare, hard-coded credentials, and shell and SQL construction near model output. It writes
+nothing to your project and sends nothing anywhere.
+
+Each tool and MCP server is classified by what it can do: read private data, read content someone
+outside can write, or send data out / act irreversibly. Where one agent has all three — tools grouped
+by directory, MCP servers by the config file that loads them together — that is the **lethal
+trifecta** (Simon Willison's term), and it is printed first, as a sentence you can forward, with the
+command that contains it. The classification comes from names and descriptions, so a tool named
+`do_thing` is left unflagged rather than guessed at, and an MCP server AgentFox does not recognise is
+reported as unknown, never as safe. `--json` carries the same data as flags (`private_data`,
+`untrusted_input`, `exfiltration`).
+
+To look closer at the MCP servers, `agentfox scan mcp` reads the same configs, registers every
+server, and reports reach, version pinning and remote auth for each without starting any of them.
 
 For a first look at a machine you have not installed anything on, `agentfox quickscan` does the
 same thing plus a scan of local AI-tool session transcripts, and runs a handful of known-adversarial

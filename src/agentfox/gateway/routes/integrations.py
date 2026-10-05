@@ -350,7 +350,7 @@ def trigger_scan(
         sites=[
             {"kind": s.kind, "top_dir": _top_dir(s.file), "provider": s.provider}
             for s in report.sites
-            if s.kind in ("agent_definition", "tool", "model_call")
+            if s.kind in ("agent_definition", "tool", "model_call", "lethal_trifecta")
         ],
         author=user.email or user.id,
     )

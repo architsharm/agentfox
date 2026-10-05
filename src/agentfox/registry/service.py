@@ -142,7 +142,15 @@ def propose_from_scan(
     """
     repo_short = slugify(repo_slug_base)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    # A lethal trifecta (private data + untrusted input + a way out, see
+    # `agentfox.exposure`) raises the risk tier of the agent in its directory. It
+    # does not propose an agent on its own: an `.mcp.json` trifecta describes an
+    # IDE's servers, not an application this repo deploys.
+    trifecta_dirs: set[str] = set()
     for site in sites:
+        if site.get("kind") == "lethal_trifecta":
+            trifecta_dirs.add(site.get("top_dir") or "root")
+            continue
         groups[site.get("top_dir") or "root"].append(site)
 
     created_agents: list[str] = []
@@ -163,6 +171,9 @@ def propose_from_scan(
             # *for* — left blank and surfaced honestly until a human sets one.
             purpose="",
             framework=framework,
+            # Proposed, like the rest of a draft: a human confirms the class on
+            # approval (`compliance.risk.classify` explains why it is a proposal).
+            risk_tier="high" if group_key in trifecta_dirs else "limited",
             draft=True,
             source_scan_run_id=run_id,
         )

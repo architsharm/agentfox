@@ -144,7 +144,10 @@ LangGraph's own `interrupt()` — one pause mechanism, not two.
 <details>
 <summary><b>MCP</b></summary>
 
-`agentfox scan mcp` checks MCP tool hygiene before anything runs. At call time the governor compares
+`agentfox scan mcp` reads the servers your MCP config declares (`.mcp.json`, `.cursor/mcp.json`,
+`.claude.json`, `claude_desktop_config.json`, or `--config PATH`) without starting any of them, and
+reports what each can reach, whether it is pinned, and whether a remote one carries auth; give it the
+server's `tools/list` output with `--file` and it checks every tool description too. At call time the governor compares
 the tool's digest against the one in force when the agent was authorised against it — the rug pull, a
 server that passed review on Monday and changed on Thursday, which no scan can catch. An undeclared
 tool becomes a discovery finding rather than an invisible call, and results are evaluated on the
@@ -319,11 +322,12 @@ without trusting us or calling our API.
 
 ```bash
 agentfox quickscan                     # zero-config first look, nothing leaves this machine
-agentfox check                         # scan a repo: what talks to a model, and what is ungoverned
+agentfox check                         # scan a repo: tools, MCP servers, the lethal trifecta, ungoverned calls
 agentfox agents list                   # every agent, registered or shadow, and who owns it
 agentfox agents discover               # sweep for shadow agents, drift and identity posture
 agentfox agents lineage payments-ops   # what one agent reaches: its blast radius
-agentfox scan mcp internal-tools --seed-fixture   # MCP tool hygiene; --file takes a real tools/list
+agentfox scan mcp                      # every MCP server in .mcp.json: reach, pinning, auth; nothing started
+agentfox scan mcp fetch --file tools.json   # one server, plus each tool in its real tools/list
 ```
 
 **Bound what an agent is allowed to do**

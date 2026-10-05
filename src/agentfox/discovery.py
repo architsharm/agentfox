@@ -124,6 +124,16 @@ _FRAMEWORK_IMPORTS = {
 #: not anyone registered it, and an unregistered tool is the F-family blind spot.
 _TOOL_DECORATORS = ("tool", "function_tool", "mcp.tool", "agent.tool", "register_tool")
 
+#: Tool *constructors* that take the tool's name as a keyword: LangChain's
+#: `Tool(name=...)` / `StructuredTool.from_function(name=...)`, LlamaIndex's
+#: `FunctionTool.from_defaults(name=...)`.
+_TOOL_CONSTRUCTORS = (
+    "Tool",
+    "StructuredTool",
+    "StructuredTool.from_function",
+    "FunctionTool.from_defaults",
+)
+
 #: Framework orchestration entrypoints — CrewAI's `Crew(...).kickoff()` and
 #: LangGraph's `StateGraph(...).compile()` wrap the model call rather than making it
 #: directly, so a repo built on either framework can show zero `_MODEL_CALLS` matches
@@ -141,7 +151,7 @@ _AGENT_DEFINITIONS = {
 
 #: Executable-artefact shapes worth flagging even without a model call nearby: these
 #: are what P9 governs, and a repo that builds SQL from an f-string is where the
-#: 1.9M-row incident starts.
+#: 1.9M-row incident starts. (User-facing text below says what P9 means instead.)
 _SQL_BUILD = re.compile(
     r"""(?:execute|executemany|cursor\.execute|text)\s*\(\s*f?["']\s*"""
     r"""(?:SELECT|INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER)""",
@@ -161,16 +171,28 @@ _HARDCODED_SECRET = re.compile(
 class Site:
     """One place in the codebase worth governing."""
 
-    kind: str  # model_call | agent_definition | tool | mcp_server | sql_build | shell_call | secret
+    # model_call | agent_definition | tool | mcp_server | lethal_trifecta | sql_build |
+    # shell_call | secret
+    kind: str
     file: str
     line: int
     detail: str
     provider: str | None = None
     governed: bool = False
     severity: str = "info"
+    #: The tool's or MCP server's own name, when the site is one.
+    name: str | None = None
+    #: Which of the three trifecta flags this tool or server carries
+    #: (:data:`agentfox.exposure.FLAGS`), in that order. Empty means none was found,
+    #: which for an unknown MCP server means "could not tell", not "safe".
+    capabilities: list[str] = field(default_factory=list)
+    #: For a `lethal_trifecta` site: flag -> the tools or servers that supply it.
+    evidence: dict[str, Any] = field(default_factory=dict)
+    #: The classification itself, with the plain-English phrases. Not serialised.
+    caps: Any = field(default=None, repr=False, compare=False)
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        out = {
             "kind": self.kind,
             "file": self.file,
             "line": self.line,
@@ -179,6 +201,12 @@ class Site:
             "governed": self.governed,
             "severity": self.severity,
         }
+        if self.kind in ("tool", "mcp_server", "lethal_trifecta"):
+            out["name"] = self.name
+            out["capabilities"] = self.capabilities
+        if self.evidence:
+            out["evidence"] = self.evidence
+        return out
 
 
 @dataclass
@@ -228,6 +256,20 @@ class ScanReport:
     @property
     def agent_definitions(self) -> list[Site]:
         return [s for s in self.sites if s.kind == "agent_definition"]
+
+    @property
+    def tools(self) -> list[Site]:
+        return [s for s in self.sites if s.kind == "tool"]
+
+    @property
+    def mcp_servers(self) -> list[Site]:
+        return [s for s in self.sites if s.kind == "mcp_server"]
+
+    @property
+    def trifectas(self) -> list[Site]:
+        """Groups that can read private data, ingest untrusted content and send data
+        out — see :mod:`agentfox.exposure`."""
+        return [s for s in self.sites if s.kind == "lethal_trifecta"]
 
     @property
     def governable(self) -> list[Site]:
@@ -293,6 +335,9 @@ class ScanReport:
             "ungoverned_model_calls": len([s for s in self.model_calls if not s.governed]),
             "ungoverned_governable": len(self.ungoverned),
             "coverage": round(self.coverage, 3),
+            "tools": len(self.tools),
+            "mcp_servers": len(self.mcp_servers),
+            "lethal_trifectas": [s.to_json() for s in self.trifectas],
             "counts": self.by_kind(),
             "sites": [s.to_json() for s in self.sites],
             "errors": self.errors,
@@ -327,7 +372,10 @@ class ScanReport:
             "sites": [
                 {"kind": s.kind, "top_dir": top_dir(s.file), "provider": s.provider}
                 for s in self.sites
-                if s.kind in ("agent_definition", "tool", "model_call")
+                # A trifecta crosses the wire as its kind and directory only — enough
+                # for `propose_from_scan` to raise that agent's risk tier, nothing
+                # about which tools or what they read.
+                if s.kind in ("agent_definition", "tool", "model_call", "lethal_trifecta")
             ],
         }
 
@@ -337,6 +385,14 @@ class ScanReport:
         A report that ends without a next action makes the reader do the synthesis,
         and most readers will not.
         """
+        if self.trifectas and not self.inconclusive:
+            return (
+                f"{len(self.trifectas)} place(s) in this repository can be steered by an "
+                "instruction hidden in content they read into sending private data out. "
+                "Contain those first — each lethal-trifecta finding names the command. "
+                "Then add `import agentfox; agentfox.auto()` to your entry point to see "
+                "every model and tool call as it happens."
+            )
         if self.inconclusive:
             # Never reachable by the "no model calls found" branch below: a scan that
             # read nothing has no basis for saying anything was absent.
@@ -381,6 +437,13 @@ def _attribute_path(node: ast.AST) -> str:
     return ".".join(reversed(parts))
 
 
+def _str_value(node: ast.AST | None) -> str | None:
+    """The string a node is, if it is a literal one."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
 def _decorator_name(node: ast.AST) -> str:
     if isinstance(node, ast.Call):
         node = node.func
@@ -396,6 +459,7 @@ class _Visitor(ast.NodeVisitor):
         # Framework-gated until the full file is visited (see scan_file) — the import
         # may appear anywhere relative to the call in an unusual layout.
         self._pending_agent_defs: list[tuple[Site, str]] = []
+        self._tool_names: set[str] = set()
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
@@ -440,6 +504,16 @@ class _Visitor(ast.NodeVisitor):
                     )
                 )
                 break
+        if path in _TOOL_CONSTRUCTORS or any(path.endswith(f".{c}") for c in _TOOL_CONSTRUCTORS):
+            kwargs = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+            name = _str_value(kwargs.get("name"))
+            if name:
+                self._add_tool(
+                    name,
+                    _str_value(kwargs.get("description")) or "",
+                    node.lineno,
+                    f"{path}(name={name!r})",
+                )
         for suffix, fw in _AGENT_DEFINITIONS.items():
             if path == suffix or path.endswith(f".{suffix}"):
                 self._pending_agent_defs.append(
@@ -470,16 +544,83 @@ class _Visitor(ast.NodeVisitor):
         for decorator in node.decorator_list:
             name = _decorator_name(decorator)
             if any(name.endswith(marker) for marker in _TOOL_DECORATORS):
-                self.sites.append(
-                    Site(
-                        kind="tool",
-                        file=self.path,
-                        line=node.lineno,
-                        detail=f"@{name} {node.name}()",
-                        severity="medium",
-                    )
+                # `@tool("lookup")` names the tool explicitly; otherwise it is the
+                # function's own name.
+                explicit = None
+                if isinstance(decorator, ast.Call) and decorator.args:
+                    explicit = _str_value(decorator.args[0])
+                self._add_tool(
+                    explicit or node.name,
+                    ast.get_docstring(node) or "",
+                    node.lineno,
+                    f"@{name} {node.name}()",
                 )
                 break
+
+    def visit_Dict(self, node: ast.Dict) -> None:
+        """A tool handed to a model as a schema rather than a decorated function.
+
+        This is how most production agents built on a provider SDK declare tools —
+        `client.chat.completions.create(tools=[{"type": "function", ...}])`, often
+        through a module-level list. Matching the dict itself, wherever it sits,
+        covers the inline `tools=` kwarg, the list assigned to a variable and passed
+        later, and the list built in another module, without data-flow analysis.
+        """
+        entries = {
+            k.value: v
+            for k, v in zip(node.keys, node.values, strict=False)
+            if isinstance(k, ast.Constant) and isinstance(k.value, str)
+        }
+        kind = None
+        name = description = None
+        if _str_value(entries.get("type")) == "function":
+            inner = entries.get("function")
+            if isinstance(inner, ast.Dict):
+                # Chat Completions: {"type": "function", "function": {"name": ...}}
+                fields = {
+                    k.value: v
+                    for k, v in zip(inner.keys, inner.values, strict=False)
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str)
+                }
+                name = _str_value(fields.get("name"))
+                description = _str_value(fields.get("description"))
+                kind = "OpenAI function schema"
+            elif "name" in entries and "parameters" in entries:
+                # Responses API: the same fields, flattened.
+                name = _str_value(entries.get("name"))
+                description = _str_value(entries.get("description"))
+                kind = "OpenAI function schema"
+        elif "name" in entries and "input_schema" in entries:
+            name = _str_value(entries.get("name"))
+            description = _str_value(entries.get("description"))
+            kind = "Anthropic tool schema"
+        if kind and name:
+            self._add_tool(name, description or "", node.lineno, f"{kind} {name}")
+        self.generic_visit(node)
+
+    def _add_tool(self, name: str, description: str, line: int, how: str) -> None:
+        # The same schema appears twice in one file often enough (a list built twice,
+        # a retry path) that counting it twice would inflate the headline.
+        if name in self._tool_names:
+            return
+        self._tool_names.add(name)
+        from .exposure import FLAG_LABEL, classify_tool
+
+        caps = classify_tool(name, description)
+        flags = caps.ordered()
+        what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
+        self.sites.append(
+            Site(
+                kind="tool",
+                file=self.path,
+                line=line,
+                detail=f"tool {how}" + (f" — {what}" if what else ""),
+                severity="medium",
+                name=name,
+                capabilities=flags,
+                caps=caps,
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -606,6 +747,9 @@ _JS_TOOLS: tuple[tuple[re.Pattern[str], str, tuple[str, ...]], ...] = (
 )
 
 
+_JS_NAMED_TOOL = re.compile(r"""\b(\w+)["']?\s*[:=]\s*tool\s*\(\s*\{""")
+
+
 def _js_framework(specifier: str) -> str | None:
     """Resolve an import specifier to a framework label, longest prefix first.
 
@@ -685,13 +829,31 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
         for pattern, label, required in _JS_TOOLS:
             match = pattern.search(line)
             if match and gated(required):
+                name = match.group(1) if match.groups() else None
+                if name is None:
+                    # `const sendEmail = tool({` / `sendEmail: tool({` names the tool.
+                    named = _JS_NAMED_TOOL.search(line)
+                    name = named.group(1) if named else None
+                caps = None
+                flags: list[str] = []
+                what = ""
+                if name:
+                    from .exposure import FLAG_LABEL, classify_tool
+
+                    caps = classify_tool(name)
+                    flags = caps.ordered()
+                    what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
                 sites.append(
                     Site(
                         kind="tool",
                         file=rel,
                         line=line_no,
-                        detail=f"{label}: {match.group(0).strip()}",
+                        detail=f"{label}: {match.group(0).strip()}"
+                        + (f" — {what}" if what else ""),
                         severity="medium",
+                        name=name,
+                        capabilities=flags,
+                        caps=caps,
                     )
                 )
                 break
@@ -734,7 +896,8 @@ def scan_file(path: Path, root: Path) -> tuple[list[Site], set[str], bool]:
                     kind="sql_build",
                     file=rel,
                     line=line_no,
-                    detail="SQL built inline — governed by P9 only if it passes through a tool",
+                    detail="SQL built from a string in code — only checked if the "
+                    "query passes through a governed tool",
                     severity="medium",
                 )
             )
@@ -804,42 +967,113 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
 
     report.frameworks = sorted(frameworks)
     _detect_mcp(root_path, report)
+    _detect_trifectas(report)
     return report
 
 
-#: MCP servers are declared in config, not code, so they need their own pass.
-_MCP_CONFIG_NAMES = (
-    ".mcp.json",
-    "mcp.json",
-    "claude_desktop_config.json",
-    "mcp_settings.json",
-)
-
-
 def _detect_mcp(root: Path, report: ScanReport) -> None:
-    import json
+    """MCP servers are declared in config, not code, so they need their own pass.
+
+    Reads every MCP client config under the root (`.mcp.json`, `.cursor/mcp.json`,
+    `claude_desktop_config.json`, `.claude.json`, `.claude/settings*.json`) and never
+    starts a server: what a server can do is classified from how it is declared.
+    """
+    from .exposure import FLAG_LABEL, MCP_CONFIG_NAMES, classify_mcp_server, parse_mcp_config
 
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for filename in filenames:
-            if filename not in _MCP_CONFIG_NAMES:
+            claude_settings = Path(dirpath).name == ".claude" and filename in (
+                "settings.json",
+                "settings.local.json",
+            )
+            if filename not in MCP_CONFIG_NAMES and not claude_settings:
                 continue
             path = Path(dirpath) / filename
-            try:
-                data = json.loads(path.read_text(errors="ignore"))
-            except (OSError, ValueError):
-                continue
-            servers = data.get("mcpServers") or data.get("servers") or {}
-            for name in servers:
+            for decl in parse_mcp_config(path, root=root):
+                caps = classify_mcp_server(decl)
+                flags = caps.ordered()
+                if not caps.known:
+                    what = (
+                        "unknown server — AgentFox can't tell what it can reach; give it "
+                        f"the tool list with `agentfox scan mcp {decl.name} --file tools.json`"
+                    )
+                elif flags:
+                    what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
+                else:
+                    what = "no access to private data or the outside world"
+                if decl.url:
+                    drift = "Remote, so its tools can change at any time"
+                elif decl.pinned_version:
+                    drift = f"Pinned to {decl.pinned_version}"
+                else:
+                    drift = "No version pinned, so its tools can change after you review them"
                 report.sites.append(
                     Site(
                         kind="mcp_server",
-                        file=str(path.relative_to(root)),
+                        file=decl.config,
                         line=1,
-                        detail=(
-                            f"MCP server '{name}' — its tools can change between review "
-                            "and use (I-2 rug pull)"
-                        ),
+                        detail=f"MCP server '{decl.name}' — {what}. {drift}",
                         severity="high",
+                        name=decl.name,
+                        capabilities=flags,
+                        caps=caps,
                     )
                 )
+
+
+def _detect_trifectas(report: ScanReport) -> None:
+    """Add one critical `lethal_trifecta` site per group that has all three legs.
+
+    Grouping, and why:
+
+    * **Tools in code are grouped by directory.** A Python package or a JS app
+      directory is the closest static stand-in for "one agent": tools declared in
+      `tools.py` are handed to the model in `agent.py` next to it far more often
+      than across packages. A group whose tools all sit in one file is labelled with
+      that file; otherwise with the directory.
+    * **MCP servers are grouped by the config file that declares them.** Every
+      server in one `.mcp.json` is loaded into the same client session, so they
+      share one model — that is exactly the condition the trifecta needs. They are
+      not merged with code tools in the same directory, because an MCP config
+      configures an IDE or assistant, not necessarily the application beside it.
+    """
+    from .exposure import Member, containment_hint, trifecta_sentence
+
+    code_groups: dict[str, list[Site]] = {}
+    mcp_groups: dict[str, list[Site]] = {}
+    for site in report.sites:
+        if site.kind == "tool" and site.caps is not None and site.name:
+            code_groups.setdefault(str(Path(site.file).parent), []).append(site)
+        elif site.kind == "mcp_server" and site.caps is not None and site.name:
+            mcp_groups.setdefault(site.file, []).append(site)
+
+    found: list[Site] = []
+    for groups, mcp in ((code_groups, False), (mcp_groups, True)):
+        for directory, sites in sorted(groups.items()):
+            files = sorted({s.file for s in sites})
+            if mcp or len(files) == 1:
+                label = files[0]
+            else:
+                label = "./" if directory == "." else f"{directory}/"
+            members = [Member(s.name or "?", s.caps, s.file, s.line) for s in sites]
+            unknown = [s.name or "?" for s in sites if not s.caps.known]
+            result = trifecta_sentence(label, members, unknown=unknown)
+            if result is None:
+                continue
+            sentence, evidence = result
+            first = min(sites, key=lambda s: (s.file, s.line))
+            found.append(
+                Site(
+                    kind="lethal_trifecta",
+                    file=label,
+                    line=first.line,
+                    detail=sentence,
+                    provider="mcp" if mcp else None,
+                    severity="critical",
+                    capabilities=["private_data", "untrusted_input", "exfiltration"],
+                    evidence={**evidence, "fix": containment_hint(evidence, mcp=mcp)},
+                )
+            )
+    # First in the list as well as first in severity: this is the finding.
+    report.sites[:0] = found

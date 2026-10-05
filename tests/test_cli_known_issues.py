@@ -206,11 +206,16 @@ def test_doctor_json_exits_zero_when_nothing_is_bad():
 # ---------------------------------------------------------------------------
 
 
-def test_scan_mcp_requires_a_file():
+def test_scan_mcp_without_a_file_never_scans_the_seed_fixture():
+    """Without --file there is no tool list, and the output says so instead of
+    quietly scanning the demo fixture's tools as if the server had declared them."""
     _seed()
     result = runner.invoke(app, ["scan", "mcp", "internal-tools"])
-    assert result.exit_code == 2
-    assert "--file is required" in flat(result.output)
+    assert result.exit_code == 0, result.output
+    output = flat(result.output)
+    assert "tools: not listed" in output
+    assert "--file tools.json" in output
+    assert "digest" not in output
 
 
 def test_scan_mcp_seed_fixture_must_be_asked_for():

@@ -26,13 +26,16 @@ agentfox check
 agentfox agents list
 agentfox agents discover
 agentfox agents lineage payments-ops
-agentfox scan mcp internal-tools --seed-fixture`}</code>
+agentfox scan mcp`}</code>
       </pre>
       <p>
         <code>quickscan</code> is the zero-config first look. Nothing leaves the machine.{" "}
-        <code>check</code> scans a repository for what talks to a model, and what of that
-        is ungoverned. <code>--file</code> on <code>scan mcp</code> takes a real{" "}
-        <code>tools/list</code>. Detail is on <Link href="/docs/discovery">Discovery</Link>.
+        <code>check</code> scans a repository for what talks to a model, which tools and
+        MCP servers it can reach, and whether any agent has the lethal trifecta: private
+        data, untrusted content and a way to send data out. <code>scan mcp</code> reads
+        the servers in your <code>.mcp.json</code> without starting them;{" "}
+        <code>--file</code> adds a real <code>tools/list</code>. Detail is on{" "}
+        <Link href="/docs/discovery">Discovery</Link>.
       </p>
 
       <h2>Bound what an agent is allowed to do</h2>

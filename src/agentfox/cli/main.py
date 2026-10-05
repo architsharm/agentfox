@@ -1768,57 +1768,231 @@ def scan_skills(
 
 @scan_app.command("mcp")
 def scan_mcp(
-    server: str,
+    server: str | None = typer.Argument(
+        None, help="Server name as your MCP config declares it. Omit to scan every one."
+    ),
     file: Path | None = typer.Option(
         None, "--file", help="Tool list JSON (what the server's tools/list returned)."
+    ),
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        help="MCP client config to read servers from. Default: the first of .mcp.json, "
+        ".cursor/mcp.json, .claude/settings.json, .claude.json and "
+        "claude_desktop_config.json found in this directory.",
     ),
     seed_fixture: bool = typer.Option(
         False,
         "--seed-fixture",
         help="Scan the built-in demo tool list instead of --file. For demos only.",
     ),
+    as_json: bool = typer.Option(False, "--json", help="Machine-readable output for scripts."),
 ) -> None:
-    """Snapshot an MCP server's tools and check hygiene (P1-5)."""
+    """Check an MCP server: what it can reach, how it is pinned, and its tools.
+
+    Reads your MCP client config and registers every server it declares, so there is
+    nothing to set up first. Nothing is started: without --file the check covers
+    what the config shows (version pinning, remote auth, credentials in the file) and
+    what the server can reach. With --file (the server's tools/list output) it also
+    snapshots the tools and flags poisoned descriptions and changes since last time.
+    """
     from sqlalchemy import select
 
+    from ..exposure import (
+        FLAG_LABEL,
+        Member,
+        classify_mcp_server,
+        classify_tool,
+        find_mcp_configs,
+        parse_mcp_config,
+        server_hygiene,
+        trifecta_sentence,
+    )
     from ..models import McpServer
-    from ..registry.service import scan_mcp_server
+    from ..registry.service import scan_mcp_server, upsert_mcp_server
     from ..seed import MCP_TOOLS
 
-    if file is None and not seed_fixture:
-        # Silently scanning the seed fixture reported a clean (or dirty) bill of health
-        # for tools that server never declared.
-        console.print(
-            "[red]--file is required[/] — pass the server's tool list as JSON. "
-            "[dim](--seed-fixture scans the built-in demo tool list instead.)[/]"
-        )
-        raise typer.Exit(2)
     if file is not None and seed_fixture:
         console.print("[red]pass either --file or --seed-fixture, not both[/]")
         raise typer.Exit(2)
+    if config is not None and not config.is_file():
+        console.print(f"[red]no such config file:[/] {config}")
+        raise typer.Exit(2)
 
-    tools = json.loads(file.read_text()) if file else MCP_TOOLS
+    root = Path(".")
+    configs = [config] if config is not None else find_mcp_configs(root)
+    declared = {}
+    for path in configs:
+        for decl in parse_mcp_config(path, root=root):
+            declared.setdefault(decl.name, decl)
+
+    tools = json.loads(file.read_text()) if file else (MCP_TOOLS if seed_fixture else None)
+    if server is None and tools is not None:
+        console.print("[red]name the server the tool list belongs to[/]")
+        raise typer.Exit(2)
+
     with _session() as session:
-        record = session.scalar(select(McpServer).where(McpServer.name == server))
-        if record is None:
-            console.print(f"[red]unknown MCP server '{server}'[/]")
-            raise typer.Exit(1)
-        result = scan_mcp_server(session, record, tools)
+        # Every declared server is registered, so a fresh repo needs no setup step.
+        # An existing record keeps the trust level an operator gave it.
+        for decl in declared.values():
+            existing = session.scalar(select(McpServer).where(McpServer.name == decl.name))
+            upsert_mcp_server(
+                session,
+                decl.name,
+                url=decl.url,
+                transport=decl.transport,
+                trust_level=existing.trust_level if existing else "untrusted",
+                pinned_version=decl.pinned_version,
+            )
+        names = [server] if server else sorted(declared)
+        if not names:
+            where = str(config) if config else "this directory"
+            console.print(
+                f"[yellow]No MCP servers declared in {where}.[/] Looked for: "
+                + ", ".join(f"[dim]{c}[/]" for c in _MCP_CONFIG_HINT)
+                + ". Pass [cyan]--config PATH[/] to point at another one."
+            )
+            raise typer.Exit(2)
 
-    console.print(f"[bold]{server}[/] — {result['tools']} tools, digest {result['digest'][:16]}…")
-    if not result["issues"]:
-        console.print("  [green]no hygiene issues[/]")
-    for issue in result["issues"]:
-        colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
-        console.print(
-            f"  [{colour}]{issue['severity']}[/] {issue['type']}"
-            + (f" — {issue.get('tool')}" if issue.get("tool") else "")
+        results = []
+        for name in names:
+            decl = declared.get(name)
+            record = session.scalar(select(McpServer).where(McpServer.name == name))
+            if record is None and tools is not None:
+                # A tool list is enough to know the server exists; registering it is
+                # this command's job, not a separate step the user has to find.
+                record = upsert_mcp_server(session, name)
+            if record is None:
+                searched = str(config) if config else ", ".join(_MCP_CONFIG_HINT)
+                console.print(
+                    f"[red]no MCP server named '{name}'[/] in {searched}. "
+                    "Pass [cyan]--config PATH[/] to the config that declares it, or "
+                    "[cyan]--file tools.json[/] with its tools/list output."
+                )
+                raise typer.Exit(2)
+            entry: dict[str, Any] = {"server": name, "declared_in": decl.config if decl else None}
+            if decl is not None:
+                caps = classify_mcp_server(decl)
+                entry.update(
+                    launch=decl.launch,
+                    pinned_version=decl.pinned_version,
+                    known=caps.known,
+                    capabilities=caps.ordered(),
+                    reaches=[caps.phrases.get(f, FLAG_LABEL[f]) for f in caps.ordered()],
+                    config_issues=server_hygiene(decl),
+                )
+            if tools is not None:
+                result = scan_mcp_server(session, record, tools)
+                per_tool = []
+                for tool in tools:
+                    tool_caps = classify_tool(
+                        str(tool.get("name", "")), tool.get("description", "")
+                    )
+                    per_tool.append({"name": tool.get("name"), "capabilities": tool_caps.ordered()})
+                entry.update(
+                    tools=result["tools"],
+                    digest=result["digest"],
+                    issues=result["issues"],
+                    tool_capabilities=per_tool,
+                    external_scan=result["external_scan"],
+                )
+            results.append(entry)
+
+    # Servers declared side by side share a client, and so share a model: together
+    # they can form a lethal trifecta that none of them is on its own.
+    trifecta = None
+    if not server and len(declared) > 1:
+        members = [Member(d.name, classify_mcp_server(d), d.config, 1) for d in declared.values()]
+        unknown = [m.name for m in members if not m.caps.known]
+        found = trifecta_sentence(
+            configs[0].name if len(configs) == 1 else "these MCP configs",
+            members,
+            unknown=unknown,
         )
-        if issue.get("excerpt"):
-            console.print(f"      [dim]{issue['excerpt'][:120]}[/]")
-    external = result["external_scan"]
-    if not external["ran"]:
-        console.print(f"  [dim]mcp-scan: {external['reason']}[/]")
+        trifecta = found[0] if found else None
+
+    if as_json:
+        console.print_json(
+            json.dumps({"servers": results, "lethal_trifecta": trifecta}, default=str)
+        )
+        return
+
+    if trifecta:
+        console.print(
+            Panel(
+                trifecta,
+                title="[bold red]CRITICAL · lethal trifecta[/]",
+                title_align="left",
+                border_style="red",
+            )
+        )
+    for entry in results:
+        console.print(
+            f"[bold]{entry['server']}[/]"
+            + (f"  [dim]{entry['declared_in']}[/]" if entry.get("declared_in") else "")
+        )
+        if entry.get("launch"):
+            console.print(f"  [dim]runs:[/] {entry['launch']}")
+        if "known" in entry:
+            if not entry["known"]:
+                console.print(
+                    "  [yellow]can reach: unknown[/] — not a server AgentFox recognises. "
+                    f"Give it the tool list: [cyan]agentfox scan mcp {entry['server']} "
+                    "--file tools.json[/]"
+                )
+            elif entry["reaches"]:
+                console.print(f"  [dim]can reach:[/] {'; '.join(entry['reaches'])}")
+            else:
+                console.print("  [dim]can reach:[/] nothing private, nothing outside")
+            for issue in entry["config_issues"]:
+                colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
+                console.print(f"  [{colour}]{issue['severity']}[/] {issue['detail']}")
+        if "tools" not in entry:
+            console.print(
+                "  [dim]tools: not listed — nothing was started. Save the server's "
+                f"tools/list output and run[/] [cyan]agentfox scan mcp {entry['server']} "
+                "--file tools.json[/] [dim]to check each tool's description.[/]"
+            )
+            continue
+        console.print(f"  {entry['tools']} tools, digest {entry['digest'][:16]}…")
+        risky = [t for t in entry["tool_capabilities"] if t["capabilities"]]
+        for tool in risky[:10]:
+            flags = ", ".join(FLAG_LABEL[f] for f in tool["capabilities"])
+            console.print(f"    [dim]{tool['name']}:[/] {flags}")
+        if not [i for i in entry["issues"] if i["type"] != "unpinned_server"]:
+            console.print("  [green]no tool issues[/]")
+        config_types = {i["type"] for i in entry.get("config_issues", [])}
+        for issue in entry["issues"]:
+            if issue["type"] in config_types:
+                continue  # already said above, from the config
+            colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
+            text = _MCP_ISSUE_TEXT.get(issue["type"], issue["type"].replace("_", " "))
+            console.print(
+                f"  [{colour}]{issue['severity']}[/] {text}"
+                + (f" — {issue.get('tool')}" if issue.get("tool") else "")
+            )
+            if issue.get("excerpt"):
+                console.print(f"      [dim]{issue['excerpt'][:120]}[/]")
+        external = entry["external_scan"]
+        if not external["ran"]:
+            console.print("  [dim]mcp-scan: not installed (optional external scanner)[/]")
+
+
+#: Where `scan mcp` looked, for the message when it found nothing.
+_MCP_CONFIG_HINT = (
+    ".mcp.json",
+    ".cursor/mcp.json",
+    ".claude/settings.json",
+    ".claude.json",
+    "claude_desktop_config.json",
+)
+
+#: Hygiene issue types as a sentence, so the output does not read like an enum.
+_MCP_ISSUE_TEXT = {
+    "schema_drift": "tools changed since the last scan",
+    "tool_poisoning": "instructions hidden in a tool description",
+    "unpinned_server": "no version pinned — its tools can change silently",
+}
 
 
 @hooks_app.command("daemon")
