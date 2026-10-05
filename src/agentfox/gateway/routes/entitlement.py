@@ -17,11 +17,9 @@ from sqlalchemy.orm import Session
 
 from ...entitlement import (
     RESTRICTED_CLASSES,
-    aggregation_risk,
     filter_retrieval,
     get_engine,
     grant,
-    inference_risk,
     over_permission_report,
     record_disclosure,
     upsert_principal,
@@ -161,31 +159,6 @@ def filter_chunks(
             session, decision, trace_id=payload.trace_id, agent_id=agent_id, stage="pre"
         )
     return {"chunks": decision.visible, **decision.to_json()}
-
-
-class DiscloseIn(BaseModel):
-    answer: str
-    context: str = ""
-    contributors: int | None = None
-
-
-@router.post("/check")
-def check(payload: DiscloseIn, _user: User = Depends(current_user)) -> dict[str, Any]:
-    """The two disclosures no access check can catch.
-
-    An aggregate over too few people identifies individuals, and an attribute the model
-    inferred was never retrieved — so nothing in the permission path ever saw it.
-    """
-    from ...config import get_settings
-
-    return {
-        "aggregation": aggregation_risk(
-            payload.answer,
-            contributors=payload.contributors,
-            k=get_settings().k_anonymity_threshold,
-        ),
-        "inference": inference_risk(payload.answer, payload.context),
-    }
 
 
 @router.get("/over-permission")

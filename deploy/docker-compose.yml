@@ -1,19 +1,29 @@
 # AgentFox — self-hosted control plane.
 #
 # Self-host is the default and only MVP deployment mode (X-8, P3-8, NFR-4). Nothing
-# here reaches the internet at *runtime*: the default model provider is `echo`, egress
-# is off, and every classifier's weights are already baked into the gateway image
-# (deploy/Dockerfile) rather than fetched on first use. A regulated customer can run
-# the built image in an air-gapped VPC and every pillar still functions.
+# here reaches the internet at *runtime*: the default model provider is `echo` and
+# egress is off. The gateway image (deploy/Dockerfile) carries the weights of the four
+# permissive-licence models — Granite Guardian, PIGuard, the protectai ensemble
+# backstop and the MiniLM embedding model — so the detectors enabled below never fetch
+# anything on first use, and a regulated customer can run the image air-gapped.
 #
-# The *build* is a different story once the classifier tier is enabled: fetching
-# those weights needs network egress, and Llama Guard additionally needs an HF_TOKEN
-# from an account that has accepted Meta's licence — see the `secrets:` block below
-# and deploy/Dockerfile's own comments. Set HF_TOKEN in your shell before building:
+# The licence-gated Llama Guard tier (`safety.restricted`) is NOT in the image you
+# pull: the published image never carries gated weights. It is off by default here
+# too. To opt in, after the licence review docs/appendix-a-oss-register.md §A.4 calls
+# for:
+#   1. accept Meta's licence for meta-llama/Llama-Guard-3-8B on Hugging Face,
+#   2. build the image yourself with that account's token, which bakes the weights in:
+#        export HF_TOKEN=hf_...
+#        docker compose -f deploy/docker-compose.yml build gateway
+#   3. add "safety.restricted" to AGENTFOX_ENABLED_DETECTORS below, and
+#   4. set AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES to "1".
+# Without the token the build skips that tier and everything else still builds.
 #
-#   export HF_TOKEN=hf_...
-#   docker compose -f deploy/docker-compose.yml build
 #   docker compose -f deploy/docker-compose.yml up
+#
+# Settings are read as AGENTFOX_*. The pre-rename NOMETRIA_* names still work as a
+# fallback, so an existing deployment's environment does not need to change. The
+# dashboard service is the exception: it reads only the NOMETRIA_* names below.
 #
 #   control plane   http://localhost:3000
 #   API + gateway   http://localhost:8080
@@ -43,7 +53,7 @@ services:
       retries: 20
 
   # Appendix A.1: OPA is the wrapped policy decision engine. It is optional —
-  # NOMETRIA_POLICY_ENGINE defaults to `native`, and the OPA adapter falls back to
+  # AGENTFOX_POLICY_ENGINE defaults to `native`, and the OPA adapter falls back to
   # the native evaluator if this container is unreachable, because a policy-engine
   # outage must never take the customer's agent down (NFR-2).
   opa:
@@ -62,42 +72,43 @@ services:
       secrets:
         - hf_token
     environment:
-      NOMETRIA_DATABASE_URL: postgresql+psycopg://agentfox:nometria@db:5432/agentfox
-      NOMETRIA_ORG_ID: org_default
-      NOMETRIA_ENVIRONMENT: production
+      # The password must match POSTGRES_PASSWORD on the db service above.
+      AGENTFOX_DATABASE_URL: postgresql+psycopg://agentfox:agentfox@db:5432/agentfox
+      AGENTFOX_ORG_ID: org_default
+      AGENTFOX_ENVIRONMENT: production
       # Zero egress by default. Set to "true" and supply a key to use a hosted model.
-      NOMETRIA_ALLOW_EGRESS: "false"
-      NOMETRIA_DEFAULT_PROVIDER: echo
-      # Observe by default: enforcement is something the customer turns on
-      # deliberately, after simulating it (PRD R3).
-      NOMETRIA_DEFAULT_POLICY_MODE: observe
-      NOMETRIA_FAIL_MODE: open
-      NOMETRIA_ENFORCEMENT_BUDGET_MS: "100"
-      NOMETRIA_DETECTOR_TIMEOUT_MS: "40"
-      NOMETRIA_POLICY_ENGINE: native
-      NOMETRIA_OPA_URL: http://opa:8181
-      # Every detector this image has weights baked in for (deploy/Dockerfile),
-      # on top of the 5 zero-dependency defaults. `safety.restricted` is Llama Guard
-      # 3-8B — gated behind the flag below, not behind this list alone.
+      AGENTFOX_ALLOW_EGRESS: "false"
+      AGENTFOX_DEFAULT_PROVIDER: echo
+      # The mode used when no bound policy decides. Detector-backed policy is
+      # something the customer turns on deliberately, after simulating it (PRD R3).
+      # Tool containment still ships enforcing, and a missing grant is refused
+      # whatever this says.
+      AGENTFOX_DEFAULT_POLICY_MODE: observe
+      AGENTFOX_FAIL_MODE: open
+      AGENTFOX_ENFORCEMENT_BUDGET_MS: "100"
+      AGENTFOX_DETECTOR_TIMEOUT_MS: "40"
+      AGENTFOX_POLICY_ENGINE: native
+      AGENTFOX_OPA_URL: http://opa:8181
+      # Every detector the published image has weights for (deploy/Dockerfile), on
+      # top of the 5 zero-dependency defaults. `safety.restricted` (Llama Guard 3-8B)
+      # is left out on purpose: see the opt-in steps at the top of this file.
       AGENTFOX_ENABLED_DETECTORS: >-
         ["injection.heuristic","pii.native","secrets.native","safety.lexicon",
-        "schema.json","injection.classifier","safety.granite","injection.similarity",
-        "safety.restricted"]
+        "schema.json","injection.classifier","safety.granite","injection.similarity"]
       # Appendix A.4: Llama Guard's licence is non-OSI (acceptable-use policy, a
-      # >700M-MAU clause) and the code refuses to load it without this being set.
-      # Setting it to "1" is a legal decision, not a technical one — confirm you've
-      # done the licence review Appendix A.4 calls for before deploying with this on.
-      NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES: "1"
+      # >700M-MAU clause) and the code refuses to load it unless this is "1". Turning
+      # it on is a legal decision, not a technical one, so it ships off.
+      AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES: "0"
       # CHANGE THIS. The checkpoint signing key should live outside the application
       # database and be held by the customer (NFR-7, Appendix E.2.2).
-      NOMETRIA_AUDIT_SIGNING_KEY: change-me-before-any-real-deployment
-      NOMETRIA_EVIDENCE_DIR: /var/agentfox/evidence
+      AGENTFOX_AUDIT_SIGNING_KEY: change-me-before-any-real-deployment
+      AGENTFOX_EVIDENCE_DIR: /var/agentfox/evidence
       # The public playground page (dashboard/app/playground) calls this origin
       # directly from the visitor's browser, unauthenticated — additive to the
       # hardcoded localhost origins in gateway/app.py, not a replacement. Only
       # needed once the dashboard is actually reachable from somewhere other than
       # this same machine.
-      NOMETRIA_PLAYGROUND_CORS_ORIGIN: http://localhost:3000
+      AGENTFOX_PLAYGROUND_CORS_ORIGIN: http://localhost:3000
     ports:
       - "8080:8080"
     volumes:
@@ -118,6 +129,8 @@ services:
       context: ../dashboard
       dockerfile: ../deploy/Dockerfile.dashboard
     environment:
+      # The dashboard reads these under the NOMETRIA_ names only (dashboard/lib/api.ts),
+      # so they keep the old prefix until the dashboard reads AGENTFOX_ too.
       # Read at request time, not baked at build time — so one image can be pointed
       # at any control plane.
       NOMETRIA_API_URL: http://gateway:8080

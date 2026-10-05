@@ -1,10 +1,10 @@
-"""`agentfox quickscan` — the one command answer to "is this worth my time."
+"""`agentfox scan --sessions` — the one command answer to "is this worth my time."
 
 No account, no GitHub connection, no SDK integration, nothing leaves this machine —
 unless you explicitly ask it to. Three signals, all local:
 
 1. What's committed — `discovery.py`'s static AST scan of the current directory,
-   the same engine `agentfox check` uses.
+   the same engine `agentfox scan` uses.
 2. What's actually running — `session_scan.py`'s read of local AI-tool session
    transcripts, which sees ad hoc agent usage the repo scan can't (a notebook
    agent, an MCP server wired up an hour ago, nothing committed yet).
@@ -78,6 +78,7 @@ def quickscan(
     work — no account, nothing leaves this machine unless you explicitly submit."""
     from ..discovery import scan as discovery_scan
     from ..session_scan import scan_all
+    from ._scan_view import print_trifectas, surface_line
     from .submit import maybe_submit_report
 
     repo_report = discovery_scan(path)
@@ -112,6 +113,9 @@ def quickscan(
         )
     )
 
+    # The trifecta, if there is one, before anything else: it is the finding.
+    print_trifectas(console, repo_report)
+
     # -- 1. Committed --------------------------------------------------------
     console.print("\n[bold]Committed[/]  [dim]what's in this directory[/]")
     console.print(f"  Scanned {repo_report.files_scanned} files in [dim]{repo_report.root}[/]")
@@ -126,6 +130,11 @@ def quickscan(
         )
     else:
         console.print("  [dim]no model call sites found[/]")
+    console.print(f"  [dim]can reach:[/] {surface_line(repo_report)}")
+    if repo_report.trifectas:
+        console.print(
+            f"  [red]{len(repo_report.trifectas)} lethal trifecta(s)[/] [dim](shown above)[/]"
+        )
     counts = repo_report.by_kind()
     secrets = counts.get("secret", 0)
     if secrets:
@@ -174,7 +183,7 @@ def quickscan(
             "\n".join(
                 [
                     "[bold]agentfox init[/]     [dim]set up local governance in this repo[/]",
-                    "[bold]agentfox check[/]    [dim]full findings list, ranked by severity[/]",
+                    "[bold]agentfox scan[/]    [dim]full findings list, ranked by severity[/]",
                     "[dim]This was a snapshot, not monitoring — [/][cyan]import agentfox; "
                     "agentfox.auto()[/][dim] governs every call going forward.[/]",
                 ]

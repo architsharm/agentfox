@@ -16,7 +16,7 @@ TARGET_DIR="${1:-.}"
 
 info() { printf '%s\n' "$*" >&2; }
 
-PYTHON_BIN="${NOMETRIA_PYTHON:-}"
+PYTHON_BIN="${AGENTFOX_PYTHON:-${NOMETRIA_PYTHON:-}}"
 if [ -z "$PYTHON_BIN" ]; then
   for candidate in python3 python; do
     if command -v "$candidate" >/dev/null 2>&1; then

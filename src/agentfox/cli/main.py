@@ -32,35 +32,35 @@ app = typer.Typer(
 console = Console()
 
 agents_app = typer.Typer(
-    help="Find every agent that is running, and who owns it (Pillar 1).",
+    help="Find every agent that is running, and who owns it.",
     no_args_is_help=True,
 )
 policy_app = typer.Typer(
-    help="Write the rules, try them against recorded traffic, then turn them on (Pillar 6).",
+    help="Write the rules, try them against recorded traffic, then turn them on.",
     no_args_is_help=True,
 )
 eval_app = typer.Typer(
-    help="Score an agent, fail the build on a regression, watch for drift (Pillar 4).",
+    help="Score an agent, fail the build on a regression, watch for drift.",
     no_args_is_help=True,
 )
 audit_app = typer.Typer(
-    help="Check that the recorded history has not been altered (Pillar 5).",
+    help="Check that the recorded history has not been altered.",
     no_args_is_help=True,
 )
 evidence_app = typer.Typer(
-    help="Export a package an auditor can verify without us (Pillar 5).",
+    help="Export a package an auditor can verify without us.",
     no_args_is_help=True,
 )
 compliance_app = typer.Typer(
-    help="Where this deployment stands against each framework, computed from telemetry (Pillar 6).",
+    help="Where this deployment stands against each framework, computed from telemetry.",
     no_args_is_help=True,
 )
 redteam_app = typer.Typer(
-    help="Attack your own configuration and score what got through (Pillar 4).",
+    help="Attack your own configuration and score what got through.",
     no_args_is_help=True,
 )
 scan_app = typer.Typer(
-    help="Snapshot an MCP server's tools and check them for hygiene (Pillar 1).",
+    help="Snapshot an MCP server's tools and check them for hygiene.",
     no_args_is_help=True,
 )
 hooks_app = typer.Typer(
@@ -69,12 +69,12 @@ hooks_app = typer.Typer(
 )
 db_app = typer.Typer(help="Apply, roll back and inspect the database schema.", no_args_is_help=True)
 tools_app = typer.Typer(
-    help="Declare what each tool can do, so containment has something to reason over (P9).",
+    help="Declare what each tool can do, so containment has something to reason over.",
     no_args_is_help=True,
 )
 access_app = typer.Typer(
     help="Declare which column decides whose row it is, so a query across every "
-    "customer stops reading as ordinary (P18).",
+    "customer stops reading as ordinary.",
     no_args_is_help=True,
 )
 
@@ -101,6 +101,7 @@ from .controls_cli import register as _register_controls  # noqa: E402
 from .mcp_cli import register as _register_mcp  # noqa: E402
 from .onboarding import register as _register_onboarding  # noqa: E402
 from .quickscan import register as _register_quickscan  # noqa: E402
+from .report_cli import register as _register_report  # noqa: E402
 
 _register_onboarding(app)
 _register_quickscan(app)
@@ -109,6 +110,7 @@ _register_controls(app)
 _register_business(app)
 _register_mcp(app)
 _register_capability(app)
+_register_report(app)
 
 
 def _session():
@@ -197,7 +199,7 @@ def seed(
     if credentials and not show_keys:
         console.print(
             "  [dim]keys masked. Only a hash is stored and each key is issued once — "
-            "`agentfox seed --show-keys` on a fresh database is the only way to see "
+            "`agentfox admin seed --show-keys` on a fresh database is the only way to see "
             "them in full.[/]"
         )
 
@@ -207,7 +209,7 @@ def seed(
         [
             ("agentfox demo", "the end-to-end walkthrough against what was just seeded"),
             ("agentfox findings", "what the seeded traffic already raised"),
-            ("agentfox capability list", "what each seeded agent is allowed to do"),
+            ("agentfox permit list", "what each seeded agent is allowed to do"),
             ("agentfox doctor", "check the runtime configuration"),
         ]
     )
@@ -283,7 +285,9 @@ def db_current() -> None:
     from ..db import current_revision
 
     revision = current_revision()
-    console.print(f"schema revision: [bold]{revision or 'none — run `agentfox db upgrade`'}[/]")
+    console.print(
+        f"schema revision: [bold]{revision or 'none — run `agentfox admin db upgrade`'}[/]"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -292,8 +296,16 @@ def db_current() -> None:
 
 
 @agents_app.command("list")
-def agents_list(as_json: bool = typer.Option(False, "--json")) -> None:
+def agents_list(
+    as_json: bool = typer.Option(False, "--json"),
+    stopped: bool = typer.Option(
+        False, "--stopped", help="Only agents that are quarantined or killed, and why."
+    ),
+) -> None:
     """List every agent, registered or shadow."""
+    if stopped:
+        agents_controls()
+        return
     from sqlalchemy import select
 
     from ..models import Agent
@@ -541,7 +553,7 @@ def policy_list() -> None:
 
 @policy_app.command("lint")
 def policy_lint() -> None:
-    """Lint the policy hierarchy (P12-4). Exits 1 on critical or high findings.
+    """Lint the policy hierarchy. Exits 1 on critical or high findings.
 
     This is the half of hierarchical policy that produces the 87% misconfiguration
     reduction — composition without a linter just moves the confusion somewhere
@@ -639,7 +651,7 @@ def policy_simulate(
     since_days: int = 30,
     limit: int = 1000,
 ) -> None:
-    """Replay recorded traffic against a candidate policy (P2-7).
+    """Replay recorded traffic against a candidate policy.
 
     Exits non-zero when the change would newly block production traffic, so it can
     gate a policy PR the same way `eval gate` gates a code PR.
@@ -760,7 +772,7 @@ def _unknown_suite(session: Any, suite: str) -> None:
     if known:
         console.print(f"  known suites: {', '.join(known)}")
     else:
-        console.print("  no suites exist yet — `agentfox seed` creates one to try.")
+        console.print("  no suites exist yet — `agentfox admin seed` creates one to try.")
 
 
 @eval_app.command("suites")
@@ -781,7 +793,7 @@ def eval_suites() -> None:
             for suite in session.scalars(select(EvalSuite).order_by(EvalSuite.key))
         ]
     if not rows:
-        console.print("[dim]no evaluation suites — `agentfox seed` creates one to try.[/]")
+        console.print("[dim]no evaluation suites — `agentfox admin seed` creates one to try.[/]")
         return
     table = Table(box=None, pad_edge=False)
     for column in ("suite", "name", "cases"):
@@ -833,7 +845,7 @@ def _print_eval_summary(suite: str, summary: dict[str, Any], run_id: str | None 
     # Without this the run → baseline → gate workflow has a hole in the middle:
     # `eval baseline` takes a run id that nothing in the CLI ever printed.
     if run_id:
-        console.print(f"  [dim]run {run_id} · `agentfox eval baseline {run_id}` to pin it[/]")
+        console.print(f"  [dim]run {run_id} · `agentfox test baseline {run_id}` to pin it[/]")
     table = Table(box=None, pad_edge=False)
     for column in ("scorer", "mean", "min", "max", "pass rate"):
         table.add_column(
@@ -863,7 +875,7 @@ def eval_gate(
     junit: Path | None = typer.Option(None, help="Write JUnit XML here."),
     sarif: Path | None = typer.Option(None, help="Write SARIF here."),
 ) -> None:
-    """Run the suite and fail the build on regression (P4-1). Exits 1 on failure."""
+    """Run the suite and fail the build on regression. Exits 1 on failure."""
     from sqlalchemy import select
 
     from ..evaluation import gate, to_junit, to_sarif
@@ -899,7 +911,7 @@ def eval_gate(
             console.print(
                 "  [yellow]nothing to fail against[/] — no baseline and no --min-pass-rate, "
                 "so this run could not have failed.\n"
-                f"  [dim]arm it: `agentfox eval baseline {run_id}`, or pass "
+                f"  [dim]arm it: `agentfox test baseline {run_id}`, or pass "
                 "--min-pass-rate.[/]"
             )
         return
@@ -934,7 +946,7 @@ def eval_drift(agent: str, scorer: str = "groundedness") -> None:
     with _session() as session:
         report = compute_drift(session, agent, scorer)
     if report is None:
-        console.print("[yellow]insufficient online samples[/] — run `agentfox eval online` first")
+        console.print("[yellow]insufficient online samples[/] — run `agentfox test online` first")
         return
     data = report.to_json()
     console.print(
@@ -948,7 +960,7 @@ def eval_drift(agent: str, scorer: str = "groundedness") -> None:
 
 @eval_app.command("online")
 def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> None:
-    """Sample production traffic and score it with the offline scorers (P4-2)."""
+    """Sample production traffic and score it with the offline scorers."""
     from ..evaluation import sample_production
 
     with _session() as session:
@@ -977,7 +989,7 @@ def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> N
 
 @audit_app.command("verify")
 def audit_verify(start: int | None = None, end: int | None = None) -> None:
-    """Verify the tamper-evident audit chain (P5-2). Exits 1 if broken."""
+    """Verify the tamper-evident audit chain. Exits 1 if broken."""
     from ..audit import chain
 
     with _session() as session:
@@ -1063,7 +1075,7 @@ def evidence_export(
     control: list[str] = typer.Option(None, "--control", help="Repeatable; default all."),
     requested_by: str = "cli",
 ) -> None:
-    """Build an auditor-ready evidence package (P5-3)."""
+    """Build an auditor-ready evidence package."""
     from ..audit import evidence
 
     period_from, period_to = _evidence_period(from_, to, since_days)
@@ -1117,7 +1129,7 @@ def compliance_sync() -> None:
 
 @compliance_app.command("compute")
 def compliance_compute(window_days: int = 30) -> None:
-    """Recompute control status from telemetry (P6-4)."""
+    """Recompute control status from telemetry."""
     from ..compliance import compute_all, posture
 
     with _session() as session:
@@ -1327,7 +1339,7 @@ def compliance_review_packet(
     framework: str = typer.Option(..., "--framework", help="Framework key, e.g. eu-ai-act."),
     out: Path | None = typer.Option(None, "--out", help="Write markdown here instead of stdout."),
 ) -> None:
-    """Everything a qualified reviewer needs to sign off one framework, in one file (B.6).
+    """Everything a qualified reviewer needs to sign off one framework, in one file.
 
     Every mapping ships `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a named human reviews
     it, and that is the loudest "not ready" signal in an audit conversation. The blocker has
@@ -1372,7 +1384,7 @@ def compliance_review_packet(
         f"{len(rows)} mapping(s), {len(drafts)} awaiting review.",
         "",
         "For each row: does this control, as implemented, support the clause claimed? Approve with",
-        "`agentfox compliance review <control> --framework "
+        "`agentfox report signoff <control> --framework "
         f'{framework} --reviewer "<your name>"`, optionally `--reference` for a single clause.',
         "",
     ]
@@ -1466,7 +1478,7 @@ def compliance_frameworks() -> None:
 
 @compliance_app.command("risk")
 def compliance_risk() -> None:
-    """Show the agent risk register (P6-3)."""
+    """Show the agent risk register."""
     from ..compliance import register
 
     with _session() as session:
@@ -1488,7 +1500,7 @@ def compliance_risk() -> None:
 
 @compliance_app.command("obligations")
 def compliance_obligations() -> None:
-    """Regulatory obligation calendar against the agent inventory (P6-5)."""
+    """Regulatory obligation calendar against the agent inventory."""
     from ..compliance import obligation_calendar
 
     with _session() as session:
@@ -1511,7 +1523,7 @@ def compliance_obligations() -> None:
 
 @compliance_app.command("board")
 def compliance_board() -> None:
-    """Executive risk view (P6-6)."""
+    """Executive risk view."""
     from ..compliance import board_view
 
     with _session() as session:
@@ -1532,10 +1544,15 @@ def compliance_board() -> None:
     findings = view["open_findings"]
     console.print(f"  open findings            {findings['total']} {findings['by_severity']}")
     overall = view["overall_posture"]
+    counts = overall["counts"]
+    assessed = sum(counts.get(k, 0) for k in ("effective", "degraded", "failing"))
+    # Counts, not the ratio alone: "100%" over 5 assessed controls of 43 read as
+    # full coverage on a deployment with almost no evidence yet.
     console.print(
-        f"  control effectiveness    "
-        f"{(overall['effectiveness'] or 0):.0%} of "
-        f"{overall['controls']} controls"
+        f"  controls with evidence   {counts.get('effective', 0)} of {overall['controls']} "
+        f"effective [dim]({assessed} assessed, "
+        f"{counts.get('not_implemented', 0) + counts.get('not_computed', 0)} with no "
+        "evidence yet)[/]"
     )
     console.print(f"  live obligations         {len(view['live_obligations'])}")
     console.print(f"  upcoming (24mo)          {len(view['upcoming_obligations'])}")
@@ -1565,7 +1582,7 @@ def redteam_run(
         help="Generate probes from this deployment's own grants, impacts and bound policies.",
     ),
 ) -> None:
-    """Run adversarial probes against the deployed configuration (P4-4).
+    """Run adversarial probes against the deployed configuration.
 
     This measures whether *this configuration* got weaker, against known attack classes.
     It is not a robustness certificate, and `--adaptive` does not make it one: every
@@ -1703,7 +1720,7 @@ def scan_skills(
         True, "--persist/--no-persist", help="Raise findings, or just print."
     ),
 ) -> None:
-    """Scan agent skills for planted instructions and declared danger (P1-5).
+    """Scan agent skills for planted instructions and declared danger.
 
     A skill is the same object as an MCP tool one layer up: a description the
     model reads to decide whether to invoke it, and instructions it then obeys.
@@ -1768,57 +1785,231 @@ def scan_skills(
 
 @scan_app.command("mcp")
 def scan_mcp(
-    server: str,
+    server: str | None = typer.Argument(
+        None, help="Server name as your MCP config declares it. Omit to scan every one."
+    ),
     file: Path | None = typer.Option(
         None, "--file", help="Tool list JSON (what the server's tools/list returned)."
+    ),
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        help="MCP client config to read servers from. Default: the first of .mcp.json, "
+        ".cursor/mcp.json, .claude/settings.json, .claude.json and "
+        "claude_desktop_config.json found in this directory.",
     ),
     seed_fixture: bool = typer.Option(
         False,
         "--seed-fixture",
         help="Scan the built-in demo tool list instead of --file. For demos only.",
     ),
+    as_json: bool = typer.Option(False, "--json", help="Machine-readable output for scripts."),
 ) -> None:
-    """Snapshot an MCP server's tools and check hygiene (P1-5)."""
+    """Check an MCP server: what it can reach, how it is pinned, and its tools.
+
+    Reads your MCP client config and registers every server it declares, so there is
+    nothing to set up first. Nothing is started: without --file the check covers
+    what the config shows (version pinning, remote auth, credentials in the file) and
+    what the server can reach. With --file (the server's tools/list output) it also
+    snapshots the tools and flags poisoned descriptions and changes since last time.
+    """
     from sqlalchemy import select
 
+    from ..exposure import (
+        FLAG_LABEL,
+        Member,
+        classify_mcp_server,
+        classify_tool,
+        find_mcp_configs,
+        parse_mcp_config,
+        server_hygiene,
+        trifecta_sentence,
+    )
     from ..models import McpServer
-    from ..registry.service import scan_mcp_server
+    from ..registry.service import scan_mcp_server, upsert_mcp_server
     from ..seed import MCP_TOOLS
 
-    if file is None and not seed_fixture:
-        # Silently scanning the seed fixture reported a clean (or dirty) bill of health
-        # for tools that server never declared.
-        console.print(
-            "[red]--file is required[/] — pass the server's tool list as JSON. "
-            "[dim](--seed-fixture scans the built-in demo tool list instead.)[/]"
-        )
-        raise typer.Exit(2)
     if file is not None and seed_fixture:
         console.print("[red]pass either --file or --seed-fixture, not both[/]")
         raise typer.Exit(2)
+    if config is not None and not config.is_file():
+        console.print(f"[red]no such config file:[/] {config}")
+        raise typer.Exit(2)
 
-    tools = json.loads(file.read_text()) if file else MCP_TOOLS
+    root = Path(".")
+    configs = [config] if config is not None else find_mcp_configs(root)
+    declared = {}
+    for path in configs:
+        for decl in parse_mcp_config(path, root=root):
+            declared.setdefault(decl.name, decl)
+
+    tools = json.loads(file.read_text()) if file else (MCP_TOOLS if seed_fixture else None)
+    if server is None and tools is not None:
+        console.print("[red]name the server the tool list belongs to[/]")
+        raise typer.Exit(2)
+
     with _session() as session:
-        record = session.scalar(select(McpServer).where(McpServer.name == server))
-        if record is None:
-            console.print(f"[red]unknown MCP server '{server}'[/]")
-            raise typer.Exit(1)
-        result = scan_mcp_server(session, record, tools)
+        # Every declared server is registered, so a fresh repo needs no setup step.
+        # An existing record keeps the trust level an operator gave it.
+        for decl in declared.values():
+            existing = session.scalar(select(McpServer).where(McpServer.name == decl.name))
+            upsert_mcp_server(
+                session,
+                decl.name,
+                url=decl.url,
+                transport=decl.transport,
+                trust_level=existing.trust_level if existing else "untrusted",
+                pinned_version=decl.pinned_version,
+            )
+        names = [server] if server else sorted(declared)
+        if not names:
+            where = str(config) if config else "this directory"
+            console.print(
+                f"[yellow]No MCP servers declared in {where}.[/] Looked for: "
+                + ", ".join(f"[dim]{c}[/]" for c in _MCP_CONFIG_HINT)
+                + ". Pass [cyan]--config PATH[/] to point at another one."
+            )
+            raise typer.Exit(2)
 
-    console.print(f"[bold]{server}[/] — {result['tools']} tools, digest {result['digest'][:16]}…")
-    if not result["issues"]:
-        console.print("  [green]no hygiene issues[/]")
-    for issue in result["issues"]:
-        colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
-        console.print(
-            f"  [{colour}]{issue['severity']}[/] {issue['type']}"
-            + (f" — {issue.get('tool')}" if issue.get("tool") else "")
+        results = []
+        for name in names:
+            decl = declared.get(name)
+            record = session.scalar(select(McpServer).where(McpServer.name == name))
+            if record is None and tools is not None:
+                # A tool list is enough to know the server exists; registering it is
+                # this command's job, not a separate step the user has to find.
+                record = upsert_mcp_server(session, name)
+            if record is None:
+                searched = str(config) if config else ", ".join(_MCP_CONFIG_HINT)
+                console.print(
+                    f"[red]no MCP server named '{name}'[/] in {searched}. "
+                    "Pass [cyan]--config PATH[/] to the config that declares it, or "
+                    "[cyan]--file tools.json[/] with its tools/list output."
+                )
+                raise typer.Exit(2)
+            entry: dict[str, Any] = {"server": name, "declared_in": decl.config if decl else None}
+            if decl is not None:
+                caps = classify_mcp_server(decl)
+                entry.update(
+                    launch=decl.launch,
+                    pinned_version=decl.pinned_version,
+                    known=caps.known,
+                    capabilities=caps.ordered(),
+                    reaches=[caps.phrases.get(f, FLAG_LABEL[f]) for f in caps.ordered()],
+                    config_issues=server_hygiene(decl),
+                )
+            if tools is not None:
+                result = scan_mcp_server(session, record, tools)
+                per_tool = []
+                for tool in tools:
+                    tool_caps = classify_tool(
+                        str(tool.get("name", "")), tool.get("description", "")
+                    )
+                    per_tool.append({"name": tool.get("name"), "capabilities": tool_caps.ordered()})
+                entry.update(
+                    tools=result["tools"],
+                    digest=result["digest"],
+                    issues=result["issues"],
+                    tool_capabilities=per_tool,
+                    external_scan=result["external_scan"],
+                )
+            results.append(entry)
+
+    # Servers declared side by side share a client, and so share a model: together
+    # they can form a lethal trifecta that none of them is on its own.
+    trifecta = None
+    if not server and len(declared) > 1:
+        members = [Member(d.name, classify_mcp_server(d), d.config, 1) for d in declared.values()]
+        unknown = [m.name for m in members if not m.caps.known]
+        found = trifecta_sentence(
+            configs[0].name if len(configs) == 1 else "these MCP configs",
+            members,
+            unknown=unknown,
         )
-        if issue.get("excerpt"):
-            console.print(f"      [dim]{issue['excerpt'][:120]}[/]")
-    external = result["external_scan"]
-    if not external["ran"]:
-        console.print(f"  [dim]mcp-scan: {external['reason']}[/]")
+        trifecta = found[0] if found else None
+
+    if as_json:
+        console.print_json(
+            json.dumps({"servers": results, "lethal_trifecta": trifecta}, default=str)
+        )
+        return
+
+    if trifecta:
+        console.print(
+            Panel(
+                trifecta,
+                title="[bold red]CRITICAL · lethal trifecta[/]",
+                title_align="left",
+                border_style="red",
+            )
+        )
+    for entry in results:
+        console.print(
+            f"[bold]{entry['server']}[/]"
+            + (f"  [dim]{entry['declared_in']}[/]" if entry.get("declared_in") else "")
+        )
+        if entry.get("launch"):
+            console.print(f"  [dim]runs:[/] {entry['launch']}")
+        if "known" in entry:
+            if not entry["known"]:
+                console.print(
+                    "  [yellow]can reach: unknown[/] — not a server AgentFox recognises. "
+                    f"Give it the tool list: [cyan]agentfox scan mcp {entry['server']} "
+                    "--file tools.json[/]"
+                )
+            elif entry["reaches"]:
+                console.print(f"  [dim]can reach:[/] {'; '.join(entry['reaches'])}")
+            else:
+                console.print("  [dim]can reach:[/] nothing private, nothing outside")
+            for issue in entry["config_issues"]:
+                colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
+                console.print(f"  [{colour}]{issue['severity']}[/] {issue['detail']}")
+        if "tools" not in entry:
+            console.print(
+                "  [dim]tools: not listed — nothing was started. Save the server's "
+                f"tools/list output and run[/] [cyan]agentfox scan mcp {entry['server']} "
+                "--file tools.json[/] [dim]to check each tool's description.[/]"
+            )
+            continue
+        console.print(f"  {entry['tools']} tools, digest {entry['digest'][:16]}…")
+        risky = [t for t in entry["tool_capabilities"] if t["capabilities"]]
+        for tool in risky[:10]:
+            flags = ", ".join(FLAG_LABEL[f] for f in tool["capabilities"])
+            console.print(f"    [dim]{tool['name']}:[/] {flags}")
+        if not [i for i in entry["issues"] if i["type"] != "unpinned_server"]:
+            console.print("  [green]no tool issues[/]")
+        config_types = {i["type"] for i in entry.get("config_issues", [])}
+        for issue in entry["issues"]:
+            if issue["type"] in config_types:
+                continue  # already said above, from the config
+            colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
+            text = _MCP_ISSUE_TEXT.get(issue["type"], issue["type"].replace("_", " "))
+            console.print(
+                f"  [{colour}]{issue['severity']}[/] {text}"
+                + (f" — {issue.get('tool')}" if issue.get("tool") else "")
+            )
+            if issue.get("excerpt"):
+                console.print(f"      [dim]{issue['excerpt'][:120]}[/]")
+        external = entry["external_scan"]
+        if not external["ran"]:
+            console.print("  [dim]mcp-scan: not installed (optional external scanner)[/]")
+
+
+#: Where `scan mcp` looked, for the message when it found nothing.
+_MCP_CONFIG_HINT = (
+    ".mcp.json",
+    ".cursor/mcp.json",
+    ".claude/settings.json",
+    ".claude.json",
+    "claude_desktop_config.json",
+)
+
+#: Hygiene issue types as a sentence, so the output does not read like an enum.
+_MCP_ISSUE_TEXT = {
+    "schema_drift": "tools changed since the last scan",
+    "tool_poisoning": "instructions hidden in a tool description",
+    "unpinned_server": "no version pinned — its tools can change silently",
+}
 
 
 @hooks_app.command("daemon")
@@ -1980,7 +2171,7 @@ def hooks_install(
     if not client_daemon_running():
         console.print(
             "\n  [yellow]The daemon is not running[/] — every call will report "
-            "unchecked until `agentfox hooks daemon` is up."
+            "unchecked until `agentfox admin hooks daemon` is up."
         )
     # Declare the harness's own tools first. Without them every call trips
     # `tool.not_declared` and the agent reads "the registry has never seen
@@ -2004,11 +2195,27 @@ def hooks_install(
             continue
         hooks.extend(entries)
         added.append(event)
+    # Before the early return, so re-running install on an existing hook also
+    # repairs a pack binding an older version left wildcarded.
+    _enable_coding_pack(agent)
     if not added:
         console.print("\n  [dim]already installed.[/]")
         return
     settings.write_text(_json.dumps(existing, indent=2) + "\n")
     console.print(f"\n  [green]written[/] {settings} [dim]({', '.join(added)})[/]")
+
+
+def _enable_coding_pack(agent: str) -> None:
+    """A hooked agent is a coding agent: bind the pack tuned for one, to it alone."""
+    from ..policy.coding import enable_for_agent
+
+    with _session() as session:
+        covered = enable_for_agent(session, agent)
+    if covered:
+        console.print(
+            f"  [green]coding-agent[/] pack applies to {', '.join(covered)} "
+            "[dim](it ships in observe; `agentfox policy enforce coding-agent` to block)[/]"
+        )
 
 
 def _hook_events(harness: str) -> list[str]:
@@ -2066,7 +2273,7 @@ def hooks_status() -> None:
     console.print(f"  socket    [dim]{path}[/]")
     console.print(f"  daemon    {'[green]listening[/]' if up else '[red]not running[/]'}")
     if not up:
-        console.print("            [dim]start it with `agentfox hooks daemon`[/]")
+        console.print("            [dim]start it with `agentfox admin hooks daemon`[/]")
 
     console.print(f"\n  verified harness events: {len(capability.CAPABILITY)}")
     if not capability.CAPABILITY:
@@ -2093,7 +2300,7 @@ def analyse_action(
     dialect: str = typer.Option("postgres", help="SQL dialect"),
     environment: str = typer.Option("production", help="environment the action binds to"),
 ) -> None:
-    """Read an artefact and say what running it would actually do (P9).
+    """Read an artefact and say what running it would actually do.
 
     Deterministic, offline and immediate: no database, no model, no network. The point
     is that an engineer can check a generated statement before it is ever executed.
@@ -2137,18 +2344,31 @@ def tools_declare(
     name: str = typer.Option("", "--name"),
     description: str = typer.Option("", "--description"),
     triggers: str = typer.Option("", "--triggers", help="Comma-separated downstream effects."),
+    output_trust: str | None = typer.Option(
+        None,
+        "--output-trust",
+        help=(
+            "untrusted | trusted — whether values copied out of this tool's output taint "
+            "the arguments they land in. Default for a new tool: untrusted. Declare "
+            "trusted only for a system of record you control, such as a CRM read."
+        ),
+    ),
 ) -> None:
-    """Declare a tool and what it can do (P9).
+    """Declare a tool and what it can do.
 
     Containment is declared, not detected: an irreversible tool recorded as `read` is one
     a tainted argument can reach. This is the command that makes least privilege real, and
     it is deliberately the first thing `agentfox init` points at.
     """
+    from ..models import OUTPUT_TRUST_LEVELS
     from ..registry.service import upsert_tool
 
     valid = ("read", "write", "high_impact", "irreversible")
     if impact not in valid:
         console.print(f"[red]impact must be one of: {', '.join(valid)}[/]")
+        raise typer.Exit(2)
+    if output_trust is not None and output_trust not in OUTPUT_TRUST_LEVELS:
+        console.print(f"[red]output trust must be one of: {', '.join(OUTPUT_TRUST_LEVELS)}[/]")
         raise typer.Exit(2)
 
     with _session() as session:
@@ -2158,14 +2378,21 @@ def tools_declare(
             name=name,
             impact=impact,
             description=description,
+            output_trust=output_trust,
         )
         if triggers:
             tool.triggers_json = [t.strip() for t in triggers.split(",") if t.strip()]
         declared_triggers = list(tool.triggers_json or [])
+        declared_trust = tool.output_trust
 
-    console.print(f"[bold]{key}[/] declared — impact [bold]{impact}[/]")
+    console.print(f"[bold]{key}[/] declared — impact [bold]{impact}[/], output {declared_trust}")
     if declared_triggers:
         console.print(f"  triggers: {', '.join(declared_triggers)}")
+    if declared_trust == "trusted":
+        console.print(
+            "  [dim]values an agent copies out of this tool's output no longer count as "
+            "untrusted input, and no longer raise the run's provenance[/]"
+        )
     if impact in ("high_impact", "irreversible"):
         console.print(
             "  [dim]arguments carrying untrusted provenance now require approval or are "
@@ -2179,6 +2406,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
     from sqlalchemy import select
 
     from ..models import Tool
+    from ..registry.service import impact_source_of
 
     with _session() as session:
         tools = list(session.scalars(select(Tool).order_by(Tool.key)))
@@ -2186,7 +2414,9 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
             {
                 "key": t.key,
                 "impact": t.impact,
+                "impact_source": impact_source_of(t),
                 "triggers": list(t.triggers_json or []),
+                "output_trust": t.output_trust or "untrusted",
                 "description": t.description,
             }
             for t in tools
@@ -2196,19 +2426,24 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
         _emit(rows, True)
         return
     if not rows:
-        console.print("[yellow]no tools declared[/] — `agentfox tools declare <key> --impact ...`")
+        console.print("[yellow]no tools declared[/] — `agentfox declare tool <key> --impact ...`")
         return
     table = Table(box=None, padding=(0, 2))
     table.add_column("tool")
     table.add_column("impact")
+    table.add_column("output")
     table.add_column("triggers")
     for row in rows:
         colour = {"irreversible": "red", "high_impact": "yellow", "write": "cyan"}.get(
             row["impact"], "dim"
         )
-        table.add_row(
-            row["key"], f"[{colour}]{row['impact']}[/]", ", ".join(row["triggers"]) or "—"
-        )
+        # An inferred impact is a guess from the tool's name; say so next to it, so
+        # nobody reads `read` on an unconfirmed tool as a decision someone made.
+        impact = f"[{colour}]{row['impact']}[/]"
+        if row["impact_source"] == "inferred":
+            impact += " [dim](inferred — confirm with `agentfox declare tool`)[/]"
+        trust = "[green]trusted[/]" if row["output_trust"] == "trusted" else "[dim]untrusted[/]"
+        table.add_row(row["key"], impact, trust, ", ".join(row["triggers"]) or "—")
     console.print(table)
 
 
@@ -2367,8 +2602,9 @@ def proposals_list(
         console.print(
             "[dim]no proposals match that filter[/]"
             if filtered
-            else "[dim]no proposals — `agentfox proposals from-labels` files them from "
-            "false positives you have labelled.[/]"
+            else "[dim]no proposals — `agentfox policy proposals from-traffic` files grants and "
+            "tool declarations from the calls your agents have made; `agentfox policy "
+            "proposals from-labels` files rule cut-offs from false positives you have labelled.[/]"
         )
         return
     table = Table(box=None, pad_edge=False)
@@ -2518,6 +2754,76 @@ def proposals_from_labels(
     for skip in report["skipped"]:
         where = "/".join(str(skip[k]) for k in ("detector_key", "policy", "rule_id") if k in skip)
         console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
+
+
+@proposals_app.command("from-traffic")
+def proposals_from_traffic(
+    agent: str | None = typer.Option(None, "--agent", help="Only this agent's calls (slug)."),
+    since: str | None = typer.Option(
+        None, "--since", help="Window: 7d, 24h, 30m or an ISO date. Default: the last 30 days."
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Propose tool declarations and grants from what your agents have called.
+
+    Learned permissions: observe, propose, approve. Reads every recorded tool call —
+    refused ones included — and files a `tool.declare` for each undeclared tool and a
+    `capability.grant` per agent and tool, with argument limits read off the calls and
+    a provenance ceiling from benign calls only. A call a detector matched, or that was
+    stopped for where its arguments came from and nobody approved, is never learned
+    from. Nothing is applied: approve and apply each proposal.
+    """
+    from ..improvement.proposals import get_proposal
+    from ..improvement.traffic import parse_since, propose_from_traffic
+
+    try:
+        window = parse_since(since)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
+    with _session() as session:
+        report = propose_from_traffic(session, agent=agent, since=window)
+        body = report.to_json()
+        titles = {}
+        for pid in body["filed"] + body["refreshed"]:
+            proposal = get_proposal(session, pid)
+            if proposal is not None:
+                titles[pid] = (proposal.kind, proposal.status, proposal.title)
+    if as_json:
+        _emit(body, True)
+        return
+
+    calls = body["calls"]
+    console.print(
+        f"read {sum(calls.values())} tool call(s): {calls.get('benign', 0)} benign, "
+        f"{calls.get('held', 0)} held for provenance, {calls.get('flagged', 0)} flagged"
+    )
+    console.print(
+        f"filed {len(body['filed'])}, refreshed {len(body['refreshed'])}, "
+        f"superseded {len(body['superseded'])}, verified {len(body['verified'])}"
+    )
+    for pid in body["filed"] + body["refreshed"]:
+        kind, status, title = titles[pid]
+        console.print(f"  [bold]{pid}[/]  [dim]{kind} · {status}[/]\n      {title}")
+    for skip in body["skipped"]:
+        where = "/".join(str(skip[k]) for k in ("agent", "tool_key") if k in skip)
+        console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
+    if body["filed"] or body["refreshed"]:
+        console.print(
+            "\n  [dim]Next: `agentfox policy proposals show <id>`, then "
+            "`agentfox policy proposals approve <id> --actor you@example.com --note why` and "
+            "`agentfox policy proposals apply <id> "
+            "--actor you@example.com`. Tool declarations are org-wide loosenings and need "
+            "two different approvers.[/]"
+        )
+
+
+# The visible tree (Start · See · Watch · Contain · Prove · Operate) is a layer over
+# everything registered above: new names for the same callbacks, old names hidden but
+# still working. Keep this the last registration in the module.
+from .layout import apply_layout  # noqa: E402
+
+apply_layout(app)
 
 
 def main() -> None:  # pragma: no cover - console entry point

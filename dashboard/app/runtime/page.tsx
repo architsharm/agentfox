@@ -33,18 +33,14 @@ export default function Page() {
     <CapabilityPage
       kicker="Runtime guardrails"
       title={["The tool call", "is checked too"]}
-      lede="So are the prompt, the result, the document the agent read, and what it saves to memory. If a detector runs out of time, that is written down."
+      lede="So are the prompt, the reply, the document the agent read, and what it saves. If a detector runs out of time, that is written down."
       docs="/docs/runtime"
       challenge={
-        <p>
-          A scanner gives you a score. You still have to decide what to do with it:
-          which surface it came from, how far to trust the source, what this agent is
-          allowed to do, and whether a check was down at the time.
-        </p>
+        <p>A scanner gives you a score. You still have to decide what to do with it.</p>
       }
       feature={{
         title: "Nine places a check can run",
-        lede: "The prompt is one of them. A tool call, a tool result, and a document the agent reads are others.",
+        lede: "The prompt is one of them.",
         body: (
           <div className="surf-grid mk-stagger">
             {SURFACES.map((s) => (
@@ -58,57 +54,24 @@ export default function Page() {
         ) }}
       steps={[
         {
-          title: "The prompt is only one of them",
+          title: "The same sentence means something different in each place",
           body: (
             <p>
-              Input, output, tool arguments, tool results, retrieved documents, memory
-              writes and messages from other agents — plus two most products do not
-              have: the model&rsquo;s own <code>reasoning</code>, and its{" "}
-              <code>completion</code> claim that it finished. The same text means
-              different things on different surfaces.
+              Instruction-shaped text in a document is an attempt. The same text in the
+              model&rsquo;s own reasoning is further along, so it is caught sooner.
             </p>
           ),
         },
         {
-          title: "Text from a document is trusted less than text you typed",
-          body: (
-            <p>
-              Injection-shaped text in a retrieved document is an attempt. The same text
-              in the model&rsquo;s own reasoning is a compromise in progress, so it is
-              caught at a lower confidence. That asymmetry is the argument for having
-              surfaces at all.
-            </p>
-          ),
+          title: "Detection blocks nothing until you turn it on",
+          body: <p>Detector packs ship in observe. They record what they would have done, against real traffic. Tool containment is the exception: it enforces from install, because a missing grant is a fact, not a guess.</p>,
         },
         {
-          title: "Rules you can read, in packs you can choose",
+          title: "A check that runs out of time says so",
           body: (
             <p>
-              50 rules across four packs — a detector baseline, tool containment, an EU
-              AI Act pack, and one tuned for coding agents. YAML, in the repository, with
-              a lint that catches a rule shadowed by another and a rule whose conditions
-              can never all hold.
-            </p>
-          ),
-        },
-        {
-          title: "Nothing blocks until you say so",
-          body: (
-            <p>
-              Every pack ships in observe. It records the verdict it would have returned
-              against real traffic, and you promote it when the counterfactual looks
-              right rather than when the documentation says to.
-            </p>
-          ),
-        },
-        {
-          title: "A check that cannot run says so",
-          body: (
-            <p>
-              350ms for the whole request, 300ms for the pipeline, 40ms for any one
-              detector. Over budget, a detector is marked degraded on that decision
-              rather than quietly skipped — and four controls, including tenant
-              isolation and the audit chain, may not be configured to fail open at all.
+              Each detector has 40ms. Over budget, it is marked on that decision rather
+              than quietly skipped.
             </p>
           ),
         },
@@ -117,11 +80,9 @@ export default function Page() {
         title: "What the detectors do not do",
         body: (
           <p>
-            They are pattern and classifier based, and a sufficiently novel phrasing gets
-            through — which is the entire reason grants exist underneath them and why the
-            benchmark is run with every detector switched off. On some individual
-            detection tasks a specialised scanner is more precise than ours, and{" "}
-            <a href="/compare">/compare</a> names which.
+            A new phrasing gets through. That is why the grant check sits underneath
+            them. On some tasks another scanner is more precise, and{" "}
+            <a href="/compare">the comparison</a> names which.
           </p>
         ) }}
       related={["/grants", "/hooks", "/evidence"]}

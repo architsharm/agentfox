@@ -38,9 +38,9 @@ const PILLARS: Pillar[] = [
   {
     verb: "Discover",
     product: "AI-SPM",
-    headline: "Find every agent, tool, MCP server and skill",
+    headline: "Find the agents, tools, MCP servers and skills in your repos and on this machine",
     points: [
-      "Scans your repository without running it",
+      "Scans your repository and configs without running it",
       "Picks up agents running locally, not just committed code",
       "Snapshots MCP tools so later changes are caught",
       "Flags any agent with no owner",
@@ -69,7 +69,7 @@ const PILLARS: Pillar[] = [
       "Prompts, tool calls, results, documents, and completions",
       "50 rules in four packs, as YAML in the repo",
       "A detector that runs out of time is marked, not skipped",
-      "Starts in observe mode and changes nothing until you turn it on",
+      "Detector packs start in observe; tool containment enforces from install",
     ],
     href: "/runtime",
     cta: "How runtime guardrails work",
@@ -81,7 +81,7 @@ const PILLARS: Pillar[] = [
     points: [
       "116 failure scenarios",
       "105 of them run against the product every night",
-      "42 of 42 attacker tool calls blocked with all detectors off",
+      "588 of 588 AgentDojo attack pairs contained with all detectors off, at a real cost to benign tasks",
       "We publish the ones we miss too",
     ],
     href: "/coverage",
@@ -94,7 +94,7 @@ const PILLARS: Pillar[] = [
     points: [
       "A verifier an auditor can run without our code",
       "Each record links to the one before it, so a deletion shows up",
-      "43 controls across seven frameworks, including the EU AI Act",
+      "43 controls across seven frameworks, including the EU AI Act. Draft mappings, not legal advice",
       "Status comes from telemetry, not a questionnaire",
     ],
     href: "/evidence",

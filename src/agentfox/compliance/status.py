@@ -481,6 +481,34 @@ def compute_all(
     ]
 
 
+#: How old the newest control status may be before a reader-facing view recomputes.
+COMPUTE_STALE_AFTER = dt.timedelta(hours=24)
+
+
+def ensure_compliance_computed(session: Session, window_days: int = 30) -> bool:
+    """Sync the catalog and compute control status if nobody has, or not recently.
+
+    The board said "0% of 43 controls" on any deployment that had simply never run
+    `agentfox compliance compute` — a false statement about the controls, made on
+    the screen an executive reads. Views a person reads call this first. Returns
+    whether anything was computed.
+    """
+    from .catalog import sync_catalog
+
+    if session.scalar(select(Control.id).limit(1)) is None:
+        sync_catalog(session)
+    latest = session.scalar(
+        select(ControlStatus.computed_at).order_by(ControlStatus.computed_at.desc()).limit(1)
+    )
+    if latest is not None:
+        latest = latest if latest.tzinfo else latest.replace(tzinfo=dt.UTC)
+        if utcnow() - latest < COMPUTE_STALE_AFTER:
+            return False
+    compute_all(session, window_days)
+    session.flush()
+    return True
+
+
 def latest_statuses(session: Session) -> dict[str, ControlStatus]:
     out: dict[str, ControlStatus] = {}
     for status in session.scalars(select(ControlStatus).order_by(ControlStatus.computed_at)):

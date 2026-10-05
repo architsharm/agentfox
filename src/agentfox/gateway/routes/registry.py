@@ -15,7 +15,6 @@ from ...findings import STATUSES as FINDING_STATUSES
 from ...identity import (
     assess_posture,
     check_capability,
-    delegate,
     expire_stale_approvals,
     grant_capability,
     issue_credential,
@@ -43,6 +42,7 @@ from ...registry.service import (
     attest_registry,
     derive_lineage,
     detect_shadow_agents,
+    impact_source_of,
     inventory,
     lineage,
     register_agent,
@@ -367,6 +367,8 @@ class ToolIn(BaseModel):
     impact: str = "read"
     description: str = ""
     json_schema: dict[str, Any] = Field(default_factory=dict)
+    #: ``untrusted`` | ``trusted``. Omitted leaves an existing tool's declaration as it is.
+    output_trust: str | None = None
 
 
 @router.get("/tools")
@@ -380,6 +382,8 @@ def list_tools(
                 "name": t.name,
                 "kind": t.kind,
                 "impact": t.impact,
+                "impact_source": impact_source_of(t),
+                "output_trust": t.output_trust or "untrusted",
                 "description": t.description,
                 "mcp_server_id": t.mcp_server_id,
             }
@@ -392,6 +396,10 @@ def list_tools(
 def create_tool(
     payload: ToolIn, session: Session = Depends(db), _user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
+    from ...models import OUTPUT_TRUST_LEVELS
+
+    if payload.output_trust is not None and payload.output_trust not in OUTPUT_TRUST_LEVELS:
+        raise HTTPException(400, f"output_trust must be one of {OUTPUT_TRUST_LEVELS}")
     tool = upsert_tool(
         session,
         payload.key,
@@ -400,8 +408,9 @@ def create_tool(
         impact=payload.impact,
         schema=payload.json_schema,
         description=payload.description,
+        output_trust=payload.output_trust,
     )
-    return {"key": tool.key, "impact": tool.impact}
+    return {"key": tool.key, "impact": tool.impact, "output_trust": tool.output_trust}
 
 
 class McpIn(BaseModel):
@@ -816,48 +825,6 @@ def check(
         payload.arguments,
         payload.argument_taint,
     ).to_json()
-
-
-class DelegateIn(BaseModel):
-    parent_identity_id: str
-    child_identity_id: str
-    trace_id: str | None = None
-
-
-@router.post("/identities/delegate", status_code=201)
-def create_delegation(
-    payload: DelegateIn, session: Session = Depends(db), user: User = Depends(require("identity"))
-) -> dict[str, Any]:
-    parent = session.get(Identity, payload.parent_identity_id)
-    child = session.get(Identity, payload.child_identity_id)
-    if parent is None or child is None:
-        raise HTTPException(404, "unknown identity")
-    try:
-        edge = delegate(session, parent, child, payload.trace_id)
-    except ValueError as exc:
-        # Widening is rejected at write time (P2-5), not audited afterwards.
-        raise HTTPException(400, str(exc)) from exc
-    chain.append(
-        session,
-        "identity.delegated",
-        actor_type="user",
-        actor_id=user.email or user.id,
-        subject_type="delegation",
-        subject_id=edge.id,
-        payload=edge.capability_diff_json,
-    )
-    return {"id": edge.id, "diff": edge.capability_diff_json}
-
-
-@router.get("/identities/posture")
-def posture(session: Session = Depends(db), _user: User = Depends(current_user)) -> dict[str, Any]:
-    findings = assess_posture(session)
-    return {
-        "findings": [
-            {"type": f.type, "severity": f.severity, "title": f.title, "evidence": f.evidence_json}
-            for f in findings
-        ]
-    }
 
 
 # ---------------------------------------------------------------------------

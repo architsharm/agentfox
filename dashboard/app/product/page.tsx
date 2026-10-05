@@ -52,7 +52,7 @@ export default function Product() {
             these two is now a page of its own. */}
         <Pillars />
         <ProductIndex exclude={["/product"]} />
-        <FAQ />
+        <FAQ n={4} />
         <CTA />
       </main>
       <Footer />

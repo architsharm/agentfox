@@ -36,8 +36,8 @@ export default function Page() {
             <td>8 of 8 attacks contained, with zero detector signal. 4 of 4 legitimate calls still allowed.</td>
           </tr>
           <tr>
-            <td>AgentDojo, 617 ground-truth calls, replayed end to end</td>
-            <td>42 of 42 attacker calls that act, contained. 552 of 552 legitimate calls allowed. Identical with detectors disabled.</td>
+            <td>AgentDojo, 97 user tasks and 949 attack pairs, ground truth replayed with provenance inferred from the real tool outputs. No model run, detectors disabled</td>
+            <td>Session-level taint (the default): 588 of 588 attack pairs contained, but only 24 of 97 benign tasks (24.7% [17.2, 34.2]) ran without escalating to a human. Per-argument taint: 527 of 588 contained, 37 of 97 benign tasks. With provenance taken from the benchmark&apos;s labels, 97 of 97 and 588 of 588: an upper bound, not a measurement.</td>
           </tr>
         </tbody>
       </table>
@@ -45,19 +45,22 @@ export default function Page() {
       <h2>Detection, published because it is the layer we trust least</h2>
       <ul>
         <li>
-          Held-out injection recall is 66.7%, at 100% precision. An adaptive attacker
-          that reads the verdict and retries gets about 73% of the attacks we catch
-          through within 50 attempts.
+          Held-out injection recall is 26.7% for the default heuristic detector, at 100%
+          precision; the opt-in classifier ensemble (the <code>classifiers</code> extra
+          and a weights download) reaches 66.7%. An adaptive attacker that reads the
+          verdict and retries gets about 73% of what the default stack catches through
+          within 50 attempts.
         </li>
         <li>
           Against a real, independently installed <code>llm-guard</code> on indirect
           injection via tool output, it is more precise than us: 81.8% against our
-          66.7%, on the same 20 cases. We catch all 20 and it catches 18.
+          66.7%, on the same 20 cases. Of the 10 attacks among them, we catch all 10 and it
+          catches 9.
         </li>
         <li>
-          AgentDojo&apos;s read-only attack calls are contained 20 of 23. A compromised
-          agent asked to read something it may already read is indistinguishable from
-          one doing its job.
+          On AgentDojo, per-argument taint misses 61 of 702 attacker write calls: short
+          identifiers are never matched, and attacker text inside a longer argument is not
+          found. Session-level taint misses none and escalates three benign tasks in four.
         </li>
         <li>
           The opt-in classifier ensemble reaches 85.6% and 98.6% recall on two

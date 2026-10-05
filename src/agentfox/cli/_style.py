@@ -59,4 +59,4 @@ def print_unknown_agent(console: Any, session: Any, slug: str) -> None:
     if known:
         console.print(f"  known agents: {', '.join(known)}")
     else:
-        console.print("  no agents registered yet — run `agentfox seed` or register one.")
+        console.print("  no agents registered yet — run `agentfox admin seed` or register one.")

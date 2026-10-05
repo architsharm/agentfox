@@ -41,12 +41,10 @@ import statistics as st
 import sys
 import urllib.request
 
+from jev_data import data_dir
+
 URL = "https://huggingface.co/datasets/ByteDance/SafePyramid/resolve/main/benchmark.json"
-DEFAULT = pathlib.Path(
-    "/private/tmp/claude-501/-Users-architsharma-guardrails--claude-worktrees-"
-    "gap-analysis-failure-modes-2a3ba9/51690438-15cf-42ec-80c2-29ce269bcca9/"
-    "scratchpad/data/safepyramid.json"
-)
+DEFAULT = data_dir() / "safepyramid.json"
 
 # A rule starts at the beginning of a line and runs to the next line-initial
 # "<n>. ". The body may itself contain numbers, section marks and newlines.

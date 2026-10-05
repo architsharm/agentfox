@@ -51,9 +51,32 @@ def render_values(claim: dict[str, Any], data: Any) -> dict[str, str]:
         numerator = int(_lookup(data, claim["numerator"]))
         remainder = int(_lookup(data, claim["remainder"]))
         return {"n": str(numerator), "d": str(numerator + remainder)}
+    if kind == "ratio":
+        return {
+            "n": str(int(_lookup(data, claim["numerator"]))),
+            "d": str(int(_lookup(data, claim["denominator"]))),
+        }
     if kind == "percent":
         value = float(_lookup(data, claim["path"]))
         return {"pct": f"{value * 100:.{int(claim.get('decimals', 0))}f}"}
+    if kind == "fields":
+        out: dict[str, str] = {}
+        for name, spec in claim["fields"].items():
+            spec = spec if isinstance(spec, dict) else {"path": spec}
+            value = _lookup(data, spec["path"])
+            if isinstance(value, (dict, list)):
+                raise ValueError(f"{claim['id']}: expected a scalar at {spec['path']}")
+            if "format" in spec:
+                value = format(float(value) * float(spec.get("scale", 1)), spec["format"])
+            out[name] = str(value)
+        return out
+    if kind == "value":
+        value = _lookup(data, claim["path"])
+        if isinstance(value, (dict, list)):
+            raise ValueError(f"{claim['id']}: expected a scalar at {claim['path']}")
+        if "format" in claim:
+            value = format(float(value) * float(claim.get("scale", 1)), claim["format"])
+        return {"v": str(value)}
     raise ValueError(f"{claim['id']}: unknown render {kind!r}")
 
 
@@ -62,8 +85,30 @@ def normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text.replace("*", "")).strip()
 
 
+def _doc(docs: dict[str, str], repo: Path, file: str) -> str:
+    if file not in docs:
+        path = repo / file
+        docs[file] = normalise(path.read_text()) if path.exists() else ""
+    return docs[file]
+
+
+GLOB_CHARS = set("*?[")
+
+
+def expand(repo: Path, pattern: str) -> list[str]:
+    """A file entry, or every file a glob entry matches, as repo-relative paths.
+
+    Globs exist for the retired check: a withdrawn figure can come back on any page of
+    the website, and a list of named files only protects the pages someone remembered.
+    """
+    if not GLOB_CHARS & set(pattern):
+        return [pattern]
+    return sorted(str(p.relative_to(repo)) for p in repo.glob(pattern) if p.is_file())
+
+
 def check(manifest: Path = MANIFEST, repo: Path = REPO) -> tuple[list[dict[str, Any]], list[Drift]]:
-    claims = yaml.safe_load(manifest.read_text())["claims"]
+    loaded = yaml.safe_load(manifest.read_text())
+    claims = loaded["claims"]
     sources: dict[str, Any] = {}
     docs: dict[str, str] = {}
     table: list[dict[str, Any]] = []
@@ -80,16 +125,30 @@ def check(manifest: Path = MANIFEST, repo: Path = REPO) -> tuple[list[dict[str, 
         table.append({"id": claim["id"], **values, "quotes": len(claim["quoted_in"])})
         for quote in claim["quoted_in"]:
             file = quote["file"]
-            if file not in docs:
-                path = repo / file
-                docs[file] = normalise(path.read_text()) if path.exists() else ""
             expected = normalise(quote["text"].format(**values))
-            if expected not in docs[file]:
+            if expected not in _doc(docs, repo, file):
                 drifts.append(
                     Drift(
                         claim["id"], file, expected, "document no longer says what the result says"
                     )
                 )
+    # A figure that was withdrawn must not come back: binding only catches numbers that are
+    # still bound, and a superseded number that a document keeps quoting is the drift that
+    # the bound check cannot see.
+    for retired in loaded.get("retired", []):
+        phrase = normalise(retired["text"])
+        for pattern in retired["files"]:
+            files = expand(repo, pattern)
+            if not files:
+                # A glob that matches nothing checks nothing, which is the same as no check.
+                drifts.append(Drift(retired["id"], pattern, "", "file pattern matches no file"))
+            for file in files:
+                if phrase in _doc(docs, repo, file):
+                    drifts.append(
+                        Drift(
+                            retired["id"], file, "", f"quotes a retired figure: {retired['reason']}"
+                        )
+                    )
     return table, drifts
 
 
@@ -97,7 +156,15 @@ def main() -> int:
     table, drifts = check()
     if "--check" not in sys.argv:
         for row in table:
-            value = f"{row['n']}/{row['d']}" if "n" in row else f"{row['pct']}%"
+            fields = {k: v for k, v in row.items() if k not in ("id", "quotes")}
+            if set(fields) == {"n", "d"}:
+                value = f"{row['n']}/{row['d']}"
+            elif set(fields) == {"pct"}:
+                value = f"{row['pct']}%"
+            elif set(fields) == {"v"}:
+                value = row["v"]
+            else:
+                value = ", ".join(f"{k}={v}" for k, v in fields.items())
             print(f"  {row['id']:58s} {value:>9s}   quoted in {row['quotes']} place(s)")
     if drifts:
         print(f"\n{len(drifts)} published claim(s) drifted from their source:")

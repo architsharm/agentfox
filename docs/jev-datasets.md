@@ -103,3 +103,29 @@ python scripts/sp_corpus.py
 
 `to_judgments()` emits one row per (case, rule) in the same shape as the other
 corpora, so the cascade and sweep scripts can consume it unchanged.
+
+## Where the corpora live, and how to get them
+
+The external corpora are third-party datasets and are not committed. Every script reads them
+from one directory:
+
+```bash
+export AGENTFOX_JEV_DATA=local/datasets/jev-corpora   # the default when unset
+```
+
+`scripts/jev_data.py` resolves the path, and the copy the published numbers were run on is
+pinned by `SHA256SUMS` in that directory (`shasum -a 256 -c SHA256SUMS` from inside it).
+
+| File | Source | Licence | How to fetch |
+|---|---|---|---|
+| `safepyramid.json` | [ByteDance/SafePyramid](https://huggingface.co/datasets/ByteDance/SafePyramid), `benchmark.json` | CC-BY-4.0 | `python scripts/sp_corpus.py --download` |
+| `rjudge/data__<Category>__<scenario>.json` | [Lordog/R-Judge](https://github.com/Lordog/R-Judge), the per-category files under `data/` | see the repository | download each `data/<Category>/<scenario>.json` and save it with the path's `/` replaced by `__` |
+| `at_ATBench_test.json` | [AI45Research/ATBench](https://huggingface.co/datasets/AI45Research/ATBench), test split | Apache-2.0 | export the test split to a JSON list of records |
+| `at_ATBench500_test.json` | the earlier 500-trajectory ATBench release from AI45Research | Apache-2.0 | as above |
+| `at_claw.json` | [AI45Research/ATBench-Claw](https://huggingface.co/datasets/AI45Research/ATBench-Claw) | Apache-2.0 | as above |
+
+Two gaps, stated rather than papered over: the script that converted the ATBench splits to these
+JSON files was not committed, and the exact upstream location of the ATBench500 release was not
+recorded. Until both are, the checksums are the only guarantee that a re-run reads the same data.
+`agentsafety.json` (Agent-SafetyBench) is also in the directory; it was downloaded and not used, for
+the reason given in `docs/jev-final-numbers.md`.

@@ -1,18 +1,20 @@
 # syntax=docker/dockerfile:1.7
-# Nometria control plane — gateway + API.
+# AgentFox control plane — gateway + API.
 #
 # All four permissive-licence classifier/embedding models (Granite Guardian, PIGuard,
 # the protectai ensemble backstop, and the embedding-similarity detector — all
-# Apache-2.0/MIT) are baked in and pre-fetched at build time below, plus the
-# licence-gated Llama Guard 3-8B tier (Appendix A.4: non-OSI licence, acceptable-use
+# Apache-2.0/MIT) are baked in and pre-fetched at build time below. The
+# licence-gated Llama Guard 3-8B tier is baked in only when a token is supplied, and
+# never in the published image (Appendix A.4: non-OSI licence, acceptable-use
 # policy, >700M-MAU clause — legal review required before commercial deployment,
-# which is why it stays behind NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1 at runtime
+# which is why it stays behind AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1 at runtime
 # and behind an explicit build secret here, never a plain ENV, so the token can't leak
 # into an image layer or `docker history`).
 #
 # This makes the image materially bigger (~1-2GB of model weights) and the build
-# requires network egress + a Hugging Face token that has accepted Meta's Llama
-# licence at huggingface.co — see deploy/README (or ask) for exactly how to build it.
+# requires network egress. A Hugging Face token that has accepted Meta's Llama
+# licence is needed only for the optional Llama Guard tier; the opt-in steps are in
+# deploy/docker-compose.yml's header.
 # The running container itself still makes no outbound calls for any of this: weights
 # are read from the image, never fetched at request time (NFR-4/NFR-9).
 FROM python:3.12-slim AS base
@@ -20,7 +22,7 @@ FROM python:3.12-slim AS base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/var/nometria/hf-cache
+    HF_HOME=/var/agentfox/hf-cache
 
 WORKDIR /app
 
@@ -56,7 +58,7 @@ FROM base AS deps
 RUN python -c "from nometria.gateway.app import create_app; create_app(); print('image smoke: OK')"
 
 FROM deps AS weights
-RUN mkdir -p /var/nometria/hf-cache
+RUN mkdir -p /var/agentfox/hf-cache
 
 # Permissive tier — Apache-2.0/MIT, no licence gate, no secret needed.
 #
@@ -103,10 +105,12 @@ RUN --mount=type=secret,id=hf_token \
     export HF_TOKEN; \
     python -c "import os; from huggingface_hub import login; login(token=os.environ[\"HF_TOKEN\"]); from transformers import AutoModelForCausalLM, AutoTokenizer; AutoTokenizer.from_pretrained(\"meta-llama/Llama-Guard-3-8B\"); AutoModelForCausalLM.from_pretrained(\"meta-llama/Llama-Guard-3-8B\"); print(\"restricted-tier weights cached\")"'
 
-RUN useradd --create-home --uid 10001 nometria \
- && mkdir -p /var/nometria/evidence \
- && chown -R nometria:nometria /var/nometria /app
-USER nometria
+# /var/agentfox/evidence is where deploy/docker-compose.yml and render.yaml point
+# AGENTFOX_EVIDENCE_DIR, so it has to exist and belong to the runtime user.
+RUN useradd --create-home --uid 10001 agentfox \
+ && mkdir -p /var/agentfox/evidence \
+ && chown -R agentfox:agentfox /var/agentfox /app
+USER agentfox
 
 EXPOSE 8080
 

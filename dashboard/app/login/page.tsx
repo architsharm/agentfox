@@ -43,15 +43,16 @@ function GitHubMark() {
  * The measurement on the brand wall.
  *
  * It is the same experiment the home page leads its proof section with, and the
- * same three figures in the same order, because a visitor who followed a link from
- * there and is now deciding whether to hand over a GitHub identity should meet the
- * claim they already read rather than a second, different one. README.md, "What we
- * claim, and what we don't", bound to benchmarks/agentdojo_e2e/results by
- * scripts/claims.py.
+ * same figures, because a visitor who followed a link from there and is now
+ * deciding whether to hand over a GitHub identity should meet the claim they
+ * already read rather than a second, different one. The source is
+ * benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json; the two
+ * ratios here are bound to it in benchmarks/claims.yaml and checked by
+ * scripts/claims.py, which also fails if a retired AgentDojo figure reappears.
  */
 const PROOF: [string, string][] = [
-  ["42 of 42", "attacker calls that act, contained"],
-  ["552 of 552", "legitimate calls still allowed"],
+  ["588 of 588", "attack pairs contained"],
+  ["24 of 97", "benign tasks ran without escalating to a human"],
   ["0", "detectors switched on"],
 ];
 
@@ -135,8 +136,9 @@ export default async function Login({
           <span className="auth-wall-eyebrow">Measured, not asserted</span>
           <h2>We turned the detectors off and ran it anyway</h2>
           <p>
-            617 ground-truth tool calls, replayed with every detector disabled. What was left
-            is the part that does not depend on catching the attack.
+            AgentDojo&apos;s ground truth, replayed with every detector disabled and provenance
+            inferred from the real tool outputs. What was left is the part that does not depend
+            on catching the attack, and what it costs.
           </p>
           <div className="auth-stats">
             {PROOF.map(([n, label]) => (

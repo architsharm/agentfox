@@ -45,7 +45,16 @@ def test_banner_is_quiet_when_the_count_is_unknown() -> None:
 
 
 def test_the_warning_does_not_overclaim_either() -> None:
-    """Tool-call containment does not depend on a policy being bound, so the
-    warning must not tell someone they have no protection at all."""
-    summary = _state(policies_bound=0).summary()
-    assert "Tool-call containment enforces regardless" in summary
+    """The banner used to say "Tool-call containment enforces regardless" while
+    `auto()` never looked at a tool call. It now says what each mode actually does
+    with one when nothing is bound — and never that containment enforces."""
+    strict = _state(policies_bound=0).summary()
+    assert "Tool calls are checked" in strict
+    assert "capability grants raises agentfox.Blocked" in strict
+    assert "enforces regardless" not in strict
+
+    default = AutoState(agent="a", mode="policy", environment="dev", policies_bound=0).summary()
+    assert "none is refused until this agent holds a capability grant" in default
+
+    observe = AutoState(agent="a", mode="observe", environment="dev", policies_bound=0).summary()
+    assert "none is refused" in observe

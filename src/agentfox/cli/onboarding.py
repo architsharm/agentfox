@@ -1,11 +1,12 @@
 """The three commands a new user runs, and nothing else.
 
-The rest of the CLI has forty commands across nine sub-apps, which is right for an
-operator running a governance programme and wrong for the first ten minutes. Someone
+The rest of the CLI is thirteen verbs (`agentfox --help`) over about a hundred
+subcommands, which is right for an operator running a governance programme and
+wrong for the first ten minutes. Someone
 evaluating this should be able to type three words and understand their exposure:
 
     agentfox init      # set everything up
-    agentfox check     # scan the repo and highlight what is ungoverned
+    agentfox scan      # scan the repo and highlight what is ungoverned
     agentfox doctor    # is the runtime configured the way I think it is?
 
 Every one of them is safe to run: `init` is idempotent, `check` reads source without
@@ -44,6 +45,13 @@ allow_egress = {allow_egress}
 
 # The whole pre-flight pipeline's latency ceiling, in milliseconds.
 enforcement_budget_ms = {enforcement_budget_ms}
+
+# Where a tool call's provenance is read from, for the taint rules.
+#   "session"  - the worst untrusted content anywhere in the run so far, or in the
+#                call's own arguments. Contains more; escalates more benign calls.
+#   "argument" - only what the call's own arguments were copied from.
+# Every published number was measured under "session". docs/getting-started.md, step 5b.
+taint_scope = "{taint_scope}"
 """
 
 # What each policy mode means to someone who has not read the PRD.
@@ -64,6 +72,7 @@ def _config_text(environment: str) -> str:
         default_policy_mode=fields["default_policy_mode"].default,
         allow_egress=str(fields["allow_egress"].default).lower(),
         enforcement_budget_ms=fields["enforcement_budget_ms"].default,
+        taint_scope=fields["taint_scope"].default,
     )
 
 
@@ -76,7 +85,7 @@ def _session():
     return session_scope()
 
 
-#: What `agentfox check` writes in the severity column. Short enough for a table and
+#: What `agentfox scan` writes in the severity column. Short enough for a table and
 #: still a word, so the row survives a terminal with no colour and a pasted log.
 _SEVERITY_MARK = {
     "critical": "CRITICAL",
@@ -137,14 +146,17 @@ def init(
 
     Creates the database, applies migrations, loads the control catalog and the
     shipped policy packs, each in the mode it declares (baseline and
-    eu-ai-act-high-risk observe; tool-containment enforces), and writes a
+    eu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for
+    agents this repo's coding-harness hooks govern), and writes a
     agentfox.toml carrying the real runtime defaults so they are visible rather than
-    implicit. NOMETRIA_* environment variables override that file.
+    implicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)
+    override that file.
     """
     from ..compliance import load_catalog, sync_catalog
     from ..config import get_settings
     from ..db import init_db, session_scope
     from ..policy import load_available, save_policy
+    from ..policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
 
     settings = get_settings()
     console.print("[bold]Setting up AgentFox[/]")
@@ -166,7 +178,11 @@ def init(
             # that keeps policy in `.agentfox/policies/` expects `init` to
             # install it, and a pack the loader can see but `init` ignores is
             # a policy that silently does nothing.
-            documents = load_available()
+            # The coding-agent pack only for agents a coding harness runs: see
+            # policy/coding.py for why a wildcard binding was the wrong default.
+            documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
+            if coding_agents == []:
+                retire_tool_wildcard(session)
             for document in documents:
                 save_policy(session, document, author="init", notes="loaded by agentfox init")
             # Say the truth per pack: a blanket "observe mode" was wrong the moment one
@@ -177,6 +193,13 @@ def init(
                 meaning = _MODE_MEANING.get(document.mode, "")
                 console.print(
                     f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]"
+                )
+            if coding_agents:
+                console.print(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
+            elif coding_agents == []:
+                console.print(
+                    "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
+                    "`agentfox hooks install --agent <slug> --write` turns it on for that agent.[/]"
                 )
             enforcing = [d.key for d in documents if d.mode == "enforce"]
             if enforcing:
@@ -201,10 +224,10 @@ def init(
 
     _print_next_steps(
         [
-            ("agentfox check", "scan this repo and see what is ungoverned"),
+            ("agentfox scan", "scan this repo and see what is ungoverned"),
             ("import agentfox; agentfox.auto()", "one line in your entry point"),
             (
-                "agentfox tools declare <key> --impact irreversible",
+                "agentfox declare tool <key> --impact irreversible",
                 "declare what each tool can do — this is what still holds when a detector misses",
             ),
             ("agentfox doctor", "check containment readiness, not just detectors"),
@@ -238,6 +261,7 @@ def check(
     opts into sending a redacted summary — see `cli/submit.py`.
     """
     from ..discovery import scan
+    from ._scan_view import print_surface, print_trifectas
     from .submit import maybe_submit_report
 
     report = scan(path)
@@ -247,6 +271,10 @@ def check(
             maybe_submit_report(report, source="check", explicit=True, console=Console(stderr=True))
         raise typer.Exit(1 if fail_on_ungoverned and report.ungoverned else 0)
 
+    # The trifecta comes first: it is the one finding that reads as a breach scenario
+    # rather than an inventory line, and the reader who stops after one screen should
+    # stop after reading it.
+    print_trifectas(console, report)
     console.print(f"[bold]Scanned[/] {report.files_scanned} files in [dim]{report.root}[/]")
     if report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(report.frameworks)}")
@@ -259,8 +287,16 @@ def check(
             f"\n  [{tone}]{ungoverned}[/] of [bold]{calls}[/] model call sites are "
             f"ungoverned  [dim]({report.coverage:.0%} covered)[/]"
         )
+    print_surface(
+        console,
+        report,
+        limit=max(limit, 12),
+        more_hint=f"agentfox scan --limit {len(report.tools) + len(report.mcp_servers)}",
+    )
     counts = report.by_kind()
-    other = {k: v for k, v in counts.items() if k != "model_call"}
+    # Tools, servers and trifectas were each shown above in their own words.
+    shown = ("model_call", "tool", "mcp_server", "lethal_trifecta")
+    other = {k: v for k, v in counts.items() if k not in shown}
     if other:
         console.print(
             "  [dim]also found:[/] "
@@ -271,7 +307,10 @@ def check(
             )
         )
 
-    ranked = report.ranked(limit)
+    # Trifectas and tools were each shown above, in their own words; the table is
+    # for everything else, worst first.
+    listed = [site for site in report.ranked() if site.kind not in ("lethal_trifecta", "tool")]
+    ranked = listed[:limit] if limit else listed
     if ranked:
         # A budget for the path column, so the paths can be shortened deliberately
         # (from the left, filename last) instead of being cut by the renderer at
@@ -299,7 +338,7 @@ def check(
             table.add_row(mark, f"[dim]{where}[/]", site.detail)
         console.print()
         console.print(table)
-        if len(report.sites) > len(ranked):
+        if len(listed) > len(ranked):
             # A hint has to be a command someone can run. "(--limit)" is a flag name.
             target = "" if str(path) == "." else f" {path}"
             # Say WHAT is not shown, not just how many.
@@ -310,11 +349,11 @@ def check(
             # and left the reader to work out that the table also holds the 16
             # shell calls. It counts findings; the headline counts model calls.
             # Naming the unit reconciles them without changing either number.
-            hidden = len(report.sites) - len(ranked)
+            hidden = len(listed) - len(ranked)
             console.print(
                 f"  [dim]{hidden} more finding(s) not shown, across every kind above. "
-                f"See all of them:[/] [cyan]agentfox check{target} "
-                f"--limit {len(report.sites)}[/]"
+                f"See all of them:[/] [cyan]agentfox scan{target} "
+                f"--limit {len(listed)}[/]"
             )
 
     if report.errors:
@@ -442,7 +481,7 @@ def doctor(
             "bad" if decisions else "warn",
             "containment",
             "no tools declared — nothing constrains what an agent may do when a detector "
-            "misses. Declare them with `agentfox tools declare <key> --impact ...`."
+            "misses. Declare them with `agentfox declare tool <key> --impact ...`."
             + (" Traffic is already being governed without them." if decisions else ""),
         )
     elif tools_acting == 0:
@@ -459,7 +498,7 @@ def doctor(
             "containment",
             f"{tools_acting} acting tool(s) declared but no capability grants — least "
             "privilege is unconfigured, so policy is the only thing standing in the way. "
-            "Grant them with `agentfox capability grant <agent> <tool> --limit ...`.",
+            "Grant them with `agentfox permit grant <agent> <tool> --limit ...`.",
         )
     else:
         add(
@@ -475,7 +514,7 @@ def doctor(
         f"{scoped_tables} table(s) declared row-scoped"
         if scoped_tables
         else "no table row-scoping declared — a query across every customer's rows reads "
-        "as ordinary. Declare with `agentfox access declare-scope <table> --column ...`.",
+        "as ordinary. Declare with `agentfox declare scope <table> --column ...`.",
     )
 
     detectors = available_detectors()
@@ -540,7 +579,7 @@ def doctor(
         raise typer.Exit(1)
 
 
-#: Worst first. `agentfox check` advertises this list as ranked by severity, and for
+#: Worst first. `agentfox scan` advertises this list as ranked by severity, and for
 #: a long time it was ordered by creation time instead.
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
@@ -666,7 +705,7 @@ def quickstart() -> None:
                     "   [cyan]import agentfox; agentfox.auto()[/]",
                     "   [dim]every model call is now traced, evaluated and audited[/]",
                     "",
-                    "[bold]3.[/] [cyan]agentfox check[/]",
+                    "[bold]3.[/] [cyan]agentfox scan[/]",
                     "   [dim]see what is still ungoverned[/]",
                     "",
                     "[bold]4.[/] [cyan]agentfox findings[/]",

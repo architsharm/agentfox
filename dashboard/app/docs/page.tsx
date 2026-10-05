@@ -53,9 +53,10 @@ agentfox --help`}</code>
       </pre>
       <p>
         This creates a SQLite database in the current directory, loads 43 controls and
-        three policy packs, and writes <code>agentfox.toml</code> if there is not one.
-        It is idempotent. Read the mode column. <code>baseline</code> and{" "}
-        <code>eu-ai-act-high-risk</code> start in observe: they record what they would
+        four policy packs, and writes <code>agentfox.toml</code> if there is not one.
+        It is idempotent. Read the mode column. <code>baseline</code>,{" "}
+        <code>coding-agent</code> and <code>eu-ai-act-high-risk</code> start in
+        observe: they record what they would
         have done and block nothing. <code>tool-containment</code> starts in enforce,
         because it does not guess. It refuses a call with no grant, and a call that
         carries an untrusted argument into an irreversible tool.
@@ -64,7 +65,7 @@ agentfox --help`}</code>
       <h2>3. Scan a repository</h2>
       <pre>
         <code>{`cd /path/to/your/project
-agentfox check`}</code>
+agentfox scan`}</code>
       </pre>
       <p>
         A static read of the source. It reports model call sites, which of them are
@@ -73,7 +74,7 @@ agentfox check`}</code>
         sends nothing anywhere.
       </p>
       <p>
-        <code>agentfox quickscan</code> is the same look plus local AI-tool session
+        <code>agentfox scan --sessions</code> is the same look plus local AI-tool session
         transcripts, and it runs a handful of known-adversarial prompts through the
         detector pipeline in the terminal. Nothing leaves the machine. The rest of the
         inventory commands are on <Link href="/docs/discovery">Discovery</Link>.
@@ -143,7 +144,7 @@ agentfox doctor`}</code>
 
       <h2>7. Test, then turn enforcement on</h2>
       <p>
-        <code>agentfox redteam run my-agent</code> probes this deployment&apos;s grants
+        <code>agentfox test redteam my-agent</code> probes this deployment&apos;s grants
         and policy bindings. It includes benign controls, so a configuration that blocks
         everything scores badly. It is a posture check, not a robustness certificate.{" "}
         <code>agentfox policy simulate --file candidate.yaml</code> replays recorded

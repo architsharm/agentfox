@@ -10,9 +10,17 @@ not which one wins but when each one is allowed to stop.
 | rung | $/case | latency | good at | blind to |
 |---|---|---|---|---|
 | code / regex | 0 | ~0.1ms | arithmetic, identity, literal patterns | anything about meaning |
-| Jev | $0.0000039 | ~150ms | things literally present in the text | what an utterance *performs* |
+| Jev | $0.0000039 | 794ms median per request* | things literally present in the text | what an utterance *performs* |
 | learned (MiniLM + LR) | 0 (local) | ~5ms | shapes it has seen before | shapes it has not |
-| LLM judge (Haiku 4.5) | ~$0.0008 | ~1500ms | performative and implied meaning | structured text; over-flags SQL |
+| LLM judge (Haiku 4.5) | ~$0.0008 | 1,086ms median per request* | performative and implied meaning | structured text; over-flags SQL |
+
+\* Measured on the same 600 SafePyramid conversations, one request per conversation (Jev
+scores every rule question in one batched call; the LLM returns the list of violated rules):
+Jev p95 1,620ms (`scripts/sp_jev_results_600.json`), Haiku p95
+2,021ms (`scripts/sp_llmset_results.json`). On the full 3,000-conversation run Jev's median
+was 1,427ms and its p95 3,468ms (`scripts/sp_jev_results.json`). The earlier ~150ms figure
+was modelled from a synthetic sweep and is retracted in `docs/jev-safepyramid.md`. The
+code and learned-rung latencies are estimates, not measurements.
 
 Regex belongs at the **top**, not the bottom. It is the cheapest rung and the
 only one that is ever certain; running it last means paying for three models

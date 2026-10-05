@@ -99,7 +99,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-194 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+182 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -119,7 +119,6 @@ from the code. Regenerate after changing any route:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/_migrate_policy_canaries` | One-off: apply migration a1b2c3d4e5f6 (policy_canaries, P12-6) directly — |
 | `GET` | `/api/attention` | What needs a human, ranked. The home page is built from this. |
 | `GET` | `/api/detectors` | P3-11 — which detectors exist, which are live, and how fast they are. |
 | `GET` | `/api/health` | Liveness, plus what is currently not being checked (gap 0.7). |
@@ -170,8 +169,6 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/approvals/{approval_id}/deny` | Deny |
 | `POST` | `/api/credentials/{credential_id}/revoke` | Revoke |
 | `GET` | `/api/identities` | List Identities |
-| `POST` | `/api/identities/delegate` | Create Delegation |
-| `GET` | `/api/identities/posture` | Posture |
 | `POST` | `/api/identities/{identity_id}/capabilities` | Add Capability |
 | `POST` | `/api/identities/{identity_id}/check` | Check |
 | `POST` | `/api/identities/{identity_id}/credentials` | Issue |
@@ -218,9 +215,7 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/eval/annotations/queue` | Eval results a human should look at: score within `band` of the scorer's |
-| `POST` | `/api/eval/baselines` | Create Baseline |
 | `GET` | `/api/eval/drift` | Read-only. Viewing drift used to persist a DriftWindow — and a Finding when |
-| `POST` | `/api/eval/drift` | Compute drift and record it: a DriftWindow row, and a drift Finding when drifted. |
 | `POST` | `/api/eval/gate` | P4-1 — the CI entry point. Non-zero exit maps from ``passed: false``. |
 | `POST` | `/api/eval/online` | Run Online |
 | `POST` | `/api/eval/results/{result_id}/annotate` | Record a human's judgment on a borderline eval result. Requires a note — |
@@ -255,7 +250,6 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/traces` | List Traces |
 | `GET` | `/api/traces/resolve` | Their run id → our governance decision. |
 | `GET` | `/api/traces/{trace_id}` | Get Trace |
-| `GET` | `/api/traces/{trace_id}/links` | Our decision → their trace, with a clickable URL where one can be built. |
 
 ### Compliance and risk (Pillar 6)
 
@@ -278,13 +272,10 @@ from the code. Regenerate after changing any route:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/answerability/boundaries` | List Boundaries |
-| `GET` | `/api/answerability/boundary` | Read Boundary |
+| `GET` | `/api/answerability/boundaries` | Every declared knowledge boundary, or one agent's with `?agent=<slug>`. |
 | `PUT` | `/api/answerability/boundary` | Write Boundary |
 | `POST` | `/api/answerability/check` | Would this question be refused, and what would we say instead? |
-| `POST` | `/api/answerability/completeness` | F1.6 — retrieved 3 of 50 and answered as though exhaustive. |
 | `GET` | `/api/answerability/report` | Abstention and over-refusal side by side. |
-| `POST` | `/api/entitlement/check` | The two disclosures no access check can catch. |
 | `POST` | `/api/entitlement/filter` | Return only what this human may see, and record what was withheld. |
 | `GET` | `/api/entitlement/grants` | List Grants |
 | `POST` | `/api/entitlement/grants` | Add Grant |
@@ -293,7 +284,6 @@ from the code. Regenerate after changing any route:
 | `PUT` | `/api/entitlement/principals` | Put Principal |
 | `GET` | `/api/escalation/conversations/{session_id}` | The transcript plus why the policy did or didn't fire on it. |
 | `GET` | `/api/escalation/handoffs` | List Handoffs |
-| `POST` | `/api/escalation/handoffs` | Create Handoff |
 | `POST` | `/api/escalation/handoffs/{handoff_id}/acknowledge` | Acknowledge |
 | `GET` | `/api/escalation/missed` | **The 31% control.** Conversations that qualified for a hand-off and got none. |
 | `GET` | `/api/escalation/policy` | Read Policy |
@@ -304,7 +294,6 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/sources` | List Sources |
 | `PUT` | `/api/sources` | Register or re-tier a source. |
 | `POST` | `/api/sources/assess` | Would this answer, from these sources, pass? |
-| `POST` | `/api/sources/bulk` | Register many at once. |
 | `POST` | `/api/sources/connections` | Attach a real connector to a registered source — a database or an |
 | `POST` | `/api/sources/context-check` | P14 — would this document or chunk set be fit to enter the corpus? |
 | `GET` | `/api/sources/health` | Which registered sources are stale, deprecated, or unowned. |
@@ -346,7 +335,6 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/playground/sessions/{session_id}/enforce` | Flip the baseline policy observe -> enforce (or back) for this sandbox only. |
 | `GET` | `/api/playground/sessions/{session_id}/state` | Everything the live sidebar needs: recent traces (decisions + detector runs |
 | `POST` | `/api/playground/sessions/{session_id}/tool-call` | Try a tool call directly, with no model in the loop. |
-| `GET` | `/api/playground/sessions/{session_id}/trace/{trace_id}` | Trace Detail |
 
 ### Other
 

@@ -1,0 +1,17 @@
+# AgentFox configuration.
+# Everything here has a safe default; this file exists so the defaults are visible
+# rather than implicit. The [agentfox] table is read from the working directory;
+# environment variables (NOMETRIA_*) override it.
+
+[agentfox]
+environment = "development"
+
+# Default mode for a policy that does not declare its own. Packs that declare a mode
+# keep it (the shipped tool-containment pack declares enforce).
+default_policy_mode = "observe"
+
+# Zero egress: no model call leaves this machine unless you turn it on.
+allow_egress = false
+
+# The whole pre-flight pipeline's latency ceiling, in milliseconds.
+enforcement_budget_ms = 300

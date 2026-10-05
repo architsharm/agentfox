@@ -6,7 +6,7 @@ escalation needed the host application to push conversation turns. All three wer
 complete engines nobody outside this repository could switch on.
 
 These commands exist so that declaring a knowledge boundary or tiering a corpus is the
-same kind of act as running `agentfox check` — one line, no client library, no reading
+same kind of act as running `agentfox scan` — one line, no client library, no reading
 the PRD first.
 """
 
@@ -59,7 +59,7 @@ def boundary_set(
     out_of_scope: str = typer.Option("", "--out-of-scope", help="Comma-separated topics."),
     mode: str = typer.Option("observe", "--mode", help="observe | enforce"),
 ) -> None:
-    """Declare what an agent is allowed to answer from (P7).
+    """Declare what an agent is allowed to answer from.
 
     Until this exists nothing stops the agent inventing an answer to a question it has
     no data for, which is the single failure most likely to reach a customer.
@@ -127,7 +127,7 @@ def boundary_check(
 
     if boundary is None:
         console.print("[yellow]no boundary declared — nothing would be refused[/]")
-        console.print("[dim]declare one with `agentfox boundary set`[/]")
+        console.print("[dim]declare one with `agentfox declare boundary`[/]")
         return
     if verdict.answerable:
         console.print(f"[green]answerable[/]  [dim]({verdict.question_type})[/]")
@@ -161,7 +161,7 @@ def sources_add(
     ),
     title: str = typer.Option("", "--title"),
 ) -> None:
-    """Register a source and its authority tier (P8)."""
+    """Register a source and its authority tier."""
     from ..models import utcnow
     from ..provenance import TIERS, register_source
 
@@ -272,7 +272,7 @@ def sources_list(as_json: bool = typer.Option(False, "--json")) -> None:
         console.print("[dim]No sources registered.[/]")
         console.print(
             "[dim]Until sources are tiered, groundedness cannot tell an authoritative "
-            "answer from a confident one. Add one with `agentfox sources add`.[/]"
+            "answer from a confident one. Add one with `agentfox declare source`.[/]"
         )
         return
 
@@ -312,7 +312,7 @@ def escalation_set(
     owner_role: str = typer.Option("support", "--owner"),
     mode: str = typer.Option("observe", "--mode"),
 ) -> None:
-    """Declare when this agent must hand off to a human (P11)."""
+    """Declare when this agent must hand off to a human."""
     from sqlalchemy import select
 
     from ..escalation import set_policy
@@ -394,7 +394,7 @@ def principal_set(
     residency: str | None = typer.Option(None, "--residency"),
     display: str = typer.Option("", "--display"),
 ) -> None:
-    """Register the human an agent acts for (P10-1).
+    """Register the human an agent acts for.
 
     Everything else in this pillar depends on this. The Copilot failure is its absence:
     the agent runs under its own identity, inherits everything that identity can reach,
@@ -425,7 +425,7 @@ def grant_add(
     classes: str = typer.Option("", "--classes", help="mnpi, legal_hold, pii_sensitive…"),
     purposes: str = typer.Option("", "--purposes", help="GDPR Art. 5(1)(b) purposes."),
 ) -> None:
-    """Grant access to a resource pattern (P10-2)."""
+    """Grant access to a resource pattern."""
     from ..entitlement import grant
 
     with _session() as session:
@@ -443,7 +443,7 @@ def grant_add(
 
 
 def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
-    """How much more the agent can reach than its callers are entitled to (P10-4).
+    """How much more the agent can reach than its callers are entitled to.
 
     Worth running before any entitlement model exists — a ratio of 1.0 with no grants
     configured is exactly the point.
@@ -463,7 +463,7 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
             )
         )
         console.print(
-            "  [dim]Register a principal with `agentfox entitlement principal <subject>`, "
+            "  [dim]Register a principal with `agentfox declare principal <subject>`, "
             "then filter retrieval through /api/entitlement/filter.[/]"
         )
         return
@@ -484,7 +484,7 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
 
 def register(app: typer.Typer) -> None:
     boundary_app = typer.Typer(
-        help="Declare what an agent has no data for, so it says so instead of guessing (P7).",
+        help="Declare what an agent has no data for, so it says so instead of guessing.",
         no_args_is_help=True,
     )
     boundary_app.command(name="set")(boundary_set)
@@ -492,7 +492,7 @@ def register(app: typer.Typer) -> None:
     app.add_typer(boundary_app, name="boundary")
 
     sources_app = typer.Typer(
-        help="Say which sources are authoritative and how stale is too stale (P8).",
+        help="Say which sources are authoritative and how stale is too stale.",
         no_args_is_help=True,
     )
     sources_app.command(name="add")(sources_add)
@@ -501,7 +501,7 @@ def register(app: typer.Typer) -> None:
     app.add_typer(sources_app, name="sources")
 
     escalation_app = typer.Typer(
-        help="Decide when an agent must hand a conversation to a person (P11).",
+        help="Decide when an agent must hand a conversation to a person.",
         no_args_is_help=True,
     )
     escalation_app.command(name="set")(escalation_set)
@@ -509,7 +509,7 @@ def register(app: typer.Typer) -> None:
     app.add_typer(escalation_app, name="escalation")
 
     entitlement_app = typer.Typer(
-        help="Control what each end user is entitled to see (P10).",
+        help="Control what each end user is entitled to see.",
         no_args_is_help=True,
     )
     entitlement_app.command(name="principal")(principal_set)

@@ -287,6 +287,24 @@ def _describe_violation(path: str, spec: Any, value: Any) -> str:
     return f"{path} {allowed}, but this call passed {value!r}"
 
 
+def default_deny_hint(principal: str | None, tool_key: str) -> str:
+    """What to do about a default-deny refusal, in commands rather than concepts.
+
+    Default deny is enforced from the first call — there is no observe grace — so the
+    refusal itself has to say how to get out of it. The refused call is recorded with
+    its arguments and provenance either way, which is what `proposals from-traffic`
+    learns from.
+    """
+    slug = principal.split(":", 1)[1] if principal and principal.startswith("agent:") else None
+    agent = slug or "<agent>"
+    scoped = f" --agent {slug}" if slug else ""
+    return (
+        f"To have grants proposed from the calls this agent has made, run "
+        f"`agentfox policy proposals from-traffic{scoped}` and approve them; to grant this one "
+        f"directly, `agentfox permit grant {agent} {tool_key}`."
+    )
+
+
 def check_capability(
     session: Session,
     identity: Identity | None,
@@ -306,7 +324,10 @@ def check_capability(
     argument_taint = argument_taint or {}
 
     if identity is None:
-        decision.reasons.append("no resolved identity for the caller")
+        decision.reasons.append(
+            "no resolved identity for the caller, so it holds no grants (default deny). "
+            + default_deny_hint(None, tool_key)
+        )
         return decision
 
     capabilities = session.scalars(
@@ -324,7 +345,8 @@ def check_capability(
     ]
     if not matches:
         decision.reasons.append(
-            f"no capability grants '{tool_key}' (action '{action}') to {identity.principal}"
+            f"no capability grants '{tool_key}' (action '{action}') to {identity.principal} "
+            f"(default deny). {default_deny_hint(identity.principal, tool_key)}"
         )
         return decision
 

@@ -18,8 +18,8 @@ One FastAPI process (`agentfox serve`, default `127.0.0.1:8080`) serves two surf
 
 | Caller | Credential | Notes |
 |---|---|---|
-| Operator / script | `Authorization: Bearer nom_api_…` | Mint with `agentfox auth issue EMAIL` or `POST /api/tokens`. Shown once. |
-| Local development | `X-Nometria-User: you@example.com` | Accepted only when `auth_mode=development`, or `auto` + a dev/test/local environment. `agentfox auth status` tells you. |
+| Operator / script | `Authorization: Bearer nom_api_…` | Mint with `agentfox admin auth issue EMAIL` or `POST /api/tokens`. Shown once. |
+| Local development | `X-Nometria-User: you@example.com` | Accepted only when `auth_mode=development`, or `auto` + a dev/test/local environment. `agentfox admin auth status` tells you. |
 | Agent (inline) | `Authorization: Bearer nom_agt_…` | Optional; binds the tenant. Unauthenticated inline traffic is recorded as shadow traffic. |
 
 Write routes need a role for their family (owner, admin, security, compliance, developer,
@@ -65,7 +65,7 @@ curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' \
 | Canary rollout | `POST /api/policies/{key}/canary/start` `{…, max_block_rate_drop?, min_dwell_seconds?}` (rolls back if the candidate blocks much more *or* much less than stable), `GET …/canary`, `POST …/canary/advance`, `…/canary/rollback` |
 | Tools / MCP | `GET/POST /api/tools`, `GET/POST /api/mcp-servers`, `POST /api/mcp-servers/{name}/scan` |
 | Identity | `GET /api/identities`, `POST /api/identities/{id}/capabilities`, `POST /api/identities/{id}/check`, credentials issue/rotate/revoke |
-| Eval | `GET/POST /api/eval/suites`, `POST /api/eval/suites/{key}/cases`, `…/cases/from-trace?trace_id=`, `POST /api/eval/runs`, `POST /api/eval/gate`, `POST /api/eval/baselines`, `GET /api/eval/drift` (read-only), `POST /api/eval/drift` (records a window and finding), `GET/POST /api/eval/slos` |
+| Eval | `GET/POST /api/eval/suites`, `POST /api/eval/suites/{key}/cases`, `…/cases/from-trace?trace_id=`, `POST /api/eval/runs`, `POST /api/eval/gate` (pass `baseline_run_id`; pin a named baseline with `agentfox eval baseline`), `GET /api/eval/drift` (read-only; the daily `drift.check` job records windows and findings), `GET/POST /api/eval/slos` |
 | Red team | `GET /api/redteam/probes`, `GET/POST /api/redteam/campaigns` `{agent, adaptive?, budget?, seed?, include_deployment_probes?}` |
 | Traces / audit | `GET /api/traces`, `GET /api/traces/{id}`, `GET /api/audit/entries`, `POST /api/audit/verify`, `POST /api/audit/checkpoint`, `GET /api/export/siem` |
 | Evidence | `POST /api/evidence` `{agents, controls, period_from, period_to}`, `GET /api/evidence`, `GET /api/evidence/{id}/download` |

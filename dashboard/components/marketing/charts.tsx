@@ -61,13 +61,12 @@ const TONE: Record<Segment["tone"], string> = {
 };
 
 /**
- * 617 calls as one bar, to scale.
+ * A whole, as one bar, to scale.
  *
- * The AgentDojo result is four numbers that only mean something together: 552
- * legitimate calls, 42 attacker calls that act, 20 attacker calls that only read
- * and were contained, 3 that got through. Written as a table, the three escapes
- * read as a footnote. Drawn to scale, the reader sees both true things at once —
- * the escapes are a sliver, and the sliver is not zero.
+ * Used for the AgentDojo utility cost: of 97 benign tasks, 24 ran without
+ * escalation and 73 were sent to a human. Written as a ratio beside "588 of 588
+ * contained", the cost reads as a footnote. Drawn to scale, the reader sees that
+ * it is three quarters of the bar.
  */
 export function Composition({
   segments,

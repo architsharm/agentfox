@@ -255,7 +255,7 @@ def list_repos(
 
 # ---------------------------------------------------------------------------
 # Scanning — download a tarball server-side, run the existing static scanner
-# against it exactly as `agentfox check` would against a local checkout, and
+# against it exactly as `agentfox scan` would against a local checkout, and
 # propose (never create live) agents and policies from what it finds.
 # ---------------------------------------------------------------------------
 
@@ -350,7 +350,7 @@ def trigger_scan(
         sites=[
             {"kind": s.kind, "top_dir": _top_dir(s.file), "provider": s.provider}
             for s in report.sites
-            if s.kind in ("agent_definition", "tool", "model_call")
+            if s.kind in ("agent_definition", "tool", "model_call", "lethal_trifecta")
         ],
         author=user.email or user.id,
     )

@@ -22,9 +22,9 @@ export default function Page() {
         <code>not_implemented</code>. Nobody ticks a box.
       </p>
       <pre>
-        <code>{`agentfox compliance status
-agentfox compliance status --framework eu-ai-act
-agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-30`}</code>
+        <code>{`agentfox report status
+agentfox report status --framework eu-ai-act
+agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30`}</code>
       </pre>
       <p>
         The export is the same package as the <Link href="/docs/evidence">audit trail</Link>,

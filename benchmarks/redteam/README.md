@@ -217,6 +217,12 @@ adopted verbatim and reported in the table below.
 
 ## Results — three seed agents, `budget=4`, `seed=1337`, `enforce` mode
 
+The tables in this section are the **first run, before the nested-argument fix** (finding 2
+below; fixed in the 2026-09-16 update at the end). `results/adaptive_redteam_summary.json` holds
+the re-run after that fix, and the update's "Before and after" table gives both. In the current file the classes that moved are
+`argument_shape` 0/41 (was 10/41), `encoding` 25/31 (was 26/31) and `tool_scope` 0/29 (was 0/25),
+and the semantics split is `structural` 0/105, `readable` 3/39, `requires_decode` 25/34.
+
 | Agent | Risk tier | Static escapes | Adaptive escapes | Found *only* by mutation | Attempts | Benign FPs |
 |---|---|---|---|---|---|---|
 | `support-triage` | limited | 0 | 14 | 14 | 82 | 0/4 |
@@ -343,7 +349,7 @@ the finding is not in any prompt: it is in the shape of a capability row.
 
 ### 4. The capability and taint layer held under every honest mutation
 
-`provenance` 0/31 and `tool_scope` 0/25. Re-declaring every argument as user-sourced,
+`provenance` 0/31 and `tool_scope` 0/25 (0/29 in the post-fix re-run). Re-declaring every argument as user-sourced,
 trying sibling keys in a namespace, and supplying a plausible declared intent did not get
 a single ungranted or over-ceiling call through on any agent. All nine
 `ungranted.registered` probes (a real irreversible tool the agent genuinely lacks, on

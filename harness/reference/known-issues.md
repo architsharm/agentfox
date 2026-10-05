@@ -19,7 +19,7 @@ Each entry: what breaks, how to work around it, where the fix belongs. When you 
 2. **`agentfox demo` writes demo agents, findings and an evidence package** into whatever DB
    `NOMETRIA_DATABASE_URL` points at. It restores `baseline`'s mode when it finishes, but
    the data stays. Run it against a scratch DB.
-3. **`agentfox seed` creates agent keys only on the first seed**, and masks them unless
+3. **`agentfox admin seed` creates agent keys only on the first seed**, and masks them unless
    `--show-keys` is passed. Never paste a full key back to the user or into a file.
 
 Fixed on 2026-09-15 and removed from this list: the misleading `init` message,

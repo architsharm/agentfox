@@ -43,7 +43,7 @@ Fixtures live in `tests/conftest.py`: `session`, `seeded`, `enforcer`, `client`,
    CI's `vendored-wheel-freshness` job fails otherwise.
 2. **Migrations before code.** A model change needs an Alembic revision in `migrations/`
    (`alembic revision --autogenerate -m "<slug>"`), a tested downgrade, and a deploy that runs
-   `agentfox db upgrade` before the new wheel ships.
+   `agentfox admin db upgrade` before the new wheel ships.
 3. **Offline by default.** A new dependency is an optional extra unless it's pure-Python and
    tiny. Check `docs/appendix-a-oss-register.md` and update `THIRD_PARTY_NOTICES.md`.
 

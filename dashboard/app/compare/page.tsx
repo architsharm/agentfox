@@ -149,7 +149,7 @@ const LOSSES: { title: string; body: React.ReactNode; source: string }[] = [
     body: (
       <>
         Credo AI ships purpose-built policy packs and CE-marking support for EU AI Act filings.
-        All 300 of our framework mappings remain DRAFT, produced from framework texts by
+        All 317 of our framework mappings remain DRAFT, produced from framework texts by
         engineers and unreviewed by compliance counsel.
       </>
     ),
@@ -186,7 +186,7 @@ const ROWS: [string, string, string, string][] = [
     "Policy, registry, framework mapping",
     "Owns it",
     "Thin on it",
-    "300 framework mappings, all DRAFT",
+    "317 framework mappings, all DRAFT",
   ],
   [
     "Runtime enforcement on model traffic",

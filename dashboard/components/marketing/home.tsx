@@ -187,21 +187,6 @@ export function Hero() {
           />
         </div>
       </div>
-
-      <div className="mk-wrap mk-hero-stats">
-        <div className="mk-hero-stat">
-          <b>42 of 42</b>
-          <span>attacker tool calls contained, with every detector off</span>
-        </div>
-        <div className="mk-hero-stat">
-          <b>552 of 552</b>
-          <span>legitimate calls still ran on the same replay</span>
-        </div>
-        <div className="mk-hero-stat">
-          <b>Starts in observe</b>
-          <span>it records what it would block, and changes nothing until you turn it on</span>
-        </div>
-      </div>
     </section>
   );
 }
@@ -256,11 +241,12 @@ export function Stack() {
  *
  * The rows are deliberately specific about *what each one governs*, because
  * the hero above this already had to be rewritten once for implying that
- * `agentfox.auto()` guards tool calls. It does not — autoguard.py patches
- * model clients, and the callers of Enforcer.guard_tool_call are the LangGraph
- * tool node, the MCP governor, the SDK and the gateway. A section that
- * flattened all six into "protects your agent" would reintroduce exactly the
- * overclaim that rewrite removed, so each row says what it sees.
+ * `agentfox.auto()` guards tool calls. At the time it did not. It now checks
+ * the tool calls a model returns (autoguard.py's _govern_tool_calls), but not
+ * a tool the application calls without the model asking — that still needs
+ * the LangGraph tool node, the MCP governor, the SDK or the gateway. A section
+ * that flattened all six into "protects your agent" would reintroduce exactly
+ * the overclaim that rewrite removed, so each row says what it sees.
  */
 const CONTROL_POINTS: { where: string; how: string }[] = [
   { where: "Your coding agent", how: "Claude Code hooks" },
@@ -306,10 +292,12 @@ export function ControlPoints() {
             discover that from the product pages. */}
         <div className="mk-honest" style={{ marginTop: 40 }}>
           <div>
-            <h3 className="mk-h3">Nothing blocks until you say so</h3>
+            <h3 className="mk-h3">Detection blocks nothing until you say so</h3>
             <p className="mk-body">
-              Every policy starts in observe mode. It records what it would have blocked
-              and changes nothing until you turn it on.
+              The detector packs start in observe mode. They record what they would have
+              blocked and change nothing until you turn them on. Tool containment is the
+              exception: a call with no grant, or untrusted data reaching an irreversible
+              tool, is stopped from install.
             </p>
           </div>
           <Link href="/hooks" className="mk-btn mk-btn-outline">
@@ -451,10 +439,10 @@ export function Proof() {
           <article className="mk-pair-card">
             <h2 className="mk-h3">The permission check still holds when detection is off</h2>
             <p>
-              We turned every detector off and replayed 617 real tool calls.
-              42 of 42 calls an attacker tried to make were blocked. 552 of 552
-              ordinary calls still ran. Three reads got through, and each was
-              something the agent was already allowed to read.
+              We turned every detector off and replayed AgentDojo&apos;s ground
+              truth, with provenance inferred from the real tool outputs. 588 of
+              588 attack pairs were contained, blocked or escalated to a human. The
+              cost: only 24 of 97 benign tasks ran without escalating too.
             </p>
             <Link href="/benchmark">See how it was measured</Link>
           </article>

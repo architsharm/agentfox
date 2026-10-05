@@ -48,15 +48,17 @@ const BEATS: Beat[] = [
     title: "Spotting the text is not enough",
     body: (
       <>
-        {/* Both figures: README.md, "What we claim, and what we don't" — held-out
-            injection recall 66.7%, and the adaptive attacker getting 73% of what we
-            catch through within 50 attempts (benchmarks/adaptive/README.md). The
-            benchmark page cites the same two, at app/benchmark/page.tsx. */}
+        {/* Held-out injection recall, benchmarks/REPORT.md: 26.7% for the default
+            heuristic, 66.7% with the opt-in classifier ensemble. The adaptive attacker
+            getting 73% through within 50 attempts was measured on the default stack
+            (benchmarks/adaptive/README.md), so it is paired with the default figure.
+            The benchmark page cites the same numbers, at app/benchmark/page.tsx. */}
         <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)" }}>
           Most tools try to recognise the malicious text. We do that too, and we publish
-          how well it works: our detectors catch 66.7% of
-          injections in a held-out test set, and an attacker who reads the verdict and tries
-          again gets 73% of what we do catch through within 50 attempts.
+          how well it works: our default detector catches 26.7% of
+          injections in a held-out test set (66.7% with the opt-in classifier ensemble), and an
+          attacker who reads the verdict and tries again gets 73% of what the default catches
+          through within 50 attempts.
         </p>
         <p className="mk-fine" style={{ margin: "8px 0 0" }}>
           A detector that misses once lets the action through, so it cannot be the last

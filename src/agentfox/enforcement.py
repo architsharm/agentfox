@@ -67,6 +67,12 @@ from .business.ladder import evaluate as evaluate_ladder
 from .business.store import load_ladders
 from .commitments import adverse_action_risk, check_disclosure, detect_commitments
 from .config import get_settings
+from .containment import (
+    detector_verdict,
+    is_detector_rule,
+    matches_detector_rule,
+    raise_containment_findings,
+)
 from .context_integrity import (
     assemble_context,
     chunk_quality,
@@ -131,6 +137,7 @@ from .models import (
     utcnow,
 )
 from .policy import EFFECT_RANK, PolicyInput, active_policies, combine, get_engine
+from .policy.taint_view import policy_taint
 from .provenance import assess_provenance
 from .providers import CompletionRequest, get_provider
 from .register import check_register
@@ -746,6 +753,10 @@ class Enforcer:
             "business": ladder_decision.to_json() if ladder_decision else {},
             **evidence,
         }
+        if surface == "tool_args":
+            # Recorded on the decision, not only read from settings, so a replay
+            # reasons about this call the way the live path did (policy/taint_view.py).
+            taint_summary["scope"] = self.settings.taint_scope
 
         # --- 5. policy decision (P6-1) -----------------------------------
         pinput = PolicyInput(
@@ -759,7 +770,9 @@ class Enforcer:
             arguments=arguments or {},
             intent=intent,
             detections=detections,
-            taint=taint_summary,
+            # What policy reasons over: the configured taint scope, and provenance an
+            # explicit grant accepts. The record keeps the unmodified summary.
+            taint=policy_taint(taint_summary, capability),
             capability=capability,
             budget=budget,
             prior_tools=prior_tools or [],
@@ -1105,17 +1118,57 @@ class Enforcer:
         # at construction (P5-5), so there is no reason to withhold it a second
         # time behind a blanket "we don't store this" — showing the masked excerpt
         # is strictly more useful than a bare category name, and no less safe.
-        if effective != "allow" and pipeline_result.detections:
+        #
+        # Only the detector rules count here. The decision's verdict is the maximum
+        # over every rule, so on a call a capability or taint rule refused, a PII
+        # rule that merely fired alongside it was titled as the cause — "Blocked on
+        # tool_args: PII.EMAIL" for an exfiltration attempt default-deny stopped.
+        # What the caller does with the verdict (auto() in observe mode, a dry run)
+        # decides whether anything was actually stopped. Recorded on the decision so
+        # the report reads the same answer the findings below are titled with.
+        scope = getattr(self, "_containment_scope", ("enforced", frozenset()))
+        if surface == "tool_args" and scope != ("enforced", frozenset()):
+            decision_row.taint_summary_json = {
+                **(decision_row.taint_summary_json or {}),
+                "in_process": scope[0],
+                "exempt_rules": sorted(scope[1]),
+            }
+
+        det_effective, det_applied = detector_verdict(rules_fired)
+        if surface == "tool_args" and scope[0] == "none":
+            det_applied = "allow"  # recorded, and the call ran
+        if det_effective != "allow" and pipeline_result.detections:
             self._raise_detection_finding(
                 agent=agent,
                 trace_id=trace_id,
                 decision_id=decision_row.id,
                 surface=surface,
-                effective=effective,
-                applied=verdict,
+                effective=det_effective,
+                applied=det_applied,
                 reason=reason,
+                rules_fired=[r for r in rules_fired if is_detector_rule(r)],
+                detections=[
+                    d
+                    for d in pipeline_result.detections
+                    if matches_detector_rule(d.entity_type, rules_fired)
+                ],
+            )
+
+        # And the rules that are not detectors get findings of their own, titled by
+        # what they are: the agent, the tool, and the actual reason it was stopped.
+        if surface == "tool_args" and effective != "allow":
+            raise_containment_findings(
+                self.session,
+                agent=agent,
+                tool_key=tool_key,
+                surface=surface,
                 rules_fired=rules_fired,
-                detections=pipeline_result.detections,
+                argument_taint=argument_taint,
+                argument_propagated_from=argument_propagated_from,
+                trace_id=trace_id,
+                decision_id=decision_row.id,
+                decision_verdict=verdict,
+                scope=scope,
             )
 
         # --- 6. escalation (P2-3) ----------------------------------------
@@ -1219,6 +1272,29 @@ class Enforcer:
     def guard_tool_call(
         self,
         *,
+        in_process: str = "enforced",
+        exempt_rules: frozenset[str] = frozenset(),
+        **kwargs: Any,
+    ) -> EnforcementResult:
+        """Authorise a tool call on the full execution path (P3-4, P2-2, P9).
+
+        ``in_process`` says what the caller will do with the verdict, so a
+        containment finding can say whether the call was actually stopped:
+        ``"enforced"`` (the default) stops it where an enforce-mode rule did,
+        ``"all"`` stops it on any rule that fired (strict ``auto(mode="enforce")``),
+        ``"none"`` lets it run (``auto(mode="observe")``). ``exempt_rules`` are rule
+        ids the caller lets through regardless. A dry run is always ``"none"``.
+        """
+        scope = "none" if kwargs.get("dry_run") else in_process
+        self._containment_scope = (scope, exempt_rules)
+        try:
+            return self._guard_tool_call(**kwargs)
+        finally:
+            self._containment_scope = ("enforced", frozenset())
+
+    def _guard_tool_call(
+        self,
+        *,
         agent_slug: str,
         tool_key: str,
         arguments: dict[str, Any],
@@ -1250,6 +1326,12 @@ class Enforcer:
             return control
 
         tracker = tracker or TaintTracker(trace_id=trace.id if trace else None)
+        # Read on every call rather than cached on the tracker: a declaration made
+        # mid-run (`agentfox declare tool X --output-trust trusted`) applies to the
+        # next call, and a withdrawn one stops applying just as promptly.
+        tracker.trusted_tools = frozenset(
+            self.session.scalars(select(Tool.key).where(Tool.output_trust == "trusted"))
+        )
         marks = tracker.taint_arguments(arguments, provenance)
         argument_taint = {path: mark.source for path, mark in marks.items()}
         # F3.8: which arguments were inferred (not caller-declared) from an

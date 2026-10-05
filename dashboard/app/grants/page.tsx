@@ -36,15 +36,11 @@ export default function Page() {
       lede="You write that down before the agent runs. A prompt cannot add to it."
       docs="/docs/access"
       challenge={
-        <p>
-          Text filters have to guess whether a string is an attack, and an attacker
-          gets a new try every request. Asking whether the agent was ever allowed to
-          do this does not depend on how the request was worded.
-        </p>
+        <p>A text filter has to guess. This asks whether the agent was allowed to do this.</p>
       }
       feature={{
         title: "What the tool can do, and where the argument came from",
-        lede: "A call is judged on both. How dangerous the tool is, and whether a document supplied the value.",
+        lede: "How dangerous the tool is, and whether a document supplied the value.",
         body: (
           <div className="ladders mk-stagger">
             <div className="ladder">
@@ -73,56 +69,24 @@ export default function Page() {
         ) }}
       steps={[
         {
-          title: "Declare what each tool actually does",
+          title: "Declare what the tool does",
           body: (
             <p>
-              A tool is <code>read</code>, <code>write</code>, <code>high_impact</code>{" "}
-              or <code>irreversible</code>. That is the floor for what a call can be
-              reasoned about as — and for a shell tool it really is only the floor,
-              because <code>ls</code> and <code>rm -rf</code> are               the same tool.
+              Read, write, high impact, or irreversible. For a shell, <code>ls</code> and{" "}
+              <code>rm</code> are the same tool, so the label is only a floor.
             </p>
           ),
         },
         {
-          title: "Grant the capability, with its limits",
-          body: (
-            <p>
-              A grant carries constraints — a value ceiling, an environment, a maximum
-              taint for the data that may reach it. Anything not granted is refused;
-              that is the default, not a rule somebody has to remember to write.
-            </p>
-          ),
+          title: "Grant it, with a ceiling",
+          body: <p>Anything not granted is refused. A grant can cap the amount, and how untrusted an argument may be.</p>,
         },
         {
-          title: "Track where each argument came from",
+          title: "Where the value came from changes the answer",
           body: (
             <p>
-              Arguments are tainted by origin: something the operator typed, something a
-              document said, something a tool returned. A transfer whose amount came out
-              of a retrieved page is a different call from one the user asked for, and
-              the record says which it was.
-            </p>
-          ),
-        },
-        {
-          title: "Untrusted content may fill a value, never choose an action",
-          body: (
-            <p>
-              This is the line the whole model rests on. A retrieved document can supply
-              an account number that then gets checked; it cannot decide that a transfer
-              is the next step. Control flow belongs to the operator&rsquo;s intent, and
-              data belongs to the data.
-            </p>
-          ),
-        },
-        {
-          title: "Read the chain, not only the step",
-          body: (
-            <p>
-              Two harmless calls can compose into a privilege escalation, and a
-              destructive action is often reached rather than requested. Cascades,
-              blast radius and loops are evaluated across the run, so an outcome nobody
-              asked for in one step is still caught.
+              The same transfer is allowed when a person typed the amount, and stopped
+              when the amount came out of a document.
             </p>
           ),
         },
@@ -131,10 +95,8 @@ export default function Page() {
         title: "What grants do not do",
         body: (
           <p>
-            A grant is only as good as the declaration behind it, and the impact we infer
-            for an undeclared tool is a guess we label as one. We also cannot bound what
-            a tool does on the other side of its own API: if a tool you declared as a
-            read deletes something, containment believed you.
+            If you declare a destructive tool as read, the check believes you. It also
+            cannot see what that tool does on the other side of its own API.
           </p>
         ) }}
       related={["/runtime", "/discovery", "/control-points"]}

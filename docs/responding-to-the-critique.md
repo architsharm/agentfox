@@ -16,7 +16,8 @@ Everything here is checkable from this repository.
 
 **1. Adversarial robustness is unsolved, and adaptive attacks defeat published defences.** The paper reports
 over 90% attack success against twelve defences once the attacker adapts. We do not claim to be the
-exception. Our own held-out injection recall is **66.7%**, published in
+exception. Our own held-out injection recall is **26.7%** with the default heuristic detector and
+**66.7%** with the opt-in classifier ensemble, both published in
 [`benchmarks/REPORT.md`](../benchmarks/REPORT.md) alongside the rounds where it was 0%.
 
 **2. Static guardrail benchmarks are misleading.** They are, and we have first-hand evidence. Swapping our
@@ -72,7 +73,7 @@ encoded in the platform, which is what our [agent harness](../harness/README.md)
 | Change | Where |
 |---|---|
 | Built a benchmark that **deletes the detection layer entirely** and measures what still holds | [`benchmarks/containment/`](../benchmarks/containment/README.md) |
-| Replayed AgentDojo's 617 ground-truth calls end to end, reporting benign utility alongside containment | [`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) |
+| Replayed AgentDojo's ground truth end to end, 97 user tasks and 949 attack pairs, with provenance inferred from the real tool outputs, reporting benign utility alongside containment | [`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) |
 | Published our own adaptive-attack success rate against ourselves (**73% at 50 attempts**), using the critique's own protocol — and fixed the three detector bugs it found | [`benchmarks/adaptive/`](../benchmarks/adaptive/README.md) |
 | Measured non-English parity instead of claiming multilingual support | [`benchmarks/multilingual/`](../benchmarks/multilingual/README.md) |
 | Measured gradual multi-turn (crescendo) attacks, which per-message detection cannot see | [`benchmarks/crescendo/`](../benchmarks/crescendo/README.md) |
@@ -85,14 +86,20 @@ With **every detector disabled** — a total bypass, not a simulated miss:
 
 - 8 of 8 attack scenarios were still contained, with zero detector signal, while 4 of 4 legitimate calls were
   still allowed.
-- Across AgentDojo's 617 ground-truth calls, **42 of 42 attacker calls that act** were contained and **552 of
-  552 legitimate calls** were allowed. Results were identical with detectors on and off.
+- On AgentDojo (97 user tasks, 949 attack pairs, ground truth executed and replayed), with argument
+  provenance inferred from the real tool outputs, **588 of 588 attack pairs** were contained at
+  session-level taint. The price was benign utility: **24 of 97 benign tasks** ran without escalation to
+  a human. Per-argument taint ran 37 of 97 benign tasks and contained 527 of 588 attack pairs.
+- Our earlier AgentDojo figures (every acting attacker call contained, 42 of the 42; every legitimate
+  call allowed, 552 of the 552) took provenance from the benchmark's labels and counted each task once per registered AgentDojo
+  version. They are withdrawn; read them as the policy's behaviour given perfect provenance.
 
 Check it yourself:
 
 ```bash
 uv run python benchmarks/containment/run_containment_benchmark.py
-uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py
+uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py   # label-assigned upper bound
+# inferred provenance: benchmarks/agentdojo_e2e/README.md, "Reproducing"
 ```
 
 ## What we still do not claim

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/api";
 
-const API_BASE = process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const API_BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
 
 /**
  * Streams the evidence zip through with the session's auth header. Every other

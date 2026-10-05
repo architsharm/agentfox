@@ -209,7 +209,7 @@ def test_capability_grant_refuses_a_comparison_the_engine_cannot_evaluate():
 def test_capability_list_on_an_empty_set_names_the_command_that_fills_it():
     result = runner.invoke(app, ["capability", "list"])
     assert result.exit_code == 0, result.output
-    assert "agentfox capability grant" in flat(result.output)
+    assert "agentfox permit grant" in flat(result.output)
 
 
 def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigured():
@@ -226,7 +226,7 @@ def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigure
     result = runner.invoke(app, ["doctor", "--json"])
     containment = next(c for c in _json(result.output) if c["check"] == "containment")
     assert "no capability grants" in containment["detail"]
-    assert "agentfox capability grant" in containment["detail"]
+    assert "agentfox permit grant" in containment["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -413,7 +413,7 @@ def test_check_overflow_hint_is_a_command_that_runs(tmp_path):
     result = runner.invoke(app, ["check", str(tmp_path), "--limit", "2", "--no-submit"])
     output = flat(result.output)
     assert "(--limit)" not in output
-    hint = re.search(r"agentfox check .*?--limit (\d+)", output)
+    hint = re.search(r"agentfox scan .*?--limit (\d+)", output)
     assert hint, output
     # The number in the hint is the number of sites, so running it shows all of them.
     rerun = runner.invoke(
@@ -429,7 +429,9 @@ def test_check_does_not_cut_a_finding_mid_word(tmp_path):
         json.dumps({"mcpServers": {"agentfox": {"command": "agentfox", "args": ["mcp"]}}})
     )
     output = flat(runner.invoke(app, ["check", str(tmp_path), "--no-submit"]).output)
-    assert "rug pull" in output
+    assert "change after you review them" in output
+    # And the internal code the row used to end with is gone from what a user reads.
+    assert "I-2" not in output
 
 
 def test_check_still_promises_exactly_what_it_did_before(tmp_path):
@@ -579,16 +581,17 @@ def test_policy_enforce_still_promotes_a_real_policy():
 
 def test_top_level_help_leads_with_what_a_command_does():
     """Internal taxonomy leaked into the first thing anyone reads."""
-    output = runner.invoke(app, ["--help"]).output
+    # These three moved under `test` and `admin` in the CLI consolidation.
+    output = "".join(runner.invoke(app, [group, "--help"]).output for group in ("test", "admin"))
     lines = {
         line.split()[1]: line
         for line in output.splitlines()
         if len(line.split()) > 2 and line.strip().startswith("│")
     }
-    for name in ("analyse-action", "db", "version"):
+    for name in ("action", "db", "version"):
         assert name in lines, output
     # A description may still cite a pillar, but it must not open with a code.
-    assert not re.search(r"analyse-action\s+P9 —", output)
+    assert not re.search(r"action\s+P9 —", output)
     assert "(PL-2)" not in output
     assert "(X-4)" not in output
 

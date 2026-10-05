@@ -224,9 +224,10 @@ export function Guardrails() {
             >
               <span className="mk-label">What this layer is worth</span>
               <p className="mk-body" style={{ ...BODY, marginTop: 8, fontSize: "var(--t-small)" }}>
-                66.7% recall on the held-out injection split. An attacker who reads our verdict
-                and retries gets 73% of what we catch through within 50 attempts. A speed bump,
-                never a defence.
+                26.7% recall on the held-out injection split with the default detector, 66.7%
+                with the opt-in classifier ensemble. An attacker who reads our verdict and retries
+                gets 73% of what the default stack catches through within 50 attempts. A speed
+                bump, never a defence.
               </p>
               <p style={{ marginTop: 10 }}>
                 <Link href="/benchmark" className="mk-btn mk-btn-outline" style={{ padding: "8px 14px" }}>

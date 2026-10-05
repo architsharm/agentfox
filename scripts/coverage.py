@@ -244,7 +244,7 @@ PROBES: list[Probe] = [
     ),
     Probe(
         "P3",
-        "Runtime detectors across five surfaces + taint",
+        "Runtime detectors across nine surfaces + taint",
         "3 Guardrails",
         [
             "class InjectionHeuristicDetector",
@@ -710,11 +710,13 @@ def evasion_score_line() -> str:
         caught = sum(1 for case in ATTACKS if fires(case.text))
         false_positives = sum(1 for case in BENIGN if fires(case.text))
         return (
-            f"| **Injection recall** | **{caught / len(ATTACKS):.0%}** — {caught}/{len(ATTACKS)} "
-            f"adversarial, {false_positives} false positive(s) on {len(BENIGN)} benign |"
+            f"| **Injection recall, regression corpus** | **{caught / len(ATTACKS):.0%}** — "
+            f"{caught}/{len(ATTACKS)} adversarial, {false_positives} false positive(s) on "
+            f"{len(BENIGN)} benign. Our own test strings, so a regression check, not a recall "
+            f"estimate; held-out and external numbers are in benchmarks/REPORT.md |"
         )
     except Exception as exc:  # pragma: no cover - reporting must not break the report
-        return f"| **Injection recall** | not measured ({exc}) |"
+        return f"| **Injection recall, regression corpus** | not measured ({exc}) |"
 
 
 def family_rows(blob: str) -> tuple[list[str], int, int, int]:

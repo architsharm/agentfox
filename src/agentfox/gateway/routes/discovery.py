@@ -1,5 +1,5 @@
-"""Local-scan submission — the optional third path out of `agentfox check` and
-`agentfox quickscan`, next to plain terminal output and `--json`.
+"""Local-scan submission — the optional third path out of `agentfox scan` and
+`agentfox scan --sessions`, next to plain terminal output and `--json`.
 
 Both commands run `discovery.py`'s static scanner entirely on the developer's own
 machine, and by default nothing about the result leaves it. This endpoint is what

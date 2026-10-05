@@ -104,7 +104,7 @@ export function Features() {
         <SectionHead
           eyebrow="What it does"
           title="Five things, and the last one admits what it is"
-          lede="One line in your entry point puts every model call and every tool call on this path. What follows is what each layer is actually for."
+          lede="One line in your entry point puts your model SDK calls on this path; tool calls join it through the tool wrapper, the MCP governor, the coding-agent hooks or the gateway. What follows is what each layer is actually for."
           center
         />
         <div className="mk-grid mk-grid-2" style={{ marginTop: 44 }}>
@@ -134,9 +134,9 @@ export function Features() {
 const STATS: { n: string; label: string; tone?: string }[] = [
   { n: "8 of 8", label: "attacks contained with every detector switched off" },
   { n: "4 of 4", label: "legitimate calls still allowed in that same run" },
-  { n: "42 of 42", label: "AgentDojo attacker calls that act, contained" },
-  { n: "62 of 65", label: "attacker calls contained overall, three read-only escapes" },
-  { n: "66.7%", label: "held-out prompt-injection recall, our weakest layer", tone: "weak" },
+  { n: "588 of 588", label: "AgentDojo attack pairs contained, with provenance inferred" },
+  { n: "24 of 97", label: "benign AgentDojo tasks ran without escalating to a human", tone: "weak" },
+  { n: "26.7%", label: "held-out injection recall of the default detector, our weakest layer", tone: "weak" },
 ];
 
 export function Evidence() {
@@ -146,7 +146,7 @@ export function Evidence() {
         <SectionHead
           eyebrow="Evidence"
           title="Measured with every detector switched off"
-          lede="Most tools try to recognise the malicious text. We do that too, and we publish how badly it goes: 66.7% recall on a held-out set, and an attacker who reads the verdict and retries gets 73% of what we do catch through. So we switched every detector off and measured what was left."
+          lede="Most tools try to recognise the malicious text. We do that too, and we publish how badly it goes: the default detector finds 26.7% of a held-out set (66.7% with the opt-in classifier ensemble), and an attacker who reads the verdict and retries gets 73% of what the default stack does catch through. So we switched every detector off and measured what was left."
           center
         />
         <div className="mk-grid mk-grid-5 mk-up mk-d2" style={{ marginTop: 40 }}>
@@ -163,8 +163,9 @@ export function Evidence() {
           className="mk-fine mk-up mk-d3"
           style={{ maxWidth: "var(--w-prose)", marginTop: 24 }}
         >
-          The three calls that escaped the AgentDojo replay are all read-only, and the
-          benchmark page names them one by one. The weakest figure is in the set on purpose.
+          Session-level taint contains every AgentDojo attack by escalating broadly: three
+          benign tasks in four went to a human too. Per-argument taint lets more work run and
+          misses 61 attacker calls. The weakest figures are in the set on purpose.
         </p>
         <div
           className="mk-row mk-up mk-d4"
@@ -268,8 +269,9 @@ const LIMITS: { title: string; body: React.ReactNode }[] = [
     title: "Detection is a speed bump, and we measure it against ourselves",
     body: (
       <>
-        Held-out injection recall is 66.7%. An attacker who reads our verdict and tries again
-        gets 73% of what we do catch through within 50 attempts.
+        Held-out injection recall is 26.7% for the default detector and 66.7% with the opt-in
+        classifier ensemble. An attacker who reads our verdict and tries again gets 73% of what
+        the default stack catches through within 50 attempts.
       </>
     ),
   },
@@ -355,10 +357,9 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "Where does this sit relative to a gateway or a web application firewall?",
     a: (
       <>
-        A network firewall reads HTTP at the edge; a gateway routes and rate-limits it.
-        Neither knows which agent made the call, what it was granted, or where an
-        argument&rsquo;s value came from. AgentFox is a firewall one layer in, on the
-        agent&rsquo;s own actions rather than on its traffic, and it replaces neither.
+        A firewall reads HTTP. A gateway routes it. Neither knows which agent made the
+        call, what it was granted, or where an argument came from. This checks the
+        action. It does not replace either of those.
       </>
     ),
   },
@@ -375,11 +376,9 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "What happens if the control plane is slow or down?",
     a: (
       <>
-        You declare per service whether it fails open or closed; the shipped default is open.
-        Fail open serves the request, writes a degradation record, stamps the response with a
-        header naming the control that was down, and converts to closed once the degradation
-        outlasts its budget. Four controls can never fail open: tenant isolation, entitlement
-        filtering, data access scope and the audit chain.
+        You choose fail open or closed per service. The default is open: the request
+        proceeds, and the gap is written down. Tenant isolation, entitlement, data
+        access scope, and the audit chain cannot fail open.
       </>
     ),
   },

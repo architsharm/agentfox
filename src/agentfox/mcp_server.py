@@ -832,7 +832,9 @@ def _prepare() -> None:
         handler.setFormatter(logging.Formatter("agentfox mcp: %(levelname)s %(message)s"))
         log.addHandler(handler)
         log.propagate = False
-    log.setLevel(os.environ.get("NOMETRIA_MCP_LOG_LEVEL", "WARNING").upper())
+    from .config import env
+
+    log.setLevel((env("MCP_LOG_LEVEL") or "WARNING").upper())
 
 
 def serve(stdin: TextIO | None = None, stdout: TextIO | None = None) -> int:

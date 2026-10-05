@@ -133,8 +133,8 @@ def propose_from_scan(
     per detected framework, from a discovery scan's governable sites.
 
     Shared by every scan entry point that ends up here — the GitHub-connected repo
-    scan (``routes/integrations.py``) and a locally-run ``agentfox check --submit`` /
-    ``agentfox quickscan --submit`` (``routes/discovery.py``) — so a scan looks the
+    scan (``routes/integrations.py``) and a locally-run ``agentfox scan --submit`` /
+    ``agentfox scan --sessions --submit`` (``routes/discovery.py``) — so a scan looks the
     same in the dashboard whichever door it came through. ``sites`` is intentionally
     the redacted shape (``{"kind", "top_dir", "provider"}``, see
     ``discovery.ScanReport.to_submission_payload``): this function never needs, and
@@ -142,7 +142,15 @@ def propose_from_scan(
     """
     repo_short = slugify(repo_slug_base)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    # A lethal trifecta (private data + untrusted input + a way out, see
+    # `agentfox.exposure`) raises the risk tier of the agent in its directory. It
+    # does not propose an agent on its own: an `.mcp.json` trifecta describes an
+    # IDE's servers, not an application this repo deploys.
+    trifecta_dirs: set[str] = set()
     for site in sites:
+        if site.get("kind") == "lethal_trifecta":
+            trifecta_dirs.add(site.get("top_dir") or "root")
+            continue
         groups[site.get("top_dir") or "root"].append(site)
 
     created_agents: list[str] = []
@@ -163,6 +171,9 @@ def propose_from_scan(
             # *for* — left blank and surfaced honestly until a human sets one.
             purpose="",
             framework=framework,
+            # Proposed, like the rest of a draft: a human confirms the class on
+            # approval (`compliance.risk.classify` explains why it is a proposal).
+            risk_tier="high" if group_key in trifecta_dirs else "limited",
             draft=True,
             source_scan_run_id=run_id,
         )
@@ -348,6 +359,33 @@ def unowned_agents(session: Session) -> list[Finding]:
 # Tools & lineage
 # ---------------------------------------------------------------------------
 
+#: Tool key -> impact, for every `@fox.tool(key, impact=...)` declared in this
+#: process. The decorator also writes the row, but it runs at import time, which can
+#: be before the database exists; this is what `auto()` consults when it registers a
+#: tool the model called, so a declaration made in code beats a guess from the name
+#: even when that write could not happen yet.
+DECLARED_TOOL_IMPACTS: dict[str, str] = {}
+
+#: Marks a tool whose `impact` was guessed — from its name and description, when
+#: `auto()` or MCP governance first saw it — rather than declared by an operator,
+#: the CLI/API or code. Kept as a JSON Schema vendor keyword in `schema_json`
+#: rather than a column of its own on purpose: a deployment runs new code before
+#: anyone runs its migration (tests/test_playground.py pins that window), and a
+#: new column on `tools` would break every tool lookup in it, the enforcement path
+#: included. Validators ignore `x-` keywords; `tool_input_schema` strips it.
+IMPACT_SOURCE_KEY = "x-agentfox-impact-source"
+
+
+def impact_source_of(tool: Tool) -> str:
+    """``inferred`` for a guessed impact awaiting confirmation, else ``declared``."""
+    schema = tool.schema_json or {}
+    return "inferred" if schema.get(IMPACT_SOURCE_KEY) == "inferred" else "declared"
+
+
+def tool_input_schema(tool: Tool) -> dict[str, Any]:
+    """The tool's input schema as the tool itself declared it, without our marker."""
+    return {k: v for k, v in (tool.schema_json or {}).items() if k != IMPACT_SOURCE_KEY}
+
 
 def upsert_tool(
     session: Session,
@@ -359,14 +397,28 @@ def upsert_tool(
     schema: dict[str, Any] | None = None,
     description: str = "",
     mcp_server_id: str | None = None,
+    impact_source: str = "declared",
+    output_trust: str | None = None,
 ) -> Tool:
+    """Create or update a tool. ``output_trust=None`` leaves the declared trust as it is."""
     tool = _get_or_create(session, Tool, key=key)
     tool.name = name or tool.name or key
     tool.kind = kind
     tool.impact = impact
-    tool.schema_json = schema or tool.schema_json or {}
+    # A fresh dict, so the JSON column registers the change; a declaration clears
+    # the inferred marker, which is how `agentfox declare tool` confirms a guess.
+    schema_json = dict(schema or tool.schema_json or {})
+    if impact_source == "inferred":
+        schema_json[IMPACT_SOURCE_KEY] = "inferred"
+    else:
+        schema_json.pop(IMPACT_SOURCE_KEY, None)
+    tool.schema_json = schema_json
     tool.description = description or tool.description
     tool.mcp_server_id = mcp_server_id or tool.mcp_server_id
+    if output_trust is not None:
+        tool.output_trust = output_trust
+    elif not tool.output_trust:
+        tool.output_trust = "untrusted"
     session.flush()
     return tool
 

@@ -27,8 +27,8 @@ export const metadata: Metadata = publicPageMetadata({
  */
 export default function PlaygroundPage() {
   const apiBase =
-    process.env.NOMETRIA_PLAYGROUND_API_URL ||
-    process.env.NOMETRIA_API_URL ||
+    process.env.AGENTFOX_PLAYGROUND_API_URL || process.env.NOMETRIA_PLAYGROUND_API_URL ||
+    process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL ||
     "http://127.0.0.1:8080";
 
   return (

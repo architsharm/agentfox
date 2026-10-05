@@ -2,8 +2,9 @@ name: Nightly evidence
 
 # The flywheel's first loop: re-measure what we publish, every night, and fail loudly when a
 # published claim no longer matches a fresh measurement or the coverage map overstates the
-# product. Only offline, deterministic benchmarks run here; the model-backed ones need
-# weights and are run by hand.
+# product. Only deterministic benchmarks that need no model run here; the model-backed ones
+# need weights and are run by hand. The AgentDojo traces need AgentDojo itself, installed in
+# its own environment because its dependency tree conflicts with ours.
 on:
   schedule:
     - cron: "17 3 * * *"
@@ -12,7 +13,9 @@ on:
 jobs:
   evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # The AgentDojo replay runs every pair under several conditions; its CI runtime has not been
+    # measured yet, so this leaves room rather than guessing tight.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -20,8 +23,22 @@ jobs:
         run: uv sync --extra pii --extra otel --extra postgres --extra sql --extra dev
       - name: Containment under total detector bypass
         run: uv run python benchmarks/containment/run_containment_benchmark.py
-      - name: AgentDojo end to end
-        run: uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py
+      # The inferred-provenance replay, which is what the published AgentDojo figures come from.
+      # The label-assigned run_agentdojo_e2e.py is retired (benchmarks/agentdojo_e2e/README.md).
+      - name: AgentDojo traces (isolated environment)
+        run: |
+          uv venv "$RUNNER_TEMP/agentdojo_venv"
+          uv pip install --python "$RUNNER_TEMP/agentdojo_venv/bin/python" agentdojo==0.1.35
+          "$RUNNER_TEMP/agentdojo_venv/bin/python" benchmarks/agentdojo_e2e/inferred/gen_traces.py v1.2.2 \
+            > "$RUNNER_TEMP/traces_v1.2.2.json"
+      - name: AgentDojo replay, provenance inferred from tool outputs
+        run: |
+          uv run python benchmarks/agentdojo_e2e/inferred/replay.py \
+            "$RUNNER_TEMP/traces_v1.2.2.json" "$RUNNER_TEMP/out.json"
+          GRANT_MODE=tiered uv run python benchmarks/agentdojo_e2e/inferred/replay.py \
+            "$RUNNER_TEMP/traces_v1.2.2.json" "$RUNNER_TEMP/out_tiered.json" inferred,inferred_arg
+          uv run python benchmarks/agentdojo_e2e/inferred/summarise.py \
+            "$RUNNER_TEMP/out.json" "$RUNNER_TEMP/out_tiered.json" "$RUNNER_TEMP/traces_v1.2.2.json"
       - name: Crescendo trajectory
         run: uv run python benchmarks/crescendo/run_crescendo_benchmark.py
       - name: Published claims still match fresh measurements

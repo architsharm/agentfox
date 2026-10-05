@@ -22,7 +22,7 @@ export default function Page() {
       </p>
       <h2>Coding agent</h2>
       <pre>
-        <code>agentfox hooks install --agent my-agent --write</code>
+        <code>agentfox admin hooks install --agent my-agent --write</code>
       </pre>
       <h2>Any language</h2>
       <pre>
@@ -42,7 +42,7 @@ export default function Page() {
       </pre>
       <h2>CI and the terminal</h2>
       <pre>
-        <code>agentfox quickscan .</code>
+        <code>agentfox scan --sessions .</code>
       </pre>
       <h2>The policy</h2>
       <pre>

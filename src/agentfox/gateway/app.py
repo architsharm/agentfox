@@ -11,7 +11,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import select
@@ -388,67 +388,6 @@ def create_app() -> FastAPI:
             "detector_versions": {k: d.version for k, d in all_detectors().items()},
             "egress_allowed": settings.allow_egress,
         }
-
-    @app.post("/api/_migrate_policy_canaries", tags=["platform"])
-    def migrate_policy_canaries(
-        session: Session = Depends(db), user=Depends(current_user)
-    ) -> dict[str, Any]:
-        """One-off: apply migration a1b2c3d4e5f6 (policy_canaries, P12-6) directly —
-        the deployed wheel does not bundle migrations/, so this stands in for
-        `alembic upgrade head` for this table. Idempotent; safe to remove once run.
-
-        Owner-only: runs raw DDL against production.
-        """
-        if user.role != "owner":
-            raise HTTPException(403, "owner role required to run a schema migration")
-        from sqlalchemy import text
-
-        session.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS policy_canaries (
-                    id VARCHAR(40) NOT NULL PRIMARY KEY,
-                    policy_id VARCHAR(40) NOT NULL,
-                    stable_version_id VARCHAR(40) NOT NULL,
-                    candidate_version_id VARCHAR(40) NOT NULL,
-                    steps JSON NOT NULL,
-                    step_index INTEGER NOT NULL,
-                    percent INTEGER NOT NULL,
-                    status VARCHAR(16) NOT NULL,
-                    max_block_rate_delta FLOAT NOT NULL,
-                    min_sample INTEGER NOT NULL,
-                    started_by VARCHAR(120),
-                    rollback_reason TEXT NOT NULL,
-                    completed_at TIMESTAMPTZ,
-                    created_at TIMESTAMPTZ NOT NULL,
-                    updated_at TIMESTAMPTZ NOT NULL,
-                    org_id VARCHAR(64) NOT NULL
-                )
-                """
-            )
-        )
-        session.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_policy_canaries_policy_id "
-                "ON policy_canaries (policy_id)"
-            )
-        )
-        session.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_policy_canaries_status ON policy_canaries (status)")
-        )
-        session.execute(
-            text("CREATE INDEX IF NOT EXISTS ix_policy_canaries_org_id ON policy_canaries (org_id)")
-        )
-        session.commit()
-
-        result = session.execute(text("UPDATE alembic_version SET version_num = 'a1b2c3d4e5f6'"))
-        if result.rowcount == 0:
-            session.execute(
-                text("INSERT INTO alembic_version (version_num) VALUES ('a1b2c3d4e5f6')")
-            )
-        session.commit()
-
-        return {"migrated": True}
 
     @app.get("/api/detectors", tags=["platform"])
     def detectors(session: Session = Depends(db), _u=Depends(current_user)) -> dict[str, Any]:

@@ -161,8 +161,35 @@ def init_db(stamp: bool = True) -> None:
     engine = get_engine()
     fresh = not inspect(engine).has_table("agents")
     Base.metadata.create_all(engine)
+    if not fresh:
+        _add_missing_columns(engine)
     if stamp and fresh:
         _stamp_head()
+
+
+#: Columns added to an existing table that every request reads, with the server
+#: default their migration declares. A deployment gets new code before someone runs
+#: the migration, every time; `create_all` adds missing tables but never a column, so
+#: without this the first `select(Tool)` in that window fails on every tool call. Only
+#: additive, defaulted columns belong here, and each one's migration checks for the
+#: column before adding it, so the two never fight.
+_ADDITIVE_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    # b8d3f6a2c915 — a tool can declare that its output is trusted.
+    ("tools", "output_trust", "VARCHAR(16) NOT NULL DEFAULT 'untrusted'"),
+)
+
+
+def _add_missing_columns(engine: Engine) -> None:
+    from sqlalchemy import text
+
+    inspector = inspect(engine)
+    for table, column, ddl in _ADDITIVE_COLUMNS:
+        if not inspector.has_table(table):
+            continue
+        if any(c["name"] == column for c in inspector.get_columns(table)):
+            continue
+        with engine.begin() as conn:
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
 
 
 def migration_root() -> tuple[Path, Path] | None:

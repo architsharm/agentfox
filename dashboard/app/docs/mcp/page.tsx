@@ -21,14 +21,27 @@ export default function Page() {
       </p>
       <h2>Before anything runs</h2>
       <pre>
-        <code>{`agentfox scan mcp internal-tools --seed-fixture
-agentfox scan mcp internal-tools --file tools.json`}</code>
+        <code>{`agentfox scan mcp
+agentfox scan mcp fetch
+agentfox scan mcp fetch --file tools.json
+agentfox scan mcp --config ~/Library/Application\\ Support/Claude/claude_desktop_config.json`}</code>
       </pre>
       <p>
-        <code>--seed-fixture</code> is the bundled example. <code>--file</code> takes a
-        real <code>tools/list</code>. The scan checks tool hygiene: a poisoned
-        description, a server that is not pinned, and schema drift since the last scan.
-        An undeclared tool becomes a discovery finding rather than an invisible call.
+        With no setup, <code>scan mcp</code> reads the servers your MCP config declares
+        (<code>.mcp.json</code>, <code>.cursor/mcp.json</code>,{" "}
+        <code>.claude/settings.json</code>, <code>.claude.json</code> or{" "}
+        <code>claude_desktop_config.json</code> in this directory, or the file{" "}
+        <code>--config</code> names) and registers them. Nothing is started: it reports
+        what each server can reach, whether its version is pinned, whether a remote one
+        carries auth, and whether the config holds a literal credential. Servers loaded
+        together that can read private data, read the web and send data out are
+        flagged as a lethal trifecta.
+      </p>
+      <p>
+        <code>--file</code> takes the server&apos;s real <code>tools/list</code> output
+        and adds tool hygiene: a poisoned description, and schema drift since the last
+        scan. <code>--seed-fixture</code> is the bundled example. An undeclared tool
+        becomes a discovery finding rather than an invisible call.
       </p>
       <h2>At the call</h2>
       <p>
@@ -42,7 +55,7 @@ agentfox scan mcp internal-tools --file tools.json`}</code>
       <p>
         The HTTP route for one MCP call is <code>POST /v1/mcp/call</code>. A read-only
         MCP server that exposes AgentFox itself to a coding agent is{" "}
-        <code>agentfox mcp serve</code>, documented on the <Link href="/docs/harness">harness</Link>{" "}
+        <code>agentfox serve mcp</code>, documented on the <Link href="/docs/harness">harness</Link>{" "}
         page. That server does not decide or apply a change.
       </p>
     </article>

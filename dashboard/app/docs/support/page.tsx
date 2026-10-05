@@ -22,7 +22,7 @@ export default function Page() {
       <h2>Run these first</h2>
       <pre>
         <code>{`agentfox doctor
-agentfox version
+agentfox admin version
 agentfox policy list`}</code>
       </pre>
       <p>

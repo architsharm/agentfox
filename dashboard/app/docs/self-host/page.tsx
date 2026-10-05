@@ -17,9 +17,16 @@ export default function Page() {
       <p>
         Everything runs on your own infrastructure. There is no licence check, no
         phone-home, and no default egress. A fresh install ships with{" "}
-        <code>NOMETRIA_ALLOW_EGRESS=false</code> and the <code>echo</code> provider, so
+        <code>AGENTFOX_ALLOW_EGRESS=false</code> and the <code>echo</code> provider, so
         it runs end to end with no model and no API key. Point it at a model when you
         want one.
+      </p>
+      <p>
+        Settings are environment variables named <code>AGENTFOX_*</code>. The
+        pre-rename <code>NOMETRIA_*</code> names still work, so an existing deployment
+        does not need to change; where both are set, <code>AGENTFOX_*</code> wins. The
+        dashboard container is the exception and reads only its{" "}
+        <code>NOMETRIA_*</code> names, such as <code>NOMETRIA_API_URL</code>.
       </p>
 
       <h2>Docker Compose</h2>
@@ -32,15 +39,18 @@ docker compose -f deploy/docker-compose.yml up -d`}</code>
         The dashboard is on port 3000 and the gateway on 8080. Images are{" "}
         <code>ghcr.io/architsharm/agentfox/gateway</code> and{" "}
         <code>ghcr.io/architsharm/agentfox/dashboard</code>, published on every release
-        and tracked at <code>:edge</code> on <code>main</code>.{" "}
+        and tracked at <code>:edge</code> on <code>main</code>. Compose pulls{" "}
+        <code>:latest</code>, which moves on each release tag.{" "}
         <code>docker compose build</code> builds from source instead. That takes a
-        while: the gateway image pre-fetches 1–2GB of detector weights so the running
-        container never needs network access for them.
+        while: the gateway image pre-fetches 1–2GB of permissive-licence detector
+        weights so the running container never needs network access for them. The
+        licence-gated Llama Guard tier is off by default and never in the published
+        image; the compose file&apos;s header has the opt-in steps.
       </p>
       <p>
         <code>deploy/docker-compose.yml</code> is commented line by line, including the
         values you must change before a real deployment.{" "}
-        <code>NOMETRIA_AUDIT_SIGNING_KEY</code> above all: the audit chain is only as
+        <code>AGENTFOX_AUDIT_SIGNING_KEY</code> above all: the audit chain is only as
         trustworthy as the key that signs it.
       </p>
 
@@ -52,7 +62,7 @@ agentfox init
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080`}</code>
       </pre>
       <p>
-        Set <code>NOMETRIA_DATABASE_URL</code> for Postgres. <code>agentfox db upgrade</code>{" "}
+        Set <code>AGENTFOX_DATABASE_URL</code> for Postgres. <code>agentfox admin db upgrade</code>{" "}
         applies migrations.
       </p>
 

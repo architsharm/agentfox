@@ -260,8 +260,23 @@ def propose_threshold_changes(session: Session, payload: dict[str, Any]) -> dict
     return run_loop(session, days=int(payload.get("days", 30))).to_json()
 
 
+# ---------------------------------------------------------------------------
+# grants.propose
+# ---------------------------------------------------------------------------
+
+
+def propose_from_traffic(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Turn observed tool calls into tool-declaration and grant proposals a person decides."""
+    from .improvement.traffic import propose_from_traffic as run_loop
+
+    return run_loop(
+        session, agent=payload.get("agent"), days=int(payload.get("days", 30))
+    ).to_json()
+
+
 HANDLERS = {
     "tuning.propose": propose_threshold_changes,
+    "grants.propose": propose_from_traffic,
     "eval.run": run_eval,
     "compliance.recompute": recompute_compliance,
     "canary.advance": advance_canaries,

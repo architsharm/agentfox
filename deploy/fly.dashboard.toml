@@ -8,6 +8,9 @@
 # The Dockerfile expects the build context to be ./dashboard, so run the deploy
 # from the repo root with `--build-context` support, or from ./dashboard with the
 # Dockerfile path adjusted. Runbook: deploy/README-dashboard.md
+#
+# The dashboard reads only the NOMETRIA_* names (the gateway reads AGENTFOX_* first,
+# NOMETRIA_* as a fallback), so these keep the old prefix.
 app = "nometria-dashboard"
 primary_region = "iad"
 

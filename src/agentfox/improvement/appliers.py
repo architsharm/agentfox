@@ -13,6 +13,10 @@ proposal whose applier cannot answer all three:
 * ``revert`` — undo it. A change that cannot be undone is refused at apply time rather
   than discovered at rollback time.
 
+Kinds: ``suppression.revoke`` and ``policy.rule_min_score`` (the threshold loop), and
+``capability.grant`` and ``tool.declare`` (the learned-permissions loop in
+:mod:`agentfox.improvement.traffic`).
+
 Appliers never touch proposal status or write proposal audit entries; that is the
 service's job. They do call the domain functions (``revoke_suppression``,
 ``save_policy``, ``start_canary``) that record their own domain-level entries.
@@ -421,6 +425,329 @@ register(
         apply=_policy_apply,
         revert=_policy_revert,
         stage_status=_policy_stage_status,
+    )
+)
+
+
+# ---------------------------------------------------------------------------
+# capability.grant — loosens (a new grant, or a raised provenance ceiling)
+# ---------------------------------------------------------------------------
+#
+# Filed by the learned-permissions loop (`improvement/traffic.py`) from an agent's
+# observed calls. Two shapes, one kind:
+#
+#   new grant      {"agent", "tool_key", "actions", "constraints", "max_taint",
+#                   "requires_approval"}
+#   raise ceiling  {"agent", "tool_key", "replaces": <capability id>,
+#                   "from_max_taint", "max_taint"}
+#
+# Both widen what an agent may do, so both are loosenings a person decides; neither
+# can be applied by automation at any autonomy level (contract.may_apply_automatically).
+
+
+def _grant_diff(proposal: ChangeProposal) -> dict[str, Any]:
+    diff = dict(proposal.diff_json or {})
+    if not diff.get("agent") or not diff.get("tool_key"):
+        raise ApplierError("capability.grant needs diff.agent and diff.tool_key")
+    from ..guardrails.base import TAINT_ORDER
+
+    if str(diff.get("max_taint") or "user") not in TAINT_ORDER:
+        raise ApplierError(f"diff.max_taint must be one of {list(TAINT_ORDER)}")
+    return diff
+
+
+def _grant_identity(session: Session, slug: str):
+    from ..identity import ensure_identity
+    from ..models import Agent
+
+    agent = session.scalar(select(Agent).where(Agent.slug == slug))
+    if agent is None:
+        raise ApplierError(f"unknown agent '{slug}'")
+    return ensure_identity(session, agent)
+
+
+def _live_exact_grant(session: Session, identity_id: str, tool_key: str):
+    from ..models import Capability, as_aware
+
+    now = dt.datetime.now(dt.UTC)
+    for capability in session.scalars(
+        select(Capability).where(
+            Capability.identity_id == identity_id, Capability.tool_key == tool_key
+        )
+    ):
+        expires = as_aware(capability.expires_at)
+        if expires is None or expires > now:
+            return capability
+    return None
+
+
+def _domain_audit(
+    session: Session, action: str, subject_id: str, actor: str, payload: dict
+) -> None:
+    from ..audit import chain
+    from ..config import get_settings
+
+    chain.append(
+        session,
+        action,
+        **chain.attribution(automated=actor == get_settings().improvement_actor_id, actor=actor),
+        subject_type="capability",
+        subject_id=subject_id,
+        payload=payload,
+    )
+
+
+def _grant_direction(session: Session, proposal: ChangeProposal) -> str:
+    from ..guardrails.base import taint_rank
+    from ..models import Capability
+
+    diff = _grant_diff(proposal)
+    if not diff.get("replaces"):
+        # A grant that did not exist is always a widening, whatever its limits.
+        return contract.LOOSENS
+    live = session.get(Capability, str(diff["replaces"]))
+    current = live.max_taint if live is not None else "none"
+    target = str(diff.get("max_taint") or "user")
+    if taint_rank(target) > taint_rank(current):
+        return contract.LOOSENS
+    if taint_rank(target) < taint_rank(current):
+        return contract.TIGHTENS
+    return contract.NEUTRAL
+
+
+def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
+    from ..identity import grant_capability
+    from ..models import Capability
+
+    diff = _grant_diff(proposal)
+    identity = _grant_identity(session, str(diff["agent"]))
+    tool_key = str(diff["tool_key"])
+    max_taint = str(diff.get("max_taint") or "user")
+
+    if diff.get("replaces"):
+        capability = session.get(Capability, str(diff["replaces"]))
+        if capability is None or capability.identity_id != identity.id:
+            raise ApplierError(
+                f"grant {diff['replaces']} is gone; this proposal was computed against it. "
+                "Refile with `agentfox policy proposals from-traffic`."
+            )
+        expected = diff.get("from_max_taint")
+        if expected is not None and capability.max_taint != expected:
+            raise ApplierError(
+                f"grant {capability.id} has drifted: its ceiling is now "
+                f"'{capability.max_taint}', the proposal was computed against '{expected}'"
+            )
+        before = capability.max_taint
+        capability.max_taint = max_taint
+        session.flush()
+        _domain_audit(
+            session,
+            "capability.updated",
+            capability.id,
+            actor,
+            {"change_proposal": proposal.id, "max_taint": {"from": before, "to": max_taint}},
+        )
+        return {
+            "capability_id": capability.id,
+            "agent": diff["agent"],
+            "tool_key": tool_key,
+            "max_taint_from": before,
+            "max_taint_to": max_taint,
+        }
+
+    existing = _live_exact_grant(session, identity.id, tool_key)
+    if existing is not None:
+        raise ApplierError(
+            f"{diff['agent']} already holds a grant for '{tool_key}' ({existing.id}), made "
+            "after this proposal was filed; refusing to add a second one beside it"
+        )
+    capability = grant_capability(
+        session,
+        identity,
+        tool_key,
+        actions=list(diff.get("actions") or ["*"]),
+        constraints=dict(diff.get("constraints") or {}),
+        requires_approval=bool(diff.get("requires_approval", False)),
+        max_taint=max_taint,
+        granted_by=f"proposal {proposal.id} ({actor})",
+    )
+    shape = {
+        "principal": identity.principal,
+        "tool_key": tool_key,
+        "actions": list(capability.actions or ["*"]),
+        "constraints": dict(capability.constraints_json or {}),
+        "requires_approval": capability.requires_approval,
+        "max_taint": capability.max_taint,
+    }
+    _domain_audit(
+        session,
+        "capability.granted",
+        capability.id,
+        actor,
+        {**shape, "change_proposal": proposal.id, "granted_by": capability.granted_by},
+    )
+    return {"capability_id": capability.id, "agent": diff["agent"], **shape}
+
+
+def _grant_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
+    from ..identity import revoke_capability
+    from ..models import Capability
+
+    result = applied_result(session, proposal)
+    capability_id = result.get("capability_id")
+    if not capability_id:
+        raise ApplierError(f"proposal {proposal.id} recorded no grant to undo")
+    capability = session.get(Capability, capability_id)
+
+    if "max_taint_from" in result:
+        if capability is None:
+            raise ApplierError(
+                f"grant {capability_id} has been revoked since; there is no ceiling to restore"
+            )
+        if capability.max_taint != result.get("max_taint_to"):
+            raise ApplierError(
+                f"grant {capability_id}'s ceiling was changed again after this proposal; "
+                "refusing to overwrite a change it did not make"
+            )
+        capability.max_taint = str(result["max_taint_from"])
+        session.flush()
+        _domain_audit(
+            session,
+            "capability.updated",
+            capability.id,
+            actor,
+            {
+                "change_proposal": proposal.id,
+                "reverted": True,
+                "max_taint": {"from": result["max_taint_to"], "to": result["max_taint_from"]},
+            },
+        )
+        return {"capability_id": capability.id, "max_taint": result["max_taint_from"]}
+
+    if capability is None:
+        # Somebody already withdrew it by hand. The state the revert wants is the
+        # state there is; say so rather than fail the rollback.
+        return {"capability_id": capability_id, "already_revoked": True}
+    shape = {
+        "tool_key": capability.tool_key,
+        "constraints": dict(capability.constraints_json or {}),
+        "max_taint": capability.max_taint,
+    }
+    revoke_capability(session, capability_id)
+    _domain_audit(
+        session,
+        "capability.revoked",
+        capability_id,
+        actor,
+        {**shape, "change_proposal": proposal.id, "reverted": True},
+    )
+    return {"revoked": capability_id, **shape}
+
+
+register(
+    Applier(
+        kind="capability.grant",
+        direction=_grant_direction,
+        apply=_grant_apply,
+        revert=_grant_revert,
+    )
+)
+
+
+# ---------------------------------------------------------------------------
+# tool.declare — loosens
+# ---------------------------------------------------------------------------
+#
+# An undeclared tool is escalated on every call (`tool.not_declared`) and reasoned
+# about as `read`. Declaring it removes that escalation, so it is a loosening whatever
+# impact is declared: the impact the loop proposes is a guess from the tool's name, and
+# a wrong guess is the hole every impact-based rule falls through. Tool declarations
+# are org-wide, so the two-person rule for org-level loosenings applies.
+
+_IMPACTS = ("read", "write", "high_impact", "irreversible")
+
+
+def _declare_diff(proposal: ChangeProposal) -> dict[str, Any]:
+    from ..models import OUTPUT_TRUST_LEVELS
+
+    diff = dict(proposal.diff_json or {})
+    if not diff.get("tool_key"):
+        raise ApplierError("tool.declare needs diff.tool_key")
+    if diff.get("impact") not in _IMPACTS:
+        raise ApplierError(f"diff.impact must be one of {_IMPACTS}")
+    if diff.get("output_trust", "untrusted") not in OUTPUT_TRUST_LEVELS:
+        raise ApplierError(f"diff.output_trust must be one of {OUTPUT_TRUST_LEVELS}")
+    return diff
+
+
+def _declare_direction(session: Session, proposal: ChangeProposal) -> str:
+    from ..models import Tool
+
+    diff = _declare_diff(proposal)
+    live = session.scalar(select(Tool).where(Tool.key == diff["tool_key"]))
+    if live is not None:
+        # Declared by someone else since; applying would change nothing it can claim.
+        return contract.NEUTRAL
+    return contract.LOOSENS
+
+
+def _declare_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
+    from ..models import Tool
+    from ..registry.service import upsert_tool
+
+    diff = _declare_diff(proposal)
+    key = str(diff["tool_key"])
+    if session.scalar(select(Tool).where(Tool.key == key)) is not None:
+        raise ApplierError(f"'{key}' has been declared since this proposal was filed")
+    tool = upsert_tool(
+        session,
+        key,
+        name=str(diff.get("name") or key),
+        impact=str(diff["impact"]),
+        description=str(diff.get("description") or ""),
+        output_trust=str(diff.get("output_trust") or "untrusted"),
+    )
+    _domain_audit(
+        session,
+        "tool.declared",
+        tool.id,
+        actor,
+        {"tool_key": key, "impact": tool.impact, "change_proposal": proposal.id},
+    )
+    return {"tool_id": tool.id, "tool_key": key, "impact": tool.impact}
+
+
+def _declare_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
+    from ..models import Tool
+
+    result = applied_result(session, proposal)
+    tool = session.get(Tool, result.get("tool_id") or "")
+    if tool is None:
+        return {"tool_key": result.get("tool_key"), "already_undeclared": True}
+    if tool.impact != result.get("impact"):
+        raise ApplierError(
+            f"'{tool.key}' was redeclared as '{tool.impact}' after this proposal; refusing "
+            "to delete a declaration it did not make"
+        )
+    key = tool.key
+    session.delete(tool)
+    session.flush()
+    _domain_audit(
+        session,
+        "tool.undeclared",
+        result["tool_id"],
+        actor,
+        {"tool_key": key, "change_proposal": proposal.id, "reverted": True},
+    )
+    return {"undeclared": key}
+
+
+register(
+    Applier(
+        kind="tool.declare",
+        direction=_declare_direction,
+        apply=_declare_apply,
+        revert=_declare_revert,
     )
 )
 

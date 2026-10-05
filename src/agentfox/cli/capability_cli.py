@@ -151,7 +151,7 @@ def _find_capability(session, typed: str):
         return matches[0]
     if not matches:
         console.print(f"[red]unknown capability '{typed}'[/]")
-        console.print("  List the real ids with `agentfox capability list`.")
+        console.print("  List the real ids with `agentfox permit list`.")
         raise typer.Exit(1)
     console.print(f"[red]'{typed}' matches {len(matches)} grants.[/] Name one of them in full:")
     for match in matches:
@@ -253,6 +253,7 @@ def capability_grant(
     console.print(
         f"  expires        {expires_at.isoformat(timespec='seconds') if expires_at else 'never'}"
     )
+    _explain_taint_ceiling(tool, max_taint)
     if not yes and not typer.confirm(
         "\nThis widens what the agent may do. Grant it?", default=False
     ):
@@ -295,11 +296,11 @@ def capability_grant(
     _next_steps(
         [
             (
-                f"agentfox capability list {agent}",
+                f"agentfox permit list {agent}",
                 "see everything this agent may now do",
             ),
             (
-                f"agentfox capability revoke {capability_id}",
+                f"agentfox permit revoke {capability_id}",
                 "withdraw this grant again",
             ),
             ("agentfox doctor", "re-grade least privilege for this deployment"),
@@ -353,7 +354,7 @@ def capability_list(
         console.print(f"[yellow]no capability grants{scope}[/]")
         console.print(
             "  Every tool call is refused by default. Grant one with "
-            "`agentfox capability grant <agent> <tool>`."
+            "`agentfox permit grant <agent> <tool>`."
         )
         return
 
@@ -400,7 +401,7 @@ def capability_list(
 @capability_app.command("revoke")
 def capability_revoke(
     capability_id: str = typer.Argument(
-        ..., help="Grant id from `agentfox capability list`, e.g. cap_01h...."
+        ..., help="Grant id from `agentfox permit list`, e.g. cap_01h...."
     ),
     yes: bool = typer.Option(
         False, "--yes", "-y", help="Skip the confirmation prompt (for scripts and CI)."
@@ -446,6 +447,30 @@ def capability_revoke(
     console.print(f"\n[green]revoked[/] {tool_key} from [bold]{name}[/]")
     console.print(
         "  [dim]The grant is gone from the live set; the audit chain keeps what it was.[/]"
+    )
+
+
+def _explain_taint_ceiling(tool: str, max_taint: str) -> None:
+    """Say what a provenance ceiling above `user` does and, as plainly, what it does not.
+
+    Within the ceiling, the shipped taint rules (`taint.irreversible_tool` and its
+    siblings) defer to the grant: it is the more specific declaration. Composed
+    escalation does not, and a grant that looked like it allowed a flow which is then
+    blocked anyway is exactly the surprise this warning exists to remove.
+    """
+    from ..guardrails.base import taint_rank
+
+    if taint_rank(max_taint) <= taint_rank("user"):
+        return
+    console.print(
+        f"  [dim]taint rules defer to this grant for arguments up to '{max_taint}'; "
+        "provenance beyond it is still escalated.[/]"
+    )
+    console.print(
+        "  [yellow]note[/] composition.escalation still applies: a value copied out of a "
+        f"lower-impact tool's output into {tool} is blocked whatever this grant says. "
+        "If that flow is intended, declare the producing tool's output trusted: "
+        "`agentfox declare tool <tool> --impact read --output-trust trusted`."
     )
 
 

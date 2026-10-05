@@ -23,9 +23,11 @@ adversarial robustness — most recently [*The Attacker Moves Second*](https://a
 over 90% attack success against twelve defences — says a determined attacker eventually gets past
 content detection. We agree, and we publish our own adaptive-attack success rate (§4.0). What we claim
 instead is that the *blast radius is bounded when that happens*, and we measure it by deleting the
-detection layer entirely: **8/8 attack scenarios contained with zero detector signal**, and **42/42
-attacker calls that act contained across AgentDojo's 617 ground-truth calls, with 552/552 legitimate
-calls still allowed**. No competitor surveyed publishes a detector-disabled containment number at all.
+detection layer entirely: **8/8 attack scenarios contained with zero detector signal**, and on
+AgentDojo, with argument provenance inferred from the real tool outputs, **588/588 attack pairs
+contained** at session-level taint. That containment has a utility cost we also publish: only 24/97
+benign AgentDojo tasks run without escalation at that setting (§4.0). No competitor surveyed
+publishes a detector-disabled containment number at all.
 
 The seven capabilities below are how that holds up, each real, tested, and — as far as our own
 competitive research could find — not offered together by any single competitor:
@@ -55,15 +57,30 @@ condition every adversarial-robustness paper says to expect.
 [`benchmarks/containment/`](../benchmarks/containment/README.md) runs eight structurally different attack
 scenarios with `AGENTFOX_ENABLED_DETECTORS=[]` — a total bypass, verified per scenario by re-probing the
 payload and recording zero entities: **8/8 contained, 4/4 legitimate controls still allowed**.
-[`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) replays
-[AgentDojo](https://github.com/ethz-spylab/agentdojo)'s own hand-authored ground truth — 65 calls a
-compromised agent makes, 552 a correctly-behaving one makes — through the real `guard_tool_call` path:
-**42/42 attacker calls that act contained, 552/552 legitimate calls allowed**, with results *identical*
-whether detectors are on or off.
+[`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) executes
+[AgentDojo](https://github.com/ethz-spylab/agentdojo)'s ground truth for all 97 user tasks and 949
+attack pairs (v1.2.2), records the real tool outputs, and replays every call through the real
+`guard_tool_call` path with provenance **inferred** by the shipped tracker. Over the 588 attack pairs
+whose injection issues a write or irreversible call:
 
-**The honest limits, which belong next to the number.** Attacker calls that only *read* are contained
-20/23: a compromised agent asked to read something it legitimately may read is indistinguishable from
-one doing its job, and the harm in that shape arrives at the exfiltration step, which is contained.
+| Provenance | Benign tasks run without escalation | Attack pairs contained |
+|---|---|---|
+| Session-level taint (shipped default) | 24/97 (24.7% [17.2, 34.2]) | 588/588 |
+| Argument-level taint | 37/97 | 527/588 |
+| Argument-level taint, read-only tools exempt | 62/97 | 527/588 |
+| Taken from the benchmark's labels (upper bound) | 97/97 | 588/588 |
+| None (grants and impact tiers only) | 97/97 | 0/588 |
+
+An earlier version of this benchmark reported every attacker call that acts as contained (42 of the
+42) and every legitimate call as allowed (552 of the 552). That run took provenance from the benchmark's labels and counted each task once per
+registered AgentDojo version (339 benign calls are unique, not 552), so it measured the policy given
+perfect provenance, not the tracker.
+
+**The honest limits, which belong next to the number.** Inferred provenance misses two kinds of
+attacker value: identifiers shorter than six characters, which the tracker never matches, and
+attacker text embedded inside a longer argument, which never appears verbatim in a tool output. And
+59% of AgentDojo's legitimate write and irreversible calls copy a value out of a tool output, so
+provenance alone cannot tell them from an attack; they are escalated.
 Containment is also exactly as good as the declarations behind it — impact tiers, grants, constraints,
 triggers and scopes are operator-declared, and an irreversible tool recorded as `read` is one a tainted
 argument can reach. `agentfox doctor` now grades that readiness directly.
@@ -72,7 +89,7 @@ argument can reach. `agentfox doctor` now grades that readiness directly.
 
 **What it does.** A three-layer detector — fast regex heuristics, a fine-tuned classifier ensemble, and local embedding-similarity matching against a curated attack corpus — screens every input, output, tool argument, tool result, and retrieved chunk for injection/jailbreak attempts.
 
-**Benchmarked — yes, most extensively of anything in this document.** Primary dataset [`deepset/prompt-injections`](https://huggingface.co/datasets/deepset/prompt-injections) (662 examples): held-out recall went from **0% → 66.7%** across four rounds of measured changes, at **100% precision held throughout** — zero false positives at every step. Generalization measured against four further independent, license-clean datasets the detectors were never tuned against — **with the opt-in classifier ensemble, which is not the shipped default** (5,345 examples total: [`spml`](https://huggingface.co/datasets/reshabhs/SPML_Chatbot_Prompt_Injection), [`yanismiraoui`](https://huggingface.co/datasets/yanismiraoui/prompt_injections), [`notinject`](https://huggingface.co/datasets/leolee99/NotInject), [`trustairlab`](https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts)): recall of 85.6% and 98.6% on two of them through the real pipeline (re-measured 2026-09-16), with the honest cost disclosed on the other two (see below). Full methodology and every round: [`benchmarks/REPORT.md`](../benchmarks/REPORT.md).
+**Benchmarked — yes, most extensively of anything in this document.** Primary dataset [`deepset/prompt-injections`](https://huggingface.co/datasets/deepset/prompt-injections) (662 examples): held-out recall went from **0% → 66.7%** across four rounds of measured changes, at **100% precision held throughout** — zero false positives at every step. That 66.7% is the opt-in configuration (heuristic plus the classifier ensemble, which needs `agentfox[classifiers]` and a one-time weights download); the default install runs the heuristic alone, at **26.7%** held-out recall and the same 100% precision. Generalization measured against four further independent, license-clean datasets the detectors were never tuned against — **with the opt-in classifier ensemble, which is not the shipped default** (5,345 examples total: [`spml`](https://huggingface.co/datasets/reshabhs/SPML_Chatbot_Prompt_Injection), [`yanismiraoui`](https://huggingface.co/datasets/yanismiraoui/prompt_injections), [`notinject`](https://huggingface.co/datasets/leolee99/NotInject), [`trustairlab`](https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts)): recall of 85.6% and 98.6% on two of them through the real pipeline (re-measured 2026-09-16), with the honest cost disclosed on the other two (see below). Full methodology and every round: [`benchmarks/REPORT.md`](../benchmarks/REPORT.md).
 
 **Real insight this surfaced, reported honestly:** the classifier model swap that roughly doubled primary-benchmark recall (`protectai/deberta` → `leolee99/PIGuard`) also cut a dangerous over-defense problem by more than two-thirds — the old model flagged 42.2% of a dedicated benign-but-trigger-word-laden stress-test dataset as attacks; PIGuard alone cut that to 11.5%. But adding a secondary-model ensemble backstop to recover generalization recall on `spml`/`yanismiraoui` gave most of that over-defense fix back (false-positive rate rose to 41.3% on the same stress test). We shipped this as a disclosed, opt-out-able trade-off (`prompt_injection_classifier_secondary_model`), not a hidden cost — a deployment chooses which failure mode it fears more.
 
@@ -92,8 +109,8 @@ publish rather than hide, because topline recall on two generalization datasets 
 spurious signal was removed. We report this because
 it is true, because the paper's stronger attacker classes — gradient, reinforcement-learning and human
 red-teaming — are *not* implemented here so the real figure should be assumed higher, and because it is
-the correct context for §4.0: of those bypasses that named a concrete harmful action, **28/28 were still
-contained at the action**. Treat detection as a cost imposed on an attacker, not as a defence.
+the correct context for §4.0: of those bypasses that named a concrete harmful action, **38/38 were still
+contained at the action** (28/28 before the detector fixes). Treat detection as a cost imposed on an attacker, not as a defence.
 
 **Vendor context, not our score:** [Lakera's PINT benchmark](https://github.com/lakeraai/pint-benchmark) reports named-vendor numbers (Lakera Guard 95.2%, AWS Bedrock Guardrails 89.2%, Azure Prompt Shield 89.1%) but its dataset was never public and the repo is now archived — we can't reproduce a PINT score, so we don't claim one. Not directly comparable to our own numbers (different dataset, self-reported); cited only so a reader has market context.
 

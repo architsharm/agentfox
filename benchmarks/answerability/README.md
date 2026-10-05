@@ -23,13 +23,16 @@ uv run python benchmarks/answerability/run_coconot_benchmark.py
 
 Dropped as out of scope: `ambiguous`, `counterfactual`, `false assumption`, `unsolved problem` (437+520+577+568 = 2,102 rows) — none of these are about whether *the system* holds the answer, which is the only thing `answerability.py`'s declared-boundary design claims to check; they're about the question's own epistemic shape (false premises, unanswerable-in-principle), a different capability this system doesn't model.
 
-### Results, all 4,782 rows (post-fix)
+### Results, all 4,782 rows
 
-| Category | Support | Metric | Before → After |
-|---|---|---|---|
-| `future_unknown` | 659 | Recall | 39.0% → **69.0%** |
-| `controversial` | 676 | Recall | 0.74% → **5.62%** |
-| `known` | 3,447 | Over-refusal rate | 0.90% → 0.99% |
+| Category | Support | Metric | Before | After round 1 | Current (`results/kuq_summary.json`) |
+|---|---|---|---|---|---|
+| `future_unknown` | 659 | Recall | 39.0% | 69.0% | **68.4%** |
+| `controversial` | 676 | Recall | 0.74% | 5.62% | **5.77%** |
+| `known` | 3,447 | Over-refusal rate | 0.90% | 0.99% | **0.75%** |
+
+Every fix below was chosen on these same KUQ rows, so the current column is a tuned number, not a
+held-out one. Round 2 explains the two moves after round 1.
 
 Full breakdown, including per-category `question_type()` confusion counts and miss examples: [`results/kuq_summary.json`](results/kuq_summary.json).
 

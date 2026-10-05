@@ -38,7 +38,6 @@ SECTIONS: list[tuple[str, tuple[str, ...]]] = [
             "/api/onboarding",
             "/api/attention",
             "/metrics",
-            "/api/_migrate",
         ),
     ),
     (

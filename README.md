@@ -33,7 +33,7 @@ pip install agentfox
 agentfox init && agentfox demo
 ```
 
-`init` creates a SQLite database and loads 43 controls and three policy packs, in about a second.
+`init` creates a SQLite database and loads 43 controls and four policy packs, in about a second.
 `demo` runs a thirteen-step walkthrough in about five. Both are offline — no API key, no downloaded
 weights, no network egress.
 
@@ -88,9 +88,21 @@ import agentfox
 agentfox.auto()
 ```
 
-Every model call in the process (OpenAI, Anthropic, LiteLLM, LangChain — sync, async, streamed) is
-traced, evaluated against policy and written to the audit log. Nothing else changes, and no model
-call is blocked: `auto()` follows each policy's own mode, and `baseline` starts in observe.
+Every model call in the process (OpenAI chat completions, Anthropic messages, LiteLLM, LangChain —
+sync, async, streamed) is traced, evaluated against policy and written to the audit log: the request
+messages, the response text, and every tool call in the response (OpenAI `tool_calls`, Anthropic
+`tool_use`). Each tool call goes through the same check as `/v1/guard/tool_call` before your code
+can run it, with argument provenance read from the conversation — a value copied out of a
+`role="tool"` message counts as tool output. A tool seen for the first time is registered with an
+impact guessed from its name and marked `inferred` until you confirm it (`agentfox declare list tools`,
+`agentfox declare tool`); `@fox.tool(impact=...)` in code counts as a declaration.
+
+Nothing is blocked by the line itself: `auto()` follows each policy's own mode, `baseline` starts in
+observe, and capability default-deny on tool calls applies once the agent holds its first grant.
+After `agentfox init`, `tool-containment` enforces, so an irreversible tool whose arguments came from
+a tool result raises `agentfox.Blocked` instead of returning the response, and your code never gets
+to run it. `auto(mode="observe")` never raises. Not covered: the OpenAI Responses API, and tools
+your code calls without the model asking.
 
 </details>
 
@@ -99,7 +111,7 @@ call is blocked: `auto()` follows each policy's own mode, and `baseline` starts 
 
 ```bash
 agentfox serve                        # gateway + control-plane API on 127.0.0.1:8080
-agentfox auth issue you@example.com   # mint an API token; shown once
+agentfox admin auth issue you@example.com  # mint an API token; shown once
 ```
 
 Point an existing OpenAI or Anthropic client at `http://localhost:8080/v1` and change nothing else,
@@ -144,7 +156,10 @@ LangGraph's own `interrupt()` — one pause mechanism, not two.
 <details>
 <summary><b>MCP</b></summary>
 
-`agentfox scan mcp` checks MCP tool hygiene before anything runs. At call time the governor compares
+`agentfox scan mcp` reads the servers your MCP config declares (`.mcp.json`, `.cursor/mcp.json`,
+`.claude.json`, `claude_desktop_config.json`, or `--config PATH`) without starting any of them, and
+reports what each can reach, whether it is pinned, and whether a remote one carries auth; give it the
+server's `tools/list` output with `--file` and it checks every tool description too. At call time the governor compares
 the tool's digest against the one in force when the agent was authorised against it — the rug pull, a
 server that passed review on Monday and changed on Thursday, which no scan can catch. An undeclared
 tool becomes a discovery finding rather than an invisible call, and results are evaluated on the
@@ -157,8 +172,8 @@ cannot exceed the ceiling for tool-sourced data.
 <summary><b>Claude Code — three hook points</b></summary>
 
 ```bash
-agentfox hooks daemon                                   # the warm process, once
-agentfox hooks install --agent my-agent --write         # writes .claude/settings.json
+agentfox admin hooks daemon                             # the warm process, once
+agentfox admin hooks install --agent my-agent --write   # writes .claude/settings.json
 ```
 
 Three events, because one event is one surface:
@@ -170,17 +185,21 @@ Three events, because one event is one surface:
 | `PostToolUse` | what the tool returned | **cannot** withdraw the call; tells the model the result is untrusted |
 
 That third row is the one worth reading twice. By the time `PostToolUse` fires the side effect has
-happened, and we say so rather than reporting the event as a gate — `agentfox hooks status` prints
+happened, and we say so rather than reporting the event as a gate — `agentfox admin hooks status` prints
 the same line, per event, with how it was established and against which version. The claims come from
 [`hooks/capability.py`](src/agentfox/hooks/capability.py): `PreToolUse` and `PostToolUse` were probed
 against a live session, `UserPromptSubmit` was read in the shipped bundle, and an event nobody has
 checked has no row at all.
 
 A hook runs in a process the harness creates and destroys per call, so it talks to a warm daemon over
-a private Unix socket: 3.9s cold, about 6ms warm. Turn on the pack built for this job:
+a private Unix socket: 3.9s cold, about 6ms warm. `hooks install --write` also binds the pack built
+for this job, `coding-agent`, to the agent it just installed and to no other — so a support bot in the
+same deployment is never told it is in "a coding session". `agentfox init` does the same for any agent
+already named in `.claude/settings.json`, and skips the pack when there is none. It ships in observe;
+promote it when its decisions look right:
 
 ```bash
-agentfox policy observe coding-agent
+agentfox policy enforce coding-agent
 ```
 
 [`harness/`](harness/) additionally packages the product as Claude Code skills, slash commands,
@@ -214,17 +233,19 @@ were measured with **every detector switched off** — a total bypass, not a sim
 | Evidence | Result |
 |---|---|
 | [Containment under total detector bypass](benchmarks/containment/README.md) | **8/8 attacks contained with zero detector signal**; 4/4 legitimate calls still allowed |
-| [AgentDojo, replayed end to end](benchmarks/agentdojo_e2e/README.md) over 617 ground-truth calls | **42/42 attacker calls that act, contained**; **552/552 legitimate calls allowed** — identical with detectors disabled |
+| [AgentDojo, replayed end to end](benchmarks/agentdojo_e2e/README.md): 97 user tasks and 949 attack pairs, with argument provenance inferred from the real tool outputs | **588/588 attack pairs contained** with session-level taint, but only **24/97 benign tasks (24.7% [17.2, 34.2]) run without escalating to a human**. Per-argument taint: 37/97 benign tasks, 527/588 attack pairs contained. Taking provenance from the benchmark's own labels gives 97/97 and 588/588; that is an upper bound, not a measurement |
 
 Capability grants, argument provenance and declared impact tiers did all of that work. Detection
-contributed nothing, by construction.
+contributed nothing, by construction. The cost is benign utility: when provenance has to be
+inferred rather than read from a label, legitimate actions that copy a value out of a tool output
+look the same as an attack, and they are escalated.
 
 **Optionally, detection gets substantially better.** The judgment tiers are off by default and
 add a model to the decisions where measurement says a model wins — and are forbidden from the ones
 where it loses. With them on, agentfox catches 160/165 of the injection payloads that defeated our
-own pattern detectors, including the encoded ones the
-[adaptive benchmark](benchmarks/adaptive/README.md) attributes nearly all of its 74%
-attack-success figure to, at 94.7% precision against the
+own pattern detectors, including encoded ones (base64, hex, reversal) that a text detector cannot read: the
+[adaptive red team](benchmarks/redteam/README.md) got 74% of its decode-requiring payloads past
+our detectors. It does this at 94.7% precision against the
 [NotInject](benchmarks/data_generalization/README.md) over-defense set. SQL blast-radius analysis
 is byte-for-byte unchanged, because the routing table forbids any model from deciding it.
 [What each tier is worth, and what it costs](benchmarks/judgment/README.md).
@@ -241,7 +262,7 @@ than not appearing at all.
 Which tiers run, and what may leave the machine, is editable in the product — Policies →
 Judgment posture — with the deployment acting as a ceiling the product cannot raise. An admin
 can tighten personal-data handling or turn a hosted tier off; nobody can enable one on a
-deployment whose `NOMETRIA_ALLOW_EGRESS` is false, and attempting it is a refusal with a reason
+deployment whose `AGENTFOX_ALLOW_EGRESS` is false, and attempting it is a refusal with a reason
 rather than a preference that silently does nothing. Every change is recorded with who, why and
 what it was before. [How the two layers relate](docs/jev-capabilities.md).
 
@@ -253,21 +274,25 @@ Detection is the layer we trust least. We publish its numbers rather than omit t
 product is designed so that this layer failing is survivable — containment is measured with every
 detector switched off, and [holds](#what-we-measured). These are the open fronts.
 
-- Held-out injection recall is **66.7%**, at 100% precision, in the default configuration. An
-  [adaptive attacker](benchmarks/adaptive/README.md) that reads our verdict and retries gets
-  **73% of the attacks we catch through within 50 attempts** — though an enabled
-  [judgment tier](benchmarks/judgment/README.md) catches 157 of the 165 payloads that get
+- The default heuristic detector's held-out injection recall is **26.7%**, at 100% precision.
+  The opt-in classifier ensemble reaches **66.7%** at the same precision, but needs
+  `agentfox[classifiers]` and a one-time weights download
+  ([REPORT.md](benchmarks/REPORT.md)). An [adaptive attacker](benchmarks/adaptive/README.md)
+  that reads our verdict and retries gets **73% of the attacks we catch through within 50
+  attempts**, measured against the default stack without the ensemble — though an enabled
+  [judgment tier](benchmarks/judgment/README.md) catches 160 of the 165 payloads that get
   through, at 94.7% precision, at the cost of a network round trip per guarded call.
 - The deterministic answerability classifier abstains on 57/676 contested questions; with a
   judgment tier that becomes 572/676. It costs precision: over-refusal on genuinely answerable
   questions rises from 0.75% to 6.8% across all 3,447 of them. That is the right trade for an abstention boundary and the
   wrong one for a hard block, which is why it is opt-in.
 - Against a real, independently installed `llm-guard` on indirect injection via tool output, it is
-  more precise than us: **81.8% against our 66.7%**, on the same 20 cases — while we catch all 20
-  and it catches 18. The cost is ours: a round-4 ensemble backstop bought recall everywhere and
+  more precise than us: **81.8% against our 66.7%**, on the same 20 cases — while of the 10 attacks
+  among them we catch all 10 and it catches 9. The cost is ours: a round-4 ensemble backstop bought recall everywhere and
   paid for it in false positives everywhere. Narrowing that trade is open work.
-- AgentDojo's read-only attack calls are contained 20/23. A compromised agent asked to read
-  something it legitimately may read is indistinguishable from one doing its job.
+- On AgentDojo, per-argument taint misses 61 of 702 attacker write calls: identifiers shorter than
+  six characters are never matched, and attacker text embedded inside a longer argument is not
+  found. Session-level taint misses none of them and escalates three in four benign tasks.
 - The opt-in classifier ensemble reaches 85.6% and 98.6% recall on two independent datasets, but it
   is **not the shipped default** — the default stack scores far lower on those same two, and on long
   prompts the ensemble mostly times out. Making it fast enough to ship on is open work.
@@ -283,7 +308,7 @@ Written out rather than discovered later. Live per-pillar coverage is computed b
 asserted: [docs/status.md](docs/status.md).
 
 - **It is only as good as your declarations.** A destructive tool declared `read` is not treated as
-  destructive by anything downstream. `agentfox doctor` grades this; `agentfox check` finds the
+  destructive by anything downstream. `agentfox doctor` grades this; `agentfox scan` finds the
   tools you have not declared.
 - **You declare the estate yourself.** No Okta, no DataHub. Principals, grants and source tiers live
   in AgentFox. The seams for those integrations exist; the integrations do not.
@@ -312,44 +337,72 @@ without trusting us or calling our API.
 **Find out what you already have**
 
 ```bash
-agentfox quickscan                     # zero-config first look, nothing leaves this machine
-agentfox check                         # scan a repo: what talks to a model, and what is ungoverned
+agentfox scan --sessions               # zero-config first look, nothing leaves this machine
+agentfox scan                          # scan a repo: tools, MCP servers, the lethal trifecta, ungoverned calls
 agentfox agents list                   # every agent, registered or shadow, and who owns it
-agentfox agents discover               # sweep for shadow agents, drift and identity posture
+agentfox scan runtime                  # sweep for shadow agents, drift and identity posture
 agentfox agents lineage payments-ops   # what one agent reaches: its blast radius
-agentfox scan mcp internal-tools --seed-fixture   # MCP tool hygiene; --file takes a real tools/list
+agentfox scan mcp                      # every MCP server in .mcp.json: reach, pinning, auth; nothing started
+agentfox scan mcp fetch --file tools.json   # one server, plus each tool in its real tools/list
 ```
 
 **Bound what an agent is allowed to do**
 
+Watch, propose, approve. Let the agent run; default deny refuses and records every call. Then:
+
 ```bash
-agentfox tools declare billing.export --impact write   # none | read | write | irreversible
-agentfox capability grant support-triage tickets.close \
+agentfox policy proposals from-traffic --agent support-triage   # declarations + grants, from its calls
+agentfox policy proposals approve <id> --actor you@example.com --note "matches its job"
+agentfox policy proposals apply <id> --actor you@example.com    # rollback <id> undoes it
+```
+
+Each proposal reads like "Let support-triage call tickets.close with priority one of low, normal
+(seen 14 times)". Limits and the provenance ceiling come only from clean calls: ones nothing flagged and
+that carried no untrusted content, or that a person approved in the approval queue. An injected
+call is held like any untrusted one, so an attacker's amount or recipient never becomes a limit. Nothing is applied without a person, and tool
+declarations, which are org-wide, need two. Or write them by hand:
+
+```bash
+agentfox declare tool billing.export --impact write    # none | read | write | irreversible
+agentfox declare tool crm.lookup --impact read --output-trust trusted   # its output is yours
+agentfox permit grant support-triage tickets.close \
     --limit priority:in=low,normal --max-taint user
-agentfox capability list support-triage                # anything not listed is refused
-agentfox capability revoke <capability-id>
+agentfox permit list support-triage                    # anything not listed is refused
+agentfox permit revoke <capability-id>
 ```
 
 `--max-taint` is the worst provenance an argument may carry and still go through without an
-approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. `capability grant` is the
-only command that widens least privilege, so it confirms before it writes and records the result in
-the audit chain. `--yes` skips the prompt in CI.
+approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. Within it, the taint
+rules defer to the grant; `composition.escalation` (one tool's output fed into a higher-impact tool)
+does not, unless the producing tool's output is declared trusted. `capability grant` is the only
+command that widens least privilege, so it confirms before it writes and records the result in the
+audit chain. `--yes` skips the prompt in CI. Whether provenance is read per run or per argument is
+one setting, `taint_scope` (`session`, the default and what every number here was measured under,
+or `argument`); see [Getting started](docs/getting-started.md#5b-let-it-propose-the-grants-learned-permissions).
 
 **See what happened**
 
 ```bash
+agentfox report                        # one page for whoever signs off: what ran, what was
+                                       # contained and why, what observe mode would have stopped
 agentfox findings                      # what the platform found; --severity high to narrow
 agentfox doctor                        # is the runtime configured the way you think it is?
-agentfox audit verify                  # re-derive the chain; exits 1 if broken
-agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-30
+agentfox report verify                 # re-derive the chain; exits 1 if broken
+agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30
 ```
+
+A refused tool call is a finding in its own right, titled by what refused it — `support-bot tried
+to send_email with data that came from a web page (contained)` — and one a rule in observe mode
+only recorded reads `would have been contained`. The evidence zip opens on the same one-page
+`SUMMARY.md` (and `.html`) that `agentfox report` prints; its framework-coverage section is a
+draft mapping and says so in its heading.
 
 **Test before you trust**
 
 ```bash
-agentfox eval run support-quality      # score a suite
-agentfox eval gate support-quality     # CI regression gate; exits 1 on regression
-agentfox redteam run support-triage    # probe the deployed configuration
+agentfox test run support-quality      # score a suite
+agentfox test gate support-quality     # CI regression gate; exits 1 on regression
+agentfox test redteam support-triage   # probe the deployed configuration
 agentfox policy lint                   # exits 1 on critical or high findings
 agentfox policy simulate --file candidate.yaml   # replay recorded traffic against a candidate
 ```
@@ -358,10 +411,10 @@ agentfox policy simulate --file candidate.yaml   # replay recorded traffic again
 
 ```bash
 agentfox serve                         # gateway + control-plane API
-agentfox auth issue you@example.com    # mint an API token
-agentfox db upgrade                    # apply migrations
+agentfox admin auth issue you@example.com  # mint an API token
+agentfox admin db upgrade              # apply migrations
 agentfox policy effective --agent support-triage  # what is in force, and where each rule came from
-agentfox compliance status --framework eu-ai-act
+agentfox report status --framework eu-ai-act
 agentfox agents quarantine support-triage --reason "investigating"   # kill switch, reversible
 agentfox agents resume support-triage
 ```
@@ -466,10 +519,15 @@ promise is that it does not phone home.
 ## Self-hosting
 
 Everything runs on your own infrastructure. There is no licence check, no phone-home, and no
-default egress: a fresh install ships with `NOMETRIA_ALLOW_EGRESS=false` and the `echo` provider,
+default egress: a fresh install ships with `AGENTFOX_ALLOW_EGRESS=false` and the `echo` provider,
 so it runs end to end with no model and no API key. Point it at a model when you want one.
 
-Set `NOMETRIA_CONSOLE_URL` to wherever your dashboard is reachable and every governed response
+Settings are `AGENTFOX_*` environment variables. The pre-rename `NOMETRIA_*` names still work, so
+an existing deployment does not need to change; where both are set, `AGENTFOX_*` wins. The full
+list, including the few still read only under the old name, is
+[harness/reference/config.md](harness/reference/config.md).
+
+Set `AGENTFOX_CONSOLE_URL` to wherever your dashboard is reachable and every governed response
 carries an `explain_url` — and an `X-Nometria-Explain` header — pointing at the decision it
 describes, so a block in a log is one click from the reason for it. It is left empty by default
 and never inferred from the request: behind a proxy the `Host` header is whatever the proxy sent,
@@ -495,19 +553,21 @@ It pulls prebuilt images rather than building them —
 [`ghcr.io/architsharm/agentfox/gateway`](https://github.com/architsharm/agentfox/pkgs/container/agentfox%2Fgateway)
 and
 [`ghcr.io/architsharm/agentfox/dashboard`](https://github.com/architsharm/agentfox/pkgs/container/agentfox%2Fdashboard),
-published on every release and tracked at `:edge` on `main`. `docker compose build` builds from
-source instead, which takes a while: the gateway image pre-fetches 1–2GB of detector weights so the
-running container never needs network access for them.
+Compose pulls `:latest`, which moves on each `v*` release tag; `:edge` tracks `main` if you want
+unreleased changes. `docker compose build` builds from source instead, which takes a while: the
+gateway image pre-fetches 1–2GB of permissive-licence detector weights so the running container
+never needs network access for them. The licence-gated Llama Guard tier is off by default and is
+never in the published image; the compose file's header has the opt-in steps.
 
 [`deploy/docker-compose.yml`](deploy/docker-compose.yml) is commented line by line, including which
-values you must change before a real deployment — `NOMETRIA_AUDIT_SIGNING_KEY` above all, since the
+values you must change before a real deployment — `AGENTFOX_AUDIT_SIGNING_KEY` above all, since the
 audit chain is only as trustworthy as the key that signs it.
 
 **3. Python, no containers** — the gateway is an ordinary ASGI app:
 
 ```bash
 pip install "agentfox[postgres] @ git+https://github.com/architsharm/agentfox.git"
-agentfox init                      # SQLite by default; set NOMETRIA_DATABASE_URL for Postgres
+agentfox init                      # SQLite by default; set AGENTFOX_DATABASE_URL for Postgres
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080
 ```
 

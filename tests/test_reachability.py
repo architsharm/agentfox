@@ -373,9 +373,15 @@ def test_turn_capture_never_breaks_the_call(isolated_db, fake_openai, monkeypatc
 
 def test_each_protective_control_has_a_command(isolated_db):
     """The audit counted two of fifteen pillars usable without expert configuration."""
+    # The controls are declared under `declare` and operated under `admin` since the
+    # CLI consolidation; the old top-level groups still run, hidden.
     help_text = flat(runner.invoke(app, ["--help"]).output)
-    for verb in ("boundary", "sources", "escalation", "auth"):
+    for verb in ("declare", "permit", "admin"):
         assert verb in help_text, verb
+    declare_help = flat(runner.invoke(app, ["declare", "--help"]).output)
+    for verb in ("boundary", "source", "escalation", "principal"):
+        assert verb in declare_help, verb
+    assert "auth" in flat(runner.invoke(app, ["admin", "--help"]).output)
 
 
 def test_the_duplicate_id_lint_actually_fires(isolated_db):

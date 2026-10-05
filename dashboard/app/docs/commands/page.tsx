@@ -21,27 +21,30 @@ export default function Page() {
 
       <h2>Find out what you already have</h2>
       <pre>
-        <code>{`agentfox quickscan
-agentfox check
+        <code>{`agentfox scan --sessions
+agentfox scan
 agentfox agents list
-agentfox agents discover
+agentfox scan runtime
 agentfox agents lineage payments-ops
-agentfox scan mcp internal-tools --seed-fixture`}</code>
+agentfox scan mcp`}</code>
       </pre>
       <p>
         <code>quickscan</code> is the zero-config first look. Nothing leaves the machine.{" "}
-        <code>check</code> scans a repository for what talks to a model, and what of that
-        is ungoverned. <code>--file</code> on <code>scan mcp</code> takes a real{" "}
-        <code>tools/list</code>. Detail is on <Link href="/docs/discovery">Discovery</Link>.
+        <code>check</code> scans a repository for what talks to a model, which tools and
+        MCP servers it can reach, and whether any agent has the lethal trifecta: private
+        data, untrusted content and a way to send data out. <code>scan mcp</code> reads
+        the servers in your <code>.mcp.json</code> without starting them;{" "}
+        <code>--file</code> adds a real <code>tools/list</code>. Detail is on{" "}
+        <Link href="/docs/discovery">Discovery</Link>.
       </p>
 
       <h2>Bound what an agent is allowed to do</h2>
       <pre>
-        <code>{`agentfox tools declare billing.export --impact write
-agentfox capability grant support-triage tickets.close \\
+        <code>{`agentfox declare tool billing.export --impact write
+agentfox permit grant support-triage tickets.close \\
     --limit priority:in=low,normal --max-taint user
-agentfox capability list support-triage
-agentfox capability revoke <capability-id>`}</code>
+agentfox permit list support-triage
+agentfox permit revoke <capability-id>`}</code>
       </pre>
       <p>
         Impact is <code>none</code>, <code>read</code>, <code>write</code>, or{" "}
@@ -59,8 +62,8 @@ agentfox capability revoke <capability-id>`}</code>
         <code>{`agentfox findings
 agentfox findings --severity high
 agentfox doctor
-agentfox audit verify
-agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-30`}</code>
+agentfox report verify
+agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30`}</code>
       </pre>
       <p>
         <code>audit verify</code> re-derives the chain and exits 1 if it is broken.
@@ -69,9 +72,9 @@ agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-3
 
       <h2>Test before you trust</h2>
       <pre>
-        <code>{`agentfox eval run support-quality
-agentfox eval gate support-quality
-agentfox redteam run support-triage
+        <code>{`agentfox test run support-quality
+agentfox test gate support-quality
+agentfox test redteam support-triage
 agentfox policy lint
 agentfox policy simulate --file candidate.yaml`}</code>
       </pre>
@@ -84,13 +87,13 @@ agentfox policy simulate --file candidate.yaml`}</code>
       <h2>Run it</h2>
       <pre>
         <code>{`agentfox serve
-agentfox auth issue you@example.com
-agentfox db upgrade
+agentfox admin auth issue you@example.com
+agentfox admin db upgrade
 agentfox policy effective --agent support-triage
 agentfox policy list
 agentfox policy enforce baseline
 agentfox policy observe baseline
-agentfox compliance status --framework eu-ai-act
+agentfox report status --framework eu-ai-act
 agentfox agents quarantine support-triage --reason "investigating"
 agentfox agents resume support-triage`}</code>
       </pre>

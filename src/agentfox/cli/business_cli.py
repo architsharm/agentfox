@@ -1,8 +1,8 @@
 """Authoring and inspecting business guardrails from the command line.
 
 The catalogue commands exist for a specific workflow: someone arrives with a policy
-document and has to turn prose into enforcement. `agentfox guardrails suggest` does the
-deterministic half of that mapping and `agentfox guardrails catalogue` shows what can
+document and has to turn prose into enforcement. `agentfox policy rules suggest` does the
+deterministic half of that mapping and `agentfox policy catalogue` shows what can
 be expressed at all, which is the question nobody could answer before.
 
 `compile` goes the rest of the way: it reads the document and writes the rules, then
@@ -88,7 +88,7 @@ def rules_show(key: str | None = typer.Argument(None, help="Rule key; omit for a
         ladders = [lad for lad in all_ladders(session) if key is None or lad.key == key]
 
     if not ladders:
-        console.print("[dim]No business rules. Author one with `agentfox guardrails apply`.[/]")
+        console.print("[dim]No business rules. Author one with `agentfox policy rules apply`.[/]")
         return
     for ladder in ladders:
         console.print(
@@ -203,7 +203,7 @@ def catalogue(
     console.print(table)
     console.print(
         f"\n  [dim]{len(kinds)} kind(s). "
-        "`agentfox guardrails explain <kind>` for parameters and an example.[/]"
+        "`agentfox policy rules explain <kind>` for parameters and an example.[/]"
     )
 
 
@@ -260,7 +260,7 @@ def suggest_cmd(
     if not matches:
         console.print("[yellow]No guardrail kind matched that wording.[/]")
         console.print(
-            "  [dim]Browse them with `agentfox guardrails catalogue`. "
+            "  [dim]Browse them with `agentfox policy catalogue`. "
             "A policy we cannot express is worth knowing about early.[/]"
         )
         return
@@ -268,7 +268,7 @@ def suggest_cmd(
     for kind, score in matches:
         console.print(f"  [bold cyan]{kind.id}[/]  [dim]{score:.2f} · {kind.decides}[/]")
     console.print(
-        f"\n  [dim]`agentfox guardrails explain {matches[0][0].id}` "
+        f"\n  [dim]`agentfox policy rules explain {matches[0][0].id}` "
         "for parameters and an example.[/]"
     )
 
@@ -365,8 +365,8 @@ def compile_cmd(
         skipped = len(result.rules) - len(ladders)
         console.print(
             f"\n[green]Saved {len(ladders)} ladder(s) in observe mode.[/green] "
-            "Run [bold]agentfox guardrails check[/bold], then promote with "
-            "[bold]agentfox guardrails apply <ladder.yaml> --mode enforce[/bold]."
+            "Run [bold]agentfox policy rules check[/bold], then promote with "
+            "[bold]agentfox policy rules apply <ladder.yaml> --mode enforce[/bold]."
         )
         if skipped:
             console.print(

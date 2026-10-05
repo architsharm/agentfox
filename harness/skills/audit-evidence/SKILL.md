@@ -15,7 +15,7 @@ description: Prepares audit-ready proof from AgentFox. It verifies the tamper-ev
 ## 1. Is the record intact?
 
 ```bash
-agentfox audit verify
+agentfox report verify
 ```
 
 - **Exit 1:** the chain is broken, and the output names the first bad entry. **Stop.** This
@@ -23,7 +23,7 @@ agentfox audit verify
 - **Exit 0:** write a signed checkpoint so later tampering is detectable back to this point:
 
 ```bash
-agentfox audit checkpoint
+agentfox admin checkpoint
 ```
 
 In production, `NOMETRIA_AUDIT_SIGNING_KEY` must not be the dev default. Check this with
@@ -32,9 +32,9 @@ In production, `NOMETRIA_AUDIT_SIGNING_KEY` must not be the dev default. Check t
 ## 2. Bring control status up to date
 
 ```bash
-agentfox compliance validate
-agentfox compliance sync
-agentfox compliance compute --window-days 90
+agentfox admin catalog validate
+agentfox admin catalog sync
+agentfox admin catalog compute --window-days 90
 ```
 
 Pick the window to match the audit period. `validate` exits 1 if the catalog itself is
@@ -43,10 +43,10 @@ inconsistent; fix that before quoting any posture.
 ## 3. Posture for the framework in question
 
 ```bash
-agentfox compliance frameworks
-agentfox compliance status --framework <eu-ai-act|nist-ai-rmf|iso-42001|soc2|owasp-llm|owasp-agentic|mitre-atlas>
-agentfox compliance risk
-agentfox compliance obligations
+agentfox report frameworks
+agentfox report status --framework <eu-ai-act|nist-ai-rmf|iso-42001|soc2|owasp-llm|owasp-agentic|mitre-atlas>
+agentfox report risk
+agentfox report obligations
 ```
 
 Summarise four things:
@@ -56,7 +56,9 @@ Summarise four things:
 - which agents are high-risk in the risk register
 - **what the mapping does not cover**, from Appendix B §B.4 (`docs/appendix-b-control-catalog.md`)
 
-For executives, run `compliance board`.
+For executives, run `compliance board`, or `agentfox report --since 90d --format html --out
+summary.html` for a one-page plain-language summary. Both compute control status themselves if
+step 2 was skipped.
 
 ## 3b. Offer the path out of DRAFT
 
@@ -64,14 +66,14 @@ Every mapping ships `DRAFT — UNVERIFIED / NOT LEGAL ADVICE`, and an auditor wi
 There is now a reviewable artefact to hand a qualified reviewer, one row per decision:
 
 ```bash
-agentfox compliance review-packet --framework eu-ai-act --out review-packet.md
+agentfox report review-packet --framework eu-ai-act --out review-packet.md
 ```
 
 When a named, accountable human signs off, record it. This is an attestation by that person,
 not something you decide on their behalf:
 
 ```bash
-agentfox compliance review NOM-IAM-03 --framework eu-ai-act --reviewer "<their name>"
+agentfox report signoff NOM-IAM-03 --framework eu-ai-act --reviewer "<their name>"
 ```
 
 Never run the review command on your own judgement. Offer the packet, and say who has to sign it.
@@ -79,14 +81,16 @@ Never run the review command on your own judgement. Offer the packet, and say wh
 ## 4. Export the package
 
 ```bash
-agentfox evidence export --agent <slug> --since-days 90 --requested-by "<user's name>"
+agentfox report evidence --agent <slug> --since-days 90 --requested-by "<user's name>"
 ```
 
 - Repeat `--agent` or `--control` to scope the export. Leave them out for everything.
 - For a fixed audit period, give the dates instead of a window:
-  `agentfox evidence export --from 2026-01-01 --to 2026-03-31`. An end date given as
+  `agentfox report evidence --from 2026-01-01 --to 2026-03-31`. An end date given as
   `YYYY-MM-DD` covers that whole day.
-- The zip lands in `NOMETRIA_EVIDENCE_DIR` (default `var/evidence/`). Tell the user the path.
+- The zip lands in `AGENTFOX_EVIDENCE_DIR` (default `var/evidence/`). Tell the user the path.
+- It opens on `SUMMARY.md` / `SUMMARY.html`, the plain-language page for the same scope. Point
+  the auditor there first; the JSON files are what it is built from.
 
 ## 5. Prove the package stands on its own
 
@@ -96,7 +100,8 @@ Unzip into a temp directory and run the bundled verifier. It needs nothing but P
 python verify_chain.py            # exit 0 = intact, 1 = tampered
 ```
 
-With `NOMETRIA_AUDIT_KEY` set, it also checks checkpoint signatures. Tell the auditor they
+With `AGENTFOX_AUDIT_KEY` (or the older `NOMETRIA_AUDIT_KEY`) set, it also checks checkpoint
+signatures. Tell the auditor they
 can run it themselves, because that's the point of it.
 
 ## 6. Hand-off note

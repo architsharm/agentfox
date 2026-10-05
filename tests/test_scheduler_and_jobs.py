@@ -426,7 +426,8 @@ def _seed_online_scores(agent: str):
                 )
 
 
-def test_get_drift_writes_nothing_and_post_records_it(client):
+def test_get_drift_writes_nothing(client):
+    """Recording is the scheduled drift.check job (test below), not a page view."""
     _seed_online_scores("support-triage")
     from agentfox.db import session_scope
 
@@ -441,13 +442,6 @@ def test_get_drift_writes_nothing_and_post_records_it(client):
         assert got.status_code == 200
         assert got.json()["drifted"] is True
     assert counts() == before, "viewing drift must not write a window or a finding"
-
-    posted = client.post("/api/eval/drift", json={"agent": "support-triage"}, headers=headers)
-    assert posted.status_code == 200
-    assert posted.json()["recorded"] is True
-    after = counts()
-    assert after[0] == before[0] + 1
-    assert after[1] == before[1] + 1
 
 
 def test_drift_check_job_persists_drift(session):

@@ -14,22 +14,22 @@ const FINDS = [
   {
     what: "Agents",
     how: "Committed code",
-    why: "Model clients and agent frameworks in committed code, with the file and line.",
+    why: "Model clients and frameworks, with the file and line.",
   },
   {
     what: "Shadow agents",
     how: "A laptop session",
-    why: "Local coding-assistant session state — the agent someone is using today that was never committed.",
+    why: "A coding session that was never committed.",
   },
   {
     what: "MCP servers and tools",
     how: "A fingerprint of the tools",
-    why: "Recorded with a digest, which is the only thing that makes a later change detectable.",
+    why: "Recorded with a digest, so a later change shows up.",
   },
   {
     what: "Skills",
     how: "included in the repo scan",
-    why: "Instructions the model will follow, read for planted directives and shell fences.",
+    why: "Instructions the model will follow, including the parts nobody proofreads.",
   },
 ] as const;
 
@@ -37,19 +37,15 @@ export default function Page() {
   return (
     <CapabilityPage
       kicker="AI-SPM"
-      title={["Every agent, tool,", "and MCP server"]}
-      lede="In your repositories, and on laptops where they were never committed. If nobody owns one, it is listed."
+      title={["Agents, tools and", "MCP servers you run"]}
+      lede="In your repositories, your configs, and sessions on this machine. Cloud accounts are not scanned yet. If nobody owns one, it is listed."
       docs="/docs/discovery"
       challenge={
-        <p>
-          Agents get built quickly and rarely get written down. By the time someone
-          asks what is running, the answer is spread across a few repos and
-          somebody&rsquo;s laptop.
-        </p>
+        <p>Most of them were never written down.</p>
       }
       feature={{
-        title: "Four kinds of thing, four ways of finding them",
-        lede: "Each is found a different way.",
+        title: "Four kinds of thing",
+        lede: "Each one is found a different way.",
         body: (
           <div className="find-grid mk-stagger">
             {FINDS.map((f) => (
@@ -64,66 +60,23 @@ export default function Page() {
       steps={[
         {
           title: "Read the code without running it",
-          body: (
-            <p>
-              Point it at a repository and it reports every model client, tool call and
-              agent framework it can find, with the file and line. Static analysis, so a
-              scan costs nothing and cannot have side effects.
-            </p>
-          ),
+          body: <p>It reports what it finds. It does not import the project, or send it anywhere.</p>,
         },
         {
-          title: "Find what is actually running",
-          body: (
-            <p>
-              Committed code is a poor proxy for live behaviour. Local coding-assistant
-              session state is a second signal, and it catches the agent somebody is
-              using today that was never committed anywhere.
-            </p>
-          ),
+          title: "Then look at what is actually running",
+          body: <p>Session state on the machine catches the agent that never landed in git.</p>,
         },
         {
-          title: "Snapshot the tool servers",
-          body: (
-            <p>
-              Every MCP server&rsquo;s tools are recorded with a digest, which is what
-              makes a later change detectable. Hygiene problems in the descriptions are
-              raised at the same time.
-            </p>
-          ),
-        },
-        {
-          title: "Read the skills, including the parts nobody proofreads",
-          body: (
-            <p>
-              A skill file is instructions the model will follow. They are parsed for
-              planted directives and shell fences — and frontmatter that will not parse
-              is reported and kept, not silently discarded, because discarding it is how
-              a poisoned skill scans clean.
-            </p>
-          ),
-        },
-        {
-          title: "Attach an owner, or raise a finding",
-          body: (
-            <p>
-              Every agent in the registry has a state — active, quarantined or killed —
-              and an owner. An agent with no owner is a reportable finding rather than a
-              row in a table, because the first question after an incident is who
-              operates this.
-            </p>
-          ),
+          title: "An agent with no owner is a finding",
+          body: <p>After an incident, the first question is who operates it.</p>,
         },
       ]}
       gaps={{
         title: "What discovery does not do",
         body: (
           <p>
-            It reads repositories and local session state. It does not sweep employee
-            laptops through an EDR or MDM, so an agent on a machine nobody points it at
-            stays invisible — that is a distribution gap, not a detection one. Static
-            analysis also cannot see an agent assembled at runtime from configuration it
-            has never been shown.
+            It only sees the repositories and machines you point it at. An agent built
+            at runtime from configuration it has never been shown stays invisible.
           </p>
         ) }}
       related={["/grants", "/mcp", "/hooks"]}

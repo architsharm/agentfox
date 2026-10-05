@@ -1,38 +1,23 @@
 import { NextRequest } from "next/server";
 import { proxyCustomBody } from "@/lib/proxy";
+import { connectionBody } from "@/lib/sourceConnection";
 
 /**
- * Unlike the other source-editing forms, this one's fields don't map 1:1 onto
- * the request body — `config` is nested, and which fields exist depends on
- * `kind` (database vs api). That's why this isn't just proxyFormPost.
+ * Connect (or reconnect) an already-registered source. Kept separate from
+ * sources/add on purpose: add re-registers the key first, and registration is a
+ * full overwrite (tier, owner, domain, freshness), so routing a reconnect through
+ * it would reset the source's metadata.
  */
 export async function POST(req: NextRequest) {
   const form = await req.formData();
-  const str = (name: string) => String(form.get(name) || "").trim();
-  const kind = str("kind");
-  const key = str("key");
-
-  const config: Record<string, unknown> =
-    kind === "database"
-      ? {
-          dialect: str("dialect") || "postgresql",
-          host: str("host") || undefined,
-          port: str("port") ? Number(str("port")) : undefined,
-          database: str("database") || undefined,
-          username: str("username") || undefined,
-          check_table: str("check_table") || undefined,
-        }
-      : {
-          base_url: str("base_url"),
-          auth_header: str("auth_header") || "Authorization",
-          auth_prefix: str("auth_prefix") || "Bearer ",
-        };
-
-  const body: Record<string, unknown> = { key, kind, config };
-  const credential = str("credential");
-  if (credential) body.credential = credential;
-
-  return proxyCustomBody(req, "POST", "/api/sources/connections", "/app/sources", body, {
-    successNotice: `${key}: connected (${kind})`,
-  });
+  const key = String(form.get("key") || "").trim();
+  const kind = String(form.get("kind") || "").trim();
+  return proxyCustomBody(
+    req,
+    "POST",
+    "/api/sources/connections",
+    "/app/sources",
+    connectionBody(form, key, kind),
+    { successNotice: `${key}: connected (${kind})` },
+  );
 }

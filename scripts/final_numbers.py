@@ -60,8 +60,25 @@ def tally(rows: list[tuple[bool, bool | None]]) -> dict:
     }
 
 
+#: Every printed row, formatted exactly as printed, so documents can bind to it
+#: (benchmarks/claims.yaml) instead of retyping it. Written to final_numbers.json.
+ROWS: dict[str, dict[str, str]] = {}
+
+
 def line(label: str, s: dict, cost: str) -> None:
     esc = f"{100 * s['esc'] / s['n']:.0f}%" if s["esc"] else "-"
+    ROWS[label.strip()] = {
+        "n": f"{s['n']:,}",
+        "trivial": f"{s['base']:.1f}",
+        "acc": f"{s['acc']:.1f}",
+        "prec": f"{s['prec']:.1f}",
+        "rec": f"{s['rec']:.1f}",
+        "f1": f"{s['f1']:.1f}",
+        "breach": f"{s['breach']:,}",
+        "fblock": f"{s['fblock']:,}",
+        "esc": esc,
+        "cost_per_1k": cost,
+    }
     print(
         f"  {label:34} {s['n']:>8,} {s['base']:>6.1f}% {s['acc']:>7.1f}% "
         f"{s['prec']:>8.1f}% {s['rec']:>7.1f}% {s['f1']:>6.1f} "
@@ -287,6 +304,7 @@ def main() -> int:
             f"  {k:16} {s['n']:>5} {s['acc']:>7.1f}% {s['prec']:>8.1f}% "
             f"{s['rec']:>7.1f}% {s['f1']:>7.1f}"
         )
+    (HERE / "final_numbers.json").write_text(json.dumps(ROWS, indent=2) + "\n")
     return 0
 
 

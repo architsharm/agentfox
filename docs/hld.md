@@ -189,7 +189,7 @@ Three ways to adopt, explicitly designed to be additive and to meet a team where
 
 | Surface | How it's used | What it gives you | Cost to adopt |
 |---|---|---|---|
-| **SDK / `agentfox.auto()`** | `import agentfox; agentfox.auto()` — detects installed frameworks from `sys.modules` (LangGraph, LangChain, LlamaIndex, CrewAI, AutoGen, FastAPI, Flask, Django, MCP, Ragas, LiteLLM) and monkey-patches the OpenAI, Anthropic, LiteLLM, and LangChain `BaseChatModel` call sites | Every model call traced, evaluated, audited — no code changes beyond the one import | One line |
+| **SDK / `agentfox.auto()`** | `import agentfox; agentfox.auto()` — detects installed frameworks from `sys.modules` (LangGraph, LangChain, LlamaIndex, CrewAI, AutoGen, FastAPI, Flask, Django, MCP, Ragas, LiteLLM) and monkey-patches the OpenAI, Anthropic, LiteLLM, and LangChain `BaseChatModel` call sites | Every model call traced, evaluated, audited, and every tool call in a response authorised before the caller runs it — no code changes beyond the one import | One line |
 | **LangGraph decorators** (`AgentFoxGuard`) | `guard.model_node(...)`, `guard.retrieval_node(...)`, `guard.tool_node(...)` wrap existing graph nodes | Same enforcement, plus tool-call gating *before* the wrapped function body runs, and indirect-injection scanning on retrieval output specifically | Named **the primary adoption path** — 11/11 surveyed senior AI engineers use LangGraph |
 | **Inline gateway proxy** | Point an OpenAI/Anthropic client's `base_url` at the gateway's `/v1/chat/completions` or `/v1/messages` | Works for non-Python stacks and teams that can't touch application code at all | Config change only |
 | **OTel ingestion** (`POST /v1/traces`) | Passive, zero-integration — the gateway just observes spans already being emitted | Pillars 1 (discovery) and 5 (audit) for free, no enforcement | Zero code change, but no blocking capability |
@@ -301,8 +301,8 @@ The original finding is recorded in [production-readiness-review.md](production-
 
 A related consequence: because the serverless deployment cannot run `alembic upgrade head`
 through normal channels (the deployed wheel doesn't bundle `migrations/`), `gateway/app.py`
-carries a manual, owner-role-gated raw-DDL endpoint (`/api/_migrate_policy_canaries`) as a
-one-off patch for exactly one migration. This is a deployment-model limitation, not a code
+once carried a manual, owner-role-gated raw-DDL endpoint (`/api/_migrate_policy_canaries`) as a
+one-off patch for exactly one migration (since removed). This is a deployment-model limitation, not a code
 defect — but it means the Vercel path's schema-upgrade story is "patch per table by hand,"
 not "run the migration," and any future schema change needs the same treatment or an
 alternative solution.

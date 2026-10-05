@@ -93,6 +93,8 @@ CONFIG_TABLE = "agentfox"
 ENV_PREFIX = "AGENTFOX_"
 
 WEBHOOK_SEVERITIES = ("low", "medium", "high", "critical")
+#: Readings of `Settings.taint_scope`; see the field for what each one measured.
+TAINT_SCOPES = ("session", "argument")
 
 
 class ConfigFileError(RuntimeError):
@@ -271,6 +273,23 @@ class Settings(BaseSettings):
     default_policy_mode: str = "observe"  # observe | enforce
     # P3-7: what happens when a detector errors or blows its budget.
     fail_mode: str = "open"  # open | closed
+    #: P3-4: what a tool call's provenance is, for the taint rules
+    #: (`taint.irreversible_tool` and friends). The one setting that decides it.
+    #:
+    #: ``session``  — the worst provenance anywhere in the run so far *or* in the
+    #:   call's own arguments. Once untrusted content has entered the run, every
+    #:   later irreversible call carries it, including one with no arguments.
+    #: ``argument`` — only the provenance inferred or declared for this call's own
+    #:   arguments. A value copied from a web page still taints the call it lands in;
+    #:   a call whose arguments the user typed does not inherit the page.
+    #:
+    #: Measured on an AgentDojo replay with provenance inferred from executed tool
+    #: outputs (the `inferred_provenance_summary.json` replay, not yet a published
+    #: claim): session contained 588/588 attacks and let 24/97 benign tasks through
+    #: (43/97 with read tools granted any provenance); argument let 37/97 through
+    #: (62/97 tiered) and contained 527/588. Which trade to make is a product
+    #: decision, so the default is the one every published number was measured under.
+    taint_scope: str = "session"  # session | argument
 
     # --- Public playground demo -------------------------------------------
     # An extra CORS origin for the public, unauthenticated playground page
@@ -336,6 +355,16 @@ class Settings(BaseSettings):
     job_stuck_after_seconds: int = 900
     #: Base for exponential backoff between attempts.
     job_backoff_base_seconds: int = 60
+
+    @field_validator("taint_scope")
+    @classmethod
+    def _check_taint_scope(cls, value: str) -> str:
+        # A typo here must not quietly fall back to either reading: they contain
+        # different attacks, and the operator chose one on purpose.
+        value = value.strip().lower()
+        if value not in TAINT_SCOPES:
+            raise ValueError(f"must be one of {', '.join(TAINT_SCOPES)}")
+        return value
 
     @field_validator("webhook_min_severity")
     @classmethod
@@ -610,6 +639,17 @@ def _toml_source(
     if unknown:
         log.warning("%s: ignoring unknown [%s] key(s): %s", path, header, ", ".join(unknown))
     return TomlConfigSettingsSource(settings_cls, toml_file=path, toml_table_header=(header,))
+
+
+def env(name: str, default: str | None = None) -> str | None:
+    """One environment variable read outside `Settings`, with the legacy fallback.
+
+    For the handful of switches that are read straight from the environment
+    (a log level, the agent name `auto()` guesses) rather than through `Settings`.
+    ``AGENTFOX_<name>`` wins; ``NOMETRIA_<name>`` keeps working, for the same reason
+    `LEGACY_ENV_PREFIX` exists. An empty value counts as unset.
+    """
+    return os.environ.get(ENV_PREFIX + name) or os.environ.get(LEGACY_ENV_PREFIX + name) or default
 
 
 @lru_cache

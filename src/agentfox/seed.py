@@ -297,7 +297,11 @@ def seed(
     summary["obligations"] = sync_obligations(session)
 
     if with_policies:
-        policies = load_available()
+        from .policy.coding import hooked_agents, scope_coding_pack
+
+        # Demo agents are not coding agents; the coding pack binds only to agents
+        # this directory has installed coding-harness hooks for (policy/coding.py).
+        policies, _ = scope_coding_pack(load_available(), hooked_agents())
         for doc in policies:
             save_policy(session, doc, author="seed", notes="Shipped policy pack")
         summary["policies"] = [d.key for d in policies]
