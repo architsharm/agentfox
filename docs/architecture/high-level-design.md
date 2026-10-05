@@ -3,9 +3,9 @@
 **Status: derived documentation, not source of truth.** This document explains the system
 architecture in HLD form for engineers, reviewers and prospective adopters who want the
 shape of the system before the detail. It is synthesized from the codebase (ground-truthed
-by direct inspection, 2026-09-04) and from [docs/PRD.md](PRD.md), which remains the
+by direct inspection, 2026-09-04) and from [docs/design/PRD.md](../design/PRD.md), which remains the
 canonical product document — if the two disagree, re-run the check this document describes
-and trust the code. Companion documents: [docs/lld.md](lld.md) (module/class/API/schema
+and trust the code. Companion documents: [docs/architecture/low-level-design.md](low-level-design.md) (module/class/API/schema
 detail).
 
 ---
@@ -55,9 +55,9 @@ These are load-bearing design commitments found consistently enforced in code, n
    are in.
 2. **Every wrapped OSS primitive sits behind one interface.** `Detector`, `PolicyEngine`,
    `EvalRunner`, `RedTeamRunner`, `ModelProvider`, `ActionAnalyser`, `EntitlementEngine`,
-   `CatalogSource` — eight seams (`docs/PRD.md` §7.2). When a dependency is acquired,
+   `CatalogSource` — eight seams (`docs/design/PRD.md` §7.2). When a dependency is acquired,
    archived, or licence-changes underneath the project (this has already happened twice —
-   promptfoo→OpenAI, Langfuse→ClickHouse — see [Appendix A](appendix-a-oss-register.md)),
+   promptfoo→OpenAI, Langfuse→ClickHouse — see [Appendix A](../design/oss-register.md)),
    exactly one adapter file changes, not the calling code.
 3. **Self-host, zero egress by default.** `NOMETRIA_ALLOW_EGRESS=false` is the default in
    `deploy/docker-compose.yml`. The `echo` provider makes the entire enforcement path
@@ -66,7 +66,7 @@ These are load-bearing design commitments found consistently enforced in code, n
    requirement for regulated buyers.
 4. **Fail-open is a per-policy, per-environment choice, not a hardcoded default.** Because the
    product sits inline on the request path to a model, an outage in the governance layer
-   must not become an outage of the agent it governs (`docs/appendix-e-threat-model.md`
+   must not become an outage of the agent it governs (`docs/architecture/threat-model.md`
    §E.2). `NOMETRIA_FAIL_MODE=open` ships as the container default; hard budget/kill-switch
    gates are the deliberate exceptions.
 5. **Computed, not attested.** Compliance-control status (Pillar 6) and failure-mode coverage
@@ -82,7 +82,7 @@ These are load-bearing design commitments found consistently enforced in code, n
 ## 3. Logical architecture — five layers, eighteen pillars
 
 The eighteen pillars group into five layers along the lifecycle of one agent action
-(`docs/PRD.md` §5):
+(`docs/design/PRD.md` §5):
 
 ```
  A. KNOW        1  Discovery & Registry        12 Policy/Business-rule Composition
@@ -118,7 +118,7 @@ Four deployable units, one shared Python package:
 │  src/agentfox/  (the package — 14,895 lines across ~40 modules       │
 │  + 14 subpackages: audit, business, cli, compliance, evaluation,     │
 │  gateway, guardrails, identity, integrations, policy, providers,     │
-│  registry, sdk — see docs/lld.md §1 for the full inventory)          │
+│  registry, sdk — see docs/architecture/low-level-design.md §1 for the full inventory)          │
 └─────────────────────────────────────────────────────────────────────┘
         │ imported by all four of:
         ▼
@@ -183,7 +183,7 @@ framework and no client-state library — plain CSS and hand-built components
 ## 5. Integration surfaces
 
 Three ways to adopt, explicitly designed to be additive and to meet a team where it already is
-(`docs/PRD.md` §7.1):
+(`docs/design/PRD.md` §7.1):
 
 | Surface | How it's used | What it gives you | Cost to adopt |
 |---|---|---|---|
@@ -202,7 +202,7 @@ start — `autoguard.py:350-352`).
 
 ## 6. Request path
 
-The sequence a single model call goes through, end to end (`docs/PRD.md` §7.3, verified
+The sequence a single model call goes through, end to end (`docs/design/PRD.md` §7.3, verified
 against `enforcement.py`'s `preflight`/`evaluate`/`call_provider` methods and
 `gateway/routes/inline.py`'s `chat_completions` handler):
 
@@ -231,7 +231,7 @@ against `enforcement.py`'s `preflight`/`evaluate`/`call_provider` methods and
 
 Tool calls and retrieval steps go through the equivalent gates
 (`Enforcer.guard_tool_call`, `Enforcer.check_content`) rather than `run_completion`, but hit
-the same policy/audit spine. See [docs/lld.md](lld.md) §3 for the method-level trace through
+the same policy/audit spine. See [docs/architecture/low-level-design.md](low-level-design.md) §3 for the method-level trace through
 `enforcement.py`.
 
 ---
@@ -248,7 +248,7 @@ the same policy/audit spine. See [docs/lld.md](lld.md) §3 for the method-level 
 | Rails / structured validation | NeMo Guardrails (NVIDIA), Guardrails AI — both optional | `guardrails/adapters/rails.py` |
 | Evaluation | Native runner (primary), Ragas adapter (optional) | promptfoo demoted to reference-only after its acquisition by OpenAI, Mar 2026 |
 | Red-teaming | 22 native probes (OWASP LLM Top 10 / MITRE ATLAS mapped), Garak (NVIDIA) and PyRIT (Microsoft) as optional wrapped runners | `evaluation/redteam.py` |
-| SQL/action analysis | sqlglot (MIT, zero-dependency) | `docs/lld.md` §3 |
+| SQL/action analysis | sqlglot (MIT, zero-dependency) | `docs/architecture/low-level-design.md` §3 |
 | Tracing | OpenTelemetry + OpenLLMetry semantic conventions | `audit/trace.py`, `audit/otel.py` |
 | Auth (credentials) | argon2-cffi (password/credential hashing), `cryptography` (Fernet, at-rest encryption of connected-integration tokens) | Core deps, not optional — same reasoning as each other |
 | Model providers | `echo` (offline default), OpenAI, Anthropic, Azure OpenAI, Bedrock, Vertex, LiteLLM | `providers/` — the `ModelProvider` seam (§2) |
@@ -266,7 +266,7 @@ into an actual governance *decision* (`docs/README.md`, Appendix A §A.5):
 
 | | Examples | Status |
 |---|---|---|
-| **Wrapped OSS primitives** | Presidio (PII), Granite Guardian (safety classifier), sqlglot (SQL parsing), OPA/Rego (policy), OpenTelemetry (tracing), Garak/PyRIT (red-team probes) | Swappable behind an adapter interface (§2) — full licence/health register in [Appendix A](appendix-a-oss-register.md) |
+| **Wrapped OSS primitives** | Presidio (PII), Granite Guardian (safety classifier), sqlglot (SQL parsing), OPA/Rego (policy), OpenTelemetry (tracing), Garak/PyRIT (red-team probes) | Swappable behind an adapter interface (§2) — full licence/health register in [Appendix A](../design/oss-register.md) |
 | **Proprietary, built here** | Argument-provenance taint tracking; deterministic blast-radius/action-semantics analysis on generated SQL; answerability & abstention against a declared knowledge boundary; end-user entitlement propagation through retrieval and tool calls; escalation-failure counterfactual detection; the tamper-evident audit chain and its independent verifier; the PIGuard+backstop ensemble tuning | This is the moat — none of it exists as an off-the-shelf OSS or commercial primitive today (validated against a live competitive scan) |
 
 Three OSS dependencies have already changed status underneath the project within twelve
@@ -280,7 +280,7 @@ this is the concrete justification for principle #2 in §2, not a hypothetical r
 **Primary, supported path — self-hosted, `docker compose -f deploy/docker-compose.yml up`:**
 four services (`db` = Postgres 16, `opa` = optional sidecar, `gateway`, `dashboard`), zero
 runtime egress by default, explicitly "the default and only MVP deployment mode"
-(`docs/lld.md` §14 has the full compose file breakdown). This is the deployment the product's
+(`docs/architecture/low-level-design.md` §14 has the full compose file breakdown). This is the deployment the product's
 compliance and self-host-vs-SaaS competitive claims are actually built for.
 
 **Secondary path — Vercel serverless (`api/`), for a hosted trial/demo:** `api/index.py`
@@ -308,7 +308,7 @@ alternative solution.
 
 ## 10. Non-goals — explicit boundaries
 
-The project does not build, and does not intend to build (`docs/PRD.md` §10.3, §9):
+The project does not build, and does not intend to build (`docs/design/PRD.md` §10.3, §9):
 
 - A model, vector database, agent framework, sandbox runtime, retrieval layer, or identity
   directory — it governs agents built on these, it is not one of them.
@@ -324,6 +324,6 @@ The project does not build, and does not intend to build (`docs/PRD.md` §10.3, 
 
 ## 11. Where to go next
 
-- **Module-by-module detail, class signatures, DB schema, API endpoints**: [docs/lld.md](lld.md)
-- **What is built, partial and absent**: [docs/status.md](status.md)
-- **The full product reasoning this HLD condenses**: [docs/PRD.md](PRD.md)
+- **Module-by-module detail, class signatures, DB schema, API endpoints**: [docs/architecture/low-level-design.md](low-level-design.md)
+- **What is built, partial and absent**: [docs/status.md](../status.md)
+- **The full product reasoning this HLD condenses**: [docs/design/PRD.md](../design/PRD.md)

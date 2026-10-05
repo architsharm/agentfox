@@ -1,6 +1,6 @@
 # AgentFox: A Governance Control Plane for AI Agents, and What We've Proven About It
 
-**Date:** 2026-08-29, updated 2026-08-31 · **Status:** first edition, revised — added PII detection (§4.2), destructive-action/blast-radius (§4.4), and entitlement (§4.5) benchmark results once those datasets were built; F1 answerability is intentionally not cited with a benchmark number here (see §4.6) because its strongest measured category doesn't clear this document's own 65%-precision-and-recall bar — full numbers, not filtered, are in [`benchmarks/answerability/README.md`](../benchmarks/answerability/README.md).
+**Date:** 2026-08-29, updated 2026-08-31 · **Status:** first edition, revised — added PII detection (§4.2), destructive-action/blast-radius (§4.4), and entitlement (§4.5) benchmark results once those datasets were built; F1 answerability is intentionally not cited with a benchmark number here (see §4.6) because its strongest measured category doesn't clear this document's own 65%-precision-and-recall bar — full numbers, not filtered, are in [`benchmarks/answerability/README.md`](../../benchmarks/answerability/README.md).
 
 **How to read this document:** it's organized around the product, not around benchmark runs. For every capability, we say what it does, why it matters, how we know it works, and how it differs from what else is on the market. The rule we hold ourselves to throughout: every number we cite as "benchmarked" has a public, licensed dataset and a script anyone can re-run — link included.
 
@@ -40,7 +40,7 @@ competitive research could find — not offered together by any single competito
 6. **Self-host by default, zero required egress.** The main SaaS governance platforms (Zenity, Credo AI, OneTrust) are SaaS-only. For a regulated buyer that can't send its traffic to a third party, this is a structural, not incremental, difference.
 7. **Governing correctness as part of governance, not as a separate eval product.** Silent-failure detection (a 6-signal ensemble that discriminates "confidently wrong" from "correctly abstained") lives in the same enforcement path as the security controls, not bolted on from a separate observability tool.
 
-Section 6 has the fuller competitive-landscape breakdown; the full audit is in [`docs/gap-analysis.md`](gap-analysis.md).
+Section 6 has the fuller competitive-landscape breakdown; the full audit is in [`docs/design/gap-analysis.md`](../design/gap-analysis.md).
 
 ## 4. Capability by capability: what it does, what we proved, what's real insight
 
@@ -54,10 +54,10 @@ without reading the content at all. They are therefore unaffected by a detector 
 condition every adversarial-robustness paper says to expect.
 
 **Benchmarked, twice, with detection switched off entirely.**
-[`benchmarks/containment/`](../benchmarks/containment/README.md) runs eight structurally different attack
+[`benchmarks/containment/`](../../benchmarks/containment/README.md) runs eight structurally different attack
 scenarios with `AGENTFOX_ENABLED_DETECTORS=[]` — a total bypass, verified per scenario by re-probing the
 payload and recording zero entities: **8/8 contained, 4/4 legitimate controls still allowed**.
-[`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) executes
+[`benchmarks/agentdojo_e2e/`](../../benchmarks/agentdojo_e2e/README.md) executes
 [AgentDojo](https://github.com/ethz-spylab/agentdojo)'s ground truth for all 97 user tasks and 949
 attack pairs (v1.2.2), records the real tool outputs, and replays every call through the real
 `guard_tool_call` path with provenance **inferred** by the shipped tracker. Over the 588 attack pairs
@@ -89,12 +89,12 @@ argument can reach. `agentfox doctor` now grades that readiness directly.
 
 **What it does.** A three-layer detector — fast regex heuristics, a fine-tuned classifier ensemble, and local embedding-similarity matching against a curated attack corpus — screens every input, output, tool argument, tool result, and retrieved chunk for injection/jailbreak attempts.
 
-**Benchmarked — yes, most extensively of anything in this document.** Primary dataset [`deepset/prompt-injections`](https://huggingface.co/datasets/deepset/prompt-injections) (662 examples): held-out recall went from **0% → 66.7%** across four rounds of measured changes, at **100% precision held throughout** — zero false positives at every step. That 66.7% is the opt-in configuration (heuristic plus the classifier ensemble, which needs `agentfox[classifiers]` and a one-time weights download); the default install runs the heuristic alone, at **26.7%** held-out recall and the same 100% precision. Generalization measured against four further independent, license-clean datasets the detectors were never tuned against — **with the opt-in classifier ensemble, which is not the shipped default** (5,345 examples total: [`spml`](https://huggingface.co/datasets/reshabhs/SPML_Chatbot_Prompt_Injection), [`yanismiraoui`](https://huggingface.co/datasets/yanismiraoui/prompt_injections), [`notinject`](https://huggingface.co/datasets/leolee99/NotInject), [`trustairlab`](https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts)): recall of 85.6% and 98.6% on two of them through the real pipeline (re-measured 2026-09-16), with the honest cost disclosed on the other two (see below). Full methodology and every round: [`benchmarks/REPORT.md`](../benchmarks/REPORT.md).
+**Benchmarked — yes, most extensively of anything in this document.** Primary dataset [`deepset/prompt-injections`](https://huggingface.co/datasets/deepset/prompt-injections) (662 examples): held-out recall went from **0% → 66.7%** across four rounds of measured changes, at **100% precision held throughout** — zero false positives at every step. That 66.7% is the opt-in configuration (heuristic plus the classifier ensemble, which needs `agentfox[classifiers]` and a one-time weights download); the default install runs the heuristic alone, at **26.7%** held-out recall and the same 100% precision. Generalization measured against four further independent, license-clean datasets the detectors were never tuned against — **with the opt-in classifier ensemble, which is not the shipped default** (5,345 examples total: [`spml`](https://huggingface.co/datasets/reshabhs/SPML_Chatbot_Prompt_Injection), [`yanismiraoui`](https://huggingface.co/datasets/yanismiraoui/prompt_injections), [`notinject`](https://huggingface.co/datasets/leolee99/NotInject), [`trustairlab`](https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts)): recall of 85.6% and 98.6% on two of them through the real pipeline (re-measured 2026-09-16), with the honest cost disclosed on the other two (see below). Full methodology and every round: [`benchmarks/REPORT.md`](../../benchmarks/REPORT.md).
 
 **Real insight this surfaced, reported honestly:** the classifier model swap that roughly doubled primary-benchmark recall (`protectai/deberta` → `leolee99/PIGuard`) also cut a dangerous over-defense problem by more than two-thirds — the old model flagged 42.2% of a dedicated benign-but-trigger-word-laden stress-test dataset as attacks; PIGuard alone cut that to 11.5%. But adding a secondary-model ensemble backstop to recover generalization recall on `spml`/`yanismiraoui` gave most of that over-defense fix back (false-positive rate rose to 41.3% on the same stress test). We shipped this as a disclosed, opt-out-able trade-off (`prompt_injection_classifier_secondary_model`), not a hidden cost — a deployment chooses which failure mode it fears more.
 
 **Measured against an attacker who adapts, and published.**
-[`benchmarks/adaptive/`](../benchmarks/adaptive/README.md) implements the protocol from *The Attacker
+[`benchmarks/adaptive/`](../../benchmarks/adaptive/README.md) implements the protocol from *The Attacker
 Moves Second*: the attacker calls our real detector path, reads back the verdict and the entity list, and
 steers its next mutation from that feedback. Against the attacks our stack currently stops, using only
 human-readable mutations, attack success reaches **73% at a 50-attempt budget** (100% with encoding
@@ -123,7 +123,7 @@ contained at the action** (28/28 before the detector fixes). Treat detection as 
 - **Real ECHR case law (TAB dataset, 127 real judgments), full policy: 83.6% precision / 86.9% recall.** The strongest result of the three — coherent single-language legal prose is closer to what a general-purpose NER model was trained on than templated or dense multilingual synthetic text.
 - **Synthetic sentence dataset (presidio-research, 1,500 rows), full policy: 65.2% precision / 75.6% recall.**
 
-Well-structured identifier types (`EMAIL`, `IBAN`, `IP_ADDRESS`) hold 90%+ precision and recall regardless of dataset or language and are not separately broken out here. Full per-dataset numbers, including where the default policy and a multilingual financial-document dataset fall short of this bar and why, are reported without the filter in [`benchmarks/pii/README.md`](../benchmarks/pii/README.md) — we'd rather a reader see the honest full picture there than infer we're hiding a weaker number by omitting it entirely.
+Well-structured identifier types (`EMAIL`, `IBAN`, `IP_ADDRESS`) hold 90%+ precision and recall regardless of dataset or language and are not separately broken out here. Full per-dataset numbers, including where the default policy and a multilingual financial-document dataset fall short of this bar and why, are reported without the filter in [`benchmarks/pii/README.md`](../../benchmarks/pii/README.md) — we'd rather a reader see the honest full picture there than infer we're hiding a weaker number by omitting it entirely.
 
 ### 4.3 Agent-runtime security — structural attacks a text scanner can't see
 
@@ -138,7 +138,7 @@ Well-structured identifier types (`EMAIL`, `IBAN`, `IP_ADDRESS`) hold 90%+ preci
 | C — tool-parameter exploitation | Wildcard scope, SQL fragments, path traversal in unnamed arguments | 10/10 correct | Cannot participate — scans text, not structured JSON |
 | D — excessive agency / privilege escalation | 6 scenarios against real shipped capability grants | 6/6 correct | Cannot participate — no capability model |
 
-Full methodology: [`benchmarks/agent_security/README.md`](../benchmarks/agent_security/README.md).
+Full methodology: [`benchmarks/agent_security/README.md`](../../benchmarks/agent_security/README.md).
 
 **Real insight this surfaced:** a poisoned tool result that a follow-up tool call tries to act on is caught independent of whether the content-level detector fires on the poisoned text at all — the follow-up call is separately gated because its argument's *provenance* (tool output, not user input) triggers a human-oversight escalation on its own. This is the taint-tracking USP from Section 3 made concrete, not just asserted: a stateless scanner has no mechanism to gate a subsequent, separate tool call based on where an earlier piece of content came from.
 
@@ -146,7 +146,7 @@ Full methodology: [`benchmarks/agent_security/README.md`](../benchmarks/agent_se
 
 **What it does and why it matters.** Deterministic parsing (not an LLM checking its own SQL) of generated database statements and tool calls — classifying operation type, targets, estimated affected rows, reversibility, and environment — with policy expressed on blast radius rather than argument values. This is the control aimed directly at incidents like the 1.9M-row production wipe named in Section 2. Live on the enforcement path (`guardrails/actions.py`, wired into `enforcement.py`): tautology-as-unbounded-`WHERE` detection, comment/stacked-statement evasion, environment binding, state-verification preconditions.
 
-**Benchmarked.** Destructive-SQL classification against [`gretelai/synthetic_text_to_sql`](https://huggingface.co/datasets/gretelai/synthetic_text_to_sql) (Apache-2.0): **100% accuracy, precision and recall** on the held-out split across all four tested categories (real DML/DDL, and adversarial unbounded/tautology variants), ground-truthed against an independent third-party SQL parser rather than the product's own verdict. The generic argument-scope backstop (catches wildcard-scope values and SQL-injection fragments arriving through *unnamed* fields, not just declared SQL fields) scores **89.3% recall / 100% precision** against [payload-box's SQL-injection payload list](https://github.com/payload-box/sql-injection-payload-list) (MIT) after two rounds of directed fixes. Full methodology: [`benchmarks/action_safety/README.md`](../benchmarks/action_safety/README.md).
+**Benchmarked.** Destructive-SQL classification against [`gretelai/synthetic_text_to_sql`](https://huggingface.co/datasets/gretelai/synthetic_text_to_sql) (Apache-2.0): **100% accuracy, precision and recall** on the held-out split across all four tested categories (real DML/DDL, and adversarial unbounded/tautology variants), ground-truthed against an independent third-party SQL parser rather than the product's own verdict. The generic argument-scope backstop (catches wildcard-scope values and SQL-injection fragments arriving through *unnamed* fields, not just declared SQL fields) scores **89.3% recall / 100% precision** against [payload-box's SQL-injection payload list](https://github.com/payload-box/sql-injection-payload-list) (MIT) after two rounds of directed fixes. Full methodology: [`benchmarks/action_safety/README.md`](../../benchmarks/action_safety/README.md).
 
 **Composed privilege escalation — closed this cycle, not yet independently benchmarked.** A read tool's output feeding a second tool's authorization boundary in a way neither tool alone permits (e.g. an internal ID a read call surfaces, then reused by a write call as if it were user-supplied and authorized) is now detected by reusing the existing argument-provenance taint tracker against each tool's declared impact tier — no dataset exists yet to score precision/recall against this specific failure shape, so it's verified via unit and end-to-end tests rather than a benchmark number. Named plainly rather than rounded off into the benchmarked claim above.
 
@@ -154,7 +154,7 @@ Full methodology: [`benchmarks/agent_security/README.md`](../benchmarks/agent_se
 
 **What it does and why it matters.** Propagates the actual end-user's identity through retrieval and tool calls, and checks that a response only contains what *that specific person* is entitled to see — not what the agent's own service identity can reach. This is the exact failure named in Section 2's Copilot incident: every permission check passing while the wrong human still sees everything. Real and live on the enforcement path (`entitlement.py`, `tenancy.py`), including cross-tenant isolation enforced structurally at the session level rather than per-query.
 
-**Benchmarked — a different, more modest kind of evidence than Sections 4.1–4.4.** Purpose-limitation enforcement (`filter_retrieval`, GDPR Art. 5(1)(b)) scores **100% recall / 0% false-positive rate across 493 real, human-authored [PrivacyLens](https://github.com/SALT-NLP/PrivacyLens) vignettes** — real over-sharing scenario content, but a mechanically-constructed test (grant one purpose, request another) rather than a labeled dataset's own ground truth. A correctly-built purpose check was always going to score this way; the real evidence is that it holds across 493 genuinely varied real-world purpose strings without a collision or a wrapper bug. Full caveat and methodology: [`benchmarks/entitlement/README.md`](../benchmarks/entitlement/README.md).
+**Benchmarked — a different, more modest kind of evidence than Sections 4.1–4.4.** Purpose-limitation enforcement (`filter_retrieval`, GDPR Art. 5(1)(b)) scores **100% recall / 0% false-positive rate across 493 real, human-authored [PrivacyLens](https://github.com/SALT-NLP/PrivacyLens) vignettes** — real over-sharing scenario content, but a mechanically-constructed test (grant one purpose, request another) rather than a labeled dataset's own ground truth. A correctly-built purpose check was always going to score this way; the real evidence is that it holds across 493 genuinely varied real-world purpose strings without a collision or a wrapper bug. Full caveat and methodology: [`benchmarks/entitlement/README.md`](../../benchmarks/entitlement/README.md).
 
 ### 4.6 Answerability & abstention
 
@@ -174,7 +174,7 @@ Full methodology: [`benchmarks/agent_security/README.md`](../benchmarks/agent_se
 
 **What it exists to do.** Detect binding commitments an agent shouldn't be able to make unilaterally (refunds, SLAs), flag unlicensed financial/medical/legal advice, check EU AI Act Art. 50 disclosure, and run a fairness probe for discriminatory screening outcomes.
 
-**Status, stated plainly:** the logic is real and individually unit-tested (`commitments.py`, `register.py`) — but **nothing in the live enforcement path calls it today.** A real production request gets zero benefit from any of it right now, despite the code being correct in isolation. We're naming this explicitly rather than letting "built and tested" imply "shipping" — see [`docs/gap-analysis.md`](gap-analysis.md) for the fuller pattern (several other modules share this status). Wiring it in is the single highest-leverage remaining fix in the whole product roadmap: it's routing, not invention.
+**Status, stated plainly:** the logic is real and individually unit-tested (`commitments.py`, `register.py`) — but **nothing in the live enforcement path calls it today.** A real production request gets zero benefit from any of it right now, despite the code being correct in isolation. We're naming this explicitly rather than letting "built and tested" imply "shipping" — see [`docs/design/gap-analysis.md`](../design/gap-analysis.md) for the fuller pattern (several other modules share this status). Wiring it in is the single highest-leverage remaining fix in the whole product roadmap: it's routing, not invention.
 
 ### 4.10 Numeric, temporal & entity integrity
 
@@ -213,7 +213,7 @@ correctly requires human sign-off on an irreversible action regardless of proven
 not a false positive in this benchmark's usual sense. Full methodology, and five real
 bugs/gaps found and fixed while building this (a policy threshold silently discarding
 15 already-detected attacks, a real detector gap, two runner bugs):
-[`benchmarks/redteam/README.md`](../benchmarks/redteam/README.md).
+[`benchmarks/redteam/README.md`](../../benchmarks/redteam/README.md).
 
 ## 5. Competitive landscape — where AgentFox sits
 
@@ -226,7 +226,7 @@ Four camps exist in this market, and AgentFox doesn't fit cleanly into any one o
 | AI governance platforms (Gartner MQ) | IBM, ServiceNow, Credo AI, OneTrust | Mostly none — Gartner's own finding | Deep | Workflow/assessment engines, analyst recognition, installed base |
 | Eval / observability | Braintrust, Arize, LangSmith | N/A | N/A | Eval UX depth, dataset tooling |
 
-Gartner's own read on the governance camp is that it largely lacks runtime enforcement, and the security camp largely lacks compliance depth. AgentFox's bet is the combination — runtime enforcement *and* audit-grade compliance depth, in one product, self-hosted. The full gap register, including where we still fall short of category table stakes (estate-scale connectors, a general workflow engine, third-party certifications), is in [`docs/gap-analysis.md`](gap-analysis.md).
+Gartner's own read on the governance camp is that it largely lacks runtime enforcement, and the security camp largely lacks compliance depth. AgentFox's bet is the combination — runtime enforcement *and* audit-grade compliance depth, in one product, self-hosted. The full gap register, including where we still fall short of category table stakes (estate-scale connectors, a general workflow engine, third-party certifications), is in [`docs/design/gap-analysis.md`](../design/gap-analysis.md).
 
 ## 6. Methodology discipline (the rules every number above follows)
 
@@ -236,12 +236,12 @@ A capability counts as "benchmarked" in this document only if: it's scored again
 
 ## Appendix — source files
 
-- [`benchmarks/REPORT.md`](../benchmarks/REPORT.md) — full prompt-injection benchmark methodology, all six rounds.
-- [`benchmarks/agent_security/README.md`](../benchmarks/agent_security/README.md) — the four-tier agent-runtime-security suite, full methodology.
-- [`benchmarks/data_generalization/README.md`](../benchmarks/data_generalization/README.md) — the four generalization datasets: sources, licenses, and datasets considered and rejected.
-- [`benchmarks/pii/README.md`](../benchmarks/pii/README.md) — PII detection, all three datasets, both fix rounds, unfiltered numbers.
-- [`benchmarks/action_safety/README.md`](../benchmarks/action_safety/README.md) — destructive-action/blast-radius, all four datasets.
-- [`benchmarks/entitlement/README.md`](../benchmarks/entitlement/README.md) — the purpose-limitation scenario benchmark and its caveats.
-- [`benchmarks/answerability/README.md`](../benchmarks/answerability/README.md) — F1 answerability/abstention, both rounds of fixes, including the categories that don't clear this document's 65% bar.
-- [`benchmarks/README.md`](../benchmarks/README.md) — index across every capability area, including the two (F2, secrets) investigated and found not benchmarkable, and F3.8 (built this cycle, no dataset exists to score it against).
-- [`docs/gap-analysis.md`](gap-analysis.md), [`docs/failure-modes.md`](failure-modes.md) — full capability-by-capability build status, including what's unit-tested vs. wired to the live request path vs. genuinely absent.
+- [`benchmarks/REPORT.md`](../../benchmarks/REPORT.md) — full prompt-injection benchmark methodology, all six rounds.
+- [`benchmarks/agent_security/README.md`](../../benchmarks/agent_security/README.md) — the four-tier agent-runtime-security suite, full methodology.
+- [`benchmarks/data_generalization/README.md`](../../benchmarks/data_generalization/README.md) — the four generalization datasets: sources, licenses, and datasets considered and rejected.
+- [`benchmarks/pii/README.md`](../../benchmarks/pii/README.md) — PII detection, all three datasets, both fix rounds, unfiltered numbers.
+- [`benchmarks/action_safety/README.md`](../../benchmarks/action_safety/README.md) — destructive-action/blast-radius, all four datasets.
+- [`benchmarks/entitlement/README.md`](../../benchmarks/entitlement/README.md) — the purpose-limitation scenario benchmark and its caveats.
+- [`benchmarks/answerability/README.md`](../../benchmarks/answerability/README.md) — F1 answerability/abstention, both rounds of fixes, including the categories that don't clear this document's 65% bar.
+- [`benchmarks/README.md`](../../benchmarks/README.md) — index across every capability area, including the two (F2, secrets) investigated and found not benchmarkable, and F3.8 (built this cycle, no dataset exists to score it against).
+- [`docs/design/gap-analysis.md`](../design/gap-analysis.md), [`docs/design/failure-modes.md`](../design/failure-modes.md) — full capability-by-capability build status, including what's unit-tested vs. wired to the live request path vs. genuinely absent.

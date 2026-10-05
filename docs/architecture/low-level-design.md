@@ -1,6 +1,6 @@
 # Low-Level Design (LLD)
 
-**Companion to [docs/hld.md](hld.md).** Where the HLD explains the shape of the system, this
+**Companion to [docs/architecture/high-level-design.md](high-level-design.md).** Where the HLD explains the shape of the system, this
 document explains the pieces: module inventory, key classes and methods, the data model, the
 API surface, and the internals of the four subsystems most worth understanding in depth
 (the enforcer, the detector pipeline, the policy engine, the audit chain). All line counts
@@ -88,7 +88,7 @@ module inventory above almost 1:1: `test_enforcement_and_api.py`, `test_autoguar
 fixture corpus, not a test file). **No frontend (`dashboard/`) test files exist anywhere in
 the repo** — this is a real gap.
 
-Current test and line counts are in [`docs/status.md`](status.md), which `scripts/coverage.py --write` regenerates from the source tree; they are not restated here because they go stale.
+Current test and line counts are in [`docs/status.md`](../status.md), which `scripts/coverage.py --write` regenerates from the source tree; they are not restated here because they go stale.
 
 ---
 
@@ -160,7 +160,7 @@ detector that silently fails to run is a recorded, queryable event, not an invis
 
 ## 5. Data model — key entities
 
-Full detail: [Appendix D](appendix-d-data-model.md). SQLAlchemy 2.0, `src/agentfox/models.py`
+Full detail: [Appendix D](data-model.md). SQLAlchemy 2.0, `src/agentfox/models.py`
 (1490 lines). Every table carries `id`, `created_at`, `updated_at`, `org_id` — multi-tenancy
 is enforced structurally at the session level via `with_loader_criteria` (`tenancy.py`), not
 by remembering to filter every query by `org_id`.
@@ -188,7 +188,7 @@ digest          = SHA-256(seq | occurred_at_iso | action | payload_digest | prev
 Invariants enforced in code, not just convention:
 
 - **Append-only** — there is no update or delete path for `audit_entries` anywhere in the
-  ORM or the API (`appendix-c-api-spec.md` §C confirms: "no `PUT`/`PATCH`/`DELETE` exists").
+  ORM or the API (`api-spec.md` §C confirms: "no `PUT`/`PATCH`/`DELETE` exists").
 - **Gapless `seq`** — a missing sequence number is itself detectable evidence of tampering.
 - **Chain linkage** — each entry's digest incorporates the previous entry's digest, so
   altering, deleting, inserting, or reordering any entry breaks every digest after it.
@@ -380,7 +380,7 @@ deployed environment through normal means.
 
 ## 13. API surface
 
-Full detail: [Appendix C](appendix-c-api-spec.md). Base `http://localhost:8080` self-hosted;
+Full detail: [Appendix C](api-spec.md). Base `http://localhost:8080` self-hosted;
 `/api` = control plane, `/v1` = inline enforcement (OpenAI/Anthropic wire-compatible). Three
 credential types: agent key, API token, session cookie. Six roles (`owner`, `admin`,
 `security`, `compliance`, `developer`, `auditor`) — `auditor` can read and verify but never
@@ -432,9 +432,9 @@ Three files only, no Kubernetes manifests anywhere in the repo.
 
 ## 15. See also
 
-- [docs/hld.md](hld.md) — architecture shape, principles, integration surfaces
-- [docs/appendix-a-oss-register.md](appendix-a-oss-register.md) — full OSS licence/health register
-- [docs/appendix-b-control-catalog.md](appendix-b-control-catalog.md) — 43 controls × 7 frameworks
-- [docs/appendix-c-api-spec.md](appendix-c-api-spec.md) — full API specification
-- [docs/appendix-d-data-model.md](appendix-d-data-model.md) — full data model
-- [docs/appendix-e-threat-model.md](appendix-e-threat-model.md) — full threat model
+- [docs/architecture/high-level-design.md](high-level-design.md) — architecture shape, principles, integration surfaces
+- [docs/design/oss-register.md](../design/oss-register.md) — full OSS licence/health register
+- [docs/design/control-catalog.md](../design/control-catalog.md) — 43 controls × 7 frameworks
+- [docs/architecture/api-spec.md](api-spec.md) — full API specification
+- [docs/architecture/data-model.md](data-model.md) — full data model
+- [docs/architecture/threat-model.md](threat-model.md) — full threat model

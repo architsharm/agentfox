@@ -18,7 +18,7 @@ Everything here is checkable from this repository.
 over 90% attack success against twelve defences once the attacker adapts. We do not claim to be the
 exception. Our own held-out injection recall is **26.7%** with the default heuristic detector and
 **66.7%** with the opt-in classifier ensemble, both published in
-[`benchmarks/REPORT.md`](../benchmarks/REPORT.md) alongside the rounds where it was 0%.
+[`benchmarks/REPORT.md`](../../benchmarks/REPORT.md) alongside the rounds where it was 0%.
 
 **2. Static guardrail benchmarks are misleading.** They are, and we have first-hand evidence. Swapping our
 classifier roughly doubled recall *and* cut the false-alarm rate on a benign trigger-word stress set from
@@ -35,7 +35,7 @@ primary control is not a detector at all.
 grants, argument-provenance ceilings and declared tool impacts.
 
 **5. Most production failures are not attacks.** Agreed, and this is our founding premise rather than a
-concession. Our own [failure-mode analysis](failure-modes.md) reports resolution and escalation breakdowns at
+concession. Our own [failure-mode analysis](../design/failure-modes.md) reports resolution and escalation breakdowns at
 **31.1%** of catalogued failures, execution and action failures **up 62%**, and hallucination-related
 failures **under 10%**. A product aimed only at jailbreaks is aimed at the smallest slice.
 
@@ -64,7 +64,7 @@ because they raise cost and buy time.
 
 **"Just hire someone who understands this deeply."** Good advice that does not scale to twenty product teams,
 and it is also the advice of someone who sells training and advisory services. The expertise has to be
-encoded in the platform, which is what our [agent harness](../harness/README.md) is for.
+encoded in the platform, which is what our [agent harness](../../harness/README.md) is for.
 
 ---
 
@@ -72,13 +72,13 @@ encoded in the platform, which is what our [agent harness](../harness/README.md)
 
 | Change | Where |
 |---|---|
-| Built a benchmark that **deletes the detection layer entirely** and measures what still holds | [`benchmarks/containment/`](../benchmarks/containment/README.md) |
-| Replayed AgentDojo's ground truth end to end, 97 user tasks and 949 attack pairs, with provenance inferred from the real tool outputs, reporting benign utility alongside containment | [`benchmarks/agentdojo_e2e/`](../benchmarks/agentdojo_e2e/README.md) |
-| Published our own adaptive-attack success rate against ourselves (**73% at 50 attempts**), using the critique's own protocol — and fixed the three detector bugs it found | [`benchmarks/adaptive/`](../benchmarks/adaptive/README.md) |
-| Measured non-English parity instead of claiming multilingual support | [`benchmarks/multilingual/`](../benchmarks/multilingual/README.md) |
-| Measured gradual multi-turn (crescendo) attacks, which per-message detection cannot see | [`benchmarks/crescendo/`](../benchmarks/crescendo/README.md) |
+| Built a benchmark that **deletes the detection layer entirely** and measures what still holds | [`benchmarks/containment/`](../../benchmarks/containment/README.md) |
+| Replayed AgentDojo's ground truth end to end, 97 user tasks and 949 attack pairs, with provenance inferred from the real tool outputs, reporting benign utility alongside containment | [`benchmarks/agentdojo_e2e/`](../../benchmarks/agentdojo_e2e/README.md) |
+| Published our own adaptive-attack success rate against ourselves (**73% at 50 attempts**), using the critique's own protocol — and fixed the three detector bugs it found | [`benchmarks/adaptive/`](../../benchmarks/adaptive/README.md) |
+| Measured non-English parity instead of claiming multilingual support | [`benchmarks/multilingual/`](../../benchmarks/multilingual/README.md) |
+| Measured gradual multi-turn (crescendo) attacks, which per-message detection cannot see | [`benchmarks/crescendo/`](../../benchmarks/crescendo/README.md) |
 | Made containment readiness a first-class health check, ahead of detectors | `agentfox doctor` |
-| Led the README with what holds when detection fails, not with detection accuracy | [README](../README.md) |
+| Led the README with what holds when detection fails, not with detection accuracy | [README](../../README.md) |
 
 ## The claim, stated so it can be falsified
 

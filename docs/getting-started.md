@@ -320,7 +320,7 @@ turning enforcement on.
 Useful request headers: `X-Nometria-Agent` (the agent slug), `X-Nometria-Session` (correlates calls
 into one execution path), `X-Nometria-Intent` (the declared task, used by intent-based containment),
 and `X-Nometria-Trust` (a JSON map marking message indices as untrusted, e.g.
-`{"2":"retrieved"}`). Full surface: [Appendix C](appendix-c-api-spec.md).
+`{"2":"retrieved"}`). Full surface: [Appendix C](architecture/api-spec.md).
 
 **If you are in Python instead**, the whole of 5d is one line at your entry point:
 
@@ -462,15 +462,15 @@ seen what it will do.
 ## Where to go next
 
 - **[docs/README.md](README.md)**: what every other document in this directory is for.
-- **[Appendix C](appendix-c-api-spec.md)**: the full API, including the routes the dashboard
+- **[Appendix C](architecture/api-spec.md)**: the full API, including the routes the dashboard
   itself uses. There is no privileged back-channel.
-- **[The benchmarking white paper](benchmarking-whitepaper.md)**: how each capability was measured,
+- **[The benchmarking white paper](evaluation/benchmarking-whitepaper.md)**: how each capability was measured,
   including where it loses.
-- **[How to read our numbers](evidence-standards.md)**: read this before quoting any benchmark
+- **[How to read our numbers](evaluation/evidence-standards.md)**: read this before quoting any benchmark
   result anywhere.
 - **[`harness/`](../harness/README.md)**: drive all of the above from Claude Code or another coding
   agent, if you would rather not learn the command list.
-- **[Appendix E](appendix-e-threat-model.md)**: the threat model, including threats to AgentFox
+- **[Appendix E](architecture/threat-model.md)**: the threat model, including threats to AgentFox
   itself.
 
 Two things to keep in mind as you go further. Containment is exactly as good as the declarations

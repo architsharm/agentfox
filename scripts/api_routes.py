@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the route tables in docs/appendix-c-api-spec.md from the live FastAPI app.
+"""Regenerate the route tables in docs/architecture/api-spec.md from the live FastAPI app.
 
 The hand-written route list drifted from the code (phantom routes, missing families), so
 the tables between the GENERATED markers are now produced from `create_app().openapi()`.
@@ -19,7 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-DOC = REPO / "docs" / "appendix-c-api-spec.md"
+DOC = REPO / "docs" / "architecture" / "api-spec.md"
 BEGIN = "<!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->"
 END = "<!-- END GENERATED ROUTES -->"
 
@@ -159,7 +159,7 @@ def main() -> int:
     if "--check" in sys.argv:
         if current != block:
             print(
-                "docs/appendix-c-api-spec.md route tables are out of date: "
+                "docs/architecture/api-spec.md route tables are out of date: "
                 "run scripts/api_routes.py --write"
             )
             return 1

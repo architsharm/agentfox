@@ -11,7 +11,7 @@ that difference is the point of this docstring.** Every prior benchmark
 or "this is a future-tense question," and the detector is checked against that
 external, independently-authored answer. `entitlement.py`'s mechanism has no
 public dataset that supplies labels in its shape at all (see
-`docs/dataset-sourcing.md`'s own "Gap, stated plainly" note, and this repo's
+`docs/evaluation/dataset-sourcing.md`'s own "Gap, stated plainly" note, and this repo's
 `benchmarks/source_authority/README.md` for the same conclusion reached
 independently for F2). What follows instead is a **self-constructed scenario
 benchmark**: PrivacyLens supplies real, human-authored, varied *content*

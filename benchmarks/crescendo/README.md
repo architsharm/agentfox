@@ -12,7 +12,7 @@ PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
 
 ## Why this benchmark exists
 
-[`docs/coverage-map.md`](../../docs/coverage-map.md) row **L1.6** was `✗ absent`:
+[`docs/design/coverage-map.md`](../../docs/design/coverage-map.md) row **L1.6** was `✗ absent`:
 
 > Detection is per-message. Nothing scores a conversation's trajectory, and this is a published, effective technique.
 

@@ -1,6 +1,6 @@
 """An independent taxonomy of LLM and agentic failure, and what we do about each.
 
-Deliberately *not* derived from `docs/failure-modes.md`. That catalogue and this
+Deliberately *not* derived from `docs/design/failure-modes.md`. That catalogue and this
 codebase co-evolved, so scoring ourselves against it is circular — it would tell us we
 cover what we set out to cover and nothing about what we never thought of. This one is
 built from the architecture instead: take the path a request actually travels, and ask

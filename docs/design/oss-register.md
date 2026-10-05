@@ -35,7 +35,7 @@ Legend — **Verdict:** `REUSE` wrap it · `REUSE ★` best-in-class pick · `RE
 | **OWASP Agentic Top 10** | OWASP | Open | 3, 6 | **ADOPT** | Agent-specific threats (tool misuse, excessive agency, memory poisoning, identity spoofing). Our containment controls map here. |
 | **MITRE ATLAS** | MITRE | Open | 3 | **ADOPT** | Adversarial ML threat matrix. Detections map to ATLAS technique IDs so SOCs can correlate. |
 
-Mapping detections to a taxonomy the buyer already trusts is worth more than a proprietary severity scheme. See [Appendix B](appendix-b-control-catalog.md).
+Mapping detections to a taxonomy the buyer already trusts is worth more than a proprietary severity scheme. See [Appendix B](control-catalog.md).
 
 ## A.3 Reference only — do not depend
 

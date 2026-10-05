@@ -147,5 +147,5 @@ framework-mapping diff engine (P6-8) · load testing (NFR-3).
 
 **All 257 framework mappings are `review_status: draft`** and ship in evidence packages
 chip-labeled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a qualified reviewer completes
-the gate in [Appendix B §B.6](appendix-b-control-catalog.md#b6-mapping-review-gate) — see
+the gate in [Appendix B §B.6](control-catalog.md#b6-mapping-review-gate) — see
 `audit/evidence.py` for the chip-labeling logic (corrected 2026-09-04).

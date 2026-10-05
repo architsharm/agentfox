@@ -1,6 +1,6 @@
 # Gap Analysis — Enterprise Readiness & Competitive Position
 
-**Date:** 2026-08-18, updated 2026-08-29 · **Scope:** AgentFox Control Plane (grown from 18.7k LOC/178 tests to 50k+ LOC/1,131 tests over that window; those are dated figures, and current counts are in [status.md](status.md))
+**Date:** 2026-08-18, updated 2026-08-29 · **Scope:** AgentFox Control Plane (grown from 18.7k LOC/178 tests to 50k+ LOC/1,131 tests over that window; those are dated figures, and current counts are in [../status.md](../status.md))
 **Question:** what stops us selling this to an enterprise, and where do we stand against the field?
 
 **2026-08-29 update:** a full grep/execution-verified re-audit (same discipline as the original —
@@ -10,7 +10,7 @@ label: **stub-only** — a module that is genuinely built and individually teste
 callers on the live request path**. That's a materially better state than "absent" but a worse
 one than "done," and several items below carry that marker instead of a flat ✅. One more finding
 from this pass, outside the original scope but directly relevant: an internal
-`docs/PRD.md` itself contained a stale claim ("no LangGraph integration" — since corrected there directly)
+`docs/design/PRD.md` itself contained a stale claim ("no LangGraph integration" — since corrected there directly)
 contradicted by 34 passing tests against a real `AgentFoxGuard` implementation — a reminder that
 this document, not other planning docs, should be treated as the source of truth, and that it in
 turn needs re-verification whenever claimed as evidence for something new.
@@ -128,18 +128,18 @@ documents in `docs/` (`PRD.md`, `PRD-v2.md`, `PRD-consolidated.md`,
 `PRD-v3-consolidated.md`, dated the same day as this document — already incorporated
 four of the six events below**, apparently from the same research pass that produced
 this document. The four older variants have since been retired and their content folded
-into a single `docs/PRD.md`, which is what the citations below point to. Presenting the
+into a single `docs/design/PRD.md`, which is what the citations below point to. Presenting the
 market-move finding as an open invalidation, without naming which PRD was stale, reads
 as a bigger unresolved gap than what's actually left. Here is what's genuinely still
 open, event by event:
 
 | Event | Date | Status against `PRD.md` (current consolidated PRD) |
 |---|---|---|
-| **promptfoo → OpenAI** | 9 Mar 2026 | ✅ **Already corrected.** [`appendix-a-oss-register.md:19`](appendix-a-oss-register.md) downgrades it `REUSE ★ → REFERENCE ⚠`, dated 2026-08-18, with the note *"a model provider now owns our CI-eval substrate."* [`PRD.md:233`](PRD.md) already reads *"Dropped from the critical path; optional adapter only."* Nothing left to fix here — this row can be closed. |
+| **promptfoo → OpenAI** | 9 Mar 2026 | ✅ **Already corrected.** [`oss-register.md:19`](oss-register.md) downgrades it `REUSE ★ → REFERENCE ⚠`, dated 2026-08-18, with the note *"a model provider now owns our CI-eval substrate."* [`PRD.md:233`](PRD.md) already reads *"Dropped from the critical path; optional adapter only."* Nothing left to fix here — this row can be closed. |
 | **OpenAI Frontier launched** | 5 Feb 2026 | 🟠 **Partially reflected — two specific lines still need qualifying.** The consolidation table at [line 234](PRD.md) already calls it *"bigger platform-risk event than AgentKit."* But the camps table at **line 342** still asserts model providers are *"not a compliance product"* — directly contradicted by line 234's own description of Frontier shipping compliance controls a few lines earlier. And [**line 722**](PRD.md)'s claim that computing status from telemetry is *"a claim only an inline platform can make"* is weakened by the fact that Frontier is itself now an inline, provider-run platform. Neither claim is fully false — AgentFox's cross-vendor-neutrality argument ([line 390](PRD.md)) still holds against a single-provider platform — but both need a qualifying clause, not silence. |
 | **Lakera → Check Point** (~$300M) | Q4 2025 | ✅ **Already corrected.** Every reference already reads "Check Point (+Lakera)," correctly placed under Security suites. The "point tool to out-flank" framing this row worries about only ever existed in the oldest, now-retired PRD draft. |
 | **Galileo → Cisco** | late 2025 | ✅ **Already corrected.** The PRD already reads "Galileo (Cisco)" throughout, folded into Security suites. |
-| **Weights & Biases → CoreWeave** | 2025 | 🟡 **Genuinely missing — a completeness gap, not an invalidation.** It's in [`appendix-a-oss-register.md:90`](appendix-a-oss-register.md)'s changelog only. The PRD's actual competitive tables — the consolidation table ([line 229-238](PRD.md)) and Pillar 4's OSS/Commercial columns ([line 636-637](PRD.md), which lists Galileo, Cleanlab, Braintrust, Arize, Fiddler, Patronus) — never mention it. The PRD never made a claim about W&B's independence, so there's nothing to retract; it just needs adding. |
+| **Weights & Biases → CoreWeave** | 2025 | 🟡 **Genuinely missing — a completeness gap, not an invalidation.** It's in [`oss-register.md:90`](oss-register.md)'s changelog only. The PRD's actual competitive tables — the consolidation table ([line 229-238](PRD.md)) and Pillar 4's OSS/Commercial columns ([line 636-637](PRD.md), which lists Galileo, Cleanlab, Braintrust, Arize, Fiddler, Patronus) — never mention it. The PRD never made a claim about W&B's independence, so there's nothing to retract; it just needs adding. |
 | **Microsoft Entra Agent ID + Agent 365** | GA through 2026 | ✅ **Already the correct strategic response.** The PRD states plainly: *"Microsoft Entra Agent ID will win agent identity"* ([line 387](PRD.md)), backed by a concrete requirement `P2-8` ([line 477](PRD.md)) and risk-register entry `R3` ([line 1087](PRD.md)). |
 
 **Net correction:** of six events, **four were already fixed same-day** in the version

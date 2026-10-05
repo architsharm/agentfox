@@ -2,7 +2,7 @@
 title: Glossary and ID conventions
 layer: reference
 audience: agents reading docs, code comments and commit messages
-source_of_truth: docs/PRD.md, docs/traceability.md, docs/failure-modes.md, docs/appendix-b-control-catalog.md, src/agentfox/improvement/contract.py
+source_of_truth: docs/design/PRD.md, docs/design/traceability.md, docs/design/failure-modes.md, docs/design/control-catalog.md, src/agentfox/improvement/contract.py
 verified_against: branch claude/improvement-loop-phase0, 2026-09-20
 ---
 
@@ -31,15 +31,15 @@ verified_against: branch claude/improvement-loop-phase0, 2026-09-20
 
 | Prefix | Meaning | Where it's defined |
 |---|---|---|
-| `P<n>` / `P<n>-<m>` | Pillar n / its requirement m. P1 Registry, P2 Identity, P3 Guardrails, P4 Eval, P5 Audit, P6 Compliance, P7 Answerability, P8 Provenance, P9 Action assurance, P10 Entitlement, P11 Escalation, P12 Policy composition, P13 Failure attribution, P14 Context integrity, P15 Cost/reliability, P16 Memory, P17 Inter-agent, P18 Data-access scoping | `docs/PRD.md` §5, §12 |
-| `PL-<n>` | Platform / production readiness (PL-2 migrations, PL-3 kill switch, PL-5 job queue) | `docs/PRD.md`, `docs/gap-analysis.md` |
-| `I-<n>` | Integration surfaces (I-1 LangGraph, I-2 MCP, I-11 cloud providers, …) | `docs/PRD.md` §6 |
-| `X-<n>` | Cross-cutting principles (X-3 offline install, X-5 dashboard is only an API client) | `docs/PRD.md` |
-| `NFR-<n>` | Non-functional requirements (NFR-1 latency, NFR-9 offline) | `docs/PRD.md` |
-| `F<fam>.<mode>` | Failure modes F1.1–F9.5 (F1 answerability … F8 context integrity) | `docs/failure-modes.md` |
+| `P<n>` / `P<n>-<m>` | Pillar n / its requirement m. P1 Registry, P2 Identity, P3 Guardrails, P4 Eval, P5 Audit, P6 Compliance, P7 Answerability, P8 Provenance, P9 Action assurance, P10 Entitlement, P11 Escalation, P12 Policy composition, P13 Failure attribution, P14 Context integrity, P15 Cost/reliability, P16 Memory, P17 Inter-agent, P18 Data-access scoping | `docs/design/PRD.md` §5, §12 |
+| `PL-<n>` | Platform / production readiness (PL-2 migrations, PL-3 kill switch, PL-5 job queue) | `docs/design/PRD.md`, `docs/design/gap-analysis.md` |
+| `I-<n>` | Integration surfaces (I-1 LangGraph, I-2 MCP, I-11 cloud providers, …) | `docs/design/PRD.md` §6 |
+| `X-<n>` | Cross-cutting principles (X-3 offline install, X-5 dashboard is only an API client) | `docs/design/PRD.md` |
+| `NFR-<n>` | Non-functional requirements (NFR-1 latency, NFR-9 offline) | `docs/design/PRD.md` |
+| `F<fam>.<mode>` | Failure modes F1.1–F9.5 (F1 answerability … F8 context integrity) | `docs/design/failure-modes.md` |
 | `NOM-<FAM>-NN` | Controls: DSC, IAM, RTG, EVL, AUD, GOV | `src/agentfox/compliance_data/controls.yaml`, Appendix B |
-| `R<n>` | PRD risks | `docs/PRD.md` §10 |
-| Tier 0–3, Tranche 0–4 | Gap-analysis severity tiers, roadmap tranches | `docs/gap-analysis.md`, `docs/PRD.md` §9 |
+| `R<n>` | PRD risks | `docs/design/PRD.md` §10 |
+| Tier 0–3, Tranche 0–4 | Gap-analysis severity tiers, roadmap tranches | `docs/design/gap-analysis.md`, `docs/design/PRD.md` §9 |
 
 ## Commit conventions (contributors)
 

@@ -1,6 +1,6 @@
 # How to read our numbers
 
-**Read this before quoting anything from [`benchmarks/`](../benchmarks/README.md).** It states what each
+**Read this before quoting anything from [`benchmarks/`](../../benchmarks/README.md).** It states what each
 kind of evidence here can and cannot establish, and the limits that apply before any number does.
 
 ## The four rules every number follows
@@ -20,11 +20,11 @@ kind of evidence here can and cannot establish, and the limits that apply before
 **Static benchmarks overstate defences.** Every fixed dataset was written by someone who never saw our
 output. [*The Attacker Moves Second*](https://arxiv.org/abs/2510.09023) reports over 90% attack success
 against twelve published defences once attackers adapt. Our own
-[adaptive benchmark](../benchmarks/adaptive/README.md) reproduces that pattern against us, on purpose.
+[adaptive benchmark](../../benchmarks/adaptive/README.md) reproduces that pattern against us, on purpose.
 
 **Detection numbers are not robustness numbers.** Our injection recall is a measure of how expensive we
 make an attack, not of whether an attack is possible. It is possible. Read
-[containment](../benchmarks/containment/README.md) for the claim that actually carries weight.
+[containment](../../benchmarks/containment/README.md) for the claim that actually carries weight.
 
 **Containment depends on declarations.** Tool impact tiers, capability grants, numeric constraints,
 trigger declarations and access scopes are all declared by an operator. An irreversible tool recorded as
@@ -61,7 +61,7 @@ tools and policies are different. Every script here runs against your own databa
 
 We would rather know. Open an issue at <https://github.com/architsharm/agentfox/issues> with the payload
 and the surface it reached. Findings that defeat a shipped detector are added to
-[`tests/corpus/injection.py`](../tests/corpus/injection.py) **when they are found, not when they are
+[`tests/corpus/injection.py`](../../tests/corpus/injection.py) **when they are found, not when they are
 fixed**, which is the rule that keeps the corpus honest — a known miss sitting in the corpus failing is
 more useful than one quietly left out.
 
@@ -73,7 +73,7 @@ uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py
 uv run python benchmarks/adaptive/run_adaptive_benchmark.py
 uv run python benchmarks/run_prompt_injection_benchmark.py
 uv run python scripts/coverage.py --write
-uv run python scripts/probe/run.py --md > docs/coverage-map.md
+uv run python scripts/probe/run.py --md > docs/design/coverage-map.md
 ```
 
 Everything above runs offline, with no API key and no model weights, against a throwaway database.

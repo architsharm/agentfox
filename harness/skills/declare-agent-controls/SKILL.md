@@ -8,7 +8,7 @@ description: Declares the agent-specific controls that stop the business failure
 > Commands below are written as `agentfox …`. If `agentfox` isn't on PATH, see
 > [Running the CLI](../../AGENTS.md#running-the-cli).
 
-Each control maps to a failure family in `docs/failure-modes.md`. Ask which failure the
+Each control maps to a failure family in `docs/design/failure-modes.md`. Ask which failure the
 user is worried about, then do only that section. Every command here is in
 [reference/cli.md](../../reference/cli.md#agent-controls--boundary-sources-escalation-entitlement-p7-p8-p10-p11).
 Everything starts in `observe`.

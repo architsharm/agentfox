@@ -17,20 +17,20 @@ commit; `scripts/check_harness.py` fails if a repo `.md` file is unclassified.
 | File | Read it when you need | Notes |
 |---|---|---|
 | `README.md` | the pitch, install paths, the CLI cheat sheet, honest limits | Entry point for humans |
-| `docs/PRD.md` | *why* a feature exists, requirement IDs, roadmap, non-goals | 1,200 lines — jump to §5 pillars, §6 integrations, §9 roadmap, §10.3 non-goals, §12 shipped since |
-| `docs/hld.md` | architecture, request path, deployment topology | Derived from code; code wins |
-| `docs/lld.md` | which module implements what, class internals, CLI tree | Counts drift; code wins |
-| `docs/traceability.md` | requirement → module → control → test | Hand-maintained |
-| `docs/failure-modes.md` | how deployed agents fail (F1–F9) and which are covered | Living scorecard |
-| `docs/gap-analysis.md` | enterprise-readiness gaps, Tier 0–3 | Canonical gap register |
-| `docs/responding-to-the-critique.md` | answering the "AI security is bullshit" argument: what we accept, what we dispute, what we changed | Sales-facing; keep claims checkable |
-| `docs/appendix-b-control-catalog.md` | NOM-* controls and their framework mappings | All mappings DRAFT; YAML path in the doc is stale |
-| `docs/appendix-e-threat-model.md` | threats to customers' agents and to the product | |
-| `docs/appendix-a-oss-register.md` | why an OSS project is (not) used, licences | Check before adding a dependency |
+| `docs/design/PRD.md` | *why* a feature exists, requirement IDs, roadmap, non-goals | 1,200 lines — jump to §5 pillars, §6 integrations, §9 roadmap, §10.3 non-goals, §12 shipped since |
+| `docs/architecture/high-level-design.md` | architecture, request path, deployment topology | Derived from code; code wins |
+| `docs/architecture/low-level-design.md` | which module implements what, class internals, CLI tree | Counts drift; code wins |
+| `docs/design/traceability.md` | requirement → module → control → test | Hand-maintained |
+| `docs/design/failure-modes.md` | how deployed agents fail (F1–F9) and which are covered | Living scorecard |
+| `docs/design/gap-analysis.md` | enterprise-readiness gaps, Tier 0–3 | Canonical gap register |
+| `docs/evaluation/responding-to-the-critique.md` | answering the "AI security is bullshit" argument: what we accept, what we dispute, what we changed | Sales-facing; keep claims checkable |
+| `docs/design/control-catalog.md` | NOM-* controls and their framework mappings | All mappings DRAFT; YAML path in the doc is stale |
+| `docs/architecture/threat-model.md` | threats to customers' agents and to the product | |
+| `docs/design/oss-register.md` | why an OSS project is (not) used, licences | Check before adding a dependency |
 | `docs/README.md` | the index of docs/: what each document is for and who it is for | Start here when you do not know which document answers a question |
 | `docs/getting-started.md` | a linear first hour for a new user, ending with their own agent governed | Written for a newcomer, not for an agent; each step says what it proves |
-| `docs/deployment-systemd.md` | running the Python gateway as a reboot-persistent systemd user service, with separate database, evidence and signing-key storage | Self-hosters on Linux |
-| `docs/evidence-standards.md` | how to read any number in this repo, and the limits that apply before it | Read before quoting a benchmark |
+| `docs/deployment/systemd.md` | running the Python gateway as a reboot-persistent systemd user service, with separate database, evidence and signing-key storage | Self-hosters on Linux |
+| `docs/evaluation/evidence-standards.md` | how to read any number in this repo, and the limits that apply before it | Read before quoting a benchmark |
 | `benchmarks/README.md` | which benchmark proves which claim | Index; quote numbers from the linked methodology only |
 | `THIRD_PARTY_NOTICES.md` | attribution obligations | Update when adding a dependency |
 
@@ -39,7 +39,7 @@ commit; `scripts/check_harness.py` fails if a repo `.md` file is unclassified.
 | File | Regenerate with |
 |---|---|
 | `docs/status.md` | `uv run python scripts/coverage.py --write` |
-| `docs/coverage-map.md` | `uv run python scripts/probe/run.py --md > docs/coverage-map.md` |
+| `docs/design/coverage-map.md` | `uv run python scripts/probe/run.py --md > docs/design/coverage-map.md` |
 
 Quote coverage numbers only from these, and only after regenerating.
 
@@ -47,15 +47,15 @@ Quote coverage numbers only from these, and only after regenerating.
 
 | File | Known drift | Use instead |
 |---|---|---|
-| `docs/appendix-c-api-spec.md` | missing and phantom routes | `harness/reference/http-api.md`, live `/docs` |
-| `docs/appendix-d-data-model.md` | wrong model path | `src/agentfox/models.py` |
+| `docs/architecture/api-spec.md` | missing and phantom routes | `harness/reference/http-api.md`, live `/docs` |
+| `docs/architecture/data-model.md` | wrong model path | `src/agentfox/models.py` |
 
 ## Class D — task-scoped: read only when working on that thing
 
 | Files | Task |
 |---|---|
 | `benchmarks/REPORT.md`, `benchmarks/*/README.md` (one per benchmark area) | running or changing that benchmark |
-| `benchmarks/data/README.md`, `benchmarks/data_generalization/README.md`, `docs/dataset-sourcing.md` | dataset provenance and licensing |
+| `benchmarks/data/README.md`, `benchmarks/data_generalization/README.md`, `docs/evaluation/dataset-sourcing.md` | dataset provenance and licensing |
 | `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md` | running or deploying the live demos |
 | `CONTRIBUTING.md` | setting up to work on the code: the extras to install, the checks that must pass, and the two things that surprise people (vendored wheels, numbers bound to result files) |
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |
@@ -68,7 +68,7 @@ Quote coverage numbers only from these, and only after regenerating.
 
 | Files | Why |
 |---|---|
-| `docs/benchmarking-whitepaper.md` | Positioning and marketing; an agent should cite primary benchmark docs, not these |
+| `docs/evaluation/benchmarking-whitepaper.md` | Positioning and marketing; an agent should cite primary benchmark docs, not these |
 
 ## Harness files (Class H — owned by `harness/`)
 
@@ -81,9 +81,9 @@ Everything under `harness/` is agent-facing by design and follows `harness/STRUC
 | How do I run X? | `harness/reference/cli.md` | `agentfox X --help` |
 | Which env var controls Y? | `harness/reference/config.md` | `src/agentfox/config.py` |
 | What does this API route take? | `harness/reference/http-api.md` | `src/agentfox/gateway/routes/` |
-| Why was this built / is it in scope? | `docs/PRD.md` | `docs/gap-analysis.md` |
-| Where is requirement P9-11 implemented? | `docs/traceability.md` | `docs/lld.md` |
-| Is failure mode F3.8 covered? | `docs/status.md` (regenerate first) | `docs/failure-modes.md` |
+| Why was this built / is it in scope? | `docs/design/PRD.md` | `docs/design/gap-analysis.md` |
+| Where is requirement P9-11 implemented? | `docs/design/traceability.md` | `docs/architecture/low-level-design.md` |
+| Is failure mode F3.8 covered? | `docs/status.md` (regenerate first) | `docs/design/failure-modes.md` |
 | Which framework clause does control NOM-RTG-04 map to? | `src/agentfox/compliance_data/controls.yaml` | Appendix B |
 | What does the loop want to change, and who may decide it? | `harness/skills/operate-improvement-loop/SKILL.md` | `src/agentfox/improvement/contract.py` |
 | Why did the tool do something surprising? | `harness/reference/known-issues.md` | source |

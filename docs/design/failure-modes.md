@@ -2,7 +2,7 @@
 
 **Companion to [gap-analysis.md](gap-analysis.md).** That document benchmarked us against vendor feature lists. This one benchmarks us against **how enterprise agents actually fail in production** — which turns out to be a very different, and more useful, target.
 
-**Current figures** (tests, lines, failure modes covered) are generated into [status.md](status.md); the dated updates below record what was true on their date.
+**Current figures** (tests, lines, failure modes covered) are generated into [../status.md](../status.md); the dated updates below record what was true on their date.
 
 **Update, 2026-08-29:** the taxonomy below was written 2026-08-18 against an 18.7k-LOC codebase that covered 1 of 50 modes. Since then the codebase grew to 50k+ LOC / 1,131 tests, and a grep/execution-verified re-audit (methodology unchanged: every status below is either a passing test, a direct code citation, or an explicit import-graph check — not an inference) found **40 of 50 original modes now ✅, 3 ◐, 5 ◐-unwired, 2 still ✗** (F3.8 composed privilege escalation, F7.7 cross-turn self-contradiction). One status appears for the first time: **◐-unwired** — real, unit-tested logic that is never imported or called from the live enforcement path (`enforcement.py`, `gateway/app.py`, `guardrails/pipeline.py`, or any gateway route reachable on the inline request), so it does nothing for a production request today despite passing its own tests. That is a distinct, worse state than a normal ◐ partial, and it applies to all of F6 (F6.1–F6.5).
 
@@ -215,7 +215,7 @@ A recurring pattern across F1, F2 and F7 is that the agent has no access to ente
 | F8 Context & retrieval integrity | 7 | 0 | 0 | 6 | 1 | feeds F1/F2/F7 |
 | **Total** | **57** | **41** | **3** | **11** | **2** | |
 
-**41 of 57 modes were covered live when this table was last counted by hand, on 2026-08-30.** The current figure is computed, not hand-counted: [docs/status.md](status.md) reports 54 of 57 outright and 2 partial. Where the two disagree, the computed one is right and this table is behind.
+**41 of 57 modes were covered live when this table was last counted by hand, on 2026-08-30.** The current figure is computed, not hand-counted: [docs/status.md](../status.md) reports 54 of 57 outright and 2 partial. Where the two disagree, the computed one is right and this table is behind.
 
 The rest of this section is the 2026-08-30 snapshot (was 1 of 50 on 2026-08-18, before F8 existed in this taxonomy; 40 of 57 as of 2026-08-29, before F3.8 was built). Two modes are genuinely absent — F7.7 (cross-turn self-contradiction) and F8.3 (stale index) — real, scoped gaps worth building next, not oversights. Four are honest partials (F4.7 MNPI/legal-hold class untested by name, F5.4 turn-depth proxy rather than true quality-trend detection, F7.6 timezone ambiguity rather than verified date-shift detection). **Eleven — all of F6 except F6.6, and all of F8 except F8.3 — are the `◐-unwired` pattern:** real, individually-tested modules that nothing in the live request path ever calls. That's the highest-leverage remaining fix in this whole document: for eleven of the seventeen non-fully-covered modes, the detection logic already exists and is already correct.
 
@@ -253,7 +253,7 @@ The user asserts something false ("As you know, the deadline is Friday" — it's
 
 ### F9.3 — Answer quality degrades in non-English
 
-**Status: ◐ partially closed (2026-09-16)** — the deterministic half is done, exactly as the design below proposed: `integrity.py`'s arithmetic, aggregation, period, deadline, scale, currency and entity checks now read localised number and date formats, taking parity on matched pairs from **6/19 to 19/19** with an English false-positive rate of 0.097% across 4,138 texts ([`benchmarks/multilingual/`](../benchmarks/multilingual/README.md)). Ambiguous dates are reported, never guessed. **Still open:** the answerability/abstention path is English-only (English 2/3, every other language 1/3), and benign non-English text is flagged by the injection detectors more often than English.
+**Status: ◐ partially closed (2026-09-16)** — the deterministic half is done, exactly as the design below proposed: `integrity.py`'s arithmetic, aggregation, period, deadline, scale, currency and entity checks now read localised number and date formats, taking parity on matched pairs from **6/19 to 19/19** with an English false-positive rate of 0.097% across 4,138 texts ([`benchmarks/multilingual/`](../../benchmarks/multilingual/README.md)). Ambiguous dates are reported, never guessed. **Still open:** the answerability/abstention path is English-only (English 2/3, every other language 1/3), and benign non-English text is flagged by the injection detectors more often than English.
 
 Correct in English, subtly wrong in German — and nothing currently measures this at all; detectors are multilingual for *injection* (4/4 languages caught) but nothing checks whether **answer quality** holds up per language.
 
@@ -265,7 +265,7 @@ Correct in English, subtly wrong in German — and nothing currently measures th
 
 ### F9.4 — Gradual multi-turn manipulation (crescendo)
 
-**Status: ✅ built and live (2026-09-16)** — `trajectory.py`'s `CRESCENDO.TRAJECTORY_DRIFT`, wired into `Enforcer.check_conversation_window` exactly as the design below specifies: a rolling window over sub-threshold detector activations, topic drift and reframing markers, firing on the *slope* rather than any single turn. Measured in [`benchmarks/crescendo/`](../benchmarks/crescendo/README.md): **10/13 crescendo conversations caught, all before the final turn (median turn 3), with 0/9 benign controls flagged** — against 0/13 before. The three misses are gradual topic drift with no reframing language, which is the honest residual. Adds ~3.8ms per governed turn. Observe-first, blockable with one policy rule on the `action_risk` channel.
+**Status: ✅ built and live (2026-09-16)** — `trajectory.py`'s `CRESCENDO.TRAJECTORY_DRIFT`, wired into `Enforcer.check_conversation_window` exactly as the design below specifies: a rolling window over sub-threshold detector activations, topic drift and reframing markers, firing on the *slope* rather than any single turn. Measured in [`benchmarks/crescendo/`](../../benchmarks/crescendo/README.md): **10/13 crescendo conversations caught, all before the final turn (median turn 3), with 0/9 benign controls flagged** — against 0/13 before. The three misses are gradual topic drift with no reframing language, which is the honest residual. Adds ~3.8ms per governed turn. Observe-first, blockable with one policy rule on the `action_risk` channel.
 
 Each individual turn is innocuous; the trajectory across turns is not. Every injection detector scores one message at a time, so a crescendo attack never crosses a per-message threshold.
 

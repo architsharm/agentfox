@@ -1,6 +1,6 @@
 # F3 — destructive-action & blast-radius analysis, benchmarked
 
-**Sequential dataset-sourcing build-out** (see `docs/dataset-sourcing.md`). Four datasets sourced for F3; three built into real benchmarks scoring real, shipping code in `src/agentfox/guardrails/actions.py`, one (ToolEmu) investigated and found not directly benchmarkable — see Dataset 3 below for why that's a legitimate outcome, not a shortfall.
+**Sequential dataset-sourcing build-out** (see `docs/evaluation/dataset-sourcing.md`). Four datasets sourced for F3; three built into real benchmarks scoring real, shipping code in `src/agentfox/guardrails/actions.py`, one (ToolEmu) investigated and found not directly benchmarkable — see Dataset 3 below for why that's a legitimate outcome, not a shortfall.
 
 1. [`gretelai/synthetic_text_to_sql`](https://huggingface.co/datasets/gretelai/synthetic_text_to_sql) (Apache-2.0) — scores `analyse_sql()` directly.
 2. [AgentDojo](https://github.com/ethz-spylab/agentdojo) (MIT) — scores `analyse_arguments()`, the public dispatcher, against realistic multi-domain tool-call arguments.

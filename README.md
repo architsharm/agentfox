@@ -13,7 +13,7 @@ and refuses the rest. It holds after the model has already been convinced.
 
 **[▶ Try it live, no account](https://useagentfox.com/playground)** &nbsp;·&nbsp; [🚀 Self-host it](#self-hosting) &nbsp;·&nbsp; [📊 Every benchmark](https://useagentfox.com/benchmark) &nbsp;·&nbsp; [⚖ How we compare](https://useagentfox.com/compare)
 
-[Getting started](docs/getting-started.md) · [Docs](docs/) · [What is built](docs/status.md) · [Good first issues](https://github.com/architsharm/agentfox/labels/good%20first%20issue) · [Discussions](https://github.com/architsharm/agentfox/discussions) · [Contributing](CONTRIBUTING.md) · [Website](https://useagentfox.com)
+[Getting started](docs/getting-started.md) · [Docs](https://useagentfox.com/docs) · [What is built](docs/status.md) · [Good first issues](https://github.com/architsharm/agentfox/labels/good%20first%20issue) · [Discussions](https://github.com/architsharm/agentfox/discussions) · [Contributing](CONTRIBUTING.md) · [Website](https://useagentfox.com)
 
 </div>
 
@@ -131,7 +131,7 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 ```
 
 Flip `"to"` to `"user"` and the same call returns `allow`. Full surface:
-[Appendix C](docs/appendix-c-api-spec.md).
+[Appendix C](docs/architecture/api-spec.md).
 
 </details>
 
@@ -314,7 +314,7 @@ asserted: [docs/status.md](docs/status.md).
   in AgentFox. The seams for those integrations exist; the integrations do not.
 - **Compliance mappings are DRAFT.** Produced from framework texts by engineers, not reviewed by
   counsel. Evidence packages label them `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` rather than
-  excluding them. [Appendix B §B.6](docs/appendix-b-control-catalog.md#b6-mapping-review-gate).
+  excluding them. [Appendix B §B.6](docs/design/control-catalog.md#b6-mapping-review-gate).
 - **Version 0.3.** No live IdP or SSO, single-org multi-tenancy enforced at the session, text only.
   Each of those is a known gap with a seam already in place, not a redesign.
 
@@ -501,7 +501,7 @@ evaluation and reliability; audit and traceability; policy and compliance.
 
 Roughly 20% of the engineering integrates OSS primitives — OPA/Rego, Presidio, Granite Guardian,
 NeMo/Guardrails AI, promptfoo, Garak, PyRIT, OpenTelemetry — and 80% is the logic above them. Every
-wrapped project sits behind a swappable adapter. [docs/hld.md](docs/hld.md) has the full design.
+wrapped project sits behind a swappable adapter. The [high-level design](docs/architecture/high-level-design.md) has the full design.
 
 Twenty [Guardrails AI Hub](https://guardrailsai.com/hub) validators are wrapped one-per-detector, so
 each has its own key, its own measured precision and latency on your traffic, and its own
@@ -571,7 +571,7 @@ agentfox init                      # SQLite by default; set AGENTFOX_DATABASE_UR
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080
 ```
 
-For a reboot-persistent gateway service, see the [systemd deployment guide](docs/deployment-systemd.md).
+For a reboot-persistent gateway service, see the [systemd deployment guide](docs/deployment/systemd.md).
 
 **After any of them:** create a GitHub OAuth app and set its callback to
 `https://<your-host>/api/auth/github/callback`. The dashboard runbook is
@@ -608,12 +608,15 @@ results file it came from.
 
 | | |
 |---|---|
+| [Website docs](https://useagentfox.com/docs) | Install, quickstart, guides, and the CLI, API and configuration reference |
 | [Getting started](docs/getting-started.md) | A linear first hour, ending with your own agent governed |
 | [Status](docs/status.md) | What is built, partial or absent — computed by probe |
 | [Benchmarks](benchmarks/README.md) | Every number above, with the script that reproduces it |
-| [HLD](docs/hld.md) · [PRD](docs/PRD.md) | Design and requirements |
-| [Appendix C](docs/appendix-c-api-spec.md) | API surface |
-| [Failure modes](docs/failure-modes.md) | What we know breaks, and where |
+| [Design docs](docs/README.md) | Architecture, requirements, threat model and evaluation method, for contributors and reviewers |
+| [HLD](docs/architecture/high-level-design.md) · [PRD](docs/design/PRD.md) | Design and requirements |
+| [API spec](docs/architecture/api-spec.md) | API surface |
+| [Failure modes](docs/design/failure-modes.md) | What we know breaks, and where |
+| [Self-hosting on systemd](docs/deployment/systemd.md) | The gateway as a reboot-persistent Linux service |
 | [SECURITY.md](SECURITY.md) | Report a vulnerability privately |
 
 Questions, or something that should work and does not:

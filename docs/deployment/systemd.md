@@ -1,5 +1,7 @@
 # Run the gateway with systemd
 
+*Contributed by [@PandaHUN777](https://github.com/PandaHUN777) in [#30](https://github.com/architsharm/agentfox/pull/30).*
+
 This guide runs the Python gateway as a systemd user service. It does not install the dashboard or configure TLS; put a reverse proxy in front of the loopback listener for remote access. It was tested on Ubuntu 26.04.1 LTS with Python 3.14.
 
 ## Install and keep state separate
@@ -20,10 +22,10 @@ Create the environment file with a fresh key. Its directory and file should be r
 
 ```bash
 umask 077
-printf 'NOMETRIA_AUDIT_SIGNING_KEY=%s\n' "$(openssl rand -hex 32)" > ~/.config/agentfox/agentfox.env
+printf 'AGENTFOX_AUDIT_SIGNING_KEY=%s\n' "$(openssl rand -hex 32)" > ~/.config/agentfox/agentfox.env
 ```
 
-If you use PostgreSQL, add `NOMETRIA_DATABASE_URL=...` to that file. The `NOMETRIA_` names remain supported for existing deployments.
+If you use PostgreSQL, add `AGENTFOX_DATABASE_URL=...` to that file. Settings are read as `AGENTFOX_*`; the pre-rename `NOMETRIA_*` names are still read as a fallback, so an existing environment file keeps working, but when both are set the `AGENTFOX_*` value wins.
 
 ## Add the user units
 
@@ -37,7 +39,7 @@ Description=AgentFox gateway
 Type=simple
 EnvironmentFile=%h/.config/agentfox/agentfox.env
 Environment=AGENTFOX_STATE_DIR=%h/.local/share/agentfox
-Environment=NOMETRIA_EVIDENCE_DIR=%h/.local/share/agentfox/evidence
+Environment=AGENTFOX_EVIDENCE_DIR=%h/.local/share/agentfox/evidence
 ExecStart=%h/.local/opt/agentfox/venv/bin/agentfox serve --host 127.0.0.1 --port 8080
 Restart=on-failure
 RestartSec=5
@@ -57,8 +59,8 @@ Description=Upgrade the AgentFox database schema
 Type=oneshot
 EnvironmentFile=%h/.config/agentfox/agentfox.env
 Environment=AGENTFOX_STATE_DIR=%h/.local/share/agentfox
-Environment=NOMETRIA_EVIDENCE_DIR=%h/.local/share/agentfox/evidence
-ExecStart=%h/.local/opt/agentfox/venv/bin/agentfox db upgrade
+Environment=AGENTFOX_EVIDENCE_DIR=%h/.local/share/agentfox/evidence
+ExecStart=%h/.local/opt/agentfox/venv/bin/agentfox admin db upgrade
 UMask=0077
 ```
 
@@ -86,4 +88,4 @@ systemctl --user restart agentfox.service
 journalctl --user -u agentfox.service -n 50 --no-pager
 ```
 
-If the migration unit fails, leave the gateway stopped and resolve that error before restarting it. See [Appendix E.2.2](appendix-e-threat-model.md#e22-we-hold-the-most-sensitive-text-in-the-company) for why the signing key is customer-held and kept outside the application database.
+If the migration unit fails, leave the gateway stopped and resolve that error before restarting it. See [Appendix E.2.2](../architecture/threat-model.md#e22-we-hold-the-most-sensitive-text-in-the-company) for why the signing key is customer-held and kept outside the application database.

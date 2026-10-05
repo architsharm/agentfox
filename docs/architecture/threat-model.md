@@ -5,7 +5,7 @@ Two threat models, and conflating them is a common failure in this category:
 - **E.1 — Threats to the customer's agents.** What the product defends against. Drives Pillars 3, 2 and 4.
 - **E.2 — Threats to AgentFox itself.** We sit inline on the customer's critical path and hold their most sensitive text. We are a high-value target and a potential single point of failure.
 
-Taxonomy anchors: OWASP LLM Top 10 (2025), OWASP Agentic Threats T1–T15, MITRE ATLAS. Mapped to controls in [Appendix B](appendix-b-control-catalog.md).
+Taxonomy anchors: OWASP LLM Top 10 (2025), OWASP Agentic Threats T1–T15, MITRE ATLAS. Mapped to controls in [Appendix B](../design/control-catalog.md).
 
 ---
 

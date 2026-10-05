@@ -9,7 +9,7 @@
 #
 # The licence-gated Llama Guard tier (`safety.restricted`) is NOT in the image you
 # pull: the published image never carries gated weights. It is off by default here
-# too. To opt in, after the licence review docs/appendix-a-oss-register.md §A.4 calls
+# too. To opt in, after the licence review docs/design/oss-register.md §A.4 calls
 # for:
 #   1. accept Meta's licence for meta-llama/Llama-Guard-3-8B on Hugging Face,
 #   2. build the image yourself with that account's token, which bakes the weights in:

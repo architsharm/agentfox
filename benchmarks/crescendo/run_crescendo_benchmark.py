@@ -3,7 +3,7 @@
     PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
       python benchmarks/crescendo/run_crescendo_benchmark.py
 
-**The gap.** `docs/coverage-map.md` row L1.6 was `✗ absent`: "Detection is per-message.
+**The gap.** `docs/design/coverage-map.md` row L1.6 was `✗ absent`: "Detection is per-message.
 Nothing scores a conversation's trajectory, and this is a published, effective
 technique." Microsoft's Crescendo (arXiv:2404.01833) escalates gradually — each turn
 is an unremarkable request, and the conversation as a whole arrives somewhere no
