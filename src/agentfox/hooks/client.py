@@ -57,7 +57,7 @@ def ask(payload: dict[str, Any], *, path: Path | None = None, timeout: float = T
     except OSError as exc:
         raise DaemonUnavailable(
             f"no AgentFox daemon at {target} ({exc.strerror or exc}). Start one with "
-            "`agentfox daemon`."
+            "`agentfox admin hooks daemon`."
         ) from exc
     try:
         write_frame(sock, payload)

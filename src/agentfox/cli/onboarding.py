@@ -199,7 +199,8 @@ def init(
             elif coding_agents == []:
                 console.print(
                     "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
-                    "`agentfox hooks install --agent <slug> --write` turns it on for that agent.[/]"
+                    "`agentfox admin hooks install --agent <slug> --write` turns it on for that "
+                    "agent.[/]"
                 )
             enforcing = [d.key for d in documents if d.mode == "enforce"]
             if enforcing:

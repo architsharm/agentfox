@@ -54,15 +54,16 @@ agentfox init
 ```
   ✓ database ready
   ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
-  ✓ 4 policy pack(s) loaded
+  ✓ 3 policy pack(s) loaded
       baseline                 observe  recorded, nothing blocked
-      coding-agent             observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
       tool-containment         enforce  violations are blocked now
+      coding-agent not enabled — no coding-agent hooks in this repo. `agentfox admin hooks install --agent <slug> --write` turns it on for that agent.
 ```
 
-This creates a SQLite database in the current directory, loads the control catalogue and four
-policy packs, and writes a `agentfox.toml` if there isn't one. It is idempotent and offline, so it
+This creates a SQLite database in the current directory, loads the control catalogue and the
+policy packs, and writes a `agentfox.toml` if there isn't one. The coding-agent pack is bound only
+to agents whose Claude Code hooks are installed, so a plain repository gets three. It is idempotent and offline, so it
 is safe to run again.
 
 Read the mode column carefully, because it is the whole shape of the product. The three
