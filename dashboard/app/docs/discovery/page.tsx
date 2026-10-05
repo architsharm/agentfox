@@ -25,9 +25,39 @@ export default function Page() {
       </pre>
       <p>
         From the project directory. It reports what the code is built on, how many
-        model call sites are ungoverned, and what else it found: agent definitions, MCP
-        servers, secrets, shell calls, SQL built near model output, and tools. It
-        writes nothing to the project and sends nothing anywhere.
+        model call sites are ungoverned, every tool and MCP server the agent can reach,
+        and what else it found: agent definitions, secrets, shell calls, and SQL built
+        near model output. It writes nothing to the project and sends nothing anywhere.
+      </p>
+      <p>
+        Tools are found however they are declared: decorated functions, OpenAI function
+        schemas passed as <code>tools=</code> (inline or through a list built
+        elsewhere), and Anthropic tool dicts with <code>name</code> and{" "}
+        <code>input_schema</code>. MCP servers come from <code>.mcp.json</code>,{" "}
+        <code>.cursor/mcp.json</code>, <code>.claude.json</code>,{" "}
+        <code>.claude/settings.json</code> and <code>claude_desktop_config.json</code>.
+      </p>
+
+      <h3>The lethal trifecta</h3>
+      <p>
+        Each tool and server is classified by what it can do: read private data, read
+        content someone outside can write, or send data out and act irreversibly. When
+        one agent has all three, an instruction hidden in a web page or an email can
+        make it send your data somewhere. That is printed first, as a sentence:
+      </p>
+      <pre>
+        <code>{`bot.py: can read customer records (read_customer_record), reads untrusted
+web pages (fetch_url), and can send email (send_email). An instruction hidden
+in a web page could send customer data out.`}</code>
+      </pre>
+      <p>
+        with the command that contains it: a capability grant that makes anything
+        derived from untrusted content wait for approval before it reaches the send
+        tool, or <code>agentfox.auto(mode=&quot;observe&quot;)</code> to watch it happen
+        first. Tools in code are grouped by directory; MCP servers by the config file
+        that loads them into one client. The classification reads names and
+        descriptions, so a tool whose name says nothing is left unflagged, and an MCP
+        server AgentFox does not recognise is reported as unknown, never as safe.
       </p>
 
       <h2>This machine, including sessions that were never committed</h2>
