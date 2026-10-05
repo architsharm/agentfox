@@ -60,11 +60,12 @@ export default function HowItWorks() {
         {/* This said "three ways on … the sequence is the same for all three",
             which is not true and is the kind of untrue that costs a reader real
             protection. autoguard.py's _PATCHERS are the OpenAI, Anthropic,
-            LiteLLM and LangChain clients, so `auto()` governs model traffic and
-            the answerability gate in front of it — and nothing else. The tool
-            check only runs where the call passes through it, and retrieval is
-            filtered where your own code asks for it. A visitor could otherwise
-            add one import and believe their tools were governed. */}
+            LiteLLM and LangChain clients, so `auto()` governs model traffic, the
+            answerability gate in front of it, and the tool calls that come back
+            in a response — not a tool your code calls without the model asking,
+            and not retrieval, which is filtered where your own code asks for it.
+            A visitor could otherwise add one import and believe every tool was
+            governed. */}
         <h3>Where it connects, and what each connection can check</h3>
         <div className="scroll-x">
           <table>
@@ -79,7 +80,9 @@ export default function HowItWorks() {
                 <td>One line in a Python entry point</td>
                 <td>
                   Model traffic: detectors over prompts and responses, the answerability
-                  gate before the call, the kill switch and budgets. <strong>Not tool calls.</strong>
+                  gate before the call, the kill switch and budgets. Plus the tool calls
+                  the model asks for, before your code runs them.{" "}
+                  <strong>Not tools your code calls on its own.</strong>
                 </td>
               </tr>
               <tr>

@@ -256,11 +256,12 @@ export function Stack() {
  *
  * The rows are deliberately specific about *what each one governs*, because
  * the hero above this already had to be rewritten once for implying that
- * `agentfox.auto()` guards tool calls. It does not — autoguard.py patches
- * model clients, and the callers of Enforcer.guard_tool_call are the LangGraph
- * tool node, the MCP governor, the SDK and the gateway. A section that
- * flattened all six into "protects your agent" would reintroduce exactly the
- * overclaim that rewrite removed, so each row says what it sees.
+ * `agentfox.auto()` guards tool calls. At the time it did not. It now checks
+ * the tool calls a model returns (autoguard.py's _govern_tool_calls), but not
+ * a tool the application calls without the model asking — that still needs
+ * the LangGraph tool node, the MCP governor, the SDK or the gateway. A section
+ * that flattened all six into "protects your agent" would reintroduce exactly
+ * the overclaim that rewrite removed, so each row says what it sees.
  */
 const CONTROL_POINTS: { where: string; how: string }[] = [
   { where: "Your coding agent", how: "Claude Code hooks" },

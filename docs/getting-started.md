@@ -233,6 +233,15 @@ import agentfox
 agentfox.auto()
 ```
 
+It governs more than the gateway does from the same position: besides the request and the response
+text, every tool call in the response (OpenAI `tool_calls`, Anthropic `tool_use`, streamed or not)
+goes through the tool-call check before the response is handed back, with argument provenance read
+from the conversation. A tool it has not seen before is registered with an inferred impact —
+`agentfox tools list` marks it `(inferred)` until you confirm it with `agentfox tools declare`. In
+the default mode a refused tool call raises `agentfox.Blocked`, except that capability default-deny
+only applies once the agent holds a grant; `auto(mode="observe")` records and never raises. The
+OpenAI Responses API is not patched.
+
 **What this proves:** enforcement is a property of the deployment, not of your codebase, and an
 undeclared agent is refused before anybody writes a rule about it.
 
