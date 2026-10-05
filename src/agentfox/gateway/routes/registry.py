@@ -367,6 +367,8 @@ class ToolIn(BaseModel):
     impact: str = "read"
     description: str = ""
     json_schema: dict[str, Any] = Field(default_factory=dict)
+    #: ``untrusted`` | ``trusted``. Omitted leaves an existing tool's declaration as it is.
+    output_trust: str | None = None
 
 
 @router.get("/tools")
@@ -380,6 +382,7 @@ def list_tools(
                 "name": t.name,
                 "kind": t.kind,
                 "impact": t.impact,
+                "output_trust": t.output_trust or "untrusted",
                 "description": t.description,
                 "mcp_server_id": t.mcp_server_id,
             }
@@ -392,6 +395,10 @@ def list_tools(
 def create_tool(
     payload: ToolIn, session: Session = Depends(db), _user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
+    from ...models import OUTPUT_TRUST_LEVELS
+
+    if payload.output_trust is not None and payload.output_trust not in OUTPUT_TRUST_LEVELS:
+        raise HTTPException(400, f"output_trust must be one of {OUTPUT_TRUST_LEVELS}")
     tool = upsert_tool(
         session,
         payload.key,
@@ -400,8 +407,9 @@ def create_tool(
         impact=payload.impact,
         schema=payload.json_schema,
         description=payload.description,
+        output_trust=payload.output_trust,
     )
-    return {"key": tool.key, "impact": tool.impact}
+    return {"key": tool.key, "impact": tool.impact, "output_trust": tool.output_trust}
 
 
 class McpIn(BaseModel):

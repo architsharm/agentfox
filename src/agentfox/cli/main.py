@@ -2137,6 +2137,15 @@ def tools_declare(
     name: str = typer.Option("", "--name"),
     description: str = typer.Option("", "--description"),
     triggers: str = typer.Option("", "--triggers", help="Comma-separated downstream effects."),
+    output_trust: str | None = typer.Option(
+        None,
+        "--output-trust",
+        help=(
+            "untrusted | trusted — whether values copied out of this tool's output taint "
+            "the arguments they land in. Default for a new tool: untrusted. Declare "
+            "trusted only for a system of record you control, such as a CRM read."
+        ),
+    ),
 ) -> None:
     """Declare a tool and what it can do (P9).
 
@@ -2144,11 +2153,15 @@ def tools_declare(
     a tainted argument can reach. This is the command that makes least privilege real, and
     it is deliberately the first thing `agentfox init` points at.
     """
+    from ..models import OUTPUT_TRUST_LEVELS
     from ..registry.service import upsert_tool
 
     valid = ("read", "write", "high_impact", "irreversible")
     if impact not in valid:
         console.print(f"[red]impact must be one of: {', '.join(valid)}[/]")
+        raise typer.Exit(2)
+    if output_trust is not None and output_trust not in OUTPUT_TRUST_LEVELS:
+        console.print(f"[red]output trust must be one of: {', '.join(OUTPUT_TRUST_LEVELS)}[/]")
         raise typer.Exit(2)
 
     with _session() as session:
@@ -2158,14 +2171,21 @@ def tools_declare(
             name=name,
             impact=impact,
             description=description,
+            output_trust=output_trust,
         )
         if triggers:
             tool.triggers_json = [t.strip() for t in triggers.split(",") if t.strip()]
         declared_triggers = list(tool.triggers_json or [])
+        declared_trust = tool.output_trust
 
-    console.print(f"[bold]{key}[/] declared — impact [bold]{impact}[/]")
+    console.print(f"[bold]{key}[/] declared — impact [bold]{impact}[/], output {declared_trust}")
     if declared_triggers:
         console.print(f"  triggers: {', '.join(declared_triggers)}")
+    if declared_trust == "trusted":
+        console.print(
+            "  [dim]values an agent copies out of this tool's output no longer count as "
+            "untrusted input, and no longer raise the run's provenance[/]"
+        )
     if impact in ("high_impact", "irreversible"):
         console.print(
             "  [dim]arguments carrying untrusted provenance now require approval or are "
@@ -2187,6 +2207,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
                 "key": t.key,
                 "impact": t.impact,
                 "triggers": list(t.triggers_json or []),
+                "output_trust": t.output_trust or "untrusted",
                 "description": t.description,
             }
             for t in tools
@@ -2201,13 +2222,18 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
     table = Table(box=None, padding=(0, 2))
     table.add_column("tool")
     table.add_column("impact")
+    table.add_column("output")
     table.add_column("triggers")
     for row in rows:
         colour = {"irreversible": "red", "high_impact": "yellow", "write": "cyan"}.get(
             row["impact"], "dim"
         )
+        trust = "[green]trusted[/]" if row["output_trust"] == "trusted" else "[dim]untrusted[/]"
         table.add_row(
-            row["key"], f"[{colour}]{row['impact']}[/]", ", ".join(row["triggers"]) or "—"
+            row["key"],
+            f"[{colour}]{row['impact']}[/]",
+            trust,
+            ", ".join(row["triggers"]) or "—",
         )
     console.print(table)
 

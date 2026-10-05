@@ -359,7 +359,9 @@ def upsert_tool(
     schema: dict[str, Any] | None = None,
     description: str = "",
     mcp_server_id: str | None = None,
+    output_trust: str | None = None,
 ) -> Tool:
+    """Create or update a tool. ``output_trust=None`` leaves the declared trust as it is."""
     tool = _get_or_create(session, Tool, key=key)
     tool.name = name or tool.name or key
     tool.kind = kind
@@ -367,6 +369,10 @@ def upsert_tool(
     tool.schema_json = schema or tool.schema_json or {}
     tool.description = description or tool.description
     tool.mcp_server_id = mcp_server_id or tool.mcp_server_id
+    if output_trust is not None:
+        tool.output_trust = output_trust
+    elif not tool.output_trust:
+        tool.output_trust = "untrusted"
     session.flush()
     return tool
 
