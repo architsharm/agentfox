@@ -12,6 +12,17 @@ streamed and buffered responses. The developer adds one line at startup and ever
 existing `client.chat.completions.create(...)` in the codebase is governed, traced and
 audited without any of them being touched.
 
+What is governed on each call: the request messages (pre-flight), the response text
+(post-flight), and every tool call the response asks for — OpenAI ``tool_calls``
+(and LiteLLM's, which share the shape), Anthropic ``tool_use`` blocks, LangChain
+``AIMessage.tool_calls``, buffered or streamed. Each tool call goes through
+`Enforcer.guard_tool_call` with argument provenance from the request's own
+conversation (a value copied out of a ``role="tool"`` message is ``tool_result``
+taint), and a tool seen for the first time is registered with an *inferred* impact
+for a human to confirm. A refused tool call raises `Blocked` instead of returning
+the response, so the caller's code never runs it. The OpenAI Responses API
+(``client.responses.create``) is not patched, so its calls are not governed here.
+
 Modes — who decides whether a call is refused in-process:
 
 * ``"policy"`` (the default) — the policies decide. Each policy's own mode applies,
@@ -19,7 +30,10 @@ Modes — who decides whether a call is refused in-process:
   exactly when the *enforced* verdict stops the call, i.e. when the gateway would have
   refused it. The shipped ``baseline`` pack is in observe mode, so adding the import
   blocks nothing; ``agentfox policy enforce baseline`` is the one step that starts
-  blocking, with no second knob to find here.
+  blocking, with no second knob to find here. Tool calls follow the same rule, with
+  one carve-out: capability default-deny raises only once the agent holds at least
+  one capability grant (see `_govern_tool_calls`), because before that it would
+  refuse every tool an existing app has.
 * ``"observe"`` — never raise. A library-level safety valve: every decision is still
   recorded, and what *would* have been blocked is logged and counted.
 * ``"enforce"`` — strict: raise whenever the *effective* verdict (what the policies
@@ -59,6 +73,7 @@ from __future__ import annotations
 import atexit
 import contextvars
 import functools
+import json
 import logging
 import os
 import sys
@@ -67,10 +82,18 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from .audit.trace import ATTR_AGENT, ATTR_REQUEST_MODEL, add_span
+from .audit.trace import (
+    ATTR_AGENT,
+    ATTR_REQUEST_MODEL,
+    ATTR_TOOL_IMPACT,
+    ATTR_TOOL_NAME,
+    ATTR_VERDICT,
+    add_span,
+)
 from .config import get_settings
 from .db import init_db, session_scope
-from .enforcement import EnforcementResult, Enforcer
+from .enforcement import _CAPABILITY_REFUSAL_RULE_IDS, EnforcementResult, Enforcer
+from .guardrails.taint import TaintTracker, _flatten
 from .registry.service import register_agent
 
 log = logging.getLogger(__name__)
@@ -180,12 +203,26 @@ class AutoState:
         # actually running rather than warning that nothing is. Still said out
         # loud, because "a fallback is deciding for you" is a fact an operator
         # has to know before they trust a clean dashboard.
+        #
+        # It used to add "Tool-call containment enforces regardless", which was false
+        # twice over: nothing on this path looked at a tool call at all, and the
+        # containment pack is not part of the fallback. What is true now depends on
+        # the mode, so the sentence does too.
         if self.policies_bound == 0:
+            tools = {
+                "enforce": "Tool calls are checked as well, and in strict enforce mode "
+                "one outside this agent's capability grants raises agentfox.Blocked.",
+                "observe": "Tool calls are checked and recorded as well; none is refused.",
+            }.get(
+                self.mode,
+                "Tool calls are checked and recorded as well, but none is refused until "
+                "this agent holds a capability grant or tool-containment is bound.",
+            )
             lines.append(
                 "  No policy is bound, so the shipped baseline applies as a fallback, "
-                "in observe: detections are recorded, nothing is blocked on their "
-                "account. Tool-call containment enforces regardless. Run "
-                "`agentfox init` for the full set and to choose what enforces."
+                f"in observe: detections are recorded, nothing is blocked on their "
+                f"account. {tools} Run `agentfox init` for the full set and to choose "
+                "what enforces."
             )
         if patched:
             lines.append(f"  Patched: {', '.join(patched)}")
@@ -220,23 +257,32 @@ class AutoState:
                         f"    {framework} → none of {clients} is installed or patched; "
                         "its model calls are NOT governed"
                     )
+        if patched:
+            lines.append(
+                "  Governed per call: request messages, response text, and the tool "
+                "calls in the response (OpenAI tool_calls, Anthropic tool_use) before "
+                "your code can run them. Not the OpenAI Responses API."
+            )
         if self.mode == "policy":
             lines.append(
                 "  Policy mode: each policy's own mode decides. Observe-mode policies "
                 "(baseline ships in observe) record what they would have blocked; "
                 "enforce-mode policies, the kill switch and budget caps raise "
-                "agentfox.Blocked. `agentfox policy enforce baseline` is the one step "
-                "that starts blocking."
+                "agentfox.Blocked — for a tool call too. A tool outside the agent's "
+                "capability grants raises once it has at least one grant. "
+                "`agentfox policy enforce baseline` is the one step that starts "
+                "blocking content."
             )
         elif self.mode == "observe":
             lines.append(
                 "  Observe mode: decisions are recorded, nothing is blocked in-process — "
-                "not even by an enforce-mode policy or the kill switch."
+                "not even a tool call, an enforce-mode policy or the kill switch."
             )
         else:
             lines.append(
-                "  Enforce mode (strict): any call a policy would block raises "
-                "agentfox.Blocked, even when that policy is still in observe."
+                "  Enforce mode (strict): any call or tool call a policy would block or "
+                "escalate raises agentfox.Blocked, even when that policy is still in "
+                "observe, and a tool with no capability grant always does."
             )
         return "\n".join(lines)
 
@@ -331,13 +377,43 @@ def default_agent_slug() -> str:
 # ---------------------------------------------------------------------------
 
 
+def _plain(value: Any) -> Any:
+    """A pydantic SDK object as the dict it serialises to; anything else unchanged.
+
+    A tool-calling loop appends the SDK's own response message to `messages`
+    (``messages.append(response.choices[0].message)``) — a `ChatCompletionMessage`,
+    not a dict — and the turn that carried the tool calls was dropped on the floor.
+    """
+    if isinstance(value, dict):
+        return value
+    dump = getattr(value, "model_dump", None)
+    if callable(dump):
+        try:
+            dumped = dump()
+            if isinstance(dumped, dict):
+                return dumped
+        except Exception:  # pragma: no cover - defensive against SDK shape drift
+            pass
+    return value
+
+
+def _get(obj: Any, key: str, default: Any = None) -> Any:
+    """`obj[key]` or `obj.key`, whichever shape this SDK version handed back."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 def _messages_from(kwargs: dict[str, Any]) -> list[dict[str, Any]]:
     """Normalise OpenAI and Anthropic shapes into our message list.
 
     Anthropic carries the system prompt outside `messages`; folding it back in means
-    an injection in a system prompt is evaluated on the same surface either way.
+    an injection in a system prompt is evaluated on the same surface either way. For
+    the same reason an Anthropic ``tool_result`` block — which arrives inside a
+    ``user`` message — becomes a ``tool`` message of its own: it is a tool's output,
+    and is evaluated and tainted as one, exactly like OpenAI's ``role="tool"``.
     """
-    messages = list(kwargs.get("messages") or [])
+    messages = [_plain(m) for m in kwargs.get("messages") or []]
     system = kwargs.get("system")
     if system:
         text = (
@@ -346,11 +422,21 @@ def _messages_from(kwargs: dict[str, Any]) -> list[dict[str, Any]]:
             else " ".join(str(b.get("text", "")) for b in system if isinstance(b, dict))
         )
         messages = [{"role": "system", "content": text}, *messages]
-    return [
-        {"role": str(m.get("role", "user")), "content": m.get("content")}
-        for m in messages
-        if isinstance(m, dict)
-    ]
+    out: list[dict[str, Any]] = []
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        role, content = str(m.get("role", "user")), m.get("content")
+        if isinstance(content, list):
+            blocks = [_plain(b) for b in content]
+            results = [b for b in blocks if _get(b, "type") == "tool_result"]
+            if results:
+                out.extend({"role": "tool", "content": _get(b, "content")} for b in results)
+                content = [b for b in blocks if _get(b, "type") != "tool_result"]
+                if not content:
+                    continue
+        out.append({"role": role, "content": content})
+    return out
 
 
 def _text_of(response: Any) -> str:
@@ -413,12 +499,201 @@ def _chunk_text(chunk: Any) -> str:
     return ""
 
 
+def _chunk_tool_calls(chunk: Any, parts: dict[int, dict[str, Any]]) -> None:
+    """Accumulate the tool-call fragments a streamed chunk carries into ``parts``.
+
+    OpenAI and LiteLLM: ``choices[0].delta.tool_calls[*]``, keyed by ``index``, the
+    name and id on the first fragment and the JSON arguments spread across the rest.
+    Anthropic: a ``content_block_start`` whose block is a ``tool_use`` opens one at
+    the event's ``index``; ``input_json_delta`` events extend its arguments.
+    """
+    choices = getattr(chunk, "choices", None)
+    if choices:
+        for fragment in _get(_get(choices[0], "delta"), "tool_calls") or []:
+            index = _get(fragment, "index", 0) or 0
+            part = parts.setdefault(int(index), {"name": "", "id": None, "args": []})
+            if _get(fragment, "id"):
+                part["id"] = _get(fragment, "id")
+            function = _get(fragment, "function")
+            if _get(function, "name"):
+                part["name"] = str(_get(function, "name"))
+            if _get(function, "arguments"):
+                part["args"].append(str(_get(function, "arguments")))
+        return
+    kind = getattr(chunk, "type", None)
+    if kind == "content_block_start":
+        block = getattr(chunk, "content_block", None)
+        if _get(block, "type") == "tool_use":
+            initial = _get(block, "input")
+            parts[int(getattr(chunk, "index", 0) or 0)] = {
+                "name": str(_get(block, "name") or ""),
+                "id": _get(block, "id"),
+                # Anthropic opens the block with an empty `input` and streams the
+                # real one; a non-empty one (a replayed stream) is kept as the start.
+                "args": [json.dumps(initial)] if initial else [],
+            }
+    elif kind == "content_block_delta":
+        delta = getattr(chunk, "delta", None)
+        if _get(delta, "type") == "input_json_delta":
+            part = parts.get(int(getattr(chunk, "index", 0) or 0))
+            if part is not None:
+                part["args"].append(str(_get(delta, "partial_json") or ""))
+
+
 def _chunk_usage(chunk: Any) -> dict[str, int]:
     """Token counts a streamed chunk carries: OpenAI's final ``include_usage`` chunk,
     Anthropic's ``message_start`` (input) and ``message_delta`` (output) events."""
     if getattr(chunk, "type", None) == "message_start":
         return _usage_of(getattr(chunk, "message", None))
     return _usage_of(chunk)
+
+
+# ---------------------------------------------------------------------------
+# Tool calls
+# ---------------------------------------------------------------------------
+#
+# A model that calls tools does not act: it returns a request to act, and the
+# caller's own code runs it. That request is the one moment a patched client
+# library can stand between an injected instruction and its effect — so every tool
+# call in a governed response goes through `Enforcer.guard_tool_call`, the same path
+# `AgentSession.guard_tool` and MCP governance take, before the response is handed
+# back. Found by a fresh-user run: a support bot whose four tools ran 25 calls, among
+# them `send_email(to=attacker, body=<customer record>)`, and not one was recorded.
+
+
+@dataclass
+class _ToolCall:
+    """One tool call the model asked for, in either provider's shape."""
+
+    name: str
+    arguments: dict[str, Any]
+    call_id: str | None = None
+
+
+def _arguments(raw: Any) -> dict[str, Any]:
+    """Tool arguments as a dict. OpenAI sends a JSON string, Anthropic an object.
+
+    Unparseable arguments are kept as ``{"_raw": ...}`` rather than dropped: a
+    model can be talked into emitting malformed JSON, and a call whose arguments we
+    could not read must not be a call nothing looked at.
+    """
+    if isinstance(raw, str):
+        if not raw.strip():
+            return {}
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return {"_raw": raw}
+    if raw is None:
+        return {}
+    raw = _plain(raw)
+    return raw if isinstance(raw, dict) else {"_value": raw}
+
+
+def _calls_in_message(message: Any) -> list[_ToolCall]:
+    """The tool calls one assistant message carries: OpenAI ``tool_calls`` (and the
+    legacy single ``function_call``), Anthropic ``tool_use`` content blocks, and
+    LangChain's ``AIMessage.tool_calls`` (``{"name", "args", "id"}``)."""
+    calls: list[_ToolCall] = []
+    for call in _get(message, "tool_calls") or []:
+        function = _get(call, "function")
+        if function is not None:
+            name = _get(function, "name")
+            raw = _get(function, "arguments")
+        else:  # LangChain
+            name = _get(call, "name")
+            raw = _get(call, "args")
+        if name:
+            calls.append(_ToolCall(str(name), _arguments(raw), _get(call, "id")))
+    legacy = _get(message, "function_call")
+    if legacy is not None and _get(legacy, "name"):
+        calls.append(_ToolCall(str(_get(legacy, "name")), _arguments(_get(legacy, "arguments"))))
+    content = _get(message, "content")
+    if isinstance(content, list):
+        for block in content:
+            if _get(block, "type") == "tool_use" and _get(block, "name"):
+                calls.append(
+                    _ToolCall(
+                        str(_get(block, "name")),
+                        _arguments(_get(block, "input")),
+                        _get(block, "id"),
+                    )
+                )
+    return calls
+
+
+def _tool_calls_of(response: Any) -> list[_ToolCall]:
+    """Every tool call in a buffered response, in order. Never raises."""
+    try:
+        choices = getattr(response, "choices", None)
+        if choices:
+            return [c for choice in choices for c in _calls_in_message(_get(choice, "message"))]
+        return _calls_in_message(response)
+    except Exception as exc:  # pragma: no cover - defensive against SDK shape drift
+        log.warning("agentfox: could not read tool calls from the response: %s", exc)
+        return []
+
+
+def _tool_specs(kwargs: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Tool name -> descriptor (``description``, ``inputSchema``) from the request's
+    ``tools``, in OpenAI's ``{"type": "function", "function": {...}}`` shape or
+    Anthropic's flat one. The description is what impact inference reads."""
+    specs: dict[str, dict[str, Any]] = {}
+    for raw in kwargs.get("tools") or []:
+        tool = _plain(raw)
+        function = _get(tool, "function") or tool
+        name = _get(function, "name")
+        if not name:
+            continue
+        specs[str(name)] = {
+            "description": str(_get(function, "description") or ""),
+            "inputSchema": _get(function, "parameters") or _get(function, "input_schema") or {},
+        }
+    return specs
+
+
+def _provenance_of(kwargs: dict[str, Any]) -> tuple[TaintTracker, list[str]]:
+    """A taint tracker over this conversation, and the tools already called in it.
+
+    The request carries the whole conversation — that is how a tool-calling client
+    works — so the tracker is rebuilt from it on every call rather than kept between
+    calls. A tool's result is marked ``tool:<tool>#<index>`` when the call that
+    produced it can be found (so composed-escalation checks can name the producing
+    tool), ``$.messages[i].content`` otherwise; both are ``tool_result`` taint. Roles
+    otherwise follow `TaintTracker.mark_messages`.
+    """
+    tracker = TaintTracker()
+    prior: list[str] = []
+    produced_by: dict[str, str] = {}
+
+    def mark_result(i: int, name: str | None, content: Any) -> None:
+        path = f"tool:{name}#{i}" if name else f"$.messages[{i}].content"
+        tracker.mark(path, "tool_result", _flatten(_plain(content)))
+
+    for i, raw in enumerate(kwargs.get("messages") or []):
+        message = _plain(raw)
+        for call in _calls_in_message(message):
+            prior.append(call.name)
+            if call.call_id:
+                produced_by[str(call.call_id)] = call.name
+        role = str(_get(message, "role") or "user")
+        content = _get(message, "content")
+        if role in ("tool", "function"):
+            call_id = _get(message, "tool_call_id")
+            mark_result(i, produced_by.get(str(call_id)) or _get(message, "name"), content)
+            continue
+        if isinstance(content, list):
+            rest = []
+            for block in (_plain(b) for b in content):
+                if _get(block, "type") == "tool_result":
+                    call_id = _get(block, "tool_use_id")
+                    mark_result(i, produced_by.get(str(call_id)), _get(block, "content"))
+                else:
+                    rest.append(block)
+            content = rest
+        source = {"system": "none", "developer": "none", "assistant": "none"}.get(role, "user")
+        tracker.mark(f"$.messages[{i}].content", source, _flatten(content))
+    return tracker, prior
 
 
 #: LangChain message `.type` -> our role vocabulary.
@@ -499,12 +774,17 @@ class Blocked(RuntimeError):
     """Raised when a governed call is refused in-process.
 
     When it is raised depends on the `auto()` mode (see the module docstring);
-    ``.result`` is the `EnforcementResult` that refused it.
+    ``.result`` is the `EnforcementResult` that refused it. When what was refused is
+    a tool call the model asked for, ``.tool_call`` names it (``name``,
+    ``arguments``) and the message says which rule refused it and where its
+    arguments came from — the response carrying the call is withheld, so the
+    caller's own code never gets the chance to run it.
     """
 
-    def __init__(self, result: Any) -> None:
-        super().__init__(result.reason or "blocked by policy")
+    def __init__(self, result: Any, message: str | None = None, tool_call: Any = None) -> None:
+        super().__init__(message or result.reason or "blocked by policy")
         self.result = result
+        self.tool_call = tool_call
 
 
 # ---------------------------------------------------------------------------
@@ -530,8 +810,8 @@ def _raises(mode: str, *, enforced: bool, effective: bool) -> bool:
     return enforced  # "policy"
 
 
-def _fail_closed_result(exc: Exception) -> EnforcementResult:
-    reason = f"pre-flight failed and fail_mode=closed: {exc}"
+def _fail_closed_result(exc: Exception, stage: str = "pre-flight") -> EnforcementResult:
+    reason = f"{stage} failed and fail_mode=closed: {exc}"
     return EnforcementResult(
         verdict="block",
         effective_verdict="block",
@@ -563,6 +843,12 @@ class _Call:
     #: `AutoState.would_have_blocked`); None when nothing was flagged.
     flagged: str | None = None
     started: float = 0.0
+    #: Provenance of everything in the request, for the tool calls in the response.
+    tracker: TaintTracker = field(default_factory=TaintTracker)
+    #: Tools already called earlier in this conversation, in order.
+    prior_tools: list[str] = field(default_factory=list)
+    #: The request's own tool declarations, by name.
+    tool_specs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def _pop_evidence(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -634,12 +920,17 @@ def _run_preflight(
                 enforced = enforced or window_enforced
                 effective = effective or window_effective
 
+    tracker, prior_tools = _provenance_of(kwargs)
+    tracker.trace_id = trace.id
     call = _Call(
         state=state,
         model=str(kwargs.get("model") or ""),
         messages=messages,
         trace_id=trace.id,
         evidence=evidence,
+        tracker=tracker,
+        prior_tools=prior_tools,
+        tool_specs=_tool_specs(kwargs),
     )
     return call, result, enforced, effective
 
@@ -673,24 +964,40 @@ def _preflight(state: AutoState, kwargs: dict[str, Any], evidence: dict[str, Any
     return call
 
 
-def _postflight(call: _Call, text: str, usage: dict[str, int], *, may_raise: bool = True) -> None:
-    """Span, output evaluation, budget charge, turn record. Shared by buffered,
-    streamed, sync and async calls. Raises `Blocked` when the output must be refused
-    under the state's mode and ``may_raise``."""
+def _postflight(
+    call: _Call,
+    text: str,
+    usage: dict[str, int],
+    *,
+    tool_calls: list[_ToolCall] | None = None,
+    may_raise: bool = True,
+) -> None:
+    """Span, output evaluation, tool-call authorisation, budget charge, turn record.
+    Shared by buffered, streamed, sync and async calls. Raises `Blocked` when the
+    output or a tool call must be refused under the state's mode and ``may_raise``."""
     state = call.state
+    tool_calls = tool_calls or []
     provider_ms = (time.perf_counter() - call.started) * 1000
-    refusal: EnforcementResult | None = None
+    refusal: Blocked | None = None
+    tool_failure: Exception | None = None
     try:
-        if text or usage:
+        if text or usage or tool_calls:
             token = _IN_AGENTFOX.set(True)
             try:
                 with session_scope() as session:
                     enforcer = Enforcer(session)
                     agent, identity, _shadow = enforcer.resolve(state.agent)
                     if text:
-                        refusal = _evaluate_output(
+                        outbound = _evaluate_output(
                             call, session, enforcer, agent, identity, text, usage, provider_ms
                         )
+                        if outbound is not None:
+                            refusal = Blocked(outbound)
+                    if tool_calls:
+                        tool_refusal = _govern_tool_calls(
+                            call, session, enforcer, identity, tool_calls
+                        )
+                        refusal = refusal or tool_refusal
                     # P15: this call never goes through AgentFox's own provider
                     # abstraction — it's the caller's own SDK, patched in place — so
                     # nothing else on this path ever charges spend against the
@@ -709,20 +1016,33 @@ def _postflight(call: _Call, text: str, usage: dict[str, int], *, may_raise: boo
                 _IN_AGENTFOX.reset(token)
     except Exception as exc:  # pragma: no cover - defensive
         log.warning("agentfox: post-flight failed: %s", exc)
+        if tool_calls:
+            tool_failure = exc
+
+    # A tool call nobody could check is the one case where failing open hands an
+    # unchecked action to the caller's code, so it follows `fail_mode` exactly as a
+    # pre-flight failure does — and, like one, never raises in observe mode.
+    if tool_failure is not None and refusal is None and state.mode != "observe":
+        try:
+            fail_mode = get_settings().fail_mode
+        except Exception:  # pragma: no cover - settings themselves unreadable
+            fail_mode = "open"
+        if fail_mode == "closed":
+            refusal = Blocked(_fail_closed_result(tool_failure, "tool-call authorisation"))
 
     if refusal is not None and not may_raise:
         # The caller abandoned the stream early; there is nobody left to raise to.
         log.warning(
             "agentfox: output of an abandoned stream would have been blocked — %s",
-            refusal.reason,
+            refusal,
         )
-        call.flagged = call.flagged or refusal.reason
+        call.flagged = call.flagged or str(refusal)
         refusal = None
 
     state.calls_governed += 1
     if refusal is not None:
         state.calls_blocked += 1
-        raise Blocked(refusal)
+        raise refusal
 
     # P11: capture the exchange as a conversation turn. Escalation governance was
     # complete and inert for anyone using the one-liner — the detector reads recorded
@@ -738,6 +1058,216 @@ def _postflight(call: _Call, text: str, usage: dict[str, int], *, may_raise: boo
     if call.flagged:
         state.would_have_blocked += 1
         log.info("agentfox: would have blocked (%s mode) — %s", state.mode, call.flagged)
+
+
+def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -> None:
+    """Put a tool the model called into the registry the first time it is seen.
+
+    Containment reasons over `Tool.impact`, and an unregistered tool is reasoned
+    about as ``read`` — the least dangerous value there is. So the impact is
+    inferred from the tool's name and the description the request declared
+    (`integrations.mcp.infer_impact`, the guess MCP governance already makes) and
+    recorded as ``impact_source="inferred"``, for a human to confirm with
+    `agentfox tools declare`. A declaration made in code (`@fox.tool(impact=...)`)
+    beats the guess. An existing row is never overwritten — except an inferred one
+    that code has since declared.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
+
+    from .integrations.mcp import infer_impact
+    from .models import Tool
+    from .registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
+
+    declared = DECLARED_TOOL_IMPACTS.get(name)
+    existing = session.scalar(select(Tool).where(Tool.key == name))
+    if existing is not None:
+        if declared and existing.impact_source == "inferred":
+            existing.impact = declared
+            existing.impact_source = "declared"
+        return
+    descriptor = descriptor or {}
+    try:
+        # A savepoint, because two processes meeting the same new tool at once is
+        # ordinary, and losing that race must not roll back the decisions already
+        # written in this session.
+        with session.begin_nested():
+            upsert_tool(
+                session,
+                name,
+                name=name,
+                impact=declared or infer_impact(name, descriptor),
+                impact_source="declared" if declared else "inferred",
+                schema=descriptor.get("inputSchema") or {},
+                description=descriptor.get("description", ""),
+            )
+    except IntegrityError:
+        pass  # registered by someone else a moment ago; theirs stands
+
+
+def _agent_has_grants(session: Any, identity: Any) -> bool:
+    """Whether anyone has configured least privilege for this agent at all."""
+    if identity is None:
+        return False
+    from sqlalchemy import func, select
+
+    from .models import Capability
+
+    count = session.scalar(
+        select(func.count()).select_from(Capability).where(Capability.identity_id == identity.id)
+    )
+    return bool(count)
+
+
+def _stopping_rules(result: EnforcementResult) -> list[dict[str, Any]]:
+    """The fired rules that refused (or would refuse) the call, applied ones first."""
+    stopping = [r for r in result.rules_fired or [] if r.get("effect") in ("block", "escalate")]
+    # Applied before recorded-only, and the rule that set the verdict before the rest.
+    return sorted(
+        stopping,
+        key=lambda r: (r.get("mode") != "enforce", r.get("effect") != result.effective_verdict),
+    )
+
+
+def _capability_only(result: EnforcementResult) -> bool:
+    """True when the only *applied* refusal is a capability one — the absence of a
+    grant, rather than a policy, the kill switch or a destructive action."""
+    applied = [r for r in _stopping_rules(result) if r.get("mode", "enforce") == "enforce"]
+    return bool(applied) and all(r.get("rule_id") in _CAPABILITY_REFUSAL_RULE_IDS for r in applied)
+
+
+def _describe_origin(path: str | None) -> str:
+    if not path:
+        return ""
+    if path.startswith("tool:"):
+        name, _, index = path[len("tool:") :].partition("#")
+        return f" (the result of {name}, messages[{index}])" if index else f" ({name})"
+    if path.startswith("$."):
+        return f" ({path[2:].removesuffix('.content')})"
+    return f" ({path})"
+
+
+def _describe_tool_refusal(
+    tool_call: _ToolCall, result: EnforcementResult, marks: list[Any], *, applied: bool
+) -> str:
+    """One sentence an engineer can act on: which tool, which rule, and where the
+    arguments that mattered came from."""
+    rules = _stopping_rules(result)
+    rule = rules[0] if rules else {}
+    rule_id = rule.get("rule_id") or "policy"
+    reason = (rule.get("reason") or result.reason or "").strip().rstrip(".")
+    if result.effective_verdict == "escalate" or result.verdict == "escalate":
+        outcome = "needs human approval"
+        if result.approval_id:
+            outcome += f" (approval {result.approval_id})"
+    else:
+        outcome = "was refused" if applied else "would have been refused"
+    message = f"tool call {tool_call.name} {outcome} by {rule_id}"
+    if reason:
+        message += f": {reason}"
+    others = [r.get("rule_id") for r in rules[1:] if r.get("rule_id")]
+    if others:
+        message += f" (also: {', '.join(dict.fromkeys(others))})"
+    untrusted = [m for m in marks if m.trust == "untrusted"]
+    if untrusted:
+        parts = [
+            f"{m.path} from {m.source.replace('_', ' ')}{_describe_origin(m.propagated_from)}"
+            for m in untrusted
+        ]
+        message += ". Argument provenance: " + "; ".join(parts)
+    elif marks or tool_call.arguments:
+        message += ". No argument came from untrusted content"
+    return message + "."
+
+
+def _govern_tool_calls(
+    call: _Call,
+    session: Any,
+    enforcer: Enforcer,
+    identity: Any,
+    tool_calls: list[_ToolCall],
+) -> Blocked | None:
+    """Authorise every tool call in the response. Returns the refusal to raise under
+    the state's mode, if any; every call is checked and recorded either way.
+
+    Which verdicts raise follows the call's own rules (`_raises`), with escalation
+    counted as a stop: an escalated tool call handed back to the caller is a tool
+    call that runs without the approval it needed. One exception in ``"policy"``
+    mode: an agent nobody has granted any capability to has not had least privilege
+    configured, and capability default-deny would refuse every tool it has — so for
+    that agent a refusal that is *only* a missing grant is recorded as
+    would-have-blocked rather than raised. The first grant (`agentfox capability
+    grant`) is what turns it on, the same way `agentfox policy enforce` turns on a
+    policy. Strict ``"enforce"`` mode raises on it regardless.
+    """
+    from .models import Trace
+
+    state = call.state
+    trace = session.get(Trace, call.trace_id)
+    tracker = call.tracker
+    prior = list(call.prior_tools)
+    has_grants: bool | None = None
+    refusal: Blocked | None = None
+
+    for tool_call in tool_calls:
+        _register_tool(session, tool_call.name, call.tool_specs.get(tool_call.name))
+        seen = len(tracker.marks)
+        result = enforcer.guard_tool_call(
+            agent_slug=state.agent,
+            tool_key=tool_call.name,
+            arguments=tool_call.arguments,
+            trace=trace,
+            tracker=tracker,
+            prior_tools=list(prior),
+        )
+        marks = tracker.marks[seen:]  # this call's arguments, as taint_arguments saw them
+        prior.append(tool_call.name)
+
+        enforced = result.blocked or result.escalated
+        effective = enforced or result.effective_verdict in ("block", "escalate")
+        note = ""
+        if enforced and state.mode == "policy" and _capability_only(result):
+            if has_grants is None:
+                has_grants = _agent_has_grants(session, identity)
+            enforced = has_grants
+            if not has_grants:
+                note = "no capability grant exists for this agent; default-deny not applied"
+        raised = _raises(state.mode, enforced=enforced, effective=effective)
+        if raised:
+            if refusal is None:
+                refusal = Blocked(
+                    result,
+                    "agentfox: " + _describe_tool_refusal(tool_call, result, marks, applied=True),
+                    tool_call=tool_call,
+                )
+        elif effective:
+            call.flagged = call.flagged or _describe_tool_refusal(
+                tool_call, result, marks, applied=False
+            )
+            if not note and (result.blocked or result.escalated):
+                note = f"auto() is in {state.mode} mode; recorded, not applied in-process"
+
+        # One `tool` span per call, alongside the decision. The decision records what
+        # the enforcer decided; this records what actually happened in this process,
+        # which differs exactly when auto() let a refused call through (observe mode,
+        # or the no-grants carve-out above) — a decision reading `block` on a call
+        # that ran would otherwise be the record's only word on it.
+        add_span(
+            session,
+            call.trace_id,
+            kind="tool",
+            name=tool_call.name,
+            attributes={
+                ATTR_AGENT: state.agent,
+                ATTR_TOOL_NAME: tool_call.name,
+                ATTR_TOOL_IMPACT: (result.taint or {}).get("tool_impact"),
+                ATTR_VERDICT: result.verdict,
+                "agentfox.decision_id": result.decision_id,
+                "agentfox.autoguard.raised": raised,
+                "agentfox.autoguard.note": note,
+            },
+        )
+    return refusal
 
 
 def _evaluate_output(
@@ -831,7 +1361,9 @@ def _govern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], Any]) -
 
     if _is_stream(kwargs, response) and hasattr(response, "__iter__"):
         return _GovernedStream(response, governed)
-    _postflight(governed, _text_of(response), _usage_of(response))
+    _postflight(
+        governed, _text_of(response), _usage_of(response), tool_calls=_tool_calls_of(response)
+    )
     return response
 
 
@@ -858,7 +1390,9 @@ async def _agovern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], 
             return _AsyncGovernedStream(response, governed)
         if hasattr(response, "__iter__"):
             return _GovernedStream(response, governed)
-    _postflight(governed, _text_of(response), _usage_of(response))
+    _postflight(
+        governed, _text_of(response), _usage_of(response), tool_calls=_tool_calls_of(response)
+    )
     return response
 
 
@@ -883,6 +1417,8 @@ class _StreamBase:
         self._nm_iter: Any = None
         self._nm_parts: list[str] = []
         self._nm_usage: dict[str, int] = {}
+        #: Tool calls arrive in fragments: index -> {"name", "id", "args": [str]}.
+        self._nm_tools: dict[int, dict[str, Any]] = {}
         self._nm_done = False
 
     def __getattr__(self, name: str) -> Any:
@@ -899,6 +1435,7 @@ class _StreamBase:
             for key, value in _chunk_usage(chunk).items():
                 if value:
                     self._nm_usage[key] = max(self._nm_usage.get(key, 0), value)
+            _chunk_tool_calls(chunk, self._nm_tools)
         except Exception as exc:  # pragma: no cover - never break the caller's stream
             log.debug("agentfox: stream chunk not read: %s", exc)
 
@@ -906,8 +1443,17 @@ class _StreamBase:
         if self._nm_done:
             return
         self._nm_done = True
+        tool_calls = [
+            _ToolCall(part["name"], _arguments("".join(part["args"])), part.get("id"))
+            for _index, part in sorted(self._nm_tools.items())
+            if part.get("name")
+        ]
         _postflight(
-            self._nm_call, "".join(self._nm_parts), dict(self._nm_usage), may_raise=may_raise
+            self._nm_call,
+            "".join(self._nm_parts),
+            dict(self._nm_usage),
+            tool_calls=tool_calls,
+            may_raise=may_raise,
         )
 
 
@@ -1019,6 +1565,8 @@ def _lc_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]:
         for key in _EVIDENCE_KWARGS:  # never forwarded to the chat model
             if key in kwargs:
                 govern_kwargs[key] = kwargs.pop(key)
+        if kwargs.get("tools"):  # `bind_tools` passes them here; read, not popped
+            govern_kwargs["tools"] = kwargs["tools"]
         return govern_kwargs
 
     def build(original: Any) -> Any:
@@ -1243,6 +1791,9 @@ def auto(
     * ``"observe"`` — never raise; would-have-blocked is logged and counted.
     * ``"enforce"`` — strict: raise whenever the effective verdict blocks, even for a
       policy still in observe. For tests and CI.
+
+    Tool calls in a response are authorised under the same mode before the response
+    is returned (see the module docstring); a refused one raises `Blocked`.
 
     Returns the state, so a developer can assert on it in a test rather than trusting
     that it worked.
