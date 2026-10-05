@@ -229,6 +229,13 @@ attack-success figure to, at 94.7% precision against the
 is byte-for-byte unchanged, because the routing table forbids any model from deciding it.
 [What each tier is worth, and what it costs](benchmarks/judgment/README.md).
 
+Which tiers run, and what may leave the machine, is editable in the product — Policies →
+Judgment posture — with the deployment acting as a ceiling the product cannot raise. An admin
+can tighten personal-data handling or turn a hosted tier off; nobody can enable one on a
+deployment whose `NOMETRIA_ALLOW_EGRESS` is false, and attempting it is a refusal with a reason
+rather than a preference that silently does nothing. Every change is recorded with who, why and
+what it was before. [How the two layers relate](docs/jev-capabilities.md).
+
 <br />
 
 ## Where we are still improving

@@ -45,6 +45,7 @@ from .routes import (
     onboarding,
     playground,
     policy,
+    posture,
     proposals,
     provenance,
     registry,
@@ -109,9 +110,15 @@ def _judgment_posture() -> dict[str, Any]:
     it and, for every tier that may not, the measured reason it was refused.
     """
     from ..config import get_settings
+    from ..judgment import posture as _posture
     from ..judgment.capability import CapabilityRouter, DecisionKind, Tier
 
     settings = get_settings()
+    # The *effective* posture, which is this tenant's stored choice where there is one
+    # and the deployment's settings otherwise. Reading settings directly here would
+    # make this endpoint disagree with the page that changes them, and the whole
+    # purpose of the endpoint is to be the thing somebody screenshots.
+    active = _posture.effective()
     router = CapabilityRouter.from_settings()
     kinds = {}
     for kind in DecisionKind:
@@ -124,11 +131,15 @@ def _judgment_posture() -> dict[str, Any]:
             },
         }
     return {
-        "tiers_enabled": [str(t) for t in (getattr(settings, "judgment_tiers", None) or [])],
+        "tiers_enabled": sorted(str(t) for t in active.tiers),
+        # From settings and never from posture: it is the ceiling, and a ceiling the
+        # thing underneath it can raise is not a ceiling.
         "allow_egress": bool(getattr(settings, "allow_egress", False)),
-        "pii_egress": str(getattr(settings, "judgment_pii_egress", "redact")),
-        "backend": str(getattr(settings, "judgment_backend", "local")),
+        "pii_egress": str(active.pii_egress),
+        "backend": str(active.backend),
+        "fail_closed": active.fail_closed,
         "redact_before_egress": bool(getattr(settings, "judgment_redact_before_egress", True)),
+        "editable_at": "/api/judgment/posture",
         "kinds": kinds,
     }
 
@@ -284,6 +295,7 @@ def create_app() -> FastAPI:
     app.include_router(memory.router)
     app.include_router(messaging.router)
     app.include_router(proposals.router)
+    app.include_router(posture.router)
     # Unauthenticated by design (see playground.py's module docstring) — the only
     # router in this app that never depends on `current_user`. It keeps no state in
     # this process: a sandbox is a tenant in the deployment database, so any instance

@@ -99,7 +99,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-191 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+193 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -353,6 +353,8 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/` | Name the service and say where to go next. Unauthenticated. |
+| `GET` | `/api/judgment/posture` | What is in force, what may be changed, and what the deployment forbids. |
+| `PUT` | `/api/judgment/posture` | Replace the posture, refusing anything the deployment does not permit. |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |
 | `GET` | `/api/proposals/{proposal_id}` | One proposal with its diff, evidence, proof and decisions. |
 | `POST` | `/api/proposals/{proposal_id}/apply` | Apply an approved proposal, or settle one whose canary has finished. |
@@ -389,10 +391,20 @@ Every authenticated role can read. Writes are gated per route family by `WRITE_R
 | `evidence` (packages, checkpoints) | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | `suppressions` (silence a detector) | ✓ | ✓ | ✓ | — | — | — |
 | `jobs` (retry dead-lettered work) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `judgment_posture` (which judgment tiers run, and what leaves the box) | ✓ | ✓ | ✓ | — | — | — |
 | `users` | ✓ | ✓ | — | — | — | — |
 
 Filing guardrail feedback (a false positive) is open to any reader; *acting* on it by
 suppressing a detector is a security decision, hence the separate family.
+
+`judgment_posture` excludes `developer` for the same reason. A developer may change
+thresholds and run evaluations all day; deciding that a customer's support ticket may
+be sent to a third-party model is not a developer's call. It is also the one write in
+this table that cannot exceed a bound set outside the product: `allow_egress` and
+`judgment_pii_egress` come from the process environment and act as a ceiling, so a
+posture write may narrow them and never widen them. Attempting to widen returns `409`
+with the reason, rather than storing a preference that silently does nothing — see
+`PUT /api/judgment/posture` and `src/agentfox/judgment/posture.py`.
 
 ---
 

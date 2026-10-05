@@ -80,6 +80,8 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
   { label: "Connect a hosted API", href: "/app/start?tab=connect", group: "Start here" },
   { label: "API tokens", href: "/app/start?tab=tokens", group: "Start here" },
   { label: "Guardrail tuning", href: "/app/policies?tab=guardrails", group: "Policies" },
+  { label: "Judgment posture", href: "/app/policies?tab=judgment", group: "Policies" },
+  { label: "Egress", href: "/app/policies?tab=judgment", group: "Policies" },
   { label: "Escalation", href: "/app/approvals?tab=escalation", group: "Approvals" },
   { label: "Board view", href: "/app/compliance?tab=board", group: "Compliance" },
   { label: "Glossary", href: "/app/glossary", group: "Reference" },

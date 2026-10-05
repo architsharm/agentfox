@@ -6,7 +6,7 @@ import { ApiDown, Empty, InfoTip, InventoryStrip, Panel, Severity, Stat, agentNa
 import { PageHeader } from "@/components/PageHeader";
 import { Countdown } from "@/components/Countdown";
 import { DetectorCatalogue } from "@/components/DetectorCatalogue";
-import { JudgmentPosture } from "@/components/JudgmentPosture";
+import { JudgmentPosture, JudgmentPostureForm } from "@/components/JudgmentPosture";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -22,6 +22,11 @@ export const dynamic = "force-dynamic";
 const TABS: { key: string; label: string }[] = [
   { key: "rules", label: "Rules" },
   { key: "guardrails", label: "Guardrail tuning" },
+  // Its own tab rather than a panel inside guardrail tuning: tuning is about one
+  // detector being wrong, and this is about whether a customer's text may leave the
+  // building at all. Burying the second inside the first is how the consequential
+  // setting ends up being the one nobody found.
+  { key: "judgment", label: "Judgment posture" },
 ];
 
 export default async function Policies({
@@ -60,7 +65,9 @@ export default async function Policies({
         ))}
       </div>
 
-      {tab === "rules" ? <RulesTab agent={agent} /> : <GuardrailTuningTab agent={agent} />}
+      {tab === "rules" && <RulesTab agent={agent} />}
+      {tab === "guardrails" && <GuardrailTuningTab agent={agent} />}
+      {tab === "judgment" && <JudgmentTab error={review_error} notice={review_notice} />}
     </>
   );
 }
@@ -771,5 +778,34 @@ async function GuardrailTuningTab({ agent }: { agent?: string }) {
       </details>
 
     </>
+  );
+}
+
+/**
+ * The one screen that answers "does a customer's text leave this deployment, and
+ * who decided that" — and lets the right people change the answer.
+ *
+ * `canEdit` is computed from the signed-in role rather than discovered by watching
+ * the save fail. The gateway enforces it regardless (`WRITE_ROLES["judgment_posture"]`
+ * is owner/admin/security); this only keeps the form from inviting a developer to
+ * fill it in and be refused.
+ */
+async function JudgmentTab({ error, notice }: { error?: string; notice?: string }) {
+  let detail: any, me: any;
+  try {
+    [detail, me] = await Promise.all([api("/api/judgment/posture"), safeApi("/api/me", null)]);
+  } catch (e) {
+    return <ApiDown {...apiErrorProps(e)} />;
+  }
+
+  const canEdit = ["owner", "admin", "security"].includes(me?.role ?? "");
+  return (
+    <JudgmentPostureForm
+      detail={detail}
+      returnTo="/app/policies?tab=judgment"
+      canEdit={canEdit}
+      error={error}
+      notice={notice}
+    />
   );
 }

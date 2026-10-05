@@ -101,17 +101,60 @@ performative        llm + jev vote     85.0%   (vs 0% code alone)
 With nothing enabled it is today's product, unchanged. Every step between is
 an addition.
 
-## What is not wired yet
+## Who may change this, and from where
 
-`capability.py` is the routing layer. The evaluators it routes *to* are the
-existing detectors plus `JudgmentGateway`; connecting the pipeline to ask the
-router before choosing an evaluator is the next change, deliberately separate,
-because it alters live behaviour and this does not.
+Everything above was an environment variable until it was not. That is the
+right home for *whether this deployment may talk to a third party at all*: it
+is set by whoever runs the process and accepts the risk, and no request can
+reach it. It is the wrong home for *whether we want remote judgment on today*,
+which somebody decides repeatedly and an auditor later asks the history of. An
+environment variable has no author, no reason and no history, and changing one
+needs a deploy.
+
+So there are two layers:
+
+| layer | set by | reachable from a request | has history |
+|---|---|---|---|
+| **deployment ceiling** — `allow_egress`, `judgment_pii_egress`, `judgment_fail_closed` | process environment, TOML | no | no |
+| **posture** — which permitted tiers to use, how strictly | admin, in the product | yes | yes, in the audit chain |
+
+The rule between them is one-directional and enforced in
+`judgment/posture.py`: **posture may narrow what the deployment permits and may
+never widen it.** Enabling `jev` on a deployment with `allow_egress = false`
+returns `409` with the reason, rather than storing a preference that silently
+does nothing — a settings page showing a hosted tier as enabled while nothing
+is sent to it has answered a compliance question wrongly, in writing, in a
+screenshot somebody will attach to an attestation.
+
+Three consequences worth stating:
+
+- **Local tiers need no permission.** The ceiling constrains what *leaves*, not
+  what runs. A deployment with egress off can still enable `local_model` and
+  `local_llm` and get better.
+- **Revocation is retroactive.** The ceiling is re-applied on read, so revoking
+  `allow_egress` narrows every row written while it was allowed. A stored
+  posture is a preference, not a permission.
+- **Widening needs saying so twice.** `confirm_egress` is required for any
+  change that starts sending payloads off the machine or loosens personal-data
+  handling. Turning a hosted tier *off* needs no confirmation: the guard is on
+  the direction whose consequence is invisible from the screen that makes it.
+
+`PUT /api/judgment/posture`, write family `judgment_posture`
+(owner/admin/security — not `developer`, for the same reason silencing a
+detector is not a developer's call). Every change records to the audit chain
+under `operator.judgment_posture.changed` with the before/after pair and a
+required reason. Policies → Judgment posture is the UI.
+
+With no row stored, settings apply exactly as they did before any of this
+existed — which is what keeps the published numbers comparable.
 
 ## Tests
 
-`tests/test_judgment_capability.py` (19) and `tests/test_judgment_egress.py`
-(15). The ones that matter: no capability can take a structural decision from
-code, enabling more never shrinks the decider set, excluded votes are
-discarded, hosted tiers drop out on both egress gates, and the table cannot
-forbid a tier that actually measured best.
+`tests/test_judgment_capability.py` (19), `tests/test_judgment_egress.py` (15)
+and `tests/test_judgment_posture.py` (24). The ones that matter: no capability
+can take a structural decision from code, enabling more never shrinks the
+decider set, excluded votes are discarded, hosted tiers drop out on both egress
+gates, the table cannot forbid a tier that actually measured best — and posture
+cannot enable a tier the deployment forbids, cannot loosen personal-data
+handling below the deployment's floor, and cannot survive a deployment that
+revokes egress afterwards.

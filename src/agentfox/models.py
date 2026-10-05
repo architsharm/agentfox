@@ -1743,6 +1743,48 @@ class WaitlistSignup(Base, TenantExempt):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class JudgmentPosture(Base, TimestampMixin):
+    """Which judgment tiers this tenant has turned on, and what may leave the process.
+
+    Separate from :class:`~agentfox.config.Settings` on purpose, and the separation is
+    the point rather than an accident of storage. Settings are what the *operator of
+    the process* chose: environment variables and a config file, read once, unreachable
+    from any HTTP request. This row is what an *admin inside the product* chose. The
+    two are not interchangeable, because the question "may this deployment talk to a
+    third party at all" and the question "do we want it to today" have different
+    people answering them and different blast radii when answered wrong.
+
+    So the relationship is one-directional and enforced in
+    :mod:`agentfox.judgment.posture`: a row here may only ever *narrow* what the
+    deployment permits. Enabling a remote tier on a deployment whose ``allow_egress``
+    is off is refused rather than stored-and-ignored, because a posture page that
+    shows JEV as on while nothing is being sent to JEV is worse than one that will not
+    let you turn it on — it answers the compliance question wrongly in writing.
+
+    One row per tenant. ``version`` is bumped on every write for the same reason the
+    policy and business-rule tables carry one: an auditor asking what left the building
+    in March needs the posture that was in force in March, and the audit chain's
+    before/after pair is what reconstructs it.
+    """
+
+    __tablename__ = "judgment_posture"
+    __table_args__ = (UniqueConstraint("org_id", name="uq_judgment_posture_org"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("jpo"))
+    #: Tier names from :class:`agentfox.judgment.Tier`. ``deterministic`` is implicit
+    #: and always on — it needs no key, no weights and no network, and a kind with no
+    #: permitted decider at all is not a posture anyone meant to choose.
+    tiers: Mapped[list[str]] = mapped_column(JSON, default=list)
+    #: ``block`` | ``redact`` | ``allow`` — see :class:`agentfox.judgment.PiiEgress`.
+    pii_egress: Mapped[str] = mapped_column(String(16), default="redact")
+    #: Whether a remote tier's outage denies the request or is treated as no-signal.
+    fail_closed: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: ``local`` | ``remote`` | ``auto``.
+    backend: Mapped[str] = mapped_column(String(16), default="local")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    updated_by: Mapped[str | None] = mapped_column(String(200))
+
+
 def _is_exempt(cls: type) -> bool:
     """True for a mapped class deliberately placed outside tenant isolation.
 
