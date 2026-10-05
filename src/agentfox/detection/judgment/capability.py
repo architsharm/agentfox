@@ -13,7 +13,7 @@ enabled. Turning Jev on cannot make SQL blast-radius analysis worse, because
 Jev is not permitted to answer that question.
 
 The five kinds, and what the benchmarks say (full tables in
-`benchmarks/judgment/README.md`):
+`docs/evaluation/judgment/results.md`):
 
     STRUCTURAL_PARSED   a property of a parse tree — does this DELETE have a
                         bounding WHERE. code 100.0%, Jev 98.3%. Code decides,

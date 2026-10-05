@@ -6,7 +6,8 @@ shape of the system before the detail. It is synthesized from the codebase (grou
 by direct inspection, 2026-09-04) and from [docs/design/PRD.md](../design/PRD.md), which remains the
 canonical product document â€” if the two disagree, re-run the check this document describes
 and trust the code. Companion documents: [docs/architecture/low-level-design.md](low-level-design.md) (module/class/API/schema
-detail).
+detail), [docs/design/production-readiness-review.md](../design/production-readiness-review.md) (gaps),
+[docs/design/competitor-analysis.md](../design/competitor-analysis.md) (market position).
 
 ---
 
@@ -326,4 +327,7 @@ The project does not build, and does not intend to build (`docs/design/PRD.md` Â
 
 - **Module-by-module detail, class signatures, DB schema, API endpoints**: [docs/architecture/low-level-design.md](low-level-design.md)
 - **What is built, partial and absent**: [docs/status.md](../status.md)
+- **Is this actually production-ready, and what's missing**: [docs/design/production-readiness-review.md](../design/production-readiness-review.md)
+- **How this compares to the market**: [docs/design/competitor-analysis.md](../design/competitor-analysis.md)
+- **The optional judgment tiers, and what they send off the machine**: [docs/architecture/judgment-tiers.md](judgment-tiers.md), [docs/architecture/judgment-egress.md](judgment-egress.md)
 - **The full product reasoning this HLD condenses**: [docs/design/PRD.md](../design/PRD.md)

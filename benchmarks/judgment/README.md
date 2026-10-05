@@ -200,7 +200,7 @@ as noise.
 - Answerability is all 4,782 KUQ rows and injection is all 165 escaped
   payloads against all 339 NotInject negatives; PII and commitments are
   500-row samples. These are capability measurements, not the 2,160- and
-  77,755-row research studies behind them, which are kept outside this repository.
+  77,755-row studies behind them (`docs/evaluation/judgment/`).
 - The 165 injection positives are mutations of only **48 seed attacks**, so
   they are not independent observations and the true interval around 95%
   recall is wider than 165 rows would imply.
