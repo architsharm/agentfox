@@ -44,6 +44,13 @@ allow_egress = {allow_egress}
 
 # The whole pre-flight pipeline's latency ceiling, in milliseconds.
 enforcement_budget_ms = {enforcement_budget_ms}
+
+# Where a tool call's provenance is read from, for the taint rules.
+#   "session"  - the worst untrusted content anywhere in the run so far, or in the
+#                call's own arguments. Contains more; escalates more benign calls.
+#   "argument" - only what the call's own arguments were copied from.
+# See docs/getting-started.md, "Learned permissions", for what each one measured.
+taint_scope = "{taint_scope}"
 """
 
 # What each policy mode means to someone who has not read the PRD.
@@ -64,6 +71,7 @@ def _config_text(environment: str) -> str:
         default_policy_mode=fields["default_policy_mode"].default,
         allow_egress=str(fields["allow_egress"].default).lower(),
         enforcement_budget_ms=fields["enforcement_budget_ms"].default,
+        taint_scope=fields["taint_scope"].default,
     )
 
 

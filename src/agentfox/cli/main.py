@@ -2393,8 +2393,9 @@ def proposals_list(
         console.print(
             "[dim]no proposals match that filter[/]"
             if filtered
-            else "[dim]no proposals — `agentfox proposals from-labels` files them from "
-            "false positives you have labelled.[/]"
+            else "[dim]no proposals — `agentfox proposals from-traffic` files grants and tool "
+            "declarations from the calls your agents have made; `agentfox proposals "
+            "from-labels` files rule cut-offs from false positives you have labelled.[/]"
         )
         return
     table = Table(box=None, pad_edge=False)
@@ -2544,6 +2545,67 @@ def proposals_from_labels(
     for skip in report["skipped"]:
         where = "/".join(str(skip[k]) for k in ("detector_key", "policy", "rule_id") if k in skip)
         console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
+
+
+@proposals_app.command("from-traffic")
+def proposals_from_traffic(
+    agent: str | None = typer.Option(None, "--agent", help="Only this agent's calls (slug)."),
+    since: str | None = typer.Option(
+        None, "--since", help="Window: 7d, 24h, 30m or an ISO date. Default: the last 30 days."
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Propose tool declarations and grants from what your agents have called.
+
+    Learned permissions: observe, propose, approve. Reads every recorded tool call —
+    refused ones included — and files a `tool.declare` for each undeclared tool and a
+    `capability.grant` per agent and tool, with argument limits read off the calls and
+    a provenance ceiling from benign calls only. A call a detector matched, or that was
+    stopped for where its arguments came from and nobody approved, is never learned
+    from. Nothing is applied: approve and apply each proposal.
+    """
+    from ..improvement.proposals import get_proposal
+    from ..improvement.traffic import parse_since, propose_from_traffic
+
+    try:
+        window = parse_since(since)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
+    with _session() as session:
+        report = propose_from_traffic(session, agent=agent, since=window)
+        body = report.to_json()
+        titles = {}
+        for pid in body["filed"] + body["refreshed"]:
+            proposal = get_proposal(session, pid)
+            if proposal is not None:
+                titles[pid] = (proposal.kind, proposal.status, proposal.title)
+    if as_json:
+        _emit(body, True)
+        return
+
+    calls = body["calls"]
+    console.print(
+        f"read {sum(calls.values())} tool call(s): {calls.get('benign', 0)} benign, "
+        f"{calls.get('held', 0)} held for provenance, {calls.get('flagged', 0)} flagged"
+    )
+    console.print(
+        f"filed {len(body['filed'])}, refreshed {len(body['refreshed'])}, "
+        f"superseded {len(body['superseded'])}, verified {len(body['verified'])}"
+    )
+    for pid in body["filed"] + body["refreshed"]:
+        kind, status, title = titles[pid]
+        console.print(f"  [bold]{pid}[/]  [dim]{kind} · {status}[/]\n      {title}")
+    for skip in body["skipped"]:
+        where = "/".join(str(skip[k]) for k in ("agent", "tool_key") if k in skip)
+        console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
+    if body["filed"] or body["refreshed"]:
+        console.print(
+            "\n  [dim]Next: `agentfox proposals show <id>`, then `agentfox proposals approve "
+            "<id> --actor you@example.com --note why` and `agentfox proposals apply <id> "
+            "--actor you@example.com`. Tool declarations are org-wide loosenings and need "
+            "two different approvers.[/]"
+        )
 
 
 def main() -> None:  # pragma: no cover - console entry point
