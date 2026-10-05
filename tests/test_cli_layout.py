@@ -225,7 +225,7 @@ def test_bare_scan_is_the_repo_scan_with_its_flags(isolated_db, tmp_path):
 
 
 def test_scan_still_reaches_its_subcommands():
-    assert "Snapshot an MCP server" in runner.invoke(app, ["scan", "mcp", "--help"]).output
+    assert "Check an MCP server" in runner.invoke(app, ["scan", "mcp", "--help"]).output
     assert runner.invoke(app, ["scan", "skills", "--help"]).exit_code == 0
     assert "Sweep for shadow agents" in runner.invoke(app, ["scan", "runtime", "--help"]).output
 
@@ -254,11 +254,14 @@ def test_serve_with_options_forwards_to_the_api_command(monkeypatch):
     assert calls["port"] == 9123
 
 
-def test_bare_report_is_compliance_status(isolated_db):
-    old = runner.invoke(app, ["compliance", "status"])
-    new = runner.invoke(app, ["report"])
-    assert new.exit_code == old.exit_code == 0
-    assert new.output == old.output
+def test_bare_report_is_the_one_page_summary(isolated_db):
+    summary = runner.invoke(app, ["report", "summary"])
+    bare = runner.invoke(app, ["report"])
+    assert bare.exit_code == summary.exit_code == 0
+    assert bare.output.startswith("# AgentFox summary")
+    assert runner.invoke(app, ["report", "status"]).output == runner.invoke(
+        app, ["compliance", "status"]
+    ).output
 
 
 # ---------------------------------------------------------------------------

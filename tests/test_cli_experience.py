@@ -209,7 +209,7 @@ def test_capability_grant_refuses_a_comparison_the_engine_cannot_evaluate():
 def test_capability_list_on_an_empty_set_names_the_command_that_fills_it():
     result = runner.invoke(app, ["capability", "list"])
     assert result.exit_code == 0, result.output
-    assert "agentfox capability grant" in flat(result.output)
+    assert "agentfox permit grant" in flat(result.output)
 
 
 def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigured():
@@ -413,7 +413,7 @@ def test_check_overflow_hint_is_a_command_that_runs(tmp_path):
     result = runner.invoke(app, ["check", str(tmp_path), "--limit", "2", "--no-submit"])
     output = flat(result.output)
     assert "(--limit)" not in output
-    hint = re.search(r"agentfox check .*?--limit (\d+)", output)
+    hint = re.search(r"agentfox scan .*?--limit (\d+)", output)
     assert hint, output
     # The number in the hint is the number of sites, so running it shows all of them.
     rerun = runner.invoke(

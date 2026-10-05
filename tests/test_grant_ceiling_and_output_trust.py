@@ -340,8 +340,8 @@ def test_default_deny_names_the_command_that_proposes_grants(session, bot):
     result = _call(session, REFUND, {"amount": 5}, _conversation())
     assert result.verdict == "block"
     assert "default deny" in result.reason
-    assert f"agentfox proposals from-traffic --agent {AGENT}" in result.reason
-    assert f"agentfox capability grant {AGENT} {REFUND}" in result.reason
+    assert f"agentfox policy proposals from-traffic --agent {AGENT}" in result.reason
+    assert f"agentfox permit grant {AGENT} {REFUND}" in result.reason
 
 
 def test_a_database_that_has_not_run_the_migration_still_serves_tool_calls(tmp_path, monkeypatch):

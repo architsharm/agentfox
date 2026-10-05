@@ -45,6 +45,13 @@ allow_egress = {allow_egress}
 
 # The whole pre-flight pipeline's latency ceiling, in milliseconds.
 enforcement_budget_ms = {enforcement_budget_ms}
+
+# Where a tool call's provenance is read from, for the taint rules.
+#   "session"  - the worst untrusted content anywhere in the run so far, or in the
+#                call's own arguments. Contains more; escalates more benign calls.
+#   "argument" - only what the call's own arguments were copied from.
+# Every published number was measured under "session". docs/getting-started.md, step 5b.
+taint_scope = "{taint_scope}"
 """
 
 # What each policy mode means to someone who has not read the PRD.
@@ -65,6 +72,7 @@ def _config_text(environment: str) -> str:
         default_policy_mode=fields["default_policy_mode"].default,
         allow_egress=str(fields["allow_egress"].default).lower(),
         enforcement_budget_ms=fields["enforcement_budget_ms"].default,
+        taint_scope=fields["taint_scope"].default,
     )
 
 
@@ -141,7 +149,8 @@ def init(
     eu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for
     agents this repo's coding-harness hooks govern), and writes a
     agentfox.toml carrying the real runtime defaults so they are visible rather than
-    implicit. NOMETRIA_* environment variables override that file.
+    implicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)
+    override that file.
     """
     from ..compliance import load_catalog, sync_catalog
     from ..config import get_settings
@@ -252,6 +261,7 @@ def check(
     opts into sending a redacted summary — see `cli/submit.py`.
     """
     from ..discovery import scan
+    from ._scan_view import print_surface, print_trifectas
     from .submit import maybe_submit_report
 
     report = scan(path)
@@ -261,6 +271,10 @@ def check(
             maybe_submit_report(report, source="check", explicit=True, console=Console(stderr=True))
         raise typer.Exit(1 if fail_on_ungoverned and report.ungoverned else 0)
 
+    # The trifecta comes first: it is the one finding that reads as a breach scenario
+    # rather than an inventory line, and the reader who stops after one screen should
+    # stop after reading it.
+    print_trifectas(console, report)
     console.print(f"[bold]Scanned[/] {report.files_scanned} files in [dim]{report.root}[/]")
     if report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(report.frameworks)}")
@@ -273,8 +287,16 @@ def check(
             f"\n  [{tone}]{ungoverned}[/] of [bold]{calls}[/] model call sites are "
             f"ungoverned  [dim]({report.coverage:.0%} covered)[/]"
         )
+    print_surface(
+        console,
+        report,
+        limit=max(limit, 12),
+        more_hint=f"agentfox scan --limit {len(report.tools) + len(report.mcp_servers)}",
+    )
     counts = report.by_kind()
-    other = {k: v for k, v in counts.items() if k != "model_call"}
+    # Tools, servers and trifectas were each shown above in their own words.
+    shown = ("model_call", "tool", "mcp_server", "lethal_trifecta")
+    other = {k: v for k, v in counts.items() if k not in shown}
     if other:
         console.print(
             "  [dim]also found:[/] "
@@ -285,7 +307,10 @@ def check(
             )
         )
 
-    ranked = report.ranked(limit)
+    # Trifectas and tools were each shown above, in their own words; the table is
+    # for everything else, worst first.
+    listed = [site for site in report.ranked() if site.kind not in ("lethal_trifecta", "tool")]
+    ranked = listed[:limit] if limit else listed
     if ranked:
         # A budget for the path column, so the paths can be shortened deliberately
         # (from the left, filename last) instead of being cut by the renderer at
@@ -313,7 +338,7 @@ def check(
             table.add_row(mark, f"[dim]{where}[/]", site.detail)
         console.print()
         console.print(table)
-        if len(report.sites) > len(ranked):
+        if len(listed) > len(ranked):
             # A hint has to be a command someone can run. "(--limit)" is a flag name.
             target = "" if str(path) == "." else f" {path}"
             # Say WHAT is not shown, not just how many.
@@ -324,11 +349,11 @@ def check(
             # and left the reader to work out that the table also holds the 16
             # shell calls. It counts findings; the headline counts model calls.
             # Naming the unit reconciles them without changing either number.
-            hidden = len(report.sites) - len(ranked)
+            hidden = len(listed) - len(ranked)
             console.print(
                 f"  [dim]{hidden} more finding(s) not shown, across every kind above. "
                 f"See all of them:[/] [cyan]agentfox scan{target} "
-                f"--limit {len(report.sites)}[/]"
+                f"--limit {len(listed)}[/]"
             )
 
     if report.errors:
