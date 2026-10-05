@@ -122,6 +122,65 @@ ENTITY = {
 }
 
 
+def _why_unavailable(kind: DecisionKind) -> str:
+    """Why a judgment detector is not running, in the operator's terms.
+
+    Without this the catalogue shows these two as simply off, alongside
+    detectors that are off because a package is missing — and the reasons are
+    not alike. These are off because of a *policy* choice, and the fix is a
+    setting rather than an install, so the reason names the setting.
+    """
+    from ...config import get_settings
+    from ...judgment.capability import CapabilityRouter, Tier
+    from ...judgment.jev import JevClient
+
+    settings = get_settings()
+    tiers = [str(t) for t in (getattr(settings, "judgment_tiers", None) or [])]
+    judgment_tiers = [t for t in tiers if t != "deterministic"]
+
+    if not judgment_tiers:
+        return (
+            "No judgment tier is enabled. This check asks a judgment model, and "
+            "the default is to ask nothing off-box. Add 'jev', 'llm' or "
+            "'local_llm' to `judgment_tiers` to turn it on — see "
+            "docs/jev-capabilities.md for what each may decide."
+        )
+
+    permitted = CapabilityRouter.from_settings().plan(kind)
+    seated = [t for t in permitted.deciders if t is not Tier.DETERMINISTIC]
+    excluded = {t: permitted.why(t) for t in permitted.excluded_tiers()}
+
+    # Egress first. A hosted tier that the router dropped for `allow_egress`
+    # is not "not permitted to decide this kind" — it is permitted and gagged,
+    # and telling an operator the wrong one sends them to the wrong setting.
+    gagged = [t for t, why in excluded.items() if "allow_egress" in why]
+    if gagged and not seated:
+        return (
+            f"{', '.join(t.value for t in gagged)} is enabled and permitted to decide "
+            f"{kind.value} questions, but `allow_egress` is off so nothing may leave "
+            "this deployment. Either set `allow_egress` and choose a "
+            "`judgment_pii_egress` posture, or point `litellm_base_url` at a "
+            "self-hosted model and use the 'local_llm' tier, which does not egress."
+        )
+
+    if not seated:
+        reasons = "; ".join(f"{t.value}: {why}" for t, why in excluded.items())
+        return (
+            f"The enabled tiers are not permitted to decide {kind.value} questions. "
+            f"{reasons or 'The routing table excludes them.'}"
+        )
+
+    if Tier.JEV in seated and not JevClient().available():
+        return (
+            "The 'jev' tier is enabled and permitted, but no JEV_API_KEY is "
+            "configured in this deployment."
+        )
+    return (
+        "A judgment tier is enabled and permitted, but no judge could be reached. "
+        "Check the provider credentials for the tiers in `judgment_tiers`."
+    )
+
+
 class InjectionJudgmentDetector(BaseDetector):
     key = "injection.judgment"
     version = "1"
@@ -164,6 +223,10 @@ class InjectionJudgmentDetector(BaseDetector):
         if self._gateway is not None:
             return True
         return bool(panel.judges_for(self.kind))
+
+    @property
+    def unavailable_reason(self) -> str:
+        return _why_unavailable(self.kind)
 
     def _ask(self, state, questions):
         """One judgment, from every enabled tier, unioned by score."""
@@ -306,6 +369,10 @@ class PiiJudgmentDetector(BaseDetector):
         if self._gateway is not None:
             return True
         return bool(panel.judges_for(self.kind))
+
+    @property
+    def unavailable_reason(self) -> str:
+        return _why_unavailable(self.kind)
 
     def _ask(self, state, questions):
         """One judgment, from every enabled tier, unioned by score."""

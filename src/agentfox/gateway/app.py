@@ -101,6 +101,38 @@ async def lifespan(app: FastAPI):
     yield
 
 
+def _judgment_posture() -> dict[str, Any]:
+    """What the judgment tiers are allowed to do, and what leaves the box.
+
+    Rendered from the routing table rather than restated, so the UI cannot
+    drift from the policy it is describing: each kind reports who may decide
+    it and, for every tier that may not, the measured reason it was refused.
+    """
+    from ..config import get_settings
+    from ..judgment.capability import CapabilityRouter, DecisionKind, Tier
+
+    settings = get_settings()
+    router = CapabilityRouter.from_settings()
+    kinds = {}
+    for kind in DecisionKind:
+        plan = router.plan(kind)
+        kinds[kind.value] = {
+            "combine": plan.combine.value,
+            "deciders": [t.value for t in plan.deciders],
+            "refused": {
+                t.value: plan.why(t) for t in plan.excluded_tiers() if t is not Tier.DETERMINISTIC
+            },
+        }
+    return {
+        "tiers_enabled": [str(t) for t in (getattr(settings, "judgment_tiers", None) or [])],
+        "allow_egress": bool(getattr(settings, "allow_egress", False)),
+        "pii_egress": str(getattr(settings, "judgment_pii_egress", "redact")),
+        "backend": str(getattr(settings, "judgment_backend", "local")),
+        "redact_before_egress": bool(getattr(settings, "judgment_redact_before_egress", True)),
+        "kinds": kinds,
+    }
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="AgentFox Control Plane",
@@ -481,6 +513,12 @@ def create_app() -> FastAPI:
             ],
             "budget_ms": get_settings().enforcement_budget_ms,
             "detector_timeout_ms": get_settings().detector_timeout_ms,
+            # The judgment tiers are the one capability whose posture an
+            # operator cannot infer from the detector list: two of these checks
+            # being off says nothing about *why*, or about what leaves the
+            # deployment when they are on. The egress choice in particular was
+            # configurable only by editing a TOML file.
+            "judgment": _judgment_posture(),
         }
 
     @app.get("/api/reliability", tags=["platform"])
