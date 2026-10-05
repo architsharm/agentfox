@@ -641,6 +641,17 @@ def _toml_source(
     return TomlConfigSettingsSource(settings_cls, toml_file=path, toml_table_header=(header,))
 
 
+def env(name: str, default: str | None = None) -> str | None:
+    """One environment variable read outside `Settings`, with the legacy fallback.
+
+    For the handful of switches that are read straight from the environment
+    (a log level, the agent name `auto()` guesses) rather than through `Settings`.
+    ``AGENTFOX_<name>`` wins; ``NOMETRIA_<name>`` keeps working, for the same reason
+    `LEGACY_ENV_PREFIX` exists. An empty value counts as unset.
+    """
+    return os.environ.get(ENV_PREFIX + name) or os.environ.get(LEGACY_ENV_PREFIX + name) or default
+
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

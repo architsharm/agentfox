@@ -370,7 +370,13 @@ agentfox doctor
 ```
 
 `findings` is the list of things a person should look at: shadow agents, agents with no accountable
-owner, stale identities, and every detection that led to a block or a redaction.
+owner, stale identities, every detection that led to a block or a redaction, and every tool call a
+permission, provenance or blast-radius rule stopped — titled by what actually stopped it, e.g.
+`support-triage tried to email.send with data that came from a web page (contained)`.
+
+For the one-page version to forward to whoever signs off, run `agentfox report` (add
+`--format html --out summary.html` for a file). The same page is `SUMMARY.md` at the top of every
+`agentfox evidence export` zip.
 
 `doctor` is the more interesting one, because it grades the configuration rather than the traffic:
 

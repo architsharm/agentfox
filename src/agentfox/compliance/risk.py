@@ -319,7 +319,11 @@ def _human_facing(agent: Agent) -> bool:
 
 def board_view(session: Session) -> dict[str, Any]:
     from ..registry.service import inventory
-    from .status import posture
+    from .status import ensure_compliance_computed, posture
+
+    # Computed here rather than left to a separate `compliance compute`: without
+    # it a fresh deployment's board read "0% of 43 controls".
+    ensure_compliance_computed(session)
 
     agents = list(session.scalars(select(Agent).where(Agent.status != "retired")))
     findings = list(session.scalars(select(Finding).where(Finding.status == "open")))

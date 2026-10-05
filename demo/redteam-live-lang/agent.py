@@ -102,7 +102,7 @@ def _resolve_llm() -> Any:
     verified under) never even attempts an import of a provider package, let alone a
     network call — mirrors `crew.py`'s `_resolve_llm()` fail-fast contract exactly.
     """
-    model_override = os.environ.get("NOMETRIA_DEMO_MODEL")
+    model_override = os.environ.get("AGENTFOX_DEMO_MODEL") or os.environ.get("NOMETRIA_DEMO_MODEL")
     if os.environ.get("ANTHROPIC_API_KEY"):
         from langchain_anthropic import ChatAnthropic
 

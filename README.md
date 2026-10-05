@@ -192,10 +192,14 @@ against a live session, `UserPromptSubmit` was read in the shipped bundle, and a
 checked has no row at all.
 
 A hook runs in a process the harness creates and destroys per call, so it talks to a warm daemon over
-a private Unix socket: 3.9s cold, about 6ms warm. Turn on the pack built for this job:
+a private Unix socket: 3.9s cold, about 6ms warm. `hooks install --write` also binds the pack built
+for this job, `coding-agent`, to the agent it just installed and to no other — so a support bot in the
+same deployment is never told it is in "a coding session". `agentfox init` does the same for any agent
+already named in `.claude/settings.json`, and skips the pack when there is none. It ships in observe;
+promote it when its decisions look right:
 
 ```bash
-agentfox policy observe coding-agent
+agentfox policy enforce coding-agent
 ```
 
 [`harness/`](harness/) additionally packages the product as Claude Code skills, slash commands,
@@ -378,11 +382,19 @@ or `argument`); see [Getting started](docs/getting-started.md#5b-let-it-propose-
 **See what happened**
 
 ```bash
+agentfox report                        # one page for whoever signs off: what ran, what was
+                                       # contained and why, what observe mode would have stopped
 agentfox findings                      # what the platform found; --severity high to narrow
 agentfox doctor                        # is the runtime configured the way you think it is?
 agentfox audit verify                  # re-derive the chain; exits 1 if broken
 agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-30
 ```
+
+A refused tool call is a finding in its own right, titled by what refused it — `support-bot tried
+to send_email with data that came from a web page (contained)` — and one a rule in observe mode
+only recorded reads `would have been contained`. The evidence zip opens on the same one-page
+`SUMMARY.md` (and `.html`) that `agentfox report` prints; its framework-coverage section is a
+draft mapping and says so in its heading.
 
 **Test before you trust**
 

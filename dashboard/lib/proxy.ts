@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "./api";
 
-const API_BASE = process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const API_BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
 
 type ForwardOpts = {
   /** Present -> redirect-shaped response; absent -> JSON response. */

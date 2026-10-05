@@ -32,6 +32,10 @@ version: 1
 mode: observe
 default_effect: allow
 fail_mode: open
+# The wildcard is narrowed when the pack is bound: `agentfox init` and
+# `agentfox hooks install --write` scope it to the agents a coding harness's hooks
+# actually govern, and skip it when there are none (policy/coding.py). Bound to
+# everything, its PII rule told a support bot it was "in a coding session".
 scope:
   agents: ["*"]
 

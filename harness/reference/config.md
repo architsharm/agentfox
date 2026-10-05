@@ -107,10 +107,11 @@ outbox, and a serverless process may freeze before sending.
 
 | Variable | Used by |
 |---|---|
-| `NOMETRIA_AGENT` | `agentfox.auto()` agent slug. Fallbacks: `OTEL_SERVICE_NAME`, `SERVICE_NAME`, `APP_NAME`, `K_SERVICE`, script name, `default-agent`. |
+| `AGENTFOX_AGENT` (legacy `NOMETRIA_AGENT`) | `agentfox.auto()` agent slug. Fallbacks: `OTEL_SERVICE_NAME`, `SERVICE_NAME`, `APP_NAME`, `K_SERVICE`, script name, `default-agent`. |
 | `AGENTFOX_CONFIG` | Path to the TOML config file, or `none`. |
 | `AGENTFOX_API_URL`, `AGENTFOX_API_TOKEN`, `AGENTFOX_USER` | `check/quickscan --submit` only. |
-| `NOMETRIA_AUDIT_KEY` | The `verify_chain.py` bundled in evidence packages (checkpoint signatures). |
+| `AGENTFOX_AUDIT_KEY` (legacy `NOMETRIA_AUDIT_KEY`; falls back to `*_AUDIT_SIGNING_KEY`) | The `verify_chain.py` bundled in evidence packages (checkpoint signatures). |
+| `AGENTFOX_MCP_LOG_LEVEL` (legacy `NOMETRIA_MCP_LOG_LEVEL`) | The stdio MCP server's log level. Default `WARNING`. |
 
 ## Optional extras (`pip install "agentfox[...]"`)
 

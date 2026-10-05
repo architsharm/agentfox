@@ -67,6 +67,12 @@ from .business.ladder import evaluate as evaluate_ladder
 from .business.store import load_ladders
 from .commitments import adverse_action_risk, check_disclosure, detect_commitments
 from .config import get_settings
+from .containment import (
+    detector_verdict,
+    is_detector_rule,
+    matches_detector_rule,
+    raise_containment_findings,
+)
 from .context_integrity import (
     assemble_context,
     chunk_quality,
@@ -1112,17 +1118,43 @@ class Enforcer:
         # at construction (P5-5), so there is no reason to withhold it a second
         # time behind a blanket "we don't store this" — showing the masked excerpt
         # is strictly more useful than a bare category name, and no less safe.
-        if effective != "allow" and pipeline_result.detections:
+        #
+        # Only the detector rules count here. The decision's verdict is the maximum
+        # over every rule, so on a call a capability or taint rule refused, a PII
+        # rule that merely fired alongside it was titled as the cause — "Blocked on
+        # tool_args: PII.EMAIL" for an exfiltration attempt default-deny stopped.
+        det_effective, det_applied = detector_verdict(rules_fired)
+        if det_effective != "allow" and pipeline_result.detections:
             self._raise_detection_finding(
                 agent=agent,
                 trace_id=trace_id,
                 decision_id=decision_row.id,
                 surface=surface,
-                effective=effective,
-                applied=verdict,
+                effective=det_effective,
+                applied=det_applied,
                 reason=reason,
+                rules_fired=[r for r in rules_fired if is_detector_rule(r)],
+                detections=[
+                    d
+                    for d in pipeline_result.detections
+                    if matches_detector_rule(d.entity_type, rules_fired)
+                ],
+            )
+
+        # And the rules that are not detectors get findings of their own, titled by
+        # what they are: the agent, the tool, and the actual reason it was stopped.
+        if surface == "tool_args" and effective != "allow":
+            raise_containment_findings(
+                self.session,
+                agent=agent,
+                tool_key=tool_key,
+                surface=surface,
                 rules_fired=rules_fired,
-                detections=pipeline_result.detections,
+                argument_taint=argument_taint,
+                argument_propagated_from=argument_propagated_from,
+                trace_id=trace_id,
+                decision_id=decision_row.id,
+                decision_verdict=verdict,
             )
 
         # --- 6. escalation (P2-3) ----------------------------------------

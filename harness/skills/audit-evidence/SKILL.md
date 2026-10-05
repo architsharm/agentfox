@@ -56,7 +56,9 @@ Summarise four things:
 - which agents are high-risk in the risk register
 - **what the mapping does not cover**, from Appendix B §B.4 (`docs/appendix-b-control-catalog.md`)
 
-For executives, run `compliance board`.
+For executives, run `compliance board`, or `agentfox report --since 90d --format html --out
+summary.html` for a one-page plain-language summary. Both compute control status themselves if
+step 2 was skipped.
 
 ## 3b. Offer the path out of DRAFT
 
@@ -86,7 +88,9 @@ agentfox evidence export --agent <slug> --since-days 90 --requested-by "<user's 
 - For a fixed audit period, give the dates instead of a window:
   `agentfox evidence export --from 2026-01-01 --to 2026-03-31`. An end date given as
   `YYYY-MM-DD` covers that whole day.
-- The zip lands in `NOMETRIA_EVIDENCE_DIR` (default `var/evidence/`). Tell the user the path.
+- The zip lands in `AGENTFOX_EVIDENCE_DIR` (default `var/evidence/`). Tell the user the path.
+- It opens on `SUMMARY.md` / `SUMMARY.html`, the plain-language page for the same scope. Point
+  the auditor there first; the JSON files are what it is built from.
 
 ## 5. Prove the package stands on its own
 
@@ -96,7 +100,8 @@ Unzip into a temp directory and run the bundled verifier. It needs nothing but P
 python verify_chain.py            # exit 0 = intact, 1 = tampered
 ```
 
-With `NOMETRIA_AUDIT_KEY` set, it also checks checkpoint signatures. Tell the auditor they
+With `AGENTFOX_AUDIT_KEY` (or the older `NOMETRIA_AUDIT_KEY`) set, it also checks checkpoint
+signatures. Tell the auditor they
 can run it themselves, because that's the point of it.
 
 ## 6. Hand-off note

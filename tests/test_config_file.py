@@ -158,3 +158,25 @@ def test_config_none_turns_file_loading_off(workdir, monkeypatch):
     settings = fresh()
     assert settings.environment == "development"
     assert loaded_config_file() is None
+
+
+def test_direct_env_reads_prefer_agentfox_and_keep_the_legacy_name(monkeypatch):
+    """Switches read outside Settings follow Settings' own precedence."""
+    from agentfox.config import env
+
+    monkeypatch.delenv("AGENTFOX_MCP_LOG_LEVEL", raising=False)
+    monkeypatch.delenv("NOMETRIA_MCP_LOG_LEVEL", raising=False)
+    assert env("MCP_LOG_LEVEL", "WARNING") == "WARNING"
+    monkeypatch.setenv("NOMETRIA_MCP_LOG_LEVEL", "INFO")
+    assert env("MCP_LOG_LEVEL") == "INFO"
+    monkeypatch.setenv("AGENTFOX_MCP_LOG_LEVEL", "DEBUG")
+    assert env("MCP_LOG_LEVEL") == "DEBUG"
+
+
+def test_auto_agent_name_reads_agentfox_agent_first(monkeypatch):
+    from agentfox.autoguard import default_agent_slug
+
+    monkeypatch.setenv("NOMETRIA_AGENT", "old-name")
+    assert default_agent_slug() == "old-name"
+    monkeypatch.setenv("AGENTFOX_AGENT", "support-bot")
+    assert default_agent_slug() == "support-bot"
