@@ -336,9 +336,9 @@ def test_a_tool_seen_for_the_first_time_is_registered_with_an_inferred_impact(fa
         assert {k: (t.impact, impact_source_of(t)) for k, t in tools.items()} == {
             "read_customer_record": ("read", "inferred"),
             "send_email": ("irreversible", "inferred"),
-            # The guess is a substring match, and "refund" is not one of its verbs —
-            # which is exactly why the row says `inferred` until a human confirms it.
-            "issue_refund": ("read", "inferred"),
+            # Read cautiously: a name that moves money is irreversible until a human
+            # confirms otherwise — guessing `read` would switch containment off for it.
+            "issue_refund": ("irreversible", "inferred"),
         }
         assert tools["read_customer_record"].description == "Look up a customer's account record"
         assert tools["read_customer_record"].schema_json["properties"]["customer_id"]

@@ -1155,6 +1155,7 @@ class Enforcer:
                 trace_id=trace_id,
                 decision_id=decision_row.id,
                 decision_verdict=verdict,
+                scope=getattr(self, "_containment_scope", ("enforced", frozenset())),
             )
 
         # --- 6. escalation (P2-3) ----------------------------------------
@@ -1256,6 +1257,29 @@ class Enforcer:
         return result.to_json()
 
     def guard_tool_call(
+        self,
+        *,
+        in_process: str = "enforced",
+        exempt_rules: frozenset[str] = frozenset(),
+        **kwargs: Any,
+    ) -> EnforcementResult:
+        """Authorise a tool call on the full execution path (P3-4, P2-2, P9).
+
+        ``in_process`` says what the caller will do with the verdict, so a
+        containment finding can say whether the call was actually stopped:
+        ``"enforced"`` (the default) stops it where an enforce-mode rule did,
+        ``"all"`` stops it on any rule that fired (strict ``auto(mode="enforce")``),
+        ``"none"`` lets it run (``auto(mode="observe")``). ``exempt_rules`` are rule
+        ids the caller lets through regardless. A dry run is always ``"none"``.
+        """
+        scope = "none" if kwargs.get("dry_run") else in_process
+        self._containment_scope = (scope, exempt_rules)
+        try:
+            return self._guard_tool_call(**kwargs)
+        finally:
+            self._containment_scope = ("enforced", frozenset())
+
+    def _guard_tool_call(
         self,
         *,
         agent_slug: str,

@@ -279,6 +279,7 @@ def raise_containment_findings(
     trace_id: str | None,
     decision_id: str | None,
     decision_verdict: str,
+    scope: tuple[str, frozenset[str]] = ("enforced", frozenset()),
 ) -> int:
     """One finding per (agent, tool, rule) that stopped or held this call. Returns count."""
     from .findings import raise_finding
@@ -295,10 +296,17 @@ def raise_containment_findings(
         if rule_id in seen:
             continue
         seen.add(rule_id)
-        # A rule's effect was applied when its own mode was enforce AND the decision
-        # actually went that way — a dry run records the verdict and then lets it
-        # through, and must not be reported as contained.
-        applied = rule.get("mode", "enforce") == "enforce" and decision_verdict != "allow"
+        # A rule's effect was applied when the call was actually stopped: its own mode
+        # was enforce AND the decision went that way — unless the caller lets the call
+        # run anyway (`scope`: a dry run, auto() in observe mode, or a rule the caller
+        # exempts), and except that strict auto(mode="enforce") stops on any rule.
+        in_process, exempt = scope
+        if in_process == "none" or rule_id in exempt:
+            applied = False
+        elif in_process == "all":
+            applied = True
+        else:
+            applied = rule.get("mode", "enforce") == "enforce" and decision_verdict != "allow"
         cause = cause_of(rule_id)
         severity = str(rule.get("severity") or ("high" if rule["effect"] == "block" else "medium"))
         raise_finding(

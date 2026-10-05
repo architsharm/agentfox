@@ -1073,8 +1073,10 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     Containment reasons over `Tool.impact`, and an unregistered tool is reasoned
     about as ``read`` — the least dangerous value there is. So the impact is
     inferred from the tool's name and the description the request declared
-    (`integrations.mcp.infer_impact`, the guess MCP governance already makes) and
-    recorded as ``impact_source="inferred"``, for a human to confirm with
+    (`integrations.mcp.infer_impact`, the guess MCP governance already makes, read
+    cautiously: a name that moves money or sends a message is irreversible, as the
+    learned-permissions guess has it — an unconfirmed `issue_refund` guessed `read`
+    is containment switched off for the one tool that needed it) and recorded as ``impact_source="inferred"``, for a human to confirm with
     `agentfox declare tool`. A declaration made in code (`@fox.tool(impact=...)`)
     beats the guess. An existing row is never overwritten — except an inferred one
     that code has since declared.
@@ -1082,6 +1084,7 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     from sqlalchemy import select
     from sqlalchemy.exc import IntegrityError
 
+    from .improvement.traffic import infer_declared_impact
     from .integrations.mcp import infer_impact
     from .models import Tool
     from .registry.service import DECLARED_TOOL_IMPACTS, impact_source_of, upsert_tool
@@ -1093,6 +1096,9 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
             upsert_tool(session, name, impact=declared, impact_source="declared")
         return
     descriptor = descriptor or {}
+    guess = infer_impact(name, descriptor)
+    if infer_declared_impact(name) == "irreversible":
+        guess = "irreversible"
     try:
         # A savepoint, because two processes meeting the same new tool at once is
         # ordinary, and losing that race must not roll back the decisions already
@@ -1102,7 +1108,7 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
                 session,
                 name,
                 name=name,
-                impact=declared or infer_impact(name, descriptor),
+                impact=declared or guess,
                 impact_source="declared" if declared else "inferred",
                 schema=descriptor.get("inputSchema") or {},
                 description=descriptor.get("description", ""),
@@ -1215,10 +1221,23 @@ def _govern_tool_calls(
     has_grants: bool | None = None
     refusal: Blocked | None = None
 
+    # What this process will do with a refusal, decided before the call so the
+    # containment finding it raises says whether the call was actually stopped.
+    if state.mode == "policy":
+        has_grants = _agent_has_grants(session, identity)
+    in_process = {"observe": "none", "enforce": "all"}.get(state.mode, "enforced")
+    exempt = (
+        frozenset(_CAPABILITY_REFUSAL_RULE_IDS)
+        if state.mode == "policy" and not has_grants
+        else frozenset()
+    )
+
     for tool_call in tool_calls:
         _register_tool(session, tool_call.name, call.tool_specs.get(tool_call.name))
         seen = len(tracker.marks)
         result = enforcer.guard_tool_call(
+            in_process=in_process,
+            exempt_rules=exempt,
             agent_slug=state.agent,
             tool_key=tool_call.name,
             arguments=tool_call.arguments,

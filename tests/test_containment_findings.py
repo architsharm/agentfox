@@ -181,3 +181,33 @@ def test_nothing_raised_without_a_containing_rule(seeded):
         )
         == 0
     )
+
+
+def test_a_finding_says_contained_only_when_the_call_was_stopped(seeded):
+    """auto(mode="observe") lets a refused tool call run; its finding must not say
+    "contained" — the attacker email that went out was reported as contained."""
+    from agentfox.containment import raise_containment_findings
+
+    rule = {"rule_id": "taint.irreversible_tool", "effect": "escalate", "mode": "enforce"}
+    for scope, expected in (
+        (("none", frozenset()), False),
+        (("enforced", frozenset()), True),
+        (("enforced", frozenset({"taint.irreversible_tool"})), False),
+    ):
+        seeded.query(Finding).filter(Finding.type == "containment").delete()
+        raise_containment_findings(
+            seeded,
+            agent=None,
+            tool_key="send_email",
+            surface="tool_args",
+            rules_fired=[rule],
+            argument_taint=None,
+            argument_propagated_from=None,
+            trace_id=None,
+            decision_id=None,
+            decision_verdict="escalate",
+            scope=scope,
+        )
+        finding = seeded.query(Finding).filter(Finding.type == "containment").one()
+        assert finding.evidence_json["applied"] is expected, scope
+        assert ("would have been" in finding.title) is (not expected), finding.title

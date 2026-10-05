@@ -357,8 +357,9 @@ agentfox policy proposals apply <id> --actor you@example.com    # rollback <id> 
 ```
 
 Each proposal reads like "Let support-triage call issue_refund with amount ≤ 120 (seen 14 times, max
-112)". Limits come from the observed calls; the provenance ceiling only from calls nothing flagged,
-or that a person approved in the approval queue. Nothing is applied without a person, and tool
+112)". Limits and the provenance ceiling come only from clean calls: ones nothing flagged and
+that carried no untrusted content, or that a person approved in the approval queue. An injected
+call is held like any untrusted one, so an attacker's amount or recipient never becomes a limit. Nothing is applied without a person, and tool
 declarations, which are org-wide, need two. Or write them by hand:
 
 ```bash

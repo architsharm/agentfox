@@ -12,7 +12,9 @@ calls_tool`` lineage edge. This loop reads them and files two kinds of proposal:
   words that guess misses). A guess, said to be one; a person confirms it.
 * ``capability.grant`` per agent × tool, with argument limits read off the observed
   values (the largest amount, the recipient domains, a short list of codes) and a
-  provenance ceiling matching what was observed — **from benign calls only**.
+  provenance ceiling matching what was observed — both **from benign calls only**.
+  An injected call is held, and an attacker's recipient domain or amount read into
+  a limit is a limit a reviewer approves without noticing.
 
 What counts as benign is the whole safety argument, so it is narrow:
 
@@ -545,9 +547,8 @@ def _replay(
     flagged: list[ObservedCall],
 ) -> tuple[dict[str, Any], bool]:
     """Replay the recorded calls against the proposed grant. The proof passes when every
-    benign call goes through and every held call is inside the limits — held calls
-    shaped the limits, but their provenance stays above the ceiling, so they are still
-    escalated until a person approves calls like them."""
+    benign call goes through. Held calls did not shape the limits; how many fall
+    inside them, and how many the ceiling still escalates, is reported alongside."""
     allowed = [c for c in benign if _passes(constraints, max_taint, c)]
     held_within = [c for c in held if _within_limits(constraints, c)]
     held_escalated = [c for c in held if taint_rank(c.provenance) > taint_rank(max_taint)]
@@ -563,7 +564,7 @@ def _replay(
         "flagged_calls_the_grant_alone_would_refuse": len(flagged_refused),
         "decision_ids": [c.decision_id for c in [*benign, *held]][:50],
     }
-    return proof, len(allowed) == len(benign) and len(held_within) == len(held)
+    return proof, len(allowed) == len(benign)
 
 
 def _grant_title(agent: str, tool_key: str, limits: list[Limit], max_taint: str, n: int) -> str:
@@ -705,10 +706,10 @@ def propose_from_traffic(
                 {
                     **where,
                     "reason": f"{len(recent_held)} call(s) carried untrusted provenance nobody "
-                    f"approved ({', '.join(reasons)}). They inform the argument limits but not "
-                    "the provenance ceiling; with a grant in place, calls like them are "
-                    "escalated to the approval queue, and approving them there is what "
-                    f"raises it.{hint}",
+                    f"approved ({', '.join(reasons)}). An injected call looks like this, so they "
+                    "shape neither the limits nor the provenance ceiling; with a grant in "
+                    "place, calls like them are escalated to the approval queue, and "
+                    f"approving them there is what lets them count.{hint}",
                 }
             )
         if recent_flagged:
@@ -723,8 +724,9 @@ def propose_from_traffic(
         if not learnable:
             continue
 
-        # The ceiling comes from benign calls only. Held calls are inside it only if a
-        # person approved them; until then they shape the limits, not the ceiling.
+        # The ceiling and the limits come from benign calls only. A held call is what
+        # an injected call looks like, so its values never become a limit until a
+        # person approves calls like it (which makes them benign).
         max_taint = _worst(["user", *(c.provenance for c in benign)])
         evidence = {
             "benign_calls": len(benign),
@@ -794,19 +796,26 @@ def propose_from_traffic(
             )
             continue
 
-        limits = suggest_limits([c.arguments for c in learnable])
+        limits = suggest_limits([c.arguments for c in benign]) if benign else []
         constraints = {lim.path: lim.spec for lim in limits}
         proof, passed = _replay(constraints, max_taint, benign, held, flagged)
         rationale = (
             f"{slug} called {tool_key} {len(pair_calls)} time(s) in the window; "
-            f"{len(learnable)} were refused only for configuration (no grant, an undeclared "
+            f"{len(benign)} were refused only for configuration (no grant, an undeclared "
             "tool) or were approved by a person. The limits are read off those calls."
         )
+        if not benign:
+            rationale += (
+                " None were, so there are no limits to read: this grant names the tool "
+                "only. Add limits by hand before approving if the tool takes amounts or "
+                "recipients."
+            )
         if held:
             rationale += (
-                f" {len(held)} of them carried untrusted provenance nobody has approved, so "
-                f"the ceiling stays at '{max_taint}' and calls like them are still escalated; "
-                "approve them as they arrive and the next run proposes raising it."
+                f" {len(held)} of them carried untrusted provenance nobody has approved; they "
+                f"shaped neither the limits nor the ceiling, which stays at '{max_taint}', so "
+                "calls like them are still escalated. Approve them as they arrive and the "
+                "next run proposes raising it."
             )
         _file(
             session,
