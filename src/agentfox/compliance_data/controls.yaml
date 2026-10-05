@@ -1,6 +1,6 @@
 # AgentFox control catalog
 # =========================
-# Human-readable source of truth: docs/appendix-b-control-catalog.md
+# Human-readable source of truth: docs/design/control-catalog.md
 #
 # Content, not code (PRD R6): frameworks change — the EU AI Act omnibus delay is the
 # live example — so mappings are versioned data that ship without a release.

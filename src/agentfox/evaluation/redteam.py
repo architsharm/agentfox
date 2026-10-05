@@ -38,7 +38,7 @@ class's own prior docstring claim) covered everything:
 standing critique of automated red-teaming products is that a fixed prompt list
 only ever proves things about that fixed list, and running it again next week
 proves the same thing again. That critique lands on the suite above, and
-`docs/gap-analysis.md` item 3.2 already admitted it.
+`docs/design/gap-analysis.md` item 3.2 already admitted it.
 
 The answer is not to claim robustness. It is to change what is claimed:
 `run_campaign(..., adaptive=True, budget=N)` runs **configuration regression

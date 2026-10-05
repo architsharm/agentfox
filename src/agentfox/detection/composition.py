@@ -18,7 +18,7 @@ untrusted content flowing into arguments — but it already records exactly the 
 this check needs: *which tool produced this value*). This module adds the one
 comparison that was missing: does the *producing* tool's impact tier exceed what the
 *consuming* tool alone was scoped for. Everything else (marking, propagation,
-persistence) already existed; see `docs/dataset-sourcing.md`'s investigation notes
+persistence) already existed; see `docs/evaluation/dataset-sourcing.md`'s investigation notes
 and `benchmarks/composed_privilege_escalation/README.md` for why no public dataset
 tests this specific composition, and why it was built directly instead.
 """

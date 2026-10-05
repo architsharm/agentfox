@@ -13,7 +13,7 @@ recognises. `benchmarks/crescendo/` measured whether that transfers, and it does
 not: joining six innocuous turns yields six innocuous turns. **The signal is in
 the slope, not in the content.** This module measures the slope.
 
-What it does, following `docs/failure-modes.md` F9.4:
+What it does, following `docs/design/failure-modes.md` F9.4:
 
 1. Score each turn on three *risk-adjacent* components — none of which is
    evidence on its own, which is the point:

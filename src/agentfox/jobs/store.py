@@ -2,7 +2,7 @@
 
 `jobs.py`'s `JobQueue` is deliberately in-process (see its own docstring) — the
 right choice for `agentfox demo`, the CLI, and tests, where one process's memory
-is all there is. It is the wrong choice for the two operations gap-analysis.md
+is all there is. It is the wrong choice for the two operations docs/design/gap-analysis.md
 named as the actual candidates for this (evidence-package export, red-team-
 campaign runs): those run behind a serverless HTTP handler, where a `deque` in
 one invocation's memory is gone the instant that invocation returns, and the
