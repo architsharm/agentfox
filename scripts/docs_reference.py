@@ -226,7 +226,9 @@ def build_api() -> dict[str, Any]:
 # Checking the pages
 # ---------------------------------------------------------------------------
 
-CODE_BLOCK = re.compile(r"<(code|Code|Output|Terminal)\b[^>]*>(.*?)</\1>", re.S)
+# <Output> blocks are not checked: they are what the product printed, wrapped where
+# the terminal wrapped it, and a wrapped hint is not an invocation.
+CODE_BLOCK = re.compile(r"<(code|Code|Terminal)\b[^>]*>(.*?)</\1>", re.S)
 CODE_PROP = re.compile(
     r"\b(?:code|command|cmd)=\{?`([^`]*)`\}?|\b(?:code|command|cmd)=\"([^\"]*)\"", re.S
 )

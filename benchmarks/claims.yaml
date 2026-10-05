@@ -26,6 +26,7 @@ claims:
     path: [headline, detectors_off_attacks_contained]
     render: fraction
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "{n}/{d} attack scenarios were contained"}
       - {file: README.md, text: "{n}/{d} attacks contained with zero detector signal"}
       - {file: benchmarks/README.md, text: "{n}/{d} attacks contained with zero detector signal"}
       - {file: docs/benchmarking-whitepaper.md, text: "{n}/{d} attack scenarios contained with zero detector signal"}
@@ -48,6 +49,7 @@ claims:
     path: [conditions, inferred_session_taint, attacks_contained, fraction]
     render: fraction
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "on AgentDojo {n}/{d} attack pairs were contained"}
       - {file: README.md, text: "{n}/{d} attack pairs contained with session-level taint"}
       - {file: benchmarks/README.md, text: "Session-level taint: {n}/{d} attack pairs contained"}
       - {file: docs/benchmarking-whitepaper.md, text: "{n}/{d} attack pairs contained at session-level taint"}
@@ -68,6 +70,7 @@ claims:
       pct: {path: [conditions, inferred_session_taint, benign_tasks_allowed, rate], scale: 100, format: ".1f"}
       ci: [conditions, inferred_session_taint, benign_tasks_allowed, ci95]
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "only {n} of {d} benign tasks"}
       - {file: README.md, text: "{n}/{d} benign tasks ({pct}% {ci}) run without escalating to a human"}
       - {file: benchmarks/README.md, text: "{n}/{d} benign tasks run without escalation"}
       - {file: docs/benchmarking-whitepaper.md, text: "{n}/{d} benign AgentDojo tasks run without escalation"}
@@ -159,6 +162,7 @@ claims:
     render: percent
     decimals: 0
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "gets {pct}% of the readable indirect attacks"}
       - {file: README.md, text: "{pct}% of the attacks we catch through within 50 attempts"}
       - {file: benchmarks/README.md, text: "{pct}% attack success at 50 attempts"}
       - {file: docs/benchmarking-whitepaper.md, text: "{pct}% at a 50-attempt budget"}
@@ -178,6 +182,7 @@ claims:
     path: [headline, trajectory_detection]
     render: fraction
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "{n}/{d} gradual-escalation conversations detected"}
       - {file: benchmarks/README.md, text: "{n}/{d} detected"}
 
   - id: crescendo.control_false_positives
@@ -185,6 +190,7 @@ claims:
     path: [headline, control_false_positives_trajectory]
     render: fraction
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "with {n}/{d} control conversations flagged"}
       - {file: benchmarks/README.md, text: "control false positives still {n}/{d}"}
 
   - id: multilingual.integrity_parity
@@ -201,6 +207,7 @@ claims:
     render: percent
     decimals: 1
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "reaches {pct}% recall on the SPML dataset"}
       - {file: README.md, text: "reaches {pct}% and"}
       - {file: docs/benchmarking-whitepaper.md, text: "recall of {pct}% and"}
 
@@ -210,6 +217,7 @@ claims:
     path: [areas, injection, escaped_payloads_caught]
     render: fraction
     quoted_in:
+      - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "{n}/{d} of the injection payloads that defeated the pattern detectors"}
       - {file: README.md, text: "{n}/{d} of the injection payloads that defeated our own pattern detectors"}
       - {file: benchmarks/README.md, text: "{n}/{d} injection payloads that defeated our pattern detectors"}
       - {file: benchmarks/judgment/README.md, text: "**{n} of {d} injection payloads that escaped the shipping detectors are caught**"}
