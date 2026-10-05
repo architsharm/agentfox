@@ -1187,8 +1187,15 @@ class Enforcer:
         surface: str = "input",
         taint_source: str = "user",
         persist: bool = True,
+        trace: Trace | None = None,
     ) -> dict[str, Any]:
-        """Light single-surface check. Used by the red-team runner."""
+        """Light single-surface check. Used by the red-team runner and `/v1/guard`.
+
+        `trace` is optional because the red-team runner has no trace to attach to and
+        wants none: a simulated attack is not something the agent did. Every caller on
+        the live path passes one, which is what puts a governed request on the Traces
+        page and into the control telemetry.
+        """
         agent = self.session.scalar(select(Agent).where(Agent.slug == agent_slug))
         identity = (
             self.session.scalar(select(Identity).where(Identity.agent_id == agent.id))
@@ -1205,6 +1212,7 @@ class Enforcer:
             taint_source=taint_source,
             tracker=tracker,
             persist=persist,
+            trace=trace,
         )
         return result.to_json()
 
