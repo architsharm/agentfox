@@ -501,9 +501,11 @@ It pulls prebuilt images rather than building them —
 [`ghcr.io/architsharm/agentfox/gateway`](https://github.com/architsharm/agentfox/pkgs/container/agentfox%2Fgateway)
 and
 [`ghcr.io/architsharm/agentfox/dashboard`](https://github.com/architsharm/agentfox/pkgs/container/agentfox%2Fdashboard),
-published on every release and tracked at `:edge` on `main`. `docker compose build` builds from
-source instead, which takes a while: the gateway image pre-fetches 1–2GB of detector weights so the
-running container never needs network access for them.
+Compose pulls `:latest`, which moves on each `v*` release tag; `:edge` tracks `main` if you want
+unreleased changes. `docker compose build` builds from source instead, which takes a while: the
+gateway image pre-fetches 1–2GB of permissive-licence detector weights so the running container
+never needs network access for them. The licence-gated Llama Guard tier is off by default and is
+never in the published image; the compose file's header has the opt-in steps.
 
 [`deploy/docker-compose.yml`](deploy/docker-compose.yml) is commented line by line, including which
 values you must change before a real deployment — `NOMETRIA_AUDIT_SIGNING_KEY` above all, since the
