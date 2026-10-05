@@ -368,7 +368,9 @@ _SHELL_CONTROL_PLANE = [
         "putting a policy back into observe mode",
     ),
     (
-        re.compile(rf"\b{_AGENTFOX_CLI}\s+capability\s+(?:revoke|grant)\b", re.I),
+        # `permit` is the same command as `capability` since the CLI consolidation;
+        # every renamed spelling below has to stay covered or the rename is the hole.
+        re.compile(rf"\b{_AGENTFOX_CLI}\s+(?:capability|permit)\s+(?:revoke|grant)\b", re.I),
         "changing its own capability grants",
     ),
     (
@@ -376,11 +378,11 @@ _SHELL_CONTROL_PLANE = [
         "changing an agent's control state",
     ),
     (
-        re.compile(rf"\b{_AGENTFOX_CLI}\s+db\s+downgrade\b", re.I),
+        re.compile(rf"\b{_AGENTFOX_CLI}\s+(?:admin\s+)?db\s+downgrade\b", re.I),
         "rolling the schema back",
     ),
     (
-        re.compile(rf"\b{_AGENTFOX_CLI}\s+auth\s+(?:issue|revoke)\b", re.I),
+        re.compile(rf"\b{_AGENTFOX_CLI}\s+(?:admin\s+)?auth\s+(?:issue|revoke)\b", re.I),
         "minting or revoking an operator token",
     ),
     # The config file and the state it points at. A write is enough — reading

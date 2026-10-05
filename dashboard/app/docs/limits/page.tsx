@@ -24,7 +24,7 @@ export default function Page() {
         A destructive tool declared <code>read</code> is not treated as destructive by
         anything downstream. For a shell, <code>ls</code> and <code>rm -rf</code> are
         the same tool, so the impact tier is a floor. <code>agentfox doctor</code>{" "}
-        grades the declarations. <code>agentfox check</code> finds tools you have not
+        grades the declarations. <code>agentfox scan</code> finds tools you have not
         declared.
       </p>
       <h2>You declare the estate yourself</h2>

@@ -27,8 +27,8 @@ regression case.
 ## 2. Run and pin a baseline
 
 ```bash
-agentfox eval run <suite>
-agentfox eval baseline <run_id> --label main
+agentfox test run <suite>
+agentfox test baseline <run_id> --label main
 ```
 
 The default provider is the offline `echo` model, which is fine for proving the plumbing. To
@@ -38,7 +38,7 @@ and you pass `--provider openai --model <model>`. Ask before enabling egress.
 ## 3. Gate
 
 ```bash
-agentfox eval gate <suite> --baseline <run_id> --junit reports/eval.xml --sarif reports/eval.sarif
+agentfox test gate <suite> --baseline <run_id> --junit reports/eval.xml --sarif reports/eval.sarif
 ```
 
 - Exit 1 means a regression against the baseline, or a pass rate below `--min-pass-rate`.
@@ -53,16 +53,16 @@ baseline to theirs. Each step fails the build for a different reason:
 
 | Step | Fails when |
 |---|---|
-| `agentfox check . --fail` | a new model call is not governed |
+| `agentfox scan . --fail` | a new model call is not governed |
 | `agentfox policy lint` | the policy hierarchy has critical/high findings |
-| `agentfox guardrails check` | two teams' business rules conflict |
-| `agentfox eval gate` | quality regressed against the baseline |
+| `agentfox policy rules check` | two teams' business rules conflict |
+| `agentfox test gate` | quality regressed against the baseline |
 
 ## 5. Production drift (after launch)
 
 ```bash
-agentfox eval online <agent> --since-days 7 --rate 0.1
-agentfox eval drift <agent> --scorer groundedness
+agentfox test online <agent> --since-days 7 --rate 0.1
+agentfox report drift <agent> --scorer groundedness
 ```
 
 `eval drift` exits 0 even when drift is detected, so read its output. SLOs live at

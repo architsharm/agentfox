@@ -283,7 +283,7 @@ def authenticate(
             f"authentication required. This deployment runs in "
             f"'{get_settings().environment}', where the X-Nometria-User header is not "
             "accepted. Send 'Authorization: Bearer nom_api_…' — create one with "
-            "`agentfox auth issue`."
+            "`agentfox admin auth issue`."
         )
 
     email = header_user or "admin@example.com"

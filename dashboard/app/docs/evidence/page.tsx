@@ -37,7 +37,7 @@ agentfox doctor`}</code>
 
       <h2>Check the chain</h2>
       <pre>
-        <code>agentfox audit verify</code>
+        <code>agentfox report verify</code>
       </pre>
       <p>
         Re-derives the hash chain and exits 1 if it is broken. The demo does this, then
@@ -48,7 +48,7 @@ agentfox doctor`}</code>
 
       <h2>Export</h2>
       <pre>
-        <code>agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-30</code>
+        <code>agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30</code>
       </pre>
       <p>
         The package is the records for that agent and date range, the policy that

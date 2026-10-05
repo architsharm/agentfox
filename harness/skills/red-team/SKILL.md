@@ -15,14 +15,14 @@ description: Runs AgentFox's adversarial probe suite (22 OWASP-LLM and MITRE-ATL
   declared tools gives an optimistic result. Say so when it applies.
 - **Choose the database:** probes create a campaign and findings in whichever DB
   `NOMETRIA_DATABASE_URL` points at. If the user doesn't want them in their real queue, use
-  a scratch DB and `agentfox seed` there.
+  a scratch DB and `agentfox admin seed` there.
 
 ## 2. See the probes, then run them
 
 ```bash
-agentfox redteam probes
-agentfox redteam run <agent>
-agentfox redteam run <agent> --probes <id1>,<id2>
+agentfox test probes
+agentfox test redteam <agent>
+agentfox test redteam <agent> --probes <id1>,<id2>
 ```
 
 Use `--probes` to re-run just the probes that failed.

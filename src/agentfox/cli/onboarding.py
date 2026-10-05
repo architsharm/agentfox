@@ -1,11 +1,12 @@
 """The three commands a new user runs, and nothing else.
 
-The rest of the CLI has forty commands across nine sub-apps, which is right for an
-operator running a governance programme and wrong for the first ten minutes. Someone
+The rest of the CLI is thirteen verbs (`agentfox --help`) over about a hundred
+subcommands, which is right for an operator running a governance programme and
+wrong for the first ten minutes. Someone
 evaluating this should be able to type three words and understand their exposure:
 
     agentfox init      # set everything up
-    agentfox check     # scan the repo and highlight what is ungoverned
+    agentfox scan      # scan the repo and highlight what is ungoverned
     agentfox doctor    # is the runtime configured the way I think it is?
 
 Every one of them is safe to run: `init` is idempotent, `check` reads source without
@@ -201,10 +202,10 @@ def init(
 
     _print_next_steps(
         [
-            ("agentfox check", "scan this repo and see what is ungoverned"),
+            ("agentfox scan", "scan this repo and see what is ungoverned"),
             ("import agentfox; agentfox.auto()", "one line in your entry point"),
             (
-                "agentfox tools declare <key> --impact irreversible",
+                "agentfox declare tool <key> --impact irreversible",
                 "declare what each tool can do — this is what still holds when a detector misses",
             ),
             ("agentfox doctor", "check containment readiness, not just detectors"),
@@ -442,7 +443,7 @@ def doctor(
             "bad" if decisions else "warn",
             "containment",
             "no tools declared — nothing constrains what an agent may do when a detector "
-            "misses. Declare them with `agentfox tools declare <key> --impact ...`."
+            "misses. Declare them with `agentfox declare tool <key> --impact ...`."
             + (" Traffic is already being governed without them." if decisions else ""),
         )
     elif tools_acting == 0:
@@ -459,7 +460,7 @@ def doctor(
             "containment",
             f"{tools_acting} acting tool(s) declared but no capability grants — least "
             "privilege is unconfigured, so policy is the only thing standing in the way. "
-            "Grant them with `agentfox capability grant <agent> <tool> --limit ...`.",
+            "Grant them with `agentfox permit grant <agent> <tool> --limit ...`.",
         )
     else:
         add(
@@ -475,7 +476,7 @@ def doctor(
         f"{scoped_tables} table(s) declared row-scoped"
         if scoped_tables
         else "no table row-scoping declared — a query across every customer's rows reads "
-        "as ordinary. Declare with `agentfox access declare-scope <table> --column ...`.",
+        "as ordinary. Declare with `agentfox declare scope <table> --column ...`.",
     )
 
     detectors = available_detectors()
@@ -666,7 +667,7 @@ def quickstart() -> None:
                     "   [cyan]import agentfox; agentfox.auto()[/]",
                     "   [dim]every model call is now traced, evaluated and audited[/]",
                     "",
-                    "[bold]3.[/] [cyan]agentfox check[/]",
+                    "[bold]3.[/] [cyan]agentfox scan[/]",
                     "   [dim]see what is still ungoverned[/]",
                     "",
                     "[bold]4.[/] [cyan]agentfox findings[/]",

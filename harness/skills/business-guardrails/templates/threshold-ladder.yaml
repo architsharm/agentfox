@@ -1,6 +1,6 @@
 # A threshold ladder: which outcome applies depends on where a number falls.
-# Verified against `agentfox guardrails explain threshold_ladder`.
-# Apply with:  agentfox guardrails apply <this file> --mode observe
+# Verified against `agentfox policy rules explain threshold_ladder`.
+# Apply with:  agentfox policy rules apply <this file> --mode observe
 kind: threshold_ladder
 key: refund-approval            # stable id; used by `guardrails show/test`
 tool: payments.refund           # the tool key the agent calls

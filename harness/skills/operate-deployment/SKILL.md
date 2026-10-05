@@ -36,27 +36,27 @@ The defaults are egress off, the echo provider, observe mode, and fail-open.
 
 ## Production hardening checklist
 
-Go through every line with the user. `agentfox doctor` and `agentfox auth status` verify
+Go through every line with the user. `agentfox doctor` and `agentfox admin auth status` verify
 several of them.
 
 | # | Check | How |
 |---|---|---|
-| 1 | Dev auth header refused | `NOMETRIA_ENVIRONMENT=production`, `NOMETRIA_AUTH_MODE=token` (or `oidc`); `agentfox auth status` |
+| 1 | Dev auth header refused | `NOMETRIA_ENVIRONMENT=production`, `NOMETRIA_AUTH_MODE=token` (or `oidc`); `agentfox admin auth status` |
 | 2 | Postgres, not SQLite | `NOMETRIA_DATABASE_URL=postgresql+psycopg://…`, `[postgres]` extra |
 | 3 | Secrets changed from dev defaults | `NOMETRIA_AUDIT_SIGNING_KEY`, `NOMETRIA_SERVICE_AUTH_SECRET`, `NOMETRIA_TOKEN_ENCRYPTION_KEY`, `NOMETRIA_CRON_SECRET` |
 | 4 | Fail mode deliberate | `NOMETRIA_FAIL_MODE=closed` for high-risk agents; know that `open` lets requests through on detector timeout |
 | 5 | Egress intentional | `NOMETRIA_ALLOW_EGRESS=true` only when a real provider is configured |
 | 6 | Detectors as expected | `agentfox doctor` lists them; add extras for Presidio or classifiers |
-| 7 | Operator tokens, not shared logins | `agentfox auth issue <email> --days 90` (shown once; the user stores it) |
-| 8 | Migrations current | `agentfox db current` = head; `agentfox db upgrade` |
-| 9 | Audit checkpoints scheduled | `agentfox audit checkpoint` on a timer; jobs runner via `/api/internal/jobs/run` with the cron secret |
+| 7 | Operator tokens, not shared logins | `agentfox admin auth issue <email> --days 90` (shown once; the user stores it) |
+| 8 | Migrations current | `agentfox admin db current` = head; `agentfox admin db upgrade` |
+| 9 | Audit checkpoints scheduled | `agentfox admin checkpoint` on a timer; jobs runner via `/api/internal/jobs/run` with the cron secret |
 
 Reference: [reference/config.md](../../reference/config.md).
 
 ## Upgrades: order matters
 
 The wheel does not bundle `migrations/`, and the hosted API and demo share one database.
-So: **run `agentfox db upgrade` against the target DB first, then deploy the new code.** The
+So: **run `agentfox admin db upgrade` against the target DB first, then deploy the new code.** The
 reverse order has taken production down with `UndefinedColumn` before. `db downgrade` is
 destructive (BLK); every migration ships a tested downgrade, but data in dropped columns is
 gone.

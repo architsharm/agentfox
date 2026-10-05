@@ -215,7 +215,7 @@ def test_init_loads_controls_and_policies_in_their_declared_modes(isolated_db, t
 
 def test_init_ends_by_telling_you_what_to_do_next(isolated_db, tmp_path):
     result = runner.invoke(app, ["init", "--path", str(tmp_path)])
-    assert "agentfox check" in flat(result.output)
+    assert "agentfox scan" in flat(result.output)
     assert "agentfox.auto()" in flat(result.output)
 
 
@@ -365,7 +365,7 @@ def test_quickstart_is_five_steps_and_names_the_only_blocking_one(isolated_db):
 def test_the_onboarding_verbs_are_top_level(isolated_db):
     """Buried under a sub-app they would not be found in the first ten minutes."""
     result = runner.invoke(app, ["--help"])
-    for verb in ("init", "check", "doctor", "findings", "quickstart"):
+    for verb in ("init", "demo", "scan", "doctor", "findings"):
         assert verb in flat(result.output)
 
 

@@ -99,7 +99,7 @@ call is blocked: `auto()` follows each policy's own mode, and `baseline` starts 
 
 ```bash
 agentfox serve                        # gateway + control-plane API on 127.0.0.1:8080
-agentfox auth issue you@example.com   # mint an API token; shown once
+agentfox admin auth issue you@example.com  # mint an API token; shown once
 ```
 
 Point an existing OpenAI or Anthropic client at `http://localhost:8080/v1` and change nothing else,
@@ -157,8 +157,8 @@ cannot exceed the ceiling for tool-sourced data.
 <summary><b>Claude Code — three hook points</b></summary>
 
 ```bash
-agentfox hooks daemon                                   # the warm process, once
-agentfox hooks install --agent my-agent --write         # writes .claude/settings.json
+agentfox admin hooks daemon                             # the warm process, once
+agentfox admin hooks install --agent my-agent --write   # writes .claude/settings.json
 ```
 
 Three events, because one event is one surface:
@@ -170,7 +170,7 @@ Three events, because one event is one surface:
 | `PostToolUse` | what the tool returned | **cannot** withdraw the call; tells the model the result is untrusted |
 
 That third row is the one worth reading twice. By the time `PostToolUse` fires the side effect has
-happened, and we say so rather than reporting the event as a gate — `agentfox hooks status` prints
+happened, and we say so rather than reporting the event as a gate — `agentfox admin hooks status` prints
 the same line, per event, with how it was established and against which version. The claims come from
 [`hooks/capability.py`](src/agentfox/hooks/capability.py): `PreToolUse` and `PostToolUse` were probed
 against a live session, `UserPromptSubmit` was read in the shipped bundle, and an event nobody has
@@ -283,7 +283,7 @@ Written out rather than discovered later. Live per-pillar coverage is computed b
 asserted: [docs/status.md](docs/status.md).
 
 - **It is only as good as your declarations.** A destructive tool declared `read` is not treated as
-  destructive by anything downstream. `agentfox doctor` grades this; `agentfox check` finds the
+  destructive by anything downstream. `agentfox doctor` grades this; `agentfox scan` finds the
   tools you have not declared.
 - **You declare the estate yourself.** No Okta, no DataHub. Principals, grants and source tiers live
   in AgentFox. The seams for those integrations exist; the integrations do not.
@@ -312,10 +312,10 @@ without trusting us or calling our API.
 **Find out what you already have**
 
 ```bash
-agentfox quickscan                     # zero-config first look, nothing leaves this machine
-agentfox check                         # scan a repo: what talks to a model, and what is ungoverned
+agentfox scan --sessions               # zero-config first look, nothing leaves this machine
+agentfox scan                          # scan a repo: what talks to a model, and what is ungoverned
 agentfox agents list                   # every agent, registered or shadow, and who owns it
-agentfox agents discover               # sweep for shadow agents, drift and identity posture
+agentfox scan runtime                  # sweep for shadow agents, drift and identity posture
 agentfox agents lineage payments-ops   # what one agent reaches: its blast radius
 agentfox scan mcp internal-tools --seed-fixture   # MCP tool hygiene; --file takes a real tools/list
 ```
@@ -323,11 +323,11 @@ agentfox scan mcp internal-tools --seed-fixture   # MCP tool hygiene; --file tak
 **Bound what an agent is allowed to do**
 
 ```bash
-agentfox tools declare billing.export --impact write   # none | read | write | irreversible
-agentfox capability grant support-triage tickets.close \
+agentfox declare tool billing.export --impact write    # none | read | write | irreversible
+agentfox permit grant support-triage tickets.close \
     --limit priority:in=low,normal --max-taint user
-agentfox capability list support-triage                # anything not listed is refused
-agentfox capability revoke <capability-id>
+agentfox permit list support-triage                    # anything not listed is refused
+agentfox permit revoke <capability-id>
 ```
 
 `--max-taint` is the worst provenance an argument may carry and still go through without an
@@ -340,16 +340,16 @@ the audit chain. `--yes` skips the prompt in CI.
 ```bash
 agentfox findings                      # what the platform found; --severity high to narrow
 agentfox doctor                        # is the runtime configured the way you think it is?
-agentfox audit verify                  # re-derive the chain; exits 1 if broken
-agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-30
+agentfox report verify                 # re-derive the chain; exits 1 if broken
+agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30
 ```
 
 **Test before you trust**
 
 ```bash
-agentfox eval run support-quality      # score a suite
-agentfox eval gate support-quality     # CI regression gate; exits 1 on regression
-agentfox redteam run support-triage    # probe the deployed configuration
+agentfox test run support-quality      # score a suite
+agentfox test gate support-quality     # CI regression gate; exits 1 on regression
+agentfox test redteam support-triage   # probe the deployed configuration
 agentfox policy lint                   # exits 1 on critical or high findings
 agentfox policy simulate --file candidate.yaml   # replay recorded traffic against a candidate
 ```
@@ -358,10 +358,10 @@ agentfox policy simulate --file candidate.yaml   # replay recorded traffic again
 
 ```bash
 agentfox serve                         # gateway + control-plane API
-agentfox auth issue you@example.com    # mint an API token
-agentfox db upgrade                    # apply migrations
+agentfox admin auth issue you@example.com  # mint an API token
+agentfox admin db upgrade              # apply migrations
 agentfox policy effective --agent support-triage  # what is in force, and where each rule came from
-agentfox compliance status --framework eu-ai-act
+agentfox report status --framework eu-ai-act
 agentfox agents quarantine support-triage --reason "investigating"   # kill switch, reversible
 agentfox agents resume support-triage
 ```

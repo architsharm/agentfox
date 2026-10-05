@@ -180,8 +180,8 @@ CATALOGUE: list[GuardrailKind] = [
         effects=["redact", "block"],
         params={"engine": "native | openfga", "default": "deny"},
         example=(
-            "agentfox entitlement grant 'hr/*' hr-team --classes pii_sensitive\n"
-            "agentfox entitlement principal alice@acme.com --groups all-staff"
+            "agentfox permit user 'hr/*' hr-team --classes pii_sensitive\n"
+            "agentfox declare principal alice@acme.com --groups all-staff"
         ),
         stage="retrieval",
         signals=[
@@ -344,7 +344,7 @@ CATALOGUE: list[GuardrailKind] = [
             "coverage_months": "int",
             "answerable_types": "fact | aggregate | prediction | opinion | procedure",
         },
-        example="agentfox boundary set support-triage --systems CRM --answerable fact,aggregate",
+        example="agentfox declare boundary support-triage --systems CRM --answerable fact,aggregate",
         stage="input",
         signals=[
             "do not answer",
@@ -368,7 +368,7 @@ CATALOGUE: list[GuardrailKind] = [
             "required_tier": "system_of_record | approved | unverified | external",
             "max_age_hours": "freshness SLA",
         },
-        example="agentfox sources add price-book --tier system_of_record --sla-hours 24",
+        example="agentfox declare source price-book --tier system_of_record --sla-hours 24",
         stage="output",
         signals=[
             "authoritative",
@@ -470,7 +470,7 @@ CATALOGUE: list[GuardrailKind] = [
             "regulated_topics": "[]",
             "sla_minutes": "int",
         },
-        example="agentfox escalation set --agent support-triage --turn-depth 6 --sla-minutes 30",
+        example="agentfox declare escalation --agent support-triage --turn-depth 6 --sla-minutes 30",
         stage="conversation",
         signals=[
             "escalate",
@@ -542,7 +542,7 @@ CATALOGUE: list[GuardrailKind] = [
         inputs=[],
         effects=[],
         params={"checkpoint_interval": "int"},
-        example="(automatic; verify with `agentfox audit verify`)",
+        example="(automatic; verify with `agentfox report verify`)",
         stage="offline",
         signals=["audit", "tamper", "immutable", "evidence", "regulator"],
         scenarios=["L9.4", "L9.7"],

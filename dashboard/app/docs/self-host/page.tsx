@@ -52,7 +52,7 @@ agentfox init
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080`}</code>
       </pre>
       <p>
-        Set <code>NOMETRIA_DATABASE_URL</code> for Postgres. <code>agentfox db upgrade</code>{" "}
+        Set <code>NOMETRIA_DATABASE_URL</code> for Postgres. <code>agentfox admin db upgrade</code>{" "}
         applies migrations.
       </p>
 

@@ -17,7 +17,7 @@ database, and nothing leaves the machine.
 ```bash
 export NOMETRIA_DATABASE_URL=sqlite:////tmp/nometria-tour.db
 export NOMETRIA_EVIDENCE_DIR=/tmp/nometria-tour-evidence
-agentfox version
+agentfox admin version
 ```
 
 If the launcher exits 127, the product isn't installed. Offer the install line it prints
@@ -26,7 +26,7 @@ and continue once it's installed.
 ## 2. First look at their own code (read-only, about 10 seconds)
 
 ```bash
-agentfox quickscan . --skip-sessions
+agentfox scan --sessions . --skip-sessions
 ```
 
 Summarise:
@@ -66,10 +66,10 @@ Offer two or three of these, based on what they reacted to:
 
 ```bash
 agentfox findings
-agentfox analyse-action "DELETE FROM customers" --kind sql
-agentfox guardrails suggest "refunds above 500 dollars need a manager"
-agentfox redteam probes
-agentfox compliance status --framework eu-ai-act
+agentfox test action "DELETE FROM customers" --kind sql
+agentfox policy rules suggest "refunds above 500 dollars need a manager"
+agentfox test probes
+agentfox report status --framework eu-ai-act
 ```
 
 For the UI, the operate-deployment skill starts the gateway and dashboard.

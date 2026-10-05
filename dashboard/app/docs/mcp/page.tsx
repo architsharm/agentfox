@@ -42,7 +42,7 @@ agentfox scan mcp internal-tools --file tools.json`}</code>
       <p>
         The HTTP route for one MCP call is <code>POST /v1/mcp/call</code>. A read-only
         MCP server that exposes AgentFox itself to a coding agent is{" "}
-        <code>agentfox mcp serve</code>, documented on the <Link href="/docs/harness">harness</Link>{" "}
+        <code>agentfox serve mcp</code>, documented on the <Link href="/docs/harness">harness</Link>{" "}
         page. That server does not decide or apply a change.
       </p>
     </article>

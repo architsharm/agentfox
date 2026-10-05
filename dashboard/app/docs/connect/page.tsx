@@ -36,7 +36,7 @@ agentfox.auto()`}</code>
       <h2>Any language, over HTTP</h2>
       <pre>
         <code>{`agentfox serve
-agentfox auth issue you@example.com`}</code>
+agentfox admin auth issue you@example.com`}</code>
       </pre>
       <p>
         <code>serve</code> is the gateway and the control-plane API on{" "}
@@ -61,9 +61,9 @@ agentfox auth issue you@example.com`}</code>
         hour do not require a token. The control-plane API under <code>/api</code>{" "}
         does. <code>auth issue</code> mints a token for an operator that already
         exists, shown once and hashed at rest. A database from <code>agentfox init</code>{" "}
-        alone has no operators. The first account comes from <code>agentfox seed</code>{" "}
+        alone has no operators. The first account comes from <code>agentfox admin seed</code>{" "}
         (which creates <code>admin@example.com</code>) or from signing in to the
-        dashboard with GitHub. <code>agentfox auth status</code> says whether this
+        dashboard with GitHub. <code>agentfox admin auth status</code> says whether this
         deployment is actually requiring tokens. In development it accepts an{" "}
         <code>X-Nometria-User</code> header instead, which is fine locally and
         unacceptable anywhere else.

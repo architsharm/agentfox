@@ -95,13 +95,13 @@ claude plugin install agentfox@agentfox`}</code>
 
       <h2>MCP server</h2>
       <p>
-        The plugin starts <code>agentfox mcp serve</code>, which exposes 27 read-only
+        The plugin starts <code>agentfox serve mcp</code>, which exposes 27 read-only
         tools: posture, findings, proposals, policy validate and simulate, audit verify,
         compliance status, and a few analysers. Nothing there decides, applies, or rolls
         back a change. Other MCP clients can run the same process:
       </p>
       <pre>
-        <code>agentfox mcp serve</code>
+        <code>agentfox serve mcp</code>
       </pre>
 
       <h2>What it will not do on its own</h2>

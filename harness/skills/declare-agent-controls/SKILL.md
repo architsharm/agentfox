@@ -19,9 +19,9 @@ isn't, go through **onboard-codebase** first.
 ## F1 — answering without the data (knowledge boundary)
 
 ```bash
-agentfox boundary set <agent> --systems "zendesk,billing-db" \
+agentfox declare boundary <agent> --systems "zendesk,billing-db" \
   --coverage-months 24 --answerable "fact,aggregate,procedure" --out-of-scope "legal advice,medical" --mode observe
-agentfox boundary check <agent> "What was our refund rate in 2019?"
+agentfox test boundary <agent> "What was our refund rate in 2019?"
 ```
 
 Try three questions with the user: one clearly in scope, one out of the coverage window,
@@ -30,8 +30,8 @@ and one out of scope. Show what the agent would say instead of answering.
 ## F2 — trusting the wrong source (source authority)
 
 ```bash
-agentfox sources add policies/refunds.md --tier system_of_record --owner support-ops --sla-hours 720 --updated now
-agentfox sources list --json
+agentfox declare source policies/refunds.md --tier system_of_record --owner support-ops --sla-hours 720 --updated now
+agentfox declare list sources --json
 ```
 
 The tiers are `system_of_record` > `approved` > `unverified` > `external`. For many sources,
@@ -41,9 +41,9 @@ top of `sources list`.
 ## F4 — over-sharing (entitlement and purpose)
 
 ```bash
-agentfox entitlement principal alice@corp.com --groups "support,emea" --clearances "internal"
-agentfox entitlement grant "crm/accounts/*" support --kind group --classes "internal" --purposes "support"
-agentfox entitlement report --days 7
+agentfox declare principal alice@corp.com --groups "support,emea" --clearances "internal"
+agentfox permit user "crm/accounts/*" support --kind group --classes "internal" --purposes "support"
+agentfox report entitlement --days 7
 ```
 
 The report shows how much more the agent can reach than its callers are entitled to. That
@@ -54,8 +54,8 @@ Otherwise there is nothing to check against.
 ## F5 — missed human handoffs (escalation)
 
 ```bash
-agentfox escalation set --agent <agent> --turn-depth 8 --repeated-failure 2 --sla-minutes 30 --owner support-leads --mode observe
-agentfox escalation scan --hours 72
+agentfox declare escalation --agent <agent> --turn-depth 8 --repeated-failure 2 --sla-minutes 30 --owner support-leads --mode observe
+agentfox report escalations --hours 72
 ```
 
 Run the scan first, before `set`, so the user sees how many conversations already qualified
@@ -64,10 +64,10 @@ and never reached a human. Only add `--apply` when they want findings raised for
 ## F3 — cross-tenant or unbounded data access
 
 ```bash
-agentfox access declare-scope orders --column customer_id --restricted-columns "card_last4,email"
-agentfox access declare-reference countries
-agentfox tools set-triggers db.orders.update --triggers "webhook:fulfilment,trigger:audit_log"
-agentfox analyse-action "UPDATE orders SET status='void'" --kind sql
+agentfox declare scope orders --column customer_id --restricted-columns "card_last4,email"
+agentfox declare reference countries
+agentfox declare triggers db.orders.update --triggers "webhook:fulfilment,trigger:audit_log"
+agentfox test action "UPDATE orders SET status='void'" --kind sql
 ```
 
 An undeclared table is reported, never silently assumed safe. Declare the ones the agent

@@ -102,7 +102,7 @@ def test_eval_run_prints_the_run_id_that_eval_baseline_requires():
 
     assert run_id and run_id in flat(result.output)
     # And it says what to do with it, rather than leaving an opaque id on screen.
-    assert "eval baseline" in flat(result.output)
+    assert "test baseline" in flat(result.output)
 
 
 # ---------------------------------------------------------------------------
