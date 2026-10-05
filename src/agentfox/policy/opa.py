@@ -20,8 +20,8 @@ import logging
 
 import httpx
 
-from ..config import get_settings
-from .model import FiredRule, PolicyDecision, PolicyDocument, PolicyInput
+from agentfox.core.config import get_settings
+from agentfox.policy.model import FiredRule, PolicyDecision, PolicyDocument, PolicyInput
 
 log = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ def _rego_conditions(rule) -> list[str]:
         elif c.argument.op == "matches":
             out.append(f"regex.match({json.dumps(c.argument.value)}, input.arguments.{path})")
     if c.taint_exceeds:
-        from ..guardrails.base import TAINT_ORDER
+        from agentfox.detection.base import TAINT_ORDER
 
         worse = [
             s for s in TAINT_ORDER if TAINT_ORDER.index(s) > TAINT_ORDER.index(c.taint_exceeds)
@@ -191,7 +191,7 @@ class OpaPolicyEngine:
         except Exception as exc:
             # NFR-2: never let a policy-engine outage take the customer's agent down.
             log.warning("OPA unavailable (%s); falling back to native engine", exc)
-            from .engine import NativePolicyEngine
+            from agentfox.policy.engine import NativePolicyEngine
 
             decision = NativePolicyEngine().evaluate(policy, pinput)
             decision.engine = "native(opa-fallback)"
@@ -202,7 +202,7 @@ class OpaPolicyEngine:
         # value that failed it, which cannot be written into the pack) comes back
         # from OPA with an empty string, so generate it here exactly as the native
         # engine does rather than shipping a blank.
-        from .engine import NativePolicyEngine
+        from agentfox.policy.engine import NativePolicyEngine
 
         by_id = {rule.id: rule for rule in policy.rules}
         fired = []

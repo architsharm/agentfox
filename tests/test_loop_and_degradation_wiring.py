@@ -14,14 +14,14 @@ import json
 
 import pytest
 
-from agentfox.availability import (
+from agentfox.core.config import reset_settings_cache
+from agentfox.runtime.availability import (
     DATABASE,
     DETECTOR_PIPELINE,
     MODEL_PROVIDER,
     get_degradation_ledger,
     reset_degradation_ledger,
 )
-from agentfox.config import reset_settings_cache
 
 from .conftest import as_user
 
@@ -342,7 +342,7 @@ def test_reading_the_status_view_does_not_change_it(client, monkeypatch):
 def test_the_ledger_failing_never_raises_into_the_caller(client, monkeypatch):
     """The whole argument for permitting fail-open is that it is recorded. A recorder
     that takes the request down with it has turned a degradation into an outage."""
-    import agentfox.availability as availability
+    import agentfox.runtime.availability as availability
 
     def explode(*args, **kwargs):
         raise RuntimeError("the ledger itself is broken")
@@ -360,7 +360,7 @@ def test_the_ledger_failing_never_raises_into_the_caller(client, monkeypatch):
 def test_a_probe_that_throws_is_evidence_not_a_500(client, monkeypatch):
     """An unreachable database raises out of the probe rather than returning a
     string. That is a degradation, not a bug to propagate."""
-    import agentfox.availability as availability
+    import agentfox.runtime.availability as availability
 
     def explode() -> str:
         raise RuntimeError("connection refused")

@@ -17,25 +17,25 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ..audit import chain, evidence
-from ..audit.trace import full_trace
-from ..compliance import compute_all, posture
-from ..db import session_scope
-from ..enforcement import Enforcer
-from ..evaluation import gate, run_campaign, set_baseline
-from ..evaluation.runner import NativeEvalRunner
-from ..identity import assess_posture
-from ..models import AuditEntry, EvalSuite, Finding
-from ..policy import set_mode
-from ..registry.service import (
+from agentfox.cli._style import SEVERITY_COLOUR
+from agentfox.core.db import session_scope
+from agentfox.core.models import AuditEntry, EvalSuite, Finding
+from agentfox.core.seed import POISONED_DOCUMENT
+from agentfox.evaluation import gate, run_campaign, set_baseline
+from agentfox.evaluation.runner import NativeEvalRunner
+from agentfox.identity import assess_posture
+from agentfox.policy import set_mode
+from agentfox.prove.audit import chain, evidence
+from agentfox.prove.audit.trace import full_trace
+from agentfox.prove.compliance import compute_all, posture
+from agentfox.registry.service import (
     attest_registry,
     derive_lineage,
     detect_shadow_agents,
     lineage,
     unowned_agents,
 )
-from ..seed import POISONED_DOCUMENT
-from ._style import SEVERITY_COLOUR
+from agentfox.runtime.enforcement import Enforcer
 
 console = Console()
 
@@ -64,7 +64,7 @@ def _rule_modes(session) -> dict[str, tuple[str, str]]:
     printing it next to a rule that came from a pack in observe said the opposite of
     what happened. This is the lookup that lets each rule say its own mode.
     """
-    from ..policy import active_policies
+    from agentfox.policy import active_policies
 
     out: dict[str, tuple[str, str]] = {}
     for document, _version, _binding in active_policies(session):
@@ -105,7 +105,7 @@ def _steady_state_spans(session, exclude_trace: str) -> dict[str, float]:
 
     from sqlalchemy import select
 
-    from ..models import Span
+    from agentfox.core.models import Span
 
     grouped: dict[str, list[float]] = {}
     for span in session.scalars(select(Span).where(Span.trace_id != exclude_trace)):
@@ -144,7 +144,7 @@ def _shared_control_count(session, frameworks: tuple[str, ...]) -> int:
     """
     from sqlalchemy import select
 
-    from ..models import Control, FrameworkMapping
+    from agentfox.core.models import Control, FrameworkMapping
 
     every_control = set(session.scalars(select(Control.key)))
     if not every_control:
@@ -170,7 +170,7 @@ def _current_mode(key: str) -> str | None:
     """The mode of the open binding on a policy's latest version, or None."""
     from sqlalchemy import select
 
-    from ..models import Policy, PolicyBinding, PolicyVersion
+    from agentfox.core.models import Policy, PolicyBinding, PolicyVersion
 
     with session_scope() as session:
         policy = session.scalar(select(Policy).where(Policy.key == key))

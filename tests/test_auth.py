@@ -18,7 +18,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from agentfox.db import session_scope
+from agentfox.core.db import session_scope
+from agentfox.core.models import Agent, ApiToken, Trace, User, utcnow
+from agentfox.core.tenancy import system_scope, tenant
 from agentfox.gateway.app import create_app
 from agentfox.gateway.auth import (
     API_KEY_PREFIX,
@@ -29,8 +31,6 @@ from agentfox.gateway.auth import (
     resolve_token,
     revoke_token,
 )
-from agentfox.models import Agent, ApiToken, Trace, User, utcnow
-from agentfox.tenancy import system_scope, tenant
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def ready(isolated_db):
     would leave it looking at an empty database — a property of the test harness, not
     of the product.
     """
-    from agentfox.seed import seed
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -50,7 +50,7 @@ def ready(isolated_db):
 
 @pytest.fixture
 def production(monkeypatch):
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "environment", "production")
     monkeypatch.setattr(get_settings(), "auth_mode", "auto")
@@ -123,7 +123,7 @@ def test_development_still_works_without_a_token(ready):
 
 def test_an_unrecognised_environment_is_treated_as_production(ready, monkeypatch):
     """A typo in a deployment variable must not silently open the door."""
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "environment", "prodution")  # deliberate typo
     monkeypatch.setattr(get_settings(), "auth_mode", "auto")
@@ -131,7 +131,7 @@ def test_an_unrecognised_environment_is_treated_as_production(ready, monkeypatch
 
 
 def test_auth_mode_overrides_the_environment(ready, monkeypatch):
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "environment", "development")
     monkeypatch.setattr(get_settings(), "auth_mode", "token")
@@ -141,7 +141,7 @@ def test_auth_mode_overrides_the_environment(ready, monkeypatch):
 def test_a_real_credential_always_beats_the_header(ready, monkeypatch):
     """A caller must not be able to downgrade to header identity by omitting the
     Authorization header on a deployment that has tokens."""
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "environment", "development")
     raw = _token()
@@ -288,7 +288,7 @@ def test_routine_auth_lookups_do_not_warn(ready):
         def emit(self, record: logging.LogRecord) -> None:
             records.append(record.getMessage())
 
-    logger = logging.getLogger("agentfox.tenancy")
+    logger = logging.getLogger("agentfox.core.tenancy")
     handler = Capture(level=logging.WARNING)
     logger.addHandler(handler)
     previous = logger.level
@@ -316,8 +316,8 @@ def test_a_credential_with_an_expiry_does_not_crash_the_inline_path(ready):
     an expiry* was a 500 on the hot path, and nothing read the field until agent
     credentials began resolving there.
     """
+    from agentfox.core.models import Credential
     from agentfox.identity import ensure_identity, issue_credential
-    from agentfox.models import Credential
 
     with session_scope() as session:
         agent = session.scalars(select(Agent).where(Agent.slug == "support-triage")).one()
@@ -381,7 +381,7 @@ def test_doctor_reports_the_authentication_posture(ready, monkeypatch):
     from typer.testing import CliRunner
 
     from agentfox.cli.main import app
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     flat = lambda text: " ".join(text.split())  # noqa: E731 - test readability
 

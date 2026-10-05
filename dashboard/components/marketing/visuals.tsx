@@ -19,7 +19,7 @@ import type { CSSProperties, ReactNode } from "react";
  * Two literals are split rather than reproduced with their em-dash separator, because
  * the page style bans em-dashes in visible text. Both keep every word:
  *
- *   - `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` (src/agentfox/models.py:1474) renders as
+ *   - `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` (src/agentfox/core/models.py:1474) renders as
  *     two adjacent chips.
  *   - `ours — essentially no OSS exists here` (README.md:465) renders as the "built on"
  *     value plus its note.
@@ -328,14 +328,14 @@ type DetectorRow = {
  * duration is quoted as a measurement anywhere below.
  *
  * Detectors are listed in the order `DetectorPipeline.select()` sorts them, which is
- * `_COST_ORDER` at src/agentfox/guardrails/pipeline.py:66-77, cheapest first, so a
+ * `_COST_ORDER` at src/agentfox/detection/pipeline.py:66-77, cheapest first, so a
  * budget breach loses the expensive-but-marginal signal rather than the cheap one.
  * The surface is `retrieved`, which is why `schema.json` is not selected at all:
  * its surfaces are `output` and `tool_args` only.
  */
 const PIPELINE: DetectorRow[] = [
   {
-    // key/version src/agentfox/guardrails/detectors/secrets.py:74-75, cost 0 pipeline.py:67
+    // key/version src/agentfox/detection/detectors/secrets.py:74-75, cost 0 pipeline.py:67
     key: "secrets.native",
     version: "1.1",
     tier: "default",
@@ -344,7 +344,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Ran, found nothing. No provider format and no high-entropy value under a secret-shaped name.",
   },
   {
-    // key/version src/agentfox/guardrails/detectors/injection.py:460-461
+    // key/version src/agentfox/detection/detectors/injection.py:460-461
     key: "injection.heuristic",
     version: "1.2",
     tier: "default",
@@ -357,7 +357,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Lexical, structural and contextual signals. Table stakes by design, not the durable defence.",
   },
   {
-    // key/version src/agentfox/guardrails/detectors/pii.py:83-84
+    // key/version src/agentfox/detection/detectors/pii.py:83-84
     key: "pii.native",
     version: "1.1",
     tier: "default",
@@ -366,7 +366,7 @@ const PIPELINE: DetectorRow[] = [
     note: "The address the injected instruction wants the customer database sent to.",
   },
   {
-    // key/version src/agentfox/guardrails/detectors/safety.py:69-70
+    // key/version src/agentfox/detection/detectors/safety.py:69-70
     key: "safety.lexicon",
     version: "1.0",
     tier: "default",
@@ -375,7 +375,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Ran, found nothing. A lexicon cannot resolve intent, so it reports a category or nothing.",
   },
   {
-    // key/version src/agentfox/guardrails/detectors/schema.py:113-114; surfaces :115
+    // key/version src/agentfox/detection/detectors/schema.py:113-114; surfaces :115
     key: "schema.json",
     version: "1.0",
     tier: "default",
@@ -384,7 +384,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Its surfaces are output and tool_args. This content arrived on retrieved, so it never ran.",
   },
   {
-    // key/version src/agentfox/guardrails/adapters/presidio.py:84-85
+    // key/version src/agentfox/detection/adapters/presidio.py:84-85
     key: "pii.presidio",
     version: "1.0",
     tier: "opt-in",
@@ -393,7 +393,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Registered and swappable, off until the dependency is installed and the key is enabled.",
   },
   {
-    // key/version src/agentfox/guardrails/adapters/classifiers.py:135-136; timeout_ms :152
+    // key/version src/agentfox/detection/adapters/classifiers.py:135-136; timeout_ms :152
     key: "injection.classifier",
     version: "1.0",
     tier: "opt-in",
@@ -523,7 +523,7 @@ export function DetectorPipeline({ className }: { className?: string }) {
 
 /*
  * The same ticket before and after `redact_content`
- * (src/agentfox/guardrails/detectors/pii.py:142-163), in both of its modes.
+ * (src/agentfox/detection/detectors/pii.py:142-163), in both of its modes.
  *
  * The values are the ones already used as fixtures in this repository: the SSN from the
  * `exfiltration.pii` probe (src/agentfox/evaluation/redteam.py:199) and the key from
@@ -634,7 +634,7 @@ export function RedactionMock({ className }: { className?: string }) {
 /* --- 4. Discovery -------------------------------------------------------- */
 
 type ScanRow = {
-  /** Site.kind, src/agentfox/discovery.py:164 */
+  /** Site.kind, src/agentfox/discovery/repo.py:164 */
   kind: string;
   /** Site.severity, rendered by the CLI as the word itself, cli/onboarding.py:81-87 */
   severity: "critical" | "high" | "medium" | "low" | "info";
@@ -691,7 +691,7 @@ const SCAN: ScanRow[] = [
 
 /*
  * The registered agents and what each one reaches. Slugs and capability keys are from
- * src/agentfox/seed.py:118-183; the relation names are the three this product records,
+ * src/agentfox/core/seed.py:118-183; the relation names are the three this product records,
  * `calls_tool`, `connects_mcp` and `delegates_to` (src/agentfox/registry/service.py).
  * `hr-screening` carries `owner_email: None` in that same seed (seed.py:148), which is
  * what makes it the unowned one.
@@ -826,7 +826,7 @@ type ScorerRow = {
  * The repository ships the suite and its cases but not a recorded result, so no number
  * here is presented as a measurement of anything.
  *
- * Real: the suite key and name (src/agentfox/seed.py:462-463), its five cases
+ * Real: the suite key and name (src/agentfox/core/seed.py:462-463), its five cases
  * (seed.py:224-272), the scorer keys and their thresholds (evaluation/silent_failure.py:245,
  * :265 and evaluation/scorers.py:186), the summary line and column headers
  * (cli/main.py:727-745), the default tolerance (evaluation/gating.py:28), the regression

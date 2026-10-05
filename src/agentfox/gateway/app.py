@@ -17,20 +17,12 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import __version__
-from ..availability import (
-    check_services,
-    get_admission_controller,
-    observe_governed_request,
-    service_health,
-)
-from ..compliance.catalog import load_catalog
-from ..config import get_settings
-from ..db import init_db
-from ..guardrails import all_detectors, available_detectors
-from ..providers import all_providers, available_providers
-from .deps import current_user, db
-from .routes import (
+from agentfox import __version__
+from agentfox.core.config import get_settings
+from agentfox.core.db import init_db
+from agentfox.detection import all_detectors, available_detectors
+from agentfox.gateway.deps import current_user, db
+from agentfox.gateway.routes import (
     answerability,
     coverage,
     discovery,
@@ -53,6 +45,14 @@ from .routes import (
     tuning,
     waitlist,
 )
+from agentfox.prove.compliance.catalog import load_catalog
+from agentfox.providers import all_providers, available_providers
+from agentfox.runtime.availability import (
+    check_services,
+    get_admission_controller,
+    observe_governed_request,
+    service_health,
+)
 
 log = logging.getLogger(__name__)
 
@@ -68,9 +68,9 @@ def _load_demo_fixtures() -> None:
     try:
         from sqlalchemy import select
 
-        from ..db import session_scope
-        from ..models import EvalSuite
-        from ..seed import register_scripts
+        from agentfox.core.db import session_scope
+        from agentfox.core.models import EvalSuite
+        from agentfox.core.seed import register_scripts
 
         with session_scope() as session:
             if session.scalar(select(EvalSuite).where(EvalSuite.key == "support-quality")):
@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI):
     # that only gets slow once, on its very first call, would otherwise silently
     # degrade the first real request every time this process starts (P3-6's 40ms
     # per-detector timeout is nowhere near enough to also cover loading a model).
-    from ..guardrails import warm_all
+    from agentfox.detection import warm_all
 
     warm_all()
     yield
@@ -110,9 +110,9 @@ def _judgment_posture() -> dict[str, Any]:
     drift from the policy it is describing: each kind reports who may decide
     it and, for every tier that may not, the measured reason it was refused.
     """
-    from ..config import get_settings
-    from ..judgment import posture as _posture
-    from ..judgment.capability import CapabilityRouter, DecisionKind, Tier
+    from agentfox.core.config import get_settings
+    from agentfox.detection.judgment import posture as _posture
+    from agentfox.detection.judgment.capability import CapabilityRouter, DecisionKind, Tier
 
     settings = get_settings()
     # The *effective* posture, which is this tenant's stored choice where there is one
@@ -394,7 +394,7 @@ def create_app() -> FastAPI:
         """P3-11 — which detectors exist, which are live, and how fast they are."""
         from sqlalchemy import func
 
-        from ..models import DetectorRun
+        from agentfox.core.models import DetectorRun
 
         stats: dict[str, dict[str, Any]] = {}
         rows = session.execute(
@@ -478,8 +478,8 @@ def create_app() -> FastAPI:
     def reliability(session: Session = Depends(db), _u=Depends(current_user)) -> dict[str, Any]:
         """P15 — circuit-breaker state and live budget consumption."""
 
-        from ..models import Agent, Budget
-        from ..reliability import BREAKER, check_budget
+        from agentfox.core.models import Agent, Budget
+        from agentfox.runtime.reliability import BREAKER, check_budget
 
         budgets = []
         for budget in session.scalars(select(Budget).where(Budget.scope_type == "agent")):
@@ -506,7 +506,7 @@ def create_app() -> FastAPI:
         that needs a bearer token is a scrape job nobody configures. It exposes counts
         and rates, never content — no prompt, no finding detail, no identifier.
         """
-        from ..integrations.prometheus import render_metrics
+        from agentfox.integrations.prometheus import render_metrics
 
         return render_metrics(session)
 

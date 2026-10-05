@@ -16,10 +16,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from agentfox.audit.trace import full_trace
-from agentfox.config import reset_settings_cache
-from agentfox.guardrails.tuning import explain_recorded
-from agentfox.models import Trace
+from agentfox.core.config import reset_settings_cache
+from agentfox.core.models import Trace
+from agentfox.detection.tuning import explain_recorded
+from agentfox.prove.audit.trace import full_trace
 
 from .conftest import INDIRECT_INJECTION, PII_TEXT, as_user
 
@@ -96,7 +96,7 @@ def test_the_blocked_proxy_response_carries_the_link_in_body_and_header(client, 
 
 
 def test_the_trace_detail_rebuilds_the_reason_it_used_to_throw_away(client):
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     live = _guard(client, INDIRECT_INJECTION).json()
     with session_scope() as s:
@@ -113,7 +113,7 @@ def test_the_trace_detail_rebuilds_the_reason_it_used_to_throw_away(client):
 def test_the_rebuilt_reason_blames_the_same_match_as_the_live_one(client):
     """The point of the reconstruction. It selects by the rule's own recorded entity
     predicate, so it cannot quietly disagree with what actually fired."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     _guard(client, INDIRECT_INJECTION)
     with session_scope() as s:
@@ -124,7 +124,7 @@ def test_the_rebuilt_reason_blames_the_same_match_as_the_live_one(client):
 
 
 def test_the_dispute_names_the_detector_worth_arguing_with(client):
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     _guard(client, PII_TEXT, surface="output")
     with session_scope() as s:
@@ -138,7 +138,7 @@ def test_the_dispute_names_the_detector_worth_arguing_with(client):
 def test_one_decisions_matches_are_not_attributed_to_another(client):
     """A trace holds several decisions and they are separate answers. Attributing an
     input's injection match to the output's PII block would be a confident lie."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     first = _guard(client, INDIRECT_INJECTION).json()
     client.post(

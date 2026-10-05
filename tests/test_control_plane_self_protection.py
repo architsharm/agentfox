@@ -19,8 +19,8 @@ from __future__ import annotations
 import pytest
 import yaml
 
-from agentfox.config import get_settings
-from agentfox.guardrails.actions import analyse_shell
+from agentfox.core.config import get_settings
+from agentfox.detection.actions import analyse_shell
 from agentfox.policy.model import PROTECTED_RULES, PolicyDocument
 from agentfox.policy.store import load_from_dir
 
@@ -167,8 +167,8 @@ def test_other_packs_are_unaffected():
 
 @pytest.fixture
 def shell_agent(seeded):
+    from agentfox.core.models import Agent
     from agentfox.identity import ensure_identity, grant_capability
-    from agentfox.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)

@@ -131,7 +131,7 @@ def default_group(default: str, routes: dict[str, str] | None = None) -> type[Ty
 def _print_version(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
     if not value or ctx.resilient_parsing:
         return
-    from .. import __version__
+    from agentfox import __version__
 
     click.echo(f"agentfox {__version__}")
     ctx.exit()

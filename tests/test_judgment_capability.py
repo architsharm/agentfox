@@ -12,7 +12,7 @@ import itertools
 
 import pytest
 
-from agentfox.judgment import (
+from agentfox.detection.judgment import (
     EVIDENCE,
     ROUTING,
     CapabilityRouter,
@@ -188,7 +188,7 @@ def test_deterministic_is_always_available() -> None:
 
 
 def test_from_settings_reads_the_opt_in_list(monkeypatch) -> None:
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     settings = get_settings()
     monkeypatch.setattr(settings, "judgment_tiers", ["jev", "local_model", "nonsense"])
@@ -208,7 +208,7 @@ def test_a_cheap_negative_cannot_end_the_performative_cascade() -> None:
     that can see it is ever asked. `lo` therefore sits below every possible
     score: only a confident yes is decisive.
     """
-    from agentfox.judgment.capability import ROUTING
+    from agentfox.detection.judgment.capability import ROUTING
 
     plan = CapabilityRouter({Tier.JEV, Tier.LLM}, allow_egress=True).plan(DecisionKind.PERFORMATIVE)
     assert plan.deciders.index(Tier.JEV) < plan.deciders.index(Tier.LLM)

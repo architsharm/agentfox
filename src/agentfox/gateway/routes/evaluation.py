@@ -16,24 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ... import jobs_db
-from ...audit import chain
-from ...evaluation import (
-    all_scorers,
-    compute_drift,
-    evaluate_slos,
-    gate,
-    run_campaign,
-    sample_production,
-    set_slo,
-    to_junit,
-    to_sarif,
-)
-from ...evaluation.adapters import available_runners, get_runner
-from ...evaluation.redteam import BUILTIN_PROBES
-from ...evaluation.runner import NativeEvalRunner, fit_envelope
-from ...evaluation.scorers import get_scorer
-from ...models import (
+from agentfox.core.models import (
     EvalAnnotation,
     EvalCase,
     EvalResult,
@@ -44,8 +27,25 @@ from ...models import (
     Trace,
     User,
 )
-from ...tenancy import session_org
-from ..deps import current_user, db, get_agent_or_404, require
+from agentfox.core.tenancy import session_org
+from agentfox.evaluation import (
+    all_scorers,
+    compute_drift,
+    evaluate_slos,
+    gate,
+    run_campaign,
+    sample_production,
+    set_slo,
+    to_junit,
+    to_sarif,
+)
+from agentfox.evaluation.adapters import available_runners, get_runner
+from agentfox.evaluation.redteam import BUILTIN_PROBES
+from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
+from agentfox.evaluation.scorers import get_scorer
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.jobs import store as jobs_db
+from agentfox.prove.audit import chain
 
 router = APIRouter(prefix="/api", tags=["evaluation"])
 
@@ -161,7 +161,7 @@ def promote_trace(
     The shortest path from "this went wrong in production" to "this can never ship
     again" is the feature that makes an eval suite grow instead of rot.
     """
-    from ...audit.trace import full_trace
+    from agentfox.prove.audit.trace import full_trace
 
     suite = _suite(session, key)
     trace = session.get(Trace, trace_id)
@@ -699,7 +699,7 @@ def list_campaigns(
 
 @router.get("/redteam/probes")
 def list_probes(_user: User = Depends(current_user)) -> dict[str, Any]:
-    from ...evaluation.redteam import available_runners as rt_runners
+    from agentfox.evaluation.redteam import available_runners as rt_runners
 
     return {
         "probes": [

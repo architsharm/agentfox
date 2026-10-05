@@ -21,13 +21,13 @@ import types
 
 import pytest
 
-from agentfox.guardrails.adapters.hub import (
+from agentfox.detection.adapters.hub import (
     CATALOGUE,
     HubValidatorDetector,
     _load_validator_class,
     hub_detectors,
 )
-from agentfox.guardrails.base import DetectionContext
+from agentfox.detection.base import DetectionContext
 
 
 class _Validator:
@@ -176,7 +176,7 @@ def test_a_validator_that_throws_is_an_error_not_a_pass(fake_guardrails):
 
 
 def test_catalogue_entries_are_well_formed():
-    from agentfox.guardrails.base import SURFACES
+    from agentfox.detection.base import SURFACES
 
     slugs = [s.slug for s in CATALOGUE]
     assert len(slugs) == len(set(slugs)), "duplicate slug in the catalogue"
@@ -204,7 +204,7 @@ def test_guardrails_telemetry_is_switched_off_before_a_validator_loads(monkeypat
     import sys
     import types
 
-    from agentfox.guardrails.adapters.hub import _silence_guardrails_telemetry
+    from agentfox.detection.adapters.hub import _silence_guardrails_telemetry
 
     class _RC:
         enable_metrics = True
@@ -226,7 +226,7 @@ def test_silencing_telemetry_never_takes_the_detector_down(monkeypatch):
     """Their internals move between versions; failing to silence must not raise."""
     import sys
 
-    from agentfox.guardrails.adapters.hub import _silence_guardrails_telemetry
+    from agentfox.detection.adapters.hub import _silence_guardrails_telemetry
 
     broken = object()  # no `.settings`, no `.rc`
     monkeypatch.setitem(sys.modules, "guardrails", broken)

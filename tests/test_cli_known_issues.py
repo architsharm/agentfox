@@ -37,8 +37,8 @@ def _json(output: str):
 
 
 def _seed() -> dict:
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -65,7 +65,7 @@ def test_init_reports_each_pack_in_its_declared_mode(tmp_path):
 
 
 def test_init_config_template_matches_the_settings_defaults(tmp_path):
-    from agentfox.config import Settings
+    from agentfox.core.config import Settings
 
     runner.invoke(app, ["init", "--path", str(tmp_path), "--env", "staging"])
     table = tomllib.loads((tmp_path / "agentfox.toml").read_text())["agentfox"]
@@ -143,8 +143,8 @@ def test_seed_show_keys_prints_them_in_full():
 def tableless_db(tmp_path, monkeypatch):
     from sqlalchemy import inspect
 
-    from agentfox import db
-    from agentfox.config import reset_settings_cache
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
 
     monkeypatch.setenv("NOMETRIA_DATABASE_URL", f"sqlite:///{tmp_path / 'fresh.db'}")
     reset_settings_cache()
@@ -188,7 +188,7 @@ def test_db_backed_groups_work_on_a_fresh_database(tableless_db, args, exit_code
 
 
 def test_doctor_json_exits_nonzero_on_a_bad_check(monkeypatch):
-    monkeypatch.setattr("agentfox.guardrails.available_detectors", lambda: {})
+    monkeypatch.setattr("agentfox.detection.available_detectors", lambda: {})
     result = runner.invoke(app, ["doctor", "--json"])
     assert result.exit_code == 1, result.output
     checks = _json(result.output)
@@ -226,7 +226,7 @@ def test_scan_mcp_seed_fixture_must_be_asked_for():
 
 
 def test_scan_mcp_scans_the_given_file(tmp_path):
-    from agentfox.seed import MCP_TOOLS
+    from agentfox.core.seed import MCP_TOOLS
 
     _seed()
     path = tmp_path / "tools.json"
@@ -243,7 +243,7 @@ def test_scan_mcp_scans_the_given_file(tmp_path):
 
 def test_guardrails_compile_apply_saves_the_ladder(tmp_path):
     from agentfox.business import all_ladders
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     path = tmp_path / "refunds.txt"
     path.write_text(REFUND_POLICY)
@@ -279,9 +279,9 @@ def test_entitlement_report_hint_names_a_real_command():
 
 
 def test_compliance_status_verbose_honours_the_framework():
-    from agentfox.compliance import controls_for_framework, latest_statuses
-    from agentfox.compliance.catalog import load_catalog
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
+    from agentfox.prove.compliance import controls_for_framework, latest_statuses
+    from agentfox.prove.compliance.catalog import load_catalog
 
     _seed()
     assert runner.invoke(app, ["compliance", "compute"]).exit_code == 0
@@ -310,7 +310,7 @@ def test_compliance_status_verbose_honours_the_framework():
 
 
 def test_policy_effective_defaults_to_the_configured_environment(monkeypatch):
-    from agentfox.config import reset_settings_cache
+    from agentfox.core.config import reset_settings_cache
 
     _seed()
     default = runner.invoke(app, ["policy", "effective"])
@@ -396,7 +396,7 @@ obligations:
 
 @pytest.fixture
 def compliance_dir(tmp_path, monkeypatch):
-    from agentfox.config import reset_settings_cache
+    from agentfox.core.config import reset_settings_cache
 
     monkeypatch.setenv("NOMETRIA_COMPLIANCE_DIR", str(tmp_path))
     reset_settings_cache()

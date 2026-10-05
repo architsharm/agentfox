@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agentfox.discovery import scan
+from agentfox.discovery.repo import scan
 
 from .conftest import as_user
 

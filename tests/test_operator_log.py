@@ -16,7 +16,7 @@ import pytest
 
 from agentfox.business.ladder import Ladder
 from agentfox.business.store import save_ladder, set_mode
-from agentfox.operator_log import (
+from agentfox.prove.audit.operator_log import (
     PRIVILEGED,
     ReasonRequired,
     operator_history,
@@ -139,8 +139,8 @@ def test_issuing_a_credential_never_records_the_credential(seeded):
     """
     from sqlalchemy import select
 
+    from agentfox.core.models import User
     from agentfox.gateway.auth import issue_token
-    from agentfox.models import User
 
     user = seeded.scalars(select(User)).first()
     if user is None:
@@ -163,7 +163,7 @@ def test_history_reads_newest_first_and_carries_the_reason(seeded):
 
 def test_agent_decisions_are_not_returned_as_operator_actions(seeded):
     """The false-positive floor: the shared chain has to stay filterable."""
-    from agentfox.audit import chain
+    from agentfox.prove.audit import chain
 
     chain.append(seeded, "decision.recorded", actor_type="agent", actor_id="agent-1")
     record(seeded, "operator.business_rule.changed", actor="ops", reason="a change")

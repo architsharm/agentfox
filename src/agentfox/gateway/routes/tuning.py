@@ -16,7 +16,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...guardrails.tuning import (
+from agentfox.core.models import Agent, GuardrailFeedback, Suppression, User
+from agentfox.detection.tuning import (
     LABEL_REFUSED_ROLES,
     LABELS,
     SUPPRESSION_SCOPES,
@@ -29,8 +30,7 @@ from ...guardrails.tuning import (
     suppression_health,
     threshold_recommendations,
 )
-from ...models import Agent, GuardrailFeedback, Suppression, User
-from ..deps import current_user, db, get_agent_or_404, require
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 
 router = APIRouter(prefix="/api/guardrails", tags=["guardrails"])
 

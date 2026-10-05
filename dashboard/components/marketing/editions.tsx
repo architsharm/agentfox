@@ -29,11 +29,11 @@ import { WaitlistForm } from "@/components/marketing/waitlist";
  *                                       configures themselves.
  *   - benchmarks reproducible ......... README.md "Benchmarks, reproducible by
  *                                       anyone", nine scripts under benchmarks/
- *   - stdlib-only verifier ............ src/agentfox/audit/evidence.py
+ *   - stdlib-only verifier ............ src/agentfox/prove/audit/evidence.py
  *                                       VERIFIER_SCRIPT, written into every
  *                                       package as verify_chain.py
- *   - mappings ship labelled DRAFT .... src/agentfox/compliance/catalog.py:214,
- *                                       src/agentfox/compliance/risk.py:369
+ *   - mappings ship labelled DRAFT .... src/agentfox/prove/compliance/catalog.py:214,
+ *                                       src/agentfox/prove/compliance/risk.py:369
  *   - cloud does not exist yet ........ README.md line 183: single-org
  *                                       multi-tenancy at the session, "not yet a
  *                                       managed multi-region offering", no live
@@ -246,7 +246,7 @@ const OSS_FACTS: { label: string; body: string; where: string }[] = [
   {
     label: "No telemetry",
     body: "Nothing calls an AgentFox server. Outbound hosts are the ones you configure.",
-    where: "src/agentfox/config.py",
+    where: "src/agentfox/core/config.py",
   },
   {
     label: "Reproducible",

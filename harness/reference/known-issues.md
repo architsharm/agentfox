@@ -65,7 +65,7 @@ it still doesn't do:
   for a moment.
 - **Opt-in model detectors time out until warm in your own process.** The gateway calls
   `warm_all()` at startup. An in-process `agentfox.auto()` or SDK user who enables
-  `injection.classifier` should call `agentfox.guardrails.warm_all()` once at startup, or the first
+  `injection.classifier` should call `agentfox.detection.warm_all()` once at startup, or the first
   calls time out while the model loads. Warm, it costs about 43ms per short prompt; long prompts
   still time out.
 - **Frameworks are covered through their clients.** CrewAI, LlamaIndex, AutoGen and LangGraph

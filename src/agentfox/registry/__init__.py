@@ -1,7 +1,15 @@
 """Pillar 1 — Discovery & Agent Registry."""
 
-from .control import all_controls, get_control, kill, quarantine, resume, set_state, state_of
-from .service import (
+from agentfox.registry.control import (
+    all_controls,
+    get_control,
+    kill,
+    quarantine,
+    resume,
+    set_state,
+    state_of,
+)
+from agentfox.registry.service import (
     assess_delegation,
     attest_registry,
     derive_lineage,

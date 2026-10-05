@@ -14,7 +14,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from agentfox import models
+from agentfox.core import models
 from agentfox.improvement import contract
 
 

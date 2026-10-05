@@ -30,7 +30,7 @@ Every conversation is scored three ways:
 * **Windowed** — `Enforcer.check_conversation_window` re-run at every turn index, with
   only the turns before it in the conversation store, so the *first* turn at which the
   trajectory is caught is a measured number rather than a yes/no.
-* **Trajectory** — `CRESCENDO.TRAJECTORY_DRIFT` (F9.4, `src/agentfox/trajectory.py`),
+* **Trajectory** — `CRESCENDO.TRAJECTORY_DRIFT` (F9.4, `src/agentfox/detection/trajectory.py`),
   which rides on the same `check_conversation_window` call and reads the same window as
   a *sequence* rather than a join. Added after the first run of this benchmark returned
   0/13 and confirmed the gap; it is scored here as a third column rather than replacing
@@ -478,7 +478,7 @@ def score_conversation(
     enforcer: Any, session: Any, convo: dict[str, Any], is_attack: bool
 ) -> dict[str, Any]:
     """Score one conversation per-message and, at every turn, over the window."""
-    from agentfox.models import ConversationTurn
+    from agentfox.core.models import ConversationTurn
 
     session_id = f"crescendo-{convo['id']}"
     per_turn: list[dict[str, Any]] = []
@@ -590,9 +590,9 @@ def measure_trajectory_latency(repeats: int = 40) -> dict[str, Any]:
     import statistics
     import time
 
-    from agentfox.guardrails.base import DetectionContext
-    from agentfox.guardrails.pipeline import DetectorPipeline
-    from agentfox.trajectory import assess
+    from agentfox.detection.base import DetectionContext
+    from agentfox.detection.pipeline import DetectorPipeline
+    from agentfox.detection.trajectory import assess
 
     pipeline = DetectorPipeline()
     context = DetectionContext(surface="input", taint_source="user")
@@ -632,10 +632,10 @@ def measure_trajectory_latency(repeats: int = 40) -> dict[str, Any]:
 def main() -> None:
     from _util import wipe_db
 
-    from agentfox import db
-    from agentfox.config import get_settings, reset_settings_cache
-    from agentfox.enforcement import Enforcer
-    from agentfox.seed import seed
+    from agentfox.core import db
+    from agentfox.core.config import get_settings, reset_settings_cache
+    from agentfox.core.seed import seed
+    from agentfox.runtime.enforcement import Enforcer
 
     # `NOMETRIA_DATABASE_URL` is the setting that actually exists. An earlier version
     # of this script set `NOMETRIA_DB_PATH`, which is not a setting at all — Settings

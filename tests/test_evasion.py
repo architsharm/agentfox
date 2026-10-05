@@ -20,10 +20,10 @@ import time
 
 import pytest
 
-from agentfox.config import get_settings
-from agentfox.guardrails import all_detectors
-from agentfox.guardrails.base import DetectionContext
-from agentfox.guardrails.normalize import (
+from agentfox.core.config import get_settings
+from agentfox.detection import all_detectors
+from agentfox.detection.base import DetectionContext
+from agentfox.detection.normalize import (
     _is_plain,
     evasion_score,
     normalize,

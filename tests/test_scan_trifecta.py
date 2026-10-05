@@ -16,8 +16,7 @@ import pytest
 from typer.testing import CliRunner
 
 from agentfox.cli.main import app
-from agentfox.discovery import scan
-from agentfox.exposure import (
+from agentfox.discovery.exposure import (
     EXFIL,
     PRIVATE,
     UNTRUSTED,
@@ -27,6 +26,7 @@ from agentfox.exposure import (
     parse_mcp_config,
     server_hygiene,
 )
+from agentfox.discovery.repo import scan
 
 runner = CliRunner()
 
@@ -348,8 +348,8 @@ def test_scan_mcp_reads_the_repo_config_with_no_setup(support_bot, monkeypatch):
 def test_scan_mcp_registers_the_declared_servers(support_bot, monkeypatch):
     from sqlalchemy import select
 
-    from agentfox.db import session_scope
-    from agentfox.models import McpServer
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import McpServer
 
     monkeypatch.chdir(support_bot)
     assert runner.invoke(app, ["scan", "mcp"]).exit_code == 0

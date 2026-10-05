@@ -101,8 +101,8 @@ def test_sign_off_moves_a_mapping_out_of_draft_and_names_the_reviewer(isolated_d
 
     from sqlalchemy import select
 
-    from agentfox.db import session_scope
-    from agentfox.models import FrameworkMapping
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import FrameworkMapping
 
     with session_scope() as session:
         mappings = list(

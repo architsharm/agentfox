@@ -12,7 +12,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from agentfox.config import get_settings
+from agentfox.core.config import get_settings
 from agentfox.evaluation.ragas_adapter import (
     RAGAS_METRICS,
     RagasSample,
@@ -128,8 +128,8 @@ def test_system_prompts_are_lifted_out_for_bedrock_and_vertex():
 def app(isolated_db):
     # Seeded and closed rather than holding an open session: the `guard` dependency
     # opens its own, and SQLite will not have two writers.
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as s:
         seed(s)

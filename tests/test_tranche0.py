@@ -12,17 +12,17 @@ import sys
 
 import pytest
 
-from agentfox.enforcement import Enforcer
+from agentfox.core.models import AgentControl, AuditEntry, Finding
 from agentfox.integrations.langgraph import (
     STATE_KEY,
     AgentFoxGuard,
     ApprovalRequired,
     PolicyViolation,
 )
-from agentfox.models import AgentControl, AuditEntry, Finding
 from agentfox.policy import set_mode
 from agentfox.providers import CompletionRequest, get_provider, script
 from agentfox.registry.control import UnknownAgent, kill, quarantine, resume, state_of
+from agentfox.runtime.enforcement import Enforcer
 
 from .conftest import INDIRECT_INJECTION, SECRET_TEXT, as_user
 
@@ -405,15 +405,15 @@ def test_app_runs_on_a_migrated_schema(tmp_path, monkeypatch):
         == 0
     )
 
-    from agentfox import db as dbmod
-    from agentfox.config import get_settings, reset_settings_cache
+    from agentfox.core import db as dbmod
+    from agentfox.core.config import get_settings, reset_settings_cache
 
     reset_settings_cache()
     dbmod.reset_engine()
     get_settings()
     # Deliberately no init_db(): the schema came from migrations alone.
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)

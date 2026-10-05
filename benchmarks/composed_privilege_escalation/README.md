@@ -1,6 +1,6 @@
 # F3.8 — composed privilege escalation: built
 
-**Status, changed from the original investigation below**: F3.8 was genuinely absent (*"needs data-flow tracking at the orchestration layer, not per-tool argument or per-statement checks"* — `docs/design/failure-modes.md`). It's now built: `src/agentfox/guardrails/composition.py` (P9-11), wired into `enforcement.py::evaluate()` on the live `guard_tool_call` path, tested end-to-end in `tests/test_composition.py`. The investigation that follows is kept as-is because it's *why* the fix looked the way it did — reusing infrastructure that already existed for a different purpose, rather than building a new tracking mechanism.
+**Status, changed from the original investigation below**: F3.8 was genuinely absent (*"needs data-flow tracking at the orchestration layer, not per-tool argument or per-statement checks"* — `docs/design/failure-modes.md`). It's now built: `src/agentfox/detection/composition.py` (P9-11), wired into `enforcement.py::evaluate()` on the live `guard_tool_call` path, tested end-to-end in `tests/test_composition.py`. The investigation that follows is kept as-is because it's *why* the fix looked the way it did — reusing infrastructure that already existed for a different purpose, rather than building a new tracking mechanism.
 
 ## What F3.8 actually names
 

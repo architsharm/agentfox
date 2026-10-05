@@ -31,7 +31,7 @@ import statistics
 from dataclasses import dataclass, field
 from typing import Any
 
-from .scorers import (
+from agentfox.evaluation.scorers import (
     BaseScorer,
     ScoreContext,
     ScoreResult,
@@ -110,7 +110,7 @@ def groundedness(output: str, context_text: str, min_overlap: float = 0.6) -> Gr
     an ensemble and never a standalone verdict — a groundedness score presented as
     truth would itself be the confident-and-wrong failure this module exists to catch.
     """
-    from .scorers import numeric_tokens
+    from agentfox.evaluation.scorers import numeric_tokens
 
     report = GroundednessReport()
     if not context_text.strip():
@@ -397,7 +397,7 @@ class JsonContractSignal:
         schema = ctx.expected.get("schema") or ctx.context.get("schema")
         if not schema:
             return {"risk": 0.0, "note": "no declared contract"}
-        from .scorers import JsonSchemaScorer
+        from agentfox.evaluation.scorers import JsonSchemaScorer
 
         result = JsonSchemaScorer().score(output, ctx)
         return {"risk": 1.0 - result.score, "errors": result.detail.get("errors", [])}

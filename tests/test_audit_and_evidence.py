@@ -15,9 +15,9 @@ import zipfile
 
 import pytest
 
-from agentfox.audit import chain, evidence
-from agentfox.audit.chain import GENESIS, entry_to_row, verify, verify_range
-from agentfox.models import AuditEntry
+from agentfox.core.models import AuditEntry
+from agentfox.prove.audit import chain, evidence
+from agentfox.prove.audit.chain import GENESIS, entry_to_row, verify, verify_range
 
 
 @pytest.fixture
@@ -220,7 +220,7 @@ def test_draft_mappings_included_with_chip(seeded):
 
 
 def test_reviewed_mappings_are_included(seeded):
-    from agentfox.compliance.catalog import review_mapping
+    from agentfox.prove.compliance.catalog import review_mapping
 
     review_mapping(seeded, "NOM-RTG-01", "eu-ai-act", "dana@example.com")
     package = evidence.build(seeded, agents=["*"], requested_by="dana@example.com")

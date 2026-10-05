@@ -1,6 +1,6 @@
 """Adaptive red-team campaigns — configuration regression testing that mutates.
 
-**What changed and why.** `docs/gap-analysis.md` item 3.2 admits "adaptive /
+**What changed and why.** `docs/design/gap-analysis.md` item 3.2 admits "adaptive /
 generative red teaming (ours is static probes)" as a real competitive gap, and
 the standing critique of automated red-teaming products is correct on its own
 terms: a fixed list of prompts only ever proves things about that fixed list.
@@ -64,8 +64,16 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Agent, Capability, Identity, Policy, PolicyBinding, PolicyVersion, Tool
-from .redteam import Probe, ProbeOutcome
+from agentfox.core.models import (
+    Agent,
+    Capability,
+    Identity,
+    Policy,
+    PolicyBinding,
+    PolicyVersion,
+    Tool,
+)
+from agentfox.evaluation.redteam import Probe, ProbeOutcome
 
 #: Carried verbatim into every adaptive campaign summary (`what_this_measures`).
 #: The honest claim, stated where a reader of the JSON cannot miss it.

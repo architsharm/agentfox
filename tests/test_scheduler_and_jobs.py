@@ -13,9 +13,8 @@ import datetime as dt
 
 import pytest
 
-from agentfox import job_handlers, jobs_db, scheduler
-from agentfox.config import get_settings
-from agentfox.models import (
+from agentfox.core.config import get_settings
+from agentfox.core.models import (
     DriftWindow,
     EvalCase,
     EvalResult,
@@ -25,6 +24,9 @@ from agentfox.models import (
     Job,
     JobSchedule,
 )
+from agentfox.jobs import handlers as job_handlers
+from agentfox.jobs import scheduler
+from agentfox.jobs import store as jobs_db
 from tests.conftest import as_user
 
 NOW = dt.datetime(2026, 9, 16, 12, 0, tzinfo=dt.UTC)
@@ -227,7 +229,7 @@ def test_a_failed_first_attempt_is_reported_as_queued_for_retry_not_success(clie
 
 
 def test_every_deferrable_kind_but_retrieval_has_a_handler():
-    from agentfox.jobs import DEFERRABLE
+    from agentfox.jobs.queue import DEFERRABLE
 
     for kind in ("eval.run", "compliance.recompute", "evidence.package", "redteam.sweep"):
         assert kind in DEFERRABLE
@@ -277,7 +279,7 @@ def test_eval_run_with_an_unknown_suite_fails_the_job_not_the_process(session):
 
 
 def test_compliance_recompute_enqueues_and_runs(seeded):
-    from agentfox.compliance.catalog import sync_catalog
+    from agentfox.prove.compliance.catalog import sync_catalog
 
     sync_catalog(seeded)
     job = jobs_db.enqueue(seeded, "compliance.recompute", {"window_days": 7}, org_id="org_default")
@@ -363,7 +365,7 @@ def test_disabled_schedules_and_a_disabled_scheduler_enqueue_nothing(session, mo
 
 
 def test_schedules_are_per_tenant(session):
-    from agentfox.tenancy import bind_session
+    from agentfox.core.tenancy import bind_session
 
     bind_session(session, "org-a")
     scheduler.ensure_default_schedules(session)
@@ -405,7 +407,7 @@ def test_static_campaign_over_http_is_unchanged(client):
 
 def _seed_online_scores(agent: str):
     """Online eval scores in the baseline window and a clearly shifted current window."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     now = dt.datetime.now(dt.UTC)
     with session_scope() as s:
@@ -429,7 +431,7 @@ def _seed_online_scores(agent: str):
 def test_get_drift_writes_nothing(client):
     """Recording is the scheduled drift.check job (test below), not a page view."""
     _seed_online_scores("support-triage")
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     def counts():
         with session_scope() as s:

@@ -9,9 +9,17 @@ from __future__ import annotations
 
 import datetime as dt
 
-from agentfox import jobs_db, scheduler
-from agentfox.config import get_settings
-from agentfox.models import AuditEntry, Decision, JobSchedule, Policy, PolicyBinding, PolicyVersion
+from agentfox.core.config import get_settings
+from agentfox.core.models import (
+    AuditEntry,
+    Decision,
+    JobSchedule,
+    Policy,
+    PolicyBinding,
+    PolicyVersion,
+)
+from agentfox.jobs import scheduler
+from agentfox.jobs import store as jobs_db
 from agentfox.policy import PolicyDocument, save_policy
 from agentfox.policy.canary import canary_rollout, evaluate_gate, start_canary
 from tests.conftest import as_user

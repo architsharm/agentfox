@@ -15,16 +15,16 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
-from agentfox import findings as findings_mod
-from agentfox import webhooks
-from agentfox.db import session_scope
-from agentfox.findings import (
+from agentfox.core import webhooks
+from agentfox.core.db import session_scope
+from agentfox.core.models import Agent, AuditEntry, Budget, Finding
+from agentfox.prove import findings as findings_mod
+from agentfox.prove.findings import (
     fingerprint,
     raise_finding,
     record_detector_health,
     resolve_finding,
 )
-from agentfox.models import Agent, AuditEntry, Budget, Finding
 
 from .conftest import as_user
 from .test_webhooks import configure, receiver  # noqa: F401 - the shared harness
@@ -225,7 +225,7 @@ def test_recovery_checks_are_throttled_on_the_request_path(session, monkeypatch)
 
 
 def test_budget_exhaustion_counts_then_closes_when_the_window_rolls(seeded, enforcer):
-    from agentfox.reliability import check_budget
+    from agentfox.runtime.reliability import check_budget
 
     agent = seeded.scalar(select(Agent).where(Agent.slug == "support-triage"))
     budget = seeded.scalar(select(Budget).where(Budget.scope_id == agent.id))
@@ -281,7 +281,7 @@ def test_drift_is_one_finding_per_scorer_and_closes_when_the_window_is_clean(ses
 
 
 def test_a_false_resolution_rescan_does_not_refile(seeded):
-    from agentfox.escalation import detect_false_resolution, record_turn
+    from agentfox.containment.escalation import detect_false_resolution, record_turn
 
     agent = seeded.scalar(select(Agent).where(Agent.slug == "support-triage"))
     record_turn(

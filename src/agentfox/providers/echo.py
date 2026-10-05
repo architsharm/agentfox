@@ -24,7 +24,12 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
-from .base import CompletionRequest, CompletionResponse, StreamChunk, register_provider
+from agentfox.providers.base import (
+    CompletionRequest,
+    CompletionResponse,
+    StreamChunk,
+    register_provider,
+)
 
 _SCRIPTS: dict[str, str] = {}
 
@@ -124,7 +129,7 @@ class EchoProvider:
 
     def judge(self, output: str, rubric: str, model: str = "default") -> dict[str, Any]:
         """Rubric-keyword coverage. Deterministic, and honest about being shallow."""
-        from ..evaluation.scorers import content_tokens
+        from agentfox.evaluation.scorers import content_tokens
 
         criteria = content_tokens(rubric)
         if not criteria:

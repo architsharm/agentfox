@@ -5,13 +5,13 @@
 The attack shape: the tool itself is unremarkable and the agent's capability grant
 for it is genuinely valid — the danger is in an *ordinary-named* argument value.
 `look_up_order(order_id="*")` looks nothing like the SQL/shell/URL fields
-`src/agentfox/guardrails/actions.py` used to check by key name alone
+`src/agentfox/detection/actions.py` used to check by key name alone
 (`_SQL_KEYS`/`_SHELL_KEYS`/`_URL_KEYS`); a field called `order_id` was never on
 any of those lists, so a wildcard or an injected fragment there went straight
 through P9 Action Assurance's dispatch. That gap is real — confirmed by reading
 the code before writing this, not assumed — and this benchmark exists on the far
 side of closing it, not the near side: `analyse_scope()`
-(`src/agentfox/guardrails/actions.py`) now runs on every string argument
+(`src/agentfox/detection/actions.py`) now runs on every string argument
 regardless of key name.
 
 LLM Guard has no equivalent axis to measure here at all: it scans free text, not
@@ -36,10 +36,10 @@ from pathlib import Path
 
 from _util import wipe_db
 
-from agentfox import db
-from agentfox.config import get_settings, reset_settings_cache
-from agentfox.enforcement import Enforcer
-from agentfox.seed import seed
+from agentfox.core import db
+from agentfox.core.config import get_settings, reset_settings_cache
+from agentfox.core.seed import seed
+from agentfox.runtime.enforcement import Enforcer
 
 DATA_PATH = Path(__file__).parent / "data" / "tier_c_cases.json"
 RESULTS_DIR = Path(__file__).parent / "results"

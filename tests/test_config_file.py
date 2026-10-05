@@ -9,7 +9,7 @@ import logging
 
 import pytest
 
-from agentfox.config import (
+from agentfox.core.config import (
     ConfigFileError,
     Settings,
     get_settings,
@@ -103,7 +103,7 @@ def test_unknown_key_is_ignored_with_a_warning(workdir, caplog):
     (workdir / "agentfox.toml").write_text(
         '[agentfox]\nenvironment = "staging"\nenviroment_typo = "x"\n'
     )
-    with caplog.at_level(logging.WARNING, logger="agentfox.config"):
+    with caplog.at_level(logging.WARNING, logger="agentfox.core.config"):
         settings = fresh()
     assert settings.environment == "staging"
     assert not hasattr(settings, "enviroment_typo")
@@ -162,7 +162,7 @@ def test_config_none_turns_file_loading_off(workdir, monkeypatch):
 
 def test_direct_env_reads_prefer_agentfox_and_keep_the_legacy_name(monkeypatch):
     """Switches read outside Settings follow Settings' own precedence."""
-    from agentfox.config import env
+    from agentfox.core.config import env
 
     monkeypatch.delenv("AGENTFOX_MCP_LOG_LEVEL", raising=False)
     monkeypatch.delenv("NOMETRIA_MCP_LOG_LEVEL", raising=False)
@@ -174,7 +174,7 @@ def test_direct_env_reads_prefer_agentfox_and_keep_the_legacy_name(monkeypatch):
 
 
 def test_auto_agent_name_reads_agentfox_agent_first(monkeypatch):
-    from agentfox.autoguard import default_agent_slug
+    from agentfox.runtime.autoguard import default_agent_slug
 
     monkeypatch.setenv("NOMETRIA_AGENT", "old-name")
     assert default_agent_slug() == "old-name"

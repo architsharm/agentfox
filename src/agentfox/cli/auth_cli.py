@@ -21,7 +21,7 @@ console = Console()
 def _session():
     """A session on an initialised database. `init_db` is idempotent, and without it
     a command run before `agentfox init` dies on "no such table"."""
-    from ..db import init_db, session_scope
+    from agentfox.core.db import init_db, session_scope
 
     init_db()
     return session_scope()
@@ -35,9 +35,9 @@ def issue(
     """Mint an API token. The value is shown once and cannot be retrieved again."""
     from sqlalchemy import select
 
-    from ..gateway.auth import issue_token
-    from ..models import User
-    from ..tenancy import bind_session, system_scope
+    from agentfox.core.models import User
+    from agentfox.core.tenancy import bind_session, system_scope
+    from agentfox.gateway.auth import issue_token
 
     with system_scope("issuing an operator token"), _session() as session:
         user = session.scalar(select(User).where(User.email == email))
@@ -83,9 +83,9 @@ def tokens(as_json: bool = typer.Option(False, "--json")) -> None:
 
     from sqlalchemy import select
 
-    from .. import system_log
-    from ..models import ApiToken, User, utcnow
-    from ..tenancy import system_scope
+    from agentfox.core.models import ApiToken, User, utcnow
+    from agentfox.core.tenancy import system_scope
+    from agentfox.prove.audit import system_log
 
     now = utcnow()
     rows: list[dict[str, Any]] = []
@@ -160,9 +160,9 @@ def revoke(
     token_id: str = typer.Argument(..., help="Token id from `agentfox admin auth tokens`."),
 ) -> None:
     """Revoke a token immediately."""
-    from ..gateway.auth import revoke_token
-    from ..models import ApiToken
-    from ..tenancy import bind_session, system_scope
+    from agentfox.core.models import ApiToken
+    from agentfox.core.tenancy import bind_session, system_scope
+    from agentfox.gateway.auth import revoke_token
 
     with system_scope("revoking an operator token"), _session() as session:
         token = session.get(ApiToken, token_id)
@@ -181,8 +181,8 @@ def revoke(
 
 def status() -> None:
     """How this deployment authenticates, and whether that is what you intended."""
-    from ..config import get_settings
-    from ..gateway.auth import header_identity_allowed
+    from agentfox.core.config import get_settings
+    from agentfox.gateway.auth import header_identity_allowed
 
     settings = get_settings()
     allowed = header_identity_allowed()

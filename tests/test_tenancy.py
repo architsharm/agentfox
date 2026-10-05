@@ -19,10 +19,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import String, delete, func, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
-from agentfox.audit import chain
-from agentfox.db import session_scope
-from agentfox.models import Agent, AuditEntry, Base, Finding, TenantScoped, Trace, User
-from agentfox.tenancy import (
+from agentfox.core.db import session_scope
+from agentfox.core.models import Agent, AuditEntry, Base, Finding, TenantScoped, Trace, User
+from agentfox.core.tenancy import (
     CrossTenantWrite,
     assert_tenant_safe,
     bind_session,
@@ -31,6 +30,7 @@ from agentfox.tenancy import (
     system_scope,
     tenant,
 )
+from agentfox.prove.audit import chain
 
 ACME, GLOBEX = "org_acme", "org_globex"
 
@@ -71,8 +71,8 @@ def test_the_exemption_roster_is_exactly_what_was_argued_for():
     below is the complete set of tables the session filter does not cover, so growing
     it means editing this assertion and explaining the new entry in the same diff.
     """
-    from agentfox.models import TENANT_EXEMPT_TABLES
-    from agentfox.tenancy import tenant_exempt_models
+    from agentfox.core.models import TENANT_EXEMPT_TABLES
+    from agentfox.core.tenancy import tenant_exempt_models
 
     # A waitlist signup happens before the person has an org — there is no tenant to
     # scope it to. See models.WaitlistSignup.
@@ -84,7 +84,7 @@ def test_the_mixin_alone_does_not_buy_an_exemption():
     """Inheriting `TenantExempt` and nothing else must still fail at import. Otherwise
     the roster is decoration and one line in a model file opts a table out of tenancy
     without anyone reading the module that says what that costs."""
-    from agentfox.models import TenantExempt, _assert_every_model_is_tenant_scoped
+    from agentfox.core.models import TenantExempt, _assert_every_model_is_tenant_scoped
 
     class Sneaky(Base, TenantExempt):
         __tablename__ = "sneaky_probe"
@@ -100,7 +100,7 @@ def test_the_mixin_alone_does_not_buy_an_exemption():
 def test_a_model_that_escapes_the_mixin_fails_at_import():
     """The realistic failure is someone adding a table next year who has never read the
     tenancy module. That must be an import error, not a data leak found by a customer."""
-    from agentfox.models import _assert_every_model_is_tenant_scoped
+    from agentfox.core.models import _assert_every_model_is_tenant_scoped
 
     class Escapee(Base):
         __tablename__ = "escapee_probe"
@@ -122,7 +122,7 @@ def test_a_model_added_later_is_filtered_without_its_author_knowing(isolated_db)
         id: Mapped[str] = mapped_column(String(40), primary_key=True)
         note: Mapped[str] = mapped_column(String(80), default="")
 
-    from agentfox.db import get_engine
+    from agentfox.core.db import get_engine
 
     Base.metadata.create_all(get_engine(), tables=[LateArrival.__table__])
     try:
@@ -259,7 +259,7 @@ def test_system_scope_sees_everything_and_says_so(two_tenants):
         def emit(self, record: logging.LogRecord) -> None:
             records.append(record.getMessage())
 
-    logger = logging.getLogger("agentfox.tenancy")
+    logger = logging.getLogger("agentfox.core.tenancy")
     handler = Capture(level=logging.WARNING)
     logger.addHandler(handler)
     previous = logger.level
@@ -432,8 +432,8 @@ def test_shared_reference_catalog_syncs_independently_per_org(isolated_db):
     catalog that silently refused to load, not a modeling bug; this proves two
     tenants can each hold their own synced copy of the same catalog content.
     """
-    from agentfox.compliance.catalog import sync_catalog
-    from agentfox.models import Control
+    from agentfox.core.models import Control
+    from agentfox.prove.compliance.catalog import sync_catalog
 
     for org in (ACME, GLOBEX):
         with tenant(org), session_scope() as session:
@@ -483,7 +483,7 @@ def test_no_tenant_scoped_model_has_a_globally_unique_column(isolated_db):
     platform-wide login lookup key, used to resolve which org a request belongs to
     before any org is known.
     """
-    from agentfox.models import Base, TenantScoped, User
+    from agentfox.core.models import Base, TenantScoped, User
 
     exempt_columns = {(User.__tablename__, "email")}
     # (table, column) pairs that hold a globally-unique id by convention, without a
@@ -540,8 +540,12 @@ def test_migrations_do_not_switch_off_platform_logging(isolated_db):
     """
     import logging
 
-    from agentfox.db import init_db
+    from agentfox.core.db import init_db
 
     init_db()
-    for name in ("agentfox.tenancy", "agentfox.enforcement", "agentfox.reliability"):
+    for name in (
+        "agentfox.core.tenancy",
+        "agentfox.runtime.enforcement",
+        "agentfox.runtime.reliability",
+    ):
         assert not logging.getLogger(name).disabled, f"{name} was silenced by Alembic"

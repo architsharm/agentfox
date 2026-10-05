@@ -38,7 +38,7 @@ class's own prior docstring claim) covered everything:
 standing critique of automated red-teaming products is that a fixed prompt list
 only ever proves things about that fixed list, and running it again next week
 proves the same thing again. That critique lands on the suite above, and
-`docs/gap-analysis.md` item 3.2 already admitted it.
+`docs/design/gap-analysis.md` item 3.2 already admitted it.
 
 The answer is not to claim robustness. It is to change what is claimed:
 `run_campaign(..., adaptive=True, budget=N)` runs **configuration regression
@@ -63,8 +63,16 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..findings import raise_finding, resolve_finding
-from ..models import Agent, Capability, Finding, RedTeamCampaign, RedTeamFinding, Tool, utcnow
+from agentfox.core.models import (
+    Agent,
+    Capability,
+    Finding,
+    RedTeamCampaign,
+    RedTeamFinding,
+    Tool,
+    utcnow,
+)
+from agentfox.prove.findings import raise_finding, resolve_finding
 
 
 @dataclass
@@ -482,7 +490,7 @@ def _provision_tool_and_grant(
         )
     )
     if existing is None:
-        from ..identity.service import grant_capability
+        from agentfox.identity.service import grant_capability
 
         grant_capability(session, identity, tool_key, constraints=constraints, max_taint=max_taint)
 
@@ -506,9 +514,9 @@ class NativeRedTeamRunner:
     def run_probes(
         self, session: Session, agent_slug: str, probes: list[Probe] | None = None
     ) -> list[ProbeOutcome]:
-        from ..enforcement import Enforcer
-        from ..guardrails.taint import TaintTracker
-        from ..identity.service import ensure_identity
+        from agentfox.detection.taint import TaintTracker
+        from agentfox.identity.service import ensure_identity
+        from agentfox.runtime.enforcement import Enforcer
 
         enforcer = Enforcer(session)
         agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))
@@ -688,7 +696,7 @@ def run_adaptive_probes(
       budget on repeats — `attempts_used` in the summary is real work done, not a
       budget-shaped constant.
     """
-    from .adaptive import next_mutation
+    from agentfox.evaluation.adaptive import next_mutation
 
     runner = NativeRedTeamRunner()
     outcomes: list[ProbeOutcome] = []
@@ -846,7 +854,7 @@ def _adaptive_summary(
     seed: int,
     profile: dict[str, Any],
 ) -> dict[str, Any]:
-    from .adaptive import (
+    from agentfox.evaluation.adaptive import (
         NOT_ESTABLISHED,
         SCOPE_STATEMENT,
         mutation_classes,
@@ -976,7 +984,7 @@ def run_campaign(
     pool = list(BUILTIN_PROBES)
     profile: dict[str, Any] = {}
     if adaptive and include_deployment_probes:
-        from .adaptive import deployment_profile, generate_deployment_probes
+        from agentfox.evaluation.adaptive import deployment_profile, generate_deployment_probes
 
         profile = deployment_profile(session, agent_slug)
         pool = pool + generate_deployment_probes(session, agent_slug)

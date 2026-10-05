@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.audit.trace import start_trace
+from agentfox.prove.audit.trace import start_trace
 from agentfox.registry.service import slugify
 
 CONTAINED = {"block", "escalate"}

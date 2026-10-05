@@ -31,17 +31,17 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from ...models import Agent
-from ...seed import AGENTS, CAPABILITIES, POISONED_DOCUMENT, TOOLS
-from ..playground_sessions import (
+from agentfox.core.models import Agent
+from agentfox.core.seed import AGENTS, CAPABILITIES, POISONED_DOCUMENT, TOOLS
+from agentfox.gateway.playground_sessions import (
     SESSION_TTL_SECONDS,
     PlaygroundSession,
     PlaygroundUnavailable,
     get_store,
     session_creation_limiter,
 )
-from ..verdicts import with_verdict_aliases
-from .playground_deps import playground_session
+from agentfox.gateway.routes.playground_deps import playground_session
+from agentfox.gateway.verdicts import with_verdict_aliases
 
 router = APIRouter(prefix="/api/playground", tags=["playground"])
 
@@ -97,8 +97,8 @@ def chat(
     payload: PlaygroundChatRequest,
     record: PlaygroundSession = Depends(playground_session),
 ) -> dict[str, Any]:
-    from ...enforcement import Enforcer
-    from ...escalation import record_turn
+    from agentfox.containment.escalation import record_turn
+    from agentfox.runtime.enforcement import Enforcer
 
     if not payload.message.strip():
         raise HTTPException(400, "message must not be empty")
@@ -172,9 +172,9 @@ def tool_call(
     `effective_verdict`/`would_be_verdict` is what the bound policy says should
     happen, which in observe mode is the one that did not take effect.
     """
-    from ...audit.trace import start_trace
-    from ...enforcement import Enforcer
-    from ...registry.service import slugify
+    from agentfox.prove.audit.trace import start_trace
+    from agentfox.registry.service import slugify
+    from agentfox.runtime.enforcement import Enforcer
 
     with record.session_scope() as session:
         enforcer = Enforcer(session)
@@ -215,7 +215,7 @@ def set_enforce_mode(
     change from "would have blocked" to "blocked", the same "aha" `agentfox demo`
     already walks through interactively (`cli/demo.py`, section 08).
     """
-    from ...policy import set_mode
+    from agentfox.policy import set_mode
 
     if payload.mode not in ("observe", "enforce"):
         raise HTTPException(400, "mode must be 'observe' or 'enforce'")
@@ -233,9 +233,9 @@ def state(
     + findings), the tamper-evident audit chain's own self-check, and compliance
     posture — all real, already-existing functions, just called and serialized.
     """
-    from ...audit import chain
-    from ...audit.trace import full_trace
-    from ...compliance.status import compute_all, posture
+    from agentfox.prove.audit import chain
+    from agentfox.prove.audit.trace import full_trace
+    from agentfox.prove.compliance.status import compute_all, posture
 
     with record.session_scope() as session:
         compute_all(session)

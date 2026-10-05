@@ -121,7 +121,7 @@ def test_adaptive_finds_escapes_the_static_suite_misses(enforcing):
 def test_a_working_mutation_class_is_surfaced_as_a_finding(enforcing):
     """ "Encoding defeats this deployment" is an actionable sentence; "escape rate 4%"
     is the shape that lets a real gap ship as a KPI. It must be a Finding."""
-    from agentfox.models import Finding
+    from agentfox.core.models import Finding
 
     campaign = run_campaign(enforcing, "support-triage", adaptive=True, budget=4)
     worked = campaign.summary_json["adaptive"]["mutation_classes_that_worked"]
@@ -165,7 +165,7 @@ def test_mutations_are_chosen_from_the_failure_feedback(enforcing):
 
 @pytest.mark.parametrize("budget", [1, 2, 3])
 def test_attempt_budget_is_respected_per_probe(enforcing, budget):
-    from agentfox.models import RedTeamFinding
+    from agentfox.core.models import RedTeamFinding
 
     campaign = run_campaign(
         enforcing, "support-triage", adaptive=True, budget=budget, name=f"b{budget}"
@@ -202,7 +202,7 @@ def no_timing_flake(monkeypatch):
     hidden. What *this* module promises is that the mutation search is deterministic,
     so the timeout is raised out of the way here to test that claim rather than the
     pipeline's clock."""
-    from agentfox.config import reset_settings_cache
+    from agentfox.core.config import reset_settings_cache
 
     monkeypatch.setenv("NOMETRIA_DETECTOR_TIMEOUT_MS", "60000")
     monkeypatch.setenv("NOMETRIA_ENFORCEMENT_BUDGET_MS", "60000")
@@ -214,7 +214,7 @@ def no_timing_flake(monkeypatch):
 def test_the_mutation_program_is_deterministic_under_a_fixed_seed(enforcing):
     """The part the seed actually controls: which probe is tried, mutated how, in
     what order. This holds regardless of what the enforcement pipeline's clock does."""
-    from agentfox.models import RedTeamFinding
+    from agentfox.core.models import RedTeamFinding
 
     def program(campaign):
         # Sorted, not insertion-ordered: finding ids are random, and what is being
@@ -332,7 +332,7 @@ def enforcing_ungranted(session, slug) -> set[str]:
 
 def test_generated_probes_never_provision_anything(enforcing):
     """A campaign that creates a grant or a tool row is measuring itself."""
-    from agentfox.models import Capability, Tool
+    from agentfox.core.models import Capability, Tool
 
     probes = generate_deployment_probes(enforcing, "support-triage")
     assert probes and all(p.provision is False for p in probes)
@@ -368,7 +368,7 @@ def test_benign_controls_are_never_mutated(enforcing):
     """Mutating a probe that is supposed to be allowed produces something that is no
     longer a benign control — the precision number would quietly stop meaning
     anything."""
-    from agentfox.models import RedTeamFinding
+    from agentfox.core.models import RedTeamFinding
 
     campaign = run_campaign(enforcing, "support-triage", adaptive=True, budget=4)
     benign_keys = {p["key"] for p in campaign.summary_json["probes"] if not p["expect_blocked"]}
@@ -415,7 +415,7 @@ def _widen_the_refund_ceiling(session, constraints):
     """The regression this feature exists to catch, applied for real: somebody edits
     a capability grant and removes the argument ceiling on it. No policy changes, no
     detector changes — only the deployment's own configuration."""
-    from agentfox.models import Capability
+    from agentfox.core.models import Capability
 
     cap = session.query(Capability).filter(Capability.tool_key == CEILING_TOOL).one()
     cap.constraints_json = constraints
@@ -427,7 +427,7 @@ def test_posture_reports_weaker_when_the_configuration_regresses(enforcing):
     $50,000 refund against a grant capped at $1,000. Between the two campaigns the
     cap is removed — a one-line configuration change that no static prompt suite
     would notice, because the *prompt* is identical in both runs."""
-    from agentfox.models import Finding
+    from agentfox.core.models import Finding
 
     kwargs = dict(adaptive=True, budget=1, probes=CEILING_PROBE, include_deployment_probes=False)
     tight = run_campaign(enforcing, "support-triage", name="tight", **kwargs)
@@ -567,7 +567,7 @@ def test_operator_library_is_well_formed():
 
 
 def test_an_operator_is_never_applied_twice_to_the_same_probe(enforcing):
-    from agentfox.models import RedTeamFinding
+    from agentfox.core.models import RedTeamFinding
 
     campaign = run_campaign(enforcing, "support-triage", adaptive=True, budget=5)
     rows = enforcing.query(RedTeamFinding).filter_by(campaign_id=campaign.id).all()

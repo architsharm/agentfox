@@ -22,7 +22,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ._style import print_unknown_agent
+from agentfox.cli._style import print_unknown_agent
 
 console = Console()
 
@@ -30,7 +30,7 @@ console = Console()
 def _session():
     """A session on an initialised database. `init_db` is idempotent, and without it
     a command run before `agentfox init` dies on "no such table"."""
-    from ..db import init_db, session_scope
+    from agentfox.core.db import init_db, session_scope
 
     init_db()
     return session_scope()
@@ -66,8 +66,8 @@ def boundary_set(
     """
     from sqlalchemy import select
 
-    from ..answerability import QUESTION_TYPES, declare_boundary
-    from ..models import Agent
+    from agentfox.core.models import Agent
+    from agentfox.grounding.answerability import QUESTION_TYPES, declare_boundary
 
     types = [t.strip() for t in answerable.split(",") if t.strip()]
     unknown = set(types) - set(QUESTION_TYPES)
@@ -114,8 +114,8 @@ def boundary_check(
     """
     from sqlalchemy import select
 
-    from ..answerability import classify_answerability, get_boundary
-    from ..models import Agent
+    from agentfox.core.models import Agent
+    from agentfox.grounding.answerability import classify_answerability, get_boundary
 
     with _session() as session:
         record = session.scalar(select(Agent).where(Agent.slug == agent))
@@ -162,8 +162,8 @@ def sources_add(
     title: str = typer.Option("", "--title"),
 ) -> None:
     """Register a source and its authority tier."""
-    from ..models import utcnow
-    from ..provenance import TIERS, register_source
+    from agentfox.core.models import utcnow
+    from agentfox.grounding.provenance import TIERS, register_source
 
     if tier not in TIERS:
         console.print(f"[red]tier must be one of: {', '.join(TIERS)}[/]")
@@ -213,7 +213,7 @@ def sources_import(
     Tiering a corpus is inherently a bulk act. Nobody classifies four hundred sources
     one command at a time, and making them try is how the tiering never happens.
     """
-    from ..provenance import TIERS, register_source
+    from agentfox.grounding.provenance import TIERS, register_source
 
     try:
         payload = json.loads(file.read_text())
@@ -247,8 +247,8 @@ def sources_list(as_json: bool = typer.Option(False, "--json")) -> None:
     """Every registered source, worst tier first."""
     from sqlalchemy import select
 
-    from ..models import SourceRecord
-    from ..provenance import TIER_RANK, freshness_breach
+    from agentfox.core.models import SourceRecord
+    from agentfox.grounding.provenance import TIER_RANK, freshness_breach
 
     with _session() as session:
         rows = [
@@ -315,8 +315,8 @@ def escalation_set(
     """Declare when this agent must hand off to a human."""
     from sqlalchemy import select
 
-    from ..escalation import set_policy
-    from ..models import Agent
+    from agentfox.containment.escalation import set_policy
+    from agentfox.core.models import Agent
 
     conditions: dict[str, Any] = {}
     if turn_depth is not None:
@@ -357,7 +357,7 @@ def escalation_scan(
     conversation where the agent kept going instead of handing off looks entirely
     ordinary in the telemetry.
     """
-    from ..escalation import detect_missed_escalation
+    from agentfox.containment.escalation import detect_missed_escalation
 
     with _session() as session:
         result = detect_missed_escalation(session, since_hours=hours, raise_findings=apply)
@@ -400,7 +400,7 @@ def principal_set(
     the agent runs under its own identity, inherits everything that identity can reach,
     and every permission check passes.
     """
-    from ..entitlement import upsert_principal
+    from agentfox.grounding.entitlement import upsert_principal
 
     with _session() as session:
         upsert_principal(
@@ -426,7 +426,7 @@ def grant_add(
     purposes: str = typer.Option("", "--purposes", help="GDPR Art. 5(1)(b) purposes."),
 ) -> None:
     """Grant access to a resource pattern."""
-    from ..entitlement import grant
+    from agentfox.grounding.entitlement import grant
 
     with _session() as session:
         grant(
@@ -448,7 +448,7 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
     Worth running before any entitlement model exists — a ratio of 1.0 with no grants
     configured is exactly the point.
     """
-    from ..entitlement import over_permission_report
+    from agentfox.grounding.entitlement import over_permission_report
 
     with _session() as session:
         report = over_permission_report(session, days=days)

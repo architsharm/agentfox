@@ -38,10 +38,10 @@ from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import get_settings
-from ..models import Agent, ApiToken, Identity, User, utcnow
-from ..operator_log import record
-from ..tenancy import bind_session, system_scope
+from agentfox.core.config import get_settings
+from agentfox.core.models import Agent, ApiToken, Identity, User, utcnow
+from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.prove.audit.operator_log import record
 
 log = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def _is_sandbox_org(org_id: str | None) -> bool:
     operator, so nothing here may ever resolve a principal into one — see
     :func:`authenticate` and :func:`resolve_agent`.
     """
-    from .playground_sessions import is_sandbox_id
+    from agentfox.gateway.playground_sessions import is_sandbox_id
 
     return is_sandbox_id(org_id or "")
 
@@ -226,7 +226,7 @@ def resolve_agent(session: Session, raw: str) -> tuple[Identity, str] | None:
     doubly wrong — the credential lookup itself was filtered to the default org, so an
     agent belonging to any other tenant simply could not authenticate.
     """
-    from ..identity.service import verify_credential
+    from agentfox.identity.service import verify_credential
 
     with system_scope("resolving an agent credential to its identity", routine=True):
         identity = verify_credential(session, raw)

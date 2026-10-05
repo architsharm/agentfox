@@ -14,8 +14,8 @@ from __future__ import annotations
 import fnmatch
 from typing import Any, Protocol
 
-from ..guardrails.base import taint_rank
-from .model import (
+from agentfox.detection.base import taint_rank
+from agentfox.policy.model import (
     COMPARATORS,
     EFFECT_RANK,
     Condition,

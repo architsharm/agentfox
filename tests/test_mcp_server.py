@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from agentfox import __version__
-from agentfox.mcp_server import SUPPORTED_PROTOCOL_VERSIONS, TOOLS, serve
+from agentfox.integrations.mcp_server import SUPPORTED_PROTOCOL_VERSIONS, TOOLS, serve
 
 SRC = Path(__file__).resolve().parents[1] / "src"
 BASELINE = SRC / "agentfox" / "policies_data" / "baseline.yaml"
@@ -227,7 +227,7 @@ def test_unknown_agent_is_a_genuine_failure():
 
 
 def _file_a_proposal() -> str:
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.improvement.proposals import file_proposal
 
     with session_scope() as session:
@@ -287,8 +287,8 @@ def test_no_proposal_tool_can_decide_apply_or_roll_back():
 
 
 def test_finding_occurrences_ranks_recurring_problems():
-    from agentfox.db import session_scope
-    from agentfox.findings import raise_finding
+    from agentfox.core.db import session_scope
+    from agentfox.prove.findings import raise_finding
 
     with session_scope() as session:
         for _ in range(3):
@@ -336,8 +336,8 @@ def test_unknown_finding_is_a_genuine_failure():
 
 
 def test_guard_text_blocks_injection():
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -371,7 +371,7 @@ def test_stdio_subprocess_end_to_end(tmp_path):
         [
             sys.executable,
             "-c",
-            "import sys; from agentfox.mcp_server import serve; sys.exit(serve())",
+            "import sys; from agentfox.integrations.mcp_server import serve; sys.exit(serve())",
         ],
         input="".join(json.dumps(m) + "\n" for m in messages),
         capture_output=True,

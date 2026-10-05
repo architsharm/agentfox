@@ -16,8 +16,8 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import func, select
 
-from agentfox.db import session_scope
-from agentfox.models import WaitlistSignup
+from agentfox.core.db import session_scope
+from agentfox.core.models import WaitlistSignup
 
 
 @pytest.fixture(autouse=True)

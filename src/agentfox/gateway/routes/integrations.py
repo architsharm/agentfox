@@ -37,18 +37,18 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ... import ids
-from ...audit import chain
-from ...config import get_settings
-from ...discovery import ScanReport
-from ...discovery import scan as discovery_scan
-from ...discovery_openapi import SpecFetchError, fetch_spec, scan_spec
-from ...models import GithubConnection, Policy, PolicyVersion, ScanRun, User, utcnow
-from ...policy import PolicyDocument, save_policy
-from ...registry.service import propose_from_scan, register_agent, slugify
-from ...tenancy import bind_session, system_scope
-from ..auth import issue_token
-from ..deps import current_user, db, require
+from agentfox.core import ids
+from agentfox.core.config import get_settings
+from agentfox.core.models import GithubConnection, Policy, PolicyVersion, ScanRun, User, utcnow
+from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
+from agentfox.discovery.repo import ScanReport
+from agentfox.discovery.repo import scan as discovery_scan
+from agentfox.gateway.auth import issue_token
+from agentfox.gateway.deps import current_user, db, require
+from agentfox.policy import PolicyDocument, save_policy
+from agentfox.prove.audit import chain
+from agentfox.registry.service import propose_from_scan, register_agent, slugify
 
 log = logging.getLogger(__name__)
 
@@ -145,7 +145,7 @@ def provision(payload: ProvisionIn, session: Session = Depends(db)) -> dict[str,
         # class (assert_tenant_safe), so the shared reference catalog has to be
         # synced into each new org rather than assumed to exist — otherwise
         # Compliance shows 0 controls until someone finds the manual sync action.
-        from ...compliance.catalog import sync_catalog, sync_obligations
+        from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
 
         sync_catalog(session)
         sync_obligations(session)
@@ -528,7 +528,7 @@ def scan_hosted_api(
 def approve_agent(
     agent_id: str, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
-    from ...models import Agent
+    from agentfox.core.models import Agent
 
     agent = session.get(Agent, agent_id)
     if agent is None or agent.status != "draft":
@@ -552,7 +552,7 @@ def approve_agent(
 def reject_agent(
     agent_id: str, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
-    from ...models import Agent
+    from agentfox.core.models import Agent
 
     agent = session.get(Agent, agent_id)
     if agent is None or agent.status != "draft":
@@ -596,7 +596,7 @@ def approve_policy(
 def reject_policy(
     policy_id: str, session: Session = Depends(db), user: User = Depends(require("policy"))
 ) -> dict[str, Any]:
-    from ...models import PolicyBinding
+    from agentfox.core.models import PolicyBinding
 
     policy = session.get(Policy, policy_id)
     if policy is None or not policy.proposed:

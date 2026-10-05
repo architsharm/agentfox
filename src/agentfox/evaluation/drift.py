@@ -27,9 +27,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import get_settings
-from ..findings import auto_resolve, raise_finding
-from ..models import SLO, DriftWindow, EvalResult, EvalRun, utcnow
+from agentfox.core.config import get_settings
+from agentfox.core.models import SLO, DriftWindow, EvalResult, EvalRun, utcnow
+from agentfox.prove.findings import auto_resolve, raise_finding
 
 PSI_BANDS = ((0.1, "stable"), (0.25, "moderate"), (float("inf"), "significant"))
 
@@ -273,7 +273,7 @@ def evaluate_slos(session: Session, agent_slug: str | None = None) -> list[dict[
             )
             continue
 
-        from .scorers import get_scorer
+        from agentfox.evaluation.scorers import get_scorer
 
         scorer = get_scorer(slo.scorer_key)
         higher_is_better = getattr(scorer, "higher_is_better", True)

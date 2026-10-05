@@ -22,12 +22,12 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import __version__
-from ..config import get_settings
-from ..models import EvalCase, EvalResult, EvalRun, EvalSuite, Trace, utcnow
-from ..providers import CompletionRequest, get_provider
-from .scorers import ScoreContext, get_scorer
-from .silent_failure import Envelope
+from agentfox import __version__
+from agentfox.core.config import get_settings
+from agentfox.core.models import EvalCase, EvalResult, EvalRun, EvalSuite, Trace, utcnow
+from agentfox.evaluation.scorers import ScoreContext, get_scorer
+from agentfox.evaluation.silent_failure import Envelope
+from agentfox.providers import CompletionRequest, get_provider
 
 DEFAULT_SCORERS = ("fuzzy_match", "groundedness", "task_completion", "silent_failure")
 
@@ -260,7 +260,7 @@ def sample_production(
     session.add(run)
     session.flush()
 
-    from ..audit.trace import full_trace
+    from agentfox.prove.audit.trace import full_trace
 
     envelope = fit_envelope(session, agent_slug)
     outcomes: list[CaseOutcome] = []
@@ -336,7 +336,7 @@ def sample_production(
 
 def fit_envelope(session: Session, agent_slug: str, limit: int = 500) -> Envelope:
     """Learn the behavioural envelope from observed traffic (P4-3d)."""
-    from ..models import Span
+    from agentfox.core.models import Span
 
     traces = list(
         session.scalars(

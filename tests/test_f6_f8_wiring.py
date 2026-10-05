@@ -25,10 +25,10 @@ import time
 
 import pytest
 
-from agentfox import enforcement
-from agentfox.enforcement import Enforcer
-from agentfox.models import Agent, Finding
+from agentfox.core.models import Agent, Finding
 from agentfox.policy import PolicyDocument, save_policy
+from agentfox.runtime import enforcement
+from agentfox.runtime.enforcement import Enforcer
 
 
 @pytest.fixture

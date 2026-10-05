@@ -14,7 +14,7 @@ export const metadata: Metadata = publicPageMetadata({
 type Row = { key: string; env: string; def: string; what: string };
 
 /**
- * Generated from src/agentfox/config.py by instantiating Settings() with no config file and
+ * Generated from src/agentfox/core/config.py by instantiating Settings() with no config file and
  * an empty environment, then written here as static data. Descriptions are hand-written
  * from the field comments. Every Settings field appears exactly once; regenerate when
  * Settings changes.
@@ -814,7 +814,7 @@ export default function Page() {
       </p>
       <Code>{`export NOMETRIA_FAIL_MODE=closed
 export AGENTFOX_ENABLED_DETECTORS='["pii.native","secrets.native"]'
-python -c "from agentfox.config import Settings as S; s = S(); print(s.fail_mode, s.enabled_detectors)"`}</Code>
+python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail_mode, s.enabled_detectors)"`}</Code>
       <Output>{`closed ['pii.native', 'secrets.native']`}</Output>
       <Callout kind="note" title="Defaults that depend on where you are">
         <code>&lt;state dir&gt;</code> below is <code>AGENTFOX_STATE_DIR</code> if set, the

@@ -31,7 +31,7 @@ constraints, composition analysis, and the kill switch.
 is a product nobody can use. Legitimate calls are run through the identical path, and a
 control that gets blocked is scored as a failure of this benchmark, not a success.
 
-Seed data is the real shipped fixture (`agentfox.seed.seed`): `support-triage` genuinely
+Seed data is the real shipped fixture (`agentfox.core.seed.seed`): `support-triage` genuinely
 holds no payments or email grant; `payments-ops` genuinely carries a `<$1000` transfer
 ceiling and a `<=$500` refund ceiling. Policies are the shipped packs, including
 `tool-containment` (`mode: enforce`).
@@ -60,10 +60,10 @@ os.environ.setdefault("NOMETRIA_CONFIG", "none")
 from _util import wipe_db  # noqa: E402
 
 from agentfox import db  # noqa: E402
-from agentfox.config import get_settings, reset_settings_cache  # noqa: E402
-from agentfox.enforcement import Enforcer  # noqa: E402
+from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402
+from agentfox.core.seed import seed  # noqa: E402
 from agentfox.registry.control import quarantine  # noqa: E402
-from agentfox.seed import seed  # noqa: E402
+from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

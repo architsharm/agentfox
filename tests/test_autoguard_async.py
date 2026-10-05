@@ -15,8 +15,8 @@ import types
 
 import pytest
 
-from agentfox.autoguard import Blocked, auto, off, state
-from agentfox.models import Span
+from agentfox.core.models import Span
+from agentfox.runtime.autoguard import Blocked, auto, off, state
 
 # ---------------------------------------------------------------------------
 # Fakes with the real shapes
@@ -300,8 +300,8 @@ def fake_langchain():
 
 @pytest.fixture
 def app_db(isolated_db):
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -315,7 +315,7 @@ def _reset():
 
 
 def _llm_outputs() -> list[str]:
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as session:
         return [
@@ -325,7 +325,7 @@ def _llm_outputs() -> list[str]:
 
 
 def _enforce_baseline():
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.policy import set_mode
 
     with session_scope() as session:
@@ -531,7 +531,7 @@ def test_a_litellm_stream_is_governed(app_db, fake_litellm):
 
 
 def test_stream_usage_is_charged_to_the_budget(app_db, fake_openai, monkeypatch):
-    import agentfox.enforcement as enforcement
+    import agentfox.runtime.enforcement as enforcement
 
     charged = []
     monkeypatch.setattr(

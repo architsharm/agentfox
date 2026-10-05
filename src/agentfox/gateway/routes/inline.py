@@ -36,13 +36,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...agent_loop import LoopBudget, Step, govern_loop
-from ...audit.otel import ingest_otlp
-from ...config import get_settings
-from ...enforcement import EnforcementResult, Enforcer
-from ...registry.service import detect_shadow_agents
-from ..deps import agent_credential, db
-from ..verdicts import verdict_headers, with_verdict_aliases
+from agentfox.core.config import get_settings
+from agentfox.gateway.deps import agent_credential, db
+from agentfox.gateway.verdicts import verdict_headers, with_verdict_aliases
+from agentfox.prove.audit.otel import ingest_otlp
+from agentfox.registry.service import detect_shadow_agents
+from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
 
@@ -67,8 +67,8 @@ def _record_turn(
     if not answer or not trace_id:
         return
     try:
-        from ...escalation import record_turn
-        from ...models import Agent
+        from agentfox.containment.escalation import record_turn
+        from agentfox.core.models import Agent
 
         user_text = next(
             (
@@ -119,7 +119,7 @@ def _evidence_from_body(session: Session, body: dict[str, Any]) -> dict[str, Any
     chunks = body.get("retrieved") or body.get("chunks")
     if principal_ref is None and not chunks:
         return None
-    from ...models import EndUserPrincipal
+    from agentfox.core.models import EndUserPrincipal
 
     principal = None
     if principal_ref is not None:
@@ -146,7 +146,7 @@ def _explain_url(result) -> str:
     whatever the proxy sent, and a link to somewhere that does not exist is worse
     than no link at all.
     """
-    from ...config import get_settings
+    from agentfox.core.config import get_settings
 
     base = (getattr(get_settings(), "console_url", "") or "").rstrip("/")
     trace_id = getattr(result, "trace_id", None)
@@ -317,9 +317,9 @@ def _record_loop_stop(
     """
     trace_id = None
     try:
-        from ...audit.trace import start_trace
-        from ...findings import raise_finding
-        from ...models import Agent
+        from agentfox.core.models import Agent
+        from agentfox.prove.audit.trace import start_trace
+        from agentfox.prove.findings import raise_finding
 
         agent = (
             session.scalar(select(Agent).where(Agent.slug == agent_slug)) if agent_slug else None
@@ -785,7 +785,7 @@ def mcp_call(
     ceiling; post-call the result is evaluated on the ``tool_result`` surface and
     returned redacted where policy says so.
     """
-    from ...integrations.mcp import McpGovernor
+    from agentfox.integrations.mcp import McpGovernor
 
     governor = McpGovernor(
         session=session,
@@ -854,10 +854,10 @@ def guard_content(
     `would_be_verdict` is what the bound policy says should happen, which in observe
     mode is the one that did not take effect. Gate on the applied one.
     """
-    from ...audit.trace import end_trace, start_trace
-    from ...config import get_settings
-    from ...models import Trace
-    from ...registry.service import slugify
+    from agentfox.core.config import get_settings
+    from agentfox.core.models import Trace
+    from agentfox.prove.audit.trace import end_trace, start_trace
+    from agentfox.registry.service import slugify
 
     surface = "output" if request.url.path.endswith("/output") else payload.surface
 
@@ -926,8 +926,8 @@ def guard_tool_call(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
-    from ...audit.trace import start_trace
-    from ...registry.service import slugify
+    from agentfox.prove.audit.trace import start_trace
+    from agentfox.registry.service import slugify
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.agent, credential)
@@ -969,8 +969,8 @@ def guard_memory_write(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
-    from ...audit.trace import start_trace
-    from ...registry.service import slugify
+    from agentfox.prove.audit.trace import start_trace
+    from agentfox.registry.service import slugify
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.agent, credential)
@@ -1012,8 +1012,8 @@ def guard_agent_message(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
-    from ...audit.trace import start_trace
-    from ...registry.service import slugify
+    from agentfox.prove.audit.trace import start_trace
+    from agentfox.registry.service import slugify
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.sender, credential)
@@ -1047,7 +1047,7 @@ async def ingest_traces(request: Request, session: Session = Depends(db)) -> dic
 
     # Passive observation is enough to populate the registry and raise shadow-agent
     # findings — a team gets Pillars 1 and 5 without changing a line of code.
-    from ...registry.service import observe_agent
+    from agentfox.registry.service import observe_agent
 
     for slug in summary.get("agents_seen", []):
         observe_agent(

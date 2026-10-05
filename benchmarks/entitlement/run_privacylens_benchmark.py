@@ -1,4 +1,4 @@
-"""Scores `src/agentfox/entitlement.py::filter_retrieval`'s purpose-limitation
+"""Scores `src/agentfox/grounding/entitlement.py::filter_retrieval`'s purpose-limitation
 check (F4.6, GDPR Art. 5(1)(b)) against scenarios built from PrivacyLens's real
 vignette content (`data/privacylens.json`, 493 rows, MIT).
 
@@ -77,9 +77,9 @@ def main() -> None:
     os.environ["NOMETRIA_AUDIT_SIGNING_KEY"] = "bench-key"
     os.environ["NOMETRIA_ALLOW_EGRESS"] = "false"
 
-    from agentfox import db
-    from agentfox.config import reset_settings_cache
-    from agentfox.entitlement import filter_retrieval, grant, upsert_principal
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
+    from agentfox.grounding.entitlement import filter_retrieval, grant, upsert_principal
 
     reset_settings_cache()
     db.reset_engine()

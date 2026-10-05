@@ -184,7 +184,7 @@ the chain is wrong on its own.**
    under the $500 cap, and `issue_refund` is a tool this agent genuinely holds.
 
 Individually, both calls pass every check. **AgentFox blocks it anyway**, because
-`agentfox.guardrails.composition.check_composed_escalation` (F3.8) tracks *where
+`agentfox.detection.composition.check_composed_escalation` (F3.8) tracks *where
 each argument's value came from* — `TaintTracker`'s `propagated_from` provenance —
 and sees that `order_id` didn't come from the user or from Priya's own account; it
 came from a broad internal search a moment earlier, being reused as if it had been
@@ -343,8 +343,8 @@ building this demo):
 agentfox policy enforce baseline
 python -c "
 import _env
-from agentfox.db import init_db, session_scope
-from agentfox.enforcement import Enforcer
+from agentfox.core.db import init_db, session_scope
+from agentfox.runtime.enforcement import Enforcer
 init_db()
 with session_scope() as s:
     r = Enforcer(s).check_content(
@@ -387,7 +387,7 @@ needing a live key:
 - **`agentfox.auto()`'s patch report.** Importing `agent.py` prints
   `Patched: openai, anthropic, langchain` — `_patch_langchain` patches
   `langchain_core.language_models.chat_models.BaseChatModel.invoke` directly (see
-  `src/agentfox/autoguard.py`), which every LangChain chat model inherits regardless
+  `src/agentfox/runtime/autoguard.py`), which every LangChain chat model inherits regardless
   of provider. This is a real difference from the CrewAI demo worth calling out:
   CrewAI's `crew.py` had to pass `LLM(..., is_litellm=True)` specifically because
   `agentfox.auto()` only patches `litellm.completion`, not CrewAI's own client
@@ -400,7 +400,7 @@ needing a live key:
   that does *not* double-govern a single model call. `autoguard._govern()`'s
   `_IN_AGENTFOX` re-entrancy guard makes the inner raw-SDK patch a no-op
   pass-through once the outer `BaseChatModel.invoke` patch is already governing the
-  call in progress. Read `src/agentfox/autoguard.py` lines ~299-320 for exactly
+  call in progress. Read `src/agentfox/runtime/autoguard.py` lines ~299-320 for exactly
   where that guard sits.)
 - **`GovernedToolkit`'s governed call path** (shared with the CrewAI demo,
   unmodified in its logic) — via `verify_mechanics.py`, exactly as the CrewAI demo

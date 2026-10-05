@@ -5,7 +5,7 @@ repo-scan path: nothing created here is live until a human approves it.
 
 from __future__ import annotations
 
-from agentfox.discovery_openapi import scan_spec
+from agentfox.discovery.openapi import scan_spec
 
 from .conftest import as_user
 
@@ -97,7 +97,7 @@ def test_scanning_with_no_spec_still_registers_the_endpoint_for_review(client, m
 
 def test_a_bad_spec_url_fails_the_scan_without_creating_a_draft_agent(client, monkeypatch):
     import agentfox.gateway.routes.integrations as integrations
-    from agentfox.discovery_openapi import SpecFetchError
+    from agentfox.discovery.openapi import SpecFetchError
 
     def _boom(url):
         raise SpecFetchError("could not fetch the OpenAPI spec: connection refused")

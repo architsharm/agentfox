@@ -15,11 +15,11 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from agentfox.db import session_scope
-from agentfox.models import AuditEntry, User
-from agentfox.operator_log import ReasonRequired
-from agentfox.system_log import SYSTEM_ORG_ID, NotInSystemScope, record, system_history
-from agentfox.tenancy import system_scope, tenant
+from agentfox.core.db import session_scope
+from agentfox.core.models import AuditEntry, User
+from agentfox.core.tenancy import system_scope, tenant
+from agentfox.prove.audit.operator_log import ReasonRequired
+from agentfox.prove.audit.system_log import SYSTEM_ORG_ID, NotInSystemScope, record, system_history
 
 ACME, GLOBEX = "org_acme", "org_globex"
 
@@ -72,7 +72,7 @@ def test_a_system_entry_lands_under_the_reserved_org_id(isolated_db):
 def test_the_system_chain_is_independently_verifiable(isolated_db):
     """Same guarantee every tenant's chain already has: a pure function over exported
     rows, no access to any tenant's own data required."""
-    from agentfox.audit import chain
+    from agentfox.prove.audit import chain
 
     with system_scope("test"), session_scope() as session:
         for i in range(3):
@@ -91,7 +91,7 @@ def test_a_real_tenants_chain_never_absorbs_a_system_entry(isolated_db):
     """The sentinel org id must not collide with, or leak into, any real tenant's
     own chain — the whole reason a reserved value was picked over reusing whatever
     the session happened to default to."""
-    from agentfox.audit import chain
+    from agentfox.prove.audit import chain
 
     with tenant(ACME), session_scope() as session:
         chain.append(session, action="a.decision", subject_type="t", subject_id="1", payload={})
@@ -163,7 +163,7 @@ def test_issuing_a_token_for_a_non_default_org_lands_in_that_orgs_own_chain(isol
 def test_revoking_a_token_records_into_its_own_orgs_chain(isolated_db):
     from agentfox.cli.auth_cli import issue as cli_issue
     from agentfox.cli.auth_cli import revoke as cli_revoke
-    from agentfox.models import ApiToken
+    from agentfox.core.models import ApiToken
 
     with tenant("org_other"), session_scope() as session:
         session.add(User(email="ops2@other.example", name="Ops2", role="admin", active=True))

@@ -25,7 +25,7 @@ import json
 import _env  # noqa: F401
 from support_tools import ORDERS, GovernedToolkit
 
-from agentfox.db import init_db, session_scope
+from agentfox.core.db import init_db, session_scope
 
 FAILURES = 0
 

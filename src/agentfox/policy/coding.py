@@ -31,7 +31,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .model import PolicyDocument
+from agentfox.policy.model import PolicyDocument
 
 CODING_PACK = "coding-agent"
 
@@ -93,7 +93,7 @@ _TOOL_AUTHORS = frozenset({"init", "seed", "hooks install"})
 
 
 def _open_binding(session: Session) -> tuple[Any, Any] | tuple[None, None]:
-    from ..models import Policy, PolicyBinding, PolicyVersion
+    from agentfox.core.models import Policy, PolicyBinding, PolicyVersion
 
     policy = session.scalar(select(Policy).where(Policy.key == CODING_PACK))
     if policy is None:
@@ -123,7 +123,7 @@ def retire_tool_wildcard(session: Session) -> bool:
     than by a person, so a re-run of `init` is entitled to take it back. Returns
     whether anything was unbound.
     """
-    from ..models import utcnow
+    from agentfox.core.models import utcnow
 
     binding, version = _open_binding(session)
     if binding is None or not _is_wildcard(binding.scope_json):
@@ -142,7 +142,7 @@ def enable_for_agent(session: Session, slug: str, *, author: str = "hooks instal
     enforce is not quietly demoted by installing a hook for a second agent.
     Returns the agents the pack now covers (``["*"]`` if a person bound it to all).
     """
-    from .store import load_available, save_policy
+    from agentfox.policy.store import load_available, save_policy
 
     doc = next((d for d in load_available() if d.key == CODING_PACK), None)
     if doc is None:

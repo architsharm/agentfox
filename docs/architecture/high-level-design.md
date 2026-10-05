@@ -193,7 +193,7 @@ Three ways to adopt, explicitly designed to be additive and to meet a team where
 | **OTel ingestion** (`POST /v1/traces`) | Passive, zero-integration — the gateway just observes spans already being emitted | Pillars 1 (discovery) and 5 (audit) for free, no enforcement | Zero code change, but no blocking capability |
 
 The SDK and LangGraph paths converge on one call: both eventually call
-`Enforcer.preflight()` (`src/agentfox/enforcement.py:1591`). This matters architecturally —
+`Enforcer.preflight()` (`src/agentfox/runtime/enforcement.py:1591`). This matters architecturally —
 there is exactly one enforcement code path, not two parallel implementations that could
 silently drift (a bug the codebase's own comments note was fixed, not designed in from the
 start — `autoguard.py:350-352`).

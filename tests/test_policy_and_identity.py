@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from agentfox.core.models import utcnow
 from agentfox.identity import (
     check_capability,
     delegate,
@@ -17,7 +18,6 @@ from agentfox.identity import (
     rotate_credential,
     verify_credential,
 )
-from agentfox.models import utcnow
 from agentfox.policy import (
     NativePolicyEngine,
     PolicyDocument,
@@ -221,7 +221,7 @@ def test_changing_hierarchy_placement_alone_rebinds_without_a_new_version(sessio
     rules, different level/scope — must still take effect. The no-op-edit check
     above only guards against manufacturing an identical *version*; it must not
     also silently swallow a real binding change."""
-    from agentfox.models import PolicyBinding
+    from agentfox.core.models import PolicyBinding
 
     doc = PolicyDocument.from_yaml(POLICY)
     _policy, v1 = save_policy(session, doc, author="a", level="org", scope_id="*")

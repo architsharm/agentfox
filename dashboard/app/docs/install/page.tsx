@@ -208,7 +208,7 @@ INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
 INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
 INFO  [alembic.runtime.migration] Running stamp_revision  -> b8d3f6a2c915
   ✓ database ready
-sqlite:////…/agentfox.db
+sqlite:////…/agentfox.core.db
   ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
   ✓ 3 policy pack(s) loaded
       baseline                 observe  recorded, nothing blocked

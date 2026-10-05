@@ -16,7 +16,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...answerability import (
+from agentfox.core.models import Agent, KnowledgeBoundary, User
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.grounding.answerability import (
     QUESTION_TYPES,
     abstention_report,
     classify_answerability,
@@ -24,8 +26,6 @@ from ...answerability import (
     get_boundary,
     question_type,
 )
-from ...models import Agent, KnowledgeBoundary, User
-from ..deps import current_user, db, get_agent_or_404, require
 
 router = APIRouter(prefix="/api/answerability", tags=["answerability"])
 

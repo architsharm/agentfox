@@ -20,8 +20,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .. import __version__
-from ._style import SEVERITY_COLOUR, print_unknown_agent
+from agentfox import __version__
+from agentfox.cli._style import SEVERITY_COLOUR, print_unknown_agent
 
 app = typer.Typer(
     name="agentfox",
@@ -94,14 +94,14 @@ app.add_typer(hooks_app, name="hooks")
 # The three commands a new user runs, registered as top-level verbs. The rest of this
 # CLI is right for an operator running a governance programme and wrong for the first
 # ten minutes.
-from .auth_cli import register as _register_auth  # noqa: E402
-from .business_cli import register as _register_business  # noqa: E402
-from .capability_cli import register as _register_capability  # noqa: E402
-from .controls_cli import register as _register_controls  # noqa: E402
-from .mcp_cli import register as _register_mcp  # noqa: E402
-from .onboarding import register as _register_onboarding  # noqa: E402
-from .quickscan import register as _register_quickscan  # noqa: E402
-from .report_cli import register as _register_report  # noqa: E402
+from agentfox.cli.auth_cli import register as _register_auth  # noqa: E402
+from agentfox.cli.business_cli import register as _register_business  # noqa: E402
+from agentfox.cli.capability_cli import register as _register_capability  # noqa: E402
+from agentfox.cli.controls_cli import register as _register_controls  # noqa: E402
+from agentfox.cli.mcp_cli import register as _register_mcp  # noqa: E402
+from agentfox.cli.onboarding import register as _register_onboarding  # noqa: E402
+from agentfox.cli.quickscan import register as _register_quickscan  # noqa: E402
+from agentfox.cli.report_cli import register as _register_report  # noqa: E402
 
 _register_onboarding(app)
 _register_quickscan(app)
@@ -114,7 +114,7 @@ _register_report(app)
 
 
 def _session():
-    from ..db import init_db, session_scope
+    from agentfox.core.db import init_db, session_scope
 
     init_db()
     return session_scope()
@@ -133,8 +133,8 @@ def _emit(payload: Any, as_json: bool) -> None:
 @app.command()
 def version() -> None:
     """Show the version of everything that takes part in a decision."""
-    from ..compliance.catalog import load_catalog
-    from ..config import get_settings
+    from agentfox.core.config import get_settings
+    from agentfox.prove.compliance.catalog import load_catalog
 
     settings = get_settings()
     catalog = load_catalog()
@@ -174,7 +174,7 @@ def seed(
 ) -> None:
     """Load a demonstrable environment: three agents, policies, controls and an
     eval suite, with traffic already recorded against them."""
-    from ..seed import seed as run_seed
+    from agentfox.core.seed import seed as run_seed
 
     with _session() as session:
         summary = run_seed(session)
@@ -203,7 +203,7 @@ def seed(
             "them in full.[/]"
         )
 
-    from .onboarding import _print_next_steps
+    from agentfox.cli.onboarding import _print_next_steps
 
     _print_next_steps(
         [
@@ -218,10 +218,10 @@ def seed(
 @app.command()
 def demo() -> None:
     """Run the end-to-end walkthrough (offline)."""
-    from ..db import init_db, session_scope
-    from ..models import Agent
-    from ..seed import register_scripts
-    from ..seed import seed as run_seed
+    from agentfox.core.db import init_db, session_scope
+    from agentfox.core.models import Agent
+    from agentfox.core.seed import register_scripts
+    from agentfox.core.seed import seed as run_seed
 
     init_db()
     with session_scope() as session:
@@ -232,7 +232,7 @@ def demo() -> None:
     # against an already-seeded database has to re-register them.
     register_scripts()
 
-    from .demo import run
+    from agentfox.cli.demo import run
 
     run()
 
@@ -261,7 +261,7 @@ def serve(
 @db_app.command("upgrade")
 def db_upgrade(revision: str = "head") -> None:
     """Apply migrations. This is how a deployed instance is upgraded."""
-    from ..db import current_revision, upgrade_db
+    from agentfox.core.db import current_revision, upgrade_db
 
     before = current_revision()
     upgrade_db(revision)
@@ -272,7 +272,7 @@ def db_upgrade(revision: str = "head") -> None:
 @db_app.command("downgrade")
 def db_downgrade(revision: str = typer.Argument(..., help="Target revision, or 'base'.")) -> None:
     """Roll back migrations. Every migration ships with a tested downgrade."""
-    from ..db import current_revision, downgrade_db
+    from agentfox.core.db import current_revision, downgrade_db
 
     before = current_revision()
     downgrade_db(revision)
@@ -282,7 +282,7 @@ def db_downgrade(revision: str = typer.Argument(..., help="Target revision, or '
 @db_app.command("current")
 def db_current() -> None:
     """Show the applied schema revision."""
-    from ..db import current_revision
+    from agentfox.core.db import current_revision
 
     revision = current_revision()
     console.print(
@@ -308,8 +308,8 @@ def agents_list(
         return
     from sqlalchemy import select
 
-    from ..models import Agent
-    from ..registry.service import inventory
+    from agentfox.core.models import Agent
+    from agentfox.registry.service import inventory
 
     with _session() as session:
         agents = list(session.scalars(select(Agent).order_by(Agent.slug)))
@@ -351,8 +351,8 @@ def agents_list(
 def agents_discover() -> None:
     """Sweep for shadow agents, unowned agents, registry drift, identity posture and
     delegation cycles/depth."""
-    from ..identity import assess_posture
-    from ..registry.service import (
+    from agentfox.identity import assess_posture
+    from agentfox.registry.service import (
         assess_delegation,
         attest_registry,
         derive_lineage,
@@ -383,7 +383,7 @@ def agents_discover() -> None:
 @agents_app.command("lineage")
 def agents_lineage(slug: str, depth: int = 2) -> None:
     """Show what an agent reaches — the blast radius."""
-    from ..registry.service import derive_lineage, lineage
+    from agentfox.registry.service import derive_lineage, lineage
 
     with _session() as session:
         derive_lineage(session, slug)
@@ -417,7 +417,7 @@ def agents_resume(slug: str, reason: str = typer.Option("", "--reason", "-r")) -
 @agents_app.command("controls")
 def agents_controls() -> None:
     """Show every agent that is not in the active state."""
-    from ..registry.control import all_controls
+    from agentfox.registry.control import all_controls
 
     with _session() as session:
         rows = all_controls(session)
@@ -440,7 +440,7 @@ def agents_controls() -> None:
 
 
 def _agent_state(slug: str, state: str, reason: str) -> None:
-    from ..registry.control import UnknownAgent, set_state
+    from agentfox.registry.control import UnknownAgent, set_state
 
     with _session() as session:
         try:
@@ -471,7 +471,7 @@ def policy_packs() -> None:
     it. A project pack replacing a shipped one is invisible in `policy list`,
     because by then they are the same row.
     """
-    from ..policy import PolicyPackError, pack_sources, project_policy_dir
+    from agentfox.policy import PolicyPackError, pack_sources, project_policy_dir
 
     try:
         rows = pack_sources()
@@ -521,7 +521,7 @@ def policy_list() -> None:
     """List policies and their enforcement mode."""
     from sqlalchemy import select
 
-    from ..models import Policy, PolicyBinding, PolicyVersion
+    from agentfox.core.models import Policy, PolicyBinding, PolicyVersion
 
     with _session() as session:
         table = Table(box=None, pad_edge=False)
@@ -559,7 +559,7 @@ def policy_lint() -> None:
     reduction — composition without a linter just moves the confusion somewhere
     harder to see.
     """
-    from ..policy import lint_all
+    from agentfox.policy import lint_all
 
     with _session() as session:
         report = lint_all(session)
@@ -606,8 +606,8 @@ def policy_effective(
 
     Opacity is what makes layered policy dangerous, so the resolver explains itself.
     """
-    from ..config import get_settings
-    from ..policy import effective_for
+    from agentfox.core.config import get_settings
+    from agentfox.policy import effective_for
 
     environment = environment or get_settings().environment
     with _session() as session:
@@ -656,7 +656,7 @@ def policy_simulate(
     Exits non-zero when the change would newly block production traffic, so it can
     gate a policy PR the same way `eval gate` gates a code PR.
     """
-    from ..policy import PolicyDocument, record_simulation, simulate
+    from agentfox.policy import PolicyDocument, record_simulation, simulate
 
     candidate = PolicyDocument.from_yaml(file.read_text())
     with _session() as session:
@@ -703,9 +703,9 @@ def policy_observe(key: str) -> None:
 def _set_mode(key: str, mode: str) -> None:
     from sqlalchemy import select
 
-    from ..audit import chain
-    from ..models import Policy
-    from ..policy import set_mode
+    from agentfox.core.models import Policy
+    from agentfox.policy import set_mode
+    from agentfox.prove.audit import chain
 
     with _session() as session:
         binding = set_mode(session, key, mode)
@@ -737,7 +737,7 @@ def _set_mode(key: str, mode: str) -> None:
 @policy_app.command("validate")
 def policy_validate(file: Path) -> None:
     """Lint and compile a policy without saving it."""
-    from ..policy import PolicyDocument, compile_to_rego
+    from agentfox.policy import PolicyDocument, compile_to_rego
 
     try:
         doc = PolicyDocument.from_yaml(file.read_text())
@@ -765,7 +765,7 @@ def _unknown_suite(session: Any, suite: str) -> None:
     """
     from sqlalchemy import select
 
-    from ..models import EvalSuite
+    from agentfox.core.models import EvalSuite
 
     known = sorted(k for k in session.scalars(select(EvalSuite.key)))
     console.print(f"[red]unknown suite '{suite}'[/]")
@@ -780,7 +780,7 @@ def eval_suites() -> None:
     """List the evaluation suites in this deployment."""
     from sqlalchemy import func, select
 
-    from ..models import EvalCase, EvalSuite
+    from agentfox.core.models import EvalCase, EvalSuite
 
     with _session() as session:
         counts = dict(
@@ -814,8 +814,8 @@ def eval_run(
     """Run an evaluation suite."""
     from sqlalchemy import select
 
-    from ..evaluation.runner import NativeEvalRunner, fit_envelope
-    from ..models import EvalSuite
+    from agentfox.core.models import EvalSuite
+    from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 
     keys = [s.strip() for s in scorers.split(",")] if scorers else None
     with _session() as session:
@@ -878,9 +878,9 @@ def eval_gate(
     """Run the suite and fail the build on regression. Exits 1 on failure."""
     from sqlalchemy import select
 
-    from ..evaluation import gate, to_junit, to_sarif
-    from ..evaluation.runner import NativeEvalRunner
-    from ..models import EvalSuite
+    from agentfox.core.models import EvalSuite
+    from agentfox.evaluation import gate, to_junit, to_sarif
+    from agentfox.evaluation.runner import NativeEvalRunner
 
     with _session() as session:
         record = session.scalar(select(EvalSuite).where(EvalSuite.key == suite))
@@ -926,8 +926,8 @@ def eval_gate(
 @eval_app.command("baseline")
 def eval_baseline(run_id: str, label: str = "main") -> None:
     """Mark a run as the regression baseline."""
-    from ..evaluation import set_baseline
-    from ..models import EvalRun
+    from agentfox.core.models import EvalRun
+    from agentfox.evaluation import set_baseline
 
     with _session() as session:
         run = session.get(EvalRun, run_id)
@@ -941,7 +941,7 @@ def eval_baseline(run_id: str, label: str = "main") -> None:
 @eval_app.command("drift")
 def eval_drift(agent: str, scorer: str = "groundedness") -> None:
     """Compare recent production scores against the baseline window."""
-    from ..evaluation import compute_drift
+    from agentfox.evaluation import compute_drift
 
     with _session() as session:
         report = compute_drift(session, agent, scorer)
@@ -961,7 +961,7 @@ def eval_drift(agent: str, scorer: str = "groundedness") -> None:
 @eval_app.command("online")
 def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> None:
     """Sample production traffic and score it with the offline scorers."""
-    from ..evaluation import sample_production
+    from agentfox.evaluation import sample_production
 
     with _session() as session:
         run = sample_production(
@@ -990,7 +990,7 @@ def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> N
 @audit_app.command("verify")
 def audit_verify(start: int | None = None, end: int | None = None) -> None:
     """Verify the tamper-evident audit chain. Exits 1 if broken."""
-    from ..audit import chain
+    from agentfox.prove.audit import chain
 
     with _session() as session:
         stats = chain.chain_stats(session)
@@ -1017,7 +1017,7 @@ def audit_verify(start: int | None = None, end: int | None = None) -> None:
 @audit_app.command("checkpoint")
 def audit_checkpoint() -> None:
     """Write a signed checkpoint over the current chain head."""
-    from ..audit import chain
+    from agentfox.prove.audit import chain
 
     with _session() as session:
         record = chain.checkpoint_now(session)
@@ -1076,7 +1076,7 @@ def evidence_export(
     requested_by: str = "cli",
 ) -> None:
     """Build an auditor-ready evidence package."""
-    from ..audit import evidence
+    from agentfox.prove.audit import evidence
 
     period_from, period_to = _evidence_period(from_, to, since_days)
     with _session() as session:
@@ -1112,7 +1112,7 @@ def evidence_export(
 @compliance_app.command("sync")
 def compliance_sync() -> None:
     """Load the control catalog and obligation calendar from YAML."""
-    from ..compliance.catalog import sync_catalog, sync_obligations
+    from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
 
     with _session() as session:
         catalog = sync_catalog(session)
@@ -1130,7 +1130,7 @@ def compliance_sync() -> None:
 @compliance_app.command("compute")
 def compliance_compute(window_days: int = 30) -> None:
     """Recompute control status from telemetry."""
-    from ..compliance import compute_all, posture
+    from agentfox.prove.compliance import compute_all, posture
 
     with _session() as session:
         statuses = compute_all(session, window_days)
@@ -1150,13 +1150,13 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
     """Show control posture, optionally for one framework."""
     from sqlalchemy import select
 
-    from ..compliance import (
+    from agentfox.core.models import Control
+    from agentfox.prove.compliance import (
         controls_for_framework,
         framework_coverage,
         latest_statuses,
         posture,
     )
-    from ..models import Control
 
     with _session() as session:
         overall = posture(session, framework)
@@ -1221,8 +1221,8 @@ def compliance_validate() -> None:
     """
     import yaml
 
-    from ..compliance.catalog import catalog_path, obligations_path
-    from ..compliance.status import RULE_KINDS
+    from agentfox.prove.compliance.catalog import catalog_path, obligations_path
+    from agentfox.prove.compliance.status import RULE_KINDS
 
     problems: list[str] = []
 
@@ -1349,8 +1349,8 @@ def compliance_review_packet(
     """
     from sqlalchemy import select
 
-    from ..compliance import load_catalog
-    from ..models import FrameworkMapping
+    from agentfox.core.models import FrameworkMapping
+    from agentfox.prove.compliance import load_catalog
 
     catalog = load_catalog()
     known = {f.get("key") if isinstance(f, dict) else f for f in catalog.get("frameworks", [])}
@@ -1435,7 +1435,7 @@ def compliance_review(
     moves a mapping from `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` to reviewed, and it should
     be run by whoever is actually accountable for the claim — not by whoever runs the CLI.
     """
-    from ..compliance.catalog import review_mapping
+    from agentfox.prove.compliance.catalog import review_mapping
 
     with _session() as session:
         count = review_mapping(session, control, framework, reviewer, reference)
@@ -1453,7 +1453,7 @@ def compliance_review(
 @compliance_app.command("frameworks")
 def compliance_frameworks() -> None:
     """List frameworks, coverage and review status."""
-    from ..compliance import all_frameworks
+    from agentfox.prove.compliance import all_frameworks
 
     with _session() as session:
         rows = all_frameworks(session)
@@ -1479,7 +1479,7 @@ def compliance_frameworks() -> None:
 @compliance_app.command("risk")
 def compliance_risk() -> None:
     """Show the agent risk register."""
-    from ..compliance import register
+    from agentfox.prove.compliance import register
 
     with _session() as session:
         rows = register(session)
@@ -1501,7 +1501,7 @@ def compliance_risk() -> None:
 @compliance_app.command("obligations")
 def compliance_obligations() -> None:
     """Regulatory obligation calendar against the agent inventory."""
-    from ..compliance import obligation_calendar
+    from agentfox.prove.compliance import obligation_calendar
 
     with _session() as session:
         rows = obligation_calendar(session)
@@ -1524,7 +1524,7 @@ def compliance_obligations() -> None:
 @compliance_app.command("board")
 def compliance_board() -> None:
     """Executive risk view."""
-    from ..compliance import board_view
+    from agentfox.prove.compliance import board_view
 
     with _session() as session:
         view = board_view(session)
@@ -1590,8 +1590,8 @@ def redteam_run(
     """
     from sqlalchemy import select
 
-    from ..evaluation import run_campaign
-    from ..models import RedTeamFinding
+    from agentfox.core.models import RedTeamFinding
+    from agentfox.evaluation import run_campaign
 
     keys = [p.strip() for p in probes.split(",")] if probes else None
     with _session() as session:
@@ -1688,7 +1688,7 @@ def redteam_run(
 @redteam_app.command("probes")
 def redteam_probes() -> None:
     """List the built-in probe suite and available wrapped runners."""
-    from ..evaluation.redteam import BUILTIN_PROBES, available_runners
+    from agentfox.evaluation.redteam import BUILTIN_PROBES, available_runners
 
     table = Table(box=None, pad_edge=False)
     for column in ("probe", "category", "surface", "severity", "OWASP", "ATLAS"):
@@ -1727,8 +1727,8 @@ def scan_skills(
     OWASP published an Agentic Skills Top 10 in 2026 and we scanned servers but
     not skills.
     """
-    from ..findings import raise_finding
-    from ..registry.skills import scan_skills_dir
+    from agentfox.prove.findings import raise_finding
+    from agentfox.registry.skills import scan_skills_dir
 
     results = scan_skills_dir(path)
     if not results:
@@ -1815,7 +1815,9 @@ def scan_mcp(
     """
     from sqlalchemy import select
 
-    from ..exposure import (
+    from agentfox.core.models import McpServer
+    from agentfox.core.seed import MCP_TOOLS
+    from agentfox.discovery.exposure import (
         FLAG_LABEL,
         Member,
         classify_mcp_server,
@@ -1825,9 +1827,7 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
-    from ..models import McpServer
-    from ..registry.service import scan_mcp_server, upsert_mcp_server
-    from ..seed import MCP_TOOLS
+    from agentfox.registry.service import scan_mcp_server, upsert_mcp_server
 
     if file is not None and seed_fixture:
         console.print("[red]pass either --file or --seed-fixture, not both[/]")
@@ -2023,8 +2023,8 @@ def hooks_daemon(
     cold daemon, then 6ms once warm. That gap is the whole reason this exists:
     a hook that costs two seconds a call is a hook the operator removes.
     """
-    from ..hooks import HookDaemon
-    from ..hooks.daemon import warm
+    from agentfox.hooks import HookDaemon
+    from agentfox.hooks.daemon import warm
 
     daemon = HookDaemon(socket)
     console.print("[bold]AgentFox hook daemon[/]")
@@ -2055,8 +2055,8 @@ def hooks_run(
     """
     import json as _json
 
-    from ..hooks import DaemonUnavailable, client
-    from ..hooks import harness as harness_mod
+    from agentfox.hooks import DaemonUnavailable, client
+    from agentfox.hooks import harness as harness_mod
 
     raw = sys.stdin.read()
     try:
@@ -2118,8 +2118,8 @@ def hooks_install(
     """
     import json as _json
 
-    from ..hooks import capability
-    from ..hooks import harness as harness_mod
+    from agentfox.hooks import capability
+    from agentfox.hooks import harness as harness_mod
 
     if harness not in harness_mod.known_harnesses():
         known = ", ".join(harness_mod.known_harnesses())
@@ -2207,7 +2207,7 @@ def hooks_install(
 
 def _enable_coding_pack(agent: str) -> None:
     """A hooked agent is a coding agent: bind the pack tuned for one, to it alone."""
-    from ..policy.coding import enable_for_agent
+    from agentfox.policy.coding import enable_for_agent
 
     with _session() as session:
         covered = enable_for_agent(session, agent)
@@ -2225,7 +2225,7 @@ def _hook_events(harness: str) -> list[str]:
     has established anything about cannot be installed by accident — and so
     adding one is a row plus an adapter branch, not an edit here.
     """
-    from ..hooks.capability import EVENT_SURFACE
+    from agentfox.hooks.capability import EVENT_SURFACE
 
     order = {"UserPromptSubmit": 0, "PreToolUse": 1, "PostToolUse": 2}
     events = [event for (h, event) in EVENT_SURFACE if h == harness]
@@ -2236,8 +2236,8 @@ def _declare_harness_tools(harness: str) -> int:
     """Register the harness's built-in tools, with the impact each really has."""
     from sqlalchemy import select
 
-    from ..hooks.harness import HARNESS_TOOLS
-    from ..models import Tool
+    from agentfox.core.models import Tool
+    from agentfox.hooks.harness import HARNESS_TOOLS
 
     wanted = HARNESS_TOOLS.get(harness, {})
     added = 0
@@ -2258,7 +2258,7 @@ def _declare_harness_tools(harness: str) -> int:
 
 
 def client_daemon_running() -> bool:
-    from ..hooks import ping
+    from agentfox.hooks import ping
 
     return ping()
 
@@ -2266,7 +2266,7 @@ def client_daemon_running() -> bool:
 @hooks_app.command("status")
 def hooks_status() -> None:
     """Is the daemon up, and does a deny on this harness actually stop anything?"""
-    from ..hooks import capability, ping, socket_path
+    from agentfox.hooks import capability, ping, socket_path
 
     path = socket_path()
     up = ping()
@@ -2305,7 +2305,7 @@ def analyse_action(
     Deterministic, offline and immediate: no database, no model, no network. The point
     is that an engineer can check a generated statement before it is ever executed.
     """
-    from ..guardrails.actions import analyse_http, analyse_shell, analyse_sql, summarise
+    from agentfox.detection.actions import analyse_http, analyse_shell, analyse_sql, summarise
 
     if kind == "shell":
         analysis = analyse_shell(statement)
@@ -2360,8 +2360,8 @@ def tools_declare(
     a tainted argument can reach. This is the command that makes least privilege real, and
     it is deliberately the first thing `agentfox init` points at.
     """
-    from ..models import OUTPUT_TRUST_LEVELS
-    from ..registry.service import upsert_tool
+    from agentfox.core.models import OUTPUT_TRUST_LEVELS
+    from agentfox.registry.service import upsert_tool
 
     valid = ("read", "write", "high_impact", "irreversible")
     if impact not in valid:
@@ -2405,8 +2405,8 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
     """Every declared tool and what it is allowed to do."""
     from sqlalchemy import select
 
-    from ..models import Tool
-    from ..registry.service import impact_source_of
+    from agentfox.core.models import Tool
+    from agentfox.registry.service import impact_source_of
 
     with _session() as session:
         tools = list(session.scalars(select(Tool).order_by(Tool.key)))
@@ -2461,7 +2461,7 @@ def tools_set_triggers(
     """
     from sqlalchemy import select
 
-    from ..models import Tool
+    from agentfox.core.models import Tool
 
     declared = [t.strip() for t in triggers.split(",") if t.strip()]
     with _session() as session:
@@ -2499,7 +2499,7 @@ def access_declare_scope(
     """
     from sqlalchemy import select
 
-    from ..models import AccessScopeRule
+    from agentfox.core.models import AccessScopeRule
 
     restricted = [c.strip() for c in restricted_columns.split(",") if c.strip()]
     with _session() as session:
@@ -2527,7 +2527,7 @@ def access_declare_reference(
     """
     from sqlalchemy import select
 
-    from ..models import AccessScopeRule
+    from agentfox.core.models import AccessScopeRule
 
     with _session() as session:
         rule = session.scalar(select(AccessScopeRule).where(AccessScopeRule.table_name == table))
@@ -2552,7 +2552,7 @@ app.add_typer(proposals_app, name="proposals")
 
 
 def _load_proposal(session, proposal_id: str):
-    from ..improvement.proposals import get_proposal
+    from agentfox.improvement.proposals import get_proposal
 
     proposal = get_proposal(session, proposal_id)
     if proposal is None:
@@ -2563,7 +2563,7 @@ def _load_proposal(session, proposal_id: str):
 
 def _proposal_step(proposal_id: str, step) -> None:
     """Run one lifecycle step; a refused step exits non-zero and changes nothing."""
-    from ..improvement.proposals import proposal_json
+    from agentfox.improvement.proposals import proposal_json
 
     with _session() as session:
         proposal = _load_proposal(session, proposal_id)
@@ -2585,7 +2585,7 @@ def proposals_list(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """List proposals, newest first."""
-    from ..improvement.proposals import list_proposals, proposal_json
+    from agentfox.improvement.proposals import list_proposals, proposal_json
 
     with _session() as session:
         rows = [
@@ -2627,7 +2627,7 @@ def proposals_list(
 @proposals_app.command("show")
 def proposals_show(proposal_id: str, as_json: bool = typer.Option(False, "--json")) -> None:
     """Show one proposal: its diff, evidence, proof and decisions."""
-    from ..improvement.proposals import proposal_json
+    from agentfox.improvement.proposals import proposal_json
 
     with _session() as session:
         body = proposal_json(_load_proposal(session, proposal_id))
@@ -2658,7 +2658,7 @@ def proposals_approve(
     note: str = typer.Option(..., "--note", help="Why"),
 ) -> None:
     """Approve a proven proposal. An org-level loosening needs two different people."""
-    from ..improvement.proposals import decide
+    from agentfox.improvement.proposals import decide
 
     _proposal_step(proposal_id, lambda s, p: decide(s, p, approve=True, actor=actor, note=note))
 
@@ -2670,7 +2670,7 @@ def proposals_reject(
     note: str = typer.Option(..., "--note", help="Why"),
 ) -> None:
     """Reject a proposal."""
-    from ..improvement.proposals import decide
+    from agentfox.improvement.proposals import decide
 
     _proposal_step(proposal_id, lambda s, p: decide(s, p, approve=False, actor=actor, note=note))
 
@@ -2686,7 +2686,7 @@ def proposals_apply(
     ),
 ) -> None:
     """Apply an approved proposal (or settle one whose canary has finished)."""
-    from ..improvement.proposals import apply_proposal
+    from agentfox.improvement.proposals import apply_proposal
 
     if not automated and not actor:
         console.print("[red]--actor is required unless --automated[/]")
@@ -2704,7 +2704,7 @@ def proposals_rollback(
     reason: str = typer.Option(..., "--reason", help="Why it is being undone"),
 ) -> None:
     """Undo an applied or canaried proposal."""
-    from ..improvement.proposals import rollback_proposal
+    from agentfox.improvement.proposals import rollback_proposal
 
     _proposal_step(
         proposal_id,
@@ -2726,7 +2726,7 @@ def proposals_verify(
     `--failed` rolls the change back. If undoing it would loosen a control, it stays
     applied with the failure recorded, because that rollback is a person's decision.
     """
-    from ..improvement.proposals import verify_proposal
+    from agentfox.improvement.proposals import verify_proposal
 
     _proposal_step(
         proposal_id,
@@ -2740,7 +2740,7 @@ def proposals_from_labels(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """File rule cut-off proposals from labelled false positives. Nothing is applied."""
-    from ..improvement.loops import propose_threshold_changes
+    from agentfox.improvement.loops import propose_threshold_changes
 
     with _session() as session:
         report = propose_threshold_changes(session, days=days).to_json()
@@ -2773,8 +2773,8 @@ def proposals_from_traffic(
     stopped for where its arguments came from and nobody approved, is never learned
     from. Nothing is applied: approve and apply each proposal.
     """
-    from ..improvement.proposals import get_proposal
-    from ..improvement.traffic import parse_since, propose_from_traffic
+    from agentfox.improvement.proposals import get_proposal
+    from agentfox.improvement.traffic import parse_since, propose_from_traffic
 
     try:
         window = parse_since(since)
@@ -2821,7 +2821,7 @@ def proposals_from_traffic(
 # The visible tree (Start · See · Watch · Contain · Prove · Operate) is a layer over
 # everything registered above: new names for the same callbacks, old names hidden but
 # still working. Keep this the last registration in the module.
-from .layout import apply_layout  # noqa: E402
+from agentfox.cli.layout import apply_layout  # noqa: E402
 
 apply_layout(app)
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.commitments import (
+from agentfox.grounding.commitments import (
     FOUR_FIFTHS,
     MIN_GROUP_SIZE,
     adverse_action_risk,

@@ -3,7 +3,7 @@
 Default deny is enforced from the first call, and the minimum manual path to a working
 support bot was four `tools declare`, four `capability grant` and a page of reading
 about provenance levels. Every fact those commands need was already recorded: each
-tool call — allowed or refused — leaves a :class:`~agentfox.models.Decision` with the
+tool call — allowed or refused — leaves a :class:`~agentfox.core.models.Decision` with the
 tool, its arguments, their provenance and every rule that fired, and an ``agent
 calls_tool`` lineage edge. This loop reads them and files two kinds of proposal:
 
@@ -48,10 +48,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import chain
-from ..guardrails.base import taint_rank
-from ..identity.service import _constraint_ok
-from ..models import (
+from agentfox.core.models import (
     Agent,
     ApprovalRequest,
     Capability,
@@ -63,9 +60,17 @@ from ..models import (
     as_aware,
     utcnow,
 )
-from . import contract
-from .loops import SUPERSEDE_ACTION, LoopReport
-from .proposals import SUBJECT_TYPE, attach_proof, file_proposal, verify_proposal
+from agentfox.detection.base import taint_rank
+from agentfox.identity.service import _constraint_ok
+from agentfox.improvement import contract
+from agentfox.improvement.loops import SUPERSEDE_ACTION, LoopReport
+from agentfox.improvement.proposals import (
+    SUBJECT_TYPE,
+    attach_proof,
+    file_proposal,
+    verify_proposal,
+)
+from agentfox.prove.audit import chain
 
 SOURCE = "traffic.observed"
 GRANT_KIND = "capability.grant"
@@ -390,7 +395,7 @@ def suggest_limits(calls: list[dict[str, Any]]) -> list[Limit]:
 
 
 def infer_declared_impact(tool_key: str) -> str:
-    from ..integrations.mcp import infer_impact
+    from agentfox.integrations.mcp import infer_impact
 
     name = tool_key.rsplit("/", 1)[-1]
     impact = infer_impact(name)
@@ -518,7 +523,7 @@ def _matching_grant(grants: list[Capability], tool_key: str) -> Capability | Non
 
 
 def _within_limits(constraints: dict[str, Any], call: ObservedCall) -> bool:
-    from ..identity.service import RESERVED_CONSTRAINTS
+    from agentfox.identity.service import RESERVED_CONSTRAINTS
 
     for path, spec in (constraints or {}).items():
         if path in RESERVED_CONSTRAINTS:

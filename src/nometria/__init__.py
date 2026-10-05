@@ -33,7 +33,7 @@ class _RenamedPackageFinder(MetaPathFinder):
 
     Swapping ``sys.modules["nometria"]`` alone is not enough: it redirects
     ``import nometria`` but leaves ``from nometria.config import x`` to load
-    ``src/agentfox/config.py`` a second time under the name ``nometria.config``,
+    ``src/agentfox/core/config.py`` a second time under the name ``nometria.config``,
     producing a distinct module with its own module-level state.
     """
 

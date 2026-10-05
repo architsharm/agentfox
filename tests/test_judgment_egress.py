@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.config import get_settings
-from agentfox.judgment import (
+from agentfox.core.config import get_settings
+from agentfox.detection.judgment import (
     Backend,
     EgressRefused,
     JevClient,
@@ -156,7 +156,7 @@ def test_no_questions_is_not_an_egress_event() -> None:
 # --- the explicit PII egress gate ----------------------------------------
 def test_block_mode_refuses_rather_than_redacting(egress_on) -> None:
     """The only setting under which a subject's data cannot reach a vendor."""
-    from agentfox.judgment import PiiEgress
+    from agentfox.detection.judgment import PiiEgress
 
     client = CapturingClient()
     gate = JudgmentGateway(client, backend=Backend.REMOTE, pii_egress=PiiEgress.BLOCK)
@@ -167,7 +167,7 @@ def test_block_mode_refuses_rather_than_redacting(egress_on) -> None:
 
 def test_block_mode_still_allows_a_payload_with_no_personal_data(egress_on) -> None:
     """Blocking PII is not blocking everything; clean payloads still go."""
-    from agentfox.judgment import PiiEgress
+    from agentfox.detection.judgment import PiiEgress
 
     client = CapturingClient()
     gate = JudgmentGateway(client, backend=Backend.REMOTE, pii_egress=PiiEgress.BLOCK)
@@ -176,7 +176,7 @@ def test_block_mode_still_allows_a_payload_with_no_personal_data(egress_on) -> N
 
 
 def test_allow_mode_is_a_deliberate_downgrade(egress_on) -> None:
-    from agentfox.judgment import PiiEgress
+    from agentfox.detection.judgment import PiiEgress
 
     client = CapturingClient()
     gate = JudgmentGateway(client, backend=Backend.REMOTE, pii_egress=PiiEgress.ALLOW, redact=False)

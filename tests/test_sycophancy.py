@@ -7,7 +7,7 @@ contradicts the user and the answer neither corrects them nor states the real va
 
 from __future__ import annotations
 
-from agentfox.sycophancy import asserted_premises, check_premises
+from agentfox.grounding.sycophancy import asserted_premises, check_premises
 
 GROUNDED = {"deadline": "Tuesday 3 June", "balance": "400"}
 

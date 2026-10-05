@@ -14,10 +14,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from agentfox import webhooks
-from agentfox.config import Settings, reset_settings_cache
-from agentfox.db import get_sessionmaker, session_scope
-from agentfox.models import Finding
+from agentfox.core import webhooks
+from agentfox.core.config import Settings, reset_settings_cache
+from agentfox.core.db import get_sessionmaker, session_scope
+from agentfox.core.models import Finding
 
 SECRET = "whsec-test"
 
@@ -169,7 +169,7 @@ def test_savepoint_rollback_drops_only_its_own_findings(monkeypatch, receiver):
 
 def test_egress_disabled_sends_nothing(monkeypatch, receiver, caplog):
     configure(monkeypatch, receiver.url, egress=False)
-    with caplog.at_level(logging.INFO, logger="agentfox.webhooks"):
+    with caplog.at_level(logging.INFO, logger="agentfox.core.webhooks"):
         for _ in range(2):
             with session_scope() as s:
                 s.add(make_finding(severity="critical"))
@@ -185,7 +185,7 @@ def test_unreachable_url_never_raises_into_the_caller(monkeypatch, caplog):
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     configure(monkeypatch, f"http://127.0.0.1:{port}/hook")
-    with caplog.at_level(logging.WARNING, logger="agentfox.webhooks"):
+    with caplog.at_level(logging.WARNING, logger="agentfox.core.webhooks"):
         with session_scope() as s:
             s.add(make_finding())
         assert webhooks.wait_for_delivery(10)

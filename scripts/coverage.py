@@ -697,8 +697,8 @@ def evasion_score_line() -> str:
     """
     try:
         sys.path.insert(0, str(ROOT))
-        from agentfox.guardrails import all_detectors
-        from agentfox.guardrails.base import DetectionContext
+        from agentfox.detection import all_detectors
+        from agentfox.detection.base import DetectionContext
         from tests.corpus.injection import ATTACKS, BENIGN
 
         detector = all_detectors()["injection.heuristic"]

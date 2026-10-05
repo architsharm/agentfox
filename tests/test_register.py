@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.register import GENERAL, MEDICAL, check_register, domain_of
+from agentfox.grounding.register import GENERAL, MEDICAL, check_register, domain_of
 
 
 def codes(check) -> set[str]:

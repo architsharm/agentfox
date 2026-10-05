@@ -11,10 +11,10 @@ import time
 
 import pytest
 
-from agentfox.enforcement import ProviderUnavailable
-from agentfox.models import Budget, Finding
+from agentfox.core.models import Budget, Finding
 from agentfox.providers import CompletionRequest, CompletionResponse, register_provider
-from agentfox.reliability import (
+from agentfox.runtime.enforcement import ProviderUnavailable
+from agentfox.runtime.reliability import (
     BREAKER,
     CLOSED,
     HALF_OPEN,
@@ -175,14 +175,14 @@ def test_no_fallback_configured_means_fail_rather_than_substitute(seeded, enforc
 
 
 def test_budget_within_limits_is_not_exceeded(seeded):
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     assert not check_budget(seeded, "agent", agent.id).exceeded
 
 
 def test_budget_exceeded_on_calls(seeded):
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     budget = seeded.query(Budget).filter_by(scope_id=agent.id).one()
@@ -198,7 +198,7 @@ def test_budget_exceeded_on_calls(seeded):
 
 def test_budget_blocks_before_the_model_call(seeded, enforcer):
     """A hard cap checked after the spend is not a cap."""
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     budget = seeded.query(Budget).filter_by(scope_id=agent.id).one()
@@ -218,7 +218,7 @@ def test_budget_blocks_before_the_model_call(seeded, enforcer):
 
 def test_budget_breach_raises_a_finding_and_an_audit_entry(seeded, enforcer):
     """A breach is a governed event, not an HTTP 429 in a load-balancer log."""
-    from agentfox.models import Agent, AuditEntry
+    from agentfox.core.models import Agent, AuditEntry
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     budget = seeded.query(Budget).filter_by(scope_id=agent.id).one()
@@ -236,7 +236,7 @@ def test_budget_breach_raises_a_finding_and_an_audit_entry(seeded, enforcer):
 
 def test_budget_findings_are_deduplicated_per_window(seeded, enforcer):
     """An exhausted agent must not generate a finding per request."""
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     budget = seeded.query(Budget).filter_by(scope_id=agent.id).one()
@@ -253,7 +253,7 @@ def test_budget_findings_are_deduplicated_per_window(seeded, enforcer):
 
 
 def test_budget_blocks_the_streaming_path_too(seeded, enforcer):
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     budget = seeded.query(Budget).filter_by(scope_id=agent.id).one()
@@ -273,7 +273,7 @@ def test_budget_blocks_the_streaming_path_too(seeded, enforcer):
 def test_charge_accumulates_and_the_window_rolls(seeded):
     import datetime as dt
 
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     charge(seeded, "agent", agent.id, calls=1, tokens=100, cost_usd=0.5)

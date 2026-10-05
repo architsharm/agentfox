@@ -16,8 +16,8 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from agentfox.models import RedTeamFinding
-from agentfox.threats import coverage, load_threats, threat_id
+from agentfox.core.models import RedTeamFinding
+from agentfox.discovery.threats import coverage, load_threats, threat_id
 
 from .conftest import as_user
 
@@ -101,7 +101,7 @@ def test_an_unbound_policy_does_not_count_as_protection(seeded):
     Counting it would be the error that gets somebody breached while reading a green
     screen, so the rules come from the bound layers only.
     """
-    from agentfox.models import PolicyBinding
+    from agentfox.core.models import PolicyBinding
 
     before = coverage(seeded)["enforcing"]
     for binding in seeded.scalars(select(PolicyBinding)):

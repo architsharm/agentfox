@@ -47,10 +47,10 @@ from sqlalchemy.exc import (
 )
 from sqlalchemy.orm import Session
 
-from ..db import get_sessionmaker
-from ..models import Base, PlaygroundSandbox, TenantScoped, as_aware, utcnow
-from ..seed import seed as seed_world
-from ..tenancy import bind_session, system_scope
+from agentfox.core.db import get_sessionmaker
+from agentfox.core.models import Base, PlaygroundSandbox, TenantScoped, as_aware, utcnow
+from agentfox.core.seed import seed as seed_world
+from agentfox.core.tenancy import bind_session, system_scope
 
 log = logging.getLogger(__name__)
 

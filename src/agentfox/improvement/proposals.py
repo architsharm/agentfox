@@ -25,11 +25,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..audit import chain
-from ..config import get_settings
-from ..models import AuditEntry, ChangeProposal, utcnow
-from . import contract
-from .appliers import APPLY_ACTION, ApplierError, get_applier, has_applier
+from agentfox.core.config import get_settings
+from agentfox.core.models import AuditEntry, ChangeProposal, utcnow
+from agentfox.improvement import contract
+from agentfox.improvement.appliers import APPLY_ACTION, ApplierError, get_applier, has_applier
+from agentfox.prove.audit import chain
 
 SUBJECT_TYPE = "change_proposal"
 
@@ -106,7 +106,7 @@ def _refresh_direction(
 
 
 def automated_applies_last_day(session: Session) -> int:
-    from ..tenancy import session_org
+    from agentfox.core.tenancy import session_org
 
     since = utcnow() - dt.timedelta(days=1)
     return int(

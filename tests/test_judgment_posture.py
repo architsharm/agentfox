@@ -17,11 +17,11 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from agentfox.config import get_settings, reset_settings_cache
-from agentfox.judgment import posture as P
-from agentfox.judgment.capability import CapabilityRouter, DecisionKind, Tier
-from agentfox.judgment.egress import Backend, PiiEgress
-from agentfox.models import AuditEntry
+from agentfox.core.config import get_settings, reset_settings_cache
+from agentfox.core.models import AuditEntry
+from agentfox.detection.judgment import posture as P
+from agentfox.detection.judgment.capability import CapabilityRouter, DecisionKind, Tier
+from agentfox.detection.judgment.egress import Backend, PiiEgress
 
 from .conftest import as_user
 
@@ -214,7 +214,7 @@ def test_a_posture_change_is_in_the_audit_chain_with_before_and_after(session):
 
 def test_a_change_without_a_reason_is_refused(session):
     """`record()` refuses it, which is what makes the reason a field and not a hope."""
-    from agentfox.operator_log import ReasonRequired
+    from agentfox.prove.audit.operator_log import ReasonRequired
 
     with pytest.raises(ReasonRequired):
         P.save(session, P.Posture(), actor="admin@example.com", reason="   ")
@@ -222,9 +222,9 @@ def test_a_change_without_a_reason_is_refused(session):
 
 def test_the_registry_knows_this_surface_must_record():
     """The structural check, not a runtime one — see operator_log's docstring."""
-    from agentfox.operator_log import PRIVILEGED, unaudited
+    from agentfox.prove.audit.operator_log import PRIVILEGED, unaudited
 
-    assert any(a.target == "agentfox.judgment.posture.save" for a in PRIVILEGED)
+    assert any(a.target == "agentfox.detection.judgment.posture.save" for a in PRIVILEGED)
     assert unaudited() == []
 
 
@@ -262,7 +262,7 @@ def test_an_unset_posture_behaves_exactly_as_settings_did(session):
 
 def test_the_egress_gate_reads_the_active_posture(egress_on):
     """A tenant tightened to `block` is obeyed by the gate, not just by the page."""
-    from agentfox.judgment.egress import JudgmentGateway
+    from agentfox.detection.judgment.egress import JudgmentGateway
 
     with P.use(P.Posture(tiers={Tier.JEV}, pii_egress=PiiEgress.BLOCK)):
         assert JudgmentGateway(backend=Backend.REMOTE)._pii_mode() is PiiEgress.BLOCK
@@ -372,8 +372,8 @@ def test_one_tenants_posture_is_not_another_tenants(monkeypatch):
     process. Isolation here is the session filter's, not this module's — the test
     exists because that is a property worth failing loudly rather than assuming.
     """
-    from agentfox.db import session_scope
-    from agentfox.tenancy import tenant
+    from agentfox.core.db import session_scope
+    from agentfox.core.tenancy import tenant
 
     monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "true")
     reset_settings_cache()

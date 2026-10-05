@@ -10,19 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...audit import chain
-from ...findings import STATUSES as FINDING_STATUSES
-from ...identity import (
-    assess_posture,
-    check_capability,
-    expire_stale_approvals,
-    grant_capability,
-    issue_credential,
-    resolve_approval,
-    revoke_credential,
-    rotate_credential,
-)
-from ...models import (
+from agentfox.core.models import (
     Agent,
     ApiToken,
     ApprovalRequest,
@@ -36,8 +24,22 @@ from ...models import (
     User,
     utcnow,
 )
-from ...registry.control import UnknownAgent, all_controls, set_state
-from ...registry.service import (
+from agentfox.gateway.auth import issue_token
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.identity import (
+    assess_posture,
+    check_capability,
+    expire_stale_approvals,
+    grant_capability,
+    issue_credential,
+    resolve_approval,
+    revoke_credential,
+    rotate_credential,
+)
+from agentfox.prove.audit import chain
+from agentfox.prove.findings import STATUSES as FINDING_STATUSES
+from agentfox.registry.control import UnknownAgent, all_controls, set_state
+from agentfox.registry.service import (
     assess_delegation,
     attest_registry,
     derive_lineage,
@@ -51,8 +53,6 @@ from ...registry.service import (
     upsert_mcp_server,
     upsert_tool,
 )
-from ..auth import issue_token
-from ..deps import current_user, db, get_agent_or_404, require
 
 router = APIRouter(prefix="/api", tags=["registry", "identity"])
 
@@ -161,7 +161,7 @@ class AgentIn(BaseModel):
 def _agent_json(agent: Agent, session: Session | None = None) -> dict[str, Any]:
     control = "active"
     if session is not None:
-        from ...models import AgentControl
+        from agentfox.core.models import AgentControl
 
         row = session.scalar(select(AgentControl).where(AgentControl.agent_id == agent.id))
         control = row.state if row else "active"
@@ -276,8 +276,8 @@ def agent_lineage(
 def agent_posture(
     slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    from ...evaluation.drift import evaluate_slos
-    from ...models import Decision, Trace
+    from agentfox.core.models import Decision, Trace
+    from agentfox.evaluation.drift import evaluate_slos
 
     agent = get_agent_or_404(session, slug)
 
@@ -396,7 +396,7 @@ def list_tools(
 def create_tool(
     payload: ToolIn, session: Session = Depends(db), _user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
-    from ...models import OUTPUT_TRUST_LEVELS
+    from agentfox.core.models import OUTPUT_TRUST_LEVELS
 
     if payload.output_trust is not None and payload.output_trust not in OUTPUT_TRUST_LEVELS:
         raise HTTPException(400, f"output_trust must be one of {OUTPUT_TRUST_LEVELS}")
@@ -477,7 +477,7 @@ def register_mcp_tools(
     the tool a policy identity and a digest to compare against at call time; without
     it the rug-pull check has no baseline.
     """
-    from ...integrations.mcp import McpGovernor
+    from agentfox.integrations.mcp import McpGovernor
 
     governor = McpGovernor(session=session, agent_slug="", server_name=name)
     report = governor.register_tools(payload.tools)

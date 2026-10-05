@@ -105,7 +105,7 @@ export default function Security() {
                     This project&rsquo;s own code: the enforcement path, the policy engine,
                     the audit chain and its verifier, the gateway and its authentication,
                     the tenant isolation in{" "}
-                    <span className="mk-mono">src/agentfox/tenancy.py</span>, and the
+                    <span className="mk-mono">src/agentfox/core/tenancy.py</span>, and the
                     public playground on this deployment.
                   </p>
                   <p className="mk-body" style={{ margin: "12px 0 0", fontSize: "var(--t-body)" }}>
@@ -175,10 +175,10 @@ export default function Security() {
                 running system.
               </p>
               <Ref>
-                <a href={`${SRC}/src/agentfox/tenancy.py`} target="_blank" rel="noreferrer">
-                  src/agentfox/tenancy.py
+                <a href={`${SRC}/src/agentfox/core/tenancy.py`} target="_blank" rel="noreferrer">
+                  src/agentfox/core/tenancy.py
                 </a>
-                :15-24, 35-38; src/agentfox/models.py:1669-1688
+                :15-24, 35-38; src/agentfox/core/models.py:1669-1688
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 The playground rides on exactly this. A sandbox is a tenant whose{" "}
@@ -206,8 +206,8 @@ export default function Security() {
                 or delete path for an audit entry anywhere in the codebase.
               </p>
               <Ref>
-                <a href={`${SRC}/src/agentfox/audit/chain.py`} target="_blank" rel="noreferrer">
-                  src/agentfox/audit/chain.py
+                <a href={`${SRC}/src/agentfox/prove/audit/chain.py`} target="_blank" rel="noreferrer">
+                  src/agentfox/prove/audit/chain.py
                 </a>
                 :1-20, 56-64, 298-312
               </Ref>
@@ -236,11 +236,11 @@ export default function Security() {
               </div>
               <Ref>
                 <a
-                  href={`${SRC}/src/agentfox/availability.py`}
+                  href={`${SRC}/src/agentfox/runtime/availability.py`}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  src/agentfox/availability.py
+                  src/agentfox/runtime/availability.py
                 </a>
                 :18-30, 55-64, 87-95
               </Ref>
@@ -251,7 +251,7 @@ export default function Security() {
                 traffic, because a control that has been open for an hour is not degraded,
                 it is absent.
               </p>
-              <Ref>src/agentfox/config.py:148-149; src/agentfox/availability.py:21-26</Ref>
+              <Ref>src/agentfox/core/config.py:148-149; src/agentfox/runtime/availability.py:21-26</Ref>
             </div>
           </div>
         </section>

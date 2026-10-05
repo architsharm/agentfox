@@ -37,8 +37,8 @@ from urllib.parse import quote
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import get_settings
-from ..models import TraceLink
+from agentfox.core.config import get_settings
+from agentfox.core.models import TraceLink
 
 log = logging.getLogger(__name__)
 

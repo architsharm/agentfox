@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
-from agentfox.models import Agent, Decision, Trace
+from agentfox.core.models import Agent, Decision, Trace
 
 from .conftest import INDIRECT_INJECTION, PII_TEXT, as_user
 
@@ -38,7 +38,7 @@ def _guard(client, content: str, surface: str = "input", **extra):
 
 def test_guarding_content_records_a_trace(client):
     """The one-line version of every other test in this file."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     assert _guard(client, "Where is my order #44812?").status_code == 200
     with session_scope() as s:
@@ -50,7 +50,7 @@ def test_guarding_content_records_a_trace(client):
 def test_the_trace_is_attached_to_the_agent_so_it_has_a_last_seen(client):
     """An agent registry whose rows all read "last seen —" is an inventory, not a
     registry. The resolve happens before the trace starts for exactly this reason."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     _guard(client, "Can you reset my password?")
     with session_scope() as s:
@@ -70,7 +70,7 @@ def test_the_trace_carries_the_verdict_not_the_default(client):
     the trace is right to say so — the counterfactual lives on the decision. Asserting
     against observe mode would have pinned the wrong behaviour as correct.
     """
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     client.post(
         "/api/policies/baseline/mode",
@@ -86,7 +86,7 @@ def test_the_trace_carries_the_verdict_not_the_default(client):
 
 def test_in_observe_mode_the_trace_says_allow_because_nothing_was_blocked(client):
     """The other half, so neither reading can regress unnoticed."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     _guard(client, INDIRECT_INJECTION)
     with session_scope() as s:
@@ -101,7 +101,7 @@ def test_a_second_guard_on_the_same_trace_cannot_erase_the_first_verdict(client)
     """Guarding the input and then the output is one request, so it is one trace —
     and a clean output must not overwrite a blocked input. `end_trace` is called with
     the verdict already on the trace for this reason."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     client.post(
         "/api/policies/baseline/mode",
@@ -147,7 +147,7 @@ def test_the_traces_list_shows_it(client):
 def test_an_unregistered_agent_is_observed_rather_than_turned_away(client):
     """P1-6 — the inline path serves shadow traffic so it is seen. Resolving in the
     route is what makes that true here and not only on the proxy path."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     response = client.post(
         "/v1/guard/input",

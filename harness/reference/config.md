@@ -2,7 +2,7 @@
 title: AgentFox configuration (environment variables)
 layer: reference
 audience: agents, operators
-source_of_truth: src/agentfox/config.py (Settings, env_prefix AGENTFOX_, legacy NOMETRIA_)
+source_of_truth: src/agentfox/core/config.py (Settings, env_prefix AGENTFOX_, legacy NOMETRIA_)
 verified_against: commit 6863b8b, 2026-09-15
 ---
 

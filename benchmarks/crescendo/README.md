@@ -62,7 +62,7 @@ Both pass. The window check demonstrably works on the attack it was built for.
 
 ### Before / after
 
-`CRESCENDO.TRAJECTORY_DRIFT` (`src/agentfox/trajectory.py`, wired into
+`CRESCENDO.TRAJECTORY_DRIFT` (`src/agentfox/detection/trajectory.py`, wired into
 `Enforcer.check_conversation_window`) was built after the run below, to the design F9.4
 already specified. The two columns are the same 22 conversations through the same
 harness; nothing in the corpus changed.
@@ -216,8 +216,8 @@ remaining gap.
   verdict and entities, every turn's windowed verdict, every turn's trajectory slope,
   level and marker families, first-catch indices for both mechanisms, the measured
   added latency, the liveness block, and per-family breakdown.
-- The detector itself is `src/agentfox/trajectory.py`; its wiring is
+- The detector itself is `src/agentfox/detection/trajectory.py`; its wiring is
   `Enforcer._trajectory_checks` / `Enforcer.check_conversation_window` in
-  `src/agentfox/enforcement.py`; its tests, including all nine controls as negative
+  `src/agentfox/runtime/enforcement.py`; its tests, including all nine controls as negative
   tests and an assertion that the hook is on the live SDK path, are
   `tests/test_crescendo_detection.py`.

@@ -20,10 +20,10 @@ __version__ = "0.3.1"
 # Lazily re-exported so `import agentfox` stays fast and side-effect free — importing
 # the package must never open a database or touch a client library.
 _LAZY = {
-    "auto": ("agentfox.autoguard", "auto"),
-    "off": ("agentfox.autoguard", "off"),
-    "state": ("agentfox.autoguard", "state"),
-    "Blocked": ("agentfox.autoguard", "Blocked"),
+    "auto": ("agentfox.runtime.autoguard", "auto"),
+    "off": ("agentfox.runtime.autoguard", "off"),
+    "state": ("agentfox.runtime.autoguard", "state"),
+    "Blocked": ("agentfox.runtime.autoguard", "Blocked"),
     "AgentFox": ("agentfox.sdk", "AgentFox"),
     "PolicyViolation": ("agentfox.sdk", "PolicyViolation"),
     "ApprovalRequired": ("agentfox.sdk", "ApprovalRequired"),

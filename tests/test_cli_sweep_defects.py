@@ -20,8 +20,8 @@ def flat(output: str) -> str:
 
 
 def _seed() -> dict:
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -38,8 +38,8 @@ def test_the_refusal_does_not_say_a_opinion_question():
     "That's a opinion question" is the sort of slip that makes the whole control
     look automated, which is the opposite of what an abstention needs to convey.
     """
-    from agentfox.answerability import classify_answerability
-    from agentfox.models import KnowledgeBoundary
+    from agentfox.core.models import KnowledgeBoundary
+    from agentfox.grounding.answerability import classify_answerability
 
     boundary = KnowledgeBoundary(
         systems_of_record=["zendesk"],
@@ -55,8 +55,8 @@ def test_the_refusal_does_not_say_a_opinion_question():
 
 def test_the_refusal_lists_answerable_types_as_a_sentence():
     """ "fact or aggregate or procedure" reads as a machine listing enum members."""
-    from agentfox.answerability import classify_answerability
-    from agentfox.models import KnowledgeBoundary
+    from agentfox.core.models import KnowledgeBoundary
+    from agentfox.grounding.answerability import classify_answerability
 
     boundary = KnowledgeBoundary(
         systems_of_record=["zendesk"],
@@ -68,8 +68,8 @@ def test_the_refusal_lists_answerable_types_as_a_sentence():
 
 
 def test_a_single_answerable_type_is_not_given_a_comma():
-    from agentfox.answerability import classify_answerability
-    from agentfox.models import KnowledgeBoundary
+    from agentfox.core.models import KnowledgeBoundary
+    from agentfox.grounding.answerability import classify_answerability
 
     boundary = KnowledgeBoundary(
         systems_of_record=["zendesk"], answerable_types=["fact"], mode="observe"
@@ -94,8 +94,8 @@ def test_eval_run_prints_the_run_id_that_eval_baseline_requires():
 
     from sqlalchemy import select
 
-    from agentfox.db import session_scope
-    from agentfox.models import EvalRun
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import EvalRun
 
     with session_scope() as session:
         run_id = session.scalars(select(EvalRun.id)).first()

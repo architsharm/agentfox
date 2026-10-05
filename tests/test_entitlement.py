@@ -15,8 +15,9 @@ import pytest
 from typer.testing import CliRunner
 
 from agentfox.cli.main import app
-from agentfox.db import session_scope
-from agentfox.entitlement import (
+from agentfox.core.db import session_scope
+from agentfox.core.models import DisclosureEvent
+from agentfox.grounding.entitlement import (
     DEFAULT_K_ANONYMITY,
     NativeAclEngine,
     aggregation_risk,
@@ -28,7 +29,6 @@ from agentfox.entitlement import (
     record_disclosure,
     upsert_principal,
 )
-from agentfox.models import DisclosureEvent
 
 from .conftest import as_user
 
@@ -69,7 +69,7 @@ def estate(isolated_db):
 def _principal(subject: str):
     from sqlalchemy import select
 
-    from agentfox.models import EndUserPrincipal
+    from agentfox.core.models import EndUserPrincipal
 
     with session_scope() as session:
         return session.scalars(
@@ -262,7 +262,7 @@ def test_the_native_engine_is_the_default(isolated_db):
 
 def test_openfga_reports_unavailable_rather_than_guessing(isolated_db, monkeypatch):
     """A permissions engine that improvises is worse than one honestly absent."""
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "entitlement_engine", "openfga")
     assert get_engine().key == "native", "falls back rather than failing open"
@@ -275,7 +275,7 @@ def test_openfga_reports_unavailable_rather_than_guessing(isolated_db, monkeypat
 
 def test_quoting_a_withheld_chunk_in_the_answer_is_critical(seeded, enforcer):
     """The oversharing failure itself, rather than a near miss."""
-    from agentfox.models import Agent, Finding
+    from agentfox.core.models import Agent, Finding
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     grant(seeded, "kb/*", principal="all-staff")
@@ -301,7 +301,7 @@ def test_quoting_a_withheld_chunk_in_the_answer_is_critical(seeded, enforcer):
 def test_no_principal_supplied_means_no_disclosure_checks(seeded, enforcer):
     """The filter belongs to whoever performs retrieval; with no principal there is
     nothing to compare against and inventing one would be worse than abstaining."""
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     enforcer.evidence = {}

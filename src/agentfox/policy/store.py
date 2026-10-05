@@ -19,13 +19,19 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import get_settings
-from ..models import Policy, PolicyBinding, PolicyVersion, utcnow
-from .canary import active_canary, pick_version_id
-from .engine import NativePolicyEngine, PolicyEngine
-from .hierarchy import EffectivePolicy, PolicyLayer, lint_policy, lint_summary, resolve_effective
-from .model import PolicyDocument
-from .opa import OpaPolicyEngine
+from agentfox.core.config import get_settings
+from agentfox.core.models import Policy, PolicyBinding, PolicyVersion, utcnow
+from agentfox.policy.canary import active_canary, pick_version_id
+from agentfox.policy.engine import NativePolicyEngine, PolicyEngine
+from agentfox.policy.hierarchy import (
+    EffectivePolicy,
+    PolicyLayer,
+    lint_policy,
+    lint_summary,
+    resolve_effective,
+)
+from agentfox.policy.model import PolicyDocument
+from agentfox.policy.opa import OpaPolicyEngine
 
 
 def get_engine(name: str | None = None) -> PolicyEngine:

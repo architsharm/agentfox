@@ -21,10 +21,23 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ... import jobs_db
-from ...audit import chain, evidence, siem
-from ...audit.trace import full_trace, search_traces
-from ...compliance import (
+from agentfox.core.models import (
+    AuditEntry,
+    Control,
+    EvidencePackage,
+    FrameworkMapping,
+    LegalHold,
+    RetentionPolicy,
+    Trace,
+    User,
+)
+from agentfox.core.tenancy import session_org
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.integrations.correlation import links_for, resolve_external
+from agentfox.jobs import store as jobs_db
+from agentfox.prove.audit import chain, evidence, siem
+from agentfox.prove.audit.trace import full_trace, search_traces
+from agentfox.prove.compliance import (
     all_frameworks,
     board_view,
     classify,
@@ -36,23 +49,10 @@ from ...compliance import (
     posture,
     review_mapping,
 )
-from ...compliance import (
+from agentfox.prove.compliance import (
     register as risk_register,
 )
-from ...compliance.risk import assess
-from ...integrations.correlation import links_for, resolve_external
-from ...models import (
-    AuditEntry,
-    Control,
-    EvidencePackage,
-    FrameworkMapping,
-    LegalHold,
-    RetentionPolicy,
-    Trace,
-    User,
-)
-from ...tenancy import session_org
-from ..deps import current_user, db, get_agent_or_404, require
+from agentfox.prove.compliance.risk import assess
 
 router = APIRouter(prefix="/api", tags=["audit", "compliance"])
 
@@ -474,7 +474,7 @@ def sync_controls(
     upsert, reachable without shell access to the deployment, so a freshly provisioned
     org isn't stuck at "0 controls, mapped to seven frameworks" with no way to fix it
     from the product itself."""
-    from ...compliance.catalog import sync_catalog, sync_obligations
+    from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
 
     catalog = sync_catalog(session)
     obligations = sync_obligations(session)

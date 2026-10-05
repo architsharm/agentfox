@@ -38,9 +38,9 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from typing import Any
 
-from ..db import session_scope
-from ..enforcement import EnforcementResult, Enforcer
-from .correlation import links_for
+from agentfox.core.db import session_scope
+from agentfox.integrations.correlation import links_for
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 #: Key under which we stash governance state inside the graph's state dict.
 STATE_KEY = "__nometria__"

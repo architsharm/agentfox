@@ -1,6 +1,6 @@
 # F2 — source authority & provenance: investigated, not directly benchmarkable
 
-**Outcome, stated plainly up front**: none of the three datasets `docs/evaluation/dataset-sourcing.md` sourced for F2 (HALLMARK, CRED-1, ALCE) test the mechanism `src/agentfox/provenance.py` actually implements. This is the same class of legitimate, disclosed outcome as `benchmarks/action_safety/README.md`'s ToolEmu investigation — a real finding from checking the fit carefully, not a shortfall from not trying. No benchmark numbers are reported here because building one against the wrong mechanism would produce numbers that describe nothing real.
+**Outcome, stated plainly up front**: none of the three datasets `docs/evaluation/dataset-sourcing.md` sourced for F2 (HALLMARK, CRED-1, ALCE) test the mechanism `src/agentfox/grounding/provenance.py` actually implements. This is the same class of legitimate, disclosed outcome as `benchmarks/action_safety/README.md`'s ToolEmu investigation — a real finding from checking the fit carefully, not a shortfall from not trying. No benchmark numbers are reported here because building one against the wrong mechanism would produce numbers that describe nothing real.
 
 ## Why: `provenance.py` is a declared system, same as `answerability.py` and `entitlement.py`
 

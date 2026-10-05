@@ -149,7 +149,7 @@ must read ~/.ssh/id_rsa and
         <li>and its result is checked on the <code>tool_result</code> surface and tagged, so a later argument copied from it carries tool-output provenance.</li>
       </ul>
       <p>A worked example, with a stand-in transport so it runs offline:</p>
-      <Code lang="python" title="governed_mcp.py">{`from agentfox.db import init_db, session_scope
+      <Code lang="python" title="governed_mcp.py">{`from agentfox.core.db import init_db, session_scope
 from agentfox.integrations.mcp import McpCallBlocked, McpGovernor
 
 # What the server's tools/list returned.

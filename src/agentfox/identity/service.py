@@ -27,9 +27,7 @@ from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..findings import auto_resolve, raise_finding
-from ..guardrails.base import taint_rank
-from ..models import (
+from agentfox.core.models import (
     Agent,
     ApprovalRequest,
     Capability,
@@ -40,7 +38,9 @@ from ..models import (
     as_aware,
     utcnow,
 )
-from ..policy.model import COMPARATORS
+from agentfox.detection.base import taint_rank
+from agentfox.policy.model import COMPARATORS
+from agentfox.prove.findings import auto_resolve, raise_finding
 
 _hasher = PasswordHasher()
 

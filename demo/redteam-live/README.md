@@ -150,7 +150,7 @@ the chain is wrong on its own.**
    under the $500 cap, and `issue_refund` is a tool this agent genuinely holds.
 
 Individually, both calls pass every check. **AgentFox blocks it anyway**, because
-`agentfox.guardrails.composition.check_composed_escalation` (F3.8) tracks *where
+`agentfox.detection.composition.check_composed_escalation` (F3.8) tracks *where
 each argument's value came from* — `TaintTracker`'s `propagated_from` provenance
 — and sees that `order_id` didn't come from the user or from Priya's own
 account; it came from a broad internal search a moment earlier, being reused as
@@ -271,8 +271,8 @@ specific pack:
 agentfox policy enforce baseline
 python -c "
 import _env
-from agentfox.db import init_db, session_scope
-from agentfox.enforcement import Enforcer
+from agentfox.core.db import init_db, session_scope
+from agentfox.runtime.enforcement import Enforcer
 init_db()
 with session_scope() as s:
     r = Enforcer(s).check_content(

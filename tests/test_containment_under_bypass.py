@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.config import get_settings
-from agentfox.enforcement import Enforcer
+from agentfox.core.config import get_settings
 from agentfox.registry.control import quarantine
+from agentfox.runtime.enforcement import Enforcer
 
 CONTAINED = {"block", "escalate"}
 
@@ -35,7 +35,7 @@ def no_detectors(monkeypatch):
     """
     monkeypatch.delenv("AGENTFOX_ENABLED_DETECTORS", raising=False)
     monkeypatch.setenv("NOMETRIA_ENABLED_DETECTORS", "[]")
-    from agentfox.config import reset_settings_cache
+    from agentfox.core.config import reset_settings_cache
 
     reset_settings_cache()
     yield

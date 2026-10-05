@@ -6,9 +6,9 @@ operator can never adjust for their own traffic. The shipped defaults must not m
 
 from __future__ import annotations
 
-from agentfox.config import reset_settings_cache
-from agentfox.guardrails.adapters.classifiers import PromptInjectionClassifierDetector
-from agentfox.guardrails.adapters.embeddings import EmbeddingSimilarityDetector
+from agentfox.core.config import reset_settings_cache
+from agentfox.detection.adapters.classifiers import PromptInjectionClassifierDetector
+from agentfox.detection.adapters.embeddings import EmbeddingSimilarityDetector
 
 
 def test_shipped_defaults_are_unchanged():
