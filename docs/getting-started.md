@@ -83,7 +83,7 @@ Point it at a codebase you actually work on.
 
 ```bash
 cd /path/to/your/project
-agentfox check
+agentfox scan
 ```
 
 ```
@@ -125,7 +125,7 @@ reported as unknown, never as safe. `--json` carries the same data as flags (`pr
 To look closer at the MCP servers, `agentfox scan mcp` reads the same configs, registers every
 server, and reports reach, version pinning and remote auth for each without starting any of them.
 
-For a first look at a machine you have not installed anything on, `agentfox quickscan` does the
+For a first look at a machine you have not installed anything on, `agentfox scan --sessions` does the
 same thing plus a scan of local AI-tool session transcripts, and runs a handful of known-adversarial
 prompts through the real detector pipeline in your terminal, so "we catch prompt injection" is
 something you watch happen rather than something we said.
@@ -275,8 +275,8 @@ never lands in an argument. Every published number was measured under `session`.
 ### 5c. Declare the tool and grant the capability by hand
 
 ```bash
-agentfox tools declare payments.transfer --impact irreversible
-agentfox capability grant my-agent payments.transfer \
+agentfox declare tool payments.transfer --impact irreversible
+agentfox permit grant my-agent payments.transfer \
     --limit amount:lt=1000 --max-taint user
 ```
 
@@ -347,15 +347,15 @@ undeclared agent is refused before anybody writes a rule about it.
 The `/v1/guard/*` endpoints above read no credential. The control-plane API under `/api` does:
 
 ```bash
-agentfox auth issue you@example.com --name "ci"
+agentfox admin auth issue you@example.com --name "ci"
 curl -H "Authorization: Bearer nom_api_..." http://localhost:8080/api/findings
 ```
 
 One honest caveat: `auth issue` mints a token for an operator that already exists, and a database
 created by `agentfox init` alone has no operators in it. Today the first operator account comes
-from `agentfox seed` (which creates `admin@example.com` and four other roles) or from signing in to
+from `agentfox admin seed` (which creates `admin@example.com` and four other roles) or from signing in to
 the dashboard with GitHub. Token values are shown once, hashed at rest with argon2id, and carry an
-expiry. `agentfox auth status` tells you whether this deployment is actually requiring them: in a
+expiry. `agentfox admin auth status` tells you whether this deployment is actually requiring them: in a
 development environment it accepts an `X-Nometria-User` header instead, which is fine locally and
 unacceptable anywhere else.
 
@@ -400,8 +400,8 @@ Three commands worth knowing here:
 
 ```bash
 agentfox agents lineage my-agent     # what this agent reaches: its blast radius
-agentfox capability list my-agent    # what it may do; anything not listed is refused
-agentfox audit verify                # re-derive the tamper-evident chain; exits 1 if broken
+agentfox permit list my-agent        # what it may do; anything not listed is refused
+agentfox report verify               # re-derive the tamper-evident chain; exits 1 if broken
 ```
 
 **What this proves:** the platform reports its own gaps, including the ones that are inconvenient
@@ -414,7 +414,7 @@ for it.
 Two things worth running before you turn enforcement on.
 
 ```bash
-agentfox redteam run my-agent
+agentfox test redteam my-agent
 ```
 
 Fires the built-in adversarial probe suite (mapped to OWASP LLM Top 10 and MITRE ATLAS) at this
@@ -430,7 +430,7 @@ agentfox policy simulate --file candidate.yaml
 Replays the traffic already recorded in your database against a candidate policy, so you can see
 what a rule change would have done before it does it.
 
-If you have an eval suite, `agentfox eval gate <suite>` exits 1 on regression and is meant to run
+If you have an eval suite, `agentfox test gate <suite>` exits 1 on regression and is meant to run
 in CI.
 
 **What this proves:** you can measure the change before you make it, against your own recorded
@@ -476,7 +476,7 @@ seen what it will do.
 
 Two things to keep in mind as you go further. Containment is exactly as good as the declarations
 behind it: a destructive tool declared `read` will not be treated as destructive by anything
-downstream, which is why `agentfox doctor` grades your declarations and `agentfox check` finds the
+downstream, which is why `agentfox doctor` grades your declarations and `agentfox scan` finds the
 tools you have not declared. And compliance mappings ship as engineering drafts, labelled
 `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` inside evidence packages, until a qualified reviewer signs
 them off.

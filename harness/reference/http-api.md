@@ -18,8 +18,8 @@ One FastAPI process (`agentfox serve`, default `127.0.0.1:8080`) serves two surf
 
 | Caller | Credential | Notes |
 |---|---|---|
-| Operator / script | `Authorization: Bearer nom_api_…` | Mint with `agentfox auth issue EMAIL` or `POST /api/tokens`. Shown once. |
-| Local development | `X-Nometria-User: you@example.com` | Accepted only when `auth_mode=development`, or `auto` + a dev/test/local environment. `agentfox auth status` tells you. |
+| Operator / script | `Authorization: Bearer nom_api_…` | Mint with `agentfox admin auth issue EMAIL` or `POST /api/tokens`. Shown once. |
+| Local development | `X-Nometria-User: you@example.com` | Accepted only when `auth_mode=development`, or `auto` + a dev/test/local environment. `agentfox admin auth status` tells you. |
 | Agent (inline) | `Authorization: Bearer nom_agt_…` | Optional; binds the tenant. Unauthenticated inline traffic is recorded as shadow traffic. |
 
 Write routes need a role for their family (owner, admin, security, compliance, developer,

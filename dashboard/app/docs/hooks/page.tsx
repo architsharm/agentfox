@@ -20,9 +20,9 @@ export default function Page() {
         than reporting that event as a gate.
       </p>
       <pre>
-        <code>{`agentfox hooks daemon
-agentfox hooks install --agent my-agent --write
-agentfox hooks status`}</code>
+        <code>{`agentfox admin hooks daemon
+agentfox admin hooks install --agent my-agent --write
+agentfox admin hooks status`}</code>
       </pre>
       <p>
         <code>hooks install --write</code> writes <code>.claude/settings.json</code>.

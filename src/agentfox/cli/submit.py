@@ -53,7 +53,7 @@ def submit_scan_report(report: ScanReport, *, source: str) -> dict[str, Any]:
         headers["X-Nometria-User"] = dev_user
     else:
         raise SubmissionUnavailable(
-            "no credentials configured — set AGENTFOX_API_TOKEN (`agentfox auth issue "
+            "no credentials configured — set AGENTFOX_API_TOKEN (`agentfox admin auth issue "
             "<email>` on that deployment) or AGENTFOX_USER for a dev deployment."
         )
 

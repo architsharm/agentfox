@@ -652,8 +652,8 @@ def _walkthrough() -> dict[str, Any]:
         Panel.fit(
             "[bold green]Walkthrough complete.[/]\n"
             "[dim]agentfox serve[/]      control plane on :8080\n"
-            "[dim]agentfox audit verify[/]  re-check the chain\n"
-            "[dim]agentfox evidence export --agent payments-ops[/]",
+            "[dim]agentfox report verify[/]  re-check the chain\n"
+            "[dim]agentfox report evidence --agent payments-ops[/]",
             border_style="green",
         )
     )

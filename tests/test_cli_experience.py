@@ -226,7 +226,7 @@ def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigure
     result = runner.invoke(app, ["doctor", "--json"])
     containment = next(c for c in _json(result.output) if c["check"] == "containment")
     assert "no capability grants" in containment["detail"]
-    assert "agentfox capability grant" in containment["detail"]
+    assert "agentfox permit grant" in containment["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -581,16 +581,17 @@ def test_policy_enforce_still_promotes_a_real_policy():
 
 def test_top_level_help_leads_with_what_a_command_does():
     """Internal taxonomy leaked into the first thing anyone reads."""
-    output = runner.invoke(app, ["--help"]).output
+    # These three moved under `test` and `admin` in the CLI consolidation.
+    output = "".join(runner.invoke(app, [group, "--help"]).output for group in ("test", "admin"))
     lines = {
         line.split()[1]: line
         for line in output.splitlines()
         if len(line.split()) > 2 and line.strip().startswith("│")
     }
-    for name in ("analyse-action", "db", "version"):
+    for name in ("action", "db", "version"):
         assert name in lines, output
     # A description may still cite a pillar, but it must not open with a code.
-    assert not re.search(r"analyse-action\s+P9 —", output)
+    assert not re.search(r"action\s+P9 —", output)
     assert "(PL-2)" not in output
     assert "(X-4)" not in output
 

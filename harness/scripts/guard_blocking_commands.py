@@ -27,6 +27,8 @@ _PREFIX = (
 )
 _END = r"(?=\s|$)"
 
+# Each rule matches the current name and the pre-consolidation one (`proposals apply`
+# and `policy proposals apply` are the same command — see src/agentfox/cli/layout.py).
 CLI_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         r"policy\s+enforce" + _END,
@@ -38,18 +40,18 @@ CLI_RULES: list[tuple[re.Pattern[str], str]] = [
     ),
     (r"agents\s+(?:kill|quarantine)" + _END, "stops a production agent (kill switch)."),
     (
-        r"proposals\s+apply" + _END,
+        r"(?:policy\s+)?proposals\s+apply" + _END,
         "applies a proposed change to live governance configuration (directly, or to a "
         "canary cohort).",
     ),
     (
-        r"proposals\s+rollback" + _END,
+        r"(?:policy\s+)?proposals\s+rollback" + _END,
         "undoes an applied change, which loosens a control if the change tightened one.",
     ),
     (
         # Plain `verify` only records the outcome; `--failed` rolls the change back, so it
         # is the same blocking action under a different name.
-        r"proposals\s+verify\b[^|;&]*--failed" + _END,
+        r"(?:policy\s+)?proposals\s+verify\b[^|;&]*--failed" + _END,
         "records a failed verification and rolls the applied change back.",
     ),
     (r"agents\s+resume" + _END, "restarts a stopped agent."),
@@ -59,21 +61,25 @@ CLI_RULES: list[tuple[re.Pattern[str], str]] = [
         "in whatever DB NOMETRIA_DATABASE_URL points at. Use a scratch DB.",
     ),
     (
-        r"seed" + _END,
+        r"(?:admin\s+)?seed" + _END,
         "seeds demo agents, policies and keys into the configured DB "
         "(with --show-keys, raw keys are printed).",
     ),
-    (r"db\s+downgrade" + _END, "rolls back database migrations (can drop columns and data)."),
     (
-        r"(?:guardrails\s+apply|boundary\s+set|escalation\s+set)\s.*--mode[\s=]+enforce" + _END,
+        r"(?:admin\s+)?db\s+downgrade" + _END,
+        "rolls back database migrations (can drop columns and data).",
+    ),
+    (
+        r"(?:guardrails\s+apply|policy\s+rules\s+apply|boundary\s+set|escalation\s+set"
+        r"|declare\s+(?:boundary|escalation))\s.*--mode[\s=]+enforce" + _END,
         "turns a guardrail/boundary/escalation rule on in ENFORCE mode.",
     ),
     (
-        r"auth\s+(?:issue|revoke)" + _END,
+        r"(?:admin\s+)?auth\s+(?:issue|revoke)" + _END,
         "mints or revokes an API token (a minted token is shown once, in this transcript).",
     ),
     (
-        r"(?:check|quickscan)\s.*--submit" + _END,
+        r"(?:check|quickscan|scan)\s.*--submit" + _END,
         "uploads a redacted scan summary to a remote AgentFox API.",
     ),
 ]

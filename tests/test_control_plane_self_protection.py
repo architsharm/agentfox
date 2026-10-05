@@ -43,6 +43,11 @@ def codes(command: str) -> list[str]:
         "agentfox agents resume quarantined-bot",
         "agentfox db downgrade -1",
         "agentfox auth issue attacker@example.com",
+        # The consolidated names for the same commands (cli/layout.py).
+        "agentfox permit revoke support-triage payments.transfer",
+        "agentfox permit grant support-triage payments.transfer",
+        "agentfox admin db downgrade -1",
+        "agentfox admin auth issue attacker@example.com",
         # The CLI reached by its other spellings.
         "uv run agentfox policy observe baseline",
         "uvx agentfox policy observe baseline",
@@ -83,6 +88,9 @@ def test_it_is_caught_mid_chain_not_only_at_the_start():
         "agentfox doctor",
         "agentfox agents list",
         "agentfox compliance status",
+        "agentfox report",
+        "agentfox permit list",
+        "agentfox admin db current",
         "cat agentfox.toml",
         "grep mode agentfox.toml",
         "ls -la ~/.agentfox",

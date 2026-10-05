@@ -23,7 +23,7 @@ configuration, not taken from whoever filed it, and recomputed at filing, decisi
 ## 1. Read the inbox
 
 ```bash
-agentfox proposals list --json
+agentfox policy proposals list --json
 ```
 
 Filter with `--status`, `--kind` and `--scope` (org, team, agent, user). Work the list in
@@ -55,7 +55,7 @@ straight from `proposed`; it has to be proven first.
 ## 3. Read one proposal before deciding
 
 ```bash
-agentfox proposals show <id> --json
+agentfox policy proposals show <id> --json
 ```
 
 Tell the user five things in this order: what it would change (`diff`), which way it moves
@@ -78,8 +78,8 @@ that kind can only be recommended, never applied.
 ## 5. Decide
 
 ```bash
-agentfox proposals approve <id> --actor "you@example.com" --note "why"
-agentfox proposals reject  <id> --actor "you@example.com" --note "why"
+agentfox policy proposals approve <id> --actor "you@example.com" --note "why"
+agentfox policy proposals reject  <id> --actor "you@example.com" --note "why"
 ```
 
 Both need a named actor and a note. They go on the audit chain and an auditor reads them.
@@ -96,7 +96,7 @@ This changes live configuration. Ask the user in this conversation before runnin
 the harness hook prompt.
 
 ```bash
-agentfox proposals apply <id> --actor "you@example.com"
+agentfox policy proposals apply <id> --actor "you@example.com"
 ```
 
 Only an `approved` proposal applies. If the diff asks for staging, apply starts a canary
@@ -119,7 +119,7 @@ case the proposal stays `applied` with the failure recorded, for a person to han
 ## 7. Roll back (BLK: confirm first)
 
 ```bash
-agentfox proposals rollback <id> --actor "you@example.com" --reason "what went wrong"
+agentfox policy proposals rollback <id> --actor "you@example.com" --reason "what went wrong"
 ```
 
 Same gate as apply. Write the reason for a future auditor. A rollback restores what the apply
@@ -131,7 +131,7 @@ Run it when people have been labelling detections as false positives and someone
 detector to fire less often:
 
 ```bash
-agentfox proposals from-labels --days 30 --json
+agentfox policy proposals from-labels --days 30 --json
 ```
 
 It turns labelled false positives into `policy.rule_min_score` proposals against the rule

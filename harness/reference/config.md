@@ -38,7 +38,7 @@ Settings are cached per process, so restart after changing them.
 |---|---|---|
 | `AGENTFOX_DATABASE_URL` | `sqlite:///<repo-root>/agentfox.db` | **Point this at a scratch file for demos and experiments.** Postgres (`postgresql+psycopg://…`, `[postgres]` extra) for anything real. |
 | `AGENTFOX_ENVIRONMENT` | `development` | Also decides whether the dev auth header is accepted. |
-| `AGENTFOX_AUTH_MODE` | `auto` | `auto` \| `development` \| `token` \| `oidc`. Production must not accept `X-Nometria-User`; check with `agentfox auth status`. |
+| `AGENTFOX_AUTH_MODE` | `auto` | `auto` \| `development` \| `token` \| `oidc`. Production must not accept `X-Nometria-User`; check with `agentfox admin auth status`. |
 | `AGENTFOX_DEFAULT_POLICY_MODE` | `observe` | `observe` records, `enforce` blocks. |
 | `AGENTFOX_FAIL_MODE` | `open` | What happens when a detector errors/times out. `closed` for high-risk agents. |
 | `AGENTFOX_ALLOW_EGRESS` | `false` | Must be true for any real model provider or network fetch. |

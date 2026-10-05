@@ -15,7 +15,7 @@ The user gets a short report of what the product sees.
 ## 1. Preconditions
 
 ```bash
-agentfox version
+agentfox admin version
 ```
 
 - **Exits 127:** install the package into the *project's* environment (its venv, uv project or
@@ -42,7 +42,7 @@ capabilities, runaway loops and destructive cascades.
 ## 3. Find what talks to a model
 
 ```bash
-agentfox check . --json
+agentfox scan . --json
 ```
 
 From the JSON, list the ungoverned call sites (file:line, library) and the entry points. If
@@ -83,9 +83,9 @@ every published result says a determined attacker gets past it. What holds after
 the agent is *allowed to do*, and that is declared, not detected.
 
 ```bash
-agentfox tools declare payments.refund --impact irreversible --triggers "ledger.write"
-agentfox tools declare crm.lookup --impact read
-agentfox tools list
+agentfox declare tool payments.refund --impact irreversible --triggers "ledger.write"
+agentfox declare tool crm.lookup --impact read
+agentfox declare list tools
 ```
 
 Impact tiers are `read`, `write`, `high_impact`, `irreversible`. Get these right with the user,

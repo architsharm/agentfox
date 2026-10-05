@@ -135,7 +135,9 @@ def tokens(as_json: bool = typer.Option(False, "--json")) -> None:
         console.print_json(json.dumps(rows, default=str))
         return
     if not rows:
-        console.print("[dim]No tokens issued. Create one with `agentfox auth issue <email>`.[/]")
+        console.print(
+            "[dim]No tokens issued. Create one with `agentfox admin auth issue <email>`.[/]"
+        )
         return
 
     table = Table(box=None, padding=(0, 2), header_style="dim")
@@ -155,7 +157,7 @@ def tokens(as_json: bool = typer.Option(False, "--json")) -> None:
 
 
 def revoke(
-    token_id: str = typer.Argument(..., help="Token id from `agentfox auth tokens`."),
+    token_id: str = typer.Argument(..., help="Token id from `agentfox admin auth tokens`."),
 ) -> None:
     """Revoke a token immediately."""
     from ..gateway.auth import revoke_token

@@ -54,7 +54,7 @@ agentfox proposals apply <id> --actor you@example.com`}</code>
 
       <h2>Declare the tool</h2>
       <pre>
-        <code>agentfox tools declare payments.transfer --impact irreversible</code>
+        <code>agentfox declare tool payments.transfer --impact irreversible</code>
       </pre>
       <p>
         Impact is <code>none</code>, <code>read</code>, <code>write</code>, or{" "}
@@ -75,10 +75,10 @@ agentfox proposals apply <id> --actor you@example.com`}</code>
 
       <h2>Grant it, with limits</h2>
       <pre>
-        <code>{`agentfox capability grant my-agent payments.transfer \\
+        <code>{`agentfox permit grant my-agent payments.transfer \\
     --limit amount:lt=1000 --max-taint user
-agentfox capability list my-agent
-agentfox capability revoke <capability-id>`}</code>
+agentfox permit list my-agent
+agentfox permit revoke <capability-id>`}</code>
       </pre>
       <p>
         <code>capability grant</code> is the only command that widens least privilege.

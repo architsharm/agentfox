@@ -22,8 +22,8 @@ export default function Page() {
 
       <h2>A regression gate</h2>
       <pre>
-        <code>{`agentfox eval run support-quality
-agentfox eval gate support-quality`}</code>
+        <code>{`agentfox test run support-quality
+agentfox test gate support-quality`}</code>
       </pre>
       <p>
         <code>eval run</code> scores a suite. <code>eval gate</code> compares it with
@@ -33,7 +33,7 @@ agentfox eval gate support-quality`}</code>
 
       <h2>A probe of this deployment</h2>
       <pre>
-        <code>agentfox redteam run support-triage</code>
+        <code>agentfox test redteam support-triage</code>
       </pre>
       <p>
         Fires the built-in adversarial suite, mapped to the OWASP LLM Top 10 and MITRE

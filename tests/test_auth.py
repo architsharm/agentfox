@@ -99,7 +99,7 @@ def test_the_refusal_says_how_to_fix_it(ready, production):
         "detail"
     ]
     assert "production" in detail
-    assert "agentfox auth issue" in detail
+    assert "agentfox admin auth issue" in detail
 
 
 def test_a_valid_token_is_accepted_in_production(ready, production):

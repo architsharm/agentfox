@@ -22,9 +22,9 @@ is in or out.
 ## 2. Pick the kind
 
 ```bash
-agentfox guardrails suggest "<the rule, verbatim>"
-agentfox guardrails catalogue
-agentfox guardrails explain <kind_id>
+agentfox policy rules suggest "<the rule, verbatim>"
+agentfox policy catalogue
+agentfox policy rules explain <kind_id>
 ```
 
 `explain` prints the parameters and a worked example. For a longer policy document, run
@@ -48,10 +48,10 @@ for example `governance/guardrails/refund-approval.yaml`, so it's reviewed like 
 ## 4. Apply in observe, then prove it
 
 ```bash
-agentfox guardrails apply governance/guardrails/refund-approval.yaml --mode observe
-agentfox guardrails show refund-approval
-agentfox guardrails test refund-approval "0,10,10.01,100,500,500.01,100000"
-agentfox guardrails check
+agentfox policy rules apply governance/guardrails/refund-approval.yaml --mode observe
+agentfox policy rules show refund-approval
+agentfox test rule refund-approval "0,10,10.01,100,500,500.01,100000"
+agentfox policy rules check
 ```
 
 - Test the **boundaries** the user named, plus one value on either side of each.

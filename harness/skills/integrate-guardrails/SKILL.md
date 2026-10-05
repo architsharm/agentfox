@@ -1,6 +1,6 @@
 ---
 name: integrate-guardrails
-description: Wires AgentFox into specific application code beyond the one-liner. It declares tools with impact levels, marks retrieved and tool-returned content as untrusted so taint containment works, and integrates LangGraph nodes, FastAPI endpoints, MCP clients or the gateway proxy, with a test that proves a tainted irreversible call escalates. Use when an agent has side-effecting tools, uses LangGraph/FastAPI/MCP, uses async or streaming clients, or `agentfox check` shows calls auto() can't govern.
+description: Wires AgentFox into specific application code beyond the one-liner. It declares tools with impact levels, marks retrieved and tool-returned content as untrusted so taint containment works, and integrates LangGraph nodes, FastAPI endpoints, MCP clients or the gateway proxy, with a test that proves a tainted irreversible call escalates. Use when an agent has side-effecting tools, uses LangGraph/FastAPI/MCP, uses async or streaming clients, or `agentfox scan` shows calls auto() can't govern.
 ---
 
 # Integrate guardrails
@@ -73,7 +73,7 @@ Also check the negative case: the same call with a user-supplied value is allowe
 ## 6. Verify end to end
 
 ```bash
-agentfox check . --json      # the call sites now show as governed
+agentfox scan . --json       # the call sites now show as governed
 agentfox agents lineage <slug> # tools appear with their impact
 agentfox findings --json
 ```

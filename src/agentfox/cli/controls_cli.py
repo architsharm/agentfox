@@ -6,7 +6,7 @@ escalation needed the host application to push conversation turns. All three wer
 complete engines nobody outside this repository could switch on.
 
 These commands exist so that declaring a knowledge boundary or tiering a corpus is the
-same kind of act as running `agentfox check` — one line, no client library, no reading
+same kind of act as running `agentfox scan` — one line, no client library, no reading
 the PRD first.
 """
 
@@ -127,7 +127,7 @@ def boundary_check(
 
     if boundary is None:
         console.print("[yellow]no boundary declared — nothing would be refused[/]")
-        console.print("[dim]declare one with `agentfox boundary set`[/]")
+        console.print("[dim]declare one with `agentfox declare boundary`[/]")
         return
     if verdict.answerable:
         console.print(f"[green]answerable[/]  [dim]({verdict.question_type})[/]")
@@ -272,7 +272,7 @@ def sources_list(as_json: bool = typer.Option(False, "--json")) -> None:
         console.print("[dim]No sources registered.[/]")
         console.print(
             "[dim]Until sources are tiered, groundedness cannot tell an authoritative "
-            "answer from a confident one. Add one with `agentfox sources add`.[/]"
+            "answer from a confident one. Add one with `agentfox declare source`.[/]"
         )
         return
 
@@ -463,7 +463,7 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
             )
         )
         console.print(
-            "  [dim]Register a principal with `agentfox entitlement principal <subject>`, "
+            "  [dim]Register a principal with `agentfox declare principal <subject>`, "
             "then filter retrieval through /api/entitlement/filter.[/]"
         )
         return

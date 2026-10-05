@@ -16,8 +16,8 @@ itself an outage, so it's the user's call, made with the facts in front of them.
 ```bash
 agentfox agents list --json
 agentfox findings --json --limit 50
-agentfox agents controls
-agentfox audit verify
+agentfox agents list --stopped
+agentfox report verify
 ```
 
 With a server running, open the recent traces:
@@ -43,13 +43,13 @@ Offer the smallest effective option:
 | Enforce a policy that's in observe | start blocking a class of action for every agent | `agentfox policy enforce <key>` |
 
 The hook will prompt. Write the `--reason` for a future auditor, including the incident id
-and who decided. Verify containment with `agentfox agents controls`.
+and who decided. Verify containment with `agentfox agents list --stopped`.
 
 ## 3. Blast radius
 
 ```bash
 agentfox agents lineage <slug> --depth 3
-agentfox analyse-action "<the SQL/shell/HTTP the agent ran>" --kind sql
+agentfox test action "<the SQL/shell/HTTP the agent ran>" --kind sql
 ```
 
 Lineage shows tools, data and downstream agents. List what may need checking or rotating:
@@ -61,8 +61,8 @@ Lineage shows tools, data and downstream agents. List what may need checking or 
 ## 4. Preserve evidence before anyone "cleans up"
 
 ```bash
-agentfox audit checkpoint
-agentfox evidence export --agent <slug> --since-days 7 --requested-by "incident <id>"
+agentfox admin checkpoint
+agentfox report evidence --agent <slug> --since-days 7 --requested-by "incident <id>"
 ```
 
 If `audit verify` failed in step 1, **don't checkpoint**. Export the evidence and record the

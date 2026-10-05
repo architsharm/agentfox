@@ -76,6 +76,16 @@ def known_flags(cmd: click.Command) -> set[str]:
     for p in cmd.params:
         flags.update(getattr(p, "opts", []))
         flags.update(getattr(p, "secondary_opts", []))
+    # A default-command group (`scan`, `serve`, `report` — see cli/layout.py) hands
+    # unknown words to its default subcommand, and routes some flags to another one
+    # (`scan --sessions`), so their flags are the group's too.
+    if isinstance(cmd, click.Group) and getattr(cmd, "default_command", None):
+        targets = [cmd.default_command, *getattr(cmd, "flag_routes", {}).values()]
+        flags.update(getattr(cmd, "flag_routes", {}))
+        for name in targets:
+            sub = cmd.commands.get(name)
+            if sub is not None:
+                flags |= known_flags(sub)
     return flags
 
 

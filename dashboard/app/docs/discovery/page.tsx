@@ -21,7 +21,7 @@ export default function Page() {
 
       <h2>A repository</h2>
       <pre>
-        <code>agentfox check</code>
+        <code>agentfox scan</code>
       </pre>
       <p>
         From the project directory. It reports what the code is built on, how many
@@ -62,7 +62,7 @@ in a web page could send customer data out.`}</code>
 
       <h2>This machine, including sessions that were never committed</h2>
       <pre>
-        <code>agentfox quickscan</code>
+        <code>agentfox scan --sessions</code>
       </pre>
       <p>
         The same static look, plus local AI-tool session transcripts, plus a handful of
@@ -75,7 +75,7 @@ in a web page could send customer data out.`}</code>
       <h2>Agents, including ones nobody registered</h2>
       <pre>
         <code>{`agentfox agents list
-agentfox agents discover
+agentfox scan runtime
 agentfox agents lineage payments-ops`}</code>
       </pre>
       <p>

@@ -199,7 +199,7 @@ def seed(
     if credentials and not show_keys:
         console.print(
             "  [dim]keys masked. Only a hash is stored and each key is issued once — "
-            "`agentfox seed --show-keys` on a fresh database is the only way to see "
+            "`agentfox admin seed --show-keys` on a fresh database is the only way to see "
             "them in full.[/]"
         )
 
@@ -209,7 +209,7 @@ def seed(
         [
             ("agentfox demo", "the end-to-end walkthrough against what was just seeded"),
             ("agentfox findings", "what the seeded traffic already raised"),
-            ("agentfox capability list", "what each seeded agent is allowed to do"),
+            ("agentfox permit list", "what each seeded agent is allowed to do"),
             ("agentfox doctor", "check the runtime configuration"),
         ]
     )
@@ -285,7 +285,9 @@ def db_current() -> None:
     from ..db import current_revision
 
     revision = current_revision()
-    console.print(f"schema revision: [bold]{revision or 'none — run `agentfox db upgrade`'}[/]")
+    console.print(
+        f"schema revision: [bold]{revision or 'none — run `agentfox admin db upgrade`'}[/]"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -294,8 +296,16 @@ def db_current() -> None:
 
 
 @agents_app.command("list")
-def agents_list(as_json: bool = typer.Option(False, "--json")) -> None:
+def agents_list(
+    as_json: bool = typer.Option(False, "--json"),
+    stopped: bool = typer.Option(
+        False, "--stopped", help="Only agents that are quarantined or killed, and why."
+    ),
+) -> None:
     """List every agent, registered or shadow."""
+    if stopped:
+        agents_controls()
+        return
     from sqlalchemy import select
 
     from ..models import Agent
@@ -762,7 +772,7 @@ def _unknown_suite(session: Any, suite: str) -> None:
     if known:
         console.print(f"  known suites: {', '.join(known)}")
     else:
-        console.print("  no suites exist yet — `agentfox seed` creates one to try.")
+        console.print("  no suites exist yet — `agentfox admin seed` creates one to try.")
 
 
 @eval_app.command("suites")
@@ -783,7 +793,7 @@ def eval_suites() -> None:
             for suite in session.scalars(select(EvalSuite).order_by(EvalSuite.key))
         ]
     if not rows:
-        console.print("[dim]no evaluation suites — `agentfox seed` creates one to try.[/]")
+        console.print("[dim]no evaluation suites — `agentfox admin seed` creates one to try.[/]")
         return
     table = Table(box=None, pad_edge=False)
     for column in ("suite", "name", "cases"):
@@ -835,7 +845,7 @@ def _print_eval_summary(suite: str, summary: dict[str, Any], run_id: str | None 
     # Without this the run → baseline → gate workflow has a hole in the middle:
     # `eval baseline` takes a run id that nothing in the CLI ever printed.
     if run_id:
-        console.print(f"  [dim]run {run_id} · `agentfox eval baseline {run_id}` to pin it[/]")
+        console.print(f"  [dim]run {run_id} · `agentfox test baseline {run_id}` to pin it[/]")
     table = Table(box=None, pad_edge=False)
     for column in ("scorer", "mean", "min", "max", "pass rate"):
         table.add_column(
@@ -901,7 +911,7 @@ def eval_gate(
             console.print(
                 "  [yellow]nothing to fail against[/] — no baseline and no --min-pass-rate, "
                 "so this run could not have failed.\n"
-                f"  [dim]arm it: `agentfox eval baseline {run_id}`, or pass "
+                f"  [dim]arm it: `agentfox test baseline {run_id}`, or pass "
                 "--min-pass-rate.[/]"
             )
         return
@@ -936,7 +946,7 @@ def eval_drift(agent: str, scorer: str = "groundedness") -> None:
     with _session() as session:
         report = compute_drift(session, agent, scorer)
     if report is None:
-        console.print("[yellow]insufficient online samples[/] — run `agentfox eval online` first")
+        console.print("[yellow]insufficient online samples[/] — run `agentfox test online` first")
         return
     data = report.to_json()
     console.print(
@@ -1374,7 +1384,7 @@ def compliance_review_packet(
         f"{len(rows)} mapping(s), {len(drafts)} awaiting review.",
         "",
         "For each row: does this control, as implemented, support the clause claimed? Approve with",
-        "`agentfox compliance review <control> --framework "
+        "`agentfox report signoff <control> --framework "
         f'{framework} --reviewer "<your name>"`, optionally `--reference` for a single clause.',
         "",
     ]
@@ -2161,7 +2171,7 @@ def hooks_install(
     if not client_daemon_running():
         console.print(
             "\n  [yellow]The daemon is not running[/] — every call will report "
-            "unchecked until `agentfox hooks daemon` is up."
+            "unchecked until `agentfox admin hooks daemon` is up."
         )
     # Declare the harness's own tools first. Without them every call trips
     # `tool.not_declared` and the agent reads "the registry has never seen
@@ -2263,7 +2273,7 @@ def hooks_status() -> None:
     console.print(f"  socket    [dim]{path}[/]")
     console.print(f"  daemon    {'[green]listening[/]' if up else '[red]not running[/]'}")
     if not up:
-        console.print("            [dim]start it with `agentfox hooks daemon`[/]")
+        console.print("            [dim]start it with `agentfox admin hooks daemon`[/]")
 
     console.print(f"\n  verified harness events: {len(capability.CAPABILITY)}")
     if not capability.CAPABILITY:
@@ -2416,7 +2426,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
         _emit(rows, True)
         return
     if not rows:
-        console.print("[yellow]no tools declared[/] — `agentfox tools declare <key> --impact ...`")
+        console.print("[yellow]no tools declared[/] — `agentfox declare tool <key> --impact ...`")
         return
     table = Table(box=None, padding=(0, 2))
     table.add_column("tool")
@@ -2592,9 +2602,9 @@ def proposals_list(
         console.print(
             "[dim]no proposals match that filter[/]"
             if filtered
-            else "[dim]no proposals — `agentfox proposals from-traffic` files grants and tool "
-            "declarations from the calls your agents have made; `agentfox proposals "
-            "from-labels` files rule cut-offs from false positives you have labelled.[/]"
+            else "[dim]no proposals — `agentfox policy proposals from-traffic` files grants and "
+            "tool declarations from the calls your agents have made; `agentfox policy "
+            "proposals from-labels` files rule cut-offs from false positives you have labelled.[/]"
         )
         return
     table = Table(box=None, pad_edge=False)
@@ -2800,11 +2810,19 @@ def proposals_from_traffic(
         console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
     if body["filed"] or body["refreshed"]:
         console.print(
-            "\n  [dim]Next: `agentfox proposals show <id>`, then `agentfox proposals approve "
-            "<id> --actor you@example.com --note why` and `agentfox proposals apply <id> "
+            "\n  [dim]Next: `agentfox policy proposals show <id>`, then `agentfox policy proposals approve "
+            "<id> --actor you@example.com --note why` and `agentfox policy proposals apply <id> "
             "--actor you@example.com`. Tool declarations are org-wide loosenings and need "
             "two different approvers.[/]"
         )
+
+
+# The visible tree (Start · See · Watch · Contain · Prove · Operate) is a layer over
+# everything registered above: new names for the same callbacks, old names hidden but
+# still working. Keep this the last registration in the module.
+from .layout import apply_layout  # noqa: E402
+
+apply_layout(app)
 
 
 def main() -> None:  # pragma: no cover - console entry point
