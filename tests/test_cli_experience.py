@@ -429,7 +429,9 @@ def test_check_does_not_cut_a_finding_mid_word(tmp_path):
         json.dumps({"mcpServers": {"agentfox": {"command": "agentfox", "args": ["mcp"]}}})
     )
     output = flat(runner.invoke(app, ["check", str(tmp_path), "--no-submit"]).output)
-    assert "rug pull" in output
+    assert "change after you review them" in output
+    # And the internal code the row used to end with is gone from what a user reads.
+    assert "I-2" not in output
 
 
 def test_check_still_promises_exactly_what_it_did_before(tmp_path):
