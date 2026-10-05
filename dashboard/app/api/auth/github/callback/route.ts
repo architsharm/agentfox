@@ -17,7 +17,7 @@ import { SESSION_COOKIE } from "@/lib/api";
 export const dynamic = "force-dynamic";
 
 const STATE_COOKIE = "gh_oauth_state";
-const API_BASE = process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const API_BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
 
 function fail(origin: string, message: string) {
   const url = new URL("/login", origin);
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const serviceSecret = process.env.NOMETRIA_SERVICE_AUTH_SECRET;
+  const serviceSecret = process.env.AGENTFOX_SERVICE_AUTH_SECRET || process.env.NOMETRIA_SERVICE_AUTH_SECRET;
   if (!clientId || !clientSecret || !serviceSecret) {
     return fail(origin, "GitHub sign-in is not fully configured on this deployment");
   }

@@ -316,7 +316,14 @@ def default_agent_slug() -> str:
     than a required argument — the developer can rename the agent in the registry
     later, and until then their traffic is at least attributed to *something*.
     """
-    for var in ("NOMETRIA_AGENT", "OTEL_SERVICE_NAME", "SERVICE_NAME", "APP_NAME", "K_SERVICE"):
+    for var in (
+        "AGENTFOX_AGENT",
+        "NOMETRIA_AGENT",
+        "OTEL_SERVICE_NAME",
+        "SERVICE_NAME",
+        "APP_NAME",
+        "K_SERVICE",
+    ):
         value = os.environ.get(var)
         if value:
             return value

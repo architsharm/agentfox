@@ -56,7 +56,8 @@ Stdlib only. Run from inside the extracted package:
     python3 verify_chain.py
 
 Re-derives every entry digest and the chain linkage from audit_entries.json and
-checks the signed checkpoints if a key is supplied via NOMETRIA_AUDIT_KEY.
+checks the signed checkpoints if a key is supplied via AGENTFOX_AUDIT_KEY
+(NOMETRIA_AUDIT_KEY is still read, for packages verified with the old name).
 Exit code 0 = intact, 1 = tampered.
 """
 import hashlib, hmac, json, os, sys
@@ -99,7 +100,21 @@ def main():
             breaks.append((seq, "prev_mismatch", "broken linkage - insertion or reordering"))
         prev = row["digest"]
 
-    key = os.environ.get("NOMETRIA_AUDIT_KEY")
+    # AGENTFOX_ first, the pre-rename NOMETRIA_ name second; and the operator's own
+    # signing-key variable as a last resort, since that is the one already set.
+    key = next(
+        (
+            os.environ[name]
+            for name in (
+                "AGENTFOX_AUDIT_KEY",
+                "NOMETRIA_AUDIT_KEY",
+                "AGENTFOX_AUDIT_SIGNING_KEY",
+                "NOMETRIA_AUDIT_SIGNING_KEY",
+            )
+            if os.environ.get(name)
+        ),
+        None,
+    )
     if key:
         by_seq = {r["seq"]: r for r in entries}
         for cp in checkpoints:
@@ -111,7 +126,7 @@ def main():
                     (cp["seq"], "checkpoint_digest", "history rewritten under a checkpoint")
                 )
     else:
-        print("note: NOMETRIA_AUDIT_KEY not set - checkpoint signatures not verified")
+        print("note: AGENTFOX_AUDIT_KEY not set - checkpoint signatures not verified")
 
     print("entries checked: %d (seq %d..%d)"
           % (len(entries), entries[0]["seq"], entries[-1]["seq"]))
@@ -533,9 +548,9 @@ Do not take our word for the chain. Run, from this directory:
     python3 verify_chain.py
 
 It uses only the Python standard library and re-derives every digest from the
-exported rows. To verify the signed checkpoints as well, set NOMETRIA_AUDIT_KEY
-to the checkpoint signing key (held by the operator, outside the application
-database) before running it.
+exported rows. To verify the signed checkpoints as well, set AGENTFOX_AUDIT_KEY
+(or the older NOMETRIA_AUDIT_KEY) to the checkpoint signing key -- held by the
+operator, outside the application database -- before running it.
 
 Our verification result: chain {status}
   entries checked : {verification.entries_checked}

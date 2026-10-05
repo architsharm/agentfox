@@ -398,9 +398,9 @@ export function Empty({ children }: { children: React.ReactNode }) {
  * process's environment rather than whatever was set when the bundle was built.
  */
 function isSelfHosted(): boolean {
-  const flag = process.env.NOMETRIA_SELF_HOSTED;
+  const flag = process.env.AGENTFOX_SELF_HOSTED || process.env.NOMETRIA_SELF_HOSTED;
   if (flag !== undefined && flag !== "") return /^(1|true|yes)$/i.test(flag);
-  const url = process.env.NOMETRIA_API_URL;
+  const url = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL;
   if (!url) return true; // no URL configured at all means the built-in localhost default
   return /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(url);
 }

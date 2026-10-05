@@ -18,7 +18,7 @@
 const FALLBACK_SITE_URL = "https://useagentfox.com";
 
 /** No trailing slash, so `new URL(path, SITE_URL)` and template literals agree. */
-export const SITE_URL = (process.env.NOMETRIA_SITE_URL || FALLBACK_SITE_URL).replace(/\/+$/, "");
+export const SITE_URL = (process.env.AGENTFOX_SITE_URL || process.env.NOMETRIA_SITE_URL || FALLBACK_SITE_URL).replace(/\/+$/, "");
 
 export const SITE_NAME = "AgentFox";
 

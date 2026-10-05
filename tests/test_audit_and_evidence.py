@@ -290,3 +290,40 @@ def test_evidence_scope_is_honoured(seeded, enforcer):
     with zipfile.ZipFile(package.path) as zf:
         agents = json.loads(zf.read("agents.json"))
     assert {a["slug"] for a in agents} == {"support-triage"}
+
+
+@pytest.mark.parametrize(
+    "variable",
+    ["AGENTFOX_AUDIT_KEY", "NOMETRIA_AUDIT_KEY", "AGENTFOX_AUDIT_SIGNING_KEY"],
+)
+def test_shipped_verifier_reads_the_key_under_either_prefix(seeded, tmp_path, variable):
+    """AGENTFOX_ is the name; NOMETRIA_ keeps working for anyone who wrote it down."""
+    import os
+
+    for i in range(3):
+        chain.append(seeded, "test.event", subject_id=f"s{i}", payload={"i": i})
+    chain.checkpoint_now(seeded)
+    package = evidence.build(seeded, agents=["*"])
+    extract = tmp_path / "pkg"
+    with zipfile.ZipFile(package.path) as zf:
+        zf.extractall(extract)
+
+    base = {
+        k: v for k, v in os.environ.items() if not k.endswith(("_AUDIT_KEY", "_AUDIT_SIGNING_KEY"))
+    }
+
+    def run(key: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, "verify_chain.py"],
+            cwd=extract,
+            capture_output=True,
+            text=True,
+            env={**base, variable: key},
+        )
+
+    good = run("test-key")  # conftest's signing key
+    assert good.returncode == 0, good.stdout + good.stderr
+    assert "not set" not in good.stdout
+    bad = run("wrong-key")
+    assert bad.returncode == 1
+    assert "checkpoint_signature" in bad.stdout
