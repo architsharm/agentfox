@@ -2004,11 +2004,27 @@ def hooks_install(
             continue
         hooks.extend(entries)
         added.append(event)
+    # Before the early return, so re-running install on an existing hook also
+    # repairs a pack binding an older version left wildcarded.
+    _enable_coding_pack(agent)
     if not added:
         console.print("\n  [dim]already installed.[/]")
         return
     settings.write_text(_json.dumps(existing, indent=2) + "\n")
     console.print(f"\n  [green]written[/] {settings} [dim]({', '.join(added)})[/]")
+
+
+def _enable_coding_pack(agent: str) -> None:
+    """A hooked agent is a coding agent: bind the pack tuned for one, to it alone."""
+    from ..policy.coding import enable_for_agent
+
+    with _session() as session:
+        covered = enable_for_agent(session, agent)
+    if covered:
+        console.print(
+            f"  [green]coding-agent[/] pack applies to {', '.join(covered)} "
+            "[dim](it ships in observe; `agentfox policy enforce coding-agent` to block)[/]"
+        )
 
 
 def _hook_events(harness: str) -> list[str]:

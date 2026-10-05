@@ -177,10 +177,14 @@ against a live session, `UserPromptSubmit` was read in the shipped bundle, and a
 checked has no row at all.
 
 A hook runs in a process the harness creates and destroys per call, so it talks to a warm daemon over
-a private Unix socket: 3.9s cold, about 6ms warm. Turn on the pack built for this job:
+a private Unix socket: 3.9s cold, about 6ms warm. `hooks install --write` also binds the pack built
+for this job, `coding-agent`, to the agent it just installed and to no other — so a support bot in the
+same deployment is never told it is in "a coding session". `agentfox init` does the same for any agent
+already named in `.claude/settings.json`, and skips the pack when there is none. It ships in observe;
+promote it when its decisions look right:
 
 ```bash
-agentfox policy observe coding-agent
+agentfox policy enforce coding-agent
 ```
 
 [`harness/`](harness/) additionally packages the product as Claude Code skills, slash commands,

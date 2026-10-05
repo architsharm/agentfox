@@ -137,7 +137,8 @@ def init(
 
     Creates the database, applies migrations, loads the control catalog and the
     shipped policy packs, each in the mode it declares (baseline and
-    eu-ai-act-high-risk observe; tool-containment enforces), and writes a
+    eu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for
+    agents this repo's coding-harness hooks govern), and writes a
     agentfox.toml carrying the real runtime defaults so they are visible rather than
     implicit. NOMETRIA_* environment variables override that file.
     """
@@ -145,6 +146,7 @@ def init(
     from ..config import get_settings
     from ..db import init_db, session_scope
     from ..policy import load_available, save_policy
+    from ..policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
 
     settings = get_settings()
     console.print("[bold]Setting up AgentFox[/]")
@@ -166,7 +168,11 @@ def init(
             # that keeps policy in `.agentfox/policies/` expects `init` to
             # install it, and a pack the loader can see but `init` ignores is
             # a policy that silently does nothing.
-            documents = load_available()
+            # The coding-agent pack only for agents a coding harness runs: see
+            # policy/coding.py for why a wildcard binding was the wrong default.
+            documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
+            if coding_agents == []:
+                retire_tool_wildcard(session)
             for document in documents:
                 save_policy(session, document, author="init", notes="loaded by agentfox init")
             # Say the truth per pack: a blanket "observe mode" was wrong the moment one
@@ -177,6 +183,13 @@ def init(
                 meaning = _MODE_MEANING.get(document.mode, "")
                 console.print(
                     f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]"
+                )
+            if coding_agents:
+                console.print(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
+            elif coding_agents == []:
+                console.print(
+                    "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
+                    "`agentfox hooks install --agent <slug> --write` turns it on for that agent.[/]"
                 )
             enforcing = [d.key for d in documents if d.mode == "enforce"]
             if enforcing:
