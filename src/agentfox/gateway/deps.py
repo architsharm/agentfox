@@ -7,6 +7,7 @@ log an auditor could alter is not an audit log.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 from typing import Annotated
 
@@ -18,6 +19,8 @@ from ..db import get_session
 from ..models import Agent, User
 from ..tenancy import bind_session
 from .auth import AuthenticationRequired, authenticate, resolve_agent
+
+log = logging.getLogger(__name__)
 
 # Route family -> roles permitted to mutate. Everyone listed in READ_ROLES may read.
 WRITE_ROLES: dict[str, set[str]] = {
@@ -39,6 +42,11 @@ WRITE_ROLES: dict[str, set[str]] = {
     # export, a red-team sweep) — same blast radius as the operation itself,
     # so the same roles that can run evidence/eval in the first place.
     "jobs": {"owner", "admin", "security", "compliance", "auditor", "developer"},
+    # Judgment posture decides whether customer payloads leave the building at all.
+    # A developer may change thresholds and run evaluations; turning on a tier that
+    # sends a support ticket to a third party is not a developer's call to make, for
+    # the same reason silencing a detector is not.
+    "judgment_posture": {"owner", "admin", "security"},
 }
 
 ALL_ROLES = {"owner", "admin", "security", "compliance", "developer", "auditor"}
@@ -75,7 +83,31 @@ def current_user(
         raise HTTPException(status_code=401, detail=exc.detail) from exc
     request.state.user = user
     request.state.org_id = user.org_id
+    activate_posture(session)
     return user
+
+
+def activate_posture(session: Session) -> None:
+    """Bind this tenant's judgment posture for the rest of the request.
+
+    Called from the two dependencies that resolve who the caller is, because that is
+    the moment the tenant is known and before any detector runs. Set without a reset
+    for the same reason :func:`agentfox.tenancy.set_current_org` is: each request runs
+    in its own context, so the binding is discarded with it and cannot leak into the
+    next one.
+
+    A failure here is deliberately swallowed. Posture decides which *optional* tiers
+    are consulted; the deterministic tier is always on and is what the request is
+    actually governed by. Taking an inline completion down because a settings row
+    could not be read would turn a configuration problem into an outage, and the
+    fallback — the deployment's own settings — is the stricter answer anyway.
+    """
+    from ..judgment import posture as _posture
+
+    try:
+        _posture.activate(_posture.load(session))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("judgment posture unreadable, falling back to settings: %s", exc)
 
 
 def require(family: str):
@@ -111,14 +143,20 @@ def agent_credential(
     rather than turned away (P1-6). It simply stays in the default tenant.
     """
     if not (authorization and authorization.lower().startswith("bearer ")):
+        activate_posture(session)
         return None
     token = authorization.split(" ", 1)[1]
     if not token.startswith("nom_agt_"):
+        activate_posture(session)
         return None
     resolved = resolve_agent(session, token)
     if resolved is not None:
         _identity, org_id = resolved
         bind_session(session, org_id)
+    # After the binding, so an unregistered agent gets the default tenant's posture
+    # rather than none at all — shadow traffic is governed, which is the point of
+    # serving it in the first place.
+    activate_posture(session)
     return token
 
 

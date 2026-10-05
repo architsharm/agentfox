@@ -284,10 +284,24 @@ class CapabilityRouter:
 
     @classmethod
     def from_settings(cls, settings: object | None = None) -> CapabilityRouter:
+        """The router in force.
+
+        With no argument this is the *effective* posture: the tenant's stored choice
+        when a request has activated one, the deployment's settings otherwise. Passing
+        an explicit `settings` object bypasses posture entirely, which is what a
+        benchmark or a test asking "what would this configuration do" wants.
+
+        `allow_egress` is read from settings in both cases and never from posture.
+        It is the ceiling, and a ceiling that the thing underneath it can raise is
+        not a ceiling.
+        """
         if settings is None:
+            from . import posture as _posture
+
+            active = _posture.effective()
             from ..config import get_settings
 
-            settings = get_settings()
+            return cls(active.tiers, bool(getattr(get_settings(), "allow_egress", False)))
         names = getattr(settings, "judgment_tiers", None) or []
         tiers = set()
         for n in names:

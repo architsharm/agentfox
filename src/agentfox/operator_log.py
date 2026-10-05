@@ -114,6 +114,13 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "operator.proposal.rolled_back",
         "undoes a change; reverting a tightening loosens a control again",
     ),
+    PrivilegedAction(
+        "agentfox.judgment.posture.save",
+        "operator.judgment_posture.changed",
+        "decides whether customer payloads leave this machine for a third party — "
+        "the one configuration change whose consequence is invisible from the screen "
+        "that makes it",
+    ),
 )
 
 #: Call expressions that count as recording. `record` is the front door; a direct

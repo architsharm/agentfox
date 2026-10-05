@@ -178,9 +178,7 @@ class JudgmentGateway:
         local_answerable: Iterable[str] = (),
     ) -> None:
         self._client = client
-        self._backend = (
-            Backend(backend) if backend else Backend(_setting("judgment_backend", "local"))
-        )
+        self._backend = Backend(backend) if backend else _effective_backend()
         self._redact = redact
         self._fail_closed = fail_closed
         self._local_answerable = set(local_answerable)
@@ -189,12 +187,18 @@ class JudgmentGateway:
         self._detector_tried = detector is not None
 
     def _pii_mode(self) -> PiiEgress:
+        """The PII rule in force: explicit argument, else the effective posture.
+
+        Posture rather than settings directly, so an admin who tightened this tenant
+        to `block` in the dashboard is obeyed by the gate and not only by the page
+        that displays it. Posture can only ever be stricter than the deployment's
+        own value, so reading it here cannot loosen anything.
+        """
         if self._pii_egress is not None:
             return self._pii_egress
-        try:
-            return PiiEgress(_setting("judgment_pii_egress", "redact"))
-        except ValueError:
-            return PiiEgress.REDACT
+        from . import posture as _posture
+
+        return _posture.effective().pii_egress
 
     # -- redaction ---------------------------------------------------------
     def _local_detector(self) -> SpanDetector | None:
@@ -275,3 +279,10 @@ class JudgmentGateway:
 
 def _setting(name: str, default: str) -> str:
     return str(getattr(get_settings(), name, default) or default)
+
+
+def _effective_backend() -> Backend:
+    """The backend the active posture selects, clamped by the deployment's ceiling."""
+    from . import posture as _posture
+
+    return _posture.effective().backend
