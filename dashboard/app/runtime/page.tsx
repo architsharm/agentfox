@@ -63,8 +63,8 @@ export default function Page() {
           ),
         },
         {
-          title: "Nothing blocks until you turn it on",
-          body: <p>Packs ship in observe. They record what they would have done, against real traffic.</p>,
+          title: "Detection blocks nothing until you turn it on",
+          body: <p>Detector packs ship in observe. They record what they would have done, against real traffic. Tool containment is the exception: it enforces from install, because a missing grant is a fact, not a guess.</p>,
         },
         {
           title: "A check that runs out of time says so",

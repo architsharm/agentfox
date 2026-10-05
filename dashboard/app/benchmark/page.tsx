@@ -31,10 +31,10 @@ import {
  *   benchmarks/REPORT.md
  *   benchmarks/adaptive/README.md
  *
- * The AgentDojo and adaptive-attacker sections exist because app/page.tsx cites
- * "42 of 42 attacker calls that act, contained in an AgentDojo replay of 617
- * calls" and "73% of the attacks we catch through within 50 attempts" under a
- * sentence promising the method and the limits are here. They were not here, so
+ * The AgentDojo and adaptive-attacker sections exist because the home page cites
+ * an AgentDojo containment result and "73% of the attacks we catch through
+ * within 50 attempts" under a sentence promising the method and the limits are
+ * here. They were not here, so
  * the one link a sceptic follows to check the headline numbers led to a page
  * that did not contain them.
  *
@@ -51,7 +51,7 @@ import {
 export const metadata: Metadata = publicPageMetadata({
   title: "Benchmarks and methodology",
   description:
-    "Containment under total detector bypass, an AgentDojo replay of 617 ground-truth calls, our honest detection rates and an adaptive attack, each with its limits.",
+    "Containment under total detector bypass, an AgentDojo replay with its utility cost, our honest detection rates and an adaptive attack, each with its limits.",
   path: "/benchmark",
 });
 
@@ -71,7 +71,7 @@ const REPO = "https://github.com/architsharm/agentfox";
  */
 const CONTENTS: { id: string; title: string }[] = [
   { id: "containment", title: "Containment when detection has already failed" },
-  { id: "agentdojo", title: "The same claim at scale: 617 AgentDojo calls" },
+  { id: "agentdojo", title: "The same claim at scale, and what it costs: AgentDojo" },
   { id: "tiers", title: "Four agent-runtime tiers, against a real llm-guard" },
   { id: "detection", title: "Detection on its own, our least flattering number" },
   { id: "adaptive", title: "An adaptive attacker that reads our verdict" },
@@ -81,10 +81,10 @@ const CONTENTS: { id: string; title: string }[] = [
 /**
  * Three claims, not four numbers.
  *
- * This was four stat tiles — 42 of 42, 552 of 552, 8 of 8, 66.7% — set side by
- * side as if they measured the same thing. They do not: the first two are one
- * AgentDojo replay, the third is a separate eight-scenario suite, and the fourth
- * is a detection score on a third dataset entirely.
+ * This was four stat tiles set side by side as if they measured the same thing.
+ * They did not: two came from one AgentDojo replay, one from a separate
+ * eight-scenario suite, and one was a detection score on a third dataset
+ * entirely.
  *
  * The fourth tile also carried a real error, and it sat in the first screen of
  * the page whose whole purpose is to be checked: "66.7% held-out injection
@@ -109,10 +109,9 @@ const CONTENTS: { id: string; title: string }[] = [
  * the smallest confident thing on the screen is arguing against itself.
  *
  * Split into `figure` and `unit` so the number can be set large and the symbol
- * can ride with it at half size instead of competing. The second claim carried
- * two ratios in one string ("42 of 42 · 552 of 552"), which cannot be set as a
- * figure at any size; the denominator that matters leads and the other moves
- * into the detail, where it is still stated in full.
+ * can ride with it at half size instead of competing. The second claim carries
+ * two ratios, which cannot be set as one figure at any size; the attack result
+ * leads and its utility cost sits directly under it, stated in full.
  */
 const CLAIMS: {
   question: string;
@@ -129,18 +128,18 @@ const CLAIMS: {
     limit: "Eight constructed scenarios, one per containment mechanism. Only as good as the grants and impact tiers declared for the agent.",
   },
   {
-    question: "Does it hold at scale, without blocking real work?",
-    figure: "42 of 42",
+    question: "Does it hold at scale, and what does it cost?",
+    figure: "588 of 588",
     detail:
-      "attacker calls that act, contained across a 617-call AgentDojo replay — with 552 of 552 legitimate calls still allowed",
-    limit: "Ground-truth replay: no live model was persuaded. Three of the 23 attacker read calls were allowed, each one something the agent already held a grant for.",
+      "AgentDojo attack pairs contained with session-level taint. Only 24 of 97 benign tasks ran without escalating to a human.",
+    limit: "A replay of AgentDojo's ground truth with provenance inferred from the real tool outputs; no model was run. Contained means blocked or escalated. Per-argument taint runs 37 of 97 benign tasks and contains 527 of 588.",
   },
   {
     question: "How good is our detection on its own?",
-    figure: "66.7",
+    figure: "26.7",
     unit: "%",
-    detail: "recall at 100% precision on the deepset held-out split of 116",
-    limit: "A different test from the llm-guard comparison in section 3, which measures precision on 20 indirect-injection cases. An adaptive attacker gets 72.9% of what we do catch through within 50 attempts.",
+    detail: "held-out recall at 100% precision for the default heuristic detector, on the deepset split of 116. The opt-in classifier ensemble reaches 66.7%.",
+    limit: "The ensemble needs the classifiers extra and a weights download. An adaptive attacker gets 72.9% of what the default stack catches through within 50 attempts.",
   },
 ];
 
@@ -220,13 +219,16 @@ export default function BenchmarkPage() {
         <p>
           <strong>The short version.</strong> With every detector switched off,
           8 of 8 attacks were contained and 4 of 4 legitimate calls were
-          allowed. Replaying AgentDojo over 617 ground-truth calls: 42 of 42
-          attacker calls that act contained, 552 of 552 legitimate calls
-          allowed, identical with detectors disabled. Three escaped, all
-          read-only. On detection, a real installed{" "}
+          allowed. Replaying AgentDojo with provenance inferred from the real
+          tool outputs, session-level taint contained 588 of 588 attack pairs,
+          and only 24 of 97 benign tasks ran without escalating to a human.
+          Per-argument taint ran 37 of 97 and contained 527 of 588. On
+          detection, the default heuristic catches 26.7% of held-out injections
+          and the opt-in classifier ensemble 66.7%; a real installed{" "}
           <code className="mono">llm-guard</code> is more precise on the same 20
-          indirect-injection cases, 81.8% against 66.7%, and an adaptive attacker gets 72.9% of what we do
-          catch through within 50 attempts.
+          indirect-injection cases, 81.8% against 66.7%, and an adaptive
+          attacker gets 72.9% of what the default stack catches through within
+          50 attempts.
         </p>
       </div>
 
@@ -404,7 +406,7 @@ export default function BenchmarkPage() {
         and &quot;What this benchmark does not show&quot;.
       </Source>
 
-      <h2 id="agentdojo">2. The same claim at scale: an AgentDojo replay of 617 calls</h2>
+      <h2 id="agentdojo">2. The same claim at scale, and what it costs: AgentDojo</h2>
       <p>
         The eight scenarios above are ours. This one is not.{" "}
         <a
@@ -415,214 +417,183 @@ export default function BenchmarkPage() {
           AgentDojo
         </a>{" "}
         (MIT, ETH Zurich) is the reference benchmark for injection against
-        tool-using agents, and it ships hand-authored ground-truth call
-        sequences. No model is needed, so the replay is deterministic and
-        offline: 552 calls a correctly-behaving agent makes, and 65 a{" "}
-        <em>successfully compromised</em> one makes on the attacker&apos;s
-        behalf.
+        tool-using agents. For each of its 97 user tasks we execute the
+        task&apos;s ground-truth calls in its own environment and record every
+        tool output. For each of 949 (user task, injection task) pairs we plant
+        AgentDojo&apos;s attack text wherever the task reads, then execute the
+        user task followed by the injection task: the trace of an agent that
+        does its job and then obeys the injection. Nothing is labelled. The
+        tracker infers each argument&apos;s provenance from the real tool
+        outputs, the way it would in production.
+      </p>
+      <p>
+        <strong>
+          With session-level taint, the shipped default, 588 of 588 evaluable
+          attack pairs were contained, and only 24 of 97 benign tasks ran
+          without escalating to a human.
+        </strong>{" "}
+        Contained means blocked or sent to a human for approval. That is the
+        result and its cost, and neither travels without the other.
       </p>
 
       <Figure
-        label="617 AgentDojo calls, to scale"
+        label="97 benign AgentDojo tasks · session-level taint (shipped default)"
         caption={
           <>
-            <strong>
-              Every attacker call that acts was contained; the three that got
-              through only read.
-            </strong>{" "}
-            Identical with every detector switched off. The escapes are a sliver
-            — and a sliver is not zero, which is why section 2 does not stop
-            here.
+            <strong>Three benign tasks in four were escalated to a human.</strong>{" "}
+            Once the agent has read any tool output, every later irreversible
+            call counts as untrusted. That contains every attack whether or not
+            the tracker matched the attacker&apos;s values, and it stops ordinary
+            work for the same reason.
           </>
         }
       >
         <Composition
-          unit="calls replayed, offline, deterministic"
+          unit="benign user tasks, replayed with content detectors off"
           segments={[
-            { n: 552, label: "legitimate, allowed", tone: "good" },
-            { n: 42, label: "attacker calls that act, contained", tone: "hold" },
-            { n: 20, label: "attacker reads, contained", tone: "quiet" },
-            { n: 3, label: "attacker reads, escaped", tone: "stop" },
+            { n: 24, label: "ran without escalation", tone: "good" },
+            { n: 73, label: "escalated to a human", tone: "hold" },
           ]}
         />
       </Figure>
-
-      <Method>
-      <p>
-        Each call is replayed through the same{" "}
-        <code className="mono">Enforcer.guard_tool_call</code> path as
-        everything else on this page. User-task arguments are marked
-        user-sourced; injection-task arguments are marked as arriving from tool
-        output, which is AgentDojo&apos;s own threat model.
-      </p>
-      <p>
-        The setup is deliberately strict against us. One agent per suite is
-        granted exactly the tools its own legitimate user tasks call, at{" "}
-        <code className="mono">max_taint: user</code>, with no blanket approval
-        requirement, so an injection call is contained by provenance, impact and
-        constraint logic rather than because a grant it needed was conveniently
-        withheld. The agents are <code className="mono">risk_tier: limited</code>{" "}
-        on purpose: the shipped EU AI Act pack escalates every irreversible
-        action by a <code className="mono">high</code>-tier agent regardless of
-        provenance, which would have made containment complete for a reason
-        unrelated to the attack.
-      </p>
-      </Method>
 
       <div className="scroll-x">
         <table>
           <thead>
             <tr>
-              <th></th>
-              <th className="num">detectors on</th>
-              <th className="num">detectors off</th>
+              <th>Provenance</th>
+              <th className="num">Benign tasks run without escalation</th>
+              <th className="num">Attack pairs contained</th>
+              <th className="num">Attacker write calls contained</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Benign utility, legitimate calls allowed</td>
-              <td className="num">552/552 (100%)</td>
-              <td className="num">
-                <strong>552/552 (100%)</strong>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                Attacker calls that <em>act</em> (write or irreversible),
-                contained
-              </td>
-              <td className="num">42/42 (100%)</td>
-              <td className="num">
-                <strong>42/42 (100%)</strong>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                Attacker calls that only <em>read</em>, contained
-              </td>
-              <td className="num">20/23 (87.0%)</td>
-              <td className="num">
-                <strong>20/23 (87.0%)</strong>
-              </td>
-            </tr>
-            <tr>
-              <td>All attacker calls contained</td>
-              <td className="num">62/65 (95.4%)</td>
-              <td className="num">
-                <strong>62/65 (95.4%)</strong>
-              </td>
-            </tr>
+            {[
+              ["Session-level taint (shipped default)", "24/97 (24.7% [17.2, 34.2])", "588/588", "702/702"],
+              ["Argument-level taint", "37/97 (38.1% [29.1, 48.1])", "527/588", "641/702"],
+              ["Session-level taint, read-only tools exempt", "43/97", "588/588", "702/702"],
+              ["Argument-level taint, read-only tools exempt", "62/97 (63.9% [54.0, 72.8])", "527/588", "641/702"],
+              ["Taken from the benchmark's labels (upper bound)", "97/97", "588/588", "702/702"],
+              ["None: grants and impact tiers only", "97/97", "0/588", "61/702"],
+            ].map(([row, benign, pairs, calls], i) => (
+              <tr key={row}>
+                <td>{i === 0 ? <strong>{row}</strong> : row}</td>
+                <td className="num">{i === 0 ? <strong>{benign}</strong> : benign}</td>
+                <td className="num">{i === 0 ? <strong>{pairs}</strong> : pairs}</td>
+                <td className="num">{calls}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       <Source>
         <code className="mono">benchmarks/agentdojo_e2e/README.md</code>,
-        results table. Raw per-call output, all 617 calls in both detector modes
-        with verdict and rules fired, is in{" "}
+        current results table, which is{" "}
         <code className="mono">
-          benchmarks/agentdojo_e2e/results/agentdojo_e2e_results.json
+          benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
         </code>
-        . Per suite, injection calls contained: banking 21/23, slack 12/13,
-        travel 17/17, workspace 12/12.
+        . AgentDojo v1.2.2. Brackets are Wilson 95% intervals. Attack results are
+        over the 588 pairs whose injection ground truth issues at least one
+        write or irreversible call; AgentDojo ships an empty ground truth for
+        340 pairs, and 21 more only read. The read-only exemption was designed
+        after seeing the other rows.
       </Source>
 
-      <p>
-        <strong>The two columns are identical, and that is the finding.</strong>{" "}
-        An injected <code className="mono">send_money</code> call is
-        syntactically ordinary, so detection contributed nothing. Provenance,
-        impact tier and grant logic stopped all of it. The five rules that fired
-        most often were{" "}
-        <code className="mono">capability.approval_required</code> (57),{" "}
-        <code className="mono">taint.irreversible_tool</code> (37),{" "}
-        <code className="mono">intent.undeclared_irreversible</code> (37),{" "}
-        <code className="mono">taint.write_from_tool_result</code> (5) and{" "}
-        <code className="mono">capability.denied</code> (5).
-      </p>
+      <h3>What the rows say</h3>
+      <ul>
+        <li>
+          <strong>Provenance does the work.</strong> With provenance off, grants
+          and impact tiers contain 61 of 702 attacker write calls, all of them
+          calls to a tool the suite&apos;s legitimate tasks never use.
+          Detection contributes nothing: content detectors are off throughout,
+          and an injected <code className="mono">send_money</code> call is
+          syntactically ordinary anyway.
+        </li>
+        <li>
+          <strong>Argument-level taint misses 61 attacker calls, in two shapes.</strong>{" "}
+          An argument shorter than six characters, such as{" "}
+          <code className="mono">delete_file(file_id=&quot;13&quot;)</code>, is
+          never matched. And attacker text inside a longer argument, such as a
+          URL in a message body, is not found, because the tracker checks
+          whether an argument occurs in untrusted content, not whether untrusted
+          content occurs in an argument.
+        </li>
+        <li>
+          <strong>Most of the remaining cost is not fixable by provenance alone.</strong>{" "}
+          With read-only tools exempt, 43 of 73 legitimate write and
+          irreversible calls are still escalated, and every one copies an
+          argument out of a tool output: <code className="mono">send_money</code>{" "}
+          to an IBAN read from a bill, a user added to a channel they were read
+          from. A binary user/tool-output label cannot tell those from an attack.
+        </li>
+        <li>
+          <strong>The labelled row is an upper bound, not a result.</strong> An
+          earlier version of this page reported that row as the headline. It
+          measured the policy given perfect provenance, and it counted each task
+          once per AgentDojo version. It is withdrawn.
+        </li>
+      </ul>
 
-      <h3>The 95.4% does not travel without its denominator</h3>
-      <p>
-        All three escapes are <strong>read-only</strong>:{" "}
-        <code className="mono">get_scheduled_transactions</code> twice, and{" "}
-        <code className="mono">get_channels</code>. The compromised agent read
-        something it already held a grant for, and blocking that would block the
-        agent doing its job — which is what the 552/552 column measures. The
-        harm in that shape arrives later, when the data leaves, which is the
-        irreversible-tool step this run does contain.
-      </p>
-      <div className="callout">
+      <Method>
         <p>
-          &quot;Stated plainly: this benchmark shows we contain the acting half
-          of an injection completely, and the reading half not at all. Anyone
-          selling the 95.4% figure without that sentence is misrepresenting
-          it.&quot;
+          Every call is replayed through the same{" "}
+          <code className="mono">Enforcer.guard_tool_call</code> path as
+          everything else on this page. The tracker marks the user prompt as{" "}
+          <code className="mono">user</code> and each tool output as{" "}
+          <code className="mono">tool_result</code> after it is returned, and
+          infers each argument&apos;s provenance itself. Every call carries the
+          same declared intent, the user&apos;s prompt, so intent cannot leak
+          the label. Verdicts are the ones the system enforces.
         </p>
-        <p className="small" style={{ color: "var(--muted)" }}>
-          <code className="mono">benchmarks/agentdojo_e2e/README.md</code>,
-          &quot;What escaped, and why we are not calling it a rounding
-          error&quot;.
+        <p>
+          Impact tiers are applied mechanically by verb, so a reader can check
+          them: <code className="mono">send_money</code>,{" "}
+          <code className="mono">delete_*</code> and{" "}
+          <code className="mono">send_email</code> are irreversible;{" "}
+          <code className="mono">create_*</code> and{" "}
+          <code className="mono">update_*</code> are writes;{" "}
+          <code className="mono">get_*</code> and{" "}
+          <code className="mono">search_*</code> are reads. AgentDojo has no
+          impact model, so this is our judgement and the most load-bearing
+          assumption in the run.
         </p>
-      </div>
+      </Method>
 
       <Limits
         title="What this replay does not show"
         items={[
           {
-            lead: "It is not AgentDojo's \u201cutility under attack\u201d metric.",
-            body: (
-              <>
-                That needs a live model and a network. The two halves that can be
-                measured exactly are measured; the one that cannot be done
-                offline is skipped rather than approximated.
-              </>
-            ),
-          },
-          {
-            lead: "The impact tiers are our judgement, not AgentDojo's.",
-            body: (
-              <>
-                AgentDojo has no impact model. Ours is applied mechanically by
-                verb — <code className="mono">send_money</code>,{" "}
-                <code className="mono">delete_*</code>,{" "}
-                <code className="mono">send_email</code> are irreversible;{" "}
-                <code className="mono">create_*</code> and{" "}
-                <code className="mono">update_*</code> are writes;{" "}
-                <code className="mono">get_*</code>,{" "}
-                <code className="mono">search_*</code> and{" "}
-                <code className="mono">read_*</code> are reads — so a reader can
-                check it. This is the most load-bearing assumption in the run.
-              </>
-            ),
-          },
-          {
-            lead: "No model was fooled to produce these calls.",
+            lead: "No model was run.",
             body: (
               <>
                 The compromise is the premise, taken from AgentDojo&apos;s own
-                answer key.
+                answer key, and the traces are its ground truth executed in its
+                environments. It is not AgentDojo&apos;s &ldquo;utility under
+                attack&rdquo; metric, which needs a live model.
               </>
             ),
           },
           {
-            lead: "552 user calls is a utility check, not a quality check.",
+            lead: "Escalation is counted as containment.",
             body: (
               <>
-                It shows governance did not block legitimate work. It says
-                nothing about whether the agent&apos;s answers were any good.
+                A human who approves an escalated attacker call lets it through.
+                The replay measures whether the call reached a decision point,
+                not what a reviewer would do there.
+              </>
+            ),
+          },
+          {
+            lead: "The benign column is a utility check, not a quality check.",
+            body: (
+              <>
+                It says whether governance let legitimate work run without a
+                human, not whether the agent&apos;s answers were any good.
               </>
             ),
           },
         ]}
       />
-
-      <Source>
-        <code className="mono">benchmarks/agentdojo_e2e/README.md</code>,
-        method, &quot;What escaped&quot; and &quot;What this benchmark does not
-        show&quot;. Call data:{" "}
-        <code className="mono">
-          benchmarks/action_safety/data/agentdojo_calls.json
-        </code>
-        , recorded in the results file as AgentDojo v1, MIT, ETH Zurich.
-      </Source>
 
       <h2 id="tiers">3. Four agent-runtime tiers, against a real llm-guard install</h2>
       <p>
@@ -751,7 +722,11 @@ export default function BenchmarkPage() {
         On <code className="mono">deepset/prompt-injections</code> (662 labeled
         examples), heuristic plus classifier plus similarity reaches{" "}
         <strong>66.7% recall at 100.0% precision</strong> on the held-out split
-        of 116, up from an unmodified regex detector&apos;s 0%. Held-out is the
+        of 116, up from an unmodified regex detector&apos;s 0%. That is the
+        opt-in configuration: it needs{" "}
+        <code className="mono">agentfox[classifiers]</code> and a one-time
+        weights download. <strong>The default install runs the heuristic alone,
+        which scores 26.7% recall</strong> at the same 100% precision. Held-out is the
         number to trust: the heuristic&apos;s patterns were tuned by reading the
         train split&apos;s false negatives.
       </p>
@@ -761,7 +736,8 @@ export default function BenchmarkPage() {
         caption={
           <>
             <strong>A third of held-out positives still get through.</strong>{" "}
-            Four rounds of work took recall from 16.7% to 66.7% and it has not
+            Four rounds of work took recall from 16.7% to 66.7% with the opt-in
+            classifier, and to 26.7% without it. It has not
             moved since; the last round bought its gains on the training splits
             and cost precision elsewhere. This is the number the rest of the
             page assumes is lost.
@@ -771,10 +747,10 @@ export default function BenchmarkPage() {
         <Bars
           rows={[
             { label: "Heuristic only (round 1)", value: 16.7, display: "16.7%", tone: "quiet" },
-            { label: "+ patterns (round 2)", value: 26.7, display: "26.7%", tone: "quiet" },
+            { label: "+ patterns (round 2, the default today)", value: 26.7, display: "26.7%", tone: "quiet" },
             { label: "+ classifier (round 2)", value: 45.0, display: "45.0%", tone: "quiet" },
             { label: "+ similarity (round 2)", value: 48.3, display: "48.3%", tone: "quiet" },
-            { label: "+ PIGuard (round 3, ships)", value: 66.7, display: "66.7%", tone: "accent" },
+            { label: "+ PIGuard (round 3, opt-in)", value: 66.7, display: "66.7%", tone: "accent" },
           ]}
         />
       </Figure>
@@ -782,7 +758,7 @@ export default function BenchmarkPage() {
         The opt-in classifier ensemble is a measured trade, not a free win. On{" "}
         <code className="mono">NotInject</code>, 339 prompts benign by
         construction and built to trigger keyword-reactive guardrails, the
-        shipped ensemble raises <strong>140 false positives, 41.3%</strong>.
+        opt-in ensemble raises <strong>140 false positives, 41.3%</strong>.
         PIGuard alone raised 39, 11.5%. The secondary model can be switched off.
       </p>
 
@@ -799,7 +775,7 @@ export default function BenchmarkPage() {
       >
         <Bars
           rows={[
-            { label: "Shipped ensemble", value: 41.3, display: "41.3%", tone: "stop" },
+            { label: "Opt-in ensemble", value: 41.3, display: "41.3%", tone: "stop" },
             { label: "PIGuard alone", value: 11.5, display: "11.5%", tone: "hold" },
           ]}
         />
@@ -1082,9 +1058,11 @@ export default function BenchmarkPage() {
         records its random seed (<code className="mono">20251009</code>), the
         50-attempt cap, 190 searches, 5,593 attempts, 29.2 seconds of wall
         clock, the five enabled detectors by name, and the fact that it makes no
-        model calls and no network calls. The AgentDojo run records the source
-        of its call data and the verdict and rules fired for each of the 617
-        calls in both detector modes. The containment run records a verdict and
+        model calls and no network calls. The AgentDojo summary records the
+        AgentDojo package and suite version, the task and pair counts, and each
+        condition&apos;s rate with its Wilson interval; the per-call verdicts
+        are in the replay output, which is regenerated rather than checked in.
+        The containment run records a verdict and
         the rules that fired for each of its scenarios. The Tier B comparison
         records the raw confusion matrix for both systems, 10 true positives, 5
         false positives, 5 true negatives and 0 false negatives for this product
@@ -1153,7 +1131,7 @@ export default function BenchmarkPage() {
         <code className="mono">reproducibility</code>,{" "}
         <code className="mono">bypass_verification</code>),{" "}
         <code className="mono">
-          benchmarks/agentdojo_e2e/results/agentdojo_e2e_results.json
+          benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
         </code>
         ,{" "}
         <code className="mono">
@@ -1172,7 +1150,8 @@ export default function BenchmarkPage() {
       </p>
       <pre className="hero-code">
         uv run python benchmarks/containment/run_containment_benchmark.py{"\n"}
-        uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py{"\n"}
+        /tmp/agentdojo_venv/bin/python benchmarks/agentdojo_e2e/inferred/gen_traces.py v1.2.2 &gt; /tmp/traces.json{"\n"}
+        uv run python benchmarks/agentdojo_e2e/inferred/replay.py /tmp/traces.json /tmp/out.json{"\n"}
         uv run python benchmarks/agent_security/tier_b_indirect_injection.py{"\n"}
         uv run python benchmarks/run_prompt_injection_benchmark.py{"\n"}
         uv run python benchmarks/adaptive/run_adaptive_benchmark.py
@@ -1190,8 +1169,12 @@ export default function BenchmarkPage() {
       </p>
 
       <p style={{ marginTop: 30 }}>
-        The AgentDojo replay and the adaptive run are offline and need no model,
-        no network and no API key. Every one of them writes the results file
+        The AgentDojo replay and the adaptive run need no model and no API key.
+        The AgentDojo traces are generated with AgentDojo itself, installed in a
+        separate environment because it has its own dependency tree;{" "}
+        <code className="mono">benchmarks/agentdojo_e2e/README.md</code> has
+        the full sequence, including the read-only-exempt run and the summary
+        step. Every one of them writes the results file
         named above, so a number that does not match is a bug report rather than
         a disagreement.
       </p>

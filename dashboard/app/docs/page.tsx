@@ -53,9 +53,10 @@ agentfox --help`}</code>
       </pre>
       <p>
         This creates a SQLite database in the current directory, loads 43 controls and
-        three policy packs, and writes <code>agentfox.toml</code> if there is not one.
-        It is idempotent. Read the mode column. <code>baseline</code> and{" "}
-        <code>eu-ai-act-high-risk</code> start in observe: they record what they would
+        four policy packs, and writes <code>agentfox.toml</code> if there is not one.
+        It is idempotent. Read the mode column. <code>baseline</code>,{" "}
+        <code>coding-agent</code> and <code>eu-ai-act-high-risk</code> start in
+        observe: they record what they would
         have done and block nothing. <code>tool-containment</code> starts in enforce,
         because it does not guess. It refuses a call with no grant, and a call that
         carries an untrusted argument into an irreversible tool.

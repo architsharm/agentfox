@@ -37,8 +37,8 @@ export default function Page() {
   return (
     <CapabilityPage
       kicker="AI-SPM"
-      title={["Every agent, tool,", "and MCP server"]}
-      lede="Some are in a repository. Some only exist in a session on a laptop. If nobody owns one, it is listed."
+      title={["Agents, tools and", "MCP servers you run"]}
+      lede="In your repositories, your configs, and sessions on this machine. Cloud accounts are not scanned yet. If nobody owns one, it is listed."
       docs="/docs/discovery"
       challenge={
         <p>Most of them were never written down.</p>

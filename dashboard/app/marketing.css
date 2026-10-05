@@ -774,7 +774,7 @@
    #f5f5f7 full-bleed with no rule between them. */
 .mk-band { background: var(--mk-surface-2); }
 /* A figure that wraps mid-number reads as two numbers. At five across, a cell is
-   about 190px wide, and "42 of 42" at a fixed 2.6rem did not fit: the size now
+   about 190px wide, and a figure like "588 of 588" at a fixed 2.6rem did not fit: the size now
    scales with the viewport and the figure is told never to break. */
 .mk-stat b {
   display: block;

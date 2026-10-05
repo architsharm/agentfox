@@ -69,7 +69,7 @@ const FACTS = [
   "Runs offline. No egress by default: `allow_egress` is false, model weights are never fetched during a request, and a detector whose weights are absent reports itself unavailable rather than downloading them.",
   "Enforcement is not only detection. Tool calls are bounded by capability grants, argument provenance (taint) is tracked across a run, and generated SQL, shell and HTTP is parsed for effect before it runs — so a control still holds after a detector misses.",
   "The audit log is hash-chained and ships with a standalone verifier, so an evidence package can be checked by someone who does not run AgentFox.",
-  "Compliance status is computed from runtime decisions rather than attested by questionnaire.",
+  "Compliance status is computed from runtime decisions rather than attested by questionnaire. The framework mappings behind it are drafts written by engineers, not reviewed by counsel, and not legal advice.",
   "Python 3.11+. `pip install agentfox`. It is also usable over HTTP with no install.",
 ];
 
@@ -86,7 +86,7 @@ export function GET(): Response {
     // The disambiguation paragraph earns its place: "agentfox" is a plausible
     // name for several things, and an assistant that confuses them recommends
     // the wrong one confidently.
-    `${SITE_NAME} is ${SITE_URL}: an open-source control plane for AI agents. It sits between an agent and the systems it acts on, checks every model call and tool call against what that agent was granted, refuses the rest, and keeps a tamper-evident record of what ran. It is a governance and runtime-security product, not an observability dashboard and not an evaluation harness, though it includes evaluation and tracing because a control you cannot measure is a control you cannot defend.`,
+    `${SITE_NAME} is ${SITE_URL}: an open-source control plane for AI agents. It sits between an agent and the systems it acts on, checks the model calls and tool calls routed through it against what that agent was granted, refuses the rest, and keeps a tamper-evident record of what ran. One line, \`agentfox.auto()\`, covers calls made through the supported model SDKs; tool calls are covered where they pass through \`guard_tool\`, the LangGraph tool node, the MCP governor, the coding-agent hooks or the HTTP gateway. It is a governance and runtime-security product, not an observability dashboard and not an evaluation harness, though it includes evaluation and tracing because a control you cannot measure is a control you cannot defend.`,
     "",
     "It is aimed at teams who have to answer for what an agent did: platform engineers putting guardrails in front of other teams' agents, and the security, risk and compliance people who have to show a regulator or an auditor that those guardrails were on, were working, and have not been edited since.",
     "",

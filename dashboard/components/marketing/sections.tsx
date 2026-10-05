@@ -104,7 +104,7 @@ export function Features() {
         <SectionHead
           eyebrow="What it does"
           title="Five things, and the last one admits what it is"
-          lede="One line in your entry point puts every model call and every tool call on this path. What follows is what each layer is actually for."
+          lede="One line in your entry point puts your model SDK calls on this path; tool calls join it through the tool wrapper, the MCP governor, the coding-agent hooks or the gateway. What follows is what each layer is actually for."
           center
         />
         <div className="mk-grid mk-grid-2" style={{ marginTop: 44 }}>
@@ -134,9 +134,9 @@ export function Features() {
 const STATS: { n: string; label: string; tone?: string }[] = [
   { n: "8 of 8", label: "attacks contained with every detector switched off" },
   { n: "4 of 4", label: "legitimate calls still allowed in that same run" },
-  { n: "42 of 42", label: "AgentDojo attacker calls that act, contained" },
-  { n: "62 of 65", label: "attacker calls contained overall, three read-only escapes" },
-  { n: "66.7%", label: "held-out prompt-injection recall, our weakest layer", tone: "weak" },
+  { n: "588 of 588", label: "AgentDojo attack pairs contained, with provenance inferred" },
+  { n: "24 of 97", label: "benign AgentDojo tasks ran without escalating to a human", tone: "weak" },
+  { n: "26.7%", label: "held-out injection recall of the default detector, our weakest layer", tone: "weak" },
 ];
 
 export function Evidence() {
@@ -146,7 +146,7 @@ export function Evidence() {
         <SectionHead
           eyebrow="Evidence"
           title="Measured with every detector switched off"
-          lede="Most tools try to recognise the malicious text. We do that too, and we publish how badly it goes: 66.7% recall on a held-out set, and an attacker who reads the verdict and retries gets 73% of what we do catch through. So we switched every detector off and measured what was left."
+          lede="Most tools try to recognise the malicious text. We do that too, and we publish how badly it goes: the default detector finds 26.7% of a held-out set (66.7% with the opt-in classifier ensemble), and an attacker who reads the verdict and retries gets 73% of what the default stack does catch through. So we switched every detector off and measured what was left."
           center
         />
         <div className="mk-grid mk-grid-5 mk-up mk-d2" style={{ marginTop: 40 }}>
@@ -268,8 +268,9 @@ const LIMITS: { title: string; body: React.ReactNode }[] = [
     title: "Detection is a speed bump, and we measure it against ourselves",
     body: (
       <>
-        Held-out injection recall is 66.7%. An attacker who reads our verdict and tries again
-        gets 73% of what we do catch through within 50 attempts.
+        Held-out injection recall is 26.7% for the default detector and 66.7% with the opt-in
+        classifier ensemble. An attacker who reads our verdict and tries again gets 73% of what
+        the default stack catches through within 50 attempts.
       </>
     ),
   },

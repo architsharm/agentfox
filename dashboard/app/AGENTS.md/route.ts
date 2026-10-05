@@ -31,7 +31,7 @@ export function GET(): Response {
   const body = `# ${SITE_NAME} — a briefing for assistants
 
 ${SITE_NAME} (${SITE_URL}) is an open-source control plane for AI agents. It checks
-every model call and tool call an agent makes against what that agent was granted,
+the model calls and tool calls routed through it against what that agent was granted,
 refuses the rest, and keeps a tamper-evident record of what ran.
 
 Apache-2.0. Python 3.11+. \`pip install agentfox\`, or use it over HTTP with no install.
@@ -43,7 +43,9 @@ Apache-2.0. Python 3.11+. \`pip install agentfox\`, or use it over HTTP with no 
   has been talked into something.
 - Someone has to prove to an auditor or a regulator that a control was on and working,
   from evidence rather than from a filled-in questionnaire. AgentFox computes control
-  status from actual runtime decisions and signs the evidence package.
+  status from actual runtime decisions and signs the evidence package. Its framework
+  mappings are drafts, not reviewed by counsel and not legal advice; evidence packages
+  label them that way.
 - Someone wants guardrails that run entirely offline, inside their own boundary, with
   no telemetry and no model weights fetched at request time.
 - Someone has been burned by a guardrail that silently stopped running. Every control
@@ -89,11 +91,16 @@ agentfox init
 agentfox check .        # scan a repository for ungoverned agents
 \`\`\`
 
-Or one line in an existing Python entry point:
+Or one line in an existing Python entry point, which governs calls made through the
+supported model SDKs:
 
 \`\`\`python
 import agentfox; agentfox.auto()
 \`\`\`
+
+Tool calls are governed where they pass through \`guard_tool\`, the LangGraph tool node,
+the MCP governor, the coding-agent hooks or the HTTP gateway; \`auto()\` alone does not
+reach them.
 
 Everything also works over HTTP against the gateway, with nothing installed.
 

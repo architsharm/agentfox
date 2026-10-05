@@ -6,7 +6,7 @@ import { publicPageMetadata } from "@/lib/site";
 export const metadata: Metadata = publicPageMetadata({
   title: "Compliance: EU AI Act, NIST, OWASP, ATLAS",
   description:
-    "EU AI Act, ISO 42001, NIST, OWASP and MITRE ATLAS. 43 controls, scored from what the agent did, not from a form.",
+    "EU AI Act, ISO 42001, NIST, SOC 2, OWASP and MITRE ATLAS. 43 controls, scored from what the agent did, not from a form. The mappings are drafts, not legal advice.",
   path: "/frameworks",
 });
 
@@ -31,14 +31,14 @@ export default function Page() {
     <CapabilityPage
       kicker="Compliance"
       title={["EU AI Act, NIST,", "OWASP and ATLAS"]}
-      lede="43 controls. Standing comes from what the agent did, not from a form."
+      lede="43 controls. Standing comes from what the agent did, not from a form. The mappings are drafts, not reviewed by counsel and not legal advice."
       docs="/docs/compliance"
       challenge={
         <p>Usually this is a document describing controls someone believes are in place.</p>
       }
       feature={{
         title: "Seven frameworks, 43 controls",
-        lede: "One control set, mapped across them.",
+        lede: "One control set, mapped across them. Every mapping is a draft.",
         body: (
           <div className="fw-grid mk-stagger">
             {FRAMEWORKS.map((f) => (

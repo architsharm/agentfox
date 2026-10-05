@@ -106,7 +106,7 @@ export function ogImage(): ImageResponse {
               letterSpacing: "-0.03em",
             }}
           >
-            <span style={{ width: "100%" }}>Secure your agents.</span>
+            <span style={{ width: "100%" }}>Know when your agent should stop.</span>
             <span style={{ width: "100%", color: MK.brand }}>One control plane.</span>
           </div>
           <div style={{ display: "flex", fontSize: 26, color: MK.muted, marginTop: 22, lineHeight: 1.45 }}>

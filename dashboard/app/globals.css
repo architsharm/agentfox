@@ -1859,8 +1859,8 @@ input[type="checkbox"], input[type="radio"] {
 }
 .bm-fig figcaption strong { color: var(--text); }
 
-/* Composition: one bar drawn to scale, so 3 escapes out of 617 look like 3 out
-   of 617 rather than like a bullet point. */
+/* Composition: one bar drawn to scale, so a share reads as a share rather than
+   as a bullet point. */
 .bm-bar {
   display: flex;
   height: 30px;
