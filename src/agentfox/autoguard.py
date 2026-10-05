@@ -1077,14 +1077,13 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
 
     from .integrations.mcp import infer_impact
     from .models import Tool
-    from .registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
+    from .registry.service import DECLARED_TOOL_IMPACTS, impact_source_of, upsert_tool
 
     declared = DECLARED_TOOL_IMPACTS.get(name)
     existing = session.scalar(select(Tool).where(Tool.key == name))
     if existing is not None:
-        if declared and existing.impact_source == "inferred":
-            existing.impact = declared
-            existing.impact_source = "declared"
+        if declared and impact_source_of(existing) == "inferred":
+            upsert_tool(session, name, impact=declared, impact_source="declared")
         return
     descriptor = descriptor or {}
     try:

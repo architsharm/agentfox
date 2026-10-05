@@ -2179,6 +2179,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
     from sqlalchemy import select
 
     from ..models import Tool
+    from ..registry.service import impact_source_of
 
     with _session() as session:
         tools = list(session.scalars(select(Tool).order_by(Tool.key)))
@@ -2186,7 +2187,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
             {
                 "key": t.key,
                 "impact": t.impact,
-                "impact_source": t.impact_source,
+                "impact_source": impact_source_of(t),
                 "triggers": list(t.triggers_json or []),
                 "description": t.description,
             }

@@ -43,6 +43,7 @@ from ...registry.service import (
     attest_registry,
     derive_lineage,
     detect_shadow_agents,
+    impact_source_of,
     inventory,
     lineage,
     register_agent,
@@ -380,7 +381,7 @@ def list_tools(
                 "name": t.name,
                 "kind": t.kind,
                 "impact": t.impact,
-                "impact_source": t.impact_source,
+                "impact_source": impact_source_of(t),
                 "description": t.description,
                 "mcp_server_id": t.mcp_server_id,
             }

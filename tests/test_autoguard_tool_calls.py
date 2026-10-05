@@ -26,6 +26,7 @@ import pytest
 
 from agentfox.autoguard import Blocked, _messages_from, _tool_calls_of, auto, off
 from agentfox.models import Decision, Span, TaintTag, Tool
+from agentfox.registry.service import impact_source_of
 
 CUSTOMER_RECORD = (
     "Customer: Jane Roe, account 4471-2290, address 12 Elm Street Springfield, "
@@ -332,7 +333,7 @@ def test_a_tool_seen_for_the_first_time_is_registered_with_an_inferred_impact(fa
 
     with _db() as session:
         tools = {t.key: t for t in session.query(Tool).all()}
-        assert {k: (t.impact, t.impact_source) for k, t in tools.items()} == {
+        assert {k: (t.impact, impact_source_of(t)) for k, t in tools.items()} == {
             "read_customer_record": ("read", "inferred"),
             "send_email": ("irreversible", "inferred"),
             # The guess is a substring match, and "refund" is not one of its verbs —
@@ -341,6 +342,14 @@ def test_a_tool_seen_for_the_first_time_is_registered_with_an_inferred_impact(fa
         }
         assert tools["read_customer_record"].description == "Look up a customer's account record"
         assert tools["read_customer_record"].schema_json["properties"]["customer_id"]
+
+    # Confirming the guess is an ordinary declaration, and clears the marker.
+    from agentfox.registry.service import tool_input_schema, upsert_tool
+
+    with _db() as session:
+        tool = upsert_tool(session, "issue_refund", impact="irreversible")
+        assert impact_source_of(tool) == "declared"
+        assert tool_input_schema(tool) == tool.schema_json
 
 
 def test_an_existing_tool_row_is_not_overwritten_by_a_guess(fake_openai):
@@ -355,7 +364,7 @@ def test_an_existing_tool_row_is_not_overwritten_by_a_guess(fake_openai):
 
     with _db() as session:
         tool = session.query(Tool).filter_by(key="fetch_url").one()
-        assert (tool.impact, tool.impact_source) == ("write", "declared")
+        assert (tool.impact, impact_source_of(tool)) == ("write", "declared")
 
 
 # ---------------------------------------------------------------------------
@@ -561,7 +570,7 @@ def test_anthropic_tool_use_is_governed_with_provenance(fake_anthropic):
         assert tag.source == "tool_result"
         assert tag.propagated_from == "tool:read_customer_record#2"
         tool = session.query(Tool).filter_by(key="send_email").one()
-        assert (tool.impact, tool.impact_source) == ("irreversible", "inferred")
+        assert (tool.impact, impact_source_of(tool)) == ("irreversible", "inferred")
 
     governed = auto(agent="support-bot", mode="enforce", quiet=True)
     script.append(attack)
@@ -617,7 +626,7 @@ def test_the_sdk_decorator_writes_its_impact_to_the_registry():
 
     with _db() as session:
         tool = session.query(Tool).filter_by(key="wire_funds").one()
-        assert (tool.impact, tool.impact_source) == ("irreversible", "declared")
+        assert (tool.impact, impact_source_of(tool)) == ("irreversible", "declared")
         assert tool.description == "Move money to another account."
 
 
@@ -634,7 +643,7 @@ def test_a_code_declaration_beats_the_inferred_impact(fake_openai, monkeypatch):
 
     with _db() as session:
         tool = session.query(Tool).filter_by(key="lookup_order").one()
-        assert (tool.impact, tool.impact_source) == ("high_impact", "declared")
+        assert (tool.impact, impact_source_of(tool)) == ("high_impact", "declared")
 
 
 def test_a_declaration_confirms_an_inferred_row(fake_openai, monkeypatch):
@@ -650,7 +659,7 @@ def test_a_declaration_confirms_an_inferred_row(fake_openai, monkeypatch):
 
     with _db() as session:
         tool = session.query(Tool).filter_by(key="lookup_order").one()
-        assert (tool.impact, tool.impact_source) == ("write", "declared")
+        assert (tool.impact, impact_source_of(tool)) == ("write", "declared")
 
 
 def test_a_response_with_no_tool_calls_writes_no_tool_decision(fake_openai):

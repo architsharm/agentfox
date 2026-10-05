@@ -39,7 +39,13 @@ from ..enforcement import EnforcementResult, Enforcer
 from ..findings import raise_finding
 from ..guardrails import TaintTracker
 from ..models import McpToolSnapshot, Tool, Trace
-from ..registry.service import record_edge, scan_mcp_server, upsert_mcp_server, upsert_tool
+from ..registry.service import (
+    record_edge,
+    scan_mcp_server,
+    tool_input_schema,
+    upsert_mcp_server,
+    upsert_tool,
+)
 
 log = logging.getLogger(__name__)
 
@@ -208,7 +214,7 @@ class McpGovernor:
             {
                 "name": registered.name,
                 "description": registered.description,
-                "inputSchema": registered.schema_json,
+                "inputSchema": tool_input_schema(registered),
             }
         )
         if current == known:

@@ -355,6 +355,26 @@ def unowned_agents(session: Session) -> list[Finding]:
 #: even when that write could not happen yet.
 DECLARED_TOOL_IMPACTS: dict[str, str] = {}
 
+#: Marks a tool whose `impact` was guessed — from its name and description, when
+#: `auto()` or MCP governance first saw it — rather than declared by an operator,
+#: the CLI/API or code. Kept as a JSON Schema vendor keyword in `schema_json`
+#: rather than a column of its own on purpose: a deployment runs new code before
+#: anyone runs its migration (tests/test_playground.py pins that window), and a
+#: new column on `tools` would break every tool lookup in it, the enforcement path
+#: included. Validators ignore `x-` keywords; `tool_input_schema` strips it.
+IMPACT_SOURCE_KEY = "x-agentfox-impact-source"
+
+
+def impact_source_of(tool: Tool) -> str:
+    """``inferred`` for a guessed impact awaiting confirmation, else ``declared``."""
+    schema = tool.schema_json or {}
+    return "inferred" if schema.get(IMPACT_SOURCE_KEY) == "inferred" else "declared"
+
+
+def tool_input_schema(tool: Tool) -> dict[str, Any]:
+    """The tool's input schema as the tool itself declared it, without our marker."""
+    return {k: v for k, v in (tool.schema_json or {}).items() if k != IMPACT_SOURCE_KEY}
+
 
 def upsert_tool(
     session: Session,
@@ -372,8 +392,14 @@ def upsert_tool(
     tool.name = name or tool.name or key
     tool.kind = kind
     tool.impact = impact
-    tool.impact_source = impact_source
-    tool.schema_json = schema or tool.schema_json or {}
+    # A fresh dict, so the JSON column registers the change; a declaration clears
+    # the inferred marker, which is how `agentfox tools declare` confirms a guess.
+    schema_json = dict(schema or tool.schema_json or {})
+    if impact_source == "inferred":
+        schema_json[IMPACT_SOURCE_KEY] = "inferred"
+    else:
+        schema_json.pop(IMPACT_SOURCE_KEY, None)
+    tool.schema_json = schema_json
     tool.description = description or tool.description
     tool.mcp_server_id = mcp_server_id or tool.mcp_server_id
     session.flush()
