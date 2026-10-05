@@ -177,7 +177,7 @@ export default function Privacy() {
                 billing row.
               </p>
               <Ref>
-                dashboard/app/api/auth/github/callback/route.ts:62-91; src/agentfox/core/models.py:397-406
+                dashboard/app/api/auth/github/callback/route.ts:62-91; src/agentfox/core/models/:397-406
               </Ref>
 
               <h3 className="mk-h3" style={{ marginTop: 30 }}>
@@ -194,7 +194,7 @@ export default function Privacy() {
               <Ref>
                 dashboard/app/api/auth/github/callback/route.ts:97-103;
                 src/agentfox/gateway/routes/integrations.py:69-82, 181-214;
-                src/agentfox/core/models.py:421-434
+                src/agentfox/core/models/:421-434
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 A repository scan is static. Nothing in the scanner imports or executes the
@@ -348,7 +348,7 @@ export default function Privacy() {
               </p>
               <Ref>
                 src/agentfox/detection/base.py:204-218;
-                src/agentfox/detection/detectors/pii.py:133; src/agentfox/core/models.py:486-502
+                src/agentfox/detection/detectors/pii.py:133; src/agentfox/core/models/:486-502
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 Separately, before anything reaches the audit chain, values under keys that

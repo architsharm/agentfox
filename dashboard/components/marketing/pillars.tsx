@@ -34,7 +34,7 @@ import {
  *   - normalisation views .................... src/agentfox/detection/normalize.py
  *   - per-detector budget, degrade-not-skip .. src/agentfox/detection/pipeline.py
  *   - baseline / tool-containment rule ids ... src/agentfox/policies_data/*.yaml
- *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement.py
+ *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement/
  *   - the provenance ladder .................. src/agentfox/detection/taint.py, README "Commands"
  *   - impact tiers ........................... dashboard/app/glossary/page.tsx
  *   - static-only scanning, TS/JS pass ....... src/agentfox/discovery/repo.py

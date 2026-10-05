@@ -534,7 +534,7 @@ class _ChecksMixin:
         user turn, already holds a `session_id` and the recorded history behind it, and
         is already called from `autoguard._govern`'s pre-flight and the gateway
         playground route. Nothing else needed wiring, which is the whole point —
-        `docs/failure-modes.md` exists to catch modules that are built and never
+        `docs/design/failure-modes.md` exists to catch modules that are built and never
         called, and a trajectory scorer reachable only from its own tests would be
         exactly that.
 

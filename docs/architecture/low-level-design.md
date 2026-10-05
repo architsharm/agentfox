@@ -92,7 +92,7 @@ Current test and line counts are in [`docs/status.md`](../status.md), which `scr
 
 ---
 
-## 3. The `Enforcer` class — `src/agentfox/runtime/enforcement.py` (2440 lines)
+## 3. The `Enforcer` class — `src/agentfox/runtime/enforcement/` (2440 lines)
 
 This is the single code path every integration surface converges on (HLD §5). Class and
 method signatures, by call order:
@@ -160,7 +160,7 @@ detector that silently fails to run is a recorded, queryable event, not an invis
 
 ## 5. Data model — key entities
 
-Full detail: [Appendix D](data-model.md). SQLAlchemy 2.0, `src/agentfox/core/models.py`
+Full detail: [Appendix D](data-model.md). SQLAlchemy 2.0, `src/agentfox/core/models/`
 (1490 lines). Every table carries `id`, `created_at`, `updated_at`, `org_id` — multi-tenancy
 is enforced structurally at the session level via `with_loader_criteria` (`tenancy.py`), not
 by remembering to filter every query by `org_id`.

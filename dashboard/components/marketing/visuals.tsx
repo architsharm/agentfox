@@ -19,7 +19,7 @@ import type { CSSProperties, ReactNode } from "react";
  * Two literals are split rather than reproduced with their em-dash separator, because
  * the page style bans em-dashes in visible text. Both keep every word:
  *
- *   - `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` (src/agentfox/core/models.py:1474) renders as
+ *   - `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` (src/agentfox/core/models/:1474) renders as
  *     two adjacent chips.
  *   - `ours — essentially no OSS exists here` (README.md:465) renders as the "built on"
  *     value plus its note.

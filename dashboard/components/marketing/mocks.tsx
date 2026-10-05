@@ -17,7 +17,7 @@ import type { CSSProperties, ReactNode } from "react";
  *   - capability.denied reason ...... dashboard/app/page.tsx Proof()
  *   - constraint_violated reason .... src/agentfox/identity/service.py
  *                                     check_capability() + _describe_violation()
- *   - synthetic rule ids ............ src/agentfox/runtime/enforcement.py (~line 650)
+ *   - synthetic rule ids ............ src/agentfox/runtime/enforcement/ (~line 650)
  *   - grant record layout ........... src/agentfox/cli/capability_cli.py grant()
  *   - finding types and titles ...... src/agentfox/evaluation/redteam.py,
  *                                     src/agentfox/grounding/provenance.py,
