@@ -438,3 +438,4 @@ Three files only, no Kubernetes manifests anywhere in the repo.
 - [docs/architecture/api-spec.md](api-spec.md) — full API specification
 - [docs/architecture/data-model.md](data-model.md) — full data model
 - [docs/architecture/threat-model.md](threat-model.md) — full threat model
+- [docs/design/production-readiness-review.md](../design/production-readiness-review.md) — gaps and priorities

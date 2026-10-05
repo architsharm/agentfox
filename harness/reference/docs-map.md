@@ -23,6 +23,11 @@ commit; `scripts/check_harness.py` fails if a repo `.md` file is unclassified.
 | `docs/design/traceability.md` | requirement → module → control → test | Hand-maintained |
 | `docs/design/failure-modes.md` | how deployed agents fail (F1–F9) and which are covered | Living scorecard |
 | `docs/design/gap-analysis.md` | enterprise-readiness gaps, Tier 0–3 | Canonical gap register |
+| `docs/architecture/judgment-tiers.md` | what each optional judgment tier (Jev, hosted LLM, local LLM) may decide, and the routing table | Read before enabling a tier |
+| `docs/architecture/judgment-egress.md` | what leaves the boundary when a hosted judgment tier is on; the PII block/redact/allow choice | Read before enabling a hosted tier on regulated data |
+| `docs/design/production-readiness-review.md` | gaps found re-checking HLD/LLD against the code, and what was fixed since | Dated review; `docs/design/gap-analysis.md` + `git log` for current state |
+| `docs/design/competitor-analysis.md` | market landscape and where competitors win; source for the public /compare page | Positioning; cite primary benchmark docs for numbers |
+| `docs/evaluation/judgment/*.md` | the judgment-tier study: results (numbers bound in `benchmarks/claims.yaml`), vs-shipping, cascade, safepyramid | Quote numbers from `results.md` only |
 | `docs/evaluation/responding-to-the-critique.md` | answering the "AI security is bullshit" argument: what we accept, what we dispute, what we changed | Sales-facing; keep claims checkable |
 | `docs/design/control-catalog.md` | NOM-* controls and their framework mappings | All mappings DRAFT; YAML path in the doc is stale |
 | `docs/architecture/threat-model.md` | threats to customers' agents and to the product | |

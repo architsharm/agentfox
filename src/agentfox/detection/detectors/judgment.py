@@ -149,7 +149,7 @@ def _why_unavailable(kind: DecisionKind) -> str:
             "No judgment tier is enabled. This check asks a judgment model, and "
             "the default is to ask nothing off-box. Add 'jev', 'llm' or "
             "'local_llm' to `judgment_tiers` to turn it on — see "
-            "benchmarks/judgment/README.md for what each may decide."
+            "docs/architecture/judgment-tiers.md for what each may decide."
         )
 
     permitted = CapabilityRouter.from_settings().plan(kind)

@@ -33,6 +33,8 @@ docs/
 | [api-spec.md](architecture/api-spec.md) | The full HTTP API: authentication, the inline enforcement routes, and every control-plane route. Route tables are generated (`python scripts/api_routes.py`). | Engineers integrating without Python. |
 | [data-model.md](architecture/data-model.md) | The persisted data model. | Contributors touching persistence. |
 | [threat-model.md](architecture/threat-model.md) | Threats to the customer's agents, and threats to AgentFox itself. | Security review. |
+| [judgment-tiers.md](architecture/judgment-tiers.md) | The optional judgment tiers (Jev, a hosted LLM, a self-hosted LLM): what each may decide, and what the routing table forbids it from deciding. | Anyone deciding which tiers to switch on. |
+| [judgment-egress.md](architecture/judgment-egress.md) | What leaves the boundary when a hosted tier is enabled, and the three-way personal-data choice. | Read before enabling any hosted tier on regulated data. |
 
 ## design/
 
@@ -44,6 +46,8 @@ docs/
 | [gap-analysis.md](design/gap-analysis.md) | Enterprise readiness and competitive position, audited and severity-ranked. | Buyers, and us. |
 | [control-catalog.md](design/control-catalog.md) | 43 controls mapped to EU AI Act, NIST AI RMF, ISO 42001, SOC 2, OWASP LLM and Agentic, and MITRE ATLAS, plus what each mapping does not cover. | Compliance and GRC. Mappings are engineering drafts, not legal advice. |
 | [traceability.md](design/traceability.md) | Every requirement mapped to the module that implements it and the test that covers it. | Contributors, and audit. |
+| [competitor-analysis.md](design/competitor-analysis.md) | Market landscape, our niche, and where competitors win. The public /compare page cites it. | Anyone comparing options. |
+| [production-readiness-review.md](design/production-readiness-review.md) | Gaps found re-checking the HLD and LLD against the live code, with what has been fixed since. | Anyone deciding whether to run it in production. |
 | [oss-register.md](design/oss-register.md) | Every wrapped open-source project: licence, health, verdict, our exposure, and why some well-known projects are deliberately off the critical path. | Contributors adding a dependency, and licence review. |
 
 The documents that began as PRD appendices keep their letters in their titles and section
@@ -56,6 +60,8 @@ numbers (Appendix A to E, §B.6 and so on), because other documents cite them th
 | [evidence-standards.md](evaluation/evidence-standards.md) | How to read our numbers: what each kind of evidence establishes and the limits that apply first. | Read this before quoting any benchmark result anywhere. |
 | [benchmarking-whitepaper.md](evaluation/benchmarking-whitepaper.md) | The product capability by capability: what it does, how it was measured, every round including the ones that went badly, and how it differs from the market. | Evaluators, and anyone who wants the methodology rather than the headline. |
 | [responding-to-the-critique.md](evaluation/responding-to-the-critique.md) | What the strongest public criticism of this category gets right, what it gets wrong, and what we changed because of it. | A reader who has seen the critique and is sceptical, reasonably. |
+| [judgment/results.md](evaluation/judgment/results.md) | The study behind the judgment tiers: where a hosted judgment beats our detectors and where it loses. Its headline numbers are bound in `benchmarks/claims.yaml`. | Evaluators who want the evidence, not the summary. |
+| [judgment/vs-shipping.md](evaluation/judgment/vs-shipping.md), [cascade.md](evaluation/judgment/cascade.md), [safepyramid.md](evaluation/judgment/safepyramid.md) | Supporting write-ups for that study: against the shipping detectors, the cascade design, and the SafePyramid run. | Evaluators checking a specific result. |
 | [dataset-sourcing.md](evaluation/dataset-sourcing.md) | A working record, kept for provenance: research preceding a round of benchmarks, with candidate datasets, verified licences, and rejected candidates with reasons. Not maintained once that work was done. | Anyone checking where a dataset came from. |
 | [../benchmarks/README.md](../benchmarks/README.md) | The benchmark index: every harness, its dataset, its licence and how to re-run it. | Anyone reproducing a result. |
 

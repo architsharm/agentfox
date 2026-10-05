@@ -264,7 +264,7 @@ Judgment posture — with the deployment acting as a ceiling the product cannot 
 can tighten personal-data handling or turn a hosted tier off; nobody can enable one on a
 deployment whose `AGENTFOX_ALLOW_EGRESS` is false, and attempting it is a refusal with a reason
 rather than a preference that silently does nothing. Every change is recorded with who, why and
-what it was before. [What each tier may decide](benchmarks/judgment/README.md).
+what it was before. [What each tier may decide](docs/architecture/judgment-tiers.md), and [what leaves the machine](docs/architecture/judgment-egress.md) when a hosted tier is on.
 
 <br />
 
