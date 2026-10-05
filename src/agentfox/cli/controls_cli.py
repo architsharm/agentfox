@@ -66,8 +66,8 @@ def boundary_set(
     """
     from sqlalchemy import select
 
-    from agentfox.grounding.answerability import QUESTION_TYPES, declare_boundary
     from agentfox.core.models import Agent
+    from agentfox.grounding.answerability import QUESTION_TYPES, declare_boundary
 
     types = [t.strip() for t in answerable.split(",") if t.strip()]
     unknown = set(types) - set(QUESTION_TYPES)
@@ -114,8 +114,8 @@ def boundary_check(
     """
     from sqlalchemy import select
 
-    from agentfox.grounding.answerability import classify_answerability, get_boundary
     from agentfox.core.models import Agent
+    from agentfox.grounding.answerability import classify_answerability, get_boundary
 
     with _session() as session:
         record = session.scalar(select(Agent).where(Agent.slug == agent))

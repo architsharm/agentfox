@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.core.models import Agent, Finding, Tool
 from agentfox.identity import ensure_identity, grant_capability
 from agentfox.integrations.mcp import (
     McpCallBlocked,
@@ -17,7 +18,6 @@ from agentfox.integrations.mcp import (
     tool_digest,
     tool_key,
 )
-from agentfox.core.models import Agent, Finding, Tool
 from agentfox.registry.service import scan_mcp_server
 
 from .conftest import INDIRECT_INJECTION, as_user

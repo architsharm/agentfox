@@ -15,16 +15,16 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
-from agentfox.prove import findings as findings_mod
 from agentfox.core import webhooks
 from agentfox.core.db import session_scope
+from agentfox.core.models import Agent, AuditEntry, Budget, Finding
+from agentfox.prove import findings as findings_mod
 from agentfox.prove.findings import (
     fingerprint,
     raise_finding,
     record_detector_health,
     resolve_finding,
 )
-from agentfox.core.models import Agent, AuditEntry, Budget, Finding
 
 from .conftest import as_user
 from .test_webhooks import configure, receiver  # noqa: F401 - the shared harness

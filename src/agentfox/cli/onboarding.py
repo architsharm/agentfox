@@ -152,11 +152,11 @@ def init(
     implicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)
     override that file.
     """
-    from agentfox.prove.compliance import load_catalog, sync_catalog
     from agentfox.core.config import get_settings
     from agentfox.core.db import init_db, session_scope
     from agentfox.policy import load_available, save_policy
     from agentfox.policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
+    from agentfox.prove.compliance import load_catalog, sync_catalog
 
     settings = get_settings()
     console.print("[bold]Setting up AgentFox[/]")
@@ -260,9 +260,9 @@ def check(
     applications. Stays entirely local unless `--submit` (or an interactive "yes")
     opts into sending a redacted summary — see `cli/submit.py`.
     """
-    from agentfox.discovery.repo import scan
     from agentfox.cli._scan_view import print_surface, print_trifectas
     from agentfox.cli.submit import maybe_submit_report
+    from agentfox.discovery.repo import scan
 
     report = scan(path)
     if as_json:
@@ -387,7 +387,6 @@ def doctor(
     """
     from agentfox.core.config import get_settings
     from agentfox.core.db import session_scope
-    from agentfox.detection import available_detectors
     from agentfox.core.models import (
         AccessScopeRule,
         Agent,
@@ -398,6 +397,7 @@ def doctor(
         Tool,
         Trace,
     )
+    from agentfox.detection import available_detectors
     from agentfox.providers import available_providers
 
     settings = get_settings()

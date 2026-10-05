@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agentfox.core.models import Agent, AuditEntry, Finding, FrameworkMapping
 from agentfox.prove.compliance import (
     classify,
     compute_all,
@@ -13,7 +14,6 @@ from agentfox.prove.compliance import (
     sync_catalog,
 )
 from agentfox.prove.compliance.catalog import review_mapping
-from agentfox.core.models import Agent, AuditEntry, Finding, FrameworkMapping
 from agentfox.registry.service import (
     assess_delegation,
     attest_registry,

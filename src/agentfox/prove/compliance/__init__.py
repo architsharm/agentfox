@@ -16,7 +16,13 @@ from agentfox.prove.compliance.catalog import (
     sync_catalog,
     sync_obligations,
 )
-from agentfox.prove.compliance.risk import assess, board_view, classify, obligation_calendar, register
+from agentfox.prove.compliance.risk import (
+    assess,
+    board_view,
+    classify,
+    obligation_calendar,
+    register,
+)
 from agentfox.prove.compliance.status import (
     compute_all,
     ensure_compliance_computed,

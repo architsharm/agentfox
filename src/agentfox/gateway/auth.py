@@ -40,8 +40,8 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, ApiToken, Identity, User, utcnow
-from agentfox.prove.audit.operator_log import record
 from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.prove.audit.operator_log import record
 
 log = logging.getLogger(__name__)
 

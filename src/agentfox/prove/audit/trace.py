@@ -21,7 +21,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.ids import span_id as new_span_id
-from agentfox.core.models import Agent, Decision, DetectionFinding, DetectorRun, Span, TaintTag, Trace, utcnow
+from agentfox.core.models import (
+    Agent,
+    Decision,
+    DetectionFinding,
+    DetectorRun,
+    Span,
+    TaintTag,
+    Trace,
+    utcnow,
+)
 
 # OpenLLMetry / OTel GenAI semantic conventions.
 ATTR_SYSTEM = "gen_ai.system"

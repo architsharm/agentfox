@@ -22,9 +22,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.grounding.context_integrity import chunk_quality, document_quality
 from agentfox.core.crypto import DecryptionFailed, EncryptionNotConfigured
 from agentfox.core.models import SourceConnection, SourceRecord, User
+from agentfox.gateway.deps import current_user, db, require
+from agentfox.grounding.context_integrity import chunk_quality, document_quality
 from agentfox.grounding.provenance import (
     CONNECTION_KINDS,
     TIERS,
@@ -34,7 +35,6 @@ from agentfox.grounding.provenance import (
     register_source,
     validate_source,
 )
-from agentfox.gateway.deps import current_user, db, require
 
 router = APIRouter(prefix="/api/sources", tags=["provenance"])
 

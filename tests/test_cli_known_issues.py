@@ -279,9 +279,9 @@ def test_entitlement_report_hint_names_a_real_command():
 
 
 def test_compliance_status_verbose_honours_the_framework():
+    from agentfox.core.db import session_scope
     from agentfox.prove.compliance import controls_for_framework, latest_statuses
     from agentfox.prove.compliance.catalog import load_catalog
-    from agentfox.core.db import session_scope
 
     _seed()
     assert runner.invoke(app, ["compliance", "compute"]).exit_code == 0

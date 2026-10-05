@@ -63,8 +63,16 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.core.models import (
+    Agent,
+    Capability,
+    Finding,
+    RedTeamCampaign,
+    RedTeamFinding,
+    Tool,
+    utcnow,
+)
 from agentfox.prove.findings import raise_finding, resolve_finding
-from agentfox.core.models import Agent, Capability, Finding, RedTeamCampaign, RedTeamFinding, Tool, utcnow
 
 
 @dataclass
@@ -506,9 +514,9 @@ class NativeRedTeamRunner:
     def run_probes(
         self, session: Session, agent_slug: str, probes: list[Probe] | None = None
     ) -> list[ProbeOutcome]:
-        from agentfox.runtime.enforcement import Enforcer
         from agentfox.detection.taint import TaintTracker
         from agentfox.identity.service import ensure_identity
+        from agentfox.runtime.enforcement import Enforcer
 
         enforcer = Enforcer(session)
         agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))

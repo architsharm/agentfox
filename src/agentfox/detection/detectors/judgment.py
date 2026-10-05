@@ -38,11 +38,17 @@ from __future__ import annotations
 
 import logging
 
+from agentfox.detection.base import (
+    BaseDetector,
+    Detection,
+    DetectionContext,
+    DetectorResult,
+    redact_sample,
+)
 from agentfox.detection.judgment import panel
 from agentfox.detection.judgment.capability import DecisionKind
 from agentfox.detection.judgment.egress import JudgmentGateway
 from agentfox.detection.judgment.jev import JevUnavailable
-from agentfox.detection.base import BaseDetector, Detection, DetectionContext, DetectorResult, redact_sample
 
 log = logging.getLogger(__name__)
 

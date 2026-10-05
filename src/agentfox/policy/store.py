@@ -23,7 +23,13 @@ from agentfox.core.config import get_settings
 from agentfox.core.models import Policy, PolicyBinding, PolicyVersion, utcnow
 from agentfox.policy.canary import active_canary, pick_version_id
 from agentfox.policy.engine import NativePolicyEngine, PolicyEngine
-from agentfox.policy.hierarchy import EffectivePolicy, PolicyLayer, lint_policy, lint_summary, resolve_effective
+from agentfox.policy.hierarchy import (
+    EffectivePolicy,
+    PolicyLayer,
+    lint_policy,
+    lint_summary,
+    resolve_effective,
+)
 from agentfox.policy.model import PolicyDocument
 from agentfox.policy.opa import OpaPolicyEngine
 

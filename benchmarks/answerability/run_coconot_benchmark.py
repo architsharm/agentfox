@@ -21,8 +21,14 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from agentfox.grounding.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability, question_type
 from agentfox.core.models import KnowledgeBoundary
+from agentfox.grounding.answerability import (
+    AGGREGATE,
+    FACT,
+    PROCEDURE,
+    classify_answerability,
+    question_type,
+)
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"

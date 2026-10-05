@@ -33,9 +33,9 @@ from _util import wipe_db
 
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
-from agentfox.runtime.enforcement import Enforcer
-from agentfox.registry.control import quarantine
 from agentfox.core.seed import seed
+from agentfox.registry.control import quarantine
+from agentfox.runtime.enforcement import Enforcer
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

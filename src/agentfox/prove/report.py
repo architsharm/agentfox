@@ -23,8 +23,13 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.compliance.status import ensure_compliance_computed
-from agentfox.containment.findings import CAUSES, cause_of, decision_scope, is_detector_rule, rule_applied
+from agentfox.containment.findings import (
+    CAUSES,
+    cause_of,
+    decision_scope,
+    is_detector_rule,
+    rule_applied,
+)
 from agentfox.core.models import (
     Agent,
     Capability,
@@ -37,6 +42,7 @@ from agentfox.core.models import (
     Tool,
     utcnow,
 )
+from agentfox.prove.compliance.status import ensure_compliance_computed
 
 #: Detector-driven refusals get one cause of their own in the counts.
 DETECTOR_CAUSE = "detector"
@@ -422,8 +428,8 @@ def _feedback(
 
 
 def _coverage(session: Session) -> dict[str, Any]:
-    from agentfox.prove.compliance import posture
     from agentfox.discovery.threats import coverage
+    from agentfox.prove.compliance import posture
 
     data = coverage(session)
     title = (data.get("catalogues") or {}).get("owasp-agentic", {}).get("title", "")

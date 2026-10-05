@@ -19,6 +19,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from agentfox.core.db import session_scope
+from agentfox.core.models import Agent, ApiToken, Trace, User, utcnow
+from agentfox.core.tenancy import system_scope, tenant
 from agentfox.gateway.app import create_app
 from agentfox.gateway.auth import (
     API_KEY_PREFIX,
@@ -29,8 +31,6 @@ from agentfox.gateway.auth import (
     resolve_token,
     revoke_token,
 )
-from agentfox.core.models import Agent, ApiToken, Trace, User, utcnow
-from agentfox.core.tenancy import system_scope, tenant
 
 
 @pytest.fixture
@@ -316,8 +316,8 @@ def test_a_credential_with_an_expiry_does_not_crash_the_inline_path(ready):
     an expiry* was a 500 on the hot path, and nothing read the field until agent
     credentials began resolving there.
     """
-    from agentfox.identity import ensure_identity, issue_credential
     from agentfox.core.models import Credential
+    from agentfox.identity import ensure_identity, issue_credential
 
     with session_scope() as session:
         agent = session.scalars(select(Agent).where(Agent.slug == "support-triage")).one()

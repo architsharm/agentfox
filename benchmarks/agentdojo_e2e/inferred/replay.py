@@ -35,11 +35,11 @@ os.environ.setdefault("NOMETRIA_CONFIG", "none")
 
 from agentfox import db  # noqa: E402
 from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402
-from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 from agentfox.detection.taint import TaintTracker  # noqa: E402
 from agentfox.identity.service import ensure_identity, grant_capability  # noqa: E402
 from agentfox.policy import load_from_dir, save_policy  # noqa: E402
 from agentfox.registry.service import register_agent, upsert_tool  # noqa: E402
+from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 
 CONTAINED = {"block", "escalate"}
 # Identical to benchmarks/agentdojo_e2e/run_agentdojo_e2e.py so results are comparable.

@@ -26,7 +26,13 @@ from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
 
 from agentfox.core.config import get_settings
-from agentfox.detection.base import Detection, DetectionContext, Detector, DetectorResult, available_detectors
+from agentfox.detection.base import (
+    Detection,
+    DetectionContext,
+    Detector,
+    DetectorResult,
+    available_detectors,
+)
 
 log = logging.getLogger(__name__)
 

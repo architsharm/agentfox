@@ -48,9 +48,9 @@ def main() -> None:
 
     from agentfox.core import db
     from agentfox.core.config import reset_settings_cache
+    from agentfox.core.seed import seed as run_seed
     from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
     from agentfox.policy import set_mode
-    from agentfox.core.seed import seed as run_seed
 
     reset_settings_cache()
     db.reset_engine()

@@ -297,9 +297,9 @@ def test_expiry_deletes_the_sandboxs_data_not_just_its_registry_row():
     """Expiry has to sweep, not only hide: a public endpoint that accumulated one
     seeded world per visitor forever would be a storage leak with a nice error page."""
     from agentfox.core.db import session_scope
-    from agentfox.gateway.playground_sessions import PlaygroundStore
     from agentfox.core.models import Agent, PlaygroundSandbox
     from agentfox.core.tenancy import bind_session
+    from agentfox.gateway.playground_sessions import PlaygroundStore
 
     store = PlaygroundStore()
     record = store.create()
@@ -334,9 +334,9 @@ def test_expiry_does_not_touch_the_deployments_own_data():
     """The sweep deletes by tenant. A bug in it is another tenant's rows, so this
     pins the boundary rather than trusting the query."""
     from agentfox.core.db import session_scope
-    from agentfox.gateway.playground_sessions import PlaygroundStore
     from agentfox.core.models import Agent
     from agentfox.core.seed import seed
+    from agentfox.gateway.playground_sessions import PlaygroundStore
 
     with session_scope() as session:
         seed(session)
@@ -594,10 +594,10 @@ def test_an_agent_credential_from_a_sandbox_is_useless_on_the_inline_api(client)
     It does not make sandbox credentials secret. It makes them worthless here.
     """
     from agentfox.core.db import session_scope
-    from agentfox.gateway.auth import resolve_agent
-    from agentfox.identity import ensure_identity, issue_credential
     from agentfox.core.models import Agent
     from agentfox.core.tenancy import bind_session
+    from agentfox.gateway.auth import resolve_agent
+    from agentfox.identity import ensure_identity, issue_credential
 
     sid = _create(client)
     with session_scope() as session:
@@ -627,9 +627,9 @@ def test_sandboxes_are_created_on_a_database_that_has_not_run_the_migration(tmp_
 
     from agentfox.core.config import get_settings, reset_settings_cache
     from agentfox.core.db import current_revision, init_db, reset_engine, upgrade_db
-    from agentfox.gateway import playground_sessions
     from agentfox.core.models import Agent
     from agentfox.core.tenancy import bind_session
+    from agentfox.gateway import playground_sessions
 
     url = f"sqlite:///{tmp_path / 'pre-migration.db'}"
     monkeypatch.setenv("NOMETRIA_DATABASE_URL", url)

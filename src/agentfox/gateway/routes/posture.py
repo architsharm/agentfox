@@ -38,6 +38,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from agentfox.core.models import User
 from agentfox.detection.judgment import posture as _posture
 from agentfox.detection.judgment.capability import (
     EGRESS_TIERS,
@@ -49,7 +50,6 @@ from agentfox.detection.judgment.capability import (
     Tier,
 )
 from agentfox.detection.judgment.egress import Backend, PiiEgress
-from agentfox.core.models import User
 from agentfox.gateway.deps import current_user, db, require
 
 router = APIRouter(prefix="/api/judgment", tags=["judgment"])

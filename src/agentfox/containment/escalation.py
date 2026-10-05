@@ -33,7 +33,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.findings import raise_finding
 from agentfox.core.models import (
     Agent,
     ConversationTurn,
@@ -41,6 +40,7 @@ from agentfox.core.models import (
     Handoff,
     utcnow,
 )
+from agentfox.prove.findings import raise_finding
 
 log = logging.getLogger(__name__)
 

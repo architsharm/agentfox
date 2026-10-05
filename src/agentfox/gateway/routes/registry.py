@@ -10,18 +10,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.audit import chain
-from agentfox.prove.findings import STATUSES as FINDING_STATUSES
-from agentfox.identity import (
-    assess_posture,
-    check_capability,
-    expire_stale_approvals,
-    grant_capability,
-    issue_credential,
-    resolve_approval,
-    revoke_credential,
-    rotate_credential,
-)
 from agentfox.core.models import (
     Agent,
     ApiToken,
@@ -36,6 +24,20 @@ from agentfox.core.models import (
     User,
     utcnow,
 )
+from agentfox.gateway.auth import issue_token
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.identity import (
+    assess_posture,
+    check_capability,
+    expire_stale_approvals,
+    grant_capability,
+    issue_credential,
+    resolve_approval,
+    revoke_credential,
+    rotate_credential,
+)
+from agentfox.prove.audit import chain
+from agentfox.prove.findings import STATUSES as FINDING_STATUSES
 from agentfox.registry.control import UnknownAgent, all_controls, set_state
 from agentfox.registry.service import (
     assess_delegation,
@@ -51,8 +53,6 @@ from agentfox.registry.service import (
     upsert_mcp_server,
     upsert_tool,
 )
-from agentfox.gateway.auth import issue_token
-from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 
 router = APIRouter(prefix="/api", tags=["registry", "identity"])
 
@@ -276,8 +276,8 @@ def agent_lineage(
 def agent_posture(
     slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    from agentfox.evaluation.drift import evaluate_slos
     from agentfox.core.models import Decision, Trace
+    from agentfox.evaluation.drift import evaluate_slos
 
     agent = get_agent_or_404(session, slug)
 

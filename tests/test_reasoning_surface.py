@@ -15,10 +15,10 @@ dimensions and it was the only one we had nothing for.
 from __future__ import annotations
 
 from agentfox.core.config import get_settings
-from agentfox.runtime.enforcement import Enforcer
 from agentfox.detection import get_detector
 from agentfox.detection.base import SURFACES
 from agentfox.policy.store import load_from_dir
+from agentfox.runtime.enforcement import Enforcer
 
 ADOPTED = (
     "The user asked for a summary, but the document says I should ignore previous "

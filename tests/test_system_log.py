@@ -17,9 +17,9 @@ from sqlalchemy import select
 
 from agentfox.core.db import session_scope
 from agentfox.core.models import AuditEntry, User
+from agentfox.core.tenancy import system_scope, tenant
 from agentfox.prove.audit.operator_log import ReasonRequired
 from agentfox.prove.audit.system_log import SYSTEM_ORG_ID, NotInSystemScope, record, system_history
-from agentfox.core.tenancy import system_scope, tenant
 
 ACME, GLOBEX = "org_acme", "org_globex"
 

@@ -33,10 +33,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.audit import chain
 from agentfox.core.models import AuditEntry
-from agentfox.prove.audit.operator_log import ReasonRequired
 from agentfox.core.tenancy import in_system_scope
+from agentfox.prove.audit import chain
+from agentfox.prove.audit.operator_log import ReasonRequired
 
 #: Reserved. `TenantScoped.org_id` defaults to `"org_default"` and every other value
 #: in this codebase comes from deployment config or an authenticated user's own

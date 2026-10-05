@@ -45,11 +45,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.core.config import get_settings
+from agentfox.core.models import Agent, EvalSuite, Policy, PolicyCanary, utcnow
+from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
 from agentfox.jobs import store as jobs_db
 from agentfox.prove.audit import chain
-from agentfox.core.config import get_settings
-from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
-from agentfox.core.models import Agent, EvalSuite, Policy, PolicyCanary, utcnow
 
 
 def _actor(payload: dict[str, Any]) -> tuple[str, str]:

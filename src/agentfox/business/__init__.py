@@ -10,8 +10,22 @@ from __future__ import annotations
 
 from agentfox.business.catalogue import CATALOGUE, GuardrailKind, by_intent, inert_kinds, suggest
 from agentfox.business.catalogue import to_json as catalogue_json
-from agentfox.business.graph import CombinedDecision, Conflict, GraphNode, build_graph, combine, find_conflicts
-from agentfox.business.ladder import Band, Ladder, LadderDecision, VerifyResult, VerifySpec, run_verification
+from agentfox.business.graph import (
+    CombinedDecision,
+    Conflict,
+    GraphNode,
+    build_graph,
+    combine,
+    find_conflicts,
+)
+from agentfox.business.ladder import (
+    Band,
+    Ladder,
+    LadderDecision,
+    VerifyResult,
+    VerifySpec,
+    run_verification,
+)
 from agentfox.business.ladder import evaluate as evaluate_ladder
 from agentfox.business.store import all_ladders, load_ladders, save_ladder, set_mode, summary
 

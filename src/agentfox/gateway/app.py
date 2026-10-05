@@ -18,17 +18,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox import __version__
-from agentfox.runtime.availability import (
-    check_services,
-    get_admission_controller,
-    observe_governed_request,
-    service_health,
-)
-from agentfox.prove.compliance.catalog import load_catalog
 from agentfox.core.config import get_settings
 from agentfox.core.db import init_db
 from agentfox.detection import all_detectors, available_detectors
-from agentfox.providers import all_providers, available_providers
 from agentfox.gateway.deps import current_user, db
 from agentfox.gateway.routes import (
     answerability,
@@ -52,6 +44,14 @@ from agentfox.gateway.routes import (
     registry,
     tuning,
     waitlist,
+)
+from agentfox.prove.compliance.catalog import load_catalog
+from agentfox.providers import all_providers, available_providers
+from agentfox.runtime.availability import (
+    check_services,
+    get_admission_controller,
+    observe_governed_request,
+    service_health,
 )
 
 log = logging.getLogger(__name__)

@@ -5,7 +5,16 @@ product from a pure-security tool: we govern whether the agent *worked*, not onl
 whether it was safe (principle X-5).
 """
 
-from agentfox.evaluation import adapters, adaptive, drift, gating, redteam, runner, scorers, silent_failure
+from agentfox.evaluation import (
+    adapters,
+    adaptive,
+    drift,
+    gating,
+    redteam,
+    runner,
+    scorers,
+    silent_failure,
+)
 from agentfox.evaluation.adapters import PromptfooRunner, get_runner
 from agentfox.evaluation.adaptive import (
     OPERATORS,
@@ -16,7 +25,14 @@ from agentfox.evaluation.adaptive import (
 )
 from agentfox.evaluation.drift import DriftReport, evaluate_slos, ks_statistic, psi, set_slo
 from agentfox.evaluation.drift import compute as compute_drift
-from agentfox.evaluation.gating import GateResult, Regression, gate, set_baseline, to_junit, to_sarif
+from agentfox.evaluation.gating import (
+    GateResult,
+    Regression,
+    gate,
+    set_baseline,
+    to_junit,
+    to_sarif,
+)
 from agentfox.evaluation.model_groundedness import ModelGroundednessScorer, model_groundedness
 from agentfox.evaluation.ragas_adapter import (
     RAGAS_METRICS,
@@ -34,7 +50,13 @@ from agentfox.evaluation.redteam import (
     run_campaign,
 )
 from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope, sample_production
-from agentfox.evaluation.scorers import ScoreContext, ScoreResult, all_scorers, get_scorer, register_scorer
+from agentfox.evaluation.scorers import (
+    ScoreContext,
+    ScoreResult,
+    all_scorers,
+    get_scorer,
+    register_scorer,
+)
 from agentfox.evaluation.silent_failure import (
     SILENT_FAILURE_SCORERS,
     Envelope,

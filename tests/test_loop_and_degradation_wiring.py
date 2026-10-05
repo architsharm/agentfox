@@ -14,6 +14,7 @@ import json
 
 import pytest
 
+from agentfox.core.config import reset_settings_cache
 from agentfox.runtime.availability import (
     DATABASE,
     DETECTOR_PIPELINE,
@@ -21,7 +22,6 @@ from agentfox.runtime.availability import (
     get_degradation_ledger,
     reset_degradation_ledger,
 )
-from agentfox.core.config import reset_settings_cache
 
 from .conftest import as_user
 

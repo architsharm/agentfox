@@ -69,9 +69,8 @@ def score(rows: list[tuple[bool, bool]]) -> dict:
 
 
 def main() -> int:
-    from agentfox.grounding.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability
-    from agentfox.grounding.commitments import detect_commitments
     from agentfox.core.config import get_settings
+    from agentfox.core.models import KnowledgeBoundary
     from agentfox.detection import DetectorPipeline
     from agentfox.detection.base import DetectionContext
     from agentfox.detection.detectors.injection import InjectionHeuristicDetector
@@ -83,7 +82,8 @@ def main() -> int:
     from agentfox.detection.judgment.answerability import augment as augment_answerability
     from agentfox.detection.judgment.capability import DecisionKind, Tier
     from agentfox.detection.judgment.commitments import augment as augment_commitments
-    from agentfox.core.models import KnowledgeBoundary
+    from agentfox.grounding.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability
+    from agentfox.grounding.commitments import detect_commitments
 
     s = get_settings()
     s.allow_egress = True

@@ -40,9 +40,9 @@ import httpx
 from sqlalchemy.orm import Session
 
 from agentfox.core.db import session_scope
-from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 from agentfox.detection import TaintTracker
 from agentfox.integrations.correlation import refs_from_env
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
 

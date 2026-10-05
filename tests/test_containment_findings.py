@@ -15,8 +15,8 @@ from agentfox.containment.findings import (
     story,
     untrusted_source,
 )
-from agentfox.detection.taint import TaintTracker
 from agentfox.core.models import Finding
+from agentfox.detection.taint import TaintTracker
 from agentfox.policy import set_mode
 
 PAGE = (

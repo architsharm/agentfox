@@ -634,8 +634,8 @@ def main() -> None:
 
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache
-    from agentfox.runtime.enforcement import Enforcer
     from agentfox.core.seed import seed
+    from agentfox.runtime.enforcement import Enforcer
 
     # `NOMETRIA_DATABASE_URL` is the setting that actually exists. An earlier version
     # of this script set `NOMETRIA_DB_PATH`, which is not a setting at all — Settings

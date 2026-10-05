@@ -25,15 +25,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.jobs import handlers as job_handlers
-
-from agentfox.jobs import store as jobs_db
-
-from agentfox.jobs import scheduler
 from agentfox.core.config import get_settings
 from agentfox.core.models import Job, User
 from agentfox.core.tenancy import session_org
 from agentfox.gateway.deps import current_user, db, require
+from agentfox.jobs import handlers as job_handlers
+from agentfox.jobs import scheduler
+from agentfox.jobs import store as jobs_db
 
 # Imported for its side effect: registers the eval.run, compliance.recompute,
 # canary.advance, drift.check and redteam.posture handlers wherever this router loads.

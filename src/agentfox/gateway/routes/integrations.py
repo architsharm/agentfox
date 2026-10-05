@@ -38,17 +38,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core import ids
-from agentfox.prove.audit import chain
 from agentfox.core.config import get_settings
+from agentfox.core.models import GithubConnection, Policy, PolicyVersion, ScanRun, User, utcnow
+from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
 from agentfox.discovery.repo import ScanReport
 from agentfox.discovery.repo import scan as discovery_scan
-from agentfox.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
-from agentfox.core.models import GithubConnection, Policy, PolicyVersion, ScanRun, User, utcnow
-from agentfox.policy import PolicyDocument, save_policy
-from agentfox.registry.service import propose_from_scan, register_agent, slugify
-from agentfox.core.tenancy import bind_session, system_scope
 from agentfox.gateway.auth import issue_token
 from agentfox.gateway.deps import current_user, db, require
+from agentfox.policy import PolicyDocument, save_policy
+from agentfox.prove.audit import chain
+from agentfox.registry.service import propose_from_scan, register_agent, slugify
 
 log = logging.getLogger(__name__)
 

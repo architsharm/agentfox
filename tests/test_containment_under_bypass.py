@@ -14,8 +14,8 @@ from __future__ import annotations
 import pytest
 
 from agentfox.core.config import get_settings
-from agentfox.runtime.enforcement import Enforcer
 from agentfox.registry.control import quarantine
+from agentfox.runtime.enforcement import Enforcer
 
 CONTAINED = {"block", "escalate"}
 

@@ -17,13 +17,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.grounding.answerability import FACT, PROCEDURE, declare_boundary
-from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
-from agentfox.prove.compliance.risk import assess
-from agentfox.grounding.entitlement import grant as grant_resource
-from agentfox.grounding.entitlement import upsert_principal
 from agentfox.containment.escalation import Trigger, raise_handoff, record_turn
-from agentfox.identity import ensure_identity, grant_capability, issue_credential
 from agentfox.core.models import (
     SLO,
     AccessScopeRule,
@@ -40,10 +34,21 @@ from agentfox.core.models import (
     User,
     utcnow,
 )
-from agentfox.policy import load_available, save_policy
+from agentfox.grounding.answerability import FACT, PROCEDURE, declare_boundary
+from agentfox.grounding.entitlement import grant as grant_resource
+from agentfox.grounding.entitlement import upsert_principal
 from agentfox.grounding.provenance import APPROVED, SYSTEM_OF_RECORD, register_source
+from agentfox.identity import ensure_identity, grant_capability, issue_credential
+from agentfox.policy import load_available, save_policy
+from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
+from agentfox.prove.compliance.risk import assess
 from agentfox.providers import script
-from agentfox.registry.service import register_agent, scan_mcp_server, upsert_mcp_server, upsert_tool
+from agentfox.registry.service import (
+    register_agent,
+    scan_mcp_server,
+    upsert_mcp_server,
+    upsert_tool,
+)
 
 # ---------------------------------------------------------------------------
 # Tools — `impact` is the axis every containment rule reasons over

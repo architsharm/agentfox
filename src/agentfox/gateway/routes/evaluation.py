@@ -16,8 +16,18 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.jobs import store as jobs_db
-from agentfox.prove.audit import chain
+from agentfox.core.models import (
+    EvalAnnotation,
+    EvalCase,
+    EvalResult,
+    EvalRun,
+    EvalSuite,
+    RedTeamCampaign,
+    RedTeamFinding,
+    Trace,
+    User,
+)
+from agentfox.core.tenancy import session_org
 from agentfox.evaluation import (
     all_scorers,
     compute_drift,
@@ -33,19 +43,9 @@ from agentfox.evaluation.adapters import available_runners, get_runner
 from agentfox.evaluation.redteam import BUILTIN_PROBES
 from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 from agentfox.evaluation.scorers import get_scorer
-from agentfox.core.models import (
-    EvalAnnotation,
-    EvalCase,
-    EvalResult,
-    EvalRun,
-    EvalSuite,
-    RedTeamCampaign,
-    RedTeamFinding,
-    Trace,
-    User,
-)
-from agentfox.core.tenancy import session_org
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.jobs import store as jobs_db
+from agentfox.prove.audit import chain
 
 router = APIRouter(prefix="/api", tags=["evaluation"])
 

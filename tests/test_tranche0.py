@@ -12,17 +12,17 @@ import sys
 
 import pytest
 
-from agentfox.runtime.enforcement import Enforcer
+from agentfox.core.models import AgentControl, AuditEntry, Finding
 from agentfox.integrations.langgraph import (
     STATE_KEY,
     AgentFoxGuard,
     ApprovalRequired,
     PolicyViolation,
 )
-from agentfox.core.models import AgentControl, AuditEntry, Finding
 from agentfox.policy import set_mode
 from agentfox.providers import CompletionRequest, get_provider, script
 from agentfox.registry.control import UnknownAgent, kill, quarantine, resume, state_of
+from agentfox.runtime.enforcement import Enforcer
 
 from .conftest import INDIRECT_INJECTION, SECRET_TEXT, as_user
 

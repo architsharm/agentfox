@@ -15,6 +15,7 @@ import datetime as dt
 
 import pytest
 
+from agentfox.core.models import Agent
 from agentfox.detection.actions import (
     analyse_arguments,
     analyse_http,
@@ -25,7 +26,6 @@ from agentfox.detection.actions import (
     summarise,
 )
 from agentfox.identity import ensure_identity, grant_capability
-from agentfox.core.models import Agent
 
 # ---------------------------------------------------------------------------
 # Parsing: deterministic, never a model

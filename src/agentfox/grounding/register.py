@@ -44,8 +44,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.grounding.answerability import OPINION, PREDICTION, question_type
 from agentfox.core.finding import RiskFinding
+from agentfox.grounding.answerability import OPINION, PREDICTION, question_type
 
 # --- Domains ---------------------------------------------------------------
 

@@ -71,8 +71,8 @@ from operators import BACKFIRES, BY_KEY, COUNTERS, OPERATORS  # noqa: E402
 
 from agentfox import db  # noqa: E402
 from agentfox.core.config import get_settings  # noqa: E402
-from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 from agentfox.core.seed import seed as seed_fixture  # noqa: E402
+from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 
 RESULTS_DIR = BENCHMARK_DIR / "results"
 

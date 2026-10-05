@@ -24,7 +24,12 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
-from agentfox.providers.base import CompletionRequest, CompletionResponse, StreamChunk, register_provider
+from agentfox.providers.base import (
+    CompletionRequest,
+    CompletionResponse,
+    StreamChunk,
+    register_provider,
+)
 
 _SCRIPTS: dict[str, str] = {}
 

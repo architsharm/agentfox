@@ -214,8 +214,8 @@ def test_a_hook_with_no_agent_is_refused(running):
 def test_a_verdict_comes_back_over_the_socket(seeded, running):
     """The whole point, end to end: a real enforcement decision, over a real
     socket, from a process that did not import anything to serve it."""
-    from agentfox.identity import ensure_identity, grant_capability
     from agentfox.core.models import Agent
+    from agentfox.identity import ensure_identity, grant_capability
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     grant_capability(seeded, ensure_identity(seeded, agent), "shell.run", max_taint="tool_result")

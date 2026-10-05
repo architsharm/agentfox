@@ -82,6 +82,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from agentfox.core.config import get_settings
+from agentfox.core.db import init_db, session_scope
+from agentfox.detection.taint import TaintTracker, _flatten
 from agentfox.prove.audit.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
@@ -90,11 +93,8 @@ from agentfox.prove.audit.trace import (
     ATTR_VERDICT,
     add_span,
 )
-from agentfox.core.config import get_settings
-from agentfox.core.db import init_db, session_scope
-from agentfox.runtime.enforcement import _CAPABILITY_REFUSAL_RULE_IDS, EnforcementResult, Enforcer
-from agentfox.detection.taint import TaintTracker, _flatten
 from agentfox.registry.service import register_agent
+from agentfox.runtime.enforcement import _CAPABILITY_REFUSAL_RULE_IDS, EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
 
@@ -756,8 +756,8 @@ def _record_turn(
         )
         if not user_text:
             return
-        from agentfox.core.db import session_scope
         from agentfox.containment.escalation import record_turn
+        from agentfox.core.db import session_scope
         from agentfox.core.models import Agent
 
         token = _IN_AGENTFOX.set(True)
@@ -1089,9 +1089,9 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     from sqlalchemy import select
     from sqlalchemy.exc import IntegrityError
 
+    from agentfox.core.models import Tool
     from agentfox.improvement.traffic import infer_declared_impact
     from agentfox.integrations.mcp import infer_impact
-    from agentfox.core.models import Tool
     from agentfox.registry.service import DECLARED_TOOL_IMPACTS, impact_source_of, upsert_tool
 
     declared = DECLARED_TOOL_IMPACTS.get(name)

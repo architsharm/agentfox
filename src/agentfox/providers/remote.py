@@ -18,7 +18,12 @@ from typing import Any
 import httpx
 
 from agentfox.core.config import get_settings
-from agentfox.providers.base import CompletionRequest, CompletionResponse, StreamChunk, register_provider
+from agentfox.providers.base import (
+    CompletionRequest,
+    CompletionResponse,
+    StreamChunk,
+    register_provider,
+)
 
 #: Indicative USD per 1M tokens, for budget enforcement (P3-10) and cost reporting.
 #: Deliberately conservative and clearly labelled — the platform must never present

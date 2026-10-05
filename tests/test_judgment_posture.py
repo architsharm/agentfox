@@ -18,10 +18,10 @@ import pytest
 from sqlalchemy import select
 
 from agentfox.core.config import get_settings, reset_settings_cache
+from agentfox.core.models import AuditEntry
 from agentfox.detection.judgment import posture as P
 from agentfox.detection.judgment.capability import CapabilityRouter, DecisionKind, Tier
 from agentfox.detection.judgment.egress import Backend, PiiEgress
-from agentfox.core.models import AuditEntry
 
 from .conftest import as_user
 

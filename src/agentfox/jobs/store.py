@@ -53,9 +53,9 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
-from agentfox.jobs.queue import DEAD, DONE, PENDING, RUNNING
 from agentfox.core.models import Job, utcnow
 from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.jobs.queue import DEAD, DONE, PENDING, RUNNING
 
 log = logging.getLogger(__name__)
 

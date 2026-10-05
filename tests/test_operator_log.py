@@ -139,8 +139,8 @@ def test_issuing_a_credential_never_records_the_credential(seeded):
     """
     from sqlalchemy import select
 
-    from agentfox.gateway.auth import issue_token
     from agentfox.core.models import User
+    from agentfox.gateway.auth import issue_token
 
     user = seeded.scalars(select(User)).first()
     if user is None:

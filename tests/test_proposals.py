@@ -14,6 +14,17 @@ import pytest
 from sqlalchemy import select
 
 from agentfox.core.config import get_settings
+from agentfox.core.models import (
+    Agent,
+    AuditEntry,
+    ChangeProposal,
+    Policy,
+    PolicyBinding,
+    PolicyCanary,
+    PolicyVersion,
+    Suppression,
+    as_aware,
+)
 from agentfox.detection.tuning import apply_suppression, record_feedback
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import min_score_direction
@@ -30,19 +41,8 @@ from agentfox.improvement.proposals import (
     rollback_rate,
     verify_proposal,
 )
-from agentfox.core.models import (
-    Agent,
-    AuditEntry,
-    ChangeProposal,
-    Policy,
-    PolicyBinding,
-    PolicyCanary,
-    PolicyVersion,
-    Suppression,
-    as_aware,
-)
-from agentfox.prove.audit.operator_log import PRIVILEGED, unaudited
 from agentfox.policy import PolicyDocument, save_policy
+from agentfox.prove.audit.operator_log import PRIVILEGED, unaudited
 
 from .conftest import PII_TEXT, as_user
 

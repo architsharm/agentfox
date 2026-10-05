@@ -315,8 +315,8 @@ def test_doctor_reports_the_enforce_observe_split_honestly(isolated_db):
     # Committed and closed: `doctor` opens its own session, so an uncommitted fixture
     # session would leave it looking at an empty database.
     from agentfox.core.db import session_scope
-    from agentfox.runtime.enforcement import Enforcer
     from agentfox.core.seed import seed
+    from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
         seed(session)

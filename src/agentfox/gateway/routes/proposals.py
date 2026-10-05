@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from agentfox.core.models import ChangeProposal, User
+from agentfox.gateway.deps import current_user, db, require
 from agentfox.improvement import contract
 from agentfox.improvement.proposals import (
     IllegalTransition,
@@ -25,8 +27,6 @@ from agentfox.improvement.proposals import (
     rollback_proposal,
     verify_proposal,
 )
-from agentfox.core.models import ChangeProposal, User
-from agentfox.gateway.deps import current_user, db, require
 
 router = APIRouter(prefix="/api/proposals", tags=["proposals"])
 

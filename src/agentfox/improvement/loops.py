@@ -21,12 +21,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.audit import chain
-from agentfox.detection.tuning import threshold_recommendations
 from agentfox.core.models import ChangeProposal, GuardrailFeedback, Policy, utcnow
+from agentfox.detection.tuning import threshold_recommendations
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import ApplierError, _document, _live_policy
 from agentfox.improvement.proposals import SUBJECT_TYPE, file_proposal
+from agentfox.prove.audit import chain
 
 KIND = "policy.rule_min_score"
 SOURCE = "tuning.threshold"

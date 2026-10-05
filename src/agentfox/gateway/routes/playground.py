@@ -40,8 +40,8 @@ from agentfox.gateway.playground_sessions import (
     get_store,
     session_creation_limiter,
 )
-from agentfox.gateway.verdicts import with_verdict_aliases
 from agentfox.gateway.routes.playground_deps import playground_session
+from agentfox.gateway.verdicts import with_verdict_aliases
 
 router = APIRouter(prefix="/api/playground", tags=["playground"])
 
@@ -97,8 +97,8 @@ def chat(
     payload: PlaygroundChatRequest,
     record: PlaygroundSession = Depends(playground_session),
 ) -> dict[str, Any]:
-    from agentfox.runtime.enforcement import Enforcer
     from agentfox.containment.escalation import record_turn
+    from agentfox.runtime.enforcement import Enforcer
 
     if not payload.message.strip():
         raise HTTPException(400, "message must not be empty")
@@ -173,8 +173,8 @@ def tool_call(
     happen, which in observe mode is the one that did not take effect.
     """
     from agentfox.prove.audit.trace import start_trace
-    from agentfox.runtime.enforcement import Enforcer
     from agentfox.registry.service import slugify
+    from agentfox.runtime.enforcement import Enforcer
 
     with record.session_scope() as session:
         enforcer = Enforcer(session)

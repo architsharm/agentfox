@@ -19,10 +19,10 @@ decision that differs per agent and per environment.
 
 from __future__ import annotations
 
-from agentfox.runtime.enforcement import Enforcer
 from agentfox.detection.base import SURFACES
 from agentfox.policy.engine import NativePolicyEngine
 from agentfox.policy.model import Condition, PolicyDocument, PolicyInput, Rule
+from agentfox.runtime.enforcement import Enforcer
 
 
 def _engine_verdict(requires: list[str], reported: dict[str, object], surface: str = "completion"):

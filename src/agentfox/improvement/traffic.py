@@ -48,9 +48,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.audit import chain
-from agentfox.detection.base import taint_rank
-from agentfox.identity.service import _constraint_ok
 from agentfox.core.models import (
     Agent,
     ApprovalRequest,
@@ -63,9 +60,17 @@ from agentfox.core.models import (
     as_aware,
     utcnow,
 )
+from agentfox.detection.base import taint_rank
+from agentfox.identity.service import _constraint_ok
 from agentfox.improvement import contract
 from agentfox.improvement.loops import SUPERSEDE_ACTION, LoopReport
-from agentfox.improvement.proposals import SUBJECT_TYPE, attach_proof, file_proposal, verify_proposal
+from agentfox.improvement.proposals import (
+    SUBJECT_TYPE,
+    attach_proof,
+    file_proposal,
+    verify_proposal,
+)
+from agentfox.prove.audit import chain
 
 SOURCE = "traffic.observed"
 GRANT_KIND = "capability.grant"

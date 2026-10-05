@@ -13,7 +13,6 @@ import datetime as dt
 
 import pytest
 
-from agentfox.core.db import session_scope
 from agentfox.containment.escalation import (
     DEFAULT_CONDITIONS,
     REQUIRED_CONTEXT,
@@ -35,6 +34,7 @@ from agentfox.containment.escalation import (
     topic_signal,
     turn_depth_risk,
 )
+from agentfox.core.db import session_scope
 from agentfox.core.models import Agent, ConversationTurn, Finding, Handoff, utcnow
 
 from .conftest import as_user

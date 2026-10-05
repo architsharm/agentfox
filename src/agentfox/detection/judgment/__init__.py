@@ -14,7 +14,13 @@ from agentfox.detection.judgment.capability import (
     Plan,
     Tier,
 )
-from agentfox.detection.judgment.egress import Backend, EgressRefused, EgressReport, JudgmentGateway, PiiEgress
+from agentfox.detection.judgment.egress import (
+    Backend,
+    EgressRefused,
+    EgressReport,
+    JudgmentGateway,
+    PiiEgress,
+)
 from agentfox.detection.judgment.jev import JevAnswer, JevClient, JevResult, JevUnavailable
 from agentfox.detection.judgment.llm import LlmJudge
 from agentfox.detection.judgment.panel import PanelResult, judges_for

@@ -12,14 +12,6 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from agentfox.detection.base import Detection, DetectorResult
-from agentfox.detection.pipeline import PipelineResult
-from agentfox.detection.tuning import (
-    apply_suppression,
-    explain,
-    record_feedback,
-    sample_hash,
-)
 from agentfox.core.models import (
     Agent,
     AuditEntry,
@@ -28,6 +20,14 @@ from agentfox.core.models import (
     DetectorRun,
     GuardrailFeedback,
     RiskAssessment,
+)
+from agentfox.detection.base import Detection, DetectorResult
+from agentfox.detection.pipeline import PipelineResult
+from agentfox.detection.tuning import (
+    apply_suppression,
+    explain,
+    record_feedback,
+    sample_hash,
 )
 
 from .conftest import INDIRECT_INJECTION, PII_TEXT, as_user

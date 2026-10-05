@@ -54,12 +54,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.jobs import store as jobs_db
 from agentfox.core.config import get_settings
-from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
-from agentfox.jobs.queue import PENDING, RUNNING
 from agentfox.core.models import Agent, Job, JobSchedule, Policy, User, utcnow
 from agentfox.core.tenancy import bind_session, session_org, system_scope
+from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
+from agentfox.jobs import store as jobs_db
+from agentfox.jobs.queue import PENDING, RUNNING
 
 HOUR = 3600
 DAY = 24 * HOUR

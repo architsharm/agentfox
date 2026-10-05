@@ -16,10 +16,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from agentfox.prove.audit.trace import full_trace
 from agentfox.core.config import reset_settings_cache
-from agentfox.detection.tuning import explain_recorded
 from agentfox.core.models import Trace
+from agentfox.detection.tuning import explain_recorded
+from agentfox.prove.audit.trace import full_trace
 
 from .conftest import INDIRECT_INJECTION, PII_TEXT, as_user
 

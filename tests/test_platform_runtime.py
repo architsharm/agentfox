@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.jobs import store as jobs_db
-from agentfox.runtime.agent_loop import CONTINUE, ESCALATE, STOP, LoopBudget, Step, govern_loop
 from agentfox.core.db import configure_pool
-from agentfox.jobs.queue import DEFERRABLE, JobQueue
 from agentfox.core.models import Job
+from agentfox.jobs import store as jobs_db
+from agentfox.jobs.queue import DEFERRABLE, JobQueue
+from agentfox.runtime.agent_loop import CONTINUE, ESCALATE, STOP, LoopBudget, Step, govern_loop
 
 
 def run(tools_and_observations, budget=None):

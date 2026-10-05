@@ -14,10 +14,10 @@ import zipfile
 import pytest
 from typer.testing import CliRunner
 
-from agentfox.prove.audit import evidence
 from agentfox.cli.main import app
-from agentfox.detection.taint import TaintTracker
 from agentfox.core.models import ControlStatus, GuardrailFeedback
+from agentfox.detection.taint import TaintTracker
+from agentfox.prove.audit import evidence
 from agentfox.prove.report import (
     DRAFT_LABEL,
     build_summary,

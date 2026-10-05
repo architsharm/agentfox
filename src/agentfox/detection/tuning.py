@@ -35,7 +35,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.audit import chain
 from agentfox.core.models import (
     Agent,
     Decision,
@@ -45,8 +44,9 @@ from agentfox.core.models import (
     Suppression,
     Trace,
 )
-from agentfox.prove.audit.operator_log import record
 from agentfox.detection.base import Detection
+from agentfox.prove.audit import chain
+from agentfox.prove.audit.operator_log import record
 
 LABELS = ("false_positive", "true_positive", "false_negative")
 SUPPRESSION_SCOPES = ("agent", "global")

@@ -119,8 +119,8 @@ def _resolve_identity(session, agent: str):
     """
     from sqlalchemy import select
 
-    from agentfox.identity import ensure_identity
     from agentfox.core.models import Agent, Identity
+    from agentfox.identity import ensure_identity
 
     record = session.scalar(select(Agent).where(Agent.slug == agent))
     if record is not None:
@@ -410,8 +410,8 @@ def capability_revoke(
     """Withdraw a grant. The agent's calls to that tool are refused from now on."""
     from sqlalchemy import select
 
-    from agentfox.identity import revoke_capability
     from agentfox.core.models import Agent, Identity
+    from agentfox.identity import revoke_capability
 
     with _session() as session:
         capability = _find_capability(session, capability_id)

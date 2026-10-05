@@ -35,9 +35,9 @@ def issue(
     """Mint an API token. The value is shown once and cannot be retrieved again."""
     from sqlalchemy import select
 
-    from agentfox.gateway.auth import issue_token
     from agentfox.core.models import User
     from agentfox.core.tenancy import bind_session, system_scope
+    from agentfox.gateway.auth import issue_token
 
     with system_scope("issuing an operator token"), _session() as session:
         user = session.scalar(select(User).where(User.email == email))
@@ -83,9 +83,9 @@ def tokens(as_json: bool = typer.Option(False, "--json")) -> None:
 
     from sqlalchemy import select
 
-    from agentfox.prove.audit import system_log
     from agentfox.core.models import ApiToken, User, utcnow
     from agentfox.core.tenancy import system_scope
+    from agentfox.prove.audit import system_log
 
     now = utcnow()
     rows: list[dict[str, Any]] = []
@@ -160,9 +160,9 @@ def revoke(
     token_id: str = typer.Argument(..., help="Token id from `agentfox admin auth tokens`."),
 ) -> None:
     """Revoke a token immediately."""
-    from agentfox.gateway.auth import revoke_token
     from agentfox.core.models import ApiToken
     from agentfox.core.tenancy import bind_session, system_scope
+    from agentfox.gateway.auth import revoke_token
 
     with system_scope("revoking an operator token"), _session() as session:
         token = session.get(ApiToken, token_id)

@@ -444,10 +444,10 @@ def test_a_definition_that_no_longer_validates_is_skipped_not_fatal(isolated_db)
 
 def test_the_ladder_governs_a_real_tool_call(isolated_db):
     """The whole point: not another engine nobody can reach."""
-    from agentfox.runtime.enforcement import Enforcer
-    from agentfox.identity import ensure_identity, grant_capability
     from agentfox.core.models import Agent
     from agentfox.core.seed import seed
+    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
         seed(session)
@@ -469,10 +469,10 @@ def test_the_ladder_governs_a_real_tool_call(isolated_db):
 
 
 def test_the_decision_records_which_rule_decided(isolated_db):
-    from agentfox.runtime.enforcement import Enforcer
-    from agentfox.identity import ensure_identity, grant_capability
     from agentfox.core.models import Agent
     from agentfox.core.seed import seed
+    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
         seed(session)
@@ -491,9 +491,9 @@ def test_the_decision_records_which_rule_decided(isolated_db):
 
 
 def test_ladders_do_not_run_on_surfaces_with_no_number_to_band(isolated_db):
-    from agentfox.runtime.enforcement import Enforcer
     from agentfox.core.models import Agent
     from agentfox.core.seed import seed
+    from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
         seed(session)

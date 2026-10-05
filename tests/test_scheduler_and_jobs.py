@@ -13,11 +13,6 @@ import datetime as dt
 
 import pytest
 
-from agentfox.jobs import handlers as job_handlers
-
-from agentfox.jobs import store as jobs_db
-
-from agentfox.jobs import scheduler
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     DriftWindow,
@@ -29,6 +24,9 @@ from agentfox.core.models import (
     Job,
     JobSchedule,
 )
+from agentfox.jobs import handlers as job_handlers
+from agentfox.jobs import scheduler
+from agentfox.jobs import store as jobs_db
 from tests.conftest import as_user
 
 NOW = dt.datetime(2026, 9, 16, 12, 0, tzinfo=dt.UTC)

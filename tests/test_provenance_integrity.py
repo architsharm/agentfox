@@ -19,6 +19,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
+from agentfox.core.models import Agent, Finding, SourceRecord, utcnow
 from agentfox.grounding.integrity import (
     assess_integrity,
     check_arithmetic,
@@ -30,7 +31,6 @@ from agentfox.grounding.integrity import (
     detect_unmatched_records,
     number_readings,
 )
-from agentfox.core.models import Agent, Finding, SourceRecord, utcnow
 from agentfox.grounding.provenance import (
     APPROVED,
     CHANGED,

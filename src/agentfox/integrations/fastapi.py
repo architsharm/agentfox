@@ -30,10 +30,10 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from agentfox.prove.audit.trace import end_trace, start_trace
 from agentfox.core.db import session_scope
-from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 from agentfox.integrations.correlation import link_trace, refs_from_headers
+from agentfox.prove.audit.trace import end_trace, start_trace
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
 

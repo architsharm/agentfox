@@ -61,9 +61,9 @@ from _util import wipe_db  # noqa: E402
 
 from agentfox import db  # noqa: E402
 from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402
-from agentfox.runtime.enforcement import Enforcer  # noqa: E402
-from agentfox.registry.control import quarantine  # noqa: E402
 from agentfox.core.seed import seed  # noqa: E402
+from agentfox.registry.control import quarantine  # noqa: E402
+from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

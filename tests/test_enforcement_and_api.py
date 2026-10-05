@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.identity import ensure_identity, grant_capability
 from agentfox.core.models import (
     Agent,
     ApprovalRequest,
@@ -14,6 +13,7 @@ from agentfox.core.models import (
     Tool,
     Trace,
 )
+from agentfox.identity import ensure_identity, grant_capability
 from agentfox.policy import set_mode
 
 from .conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user

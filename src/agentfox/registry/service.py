@@ -27,7 +27,6 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from agentfox.prove.findings import auto_resolve, raise_finding, resolve_finding
 from agentfox.core.models import (
     Agent,
     Finding,
@@ -41,6 +40,7 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.policy import PolicyDocument, save_policy
+from agentfox.prove.findings import auto_resolve, raise_finding, resolve_finding
 
 _SLUG = re.compile(r"[^a-z0-9-]+")
 

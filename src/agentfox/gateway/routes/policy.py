@@ -16,8 +16,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.prove.audit import chain
 from agentfox.core.models import Policy, PolicyBinding, PolicyCanary, PolicyVersion, User
+from agentfox.gateway.deps import current_user, db, require
 from agentfox.policy import (
     LEVELS,
     MODES,
@@ -39,7 +39,7 @@ from agentfox.policy import (
     start_canary,
 )
 from agentfox.policy.canary import evaluate_gate
-from agentfox.gateway.deps import current_user, db, require
+from agentfox.prove.audit import chain
 
 router = APIRouter(prefix="/api/policies", tags=["policy"])
 

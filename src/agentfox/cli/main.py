@@ -133,8 +133,8 @@ def _emit(payload: Any, as_json: bool) -> None:
 @app.command()
 def version() -> None:
     """Show the version of everything that takes part in a decision."""
-    from agentfox.prove.compliance.catalog import load_catalog
     from agentfox.core.config import get_settings
+    from agentfox.prove.compliance.catalog import load_catalog
 
     settings = get_settings()
     catalog = load_catalog()
@@ -703,9 +703,9 @@ def policy_observe(key: str) -> None:
 def _set_mode(key: str, mode: str) -> None:
     from sqlalchemy import select
 
-    from agentfox.prove.audit import chain
     from agentfox.core.models import Policy
     from agentfox.policy import set_mode
+    from agentfox.prove.audit import chain
 
     with _session() as session:
         binding = set_mode(session, key, mode)
@@ -814,8 +814,8 @@ def eval_run(
     """Run an evaluation suite."""
     from sqlalchemy import select
 
-    from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
     from agentfox.core.models import EvalSuite
+    from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 
     keys = [s.strip() for s in scorers.split(",")] if scorers else None
     with _session() as session:
@@ -878,9 +878,9 @@ def eval_gate(
     """Run the suite and fail the build on regression. Exits 1 on failure."""
     from sqlalchemy import select
 
+    from agentfox.core.models import EvalSuite
     from agentfox.evaluation import gate, to_junit, to_sarif
     from agentfox.evaluation.runner import NativeEvalRunner
-    from agentfox.core.models import EvalSuite
 
     with _session() as session:
         record = session.scalar(select(EvalSuite).where(EvalSuite.key == suite))
@@ -926,8 +926,8 @@ def eval_gate(
 @eval_app.command("baseline")
 def eval_baseline(run_id: str, label: str = "main") -> None:
     """Mark a run as the regression baseline."""
-    from agentfox.evaluation import set_baseline
     from agentfox.core.models import EvalRun
+    from agentfox.evaluation import set_baseline
 
     with _session() as session:
         run = session.get(EvalRun, run_id)
@@ -1150,13 +1150,13 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
     """Show control posture, optionally for one framework."""
     from sqlalchemy import select
 
+    from agentfox.core.models import Control
     from agentfox.prove.compliance import (
         controls_for_framework,
         framework_coverage,
         latest_statuses,
         posture,
     )
-    from agentfox.core.models import Control
 
     with _session() as session:
         overall = posture(session, framework)
@@ -1349,8 +1349,8 @@ def compliance_review_packet(
     """
     from sqlalchemy import select
 
-    from agentfox.prove.compliance import load_catalog
     from agentfox.core.models import FrameworkMapping
+    from agentfox.prove.compliance import load_catalog
 
     catalog = load_catalog()
     known = {f.get("key") if isinstance(f, dict) else f for f in catalog.get("frameworks", [])}
@@ -1590,8 +1590,8 @@ def redteam_run(
     """
     from sqlalchemy import select
 
-    from agentfox.evaluation import run_campaign
     from agentfox.core.models import RedTeamFinding
+    from agentfox.evaluation import run_campaign
 
     keys = [p.strip() for p in probes.split(",")] if probes else None
     with _session() as session:
@@ -1815,6 +1815,8 @@ def scan_mcp(
     """
     from sqlalchemy import select
 
+    from agentfox.core.models import McpServer
+    from agentfox.core.seed import MCP_TOOLS
     from agentfox.discovery.exposure import (
         FLAG_LABEL,
         Member,
@@ -1825,9 +1827,7 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
-    from agentfox.core.models import McpServer
     from agentfox.registry.service import scan_mcp_server, upsert_mcp_server
-    from agentfox.core.seed import MCP_TOOLS
 
     if file is not None and seed_fixture:
         console.print("[red]pass either --file or --seed-fixture, not both[/]")
@@ -2236,8 +2236,8 @@ def _declare_harness_tools(harness: str) -> int:
     """Register the harness's built-in tools, with the impact each really has."""
     from sqlalchemy import select
 
-    from agentfox.hooks.harness import HARNESS_TOOLS
     from agentfox.core.models import Tool
+    from agentfox.hooks.harness import HARNESS_TOOLS
 
     wanted = HARNESS_TOOLS.get(harness, {})
     added = 0

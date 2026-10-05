@@ -48,8 +48,8 @@ def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
     monkeypatch.setenv("NOMETRIA_CONFIG", "none")
 
     from agentfox.core import db
-    from agentfox.runtime.availability import reset_admission_controller
     from agentfox.core.config import get_settings, reset_settings_cache
+    from agentfox.runtime.availability import reset_admission_controller
 
     reset_settings_cache()
     db.reset_engine()
@@ -92,8 +92,8 @@ def client(tmp_path):
     from fastapi.testclient import TestClient
 
     from agentfox.core.db import session_scope
-    from agentfox.gateway.app import create_app
     from agentfox.core.seed import seed
+    from agentfox.gateway.app import create_app
 
     with session_scope() as s:
         seed(s)

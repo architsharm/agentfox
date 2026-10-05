@@ -19,7 +19,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import String, delete, func, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
-from agentfox.prove.audit import chain
 from agentfox.core.db import session_scope
 from agentfox.core.models import Agent, AuditEntry, Base, Finding, TenantScoped, Trace, User
 from agentfox.core.tenancy import (
@@ -31,6 +30,7 @@ from agentfox.core.tenancy import (
     system_scope,
     tenant,
 )
+from agentfox.prove.audit import chain
 
 ACME, GLOBEX = "org_acme", "org_globex"
 
@@ -432,8 +432,8 @@ def test_shared_reference_catalog_syncs_independently_per_org(isolated_db):
     catalog that silently refused to load, not a modeling bug; this proves two
     tenants can each hold their own synced copy of the same catalog content.
     """
-    from agentfox.prove.compliance.catalog import sync_catalog
     from agentfox.core.models import Control
+    from agentfox.prove.compliance.catalog import sync_catalog
 
     for org in (ACME, GLOBEX):
         with tenant(org), session_scope() as session:
@@ -543,5 +543,9 @@ def test_migrations_do_not_switch_off_platform_logging(isolated_db):
     from agentfox.core.db import init_db
 
     init_db()
-    for name in ("agentfox.core.tenancy", "agentfox.runtime.enforcement", "agentfox.runtime.reliability"):
+    for name in (
+        "agentfox.core.tenancy",
+        "agentfox.runtime.enforcement",
+        "agentfox.runtime.reliability",
+    ):
         assert not logging.getLogger(name).disabled, f"{name} was silenced by Alembic"

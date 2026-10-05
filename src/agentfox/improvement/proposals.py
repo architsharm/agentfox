@@ -25,11 +25,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from agentfox.prove.audit import chain
 from agentfox.core.config import get_settings
 from agentfox.core.models import AuditEntry, ChangeProposal, utcnow
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import APPLY_ACTION, ApplierError, get_applier, has_applier
+from agentfox.prove.audit import chain
 
 SUBJECT_TYPE = "change_proposal"
 

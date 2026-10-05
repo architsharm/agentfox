@@ -64,7 +64,15 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Agent, Capability, Identity, Policy, PolicyBinding, PolicyVersion, Tool
+from agentfox.core.models import (
+    Agent,
+    Capability,
+    Identity,
+    Policy,
+    PolicyBinding,
+    PolicyVersion,
+    Tool,
+)
 from agentfox.evaluation.redteam import Probe, ProbeOutcome
 
 #: Carried verbatim into every adaptive campaign summary (`what_this_measures`).

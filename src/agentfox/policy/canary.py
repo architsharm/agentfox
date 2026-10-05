@@ -38,7 +38,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
-from agentfox.core.models import Decision, Policy, PolicyBinding, PolicyCanary, PolicyVersion, utcnow
+from agentfox.core.models import (
+    Decision,
+    Policy,
+    PolicyBinding,
+    PolicyCanary,
+    PolicyVersion,
+    utcnow,
+)
 
 DEFAULT_STEPS = [10, 25, 50, 100]
 

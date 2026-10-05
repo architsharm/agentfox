@@ -12,6 +12,7 @@ import datetime as dt
 import pytest
 from sqlalchemy import select
 
+from agentfox.core.models import Agent, GuardrailFeedback, Suppression
 from agentfox.detection.base import Detection, DetectorResult
 from agentfox.detection.pipeline import PipelineResult
 from agentfox.detection.tuning import (
@@ -29,7 +30,6 @@ from agentfox.detection.tuning import (
     suppression_health,
     threshold_recommendations,
 )
-from agentfox.core.models import Agent, GuardrailFeedback, Suppression
 
 from .conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user
 

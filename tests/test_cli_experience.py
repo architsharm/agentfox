@@ -45,8 +45,8 @@ def test_capability_grant_writes_a_grant_the_engine_then_honours():
     from sqlalchemy import select
 
     from agentfox.core.db import session_scope
-    from agentfox.identity import check_capability, ensure_identity
     from agentfox.core.models import Agent
+    from agentfox.identity import check_capability, ensure_identity
 
     _seed()
     result = runner.invoke(
@@ -96,9 +96,9 @@ def test_capability_grant_is_recorded_in_the_audit_chain():
     widens authority, so it is the last one that should be exempt."""
     from sqlalchemy import select
 
-    from agentfox.prove.audit import chain
     from agentfox.core.db import session_scope
     from agentfox.core.models import AuditEntry
+    from agentfox.prove.audit import chain
 
     _seed()
     runner.invoke(app, ["capability", "grant", "support-triage", "reports.export", "--yes"])
@@ -114,8 +114,8 @@ def test_capability_grant_expiry_stops_the_grant_matching():
     from sqlalchemy import select
 
     from agentfox.core.db import session_scope
-    from agentfox.identity import check_capability, ensure_identity
     from agentfox.core.models import Agent, Capability, utcnow
+    from agentfox.identity import check_capability, ensure_identity
 
     _seed()
     runner.invoke(
@@ -146,8 +146,8 @@ def test_capability_revoke_takes_the_permission_away_and_audits_it():
     from sqlalchemy import select
 
     from agentfox.core.db import session_scope
-    from agentfox.identity import check_capability, ensure_identity
     from agentfox.core.models import Agent, AuditEntry
+    from agentfox.identity import check_capability, ensure_identity
 
     _seed()
     runner.invoke(app, ["capability", "grant", "support-triage", "reports.export", "--yes"])

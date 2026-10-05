@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.grounding.answerability import UNKNOWABLE, UNSUPPORTED_TYPE, AnswerabilityVerdict
 from agentfox.core.config import get_settings
 from agentfox.detection.base import DetectionContext
 from agentfox.detection.detectors.judgment import PiiJudgmentDetector
 from agentfox.detection.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
 from agentfox.detection.judgment.answerability import augment
 from agentfox.detection.judgment.egress import EgressRefused
+from agentfox.grounding.answerability import UNKNOWABLE, UNSUPPORTED_TYPE, AnswerabilityVerdict
 
 
 class FakeGateway(JudgmentGateway):
@@ -160,8 +160,8 @@ def test_judgment_adds_a_commitment_with_no_binding_word(judgment_on) -> None:
 
 def test_judgment_never_drops_a_deterministic_finding(judgment_on) -> None:
     """Those are the findings that survive a hearing."""
-    from agentfox.grounding.commitments import Commitment
     from agentfox.detection.judgment.commitments import augment
+    from agentfox.grounding.commitments import Commitment
 
     existing = [Commitment("promise", "I guarantee", "binds the company")]
     out = augment(existing, "I guarantee a refund.", gateway=_commit_gateway(settles_outcome=0.0))

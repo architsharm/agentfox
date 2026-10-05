@@ -39,86 +39,25 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
-from agentfox.containment.agent_messaging import verify_message
-from agentfox.grounding.answerability import (
-    classify_answerability,
-    detect_over_refusal,
-    get_boundary,
-    verify_boundary,
-)
-from agentfox.prove.audit import chain
-from agentfox.prove.audit.trace import (
-    ATTR_AGENT,
-    ATTR_REQUEST_MODEL,
-    ATTR_SYSTEM,
-    ATTR_TAINT,
-    ATTR_TOOL_IMPACT,
-    ATTR_TOOL_NAME,
-    ATTR_VERDICT,
-    add_span,
-    end_trace,
-    start_trace,
-)
 from agentfox.business.graph import BUSINESS_RANK
 from agentfox.business.graph import combine as combine_business
 from agentfox.business.ladder import LadderDecision
 from agentfox.business.ladder import evaluate as evaluate_ladder
 from agentfox.business.store import load_ladders
-from agentfox.grounding.commitments import adverse_action_risk, check_disclosure, detect_commitments
-from agentfox.core.config import get_settings
+from agentfox.containment.agent_messaging import verify_message
+from agentfox.containment.control_flow import Plan
+from agentfox.containment.control_flow import check_selection as check_tool_selection
+from agentfox.containment.data_access import ReferenceTable, ScopeRule
+from agentfox.containment.data_access import analyse_access as analyse_data_access
+from agentfox.containment.effects import cascade_risk
 from agentfox.containment.findings import (
     detector_verdict,
     is_detector_rule,
     matches_detector_rule,
     raise_containment_findings,
 )
-from agentfox.grounding.context_integrity import (
-    assemble_context,
-    chunk_quality,
-    document_quality,
-    memory_binding_breach,
-    retrieval_drift,
-)
-from agentfox.grounding.context_integrity import worst as worst_context_verdict
-from agentfox.containment.control_flow import Plan
-from agentfox.containment.control_flow import check_selection as check_tool_selection
+from agentfox.core.config import get_settings
 from agentfox.core.crypto import DecryptionFailed, decrypt_secret
-from agentfox.containment.data_access import ReferenceTable, ScopeRule
-from agentfox.containment.data_access import analyse_access as analyse_data_access
-from agentfox.containment.effects import cascade_risk
-from agentfox.grounding.entitlement import (
-    aggregation_risk,
-    filter_retrieval,
-    inference_risk,
-    record_disclosure,
-)
-from agentfox.prove.findings import raise_finding, record_detector_health
-from agentfox.detection import (
-    DetectionContext,
-    DetectorPipeline,
-    TaintTracker,
-    redact_content,
-)
-from agentfox.detection.actions import analyse_arguments, find_sql_argument
-from agentfox.detection.actions import summarise as summarise_actions
-from agentfox.detection.base import taint_rank
-from agentfox.detection.composition import check_composed_escalation
-from agentfox.detection.taint import _flatten
-from agentfox.detection.tuning import (
-    LatencyLedger,
-    active_suppressions,
-    explain,
-    filter_suppressed,
-)
-from agentfox.identity import check_capability, request_approval, verify_credential
-from agentfox.integrations.correlation import (
-    link_trace,
-    push_verdict,
-    refs_from_env,
-    refs_from_headers,
-)
-from agentfox.grounding.integrity import assess_integrity
 from agentfox.core.models import (
     AccessScopeRule,
     Agent,
@@ -136,12 +75,77 @@ from agentfox.core.models import (
     as_aware,
     utcnow,
 )
+from agentfox.detection import (
+    DetectionContext,
+    DetectorPipeline,
+    TaintTracker,
+    redact_content,
+)
+from agentfox.detection.actions import analyse_arguments, find_sql_argument
+from agentfox.detection.actions import summarise as summarise_actions
+from agentfox.detection.base import taint_rank
+from agentfox.detection.composition import check_composed_escalation
+from agentfox.detection.taint import _flatten
+from agentfox.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
+from agentfox.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
+from agentfox.detection.trajectory import assess as assess_trajectory
+from agentfox.detection.tuning import (
+    LatencyLedger,
+    active_suppressions,
+    explain,
+    filter_suppressed,
+)
+from agentfox.grounding.answerability import (
+    classify_answerability,
+    detect_over_refusal,
+    get_boundary,
+    verify_boundary,
+)
+from agentfox.grounding.commitments import adverse_action_risk, check_disclosure, detect_commitments
+from agentfox.grounding.context_integrity import (
+    assemble_context,
+    chunk_quality,
+    document_quality,
+    memory_binding_breach,
+    retrieval_drift,
+)
+from agentfox.grounding.context_integrity import worst as worst_context_verdict
+from agentfox.grounding.entitlement import (
+    aggregation_risk,
+    filter_retrieval,
+    inference_risk,
+    record_disclosure,
+)
+from agentfox.grounding.integrity import assess_integrity
+from agentfox.grounding.provenance import assess_provenance
+from agentfox.grounding.register import check_register
+from agentfox.grounding.sycophancy import check_premises
+from agentfox.identity import check_capability, request_approval, verify_credential
+from agentfox.integrations.correlation import (
+    link_trace,
+    push_verdict,
+    refs_from_env,
+    refs_from_headers,
+)
 from agentfox.policy import EFFECT_RANK, PolicyInput, active_policies, combine, get_engine
 from agentfox.policy.taint_view import policy_taint
-from agentfox.grounding.provenance import assess_provenance
+from agentfox.prove.audit import chain
+from agentfox.prove.audit.trace import (
+    ATTR_AGENT,
+    ATTR_REQUEST_MODEL,
+    ATTR_SYSTEM,
+    ATTR_TAINT,
+    ATTR_TOOL_IMPACT,
+    ATTR_TOOL_NAME,
+    ATTR_VERDICT,
+    add_span,
+    end_trace,
+    start_trace,
+)
+from agentfox.prove.findings import raise_finding, record_detector_health
 from agentfox.providers import CompletionRequest, get_provider
-from agentfox.grounding.register import check_register
 from agentfox.registry.service import observe_agent, record_edge
+from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
 from agentfox.runtime.reliability import (
     BREAKER,
     BudgetVerdict,
@@ -152,10 +156,6 @@ from agentfox.runtime.reliability import (
     raise_budget_finding,
 )
 from agentfox.runtime.reliability import Rung as _Rung
-from agentfox.grounding.sycophancy import check_premises
-from agentfox.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
-from agentfox.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
-from agentfox.detection.trajectory import assess as assess_trajectory
 
 
 class ProviderUnavailable(RuntimeError):

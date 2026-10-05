@@ -36,13 +36,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
-from agentfox.prove.audit.otel import ingest_otlp
 from agentfox.core.config import get_settings
-from agentfox.runtime.enforcement import EnforcementResult, Enforcer
-from agentfox.registry.service import detect_shadow_agents
 from agentfox.gateway.deps import agent_credential, db
 from agentfox.gateway.verdicts import verdict_headers, with_verdict_aliases
+from agentfox.prove.audit.otel import ingest_otlp
+from agentfox.registry.service import detect_shadow_agents
+from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
 
@@ -317,9 +317,9 @@ def _record_loop_stop(
     """
     trace_id = None
     try:
+        from agentfox.core.models import Agent
         from agentfox.prove.audit.trace import start_trace
         from agentfox.prove.findings import raise_finding
-        from agentfox.core.models import Agent
 
         agent = (
             session.scalar(select(Agent).where(Agent.slug == agent_slug)) if agent_slug else None
@@ -854,9 +854,9 @@ def guard_content(
     `would_be_verdict` is what the bound policy says should happen, which in observe
     mode is the one that did not take effect. Gate on the applied one.
     """
-    from agentfox.prove.audit.trace import end_trace, start_trace
     from agentfox.core.config import get_settings
     from agentfox.core.models import Trace
+    from agentfox.prove.audit.trace import end_trace, start_trace
     from agentfox.registry.service import slugify
 
     surface = "output" if request.url.path.endswith("/output") else payload.surface

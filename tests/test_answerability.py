@@ -16,6 +16,7 @@ import datetime as dt
 
 import pytest
 
+from agentfox.core.models import Agent, Finding
 from agentfox.grounding.answerability import (
     AGGREGATE,
     FACT,
@@ -35,7 +36,6 @@ from agentfox.grounding.answerability import (
     question_type,
     verify_boundary,
 )
-from agentfox.core.models import Agent, Finding
 
 from .conftest import as_user
 

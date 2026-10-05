@@ -30,7 +30,14 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from agentfox.detection.judgment.capability import EGRESS_TIERS, ROUTING, CapabilityRouter, Combine, DecisionKind, Tier
+from agentfox.detection.judgment.capability import (
+    EGRESS_TIERS,
+    ROUTING,
+    CapabilityRouter,
+    Combine,
+    DecisionKind,
+    Tier,
+)
 from agentfox.detection.judgment.egress import JudgmentGateway
 from agentfox.detection.judgment.jev import JevAnswer, JevClient, JevResult, JevUnavailable
 

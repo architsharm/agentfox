@@ -17,16 +17,17 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.prove.audit import chain, evidence
-from agentfox.prove.audit.trace import full_trace
-from agentfox.prove.compliance import compute_all, posture
+from agentfox.cli._style import SEVERITY_COLOUR
 from agentfox.core.db import session_scope
-from agentfox.runtime.enforcement import Enforcer
+from agentfox.core.models import AuditEntry, EvalSuite, Finding
+from agentfox.core.seed import POISONED_DOCUMENT
 from agentfox.evaluation import gate, run_campaign, set_baseline
 from agentfox.evaluation.runner import NativeEvalRunner
 from agentfox.identity import assess_posture
-from agentfox.core.models import AuditEntry, EvalSuite, Finding
 from agentfox.policy import set_mode
+from agentfox.prove.audit import chain, evidence
+from agentfox.prove.audit.trace import full_trace
+from agentfox.prove.compliance import compute_all, posture
 from agentfox.registry.service import (
     attest_registry,
     derive_lineage,
@@ -34,8 +35,7 @@ from agentfox.registry.service import (
     lineage,
     unowned_agents,
 )
-from agentfox.core.seed import POISONED_DOCUMENT
-from agentfox.cli._style import SEVERITY_COLOUR
+from agentfox.runtime.enforcement import Enforcer
 
 console = Console()
 

@@ -457,8 +457,8 @@ def _grant_diff(proposal: ChangeProposal) -> dict[str, Any]:
 
 
 def _grant_identity(session: Session, slug: str):
-    from agentfox.identity import ensure_identity
     from agentfox.core.models import Agent
+    from agentfox.identity import ensure_identity
 
     agent = session.scalar(select(Agent).where(Agent.slug == slug))
     if agent is None:
@@ -484,8 +484,8 @@ def _live_exact_grant(session: Session, identity_id: str, tool_key: str):
 def _domain_audit(
     session: Session, action: str, subject_id: str, actor: str, payload: dict
 ) -> None:
-    from agentfox.prove.audit import chain
     from agentfox.core.config import get_settings
+    from agentfox.prove.audit import chain
 
     chain.append(
         session,
@@ -498,8 +498,8 @@ def _domain_audit(
 
 
 def _grant_direction(session: Session, proposal: ChangeProposal) -> str:
-    from agentfox.detection.base import taint_rank
     from agentfox.core.models import Capability
+    from agentfox.detection.base import taint_rank
 
     diff = _grant_diff(proposal)
     if not diff.get("replaces"):
@@ -516,8 +516,8 @@ def _grant_direction(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from agentfox.identity import grant_capability
     from agentfox.core.models import Capability
+    from agentfox.identity import grant_capability
 
     diff = _grant_diff(proposal)
     identity = _grant_identity(session, str(diff["agent"]))
@@ -590,8 +590,8 @@ def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> d
 
 
 def _grant_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from agentfox.identity import revoke_capability
     from agentfox.core.models import Capability
+    from agentfox.identity import revoke_capability
 
     result = applied_result(session, proposal)
     capability_id = result.get("capability_id")

@@ -15,9 +15,9 @@ import zipfile
 
 import pytest
 
+from agentfox.core.models import AuditEntry
 from agentfox.prove.audit import chain, evidence
 from agentfox.prove.audit.chain import GENESIS, entry_to_row, verify, verify_range
-from agentfox.core.models import AuditEntry
 
 
 @pytest.fixture

@@ -35,10 +35,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.runtime.enforcement import EnforcementResult, Enforcer
-from agentfox.prove.findings import raise_finding
-from agentfox.detection import TaintTracker
 from agentfox.core.models import McpToolSnapshot, Tool, Trace
+from agentfox.detection import TaintTracker
+from agentfox.prove.findings import raise_finding
 from agentfox.registry.service import (
     record_edge,
     scan_mcp_server,
@@ -46,6 +45,7 @@ from agentfox.registry.service import (
     upsert_mcp_server,
     upsert_tool,
 )
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
 

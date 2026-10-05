@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.core.models import EvalSuite
 from agentfox.evaluation import evaluate_slos, gate, psi, run_campaign, set_baseline, set_slo
 from agentfox.evaluation.drift import ks_statistic
 from agentfox.evaluation.gating import to_junit, to_sarif
@@ -16,7 +17,6 @@ from agentfox.evaluation.silent_failure import (
     groundedness,
     self_consistency,
 )
-from agentfox.core.models import EvalSuite
 from agentfox.providers import register_provider
 
 from .conftest import as_user

@@ -1070,7 +1070,12 @@ def _detect_mcp(root: Path, report: ScanReport) -> None:
     `claude_desktop_config.json`, `.claude.json`, `.claude/settings*.json`) and never
     starts a server: what a server can do is classified from how it is declared.
     """
-    from agentfox.discovery.exposure import FLAG_LABEL, MCP_CONFIG_NAMES, classify_mcp_server, parse_mcp_config
+    from agentfox.discovery.exposure import (
+        FLAG_LABEL,
+        MCP_CONFIG_NAMES,
+        classify_mcp_server,
+        parse_mcp_config,
+    )
 
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from agentfox.core.models import utcnow
 from agentfox.identity import (
     check_capability,
     delegate,
@@ -17,7 +18,6 @@ from agentfox.identity import (
     rotate_credential,
     verify_credential,
 )
-from agentfox.core.models import utcnow
 from agentfox.policy import (
     NativePolicyEngine,
     PolicyDocument,

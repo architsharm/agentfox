@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+from agentfox.core.models import ChangeProposal, GuardrailFeedback
 from agentfox.improvement import contract
 from agentfox.improvement.loops import propose_threshold_changes
 from agentfox.improvement.proposals import apply_proposal, decide
-from agentfox.core.models import ChangeProposal, GuardrailFeedback
 from agentfox.policy import PolicyDocument, save_policy
 
 POLICY = """

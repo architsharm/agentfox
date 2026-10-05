@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.core.models import Trace
 from agentfox.integrations.correlation import (
     LANGFUSE,
     LANGSMITH,
@@ -19,7 +20,6 @@ from agentfox.integrations.correlation import (
     refs_from_headers,
     resolve_external,
 )
-from agentfox.core.models import Trace
 
 from .conftest import as_user
 

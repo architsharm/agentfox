@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 
 from agentfox.cli.main import app
 from agentfox.core.db import session_scope
+from agentfox.core.models import DisclosureEvent
 from agentfox.grounding.entitlement import (
     DEFAULT_K_ANONYMITY,
     NativeAclEngine,
@@ -28,7 +29,6 @@ from agentfox.grounding.entitlement import (
     record_disclosure,
     upsert_principal,
 )
-from agentfox.core.models import DisclosureEvent
 
 from .conftest import as_user
 

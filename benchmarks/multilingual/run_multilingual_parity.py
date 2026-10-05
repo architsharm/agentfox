@@ -1162,8 +1162,8 @@ ANSWERABILITY_CASES: list[dict[str, Any]] = [
 
 
 def run_answerability_parity() -> dict[str, Any]:
-    from agentfox.grounding.answerability import classify_answerability, question_type
     from agentfox.core.models import KnowledgeBoundary
+    from agentfox.grounding.answerability import classify_answerability, question_type
 
     # The out-of-the-box boundary `declare_boundary()` falls back to, in enforce mode
     # so that `should_abstain` is actually exercised. Same boundary for every language
@@ -1378,8 +1378,8 @@ def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dic
 
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache
-    from agentfox.runtime.enforcement import Enforcer
     from agentfox.core.seed import seed
+    from agentfox.runtime.enforcement import Enforcer
 
     if config["detectors"] is None:
         os.environ.pop("AGENTFOX_ENABLED_DETECTORS", None)

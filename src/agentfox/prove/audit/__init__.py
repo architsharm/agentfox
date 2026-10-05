@@ -19,7 +19,14 @@ from agentfox.prove.audit.chain import (
     verify_range,
 )
 from agentfox.prove.audit.otel import detect_framework, ingest_otlp
-from agentfox.prove.audit.trace import add_span, end_trace, full_trace, search_traces, span, start_trace
+from agentfox.prove.audit.trace import (
+    add_span,
+    end_trace,
+    full_trace,
+    search_traces,
+    span,
+    start_trace,
+)
 
 __all__ = [
     "GENESIS",
