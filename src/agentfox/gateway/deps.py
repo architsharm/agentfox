@@ -18,7 +18,13 @@ from sqlalchemy.orm import Session
 from agentfox.core.db import get_session
 from agentfox.core.models import Agent, User
 from agentfox.core.tenancy import bind_session
-from agentfox.gateway.auth import AuthenticationRequired, authenticate, resolve_agent
+from agentfox.gateway.auth import (
+    AuthenticationRequired,
+    authenticate,
+    header_identity_allowed,
+    resolve_agent,
+    resolve_token,
+)
 
 log = logging.getLogger(__name__)
 
@@ -158,6 +164,59 @@ def agent_credential(
     # serving it in the first place.
     activate_posture(session)
     return token
+
+
+def ingest_credential(
+    session: Session = Depends(get_session),
+    authorization: Annotated[str | None, Header()] = None,
+) -> str | None:
+    """Who may write telemetry through ``POST /v1/traces``.
+
+    Ingest is a write: it stores spans, creates traces and registers the agents it
+    sees. The inline enforcement routes serve an unauthenticated caller because they
+    *govern* that caller's request; ingest governs nothing, it only records what the
+    caller claims happened, so an anonymous caller there is someone forging the audit
+    trail and the shadow-agent inventory.
+
+    Outside development (``header_identity_allowed()`` is false) a caller must present
+    either an agent key (``nom_agt_…``, the data-plane credential, bound to its
+    agent's tenant) or an operator token (``nom_api_…``) whose role may write to the
+    registry. Development keeps the old behaviour: no credential needed, default
+    tenant — the same rule the control plane's identity header follows.
+    """
+    token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+
+    if token and token.startswith("nom_agt_"):
+        resolved = resolve_agent(session, token)
+        if resolved is not None:
+            bind_session(session, resolved[1])
+            return token
+    elif token and token.startswith("nom_api_"):
+        user = resolve_token(session, token)
+        if user is not None:
+            allowed = WRITE_ROLES["registry"]
+            if user.role not in allowed:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        f"role '{user.role}' may not ingest telemetry. "
+                        f"Permitted: {sorted(allowed)}."
+                    ),
+                )
+            bind_session(session, user.org_id)
+            return token
+
+    if header_identity_allowed():
+        return None
+    raise HTTPException(
+        status_code=401,
+        detail=(
+            "authentication required to ingest traces. Send 'Authorization: Bearer "
+            "nom_agt_…' (an agent key) or 'Bearer nom_api_…' (an operator token)."
+        ),
+    )
 
 
 def session_iter() -> Iterator[Session]:
