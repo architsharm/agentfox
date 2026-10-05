@@ -66,6 +66,7 @@ _LEXICON: dict[str, list[re.Pattern[str]]] = {
 
 
 class SafetyLexiconDetector(BaseDetector):
+    covers_threats = ("LLM09",)
     key = "safety.lexicon"
     version = "1.0"
     surfaces = (

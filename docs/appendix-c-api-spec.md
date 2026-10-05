@@ -99,7 +99,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-193 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+194 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -353,6 +353,7 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/` | Name the service and say where to go next. Unauthenticated. |
+| `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
 | `GET` | `/api/judgment/posture` | What is in force, what may be changed, and what the deployment forbids. |
 | `PUT` | `/api/judgment/posture` | Replace the posture, refusing anything the deployment does not permit. |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |

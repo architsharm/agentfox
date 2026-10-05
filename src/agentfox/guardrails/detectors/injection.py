@@ -456,6 +456,10 @@ def _decodes_to_suspicious_text(blob: str) -> str | None:
 
 
 class InjectionHeuristicDetector(BaseDetector):
+    #: LLM07 as well as LLM01: this detector already stamps `SYSTEM_PROMPT_LEAK`
+    #: detections with it, and nothing in the control catalogue mentions LLM07, so
+    #: that coverage was real and entirely uncredited.
+    covers_threats = ("LLM01", "LLM07", "AML.T0051", "AML.T0054")
     # This detector iterates the views itself, so that it can raise the score for
     # content that only matched after de-obfuscation and flag the obfuscation alone.
     handles_views = True

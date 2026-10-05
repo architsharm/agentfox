@@ -110,6 +110,7 @@ def extract_json(text: str) -> Any | None:
 
 
 class JsonSchemaDetector(BaseDetector):
+    covers_threats = ("LLM05",)
     key = "schema.json"
     version = "1.0"
     surfaces = ("output", "tool_args")

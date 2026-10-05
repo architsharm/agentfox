@@ -402,6 +402,10 @@ class HubValidatorDetector(BaseDetector):
         self.surfaces = spec.surfaces
         self.timeout_ms = spec.timeout_ms
         self._kwargs = kwargs
+        # Each validator in the table above already states the threat it addresses,
+        # which is the same statement `covers_threats` asks for — so every hub
+        # detector is credited from its own spec rather than thirty-odd by hand.
+        self.covers_threats = tuple(x for x in (spec.owasp_id, spec.atlas_id) if x)
         #: Set when the package IS installed and constructing it failed anyway.
         #: The two states have to be told apart — see `unavailable_reason`.
         self._load_error: str | None = None

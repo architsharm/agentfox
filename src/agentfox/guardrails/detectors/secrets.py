@@ -71,6 +71,7 @@ def shannon_entropy(value: str) -> float:
 
 
 class SecretsDetector(BaseDetector):
+    covers_threats = ("LLM02", "AML.T0055")
     key = "secrets.native"
     version = "1.1"
     surfaces = (
