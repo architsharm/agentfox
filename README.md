@@ -33,7 +33,8 @@ pip install agentfox
 agentfox init && agentfox demo
 ```
 
-`init` creates a SQLite database and loads 43 controls and four policy packs, in about a second.
+`init` creates a SQLite database and loads 43 controls and the policy packs, in about a second: three
+in a plain repository, plus the coding-agent pack once Claude Code hooks are installed.
 `demo` runs a thirteen-step walkthrough in about five. Both are offline — no API key, no downloaded
 weights, no network egress.
 
