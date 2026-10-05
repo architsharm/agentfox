@@ -182,15 +182,18 @@ resumed: Ticket filed.`}</Output>
             <code>__interrupt__</code> in the result. To resume it, compile the graph with a
             checkpointer and invoke with a <code>thread_id</code>.
           </p>
-          <Callout kind="warning" title="Resuming runs the tool, whatever the decision">
+          <Callout kind="note" title="The resume value decides">
             <p>
-              On resume LangGraph re-runs the node; the guard checks again, the{" "}
-              <code>interrupt()</code> returns your resume value, and the tool body runs. The
-              guard does not read the resume value or the approval&apos;s state: resuming with{" "}
-              <code>{`{"approved": False}`}</code> also filed the ticket in testing. Resume only
-              after you have confirmed the approval was granted (see{" "}
-              <Link href="/docs/guides/approvals">Approvals</Link>), and route a denial
-              elsewhere instead of resuming.
+              On resume LangGraph re-runs the node, the guard checks again, and{" "}
+              <code>interrupt()</code> returns your resume value. Only{" "}
+              <code>{`{"approved": True}`}</code> (or <code>True</code>) runs the tool. Anything
+              else, including <code>{`{"approved": False}`}</code>, an empty value or a string,
+              raises <code>PolicyViolation</code> and the tool does not run. Add the paused{" "}
+              <code>approval_id</code> to the resume value,{" "}
+              <code>{`{"approved": True, "approval_id": pause["approval_id"]}`}</code>, and the
+              guard also requires that approval to be <code>approved</code> in{" "}
+              <Link href="/docs/guides/approvals">Approvals</Link>; a pending, denied, expired
+              or unknown approval is refused.
             </p>
           </Callout>
         </Step>

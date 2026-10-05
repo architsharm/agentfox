@@ -14,6 +14,7 @@ failed before its fix.
 from __future__ import annotations
 
 import socket
+from typing import Any
 
 import httpx
 import pytest
@@ -291,3 +292,93 @@ def test_hosted_api_route_refuses_a_metadata_url(seeded_app):
         headers={"X-Nometria-User": "admin@example.com"},
     )
     assert response.status_code == 422, response.text
+
+
+# ---------------------------------------------------------------------------
+# 3. LangGraph: a denied approval does not run the tool
+# ---------------------------------------------------------------------------
+
+
+def _guarded_transfer(seeded, monkeypatch, resume_value: Any):
+    """Drive `tool_node` exactly as LangGraph does on resume: the node re-runs and
+    `interrupt()` returns the value passed to `Command(resume=...)`."""
+    from agentfox.integrations import langgraph as lg
+
+    interrupts: list[dict] = []
+
+    def fake_interrupt(payload):
+        interrupts.append(payload)
+        return resume_value
+
+    monkeypatch.setattr(lg, "_langgraph_interrupt", lambda: fake_interrupt)
+    guard = lg.AgentFoxGuard(agent="payments-ops", session=seeded)  # no intent
+    executed: list[dict] = []
+
+    @guard.tool_node(tool="payments.transfer")
+    def transfer(state, **kwargs):
+        executed.append(kwargs)
+        return {"sent": True}
+
+    return transfer, executed, interrupts
+
+
+@pytest.mark.parametrize(
+    "resume_value",
+    [
+        {"approved": False},
+        None,
+        {},
+        "yes",
+        {"approved": "true"},
+        {"approved": 1},
+        False,
+    ],
+)
+def test_a_denied_or_unclear_resume_does_not_run_the_tool(seeded, monkeypatch, resume_value):
+    from agentfox.integrations.langgraph import PolicyViolation
+
+    transfer, executed, interrupts = _guarded_transfer(seeded, monkeypatch, resume_value)
+    with pytest.raises(PolicyViolation):
+        transfer({}, amount=250, currency="USD", to="acct_customer")
+    assert interrupts, "the call must have escalated through interrupt()"
+    assert executed == [], "a denied approval must not run the tool"
+
+
+@pytest.mark.parametrize("resume_value", [{"approved": True}, True])
+def test_an_approved_resume_runs_the_tool(seeded, monkeypatch, resume_value):
+    transfer, executed, interrupts = _guarded_transfer(seeded, monkeypatch, resume_value)
+    out = transfer({}, amount=250, currency="USD", to="acct_customer")
+    assert interrupts
+    assert executed and out["sent"] is True
+
+
+def test_a_resume_naming_an_approval_must_match_its_stored_state(seeded, monkeypatch):
+    """`{"approved": True, "approval_id": X}` is only honoured if X was approved."""
+    from agentfox.core.models import ApprovalRequest
+    from agentfox.integrations.langgraph import PolicyViolation
+
+    pending = ApprovalRequest(tool_key="payments.transfer", reason="t", status="denied")
+    seeded.add(pending)
+    seeded.flush()
+
+    transfer, executed, _ = _guarded_transfer(
+        seeded, monkeypatch, {"approved": True, "approval_id": pending.id}
+    )
+    with pytest.raises(PolicyViolation):
+        transfer({}, amount=250, currency="USD", to="acct_customer")
+    assert executed == []
+
+    pending.status = "approved"
+    seeded.flush()
+    transfer, executed, _ = _guarded_transfer(
+        seeded, monkeypatch, {"approved": True, "approval_id": pending.id}
+    )
+    transfer({}, amount=250, currency="USD", to="acct_customer")
+    assert executed
+
+    transfer, executed, _ = _guarded_transfer(
+        seeded, monkeypatch, {"approved": True, "approval_id": "apr_does_not_exist"}
+    )
+    with pytest.raises(PolicyViolation):
+        transfer({}, amount=250, currency="USD", to="acct_customer")
+    assert executed == []
