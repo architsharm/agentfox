@@ -3467,45 +3467,6 @@
     align-items: center;
   }
 }
-.mk-hero-stats {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  margin: 8px auto 0;
-  max-width: calc(var(--wrap) - 2 * var(--wrap-pad));
-  padding: 0;
-  background: #fff;
-  border: 1px solid var(--mk-border);
-  border-radius: 14px;
-  overflow: hidden;
-}
-@media (min-width: 760px) {
-  .mk-hero-stats { grid-template-columns: repeat(3, 1fr); }
-}
-.mk-hero-stat {
-  padding: 18px 20px 20px;
-  background: #fff;
-}
-.mk-hero-stat + .mk-hero-stat { border-top: 1px solid var(--mk-border); }
-@media (min-width: 760px) {
-  .mk-hero-stat + .mk-hero-stat { border-top: 0; border-left: 1px solid var(--mk-border); }
-}
-.mk-hero-stat b {
-  display: block;
-  font-family: var(--mk-display);
-  font-variation-settings: "wdth" 108;
-  font-size: clamp(22px, 2.2vw, 28px);
-  font-weight: 560;
-  letter-spacing: -0.03em;
-  color: #f4f7fb;
-}
-.mk-hero-stat span {
-  display: block;
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: #c5d0e0;
-}
 /* The name row sits on the hero, not in a field of empty page. */
 .mk-hero-act + .mk-section-tight {
   padding-block: 22px 26px;
@@ -3588,13 +3549,6 @@
 }
 :root[data-theme="light"] .mk-hero-act .shot figcaption { color: var(--mk-muted); }
 :root[data-theme="light"] .mk-hero-act .shot figcaption a { color: var(--mk-accent); }
-:root[data-theme="light"] .mk-hero-stats {
-  background: #fff;
-  border-color: var(--mk-border);
-}
-:root[data-theme="light"] .mk-hero-stat { background: #fff; }
-:root[data-theme="light"] .mk-hero-stat b { color: var(--mk-text); }
-:root[data-theme="light"] .mk-hero-stat span { color: var(--mk-muted); }
 :root[data-theme="light"] .pf,
 :root[data-theme="light"] .pf-tabs { background: var(--mk-border); border-color: var(--mk-border); }
 :root[data-theme="light"] .pf-tab {

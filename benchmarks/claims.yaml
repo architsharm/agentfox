@@ -54,7 +54,6 @@ claims:
       - {file: docs/PRD.md, text: "{n} of {d} attack pairs are contained at session-level taint"}
       - {file: docs/responding-to-the-critique.md, text: "{n} of {d} attack pairs were contained at session-level taint"}
       # The website. Not markdown, but the same normalised substring check applies.
-      - {file: dashboard/components/marketing/home.tsx, text: "<b>{n} of {d}</b> <span>AgentDojo attack pairs contained"}
       - {file: dashboard/app/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "Session-level taint (the default): {n} of {d} attack pairs contained"}
       - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
@@ -75,7 +74,6 @@ claims:
       - {file: docs/PRD.md, text: "a cost of {n} of {d} benign tasks running without escalation"}
       - {file: docs/responding-to-the-critique.md, text: "{n} of {d} benign tasks ran without escalation"}
       - {file: benchmarks/agentdojo_e2e/README.md, text: "Session-level taint (shipped default) | {n}/{d} ({pct}% {ci}) | 588/588 | 702/702"}
-      - {file: dashboard/components/marketing/home.tsx, text: "<b>{n} of {d}</b> <span>benign tasks ran without escalating to a human"}
       - {file: dashboard/app/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
       - {file: dashboard/app/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "only {n} of {d} benign tasks ({pct}% {ci}) ran without escalating to a human"}

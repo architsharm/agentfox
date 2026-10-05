@@ -187,21 +187,6 @@ export function Hero() {
           />
         </div>
       </div>
-
-      <div className="mk-wrap mk-hero-stats">
-        <div className="mk-hero-stat">
-          <b>588 of 588</b>
-          <span>AgentDojo attack pairs contained, with every detector off</span>
-        </div>
-        <div className="mk-hero-stat">
-          <b>24 of 97</b>
-          <span>benign tasks ran without escalating to a human on the same replay. That is the cost</span>
-        </div>
-        <div className="mk-hero-stat">
-          <b>Detectors start in observe</b>
-          <span>they record what they would block. Tool containment enforces from install</span>
-        </div>
-      </div>
     </section>
   );
 }
