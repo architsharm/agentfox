@@ -698,7 +698,7 @@ def propose_from_traffic(
                 hint = (
                     " composition.escalation blocks rather than escalating, so nothing "
                     "reaches the queue: if the value came from an internal system of record, "
-                    "declare that tool's output trusted (`agentfox tools declare <tool> "
+                    "declare that tool's output trusted (`agentfox declare tool <tool> "
                     "--impact read --output-trust trusted`)."
                 )
             report.skipped.append(

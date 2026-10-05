@@ -344,8 +344,8 @@ class ScanReport:
         }
 
     def to_submission_payload(self, *, source: str) -> dict[str, Any]:
-        """The redacted subset of this report that `agentfox check --submit` /
-        `agentfox quickscan --submit` are allowed to send to a control plane.
+        """The redacted subset of this report that `agentfox scan --submit` /
+        `agentfox scan --sessions --submit` are allowed to send to a control plane.
 
         `to_json()` is for the local `--json` flag and keeps everything, including
         each site's file, line and `detail` — `detail` is the one field that can carry

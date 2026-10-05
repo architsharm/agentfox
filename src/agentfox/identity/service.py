@@ -300,8 +300,8 @@ def default_deny_hint(principal: str | None, tool_key: str) -> str:
     scoped = f" --agent {slug}" if slug else ""
     return (
         f"To have grants proposed from the calls this agent has made, run "
-        f"`agentfox proposals from-traffic{scoped}` and approve them; to grant this one "
-        f"directly, `agentfox capability grant {agent} {tool_key}`."
+        f"`agentfox policy proposals from-traffic{scoped}` and approve them; to grant this one "
+        f"directly, `agentfox permit grant {agent} {tool_key}`."
     )
 
 

@@ -24,7 +24,7 @@ and both are made here, once, so the live path (`enforcement.py`) and replay
   ``max_taint`` says what *class* of content may reach the tool; composition is about
   *which tool* produced it — a lower-impact tool's output silently becoming a
   higher-impact tool's input — and no grant on the consuming tool speaks to that.
-  Declaring the producing tool's output trusted (`agentfox tools declare X
+  Declaring the producing tool's output trusted (`agentfox declare tool X
   --output-trust trusted`) is how an operator says that flow is intended.
 """
 

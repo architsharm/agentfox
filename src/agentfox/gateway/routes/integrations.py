@@ -255,7 +255,7 @@ def list_repos(
 
 # ---------------------------------------------------------------------------
 # Scanning — download a tarball server-side, run the existing static scanner
-# against it exactly as `agentfox check` would against a local checkout, and
+# against it exactly as `agentfox scan` would against a local checkout, and
 # propose (never create live) agents and policies from what it finds.
 # ---------------------------------------------------------------------------
 

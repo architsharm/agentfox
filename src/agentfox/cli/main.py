@@ -2441,7 +2441,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
         # nobody reads `read` on an unconfirmed tool as a decision someone made.
         impact = f"[{colour}]{row['impact']}[/]"
         if row["impact_source"] == "inferred":
-            impact += " [dim](inferred — confirm with `agentfox tools declare`)[/]"
+            impact += " [dim](inferred — confirm with `agentfox declare tool`)[/]"
         trust = "[green]trusted[/]" if row["output_trust"] == "trusted" else "[dim]untrusted[/]"
         table.add_row(row["key"], impact, trust, ", ".join(row["triggers"]) or "—")
     console.print(table)

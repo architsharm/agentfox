@@ -673,12 +673,12 @@ def containment_hint(evidence: dict[str, list[str]], *, mcp: bool = False) -> st
     if mcp:
         return (
             "Contain it: don't load these servers together in one client, or put the "
-            f"agent behind AgentFox and run `agentfox capability grant <agent> "
+            f"agent behind AgentFox and run `agentfox permit grant <agent> "
             f"mcp:{channel}/* --max-taint user` so nothing read from the web reaches "
             f"'{channel}' without an approval."
         )
     return (
-        f"Contain it: `agentfox capability grant <agent> {channel} --max-taint user` "
+        f"Contain it: `agentfox permit grant <agent> {channel} --max-taint user` "
         f"(anything derived from untrusted content needs an approval before it reaches "
         f'{channel}), or run with `agentfox.auto(mode="observe")` to watch it happen '
         "without blocking anything."

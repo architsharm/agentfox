@@ -30,9 +30,9 @@ export default function Page() {
         came from, and one command turns that into proposals:
       </p>
       <pre>
-        <code>{`agentfox proposals from-traffic --agent support-bot
-agentfox proposals approve <id> --actor you@example.com --note "matches its job"
-agentfox proposals apply <id> --actor you@example.com`}</code>
+        <code>{`agentfox policy proposals from-traffic --agent support-bot
+agentfox policy proposals approve <id> --actor you@example.com --note "matches its job"
+agentfox policy proposals apply <id> --actor you@example.com`}</code>
       </pre>
       <p>
         It files a declaration for each tool nobody declared, with an impact guessed from
@@ -45,7 +45,7 @@ agentfox proposals apply <id> --actor you@example.com`}</code>
         run then proposes raising the ceiling. Every proposal widens what the agent may
         do, so a person approves each one, and tool declarations, which apply to the whole
         organisation, need two people. Nothing is applied by automation. Undo any of them
-        with <code>agentfox proposals rollback</code>.
+        with <code>agentfox policy proposals rollback</code>.
       </p>
       <p>
         The refusal itself says this: a default-deny block names the agent, the tool, and
@@ -70,7 +70,7 @@ agentfox proposals apply <id> --actor you@example.com`}</code>
         copied out of it into <code>send_email</code> stops counting as untrusted input:
       </p>
       <pre>
-        <code>agentfox tools declare read_customer_record --impact read --output-trust trusted</code>
+        <code>agentfox declare tool read_customer_record --impact read --output-trust trusted</code>
       </pre>
 
       <h2>Grant it, with limits</h2>

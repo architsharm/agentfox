@@ -77,7 +77,7 @@ def _session():
     return session_scope()
 
 
-#: What `agentfox check` writes in the severity column. Short enough for a table and
+#: What `agentfox scan` writes in the severity column. Short enough for a table and
 #: still a word, so the row survives a terminal with no colour and a pasted log.
 _SEVERITY_MARK = {
     "critical": "CRITICAL",
@@ -327,7 +327,7 @@ def check(
             hidden = len(report.sites) - len(ranked)
             console.print(
                 f"  [dim]{hidden} more finding(s) not shown, across every kind above. "
-                f"See all of them:[/] [cyan]agentfox check{target} "
+                f"See all of them:[/] [cyan]agentfox scan{target} "
                 f"--limit {len(report.sites)}[/]"
             )
 
@@ -554,7 +554,7 @@ def doctor(
         raise typer.Exit(1)
 
 
-#: Worst first. `agentfox check` advertises this list as ranked by severity, and for
+#: Worst first. `agentfox scan` advertises this list as ranked by severity, and for
 #: a long time it was ordered by creation time instead.
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 

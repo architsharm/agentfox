@@ -493,7 +493,7 @@ class ScanRun(Base, TimestampMixin):
         String(40), ForeignKey("github_connections.id"), index=True
     )
     # "github" (default, repo scan), "hosted_api" (OpenAPI spec scan), or "cli"
-    # (`agentfox check --submit` / `agentfox quickscan --submit` — a locally-run scan
+    # (`agentfox scan --submit` / `agentfox scan --sessions --submit` — a locally-run scan
     # whose redacted summary, never its file contents, was submitted for review).
     source_kind: Mapped[str] = mapped_column(String(16), default="github")
     repo_full_name: Mapped[str] = mapped_column(String(300), default="")

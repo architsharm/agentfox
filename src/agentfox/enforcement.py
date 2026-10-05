@@ -1290,7 +1290,7 @@ class Enforcer:
 
         tracker = tracker or TaintTracker(trace_id=trace.id if trace else None)
         # Read on every call rather than cached on the tracker: a declaration made
-        # mid-run (`agentfox tools declare X --output-trust trusted`) applies to the
+        # mid-run (`agentfox declare tool X --output-trust trusted`) applies to the
         # next call, and a withdrawn one stops applying just as promptly.
         tracker.trusted_tools = frozenset(
             self.session.scalars(select(Tool.key).where(Tool.output_trust == "trusted"))

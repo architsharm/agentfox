@@ -94,8 +94,8 @@ messages, the response text, and every tool call in the response (OpenAI `tool_c
 `tool_use`). Each tool call goes through the same check as `/v1/guard/tool_call` before your code
 can run it, with argument provenance read from the conversation — a value copied out of a
 `role="tool"` message counts as tool output. A tool seen for the first time is registered with an
-impact guessed from its name and marked `inferred` until you confirm it (`agentfox tools list`,
-`agentfox tools declare`); `@fox.tool(impact=...)` in code counts as a declaration.
+impact guessed from its name and marked `inferred` until you confirm it (`agentfox declare list tools`,
+`agentfox declare tool`); `@fox.tool(impact=...)` in code counts as a declaration.
 
 Nothing is blocked by the line itself: `auto()` follows each policy's own mode, `baseline` starts in
 observe, and capability default-deny on tool calls applies once the agent holds its first grant.
@@ -351,9 +351,9 @@ agentfox scan mcp fetch --file tools.json   # one server, plus each tool in its 
 Watch, propose, approve. Let the agent run; default deny refuses and records every call. Then:
 
 ```bash
-agentfox proposals from-traffic --agent support-triage   # declarations + grants, from its calls
-agentfox proposals approve <id> --actor you@example.com --note "matches its job"
-agentfox proposals apply <id> --actor you@example.com    # rollback <id> undoes it
+agentfox policy proposals from-traffic --agent support-triage   # declarations + grants, from its calls
+agentfox policy proposals approve <id> --actor you@example.com --note "matches its job"
+agentfox policy proposals apply <id> --actor you@example.com    # rollback <id> undoes it
 ```
 
 Each proposal reads like "Let support-triage call issue_refund with amount ≤ 120 (seen 14 times, max

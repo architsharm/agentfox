@@ -93,7 +93,7 @@ agentfox scan
 │ (issue_refund). An instruction hidden in a web page could send customer data │
 │ out.                                                                         │
 │                                                                              │
-│ Contain it: `agentfox capability grant <agent> send_email --max-taint user`  │
+│ Contain it: `agentfox permit grant <agent> send_email --max-taint user`  │
 │ (...), or run with `agentfox.auto(mode="observe")` to watch it happen.       │
 ╰─ private data + untrusted content + a way out ───────────────────────────────╯
 Scanned 2 files in /path/to/your/project
@@ -181,7 +181,7 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 ```json
 { "verdict": "block",
   "rules_fired": [{ "rule_id": "capability.denied",
-                    "reason": "no resolved identity for the caller, so it holds no grants (default deny). To have grants proposed from the calls this agent has made, run `agentfox proposals from-traffic` and approve them; to grant this one directly, `agentfox capability grant <agent> payments.transfer`." }] }
+                    "reason": "no resolved identity for the caller, so it holds no grants (default deny). To have grants proposed from the calls this agent has made, run `agentfox policy proposals from-traffic` and approve them; to grant this one directly, `agentfox permit grant <agent> payments.transfer`." }] }
 ```
 
 Blocked, on a database you have never configured, for an agent that does not exist yet. That is
@@ -213,7 +213,7 @@ a while as it is: every refused call is recorded with its tool, its arguments an
 argument came from. Then:
 
 ```bash
-agentfox proposals from-traffic --agent my-agent        # --since 7d to narrow the window
+agentfox policy proposals from-traffic --agent my-agent        # --since 7d to narrow the window
 ```
 
 ```
@@ -228,11 +228,11 @@ filed 8, refreshed 0, superseded 0, verified 0
   …
 ```
 
-Read one with `agentfox proposals show <id>`, then approve and apply it:
+Read one with `agentfox policy proposals show <id>`, then approve and apply it:
 
 ```bash
-agentfox proposals approve <id> --actor you@example.com --note "matches its job"
-agentfox proposals apply <id> --actor you@example.com
+agentfox policy proposals approve <id> --actor you@example.com --note "matches its job"
+agentfox policy proposals apply <id> --actor you@example.com
 ```
 
 What it will and will not learn from is the part to understand:
@@ -249,7 +249,7 @@ What it will and will not learn from is the part to understand:
 
 Every proposal widens what an agent may do, so none is ever applied by automation. Grants are
 scoped to one agent and need one approver. Tool declarations apply to the whole organisation, so
-they need two different people. `agentfox proposals rollback <id>` undoes either. The scheduler
+they need two different people. `agentfox policy proposals rollback <id>` undoes either. The scheduler
 runs the same loop daily (`grants.propose`); it files, a person decides.
 
 **When the report says composition.** A value an agent copies out of one tool's output into a
@@ -259,7 +259,7 @@ tool is a system of record you control, say so, and values copied out of it stop
 untrusted input:
 
 ```bash
-agentfox tools declare read_customer_record --impact read --output-trust trusted
+agentfox declare tool read_customer_record --impact read --output-trust trusted
 ```
 
 Output is untrusted unless you declare otherwise.
@@ -334,7 +334,7 @@ It governs more than the gateway does from the same position: besides the reques
 text, every tool call in the response (OpenAI `tool_calls`, Anthropic `tool_use`, streamed or not)
 goes through the tool-call check before the response is handed back, with argument provenance read
 from the conversation. A tool it has not seen before is registered with an inferred impact —
-`agentfox tools list` marks it `(inferred)` until you confirm it with `agentfox tools declare`. In
+`agentfox declare list tools` marks it `(inferred)` until you confirm it with `agentfox declare tool`. In
 the default mode a refused tool call raises `agentfox.Blocked`, except that capability default-deny
 only applies once the agent holds a grant; `auto(mode="observe")` records and never raises. The
 OpenAI Responses API is not patched.
@@ -376,7 +376,7 @@ permission, provenance or blast-radius rule stopped — titled by what actually 
 
 For the one-page version to forward to whoever signs off, run `agentfox report` (add
 `--format html --out summary.html` for a file). The same page is `SUMMARY.md` at the top of every
-`agentfox evidence export` zip.
+`agentfox report evidence` zip.
 
 `doctor` is the more interesting one, because it grades the configuration rather than the traffic:
 

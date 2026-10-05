@@ -1,5 +1,5 @@
 """Optional, explicit submission of a local scan's redacted summary to a running
-control plane, from `agentfox check --submit` / `agentfox quickscan --submit`.
+control plane, from `agentfox scan --submit` / `agentfox scan --sessions --submit`.
 
 Nothing here ever runs unless a human opts in — no flag and no confirmed prompt means
 this module is never imported for anything but its exceptions. What gets sent is

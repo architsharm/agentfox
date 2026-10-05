@@ -133,8 +133,8 @@ def propose_from_scan(
     per detected framework, from a discovery scan's governable sites.
 
     Shared by every scan entry point that ends up here — the GitHub-connected repo
-    scan (``routes/integrations.py``) and a locally-run ``agentfox check --submit`` /
-    ``agentfox quickscan --submit`` (``routes/discovery.py``) — so a scan looks the
+    scan (``routes/integrations.py``) and a locally-run ``agentfox scan --submit`` /
+    ``agentfox scan --sessions --submit`` (``routes/discovery.py``) — so a scan looks the
     same in the dashboard whichever door it came through. ``sites`` is intentionally
     the redacted shape (``{"kind", "top_dir", "provider"}``, see
     ``discovery.ScanReport.to_submission_payload``): this function never needs, and
@@ -406,7 +406,7 @@ def upsert_tool(
     tool.kind = kind
     tool.impact = impact
     # A fresh dict, so the JSON column registers the change; a declaration clears
-    # the inferred marker, which is how `agentfox tools declare` confirms a guess.
+    # the inferred marker, which is how `agentfox declare tool` confirms a guess.
     schema_json = dict(schema or tool.schema_json or {})
     if impact_source == "inferred":
         schema_json[IMPACT_SOURCE_KEY] = "inferred"

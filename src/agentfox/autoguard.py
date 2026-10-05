@@ -1075,7 +1075,7 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     inferred from the tool's name and the description the request declared
     (`integrations.mcp.infer_impact`, the guess MCP governance already makes) and
     recorded as ``impact_source="inferred"``, for a human to confirm with
-    `agentfox tools declare`. A declaration made in code (`@fox.tool(impact=...)`)
+    `agentfox declare tool`. A declaration made in code (`@fox.tool(impact=...)`)
     beats the guess. An existing row is never overwritten — except an inferred one
     that code has since declared.
     """

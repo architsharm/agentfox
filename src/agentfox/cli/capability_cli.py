@@ -151,7 +151,7 @@ def _find_capability(session, typed: str):
         return matches[0]
     if not matches:
         console.print(f"[red]unknown capability '{typed}'[/]")
-        console.print("  List the real ids with `agentfox capability list`.")
+        console.print("  List the real ids with `agentfox permit list`.")
         raise typer.Exit(1)
     console.print(f"[red]'{typed}' matches {len(matches)} grants.[/] Name one of them in full:")
     for match in matches:
@@ -296,11 +296,11 @@ def capability_grant(
     _next_steps(
         [
             (
-                f"agentfox capability list {agent}",
+                f"agentfox permit list {agent}",
                 "see everything this agent may now do",
             ),
             (
-                f"agentfox capability revoke {capability_id}",
+                f"agentfox permit revoke {capability_id}",
                 "withdraw this grant again",
             ),
             ("agentfox doctor", "re-grade least privilege for this deployment"),
@@ -354,7 +354,7 @@ def capability_list(
         console.print(f"[yellow]no capability grants{scope}[/]")
         console.print(
             "  Every tool call is refused by default. Grant one with "
-            "`agentfox capability grant <agent> <tool>`."
+            "`agentfox permit grant <agent> <tool>`."
         )
         return
 
@@ -401,7 +401,7 @@ def capability_list(
 @capability_app.command("revoke")
 def capability_revoke(
     capability_id: str = typer.Argument(
-        ..., help="Grant id from `agentfox capability list`, e.g. cap_01h...."
+        ..., help="Grant id from `agentfox permit list`, e.g. cap_01h...."
     ),
     yes: bool = typer.Option(
         False, "--yes", "-y", help="Skip the confirmation prompt (for scripts and CI)."
@@ -470,7 +470,7 @@ def _explain_taint_ceiling(tool: str, max_taint: str) -> None:
         "  [yellow]note[/] composition.escalation still applies: a value copied out of a "
         f"lower-impact tool's output into {tool} is blocked whatever this grant says. "
         "If that flow is intended, declare the producing tool's output trusted: "
-        "`agentfox tools declare <tool> --impact read --output-trust trusted`."
+        "`agentfox declare tool <tool> --impact read --output-trust trusted`."
     )
 
 

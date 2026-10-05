@@ -529,7 +529,7 @@ def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> d
         if capability is None or capability.identity_id != identity.id:
             raise ApplierError(
                 f"grant {diff['replaces']} is gone; this proposal was computed against it. "
-                "Refile with `agentfox proposals from-traffic`."
+                "Refile with `agentfox policy proposals from-traffic`."
             )
         expected = diff.get("from_max_taint")
         if expected is not None and capability.max_taint != expected:
