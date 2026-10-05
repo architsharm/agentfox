@@ -194,7 +194,7 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
         One line in the entry point wraps the OpenAI, Anthropic, LiteLLM and LangChain
         clients already running in that process. From any other language, post a single
         tool call, or point an existing client&rsquo;s base URL at the gateway.{" "}
-        <Link href="/docs/connect">The calls are in the docs.</Link>
+        <Link href="/docs/guides/python-auto">The calls are in the docs.</Link>
       </>
     ),
   },
@@ -208,7 +208,7 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
       <>
         Enforcement is the step that starts blocking model traffic. Until then the
         policy records what it would have done and lets the call through.{" "}
-        <Link href="/docs/runtime">How to turn it on is in the docs.</Link>
+        <Link href="/docs/reference/policies">How to turn it on is in the docs.</Link>
       </>
     ),
   },
@@ -399,7 +399,7 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
         Yes. Point an existing OpenAI or Anthropic client&rsquo;s base URL at the gateway,
         which speaks the API your code already calls, or post a tool call to the gateway
         and read the verdict back. Neither puts AgentFox code in the application.{" "}
-        <Link href="/docs/connect">The calls are in the docs.</Link>
+        <Link href="/docs/guides/python-auto">The calls are in the docs.</Link>
       </>
     ),
   },

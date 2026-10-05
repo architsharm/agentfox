@@ -27,7 +27,7 @@ export default function Page() {
       kicker="Audit trail"
       title={["An audit trail", "you can check"]}
       lede="Every allow and every block. The export includes a verifier that does not use our code."
-      docs="/docs/evidence"
+      docs="/docs/guides/audit-evidence"
       challenge={
         <p>If the only proof is a row in the vendor&rsquo;s database, the auditor has to take their word for it.</p>
       }

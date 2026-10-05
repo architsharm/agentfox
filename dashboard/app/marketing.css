@@ -3701,3 +3701,79 @@
   .docs-nav { position: static; }
 }
 
+
+/* Docs blocks (components/docs/blocks.tsx, reference.tsx). */
+.docs-doc .docs-lede { font-size: 18px; color: var(--mk-muted); margin-top: 14px; }
+.docs-code { margin: 16px 0 0; border-radius: 10px; overflow: hidden; background: #1c1917; }
+.docs-code figcaption {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 14px; font-size: 12px; letter-spacing: 0.02em;
+  color: #c9c2b6; background: #292524; border-bottom: 1px solid #3a3531;
+}
+.docs-doc .docs-code pre { margin: 0; border-radius: 0; }
+.docs-code-text { background: #24211e; }
+.docs-code-text pre { color: #d8d1c4; }
+.docs-copy {
+  font: inherit; font-size: 12px; color: #f5f0e8; background: transparent;
+  border: 1px solid #4a443f; border-radius: 6px; padding: 2px 10px; cursor: pointer;
+}
+.docs-copy:hover { border-color: #8a8178; }
+.docs-callout {
+  margin: 18px 0 0; padding: 12px 16px; border-radius: 10px;
+  border: 1px solid var(--mk-border); border-left-width: 4px; background: var(--mk-surface);
+}
+.docs-callout-note { border-left-color: #6e6e73; }
+.docs-callout-tip { border-left-color: #2f7d4f; }
+.docs-callout-warning { border-left-color: var(--mk-accent); }
+.docs-callout-title { margin: 0 !important; font-size: 13px !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mk-muted) !important; }
+.docs-callout > div > p:first-child { margin-top: 6px; }
+.docs-steps { list-style: none; counter-reset: step; margin: 18px 0 0; padding: 0; }
+.docs-step { counter-increment: step; position: relative; padding: 2px 0 6px 44px; margin: 0 0 18px; }
+.docs-step::before {
+  content: counter(step); position: absolute; left: 0; top: 0;
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 14px; font-weight: 600; background: var(--mk-surface-2); color: var(--mk-text);
+}
+.docs-doc .docs-step h3 { margin-top: 2px; }
+.docs-inapp { font-size: 14px !important; margin-top: 14px; }
+.docs-inapp span {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; background: var(--mk-surface-2); color: var(--mk-muted);
+}
+.docs-next { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--mk-border); }
+.docs-next p { font-size: 12px !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mk-muted) !important; margin: 0 !important; }
+.docs-next ul { list-style: none; padding: 0 !important; }
+.docs-next li { margin: 6px 0 0; }
+.docs-next span { color: var(--mk-muted); }
+.docs-muted { color: var(--mk-muted); }
+.docs-type { font-size: 12px; color: var(--mk-muted); font-family: var(--mk-mono, ui-monospace, monospace); }
+.docs-req { font-size: 11px; font-weight: 600; color: var(--mk-accent); text-transform: uppercase; }
+.docs-doc .docs-params td:first-child,
+.docs-doc .docs-tasks td:last-child { white-space: nowrap; }
+.docs-doc td code { font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 0.9em; }
+.docs-cmd { margin-top: 28px; scroll-margin-top: 96px; }
+.docs-cmd .docs-cmd { margin-left: 0; padding-left: 16px; border-left: 2px solid var(--mk-border); }
+.docs-doc .docs-usage { margin-top: 10px; padding: 8px 12px; font-size: 13px; }
+.docs-route { margin-top: 18px; scroll-margin-top: 96px; }
+.docs-route-group h2 { scroll-margin-top: 96px; }
+.docs-method {
+  display: inline-block; min-width: 54px; text-align: center; font-size: 11px; font-weight: 700;
+  padding: 2px 6px; border-radius: 5px; background: var(--mk-surface-2); color: var(--mk-text);
+}
+.docs-method-post { background: #dbeafe; color: #1e3a8a; }
+.docs-method-get { background: #dcfce7; color: #14532d; }
+.docs-method-delete { background: #fee2e2; color: #7f1d1d; }
+.docs-method-put, .docs-method-patch { background: #fef3c7; color: #78350f; }
+@media (max-width: 800px) {
+  .docs-doc .docs-params td:first-child,
+  .docs-doc .docs-tasks td:last-child { white-space: normal; }
+}
+/* Inline-code styling (`.docs-doc li code`) must not reach a code block that sits
+   inside a list item, such as a <Step>: it painted a light chip behind light text. */
+.docs-doc pre code,
+.docs-doc li pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+}

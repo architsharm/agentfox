@@ -54,7 +54,7 @@ export default function HowItWorks() {
             <h2 className="mk-h2">Where you connect it</h2>
             <p className="mk-lede" style={{ marginTop: 14 }}>
               Four places. Connecting one does not cover the others.{" "}
-              <Link href="/docs/connect">The calls are in the docs.</Link>
+              <Link href="/docs/guides/python-auto">The calls are in the docs.</Link>
             </p>
             <div className="mk-grid mk-grid-pair" style={{ marginTop: 28 }}>
               {CONNECTS.map((c) => (

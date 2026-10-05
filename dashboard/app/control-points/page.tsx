@@ -70,7 +70,7 @@ export default function Page() {
       kicker="Enforcement"
       title={["One policy,", "six control points"]}
       lede="The same rules at the hook, the gateway, the SDK, the MCP governor, LangGraph, and the CLI. Each one misses something."
-      docs="/docs/control-points"
+      docs="/docs/concepts"
       challenge={
         <p>One team uses LangGraph, one calls an API from Go, one runs Claude Code on a laptop.</p>
       }

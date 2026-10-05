@@ -1,9 +1,14 @@
 /**
- * The docs sidebar. Marketing pages describe the product. This list is where
- * the commands live, so a page and the menu cannot drift.
+ * The docs sidebar, and the one list of docs pages. Marketing pages describe the
+ * product; this is where it is explained, command by command. A page and the menu
+ * cannot drift because there is only this list.
+ *
+ * The order follows the path a team walks: see what you have, watch it run, contain
+ * what it can do, prove it. Guides are scenarios with working code; Reference is
+ * generated from the code where it can be (scripts/docs_reference.py).
  */
 
-export type DocLink = { href: string; label: string };
+export type DocLink = { href: string; label: string; description?: string };
 
 export type DocSection = { heading: string; items: DocLink[] };
 
@@ -11,121 +16,76 @@ export const DOC_NAV: DocSection[] = [
   {
     heading: "Start",
     items: [
-      { href: "/docs", label: "Getting started" },
-      { href: "/docs/commands", label: "Commands" },
-      { href: "/docs/connect", label: "Where it connects" },
-      { href: "/docs/self-host", label: "Self-hosting" },
-      { href: "/docs/harness", label: "Harness" },
+      { href: "/docs", label: "Overview", description: "What AgentFox does, and the path through it." },
+      { href: "/docs/quickstart", label: "Quickstart", description: "Scan, watch, contain and report in ten minutes." },
+      { href: "/docs/concepts", label: "Concepts", description: "Agents, tools, grants, provenance, policies and findings." },
+      { href: "/docs/install", label: "Install and configure", description: "Extras, where state lives, agentfox.toml." },
     ],
   },
   {
-    heading: "Product",
+    heading: "Guides",
     items: [
-      { href: "/docs/discovery", label: "Discovery" },
-      { href: "/docs/access", label: "Access control" },
-      { href: "/docs/runtime", label: "Runtime" },
-      { href: "/docs/hooks", label: "Coding agents" },
-      { href: "/docs/mcp", label: "MCP" },
-      { href: "/docs/control-points", label: "Control points" },
-      { href: "/docs/test", label: "Test" },
-      { href: "/docs/evidence", label: "Audit trail" },
-      { href: "/docs/compliance", label: "Compliance" },
+      { href: "/docs/guides/scan-a-repo", label: "Audit a repository", description: "Inventory, the lethal trifecta, and a CI gate." },
+      { href: "/docs/guides/python-auto", label: "One line in Python", description: "agentfox.auto(): observe, then enforce." },
+      { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", description: "Declarations, grants, provenance, learned permissions." },
+      { href: "/docs/guides/langgraph", label: "LangGraph", description: "Guard the retrieval, model and tool nodes." },
+      { href: "/docs/guides/mcp", label: "MCP servers", description: "Scan configs, pin tools, govern calls." },
+      { href: "/docs/guides/coding-agents", label: "Coding agents", description: "Claude Code hooks and the coding-agent pack." },
+      { href: "/docs/guides/gateway", label: "Any language: the gateway", description: "The proxy and the guard API over HTTP." },
+      { href: "/docs/guides/rag", label: "Retrieval and answers", description: "Who may see what, and when to say I don't know." },
+      { href: "/docs/guides/approvals", label: "Approvals and the kill switch", description: "Escalations, hand-offs, quarantine." },
+      { href: "/docs/guides/business-rules", label: "Business rules", description: "Threshold ladders, and policy compiled from prose." },
+      { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", description: "Probe the deployment; fail the build on regression." },
+      { href: "/docs/guides/tuning", label: "Tune detectors", description: "Feedback, suppressions, simulate, canary." },
+      { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", description: "The report, evidence packages, compliance." },
+      { href: "/docs/guides/observability", label: "Traces and integrations", description: "OpenTelemetry, Langfuse, LangSmith, SIEM, webhooks." },
     ],
   },
   {
-    heading: "Help",
+    heading: "Web app",
     items: [
-      { href: "/docs/benchmarks", label: "Benchmarks" },
-      { href: "/docs/limits", label: "Limits" },
-      { href: "/docs/support", label: "Before you file" },
+      { href: "/docs/app", label: "Tour of the web app", description: "Sign in, workspaces, and where everything is." },
+      { href: "/docs/app/start", label: "Start here and connect", description: "The checklist, GitHub repos, API tokens." },
+      { href: "/docs/app/agents", label: "Agents", description: "Registry, risk, knowledge boundary, kill switch." },
+      { href: "/docs/app/findings", label: "Findings", description: "What needs a person, and why." },
+      { href: "/docs/app/traces", label: "Traces", description: "One request, every check, and why it was blocked." },
+      { href: "/docs/app/policies", label: "Policies and tuning", description: "Rules, modes, simulation, canary, detector tuning." },
+      { href: "/docs/app/approvals", label: "Approvals and escalation", description: "The queue a person works from." },
+      { href: "/docs/app/access-and-sources", label: "Access control and sources", description: "End-user entitlement and verified sources." },
+      { href: "/docs/app/evals", label: "Evaluation", description: "Suites, runs, SLOs and red-team campaigns." },
+      { href: "/docs/app/compliance", label: "Compliance", description: "Controls, frameworks, evidence, board snapshot." },
+      { href: "/docs/app/playground", label: "Playground", description: "Attack a live agent with no account." },
+    ],
+  },
+  {
+    heading: "Reference",
+    items: [
+      { href: "/docs/reference/cli", label: "CLI", description: "Every command and option, generated from the CLI." },
+      { href: "/docs/reference/api", label: "HTTP API", description: "Every route, generated from the gateway." },
+      { href: "/docs/reference/python", label: "Python SDK", description: "auto(), AgentFox, sessions, integrations." },
+      { href: "/docs/reference/policies", label: "Policy language", description: "Rule schema, packs, modes, hierarchy." },
+      { href: "/docs/reference/detectors", label: "Detectors and findings", description: "Surfaces, detectors, finding types." },
+      { href: "/docs/reference/config", label: "Configuration", description: "Environment variables and agentfox.toml." },
+    ],
+  },
+  {
+    heading: "Operate",
+    items: [
+      { href: "/docs/self-host", label: "Self-hosting", description: "Docker Compose, Render, or a Python app." },
+      { href: "/docs/harness", label: "Claude Code harness", description: "Skills, slash commands and a read-only MCP server." },
+      { href: "/docs/benchmarks", label: "Benchmarks", description: "What was measured, and where each result stops." },
+      { href: "/docs/limits", label: "Limits", description: "What is only as good as your declarations." },
+      { href: "/docs/support", label: "Support", description: "What to run before you file an issue." },
     ],
   },
 ];
 
-export const DOC_PAGES: { href: string; title: string; description: string }[] = [
-  {
-    href: "/docs",
-    title: "Getting started",
-    description: "Install AgentFox, scan a repository, and run the offline demo.",
-  },
-  {
-    href: "/docs/commands",
-    title: "Commands",
-    description: "The CLI grouped by what you are trying to do.",
-  },
-  {
-    href: "/docs/connect",
-    title: "Where it connects",
-    description: "The calls that check model traffic, tool calls, and retrieval.",
-  },
-  {
-    href: "/docs/self-host",
-    title: "Self-hosting",
-    description: "Render, Docker Compose, or the gateway as a Python app.",
-  },
-  {
-    href: "/docs/harness",
-    title: "Harness",
-    description: "Skills, slash commands, and a read-only MCP server for a coding agent.",
-  },
-  {
-    href: "/docs/discovery",
-    title: "Discovery",
-    description: "Scan a repository, a laptop session, and MCP servers.",
-  },
-  {
-    href: "/docs/access",
-    title: "Access control",
-    description: "Declare what each tool does before the agent runs.",
-  },
-  {
-    href: "/docs/runtime",
-    title: "Runtime",
-    description: "Lint a policy, watch it in observe, then turn enforcement on.",
-  },
-  {
-    href: "/docs/hooks",
-    title: "Coding agents",
-    description: "Install the Claude Code hooks and keep the check already running.",
-  },
-  {
-    href: "/docs/mcp",
-    title: "MCP",
-    description: "Record a tool server so a later change shows up at the call.",
-  },
-  {
-    href: "/docs/control-points",
-    title: "Control points",
-    description: "The same rules at the hook, the gateway, the SDK, and the CLI.",
-  },
-  {
-    href: "/docs/test",
-    title: "Test",
-    description: "Score a suite, probe a deployment, and replay traffic against a candidate policy.",
-  },
-  {
-    href: "/docs/evidence",
-    title: "Audit trail",
-    description: "Export a decision record and check it without our code.",
-  },
-  {
-    href: "/docs/compliance",
-    title: "Compliance",
-    description: "Read control status from what the agent did.",
-  },
-  {
-    href: "/docs/benchmarks",
-    title: "Benchmarks",
-    description: "The published results, and where each one stops being a defence.",
-  },
-  {
-    href: "/docs/limits",
-    title: "Limits",
-    description: "What is only as good as your declarations, and what is not built yet.",
-  },
-  {
-    href: "/docs/support",
-    title: "Before you file",
-    description: "Commands to run before a GitHub issue, and what not to paste.",
-  },
-];
+/** Every docs page, flat: for the overview's index and anything that lists pages. */
+export const DOC_PAGES: { href: string; title: string; description: string }[] = DOC_NAV.flatMap(
+  (section) =>
+    section.items.map((item) => ({
+      href: item.href,
+      title: item.label,
+      description: item.description ?? "",
+    })),
+);
