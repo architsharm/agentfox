@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.config import get_settings, reset_settings_cache
+from agentfox.core.config import get_settings, reset_settings_cache
 
 VERCEL = "https://guardrails-agentfox.vercel.app"
 VERCEL_OLD = "https://guardrails-dashboard-eight.vercel.app"

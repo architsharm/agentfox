@@ -12,9 +12,9 @@ import datetime as dt
 import pytest
 from sqlalchemy import select
 
-from agentfox.guardrails.base import Detection, DetectorResult
-from agentfox.guardrails.pipeline import PipelineResult
-from agentfox.guardrails.tuning import (
+from agentfox.detection.base import Detection, DetectorResult
+from agentfox.detection.pipeline import PipelineResult
+from agentfox.detection.tuning import (
     MIN_LABELS_FOR_RECOMMENDATION,
     LatencyLedger,
     active_suppressions,
@@ -29,7 +29,7 @@ from agentfox.guardrails.tuning import (
     suppression_health,
     threshold_recommendations,
 )
-from agentfox.models import Agent, GuardrailFeedback, Suppression
+from agentfox.core.models import Agent, GuardrailFeedback, Suppression
 
 from .conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user
 
@@ -88,7 +88,7 @@ def test_a_rule_with_no_detection_condition_still_gets_an_explanation(seeded, en
     down to nothing and reporting no decisive match would make those blocks less
     explicable than before, which is the obvious way to get this fix wrong.
     """
-    from agentfox.guardrails.tuning import _names
+    from agentfox.detection.tuning import _names
 
     assert _names(set(), (), "PII.EMAIL") is True
 
@@ -199,7 +199,7 @@ def test_a_later_surface_gets_only_what_is_left():
 def test_an_exhausted_ledger_degrades_rather_than_blowing_the_slo(seeded):
     """Shedding detectors is recorded as degradation, which the fail-mode policy then
     acts on. Silently overrunning would be the worse failure."""
-    from agentfox.enforcement import Enforcer
+    from agentfox.runtime.enforcement import Enforcer
 
     enforcer = Enforcer(seeded)
     enforcer._ledger = LatencyLedger(budget_ms=0)

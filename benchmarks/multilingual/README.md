@@ -93,7 +93,7 @@ Why this specific pairing, and not the larger `wild` pools: on the first run wit
 The first run of section 2 was the unflattering one: **13 of 19 matched pairs broke** when the
 same logical content was localised — 12 silent misses and, worse, one *false positive* on
 arithmetic that was correct (`2,5 + 2,5 = 5` reported as "is 50, not 5", because a decimal comma
-was read as a thousands separator). Those are now fixed in `src/agentfox/integrity.py`.
+was read as a thousands separator). Those are now fixed in `src/agentfox/grounding/integrity.py`.
 
 | | Before | After |
 |---|---|---|
@@ -123,7 +123,7 @@ to work in the target language. It is reported here rather than quietly dropped.
 
 ## 2. Deterministic-checker parity — the real finding
 
-The F7 integrity checkers in [`src/agentfox/integrity.py`](../../src/agentfox/integrity.py) are not an opt-in extra: they are the deterministic checks that run on live output, and F9.3 names them as the thing to fix. Each pair below is the **same logical content twice** — one English-formatted, one localised — where a deterministic checker must reach the same verdict.
+The F7 integrity checkers in [`src/agentfox/grounding/integrity.py`](../../src/agentfox/grounding/integrity.py) are not an opt-in extra: they are the deterministic checks that run on live output, and F9.3 names them as the thing to fix. Each pair below is the **same logical content twice** — one English-formatted, one localised — where a deterministic checker must reach the same verdict.
 
 **Parity held on 6 of 19 pairs. 12 checks go silent on localised content; 1 invents an error that isn't there.**
 

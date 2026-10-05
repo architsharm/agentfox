@@ -14,12 +14,12 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
-from agentfox.audit.trace import start_trace
-from agentfox.config import get_settings
-from agentfox.enforcement import Enforcer
-from agentfox.guardrails.taint import TaintTracker
+from agentfox.prove.audit.trace import start_trace
+from agentfox.core.config import get_settings
+from agentfox.runtime.enforcement import Enforcer
+from agentfox.detection.taint import TaintTracker
 from agentfox.identity import ensure_identity, grant_capability
-from agentfox.models import Tool
+from agentfox.core.models import Tool
 from agentfox.policy import load_from_dir, save_policy
 from agentfox.policy.taint_view import grant_ceiling, policy_taint
 from agentfox.registry.service import register_agent, upsert_tool
@@ -135,7 +135,7 @@ def test_argument_scope_reads_only_the_arguments():
 
 
 def test_taint_scope_is_one_validated_setting(monkeypatch):
-    from agentfox.config import Settings, reset_settings_cache
+    from agentfox.core.config import Settings, reset_settings_cache
 
     assert get_settings().taint_scope == "session"
     monkeypatch.setenv("AGENTFOX_TAINT_SCOPE", "argument")
@@ -314,7 +314,7 @@ def test_tools_declare_output_trust_from_the_cli():
 def test_argument_scope_lets_a_typed_refund_through_after_a_page_was_read(
     session, bot, monkeypatch
 ):
-    from agentfox.config import reset_settings_cache
+    from agentfox.core.config import reset_settings_cache
 
     grant_capability(session, bot, REFUND)
     assert _call(session, REFUND, {}, _conversation()).verdict == "escalate"
@@ -349,8 +349,8 @@ def test_a_database_that_has_not_run_the_migration_still_serves_tool_calls(tmp_p
     the defaulted column, so `select(Tool)` does not fail on every call meanwhile."""
     import sqlalchemy as sa
 
-    from agentfox.config import reset_settings_cache
-    from agentfox.db import init_db, reset_engine, upgrade_db
+    from agentfox.core.config import reset_settings_cache
+    from agentfox.core.db import init_db, reset_engine, upgrade_db
 
     url = f"sqlite:///{tmp_path / 'pre.db'}"
     monkeypatch.setenv("NOMETRIA_DATABASE_URL", url)

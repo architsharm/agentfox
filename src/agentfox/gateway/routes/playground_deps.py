@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
-from ..playground_sessions import (
+from agentfox.gateway.playground_sessions import (
     PlaygroundSession,
     PlaygroundUnavailable,
     action_limiter,

@@ -34,8 +34,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agentfox.audit.trace import start_trace
-from agentfox.enforcement import Enforcer
+from agentfox.prove.audit.trace import start_trace
+from agentfox.runtime.enforcement import Enforcer
 from agentfox.integrations.mcp import McpCallOutcome, McpGovernor, tool_key
 
 AGENT_SLUG = "support-crew-live-lang"
@@ -251,7 +251,7 @@ TOOL_DESCRIPTORS: list[dict[str, Any]] = [
 ]
 
 #: Least-privilege grants for the demo agent's identity — mirrors the shape of
-#: `agentfox.seed`'s own `payments-ops` agent (refund capped below a ceiling, email
+#: `agentfox.core.seed`'s own `payments-ops` agent (refund capped below a ceiling, email
 #: gated behind approval) rather than inventing a new pattern. See
 #: `seed_demo_agent.py` for how these are applied via `agentfox.identity.grant_capability`.
 CAPABILITY_GRANTS: list[dict[str, Any]] = [

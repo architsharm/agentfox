@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.guardrails.actions import analyse_shell
+from agentfox.detection.actions import analyse_shell
 
 
 def codes(command: str) -> set[str]:
@@ -113,7 +113,7 @@ def test_irreversibility_is_recorded_either_way():
 
 
 def test_the_shipped_pack_grades_the_effects():
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
     from agentfox.policy.store import load_from_dir
 
     packs = load_from_dir(get_settings().policies_dir)

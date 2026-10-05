@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-from agentfox.discovery import SUPPORTED_LANGUAGES, ScanReport, scan
+from agentfox.discovery.repo import SUPPORTED_LANGUAGES, ScanReport, scan
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -306,7 +306,7 @@ def test_the_demo_directory_still_reports_its_python_agents():
 def test_a_spec_scans_next_step_quotes_no_file_count():
     """`discovery_openapi.scan_spec` never walked a directory, so there is no source
     file count to quote and no language coverage to claim."""
-    from agentfox.discovery_openapi import scan_spec
+    from agentfox.discovery.openapi import scan_spec
 
     step = scan_spec({"openapi": "3.0.0", "paths": {}}).next_step()
 

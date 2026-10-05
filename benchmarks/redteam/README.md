@@ -333,7 +333,7 @@ Where a *second*, independent mechanism covers the call (a declared cascade trig
 defence-in-depth working as designed. Where action assurance was the only thing looking
 — `tickets.purge_all` — the call goes from `block` to `allow`.
 
-Disclosed rather than fixed here: `src/agentfox/guardrails/actions.py` is owned by
+Disclosed rather than fixed here: `src/agentfox/detection/actions.py` is owned by
 another engineer this round. It is the highest-value item this benchmark produced.
 
 ### 3. A glob capability grant authorises tools nobody granted

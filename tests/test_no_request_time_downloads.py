@@ -27,8 +27,8 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.guardrails import all_detectors
-from agentfox.guardrails.adapters.presidio import PresidioPiiDetector
+from agentfox.detection import all_detectors
+from agentfox.detection.adapters.presidio import PresidioPiiDetector
 
 #: Detectors backed by something downloadable. Each must decide `available()`
 #: from what is already on disk — never by fetching, and never by assuming.
@@ -88,7 +88,7 @@ def test_warm_does_not_build_the_engine_when_the_model_is_absent(monkeypatch):
     nobody asked for, and still egress from a deployment that declared none.
     """
     built = []
-    monkeypatch.setattr("agentfox.guardrails.adapters.presidio._analyzer", lambda: built.append(1))
+    monkeypatch.setattr("agentfox.detection.adapters.presidio._analyzer", lambda: built.append(1))
     monkeypatch.setattr(PresidioPiiDetector, "_model_present", staticmethod(lambda: False))
     PresidioPiiDetector().warm()
     assert built == []
@@ -126,7 +126,7 @@ def test_cached_weights_are_loaded_without_contacting_the_hub():
     import ast
     import inspect
 
-    from agentfox.guardrails.adapters import classifiers, embeddings
+    from agentfox.detection.adapters import classifiers, embeddings
 
     LOADERS = {"pipeline", "from_pretrained"}
     missing = []

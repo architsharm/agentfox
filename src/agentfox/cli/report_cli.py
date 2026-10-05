@@ -27,8 +27,8 @@ def report(
     ),
 ) -> None:
     """A one-page summary of what your agents did and what was contained."""
-    from ..db import init_db, session_scope
-    from ..report import build_summary, parse_since, render_html, render_markdown
+    from agentfox.core.db import init_db, session_scope
+    from agentfox.prove.report import build_summary, parse_since, render_html, render_markdown
 
     fmt = fmt.lower().strip()
     if fmt not in ("md", "markdown", "html"):

@@ -14,7 +14,7 @@ import pytest
 from typer.testing import CliRunner
 
 from agentfox.cli.main import app
-from agentfox.discovery import ScanReport, Site, scan, scan_file
+from agentfox.discovery.repo import ScanReport, Site, scan, scan_file
 
 from .conftest import as_user
 
@@ -314,9 +314,9 @@ def test_doctor_reports_the_enforce_observe_split_honestly(isolated_db):
     doctor says so rather than reporting a green tick."""
     # Committed and closed: `doctor` opens its own session, so an uncommitted fixture
     # session would leave it looking at an empty database.
-    from agentfox.db import session_scope
-    from agentfox.enforcement import Enforcer
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.runtime.enforcement import Enforcer
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -339,8 +339,8 @@ def test_findings_says_so_when_there_are_none(isolated_db):
 
 
 def test_findings_lists_what_the_platform_found(isolated_db):
-    from agentfox.db import session_scope
-    from agentfox.models import Finding
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Finding
 
     with session_scope() as session:
         session.add(
@@ -392,8 +392,8 @@ def test_not_connected_and_nothing_wrong_are_distinguishable(client):
     body = client.get("/api/onboarding", headers=as_user("admin@example.com")).json()
     assert body["connected"] is False
 
-    from agentfox.db import session_scope
-    from agentfox.enforcement import Enforcer
+    from agentfox.core.db import session_scope
+    from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
         Enforcer(session).run_completion(
@@ -425,8 +425,8 @@ def test_attention_is_quiet_when_there_is_nothing_to_do(client):
 
 
 def test_attention_ranks_by_severity(client):
-    from agentfox.db import session_scope
-    from agentfox.models import Finding
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Finding
 
     with session_scope() as session:
         session.add(
@@ -443,8 +443,8 @@ def test_attention_ranks_by_severity(client):
 
 def test_a_breached_handoff_outranks_most_findings(client):
     """A hand-off past its SLA is a person waiting."""
-    from agentfox.db import session_scope
-    from agentfox.models import Handoff
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Handoff
 
     with session_scope() as session:
         session.add(Handoff(session_id="s-1", status="breached", owner_role="support", reason="x"))
@@ -454,8 +454,8 @@ def test_a_breached_handoff_outranks_most_findings(client):
 
 
 def test_every_attention_item_links_somewhere(client):
-    from agentfox.db import session_scope
-    from agentfox.models import Finding
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Finding
 
     with session_scope() as session:
         session.add(Finding(type="a", severity="high", title="t", subject_type="agent"))
@@ -467,8 +467,8 @@ def test_every_attention_item_links_somewhere(client):
 def test_a_finding_alert_links_to_its_own_detail_page_not_the_general_queue(client):
     """A homepage alert that links to the generic list makes the reader re-find the
     exact thing they just clicked on among identical-looking rows."""
-    from agentfox.db import session_scope
-    from agentfox.models import Finding
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Finding
 
     with session_scope() as session:
         finding = Finding(type="a", severity="critical", title="t", subject_type="agent")

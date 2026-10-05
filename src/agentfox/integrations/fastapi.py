@@ -30,10 +30,10 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from ..audit.trace import end_trace, start_trace
-from ..db import session_scope
-from ..enforcement import EnforcementResult, Enforcer
-from .correlation import link_trace, refs_from_headers
+from agentfox.prove.audit.trace import end_trace, start_trace
+from agentfox.core.db import session_scope
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
+from agentfox.integrations.correlation import link_trace, refs_from_headers
 
 log = logging.getLogger(__name__)
 
@@ -221,7 +221,7 @@ def install(app: Any, *, service: str = "app") -> Any:
 
     @app.get("/agentfox/health", tags=["agentfox"])
     def _health() -> dict[str, Any]:
-        from .. import __version__
+        from agentfox import __version__
 
         return {"status": "ok", "version": __version__, "mode": "observe", "service": service}
 

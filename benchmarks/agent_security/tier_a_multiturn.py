@@ -13,7 +13,7 @@ hypothetical one: neither `autoguard.py`'s `_govern` (joins one call's own
 `messages` array, never a previous *separate* call) nor the gateway's
 `preflight` (evaluates each message individually, never joins) re-evaluated
 content against conversation history. `Enforcer.check_conversation_window`
-(`src/agentfox/enforcement.py`) closes it for the `agentfox.auto()` SDK path by
+(`src/agentfox/runtime/enforcement.py`) closes it for the `agentfox.auto()` SDK path by
 joining the last N turns' recorded `user_text` (from `ConversationTurn`, the
 table P11 escalation governance already writes) with the new message and running
 the same detector pipeline over the assembled text.
@@ -41,12 +41,12 @@ from pathlib import Path
 
 from _util import wipe_db
 
-from agentfox import db
-from agentfox.config import get_settings, reset_settings_cache
-from agentfox.enforcement import Enforcer
-from agentfox.models import ConversationTurn
+from agentfox.core import db
+from agentfox.core.config import get_settings, reset_settings_cache
+from agentfox.runtime.enforcement import Enforcer
+from agentfox.core.models import ConversationTurn
 from agentfox.policy import set_mode
-from agentfox.seed import seed
+from agentfox.core.seed import seed
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -82,8 +82,8 @@ SCENARIOS = [
 
 
 def score_turn_alone(pipeline_text: str) -> bool:
-    from agentfox.guardrails.base import DetectionContext
-    from agentfox.guardrails.detectors.injection import InjectionHeuristicDetector
+    from agentfox.detection.base import DetectionContext
+    from agentfox.detection.detectors.injection import InjectionHeuristicDetector
 
     result = InjectionHeuristicDetector().detect(pipeline_text, DetectionContext(surface="input"))
     return bool(result.detections)

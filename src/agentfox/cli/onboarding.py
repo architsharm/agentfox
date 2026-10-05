@@ -24,7 +24,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ._style import SEVERITY_COLOUR, short_id
+from agentfox.cli._style import SEVERITY_COLOUR, short_id
 
 console = Console()
 
@@ -64,7 +64,7 @@ _MODE_MEANING = {
 def _config_text(environment: str) -> str:
     """Render the template from the real Settings defaults, so the file never drifts
     from what the runtime does when the file is absent."""
-    from ..config import Settings
+    from agentfox.core.config import Settings
 
     fields = Settings.model_fields
     return _CONFIG_TEMPLATE.format(
@@ -79,7 +79,7 @@ def _config_text(environment: str) -> str:
 def _session():
     """A session on an initialised database. `init_db` is idempotent, and without it
     a command run before `agentfox init` dies on "no such table"."""
-    from ..db import init_db, session_scope
+    from agentfox.core.db import init_db, session_scope
 
     init_db()
     return session_scope()
@@ -152,11 +152,11 @@ def init(
     implicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)
     override that file.
     """
-    from ..compliance import load_catalog, sync_catalog
-    from ..config import get_settings
-    from ..db import init_db, session_scope
-    from ..policy import load_available, save_policy
-    from ..policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
+    from agentfox.prove.compliance import load_catalog, sync_catalog
+    from agentfox.core.config import get_settings
+    from agentfox.core.db import init_db, session_scope
+    from agentfox.policy import load_available, save_policy
+    from agentfox.policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
 
     settings = get_settings()
     console.print("[bold]Setting up AgentFox[/]")
@@ -216,7 +216,7 @@ def init(
         console.print(f"  [green]✓[/] wrote {config_path.name}")
 
     if demo:
-        from ..seed import seed
+        from agentfox.core.seed import seed
 
         with session_scope() as session:
             seed(session)
@@ -260,9 +260,9 @@ def check(
     applications. Stays entirely local unless `--submit` (or an interactive "yes")
     opts into sending a redacted summary — see `cli/submit.py`.
     """
-    from ..discovery import scan
-    from ._scan_view import print_surface, print_trifectas
-    from .submit import maybe_submit_report
+    from agentfox.discovery.repo import scan
+    from agentfox.cli._scan_view import print_surface, print_trifectas
+    from agentfox.cli.submit import maybe_submit_report
 
     report = scan(path)
     if as_json:
@@ -385,10 +385,10 @@ def doctor(
     each one names the consequence rather than the setting, because "fail_mode=open"
     means nothing to someone who has not read the PRD.
     """
-    from ..config import get_settings
-    from ..db import session_scope
-    from ..guardrails import available_detectors
-    from ..models import (
+    from agentfox.core.config import get_settings
+    from agentfox.core.db import session_scope
+    from agentfox.detection import available_detectors
+    from agentfox.core.models import (
         AccessScopeRule,
         Agent,
         Capability,
@@ -398,7 +398,7 @@ def doctor(
         Tool,
         Trace,
     )
-    from ..providers import available_providers
+    from agentfox.providers import available_providers
 
     settings = get_settings()
     checks: list[tuple[str, str, str]] = []
@@ -407,7 +407,7 @@ def doctor(
         checks.append((state, what, detail))
 
     try:
-        from ..db import init_db
+        from agentfox.core.db import init_db
 
         init_db()
         with session_scope() as session:
@@ -452,7 +452,7 @@ def doctor(
 
     # Authentication first: it is the check most likely to be wrong and most costly
     # when it is, and a deployment that fails it does not need to read the rest.
-    from ..gateway.auth import header_identity_allowed
+    from agentfox.gateway.auth import header_identity_allowed
 
     if header_identity_allowed():
         add(
@@ -606,7 +606,7 @@ def findings_cmd(
     """
     from sqlalchemy import case, func, select
 
-    from ..models import Finding
+    from agentfox.core.models import Finding
 
     if severity and severity not in SEVERITY_RANK:
         console.print(

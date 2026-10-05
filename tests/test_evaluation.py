@@ -16,7 +16,7 @@ from agentfox.evaluation.silent_failure import (
     groundedness,
     self_consistency,
 )
-from agentfox.models import EvalSuite
+from agentfox.core.models import EvalSuite
 from agentfox.providers import register_provider
 
 from .conftest import as_user
@@ -275,7 +275,7 @@ def test_gate_passes_against_itself(seeded):
 def test_gate_respects_scorer_direction(seeded):
     """`silent_failure` is lower-is-better; treating a rise as an improvement would
     gate on exactly the wrong thing."""
-    from agentfox.models import EvalResult
+    from agentfox.core.models import EvalResult
 
     suite = seeded.query(EvalSuite).filter_by(key="support-quality").one()
     baseline = NativeEvalRunner().run(
@@ -443,7 +443,7 @@ def test_campaigns_are_static_unless_adaptive_is_asked_for(seeded):
 
 
 def test_campaign_breach_raises_a_finding(seeded):
-    from agentfox.models import Finding
+    from agentfox.core.models import Finding
 
     run_campaign(seeded, "support-triage")
     findings = seeded.query(Finding).filter_by(type="redteam").all()

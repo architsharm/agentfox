@@ -1,7 +1,7 @@
 """Loops that turn what the platform has observed into change proposals.
 
 A loop never edits configuration. It reads evidence, decides whether a concrete change
-is warranted, and files a :class:`~agentfox.models.ChangeProposal` that a person (or,
+is warranted, and files a :class:`~agentfox.core.models.ChangeProposal` that a person (or,
 for classes that have earned it, automation) takes through the lifecycle.
 
 ``propose_threshold_changes`` is the first loop. ``threshold_recommendations`` has told
@@ -21,12 +21,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import chain
-from ..guardrails.tuning import threshold_recommendations
-from ..models import ChangeProposal, GuardrailFeedback, Policy, utcnow
-from . import contract
-from .appliers import ApplierError, _document, _live_policy
-from .proposals import SUBJECT_TYPE, file_proposal
+from agentfox.prove.audit import chain
+from agentfox.detection.tuning import threshold_recommendations
+from agentfox.core.models import ChangeProposal, GuardrailFeedback, Policy, utcnow
+from agentfox.improvement import contract
+from agentfox.improvement.appliers import ApplierError, _document, _live_policy
+from agentfox.improvement.proposals import SUBJECT_TYPE, file_proposal
 
 KIND = "policy.rule_min_score"
 SOURCE = "tuning.threshold"

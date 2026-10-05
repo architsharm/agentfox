@@ -31,9 +31,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..policy.model import EFFECT_RANK
-from .ladder import Ladder, LadderDecision
-from .ladder import evaluate as evaluate_ladder
+from agentfox.policy.model import EFFECT_RANK
+from agentfox.business.ladder import Ladder, LadderDecision
+from agentfox.business.ladder import evaluate as evaluate_ladder
 
 #: Business outcomes mapped onto the security lattice, so the two can be compared.
 #: `verify` sits just above allow: it permits the action conditionally, which is
@@ -270,7 +270,7 @@ def build_graph(
     — a control listed as configured but never reachable is worse than one that is
     visibly missing, because it reads as coverage.
     """
-    from .catalogue import CATALOGUE
+    from agentfox.business.catalogue import CATALOGUE
 
     supplied = supplied_inputs or set()
     nodes: list[GraphNode] = []

@@ -57,7 +57,7 @@ class HookCall:
     @property
     def surface(self) -> str:
         """Which of our nine surfaces this event is a checkpoint on."""
-        from .capability import EVENT_SURFACE
+        from agentfox.hooks.capability import EVENT_SURFACE
 
         return EVENT_SURFACE.get((self.harness, self.event), "input")
 

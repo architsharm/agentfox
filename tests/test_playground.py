@@ -21,7 +21,7 @@ import importlib
 import pytest
 from sqlalchemy import select
 
-from agentfox.seed import POISONED_DOCUMENT
+from agentfox.core.seed import POISONED_DOCUMENT
 
 
 @pytest.fixture(autouse=True)
@@ -271,9 +271,9 @@ def test_actions_on_one_sandbox_are_rate_limited(client, monkeypatch):
 
 def _expire(session_id: str, *, seconds_ago: int = 60) -> None:
     """Backdate a sandbox's expiry, the way the clock would."""
-    from agentfox.db import session_scope
-    from agentfox.models import PlaygroundSandbox, utcnow
-    from agentfox.tenancy import bind_session
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import PlaygroundSandbox, utcnow
+    from agentfox.core.tenancy import bind_session
 
     with session_scope() as session:
         bind_session(session, session_id)
@@ -296,10 +296,10 @@ def test_sandbox_is_unreadable_once_its_ttl_has_passed():
 def test_expiry_deletes_the_sandboxs_data_not_just_its_registry_row():
     """Expiry has to sweep, not only hide: a public endpoint that accumulated one
     seeded world per visitor forever would be a storage leak with a nice error page."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.gateway.playground_sessions import PlaygroundStore
-    from agentfox.models import Agent, PlaygroundSandbox
-    from agentfox.tenancy import bind_session
+    from agentfox.core.models import Agent, PlaygroundSandbox
+    from agentfox.core.tenancy import bind_session
 
     store = PlaygroundStore()
     record = store.create()
@@ -333,10 +333,10 @@ def test_sweep_removes_expired_sandboxes_and_leaves_live_ones():
 def test_expiry_does_not_touch_the_deployments_own_data():
     """The sweep deletes by tenant. A bug in it is another tenant's rows, so this
     pins the boundary rather than trusting the query."""
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.gateway.playground_sessions import PlaygroundStore
-    from agentfox.models import Agent
-    from agentfox.seed import seed
+    from agentfox.core.models import Agent
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -490,9 +490,9 @@ def test_one_sandbox_cannot_read_anothers_data(client):
 def test_a_sandbox_cannot_read_the_deployments_own_agents(client):
     """The `client` fixture seeds the default org. A sandbox queries the same tables
     and must see only its own copies."""
-    from agentfox.db import session_scope
-    from agentfox.models import Agent
-    from agentfox.tenancy import bind_session
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+    from agentfox.core.tenancy import bind_session
 
     sid = _create(client)
     with session_scope() as session:
@@ -520,9 +520,9 @@ def test_a_sandbox_tenant_cannot_be_authenticated_into(client):
     slugs = {a["slug"] for a in resp.json()["agents"]}
     assert slugs  # the deployment's own org, not the empty view a sandbox binding gives
 
-    from agentfox.db import session_scope
-    from agentfox.models import User
-    from agentfox.tenancy import bind_session
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import User
+    from agentfox.core.tenancy import bind_session
 
     with session_scope() as session:
         bind_session(session, sid)
@@ -575,8 +575,8 @@ def test_an_unmigrated_database_says_what_to_run(client):
     globally unique), which cannot be recreated here because the test database is
     built from the current models.
     """
-    from agentfox.db import get_engine
-    from agentfox.models import PlaygroundSandbox
+    from agentfox.core.db import get_engine
+    from agentfox.core.models import PlaygroundSandbox
 
     PlaygroundSandbox.__table__.drop(get_engine())
 
@@ -593,11 +593,11 @@ def test_an_agent_credential_from_a_sandbox_is_useless_on_the_inline_api(client)
 
     It does not make sandbox credentials secret. It makes them worthless here.
     """
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.gateway.auth import resolve_agent
     from agentfox.identity import ensure_identity, issue_credential
-    from agentfox.models import Agent
-    from agentfox.tenancy import bind_session
+    from agentfox.core.models import Agent
+    from agentfox.core.tenancy import bind_session
 
     sid = _create(client)
     with session_scope() as session:
@@ -625,11 +625,11 @@ def test_sandboxes_are_created_on_a_database_that_has_not_run_the_migration(tmp_
     """
     import sqlalchemy as sa
 
-    from agentfox.config import get_settings, reset_settings_cache
-    from agentfox.db import current_revision, init_db, reset_engine, upgrade_db
+    from agentfox.core.config import get_settings, reset_settings_cache
+    from agentfox.core.db import current_revision, init_db, reset_engine, upgrade_db
     from agentfox.gateway import playground_sessions
-    from agentfox.models import Agent
-    from agentfox.tenancy import bind_session
+    from agentfox.core.models import Agent
+    from agentfox.core.tenancy import bind_session
 
     url = f"sqlite:///{tmp_path / 'pre-migration.db'}"
     monkeypatch.setenv("NOMETRIA_DATABASE_URL", url)
@@ -650,7 +650,7 @@ def test_sandboxes_are_created_on_a_database_that_has_not_run_the_migration(tmp_
         first, second = store.create(), store.create()
         assert first.id != second.id
 
-        from agentfox.db import session_scope
+        from agentfox.core.db import session_scope
 
         with session_scope() as session:
             bind_session(session, first.id)

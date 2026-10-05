@@ -14,9 +14,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...agent_messaging import mint_signing_key
-from ...models import AgentMessageLog, AgentSigningKey, User
-from ..deps import current_user, db, get_agent_or_404, require
+from agentfox.containment.agent_messaging import mint_signing_key
+from agentfox.core.models import AgentMessageLog, AgentSigningKey, User
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 
 router = APIRouter(prefix="/api", tags=["agent-messaging"])
 

@@ -92,7 +92,7 @@ Current test and line counts are in [`docs/status.md`](../status.md), which `scr
 
 ---
 
-## 3. The `Enforcer` class — `src/agentfox/enforcement.py` (2440 lines)
+## 3. The `Enforcer` class — `src/agentfox/runtime/enforcement.py` (2440 lines)
 
 This is the single code path every integration surface converges on (HLD §5). Class and
 method signatures, by call order:
@@ -126,7 +126,7 @@ gate logic locally.
 
 ---
 
-## 4. Detector pipeline — `src/agentfox/guardrails/`
+## 4. Detector pipeline — `src/agentfox/detection/`
 
 `pipeline.py` composes a list of `Detector` implementations (the seam from HLD §2) and runs
 them per surface (`input`, `output`, `retrieved`, `tool_result`). Key pieces:
@@ -160,7 +160,7 @@ detector that silently fails to run is a recorded, queryable event, not an invis
 
 ## 5. Data model — key entities
 
-Full detail: [Appendix D](data-model.md). SQLAlchemy 2.0, `src/agentfox/models.py`
+Full detail: [Appendix D](data-model.md). SQLAlchemy 2.0, `src/agentfox/core/models.py`
 (1490 lines). Every table carries `id`, `created_at`, `updated_at`, `org_id` — multi-tenancy
 is enforced structurally at the session level via `with_loader_criteria` (`tenancy.py`), not
 by remembering to filter every query by `org_id`.
@@ -176,7 +176,7 @@ by remembering to filter every query by `org_id`.
 
 ---
 
-## 6. Audit chain internals — `src/agentfox/audit/chain.py` (399 lines)
+## 6. Audit chain internals — `src/agentfox/prove/audit/chain.py` (399 lines)
 
 The tamper-evident hash chain, the mechanism behind the "prove what happened" claim:
 
@@ -212,7 +212,7 @@ altered."
 ## 7. `agentfox.auto()` — monkey-patch mechanism
 
 `src/agentfox/__init__.py` (45 lines) lazily re-exports `auto`, `off`, `state`, `Blocked`
-from `agentfox.autoguard` via module `__getattr__`, so a bare `import agentfox` touches no
+from `agentfox.runtime.autoguard` via module `__getattr__`, so a bare `import agentfox` touches no
 DB and makes no client calls — side-effect-free until `auto()` is actually called.
 
 `autoguard.py` (793 lines), `auto(agent=None, *, mode="observe", environment=None,

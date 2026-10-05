@@ -58,7 +58,7 @@ from langchain_core.tools import tool
 from support_tools import AGENT_SLUG, GovernedToolkit, decision_summary
 
 import agentfox
-from agentfox.db import init_db, session_scope
+from agentfox.core.db import init_db, session_scope
 
 
 class MissingApiKey(RuntimeError):

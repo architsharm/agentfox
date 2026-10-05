@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox import jobs_db
-from agentfox.agent_loop import CONTINUE, ESCALATE, STOP, LoopBudget, Step, govern_loop
-from agentfox.db import configure_pool
-from agentfox.jobs import DEFERRABLE, JobQueue
-from agentfox.models import Job
+from agentfox.jobs import store as jobs_db
+from agentfox.runtime.agent_loop import CONTINUE, ESCALATE, STOP, LoopBudget, Step, govern_loop
+from agentfox.core.db import configure_pool
+from agentfox.jobs.queue import DEFERRABLE, JobQueue
+from agentfox.core.models import Job
 
 
 def run(tools_and_observations, budget=None):
@@ -325,7 +325,7 @@ def test_db_queue_binds_the_jobs_own_tenant_before_running_the_handler(session):
     seen_org = {}
 
     def handler(s, payload):
-        from agentfox.tenancy import session_org
+        from agentfox.core.tenancy import session_org
 
         seen_org["value"] = session_org(s)
         return {}

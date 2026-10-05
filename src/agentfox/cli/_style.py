@@ -52,7 +52,7 @@ def print_unknown_agent(console: Any, session: Any, slug: str) -> None:
     """
     from sqlalchemy import select
 
-    from ..models import Agent
+    from agentfox.core.models import Agent
 
     known = sorted(a.slug for a in session.scalars(select(Agent)))
     console.print(f"[red]unknown agent '{slug}'[/]")

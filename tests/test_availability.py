@@ -13,7 +13,7 @@ import datetime as dt
 
 import pytest
 
-from agentfox.availability import (
+from agentfox.runtime.availability import (
     CLOSED,
     NEVER_OPEN,
     OPEN,
@@ -232,7 +232,7 @@ def test_get_admission_controller_reads_settings(monkeypatch):
     monkeypatch.setenv("NOMETRIA_ADMISSION_RATE_PER_SECOND", "5")
     monkeypatch.setenv("NOMETRIA_ADMISSION_BURST", "7")
     monkeypatch.setenv("NOMETRIA_ADMISSION_MAX_CONCURRENT", "9")
-    from agentfox.config import reset_settings_cache
+    from agentfox.core.config import reset_settings_cache
 
     reset_settings_cache()
     reset_admission_controller()
@@ -257,7 +257,7 @@ def test_the_controller_is_a_singleton_until_reset():
 
 def _saturate_admission(monkeypatch) -> None:
     """One token, refilling too slowly for the test to ever see a second one."""
-    from agentfox.config import reset_settings_cache
+    from agentfox.core.config import reset_settings_cache
 
     monkeypatch.setenv("NOMETRIA_ADMISSION_BURST", "1")
     monkeypatch.setenv("NOMETRIA_ADMISSION_RATE_PER_SECOND", "0.0001")

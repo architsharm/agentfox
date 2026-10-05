@@ -28,23 +28,23 @@ import {
  * guess:
  *
  *   - the six pillars and their questions .... README.md "The six pillars"
- *   - detector registrations ................. src/agentfox/guardrails/__init__.py
- *   - INJECTION.* entity types ............... src/agentfox/guardrails/detectors/injection.py
- *   - SECRET.* entity types .................. src/agentfox/guardrails/detectors/secrets.py
- *   - normalisation views .................... src/agentfox/guardrails/normalize.py
- *   - per-detector budget, degrade-not-skip .. src/agentfox/guardrails/pipeline.py
+ *   - detector registrations ................. src/agentfox/detection/__init__.py
+ *   - INJECTION.* entity types ............... src/agentfox/detection/detectors/injection.py
+ *   - SECRET.* entity types .................. src/agentfox/detection/detectors/secrets.py
+ *   - normalisation views .................... src/agentfox/detection/normalize.py
+ *   - per-detector budget, degrade-not-skip .. src/agentfox/detection/pipeline.py
  *   - baseline / tool-containment rule ids ... src/agentfox/policies_data/*.yaml
- *   - capability.* and taint.* verdicts ...... src/agentfox/enforcement.py
- *   - the provenance ladder .................. src/agentfox/guardrails/taint.py, README "Commands"
+ *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement.py
+ *   - the provenance ladder .................. src/agentfox/detection/taint.py, README "Commands"
  *   - impact tiers ........................... dashboard/app/glossary/page.tsx
- *   - static-only scanning, TS/JS pass ....... src/agentfox/discovery.py
- *   - OpenAPI onboarding ..................... src/agentfox/discovery_openapi.py
- *   - local session scanning ................. src/agentfox/session_scan.py
+ *   - static-only scanning, TS/JS pass ....... src/agentfox/discovery/repo.py
+ *   - OpenAPI onboarding ..................... src/agentfox/discovery/openapi.py
+ *   - local session scanning ................. src/agentfox/discovery/sessions.py
  *   - MCP hygiene finding types .............. src/agentfox/registry/service.py
  *   - scorer keys ............................ src/agentfox/evaluation/scorers.py
  *   - adaptive campaign scope ................ src/agentfox/evaluation/adaptive.py
- *   - chain digests and verify() ............. src/agentfox/audit/chain.py
- *   - computed compliance status ............. src/agentfox/compliance/status.py
+ *   - chain digests and verify() ............. src/agentfox/prove/audit/chain.py
+ *   - computed compliance status ............. src/agentfox/prove/compliance/status.py
  *   - control count and framework keys ....... src/agentfox/compliance_data/controls.yaml
  *   - every CLI command shown ................ README.md "Commands"
  *
@@ -338,7 +338,7 @@ export function Containment() {
 
 const DISCOVERY_ITEMS: Item[] = [
   {
-    // README.md "Commands"; behaviour from src/agentfox/discovery.py.
+    // README.md "Commands"; behaviour from src/agentfox/discovery/repo.py.
     label: "Committed code",
     body: "Reports what in a repository talks to a model, and which of it is ungoverned.",
   },
@@ -352,7 +352,7 @@ const DISCOVERY_ITEMS: Item[] = [
     body: "MCP tool hygiene: tool_poisoning in a tool description, an unpinned_server, schema_drift since the last scan.",
   },
   {
-    // src/agentfox/discovery_openapi.py and session_scan.py.
+    // src/agentfox/discovery/openapi.py and session_scan.py.
     label: "OpenAPI and local sessions",
     body: "Only the OpenAPI spec is fetched. Local sessions give metadata only, never a prompt or a tool call's arguments.",
   },

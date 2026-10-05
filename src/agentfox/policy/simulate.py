@@ -20,10 +20,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Decision, SimulationRun, Trace
-from .engine import NativePolicyEngine
-from .model import PolicyDecision, PolicyDocument, PolicyInput
-from .taint_view import policy_taint
+from agentfox.core.models import Decision, SimulationRun, Trace
+from agentfox.policy.engine import NativePolicyEngine
+from agentfox.policy.model import PolicyDecision, PolicyDocument, PolicyInput
+from agentfox.policy.taint_view import policy_taint
 
 
 @dataclass

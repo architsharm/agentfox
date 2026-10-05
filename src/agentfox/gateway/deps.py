@@ -15,10 +15,10 @@ from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db import get_session
-from ..models import Agent, User
-from ..tenancy import bind_session
-from .auth import AuthenticationRequired, authenticate, resolve_agent
+from agentfox.core.db import get_session
+from agentfox.core.models import Agent, User
+from agentfox.core.tenancy import bind_session
+from agentfox.gateway.auth import AuthenticationRequired, authenticate, resolve_agent
 
 log = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ def activate_posture(session: Session) -> None:
 
     Called from the two dependencies that resolve who the caller is, because that is
     the moment the tenant is known and before any detector runs. Set without a reset
-    for the same reason :func:`agentfox.tenancy.set_current_org` is: each request runs
+    for the same reason :func:`agentfox.core.tenancy.set_current_org` is: each request runs
     in its own context, so the binding is discarded with it and cannot leak into the
     next one.
 
@@ -102,7 +102,7 @@ def activate_posture(session: Session) -> None:
     could not be read would turn a configuration problem into an outage, and the
     fallback — the deployment's own settings — is the stricter answer anyway.
     """
-    from ..judgment import posture as _posture
+    from agentfox.detection.judgment import posture as _posture
 
     try:
         _posture.activate(_posture.load(session))

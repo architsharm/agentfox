@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.audit.trace import full_trace, start_trace
+from agentfox.prove.audit.trace import full_trace, start_trace
 
 
 @pytest.fixture(autouse=True)
@@ -166,7 +166,7 @@ def test_environment_is_named_as_a_declaration_not_as_a_live_system(enforcer, se
 
 
 def test_environment_risk_still_fires_and_still_ignores_non_production():
-    from agentfox.guardrails.actions import analyse_sql, environment_risk
+    from agentfox.detection.actions import analyse_sql, environment_risk
 
     analysis = analyse_sql("DELETE FROM orders")
     assert environment_risk(analysis, "production") is not None

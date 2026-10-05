@@ -46,11 +46,11 @@ def main() -> None:
     os.environ["NOMETRIA_AUDIT_SIGNING_KEY"] = "bench-key"
     os.environ["NOMETRIA_ALLOW_EGRESS"] = "false"
 
-    from agentfox import db
-    from agentfox.config import reset_settings_cache
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
     from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
     from agentfox.policy import set_mode
-    from agentfox.seed import seed as run_seed
+    from agentfox.core.seed import seed as run_seed
 
     reset_settings_cache()
     db.reset_engine()
@@ -74,7 +74,7 @@ def main() -> None:
         # Every registered agent, not just one — the runner's own doc claims it
         # exercises "the deployed configuration", so this checks that holds across
         # every seed agent's actual grants, not just a single hand-picked one.
-        from agentfox.models import Agent
+        from agentfox.core.models import Agent
 
         agent_slugs = [a.slug for a in session.query(Agent).all()]
         print(f"scoring against agents: {agent_slugs}")

@@ -27,8 +27,8 @@ def _json(output: str):
 
 
 def _seed() -> dict:
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -44,9 +44,9 @@ def test_capability_grant_writes_a_grant_the_engine_then_honours():
     reads. A command that only wrote a row would be worse than no command."""
     from sqlalchemy import select
 
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.identity import check_capability, ensure_identity
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     _seed()
     result = runner.invoke(
@@ -96,9 +96,9 @@ def test_capability_grant_is_recorded_in_the_audit_chain():
     widens authority, so it is the last one that should be exempt."""
     from sqlalchemy import select
 
-    from agentfox.audit import chain
-    from agentfox.db import session_scope
-    from agentfox.models import AuditEntry
+    from agentfox.prove.audit import chain
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import AuditEntry
 
     _seed()
     runner.invoke(app, ["capability", "grant", "support-triage", "reports.export", "--yes"])
@@ -113,9 +113,9 @@ def test_capability_grant_expiry_stops_the_grant_matching():
 
     from sqlalchemy import select
 
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.identity import check_capability, ensure_identity
-    from agentfox.models import Agent, Capability, utcnow
+    from agentfox.core.models import Agent, Capability, utcnow
 
     _seed()
     runner.invoke(
@@ -145,9 +145,9 @@ def test_capability_grant_expiry_stops_the_grant_matching():
 def test_capability_revoke_takes_the_permission_away_and_audits_it():
     from sqlalchemy import select
 
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.identity import check_capability, ensure_identity
-    from agentfox.models import Agent, AuditEntry
+    from agentfox.core.models import Agent, AuditEntry
 
     _seed()
     runner.invoke(app, ["capability", "grant", "support-triage", "reports.export", "--yes"])
@@ -215,8 +215,8 @@ def test_capability_list_on_an_empty_set_names_the_command_that_fills_it():
 def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigured():
     """doctor graded a deployment on capability grants while every sibling branch
     named a command and this one named none, because none existed."""
-    from agentfox.db import session_scope
-    from agentfox.models import Capability
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Capability
     from agentfox.registry.service import upsert_tool
 
     with session_scope() as session:
@@ -235,8 +235,8 @@ def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigure
 
 
 def _raise_findings() -> None:
-    from agentfox.db import session_scope
-    from agentfox.findings import raise_finding
+    from agentfox.core.db import session_scope
+    from agentfox.prove.findings import raise_finding
 
     with session_scope() as session:
         raise_finding(
@@ -288,8 +288,8 @@ def test_findings_is_ordered_worst_first():
 def test_findings_ranks_before_it_limits():
     """Sorting a page the database happened to return would show the worst of twenty
     rows rather than the worst twenty rows."""
-    from agentfox.db import session_scope
-    from agentfox.findings import raise_finding
+    from agentfox.core.db import session_scope
+    from agentfox.prove.findings import raise_finding
 
     with session_scope() as session:
         for index in range(12):
@@ -329,8 +329,8 @@ def test_findings_shows_an_id_a_count_and_no_truncated_type():
 
 def test_findings_surfaces_the_recurrence_count():
     """One problem seen forty times is not forty problems."""
-    from agentfox.db import session_scope
-    from agentfox.findings import raise_finding
+    from agentfox.core.db import session_scope
+    from agentfox.prove.findings import raise_finding
 
     with session_scope() as session:
         for _ in range(3):
@@ -452,7 +452,7 @@ def test_check_still_promises_exactly_what_it_did_before(tmp_path):
 @pytest.fixture
 def walkthrough_output(capsys):
     from agentfox.cli import demo
-    from agentfox.seed import register_scripts
+    from agentfox.core.seed import register_scripts
 
     _seed()
     register_scripts()
@@ -504,7 +504,7 @@ def test_demo_measures_the_warm_figure_from_the_other_calls_in_the_run(walkthrou
     """The claim "one-time warm-up" needs the same span on the calls that did not pay
     for it, not a constant."""
     from agentfox.cli.demo import _steady_state_spans
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as session:
         steady = _steady_state_spans(session, exclude_trace="no-such-trace")
@@ -528,8 +528,8 @@ def test_demo_only_explains_matching_rows_when_they_really_do_match():
     from sqlalchemy import select
 
     from agentfox.cli.demo import _shared_control_count
-    from agentfox.db import session_scope
-    from agentfox.models import FrameworkMapping
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import FrameworkMapping
 
     _seed()
     with session_scope() as session:

@@ -17,7 +17,7 @@ from agentfox.integrations.mcp import (
     tool_digest,
     tool_key,
 )
-from agentfox.models import Agent, Finding, Tool
+from agentfox.core.models import Agent, Finding, Tool
 from agentfox.registry.service import scan_mcp_server
 
 from .conftest import INDIRECT_INJECTION, as_user
@@ -89,7 +89,7 @@ def test_an_authorised_call_passes_through(seeded, governor):
 
 
 def test_the_call_is_recorded_as_lineage(seeded, governor):
-    from agentfox.models import LineageEdge
+    from agentfox.core.models import LineageEdge
 
     governor.call("search_docs", {"q": "x"}, transport=lambda t, a: "ok")
     edges = {(e.src_type, e.dst_type, e.relation) for e in seeded.query(LineageEdge).all()}

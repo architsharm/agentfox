@@ -85,7 +85,7 @@ place that explains the fallbacks.
 | `agents/*.md` | `name`, `description`, `tools` (least privilege) |
 
 **The MCP server is read-only by construction.** It exposes analysis and inspection tools
-only (`src/agentfox/mcp_server.py`). Anything that changes enforcement, stops an agent,
+only (`src/agentfox/integrations/mcp_server.py`). Anything that changes enforcement, stops an agent,
 decides or applies a change proposal, or sends data goes through the CLI, where the hook
 asks first. Adding a state-changing MCP tool would bypass that gate, so don't. When you add
 or remove a tool, update the count in `README.md`, `reference/cli.md` and this file.

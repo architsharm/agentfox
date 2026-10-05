@@ -14,11 +14,11 @@ import zipfile
 import pytest
 from typer.testing import CliRunner
 
-from agentfox.audit import evidence
+from agentfox.prove.audit import evidence
 from agentfox.cli.main import app
-from agentfox.guardrails.taint import TaintTracker
-from agentfox.models import ControlStatus, GuardrailFeedback
-from agentfox.report import (
+from agentfox.detection.taint import TaintTracker
+from agentfox.core.models import ControlStatus, GuardrailFeedback
+from agentfox.prove.report import (
     DRAFT_LABEL,
     build_summary,
     parse_since,
@@ -146,8 +146,8 @@ def test_agent_filter(seeded, enforcer):
 
 
 def test_cli_report_md_and_html(tmp_path):
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -179,7 +179,7 @@ def test_evidence_package_opens_on_the_summary(seeded, enforcer):
 
 
 def test_board_computes_control_status_itself(seeded):
-    from agentfox.compliance import board_view
+    from agentfox.prove.compliance import board_view
 
     seeded.query(ControlStatus).delete()
     seeded.flush()
@@ -188,8 +188,8 @@ def test_board_computes_control_status_itself(seeded):
 
 
 def test_board_cli_reports_counts_not_a_bare_ratio():
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)

@@ -21,9 +21,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..audit import chain
-from ..findings import open_finding, raise_finding, resolve_finding
-from ..models import Agent, AgentControl, utcnow
+from agentfox.prove.audit import chain
+from agentfox.prove.findings import open_finding, raise_finding, resolve_finding
+from agentfox.core.models import Agent, AgentControl, utcnow
 
 STATES = ("active", "quarantined", "killed")
 

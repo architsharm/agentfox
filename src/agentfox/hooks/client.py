@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .protocol import PROTOCOL_VERSION, ProtocolError, read_frame, socket_path, write_frame
+from agentfox.hooks.protocol import PROTOCOL_VERSION, ProtocolError, read_frame, socket_path, write_frame
 
 #: The client's half of the daemon's timeout. Shorter, so the client is the one
 #: that gives up: if both waited the same length the agent would sometimes see

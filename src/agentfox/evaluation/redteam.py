@@ -63,8 +63,8 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..findings import raise_finding, resolve_finding
-from ..models import Agent, Capability, Finding, RedTeamCampaign, RedTeamFinding, Tool, utcnow
+from agentfox.prove.findings import raise_finding, resolve_finding
+from agentfox.core.models import Agent, Capability, Finding, RedTeamCampaign, RedTeamFinding, Tool, utcnow
 
 
 @dataclass
@@ -482,7 +482,7 @@ def _provision_tool_and_grant(
         )
     )
     if existing is None:
-        from ..identity.service import grant_capability
+        from agentfox.identity.service import grant_capability
 
         grant_capability(session, identity, tool_key, constraints=constraints, max_taint=max_taint)
 
@@ -506,9 +506,9 @@ class NativeRedTeamRunner:
     def run_probes(
         self, session: Session, agent_slug: str, probes: list[Probe] | None = None
     ) -> list[ProbeOutcome]:
-        from ..enforcement import Enforcer
-        from ..guardrails.taint import TaintTracker
-        from ..identity.service import ensure_identity
+        from agentfox.runtime.enforcement import Enforcer
+        from agentfox.detection.taint import TaintTracker
+        from agentfox.identity.service import ensure_identity
 
         enforcer = Enforcer(session)
         agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))
@@ -688,7 +688,7 @@ def run_adaptive_probes(
       budget on repeats — `attempts_used` in the summary is real work done, not a
       budget-shaped constant.
     """
-    from .adaptive import next_mutation
+    from agentfox.evaluation.adaptive import next_mutation
 
     runner = NativeRedTeamRunner()
     outcomes: list[ProbeOutcome] = []
@@ -846,7 +846,7 @@ def _adaptive_summary(
     seed: int,
     profile: dict[str, Any],
 ) -> dict[str, Any]:
-    from .adaptive import (
+    from agentfox.evaluation.adaptive import (
         NOT_ESTABLISHED,
         SCOPE_STATEMENT,
         mutation_classes,
@@ -976,7 +976,7 @@ def run_campaign(
     pool = list(BUILTIN_PROBES)
     profile: dict[str, Any] = {}
     if adaptive and include_deployment_probes:
-        from .adaptive import deployment_profile, generate_deployment_probes
+        from agentfox.evaluation.adaptive import deployment_profile, generate_deployment_probes
 
         profile = deployment_profile(session, agent_slug)
         pool = pool + generate_deployment_probes(session, agent_slug)

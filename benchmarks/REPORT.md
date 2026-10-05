@@ -60,7 +60,7 @@ either cost.
 ## What's being measured
 
 - **Detector, config `heuristic`**: `InjectionHeuristicDetector` alone — regex and
-  structural signals, `src/agentfox/guardrails/detectors/injection.py`. Zero extra
+  structural signals, `src/agentfox/detection/detectors/injection.py`. Zero extra
   dependencies, sub-millisecond, and what ships **enabled by default**.
 - **Detector, config `heuristic_classifier`**: the same heuristic plus
   `injection.classifier` — as of round 4, an **ensemble of two models**, not one.
@@ -459,8 +459,8 @@ to fix this. Tested the same way (isolated, no contention):
 Better on **both** axes at once on the datasets this project weighs most — more
 than double the recall on the primary benchmark, at less than a third the
 false-positive rate on the purpose-built precision stress test. That's the basis
-for the swap (`src/agentfox/guardrails/adapters/classifiers.py`,
-`PromptInjectionClassifierDetector`; `src/agentfox/config.py`,
+for the swap (`src/agentfox/detection/adapters/classifiers.py`,
+`PromptInjectionClassifierDetector`; `src/agentfox/core/config.py`,
 `prompt_injection_classifier_model`), alongside the honest generalization-dataset
 cost documented above. PIGuard ships custom modeling code rather than a stock
 transformers architecture, so this is the one detector with `trust_remote_code =
@@ -531,7 +531,7 @@ that trade is worth making depends on what a deployment fears more: a novel
 attack phrasing PIGuard alone would miss, or a support bot that starts treating
 "can I ignore this compiler warning" as an attack four times in ten. The
 secondary backstop is a real, opt-out-able config
-(`prompt_injection_classifier_secondary_model` in `src/agentfox/config.py` — set
+(`prompt_injection_classifier_secondary_model` in `src/agentfox/core/config.py` — set
 to `None`/`""` to run PIGuard alone, reverting to round 3's numbers exactly), not
 a forced default a deployment can't see or change.
 
@@ -589,7 +589,7 @@ would reasonably expect to fire, made invisible by a request-level number nobody
 had reconciled against the per-detector numbers it was supposed to bound.
 
 **Fix**: `enforcement_budget_ms` raised from 100ms to 200ms
-(`src/agentfox/config.py`) — enough margin over the measured worst case while
+(`src/agentfox/core/config.py`) — enough margin over the measured worst case while
 staying under the existing 250ms request-level ceiling (`request_budget_ms`, P3-13,
 unchanged). Re-measuring the full real dataset sequentially after the fix:
 degraded rate on the same run dropped from 100% to 1.96%. The benchmark table above
@@ -728,13 +728,13 @@ doesn't get taken at face value just because it's favorable.
   aggregate.
 - `results_generalization/{config}_{dataset}_predictions.json` — every
   generalization example scored individually.
-- `../src/agentfox/guardrails/data/injection_corpus.json` — the synthetic anchor
+- `../src/agentfox/detection/data/injection_corpus.json` — the synthetic anchor
   corpus `injection.similarity` matches against. Growing this file (and
   re-running) is the whole improvement path for that detector — no retraining.
-- `../src/agentfox/guardrails/adapters/classifiers.py` —
+- `../src/agentfox/detection/adapters/classifiers.py` —
   `PromptInjectionClassifierDetector`, including the round-4 ensemble backstop
   and the reasoning for its threshold.
-- `../src/agentfox/config.py` — `prompt_injection_classifier_secondary_model`,
+- `../src/agentfox/core/config.py` — `prompt_injection_classifier_secondary_model`,
   the config knob that turns the ensemble backstop off (set to `None`/`""` to
   run PIGuard alone, round 3's exact behavior).
 - `../benchmarks/agent_security/` — the four-tier agent-runtime-security

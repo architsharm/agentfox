@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...escalation import (
+from agentfox.containment.escalation import (
     DEFAULT_CONDITIONS,
     assess,
     breached_handoffs,
@@ -27,8 +27,8 @@ from ...escalation import (
     set_policy,
     turn_depth_risk,
 )
-from ...models import Agent, ConversationTurn, Handoff, User, utcnow
-from ..deps import current_user, db, get_agent_or_404, require
+from agentfox.core.models import Agent, ConversationTurn, Handoff, User, utcnow
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 
 router = APIRouter(prefix="/api/escalation", tags=["escalation"])
 

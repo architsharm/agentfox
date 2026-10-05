@@ -26,10 +26,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ...audit import chain
-from ...models import ScanRun, User, utcnow
-from ...registry.service import propose_from_scan
-from ..deps import db, require
+from agentfox.prove.audit import chain
+from agentfox.core.models import ScanRun, User, utcnow
+from agentfox.registry.service import propose_from_scan
+from agentfox.gateway.deps import db, require
 
 router = APIRouter(tags=["discovery"])
 

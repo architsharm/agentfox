@@ -24,8 +24,8 @@ import types
 
 import pytest
 
-from agentfox.autoguard import Blocked, _messages_from, _tool_calls_of, auto, off
-from agentfox.models import Decision, Span, TaintTag, Tool
+from agentfox.runtime.autoguard import Blocked, _messages_from, _tool_calls_of, auto, off
+from agentfox.core.models import Decision, Span, TaintTag, Tool
 from agentfox.registry.service import impact_source_of
 
 CUSTOMER_RECORD = (
@@ -204,7 +204,7 @@ def _exfiltration_turn():
 
 
 def _db():
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     return session_scope()
 
@@ -221,7 +221,7 @@ def _grant(agent_slug: str, tool_key: str) -> None:
 def _bind_shipped_policies() -> None:
     """What `agentfox init` loads: every shipped pack in the mode it declares
     (`tool-containment` declares enforce)."""
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
     from agentfox.policy import load_from_dir, save_policy
 
     with _db() as session:
@@ -315,8 +315,8 @@ def test_every_tool_call_is_recorded_and_the_default_mode_does_not_break_the_app
         assert decisions[0].verdict == "block"
         span = session.query(Span).filter(Span.kind == "tool").one()
         assert span.name == "send_email"
-        assert span.attributes_json["agentfox.autoguard.raised"] is False
-        assert "no capability grant" in span.attributes_json["agentfox.autoguard.note"]
+        assert span.attributes_json["agentfox.runtime.autoguard.raised"] is False
+        assert "no capability grant" in span.attributes_json["agentfox.runtime.autoguard.note"]
 
 
 def test_a_tool_seen_for_the_first_time_is_registered_with_an_inferred_impact(fake_openai):

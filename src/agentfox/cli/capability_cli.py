@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ._style import match_id, print_unknown_agent, short_id
+from agentfox.cli._style import match_id, print_unknown_agent, short_id
 
 console = Console()
 
@@ -47,7 +47,7 @@ _TAINT_MEANING = {
 
 
 def _session():
-    from ..db import init_db, session_scope
+    from agentfox.core.db import init_db, session_scope
 
     init_db()
     return session_scope()
@@ -64,7 +64,7 @@ def _parse_limit(raw: str) -> tuple[str, Any]:
     string. A comparison the engine does not implement is rejected here rather than
     stored and silently skipped at decision time.
     """
-    from ..policy.model import COMPARATORS
+    from agentfox.policy.model import COMPARATORS
 
     if "=" not in raw:
         raise typer.BadParameter(
@@ -96,7 +96,7 @@ def _parse_limit(raw: str) -> tuple[str, Any]:
 
 
 def _describe_constraints(constraints: dict[str, Any]) -> str:
-    from ..identity.service import RESERVED_CONSTRAINTS
+    from agentfox.identity.service import RESERVED_CONSTRAINTS
 
     bits = []
     for path, spec in (constraints or {}).items():
@@ -119,8 +119,8 @@ def _resolve_identity(session, agent: str):
     """
     from sqlalchemy import select
 
-    from ..identity import ensure_identity
-    from ..models import Agent, Identity
+    from agentfox.identity import ensure_identity
+    from agentfox.core.models import Agent, Identity
 
     record = session.scalar(select(Agent).where(Agent.slug == agent))
     if record is not None:
@@ -141,7 +141,7 @@ def _find_capability(session, typed: str):
     """
     from sqlalchemy import select
 
-    from ..models import Capability
+    from agentfox.core.models import Capability
 
     exact = session.get(Capability, typed)
     if exact is not None:
@@ -160,7 +160,7 @@ def _find_capability(session, typed: str):
 
 
 def _audit(session, kind: str, capability, payload: dict[str, Any]) -> None:
-    from ..audit import chain
+    from agentfox.prove.audit import chain
 
     chain.append(
         session,
@@ -221,7 +221,7 @@ def capability_grant(
     it, whether or not a detector fires. This command is the only thing that widens
     that, so it asks before it writes and records the result in the audit chain.
     """
-    from ..models import utcnow
+    from agentfox.core.models import utcnow
 
     if max_taint not in TAINT_LEVELS:
         console.print(
@@ -260,7 +260,7 @@ def capability_grant(
         console.print("[yellow]nothing granted[/]")
         raise typer.Exit(1)
 
-    from ..identity import grant_capability
+    from agentfox.identity import grant_capability
 
     with _session() as session:
         identity = _resolve_identity(session, agent)
@@ -316,7 +316,7 @@ def capability_list(
     """What each agent is allowed to do. Anything not listed here is refused."""
     from sqlalchemy import select
 
-    from ..models import Agent, Capability, Identity, as_aware, utcnow
+    from agentfox.core.models import Agent, Capability, Identity, as_aware, utcnow
 
     with _session() as session:
         identities = {i.id: i for i in session.scalars(select(Identity))}
@@ -410,8 +410,8 @@ def capability_revoke(
     """Withdraw a grant. The agent's calls to that tool are refused from now on."""
     from sqlalchemy import select
 
-    from ..identity import revoke_capability
-    from ..models import Agent, Identity
+    from agentfox.identity import revoke_capability
+    from agentfox.core.models import Agent, Identity
 
     with _session() as session:
         capability = _find_capability(session, capability_id)
@@ -458,7 +458,7 @@ def _explain_taint_ceiling(tool: str, max_taint: str) -> None:
     escalation does not, and a grant that looked like it allowed a flow which is then
     blocked anyway is exactly the surprise this warning exists to remove.
     """
-    from ..guardrails.base import taint_rank
+    from agentfox.detection.base import taint_rank
 
     if taint_rank(max_taint) <= taint_rank("user"):
         return

@@ -15,10 +15,10 @@ import pytest
 from sqlalchemy import select
 from typer.testing import CliRunner
 
-from agentfox.audit.trace import start_trace
-from agentfox.config import get_settings
-from agentfox.enforcement import Enforcer
-from agentfox.guardrails.taint import TaintTracker
+from agentfox.prove.audit.trace import start_trace
+from agentfox.core.config import get_settings
+from agentfox.runtime.enforcement import Enforcer
+from agentfox.detection.taint import TaintTracker
 from agentfox.identity import resolve_approval
 from agentfox.improvement import contract
 from agentfox.improvement.proposals import (
@@ -37,7 +37,7 @@ from agentfox.improvement.traffic import (
     propose_from_traffic,
     suggest_limits,
 )
-from agentfox.models import (
+from agentfox.core.models import (
     ApprovalRequest,
     AuditEntry,
     Capability,
@@ -300,7 +300,7 @@ def test_personal_data_in_an_email_is_not_an_attack(session, packs):
     """An address is the point of send_email. PII rules keep firing after the grant;
     they are not evidence the call was injected."""
     from agentfox.improvement.traffic import classify
-    from agentfox.models import Decision
+    from agentfox.core.models import Decision
 
     decision = Decision(
         surface="tool_args",
@@ -452,7 +452,7 @@ def test_rolling_back_a_grant_withdraws_it(session, packs):
 
 def test_a_grant_made_by_hand_meanwhile_is_not_doubled(session, packs):
     from agentfox.identity import ensure_identity, grant_capability
-    from agentfox.models import Agent
+    from agentfox.core.models import Agent
 
     _traffic(session)
     propose_from_traffic(session, agent=AGENT)
@@ -541,7 +541,8 @@ def test_from_traffic_on_the_command_line(session, packs):
 
 
 def test_the_loop_runs_on_a_schedule():
-    from agentfox import job_handlers, scheduler
+    from agentfox.jobs import handlers as job_handlers
+    from agentfox.jobs import scheduler
 
     assert "grants.propose" in job_handlers.HANDLERS
     schedule = {d.kind: d for d in scheduler.DEFAULT_SCHEDULES}["grants.propose"]
@@ -549,7 +550,7 @@ def test_the_loop_runs_on_a_schedule():
 
 
 def test_the_scheduled_job_files_proposals(session, packs):
-    from agentfox.job_handlers import propose_from_traffic as handler
+    from agentfox.jobs.handlers import propose_from_traffic as handler
 
     _traffic(session)
     result = handler(session, {"days": 30})

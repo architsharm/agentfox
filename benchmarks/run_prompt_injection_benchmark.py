@@ -44,7 +44,7 @@ import json
 import time
 from pathlib import Path
 
-from agentfox.guardrails import DetectionContext, DetectorPipeline, get_detector, warm_all
+from agentfox.detection import DetectionContext, DetectorPipeline, get_detector, warm_all
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"

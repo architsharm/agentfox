@@ -22,7 +22,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from ._style import SEVERITY_COLOUR
+from agentfox.cli._style import SEVERITY_COLOUR
 
 console = Console()
 
@@ -30,7 +30,7 @@ console = Console()
 def _session():
     """A session on an initialised database. `init_db` is idempotent, and without it
     a command run before `agentfox init` dies on "no such table"."""
-    from ..db import init_db, session_scope
+    from agentfox.core.db import init_db, session_scope
 
     init_db()
     return session_scope()
@@ -51,7 +51,7 @@ def rules_apply(
     mode: str | None = typer.Option(None, "--mode", help="observe | enforce"),
 ) -> None:
     """Author or update a business rule from a YAML file."""
-    from ..business import Ladder, save_ladder
+    from agentfox.business import Ladder, save_ladder
 
     try:
         payload = yaml.safe_load(file.read_text())
@@ -82,7 +82,7 @@ def rules_apply(
 
 def rules_show(key: str | None = typer.Argument(None, help="Rule key; omit for all.")) -> None:
     """Show the resolved bands, so an author sees exactly what they wrote."""
-    from ..business import all_ladders
+    from agentfox.business import all_ladders
 
     with _session() as session:
         ladders = [lad for lad in all_ladders(session) if key is None or lad.key == key]
@@ -119,7 +119,7 @@ def rules_check(as_json: bool = typer.Option(False, "--json")) -> None:
     resolved by precedence — it is a disagreement between two people, and resolving it
     silently means one of them is wrong and does not know.
     """
-    from ..business import all_ladders, find_conflicts
+    from agentfox.business import all_ladders, find_conflicts
 
     with _session() as session:
         ladders = all_ladders(session)
@@ -147,7 +147,7 @@ def rules_test(
     values: str = typer.Argument(..., help="Comma-separated values to try."),
 ) -> None:
     """Try values against a rule without running anything."""
-    from ..business import all_ladders, evaluate_ladder
+    from agentfox.business import all_ladders, evaluate_ladder
 
     with _session() as session:
         ladder = next((lad for lad in all_ladders(session) if lad.key == key), None)
@@ -180,8 +180,8 @@ def catalogue(
 
     The answer to "can we express our policy?" — asked before anyone writes YAML.
     """
-    from ..business.catalogue import CATALOGUE as KINDS
-    from ..business.catalogue import to_json
+    from agentfox.business.catalogue import CATALOGUE as KINDS
+    from agentfox.business.catalogue import to_json
 
     kinds = [k for k in KINDS if intent is None or k.intent == intent]
     if as_json:
@@ -209,7 +209,7 @@ def catalogue(
 
 def explain(kind_id: str = typer.Argument(..., help="Guardrail kind id.")) -> None:
     """Parameters, inputs and a worked example for one guardrail kind."""
-    from ..business.catalogue import BY_ID
+    from agentfox.business.catalogue import BY_ID
 
     kind = BY_ID.get(kind_id)
     if kind is None:
@@ -254,7 +254,7 @@ def suggest_cmd(
     Deterministic signal matching, not a model — a starting point an operator confirms,
     so a wrong suggestion costs a glance rather than a silent misconfiguration.
     """
-    from ..business.catalogue import suggest
+    from agentfox.business.catalogue import suggest
 
     matches = suggest(instruction, limit=4)
     if not matches:
@@ -275,7 +275,7 @@ def suggest_cmd(
 
 def graph() -> None:
     """The decision path as it will actually run, stage by stage."""
-    from ..business import all_ladders, build_graph
+    from agentfox.business import all_ladders, build_graph
 
     with _session() as session:
         ladders = all_ladders(session)

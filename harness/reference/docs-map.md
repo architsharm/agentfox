@@ -48,7 +48,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | File | Known drift | Use instead |
 |---|---|---|
 | `docs/architecture/api-spec.md` | missing and phantom routes | `harness/reference/http-api.md`, live `/docs` |
-| `docs/architecture/data-model.md` | wrong model path | `src/agentfox/models.py` |
+| `docs/architecture/data-model.md` | wrong model path | `src/agentfox/core/models.py` |
 
 ## Class D — task-scoped: read only when working on that thing
 
@@ -79,7 +79,7 @@ Everything under `harness/` is agent-facing by design and follows `harness/STRUC
 | Question | First stop | Then |
 |---|---|---|
 | How do I run X? | `harness/reference/cli.md` | `agentfox X --help` |
-| Which env var controls Y? | `harness/reference/config.md` | `src/agentfox/config.py` |
+| Which env var controls Y? | `harness/reference/config.md` | `src/agentfox/core/config.py` |
 | What does this API route take? | `harness/reference/http-api.md` | `src/agentfox/gateway/routes/` |
 | Why was this built / is it in scope? | `docs/design/PRD.md` | `docs/design/gap-analysis.md` |
 | Where is requirement P9-11 implemented? | `docs/design/traceability.md` | `docs/architecture/low-level-design.md` |

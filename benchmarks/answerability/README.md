@@ -1,6 +1,6 @@
 # F1 — answerability & abstention, benchmarked
 
-**First answerability datasets built** (see `docs/evaluation/dataset-sourcing.md`). Scores `src/agentfox/answerability.py` — a **declared-boundary** system, not a generic unanswerable-question classifier: `classify_answerability(text, boundary)` only refuses a question type the operator hasn't declared answerable. Both benchmarks here use exactly the boundary the system defaults to out of the box (`declare_boundary()`'s own fallback when `answerable_types` isn't specified: `["fact", "aggregate", "procedure"]`, no coverage window, no topic/entity restriction) — not a boundary tuned to make either benchmark look better.
+**First answerability datasets built** (see `docs/evaluation/dataset-sourcing.md`). Scores `src/agentfox/grounding/answerability.py` — a **declared-boundary** system, not a generic unanswerable-question classifier: `classify_answerability(text, boundary)` only refuses a question type the operator hasn't declared answerable. Both benchmarks here use exactly the boundary the system defaults to out of the box (`declare_boundary()`'s own fallback when `answerable_types` isn't specified: `["fact", "aggregate", "procedure"]`, no coverage window, no topic/entity restriction) — not a boundary tuned to make either benchmark look better.
 
 1. [KUQ (Known-Unknown Questions)](https://huggingface.co/datasets/amayuelas/KUQ) (MIT) — 4,782 rows across `future_unknown`, `controversial`, and `known` categories. Recall test for the PREDICTION/OPINION classifiers and the over-refusal control.
 2. [CoCoNot](https://huggingface.co/datasets/allenai/coconot) `contrast` split (MIT) — 379 rows, real-world-shaped prompts about safety/completeness/modality that have nothing to do with knowledge boundaries. Pure over-refusal/robustness control.
@@ -38,7 +38,7 @@ Full breakdown, including per-category `question_type()` confusion counts and mi
 
 ### Fixes applied — both against a real, quantified precision cost, not blind widening
 
-Both `PREDICTION_MARKERS` and `_OPINION_MARKERS` were widened in `src/agentfox/answerability.py`, but only after testing every candidate directly against `future_unknown`/`controversial` (recall) **and** `known` (false-positive cost) — and, for `PREDICTION`, against CoCoNot's 379 unrelated real-world prompts too, since that's the closer proxy for "does this fire on ordinary text that has nothing to do with a forecast."
+Both `PREDICTION_MARKERS` and `_OPINION_MARKERS` were widened in `src/agentfox/grounding/answerability.py`, but only after testing every candidate directly against `future_unknown`/`controversial` (recall) **and** `known` (false-positive cost) — and, for `PREDICTION`, against CoCoNot's 379 unrelated real-world prompts too, since that's the closer proxy for "does this fire on ordinary text that has nothing to do with a forecast."
 
 **`PREDICTION`** — the old `will`-based marker (`\bwill\s+(?:\w+\s+){0,3}(?:be|become|reach|grow|fall|rise|drop|increase|decrease)\b`) required the verb within 3 words of "will" **and** on a 9-word whitelist. 578 of 659 `future_unknown` questions (87.7%) contain "will" somewhere, but most use a verb outside that whitelist (`"what challenges will *arise*"`, `"how will the use of X *evolve*"`) or have the verb too far away (`"how will the use of digital art in packaging design evolve"` — 7 words between "will" and "evolve"). Four candidates were tested:
 
@@ -94,7 +94,7 @@ A clean pass — the `PREDICTION`/`OPINION`/`AGGREGATE`/`PROCEDURE` regexes neve
 
 ## What this round found and fixed
 
-Both `PREDICTION` and `OPINION` recall were real, fixable gaps, not just benchmark artifacts — and both were widened in `src/agentfox/answerability.py` using structural markers chosen specifically to avoid the overfitting risk a blanket verb-list or keyword expansion would carry:
+Both `PREDICTION` and `OPINION` recall were real, fixable gaps, not just benchmark artifacts — and both were widened in `src/agentfox/grounding/answerability.py` using structural markers chosen specifically to avoid the overfitting risk a blanket verb-list or keyword expansion would carry:
 
 1. **`PREDICTION` recall: 39.0% → 69.0%**, via five narrow, structural future-question shapes (question-initial `"Will"`, `"when will"`, explicit relative-future phrasing) rather than a wider verb vocabulary — validated against both KUQ's `known` set and CoCoNot's 379 unrelated real-world prompts (0.0% new false positives there) before shipping.
 2. **`OPINION` recall: 0.74% → 5.62%**, via five patterns for third-person subjective/comparative/normative framing — with the remaining gap (most debatable questions carry no syntactic marker at all) disclosed as a genuine architectural ceiling for a pattern-matching approach, not glossed over.

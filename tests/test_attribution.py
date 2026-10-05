@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.attribution import (
+from agentfox.prove.attribution import (
     APPROVAL,
     LIMIT,
     PROHIBITION,

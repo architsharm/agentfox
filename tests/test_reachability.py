@@ -29,8 +29,8 @@ runner = CliRunner()
 def ready(isolated_db):
     """Seeded and committed — the CLI opens its own session, so an uncommitted fixture
     would leave it looking at an empty database."""
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -216,9 +216,9 @@ def test_an_escalation_policy_can_be_set_from_the_command_line(ready):
 
 
 def test_the_missed_escalation_scan_is_read_only_by_default(ready):
-    from agentfox.db import session_scope
-    from agentfox.escalation import record_turn
-    from agentfox.models import Finding
+    from agentfox.core.db import session_scope
+    from agentfox.containment.escalation import record_turn
+    from agentfox.core.models import Finding
 
     with session_scope() as session:
         record_turn(
@@ -286,7 +286,7 @@ def fake_openai():
         }
     )
     yield Completions
-    from agentfox.autoguard import off
+    from agentfox.runtime.autoguard import off
 
     off()
     for key in [k for k in list(sys.modules) if k.startswith("openai")]:
@@ -300,11 +300,11 @@ def test_the_one_liner_captures_conversation_turns(isolated_db, fake_openai):
     """Escalation governance was complete and inert for anyone using `auto()`: the
     detector reads recorded turns, and nothing was recording them. The largest failure
     family was covered in code and uncovered in practice."""
-    from agentfox.autoguard import auto
-    from agentfox.db import session_scope
-    from agentfox.escalation import detect_missed_escalation
-    from agentfox.models import ConversationTurn
-    from agentfox.seed import seed
+    from agentfox.runtime.autoguard import auto
+    from agentfox.core.db import session_scope
+    from agentfox.containment.escalation import detect_missed_escalation
+    from agentfox.core.models import ConversationTurn
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -327,10 +327,10 @@ def test_the_one_liner_captures_conversation_turns(isolated_db, fake_openai):
 def test_turns_group_into_one_conversation(isolated_db, fake_openai):
     """Without a session id every exchange looks like a separate single-turn
     conversation, and turn-depth conditions can never fire."""
-    from agentfox.autoguard import auto
-    from agentfox.db import session_scope
-    from agentfox.models import ConversationTurn
-    from agentfox.seed import seed
+    from agentfox.runtime.autoguard import auto
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import ConversationTurn
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -349,10 +349,10 @@ def test_turns_group_into_one_conversation(isolated_db, fake_openai):
 
 def test_turn_capture_never_breaks_the_call(isolated_db, fake_openai, monkeypatch):
     """Observability must not be able to fail the path it is describing."""
-    import agentfox.autoguard as autoguard
-    from agentfox.autoguard import auto
-    from agentfox.db import session_scope
-    from agentfox.seed import seed
+    import agentfox.runtime.autoguard as autoguard
+    from agentfox.runtime.autoguard import auto
+    from agentfox.core.db import session_scope
+    from agentfox.core.seed import seed
 
     with session_scope() as session:
         seed(session)

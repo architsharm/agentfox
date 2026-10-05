@@ -1,6 +1,6 @@
 """Business-process guardrails, and the catalogue that makes new ones cheap to write.
 
-The security guardrails in :mod:`agentfox.guardrails` answer "may this happen at all".
+The security guardrails in :mod:`agentfox.detection` answer "may this happen at all".
 This package answers the other question a business actually asks — *"under which
 circumstances, and who has to agree"* — and the two compose by different algebras,
 which is the whole architectural point. See :mod:`agentfox.business.graph`.
@@ -8,12 +8,12 @@ which is the whole architectural point. See :mod:`agentfox.business.graph`.
 
 from __future__ import annotations
 
-from .catalogue import CATALOGUE, GuardrailKind, by_intent, inert_kinds, suggest
-from .catalogue import to_json as catalogue_json
-from .graph import CombinedDecision, Conflict, GraphNode, build_graph, combine, find_conflicts
-from .ladder import Band, Ladder, LadderDecision, VerifyResult, VerifySpec, run_verification
-from .ladder import evaluate as evaluate_ladder
-from .store import all_ladders, load_ladders, save_ladder, set_mode, summary
+from agentfox.business.catalogue import CATALOGUE, GuardrailKind, by_intent, inert_kinds, suggest
+from agentfox.business.catalogue import to_json as catalogue_json
+from agentfox.business.graph import CombinedDecision, Conflict, GraphNode, build_graph, combine, find_conflicts
+from agentfox.business.ladder import Band, Ladder, LadderDecision, VerifyResult, VerifySpec, run_verification
+from agentfox.business.ladder import evaluate as evaluate_ladder
+from agentfox.business.store import all_ladders, load_ladders, save_ladder, set_mode, summary
 
 __all__ = [
     "CATALOGUE",

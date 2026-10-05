@@ -17,8 +17,8 @@ from typing import Any
 
 import httpx
 
-from ..config import get_settings
-from .base import CompletionRequest, CompletionResponse, StreamChunk, register_provider
+from agentfox.core.config import get_settings
+from agentfox.providers.base import CompletionRequest, CompletionResponse, StreamChunk, register_provider
 
 #: Indicative USD per 1M tokens, for budget enforcement (P3-10) and cost reporting.
 #: Deliberately conservative and clearly labelled — the platform must never present
@@ -71,7 +71,7 @@ class _HttpProvider:
     def judge(self, output: str, rubric: str, model: str = "default") -> dict[str, Any]:
         """LLM-as-judge. The model is pinned by the caller and recorded (X-4)."""
         if not self.available():
-            from .echo import EchoProvider
+            from agentfox.providers.echo import EchoProvider
 
             return EchoProvider().judge(output, rubric, model)
         prompt = (

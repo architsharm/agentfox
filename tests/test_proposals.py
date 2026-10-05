@@ -13,8 +13,8 @@ import datetime as dt
 import pytest
 from sqlalchemy import select
 
-from agentfox.config import get_settings
-from agentfox.guardrails.tuning import apply_suppression, record_feedback
+from agentfox.core.config import get_settings
+from agentfox.detection.tuning import apply_suppression, record_feedback
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import min_score_direction
 from agentfox.improvement.proposals import (
@@ -30,7 +30,7 @@ from agentfox.improvement.proposals import (
     rollback_rate,
     verify_proposal,
 )
-from agentfox.models import (
+from agentfox.core.models import (
     Agent,
     AuditEntry,
     ChangeProposal,
@@ -41,7 +41,7 @@ from agentfox.models import (
     Suppression,
     as_aware,
 )
-from agentfox.operator_log import PRIVILEGED, unaudited
+from agentfox.prove.audit.operator_log import PRIVILEGED, unaudited
 from agentfox.policy import PolicyDocument, save_policy
 
 from .conftest import PII_TEXT, as_user
@@ -563,7 +563,7 @@ def test_proposal_operations_are_registered_privileged_and_record():
 
 
 def _api_proposal(to: float = 0.6, scope_level: str = "team") -> str:
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as s:
         if s.scalar(select(Policy).where(Policy.key == "proposal-test")) is None:
@@ -647,7 +647,7 @@ def test_api_lifecycle_end_to_end(client):
         == 409
     )
 
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as s:
         trail = [

@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .protocol import (
+from agentfox.hooks.protocol import (
     PROTOCOL_VERSION,
     ProtocolError,
     check_socket_path,
@@ -202,8 +202,8 @@ class HookDaemon:
         }
 
     def _hook(self, request: dict[str, Any]) -> dict[str, Any]:
-        from ..db import session_scope
-        from ..enforcement import Enforcer
+        from agentfox.core.db import session_scope
+        from agentfox.runtime.enforcement import Enforcer
 
         started = time.perf_counter()
         agent = str(request.get("agent") or "")
@@ -231,9 +231,9 @@ class HookDaemon:
         the point: a hook on `PostToolUse` is not a second product with its
         own rules, it is the existing engine bound at another moment.
         """
-        from ..db import session_scope
-        from ..enforcement import Enforcer
-        from ..guardrails.base import SURFACES
+        from agentfox.core.db import session_scope
+        from agentfox.runtime.enforcement import Enforcer
+        from agentfox.detection.base import SURFACES
 
         started = time.perf_counter()
         agent = str(request.get("agent") or "")
@@ -273,8 +273,8 @@ class HookDaemon:
 
 def warm() -> None:
     """Pay the startup costs before the first request rather than during it."""
-    from ..db import init_db
-    from ..guardrails import warm_all
+    from agentfox.core.db import init_db
+    from agentfox.detection import warm_all
 
     init_db()
     warm_all()

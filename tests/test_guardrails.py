@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from agentfox.guardrails import (
+from agentfox.detection import (
     DetectionContext,
     DetectorPipeline,
     NativePiiDetector,
@@ -15,9 +15,9 @@ from agentfox.guardrails import (
     redact_content,
     redact_sample,
 )
-from agentfox.guardrails.detectors.injection import InjectionHeuristicDetector
-from agentfox.guardrails.detectors.schema import JsonSchemaDetector, validate
-from agentfox.guardrails.detectors.secrets import SecretsDetector
+from agentfox.detection.detectors.injection import InjectionHeuristicDetector
+from agentfox.detection.detectors.schema import JsonSchemaDetector, validate
+from agentfox.detection.detectors.secrets import SecretsDetector
 
 # ---------------------------------------------------------------------------
 # Injection (P3-1)
@@ -315,7 +315,7 @@ def test_a_stuck_heavy_detector_cannot_starve_the_fast_pool():
             return True
 
         def detect(self, content, context):
-            from agentfox.guardrails.base import DetectorResult
+            from agentfox.detection.base import DetectorResult
 
             return DetectorResult(detector_key=self.key, version=self.version)
 
@@ -355,7 +355,7 @@ def test_detector_own_timeout_ms_is_honored_up_to_the_pipeline_budget():
 
         def detect(self, content, context):
             time.sleep(0.05)  # 50ms: within its own 80ms ceiling
-            from agentfox.guardrails.base import DetectorResult
+            from agentfox.detection.base import DetectorResult
 
             return DetectorResult(detector_key=self.key, version=self.version)
 
@@ -406,8 +406,8 @@ def test_injection_classifier_registered_but_not_enabled_by_default():
     weights are present) but not in the default `enabled_detectors` — a real CPU
     forward pass shouldn't be a default cost every deployment pays without
     choosing to (config.py's `prompt_injection_classifier_model` docstring)."""
-    from agentfox.config import get_settings
-    from agentfox.guardrails import all_detectors
+    from agentfox.core.config import get_settings
+    from agentfox.detection import all_detectors
 
     assert "injection.classifier" in all_detectors()
     assert "injection.classifier" not in get_settings().enabled_detectors
@@ -418,8 +418,8 @@ def test_ensemble_secondary_is_not_consulted_when_the_primary_already_fired():
     every call — consulting it unconditionally would double the common-case
     latency for zero benefit. Faked pipelines (no real model download/load) so
     this is fast and deterministic."""
-    from agentfox.guardrails.adapters.classifiers import PromptInjectionClassifierDetector
-    from agentfox.guardrails.base import DetectionContext
+    from agentfox.detection.adapters.classifiers import PromptInjectionClassifierDetector
+    from agentfox.detection.base import DetectionContext
 
     detector = PromptInjectionClassifierDetector(secondary_model_id="fake/secondary")
     detector.__dict__["_pipeline"] = lambda text: [
@@ -442,8 +442,8 @@ def test_ensemble_secondary_backstop_fires_above_its_own_threshold():
     """When the primary finds nothing, the secondary is consulted — but only
     counts as a detection above its own (stricter) threshold, not the primary's
     0.5 bar."""
-    from agentfox.guardrails.adapters.classifiers import PromptInjectionClassifierDetector
-    from agentfox.guardrails.base import DetectionContext
+    from agentfox.detection.adapters.classifiers import PromptInjectionClassifierDetector
+    from agentfox.detection.base import DetectionContext
 
     detector = PromptInjectionClassifierDetector(secondary_model_id="fake/secondary")
     detector.secondary_threshold = 0.92
@@ -473,8 +473,8 @@ def test_ensemble_secondary_backstop_can_be_disabled():
     """`secondary_model_id=None` must fully disable the backstop — no secondary
     call attempted, primary-only behaviour identical to before the ensemble
     existed (the same config knob a deployment uses to opt back out)."""
-    from agentfox.guardrails.adapters.classifiers import PromptInjectionClassifierDetector
-    from agentfox.guardrails.base import DetectionContext
+    from agentfox.detection.adapters.classifiers import PromptInjectionClassifierDetector
+    from agentfox.detection.base import DetectionContext
 
     detector = PromptInjectionClassifierDetector(secondary_model_id=None)
     detector.__dict__["_pipeline"] = lambda text: [
@@ -486,8 +486,8 @@ def test_ensemble_secondary_backstop_can_be_disabled():
 
 
 def test_injection_similarity_registered_but_not_enabled_by_default():
-    from agentfox.config import get_settings
-    from agentfox.guardrails import all_detectors
+    from agentfox.core.config import get_settings
+    from agentfox.detection import all_detectors
 
     assert "injection.similarity" in all_detectors()
     assert "injection.similarity" not in get_settings().enabled_detectors
@@ -498,7 +498,7 @@ def test_injection_similarity_corpus_is_bundled_and_well_formed():
     or malformed file should fail loudly in CI, not silently degrade production."""
     import json
 
-    from agentfox.guardrails.adapters.embeddings import _CORPUS_PATH
+    from agentfox.detection.adapters.embeddings import _CORPUS_PATH
 
     assert _CORPUS_PATH.exists()
     data = json.loads(_CORPUS_PATH.read_text())
@@ -512,7 +512,7 @@ def test_warm_all_is_a_safe_no_op_without_optional_deps():
     """Every detector available by default has nothing expensive to warm — this
     just proves `warm_all()` doesn't error, which it would if `Detector.warm()`
     weren't safe to call on the plain heuristic/native detectors."""
-    from agentfox.guardrails import warm_all
+    from agentfox.detection import warm_all
 
     warm_all()  # no assertion needed: not raising is the test
 

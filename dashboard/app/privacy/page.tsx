@@ -89,7 +89,7 @@ export default function Privacy() {
                 it is stored. Paste accordingly.
               </p>
               <Ref>
-                src/agentfox/gateway/routes/playground.py:87-143; src/agentfox/escalation.py:204-247
+                src/agentfox/gateway/routes/playground.py:87-143; src/agentfox/containment/escalation.py:204-247
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 Every one of those rows is written under an{" "}
@@ -99,7 +99,7 @@ export default function Privacy() {
                 playground-specific filter that somebody has to remember.
               </p>
               <Ref>
-                src/agentfox/gateway/playground_sessions.py:8-13; src/agentfox/tenancy.py:15-24
+                src/agentfox/gateway/playground_sessions.py:8-13; src/agentfox/core/tenancy.py:15-24
               </Ref>
 
               <h3 className="mk-h3" style={{ marginTop: 30 }}>
@@ -177,7 +177,7 @@ export default function Privacy() {
                 billing row.
               </p>
               <Ref>
-                dashboard/app/api/auth/github/callback/route.ts:62-91; src/agentfox/models.py:397-406
+                dashboard/app/api/auth/github/callback/route.ts:62-91; src/agentfox/core/models.py:397-406
               </Ref>
 
               <h3 className="mk-h3" style={{ marginTop: 30 }}>
@@ -194,7 +194,7 @@ export default function Privacy() {
               <Ref>
                 dashboard/app/api/auth/github/callback/route.ts:97-103;
                 src/agentfox/gateway/routes/integrations.py:69-82, 181-214;
-                src/agentfox/models.py:421-434
+                src/agentfox/core/models.py:421-434
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 A repository scan is static. Nothing in the scanner imports or executes the
@@ -321,8 +321,8 @@ export default function Privacy() {
                 above.
               </p>
               <Ref>
-                src/agentfox/config.py:117-119, 173-181, 360-398; agentfox.toml:13-14;
-                src/agentfox/webhooks.py:97
+                src/agentfox/core/config.py:117-119, 173-181, 360-398; agentfox.toml:13-14;
+                src/agentfox/core/webhooks.py:97
               </Ref>
             </div>
           </div>
@@ -347,8 +347,8 @@ export default function Privacy() {
                 recognise what kind of thing matched. It is not enough to be the value.
               </p>
               <Ref>
-                src/agentfox/guardrails/base.py:204-218;
-                src/agentfox/guardrails/detectors/pii.py:133; src/agentfox/models.py:486-502
+                src/agentfox/detection/base.py:204-218;
+                src/agentfox/detection/detectors/pii.py:133; src/agentfox/core/models.py:486-502
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 Separately, before anything reaches the audit chain, values under keys that
@@ -357,14 +357,14 @@ export default function Privacy() {
                 <span className="mk-mono">&lt;redacted&gt;</span>, and long strings are
                 truncated. The chain stores structure and decisions, not content.
               </p>
-              <Ref>src/agentfox/audit/chain.py:67-107</Ref>
+              <Ref>src/agentfox/prove/audit/chain.py:67-107</Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 The cost of that design, stated rather than hidden: there is no update or
                 delete path for an audit entry anywhere in the codebase. That is what makes
                 the chain worth verifying, and it is also why erasing an account is a
                 manual operation rather than a button. See below.
               </p>
-              <Ref>src/agentfox/audit/chain.py:12-19</Ref>
+              <Ref>src/agentfox/prove/audit/chain.py:12-19</Ref>
             </div>
           </div>
         </section>
@@ -442,8 +442,8 @@ export default function Privacy() {
                   anywhere.
                 </p>
                 <Ref>
-                  src/agentfox/config.py:117-119, 360-363; agentfox.toml:13-14;
-                  src/agentfox/webhooks.py:97; src/agentfox/providers/echo.py:1-6
+                  src/agentfox/core/config.py:117-119, 360-363; agentfox.toml:13-14;
+                  src/agentfox/core/webhooks.py:97; src/agentfox/providers/echo.py:1-6
                 </Ref>
                 <p className="mk-body" style={{ marginTop: 14 }}>
                   This is unusual enough to be worth checking rather than believing. The{" "}

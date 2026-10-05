@@ -23,8 +23,8 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..escalation import escalation_report
-from ..models import (
+from agentfox.containment.escalation import escalation_report
+from agentfox.core.models import (
     Decision,
     DetectorRun,
     Finding,
@@ -33,7 +33,7 @@ from ..models import (
     Trace,
     utcnow,
 )
-from ..reliability import BREAKER
+from agentfox.runtime.reliability import BREAKER
 
 
 def _escape(value: str) -> str:

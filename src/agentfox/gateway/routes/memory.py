@@ -14,8 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...models import Agent, MemoryEntry, User, utcnow
-from ..deps import current_user, db, require
+from agentfox.core.models import Agent, MemoryEntry, User, utcnow
+from agentfox.gateway.deps import current_user, db, require
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
 

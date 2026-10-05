@@ -20,7 +20,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from .scorers import (
+from agentfox.evaluation.scorers import (
     BaseScorer,
     ScoreContext,
     ScoreResult,

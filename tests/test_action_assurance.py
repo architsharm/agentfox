@@ -15,7 +15,7 @@ import datetime as dt
 
 import pytest
 
-from agentfox.guardrails.actions import (
+from agentfox.detection.actions import (
     analyse_arguments,
     analyse_http,
     analyse_scope,
@@ -25,7 +25,7 @@ from agentfox.guardrails.actions import (
     summarise,
 )
 from agentfox.identity import ensure_identity, grant_capability
-from agentfox.models import Agent
+from agentfox.core.models import Agent
 
 # ---------------------------------------------------------------------------
 # Parsing: deterministic, never a model
@@ -51,7 +51,7 @@ def test_unparseable_fails_closed(monkeypatch):
 
 
 def test_analysis_without_sqlglot_refuses_rather_than_allows(monkeypatch):
-    import agentfox.guardrails.actions as actions
+    import agentfox.detection.actions as actions
 
     monkeypatch.setattr(actions, "SQLGLOT_AVAILABLE", False)
     analysis = actions.analyse_sql("SELECT 1")
@@ -193,7 +193,7 @@ def test_an_operator_character_inside_a_quoted_string_is_not_a_false_segment_bou
     """`echo "a; b"` is one command, not two — a naive split on `;` without quote
     awareness would fracture it and could miss a destructive pattern that spans
     the quoted text's boundary in a more complex command."""
-    from agentfox.guardrails.actions import _shell_segments
+    from agentfox.detection.actions import _shell_segments
 
     assert _shell_segments('echo "a; b && c"') == ['echo "a; b && c"']
 
@@ -342,7 +342,7 @@ def test_a_wildcard_value_in_an_ordinary_argument_is_blocked_through_a_granted_t
     capability — nothing about the tool itself is dangerous. The danger is a
     benign-sounding request translated into `order_id="*"`, a field no SQL/shell/
     URL key-name dispatch would ever inspect."""
-    from agentfox.enforcement import Enforcer
+    from agentfox.runtime.enforcement import Enforcer
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)
@@ -358,7 +358,7 @@ def test_a_wildcard_value_in_an_ordinary_argument_is_blocked_through_a_granted_t
 
 
 def test_an_ordinary_lookup_by_id_through_the_same_tool_is_allowed(seeded):
-    from agentfox.enforcement import Enforcer
+    from agentfox.runtime.enforcement import Enforcer
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)
@@ -486,7 +486,7 @@ def test_a_dry_run_computes_the_verdict_without_refusing(seeded, enforcer, db_ag
 
 
 def test_a_destructive_statement_nested_one_level_is_still_analysed():
-    from agentfox.guardrails.actions import analyse_arguments
+    from agentfox.detection.actions import analyse_arguments
 
     flat = analyse_arguments({"sql": "DELETE FROM customers"})
     nested = analyse_arguments({"params": {"sql": "DELETE FROM customers"}})
@@ -496,14 +496,14 @@ def test_a_destructive_statement_nested_one_level_is_still_analysed():
 
 
 def test_a_destructive_statement_inside_a_list_is_analysed():
-    from agentfox.guardrails.actions import analyse_arguments
+    from agentfox.detection.actions import analyse_arguments
 
     analyses = analyse_arguments({"batch": [{"query": "DELETE FROM orders"}]})
     assert analyses and "sql.unbounded_mutation" in {r.code for r in analyses[0].risks}
 
 
 def test_a_wildcard_scope_value_nested_in_an_object_is_caught():
-    from agentfox.guardrails.actions import analyse_arguments
+    from agentfox.detection.actions import analyse_arguments
 
     analyses = analyse_arguments({"filter": {"order_id": "*"}})
     assert analyses and "scope.wildcard_value" in {r.code for r in analyses[0].risks}
@@ -511,20 +511,20 @@ def test_a_wildcard_scope_value_nested_in_an_object_is_caught():
 
 def test_the_sql_finder_walks_nested_arguments_too():
     """P18's access analysis shares this finder; the two must not drift."""
-    from agentfox.guardrails.actions import find_sql_argument
+    from agentfox.detection.actions import find_sql_argument
 
     assert find_sql_argument({"params": {"query": "DROP TABLE x"}}) == "DROP TABLE x"
 
 
 def test_ordinary_nested_arguments_stay_silent():
-    from agentfox.guardrails.actions import analyse_arguments
+    from agentfox.detection.actions import analyse_arguments
 
     assert analyse_arguments({"customer": {"name": "Ada", "city": "Cambridge"}}) == []
 
 
 def test_the_walk_is_bounded_in_depth_and_width():
     """A tool call is not a document: an unbounded walk is a latency problem."""
-    from agentfox.guardrails.actions import analyse_arguments
+    from agentfox.detection.actions import analyse_arguments
 
     deep: dict = {"sql": "DELETE FROM customers"}
     for _ in range(12):

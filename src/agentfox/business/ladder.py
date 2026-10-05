@@ -341,7 +341,7 @@ def _satisfies(result: Any, expect: dict[str, Any]) -> tuple[bool, str]:
     if not isinstance(result, dict):
         return False, f"expected an object to match against, got {type(result).__name__}"
 
-    from ..policy.model import COMPARATORS
+    from agentfox.policy.model import COMPARATORS
 
     for path, condition in expect.items():
         value: Any = result

@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ...models import (
+from agentfox.core.models import (
     Agent,
     Decision,
     Finding,
@@ -32,7 +32,7 @@ from ...models import (
     Trace,
     utcnow,
 )
-from ..deps import current_user, db
+from agentfox.gateway.deps import current_user, db
 
 router = APIRouter(prefix="/api", tags=["platform"])
 

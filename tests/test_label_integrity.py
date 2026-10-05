@@ -12,15 +12,15 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from agentfox.guardrails.base import Detection, DetectorResult
-from agentfox.guardrails.pipeline import PipelineResult
-from agentfox.guardrails.tuning import (
+from agentfox.detection.base import Detection, DetectorResult
+from agentfox.detection.pipeline import PipelineResult
+from agentfox.detection.tuning import (
     apply_suppression,
     explain,
     record_feedback,
     sample_hash,
 )
-from agentfox.models import (
+from agentfox.core.models import (
     Agent,
     AuditEntry,
     Decision,
@@ -64,7 +64,7 @@ def _file(client, decision_id, user, **body):
 
 
 def _audit(action: str) -> list[AuditEntry]:
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as s:
         rows = list(s.scalars(select(AuditEntry).where(AuditEntry.action == action)))
@@ -73,7 +73,7 @@ def _audit(action: str) -> list[AuditEntry]:
 
 
 def _feedback_rows() -> list[GuardrailFeedback]:
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as s:
         rows = list(s.scalars(select(GuardrailFeedback)))
@@ -358,7 +358,7 @@ def test_sign_off_is_the_authenticated_caller(client):
 
 
 def test_signing_off_in_someone_elses_name_is_refused(client):
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     def count() -> int:
         with session_scope() as s:

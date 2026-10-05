@@ -47,9 +47,9 @@ def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
     # `agentfox init`, must never leak into a test. Tests of file loading delenv this.
     monkeypatch.setenv("NOMETRIA_CONFIG", "none")
 
-    from agentfox import db
-    from agentfox.availability import reset_admission_controller
-    from agentfox.config import get_settings, reset_settings_cache
+    from agentfox.core import db
+    from agentfox.runtime.availability import reset_admission_controller
+    from agentfox.core.config import get_settings, reset_settings_cache
 
     reset_settings_cache()
     db.reset_engine()
@@ -64,7 +64,7 @@ def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
 
 @pytest.fixture
 def session() -> Iterator[Session]:
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as s:
         yield s
@@ -73,7 +73,7 @@ def session() -> Iterator[Session]:
 @pytest.fixture
 def seeded(session) -> Session:
     """A seeded environment: agents, identities, capabilities, policies, controls."""
-    from agentfox.seed import seed
+    from agentfox.core.seed import seed
 
     seed(session)
     return session
@@ -81,7 +81,7 @@ def seeded(session) -> Session:
 
 @pytest.fixture
 def enforcer(seeded):
-    from agentfox.enforcement import Enforcer
+    from agentfox.runtime.enforcement import Enforcer
 
     return Enforcer(seeded)
 
@@ -91,9 +91,9 @@ def client(tmp_path):
     """FastAPI test client sharing the isolated database."""
     from fastapi.testclient import TestClient
 
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
     from agentfox.gateway.app import create_app
-    from agentfox.seed import seed
+    from agentfox.core.seed import seed
 
     with session_scope() as s:
         seed(s)

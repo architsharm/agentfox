@@ -755,7 +755,7 @@ tool_key(server, tool) -> str      # "mcp:{server}/{tool}"`}</Code>
         <code>drift</code>, <code>registered</code>). It raises{" "}
         <code>McpCallBlocked</code> only with <code>raise_on_block=True</code>.
       </p>
-      <Code lang="python" title="mcp_gov.py">{`from agentfox.db import session_scope
+      <Code lang="python" title="mcp_gov.py">{`from agentfox.core.db import session_scope
 from agentfox.integrations import McpGovernor, tool_key
 
 TOOLS = [{"name": "search_tickets", "description": "Search support tickets by keyword.",
@@ -779,7 +779,7 @@ with session_scope() as db:
         <code>scan_mcp_server</code> (what a scan of the server does) rather than
         accepted with <code>register_tools</code>:
       </p>
-      <Code lang="python" title="mcp_drift.py">{`from agentfox.db import session_scope
+      <Code lang="python" title="mcp_drift.py">{`from agentfox.core.db import session_scope
 from agentfox.registry.service import scan_mcp_server
 from agentfox.integrations import McpGovernor, McpCallBlocked
 
@@ -865,7 +865,7 @@ render_metrics(session, *, window_hours: int = 24) -> str`}</Code>
         Returns the Prometheus text format for the last <code>window_hours</code>. The
         gateway serves the same at <code>GET /metrics</code>.
       </p>
-      <Code lang="python" title="metrics.py">{`from agentfox.db import session_scope
+      <Code lang="python" title="metrics.py">{`from agentfox.core.db import session_scope
 from agentfox.integrations import render_metrics
 
 with session_scope() as db:

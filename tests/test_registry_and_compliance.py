@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agentfox.compliance import (
+from agentfox.prove.compliance import (
     classify,
     compute_all,
     framework_coverage,
@@ -12,8 +12,8 @@ from agentfox.compliance import (
     register,
     sync_catalog,
 )
-from agentfox.compliance.catalog import review_mapping
-from agentfox.models import Agent, AuditEntry, Finding, FrameworkMapping
+from agentfox.prove.compliance.catalog import review_mapping
+from agentfox.core.models import Agent, AuditEntry, Finding, FrameworkMapping
 from agentfox.registry.service import (
     assess_delegation,
     attest_registry,
@@ -231,7 +231,7 @@ def test_framework_coverage_declares_gaps(seeded):
 
 
 def test_every_framework_has_a_gap_list(seeded):
-    from agentfox.compliance import all_frameworks
+    from agentfox.prove.compliance import all_frameworks
 
     for framework in all_frameworks(seeded):
         assert framework["declared_gaps"], framework["framework"]
@@ -267,7 +267,7 @@ def test_control_with_no_evidence_is_not_implemented(session):
 
 def test_broken_chain_makes_the_audit_control_fail_hard(seeded):
     """A chain that "mostly" verifies has no evidentiary value at all."""
-    from agentfox.audit import chain
+    from agentfox.prove.audit import chain
 
     chain.append(seeded, "test.event", payload={"a": 1})
     chain.append(seeded, "test.event", payload={"b": 2})
@@ -363,7 +363,7 @@ def test_obligations_have_a_readiness_target(seeded):
 
 
 def test_board_view_carries_its_caveat(seeded):
-    from agentfox.compliance import board_view
+    from agentfox.prove.compliance import board_view
 
     view = board_view(seeded)
     assert "DRAFT" in view["caveat"]
@@ -375,7 +375,7 @@ def test_control_keys_are_unique():
     one short, and the shadowed control is simply never evaluated."""
     import collections
 
-    from agentfox.compliance.catalog import load_catalog
+    from agentfox.prove.compliance.catalog import load_catalog
 
     keys = [control["key"] for control in load_catalog()["controls"]]
     duplicates = [key for key, n in collections.Counter(keys).items() if n > 1]

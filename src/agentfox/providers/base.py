@@ -201,7 +201,7 @@ def is_local_endpoint(url: str | None) -> bool:
 
 
 def get_provider(key: str | None = None) -> ModelProvider:
-    from ..config import get_settings
+    from agentfox.core.config import get_settings
 
     key = key or get_settings().default_provider
     provider = _REGISTRY.get(key)

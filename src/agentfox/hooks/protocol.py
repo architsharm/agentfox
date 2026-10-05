@@ -70,7 +70,7 @@ def socket_path(state_root: Path | None = None) -> Path:
     pre-created by somebody else.
     """
     if state_root is None:
-        from ..config import STATE_ROOT
+        from agentfox.core.config import STATE_ROOT
 
         state_root = STATE_ROOT
     return state_root / "run" / "agentfoxd.sock"

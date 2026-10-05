@@ -24,9 +24,9 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .. import __version__
-from ..config import get_settings
-from ..models import EvalCase, EvalResult, EvalRun, EvalSuite, utcnow
+from agentfox import __version__
+from agentfox.core.config import get_settings
+from agentfox.core.models import EvalCase, EvalResult, EvalRun, EvalSuite, utcnow
 
 
 class PromptfooRunner:
@@ -175,7 +175,7 @@ class PromptfooRunner:
 
 def get_runner(name: str | None = None):
     """Resolve an :class:`EvalRunner` by name, falling back to native."""
-    from .runner import NativeEvalRunner
+    from agentfox.evaluation.runner import NativeEvalRunner
 
     choice = name or get_settings().eval_runner
     if choice == "promptfoo":

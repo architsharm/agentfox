@@ -706,7 +706,7 @@ HTTPServer(("127.0.0.1", 18448), Handler).serve_forever()`}</Code>
           <Code>{`export AGENTFOX_ALLOW_EGRESS=true
 export AGENTFOX_WEBHOOK_URL=http://127.0.0.1:18448/agentfox
 export AGENTFOX_WEBHOOK_SECRET=whsec_test_7f3a9c
-python -c "from agentfox.webhooks import send_test_event; print(send_test_event())"`}</Code>
+python -c "from agentfox.core.webhooks import send_test_event; print(send_test_event())"`}</Code>
           <Output>{`(True, 'HTTP 204')`}</Output>
         </Step>
         <Step title="Raise a real finding">

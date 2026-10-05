@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.models import Decision, Policy, PolicyBinding, PolicyVersion
+from agentfox.core.models import Decision, Policy, PolicyBinding, PolicyVersion
 from agentfox.policy import (
     CanaryError,
     PolicyDocument,

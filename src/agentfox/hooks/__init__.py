@@ -9,16 +9,16 @@ avoid.
 
 from __future__ import annotations
 
-from .capability import CAPABILITY, Verified, capability_of, describe
-from .client import (
+from agentfox.hooks.capability import CAPABILITY, Verified, capability_of, describe
+from agentfox.hooks.client import (
     DaemonUnavailable,
     guard_content,
     guard_tool_call,
     ping,
     report_unavailable,
 )
-from .daemon import HookDaemon, warm
-from .protocol import PROTOCOL_VERSION, ProtocolError, socket_path
+from agentfox.hooks.daemon import HookDaemon, warm
+from agentfox.hooks.protocol import PROTOCOL_VERSION, ProtocolError, socket_path
 
 __all__ = [
     "CAPABILITY",

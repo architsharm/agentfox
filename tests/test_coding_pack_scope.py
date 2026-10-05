@@ -11,7 +11,7 @@ import json
 
 from typer.testing import CliRunner
 
-from agentfox.models import Finding
+from agentfox.core.models import Finding
 from agentfox.policy import active_policies, load_available, save_policy
 from agentfox.policy.coding import (
     CODING_PACK,
@@ -129,7 +129,7 @@ def test_init_skips_the_pack_without_hooks_and_scopes_it_with_them(tmp_path, mon
     assert second.exit_code == 0, second.output
     assert "coding-agent applies to: dev-laptop" in second.output
 
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as session:
         assert CODING_PACK in _keys(session, "dev-laptop")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from agentfox.identity import ensure_identity, grant_capability
-from agentfox.models import (
+from agentfox.core.models import (
     Agent,
     ApprovalRequest,
     AuditEntry,
@@ -315,7 +315,7 @@ def test_an_undeclared_trigger_stays_invisible(seeded, enforcer):
 
 
 def test_an_unscoped_query_on_a_declared_table_is_blocked(seeded, enforcer):
-    from agentfox.models import AccessScopeRule
+    from agentfox.core.models import AccessScopeRule
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)
@@ -337,7 +337,7 @@ def test_an_unscoped_query_on_a_declared_table_is_blocked(seeded, enforcer):
 
 
 def test_a_query_on_an_undeclared_table_escalates_not_silently_allows(seeded, enforcer):
-    from agentfox.models import AccessScopeRule
+    from agentfox.core.models import AccessScopeRule
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)
@@ -679,7 +679,7 @@ def test_the_cron_endpoint_is_disabled_without_a_configured_secret(client):
 
 
 def test_the_cron_endpoint_rejects_a_wrong_secret_once_configured(client, monkeypatch):
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "cron_secret", "the-real-secret")
     response = client.post("/api/internal/jobs/run", headers={"Authorization": "Bearer wrong"})
@@ -689,7 +689,7 @@ def test_the_cron_endpoint_rejects_a_wrong_secret_once_configured(client, monkey
 def test_the_cron_endpoint_processes_pending_work_across_every_tenant_with_the_right_secret(
     client, monkeypatch
 ):
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "cron_secret", "the-real-secret")
     response = client.post(
@@ -1030,8 +1030,8 @@ def test_borderline_eval_results_appear_in_the_annotation_queue(client):
     """P4 — a score within `band` of the scorer's own pass/fail threshold is
     exactly the shape a human should review, mirroring Finding's own
     cross-pillar queue rather than inventing a new one."""
-    from agentfox.db import session_scope
-    from agentfox.models import EvalResult, EvalRun
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import EvalResult, EvalRun
 
     with session_scope() as s:
         run = EvalRun(suite_id="test-suite-borderline", status="completed")
@@ -1075,8 +1075,8 @@ def test_annotating_without_a_note_is_rejected(client):
     """Same discipline as Finding's suppress/resolve: a one-click verdict with
     nothing recorded is how a real disagreement about scorer correctness
     disappears without anyone having actually looked."""
-    from agentfox.db import session_scope
-    from agentfox.models import EvalResult, EvalRun
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import EvalResult, EvalRun
 
     with session_scope() as s:
         run = EvalRun(suite_id="test-suite-note", status="completed")
@@ -1104,8 +1104,8 @@ def test_annotating_without_a_note_is_rejected(client):
 def test_scorer_disagreement_on_the_same_case_is_flagged_even_when_no_score_is_borderline(client):
     """The other borderline shape: two scorers on the same case landing on
     opposite verdicts, neither of them individually close to its own threshold."""
-    from agentfox.db import session_scope
-    from agentfox.models import EvalResult, EvalRun
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import EvalResult, EvalRun
 
     with session_scope() as s:
         run = EvalRun(suite_id="test-suite-disagree", status="completed")
@@ -1386,7 +1386,7 @@ def test_the_root_leaks_no_configuration(client):
     fails when someone adds a field, which is the moment to think about it, while a
     blacklist passes for every leak nobody thought of in advance.
     """
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     body = client.get("/").json()
 

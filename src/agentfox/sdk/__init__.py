@@ -39,10 +39,10 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
-from ..db import session_scope
-from ..enforcement import EnforcementResult, Enforcer
-from ..guardrails import TaintTracker
-from ..integrations.correlation import refs_from_env
+from agentfox.core.db import session_scope
+from agentfox.runtime.enforcement import EnforcementResult, Enforcer
+from agentfox.detection import TaintTracker
+from agentfox.integrations.correlation import refs_from_env
 
 log = logging.getLogger(__name__)
 
@@ -374,7 +374,7 @@ class AgentFox:
         consults) and the write is retried on the tool's first call. Remote mode
         writes nothing locally — the gateway's registry is that deployment's record.
         """
-        from ..registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
+        from agentfox.registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
 
         DECLARED_TOOL_IMPACTS[key] = impact
         if self.remote:
@@ -472,8 +472,8 @@ class AgentFox:
                 reason=payload.get("reason", ""),
             )
         with self._db() as session:
-            from ..audit.trace import start_trace
-            from ..registry.service import slugify
+            from agentfox.prove.audit.trace import start_trace
+            from agentfox.registry.service import slugify
 
             enforcer = Enforcer(session)
             agent, _identity, _shadow = enforcer.resolve(kwargs["agent"])

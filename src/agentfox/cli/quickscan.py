@@ -47,7 +47,7 @@ _LIVE_DEMO_PROBES = [
 def _run_live_demo() -> tuple[int, int, float]:
     """Returns (caught, total, duration_ms). Runs entirely in-process — no network,
     no database, the exact same pipeline that would sit in front of real traffic."""
-    from ..guardrails import DetectionContext, DetectorPipeline
+    from agentfox.detection import DetectionContext, DetectorPipeline
 
     pipeline = DetectorPipeline()
     caught = 0
@@ -76,10 +76,10 @@ def quickscan(
 ) -> None:
     """One shot: what's committed, what's actually running, and proof the detectors
     work — no account, nothing leaves this machine unless you explicitly submit."""
-    from ..discovery import scan as discovery_scan
-    from ..session_scan import scan_all
-    from ._scan_view import print_trifectas, surface_line
-    from .submit import maybe_submit_report
+    from agentfox.discovery.repo import scan as discovery_scan
+    from agentfox.discovery.sessions import scan_all
+    from agentfox.cli._scan_view import print_trifectas, surface_line
+    from agentfox.cli.submit import maybe_submit_report
 
     repo_report = discovery_scan(path)
     session_reports = [] if skip_sessions else scan_all()

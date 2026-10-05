@@ -40,15 +40,15 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ...models import WaitlistSignup
-from ..deps import db
+from agentfox.core.models import WaitlistSignup
+from agentfox.gateway.deps import db
 
 # The limiter class lives in `playground_sessions` because that is where the first
 # public endpoint needed one. Importing it rather than writing a second one is the
 # point: two rate limiters with two sets of semantics is how one of them ends up
 # quietly not working. Its limits are per process — see the class docstring for what
 # that does and does not bound on a serverless deployment.
-from ..playground_sessions import RateLimiter
+from agentfox.gateway.playground_sessions import RateLimiter
 
 router = APIRouter(tags=["waitlist"])
 

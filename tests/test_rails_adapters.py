@@ -22,9 +22,9 @@ import types
 
 import pytest
 
-from agentfox.config import get_settings
-from agentfox.guardrails.adapters.rails import GuardrailsAiDetector, NemoRailsDetector
-from agentfox.guardrails.base import DetectionContext
+from agentfox.core.config import get_settings
+from agentfox.detection.adapters.rails import GuardrailsAiDetector, NemoRailsDetector
+from agentfox.detection.base import DetectionContext
 
 
 @pytest.fixture(autouse=True)

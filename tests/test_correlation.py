@@ -19,7 +19,7 @@ from agentfox.integrations.correlation import (
     refs_from_headers,
     resolve_external,
 )
-from agentfox.models import Trace
+from agentfox.core.models import Trace
 
 from .conftest import as_user
 
@@ -85,7 +85,7 @@ def test_deep_links_are_built_for_known_hosts():
 def test_no_link_is_better_than_a_link_that_404s(monkeypatch):
     """Self-hosted Langfuse lives on a customer domain. Guessing the SaaS URL produces
     a link that does not resolve, which is worse than admitting we cannot build one."""
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "langfuse_host", "")
     assert deep_link(LANGFUSE, "lf-1") is None
@@ -154,7 +154,7 @@ def test_a_governed_completion_records_the_link(seeded, enforcer):
 
 def test_a_blocked_request_is_still_correlated(seeded, enforcer):
     """The blocked ones are precisely the requests someone will come looking for."""
-    from agentfox.models import Agent, Budget
+    from agentfox.core.models import Agent, Budget
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     seeded.query(Budget).filter_by(scope_id=agent.id).one().max_calls = 0
@@ -173,7 +173,7 @@ def test_a_blocked_request_is_still_correlated(seeded, enforcer):
 def test_correlation_never_fails_the_request(seeded, enforcer, monkeypatch):
     """Correlation is a convenience for whoever debugs this later. It must not be able
     to take down the path it is describing."""
-    import agentfox.enforcement as enforcement
+    import agentfox.runtime.enforcement as enforcement
 
     def explode(*args, **kwargs):
         raise RuntimeError("link store unavailable")
@@ -199,7 +199,7 @@ def test_push_is_off_without_egress(seeded, enforcer):
 
 def test_push_failure_is_recorded_not_raised(seeded, monkeypatch):
     """An observability vendor having an outage must not become our outage."""
-    from agentfox.config import get_settings
+    from agentfox.core.config import get_settings
     from agentfox.integrations.correlation import push_verdict
 
     settings = get_settings()

@@ -33,7 +33,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import (
+from agentfox.core.models import (
     AuditEntry,
     ChangeProposal,
     GuardrailFeedback,
@@ -43,7 +43,7 @@ from ..models import (
     PolicyVersion,
     Suppression,
 )
-from . import contract
+from agentfox.improvement import contract
 
 #: Audit action the service records an apply under. Declared here because a revert
 #: reads back what its own apply recorded — the chain, not a mutable column, is the
@@ -149,7 +149,7 @@ def _suppression_direction(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _suppression_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from ..guardrails.tuning import revoke_suppression
+    from agentfox.detection.tuning import revoke_suppression
 
     suppression = session.get(Suppression, _suppression_id(proposal))
     if suppression is None:
@@ -178,7 +178,7 @@ def _suppression_apply(session: Session, proposal: ChangeProposal, *, actor: str
 def _suppression_revert(
     session: Session, proposal: ChangeProposal, *, actor: str
 ) -> dict[str, Any]:
-    from ..guardrails.tuning import apply_suppression
+    from agentfox.detection.tuning import apply_suppression
 
     original = session.get(Suppression, _suppression_id(proposal))
     if original is None:
@@ -251,7 +251,7 @@ def _policy_diff(proposal: ChangeProposal) -> tuple[str, str, float]:
 
 
 def _live_policy(session: Session, policy_key: str) -> tuple[Policy, PolicyVersion, PolicyBinding]:
-    from ..policy.store import _open_binding_for_version
+    from agentfox.policy.store import _open_binding_for_version
 
     policy = session.scalar(select(Policy).where(Policy.key == policy_key))
     if policy is None:
@@ -270,7 +270,7 @@ def _live_policy(session: Session, policy_key: str) -> tuple[Policy, PolicyVersi
 def _document(version: PolicyVersion):
     import yaml
 
-    from ..policy.model import PolicyDocument
+    from agentfox.policy.model import PolicyDocument
 
     return PolicyDocument.model_validate(version.compiled_json or yaml.safe_load(version.body))
 
@@ -308,8 +308,8 @@ def _policy_direction(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _policy_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from ..policy.canary import CanaryError, start_canary
-    from ..policy.store import save_policy
+    from agentfox.policy.canary import CanaryError, start_canary
+    from agentfox.policy.store import save_policy
 
     diff = proposal.diff_json or {}
     policy_key, rule_id, target = _policy_diff(proposal)
@@ -377,8 +377,8 @@ def _policy_stage_status(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _policy_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from ..policy.canary import rollback_canary
-    from ..policy.store import _open_binding_for_version
+    from agentfox.policy.canary import rollback_canary
+    from agentfox.policy.store import _open_binding_for_version
 
     result = applied_result(session, proposal)
     prior_id = result.get("prior_version_id")
@@ -449,7 +449,7 @@ def _grant_diff(proposal: ChangeProposal) -> dict[str, Any]:
     diff = dict(proposal.diff_json or {})
     if not diff.get("agent") or not diff.get("tool_key"):
         raise ApplierError("capability.grant needs diff.agent and diff.tool_key")
-    from ..guardrails.base import TAINT_ORDER
+    from agentfox.detection.base import TAINT_ORDER
 
     if str(diff.get("max_taint") or "user") not in TAINT_ORDER:
         raise ApplierError(f"diff.max_taint must be one of {list(TAINT_ORDER)}")
@@ -457,8 +457,8 @@ def _grant_diff(proposal: ChangeProposal) -> dict[str, Any]:
 
 
 def _grant_identity(session: Session, slug: str):
-    from ..identity import ensure_identity
-    from ..models import Agent
+    from agentfox.identity import ensure_identity
+    from agentfox.core.models import Agent
 
     agent = session.scalar(select(Agent).where(Agent.slug == slug))
     if agent is None:
@@ -467,7 +467,7 @@ def _grant_identity(session: Session, slug: str):
 
 
 def _live_exact_grant(session: Session, identity_id: str, tool_key: str):
-    from ..models import Capability, as_aware
+    from agentfox.core.models import Capability, as_aware
 
     now = dt.datetime.now(dt.UTC)
     for capability in session.scalars(
@@ -484,8 +484,8 @@ def _live_exact_grant(session: Session, identity_id: str, tool_key: str):
 def _domain_audit(
     session: Session, action: str, subject_id: str, actor: str, payload: dict
 ) -> None:
-    from ..audit import chain
-    from ..config import get_settings
+    from agentfox.prove.audit import chain
+    from agentfox.core.config import get_settings
 
     chain.append(
         session,
@@ -498,8 +498,8 @@ def _domain_audit(
 
 
 def _grant_direction(session: Session, proposal: ChangeProposal) -> str:
-    from ..guardrails.base import taint_rank
-    from ..models import Capability
+    from agentfox.detection.base import taint_rank
+    from agentfox.core.models import Capability
 
     diff = _grant_diff(proposal)
     if not diff.get("replaces"):
@@ -516,8 +516,8 @@ def _grant_direction(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from ..identity import grant_capability
-    from ..models import Capability
+    from agentfox.identity import grant_capability
+    from agentfox.core.models import Capability
 
     diff = _grant_diff(proposal)
     identity = _grant_identity(session, str(diff["agent"]))
@@ -590,8 +590,8 @@ def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> d
 
 
 def _grant_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from ..identity import revoke_capability
-    from ..models import Capability
+    from agentfox.identity import revoke_capability
+    from agentfox.core.models import Capability
 
     result = applied_result(session, proposal)
     capability_id = result.get("capability_id")
@@ -668,7 +668,7 @@ _IMPACTS = ("read", "write", "high_impact", "irreversible")
 
 
 def _declare_diff(proposal: ChangeProposal) -> dict[str, Any]:
-    from ..models import OUTPUT_TRUST_LEVELS
+    from agentfox.core.models import OUTPUT_TRUST_LEVELS
 
     diff = dict(proposal.diff_json or {})
     if not diff.get("tool_key"):
@@ -681,7 +681,7 @@ def _declare_diff(proposal: ChangeProposal) -> dict[str, Any]:
 
 
 def _declare_direction(session: Session, proposal: ChangeProposal) -> str:
-    from ..models import Tool
+    from agentfox.core.models import Tool
 
     diff = _declare_diff(proposal)
     live = session.scalar(select(Tool).where(Tool.key == diff["tool_key"]))
@@ -692,8 +692,8 @@ def _declare_direction(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _declare_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from ..models import Tool
-    from ..registry.service import upsert_tool
+    from agentfox.core.models import Tool
+    from agentfox.registry.service import upsert_tool
 
     diff = _declare_diff(proposal)
     key = str(diff["tool_key"])
@@ -718,7 +718,7 @@ def _declare_apply(session: Session, proposal: ChangeProposal, *, actor: str) ->
 
 
 def _declare_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from ..models import Tool
+    from agentfox.core.models import Tool
 
     result = applied_result(session, proposal)
     tool = session.get(Tool, result.get("tool_id") or "")

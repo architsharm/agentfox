@@ -27,8 +27,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..findings import auto_resolve, raise_finding, resolve_finding
-from ..models import (
+from agentfox.prove.findings import auto_resolve, raise_finding, resolve_finding
+from agentfox.core.models import (
     Agent,
     Finding,
     LineageEdge,
@@ -40,7 +40,7 @@ from ..models import (
     as_aware,
     utcnow,
 )
-from ..policy import PolicyDocument, save_policy
+from agentfox.policy import PolicyDocument, save_policy
 
 _SLUG = re.compile(r"[^a-z0-9-]+")
 
@@ -143,7 +143,7 @@ def propose_from_scan(
     repo_short = slugify(repo_slug_base)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     # A lethal trifecta (private data + untrusted input + a way out, see
-    # `agentfox.exposure`) raises the risk tier of the agent in its directory. It
+    # `agentfox.discovery.exposure`) raises the risk tier of the agent in its directory. It
     # does not propose an agent on its own: an `.mcp.json` trifecta describes an
     # IDE's servers, not an application this repo deploys.
     trifecta_dirs: set[str] = set()
@@ -503,7 +503,7 @@ def derive_lineage(session: Session, agent_slug: str | None = None) -> int:
                 tool_key = str(attrs.get("gen_ai.tool.name") or span.name)
                 record_edge(session, "agent", trace.agent_slug, "tool", tool_key, "calls_tool")
                 edges += 1
-                server = attrs.get("agentfox.mcp_server")
+                server = attrs.get("agentfox.integrations.mcp_server")
                 if server:
                     record_edge(
                         session, "tool", tool_key, "mcp_server", str(server), "connects_mcp"
@@ -626,7 +626,7 @@ def assess_delegation(session: Session) -> list[Finding]:
     only visible in the shape of the delegation graph itself, built here from the
     "delegates_to" edges derive_lineage already records from subagent spans.
     """
-    from ..attribution import delegation_graph
+    from agentfox.prove.attribution import delegation_graph
 
     edges = [
         (str(e.src_id), str(e.dst_id))

@@ -1,6 +1,6 @@
 """Response-shaping for enforcement verdicts: names that say which one took effect.
 
-An :class:`~agentfox.enforcement.EnforcementResult` carries two verdicts and the
+An :class:`~agentfox.runtime.enforcement.EnforcementResult` carries two verdicts and the
 field names do not say which is which:
 
 ``verdict``

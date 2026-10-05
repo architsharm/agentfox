@@ -236,7 +236,7 @@ pip install openai agentfox`}</Code>
           <Output>{`Setting up AgentFox
 …
   ✓ database ready
-sqlite:////…/agentfox.db
+sqlite:////…/agentfox.core.db
   ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
   ✓ 3 policy pack(s) loaded
       baseline                 observe  recorded, nothing blocked
