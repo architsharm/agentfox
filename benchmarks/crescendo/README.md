@@ -164,7 +164,7 @@ checks use — capped at `high` so it can never reach the `critical` list that
     effect: block
 ```
 
-`tests/test_crescendo_detection.py` asserts both halves: that this policy turns a
+`tests/detection/test_crescendo_detection.py` asserts both halves: that this policy turns a
 crescendo into a real block, and that the same policy leaves all nine controls alone.
 
 ### Say it plainly
@@ -220,4 +220,4 @@ remaining gap.
   `Enforcer._trajectory_checks` / `Enforcer.check_conversation_window` in
   `src/agentfox/runtime/enforcement/`; its tests, including all nine controls as negative
   tests and an assertion that the hook is on the live SDK path, are
-  `tests/test_crescendo_detection.py`.
+  `tests/detection/test_crescendo_detection.py`.

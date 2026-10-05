@@ -12,7 +12,8 @@ from agentfox.core import ids
 from agentfox.core.models.base import Base, TimestampMixin
 
 #: Rows the one-open-proposal-per-problem index covers. Must list exactly
-#: ``improvement.contract.OPEN``; tests/test_proposals_integrity.py holds the two together.
+#: ``improvement.contract.OPEN``; tests/improvement/test_proposals_integrity.py holds the
+#: two together.
 PROPOSAL_OPEN_FINGERPRINT = (
     "fingerprint IS NOT NULL AND status IN ('proposed', 'proven', 'approved', 'canary', 'applied')"
 )

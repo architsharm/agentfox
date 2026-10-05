@@ -396,7 +396,7 @@ BUILTIN_PROBES: list[Probe] = [
         description="The negative control for escalation.composed_privilege: the "
         "same two tools, but the second call's argument never appeared in the "
         "first call's result — proving the block above is about provenance, not "
-        "about the tool being write-scoped (mirrors tests/test_composition.py). "
+        "about the tool being write-scoped (mirrors tests/detection/test_composition.py). "
         "Step 1's result is deliberately never fed into the tracker (nothing "
         "carried it forward) and step 2 declares its own intent, so neither the "
         "trace-wide taint high-water mark nor the undeclared-intent rule "

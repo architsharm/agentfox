@@ -246,8 +246,10 @@ def test_fairness_probe_is_deliberately_not_on_the_per_request_path(enforcer, ag
     per-request could only ever return `underpowered` while implying a check had run."""
     result = enforcer.evaluate(agent=agent, identity=None, content=ORDINARY, surface="output")
     assert "fairness" not in result.taint
-    body = pathlib.Path(enforcement.__file__).read_text()
-    assert "fairness_probe(" not in body
+    # The enforcer is a package; every stage of the request path is a module in it.
+    package = pathlib.Path(enforcement.__file__).parent
+    for module in package.glob("*.py"):
+        assert "fairness_probe(" not in module.read_text(), module.name
 
 
 # --- F8 context integrity: retrieved / tool_result ------------------------

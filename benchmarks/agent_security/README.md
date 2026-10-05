@@ -67,7 +67,7 @@ actually stopped by the kill switch.
 **Fixed**: `guard_tool_call` now checks `_control_verdict` first, exactly like
 `preflight` does (`src/agentfox/runtime/enforcement/`). Regression test:
 `test_quarantine_blocks_tool_calls_not_just_completions` in
-`tests/test_tranche0.py`.
+`tests/runtime/test_streaming_kill_switch_and_langgraph.py`.
 
 ## Tier B — indirect injection via tool output
 
@@ -168,7 +168,7 @@ same precondition turn-recording already has — no session_id, no extra cost, n
 regression). Regression tests:
 `test_a_payload_split_across_separate_calls_is_caught_by_the_conversation_window`
 and `test_without_a_session_id_the_conversation_window_check_is_skipped_not_broken`
-in `tests/test_autoguard.py`.
+in `tests/runtime/test_autoguard.py`.
 
 ### The llm-guard comparison here needed a second look
 

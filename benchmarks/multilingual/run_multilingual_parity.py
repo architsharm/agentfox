@@ -988,7 +988,7 @@ def run_integrity_parity(pairs: list[dict[str, Any]] | None = None) -> dict[str,
 # (currency_mismatch, scale_mismatch, quarter/year mismatch), which need an answer
 # that differs from its source. Those arms are covered instead by the English side of
 # every pair in section 2 and by the English assertions in
-# `tests/test_provenance_integrity.py`, both of which must keep their verdicts.
+# `tests/grounding/test_provenance_integrity.py`, both of which must keep their verdicts.
 #
 # Corpora are the committed English text already in this repo, biggest first:
 #
