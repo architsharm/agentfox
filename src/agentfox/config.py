@@ -283,12 +283,12 @@ class Settings(BaseSettings):
     #:   arguments. A value copied from a web page still taints the call it lands in;
     #:   a refund whose arguments the user typed does not inherit the page.
     #:
-    #: Measured on AgentDojo with provenance inferred from executed tool outputs
-    #: (benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json): session
-    #: contains 588/588 attacks and lets 24/97 benign tasks through (43/97 with read
-    #: tools granted any provenance); argument lets 37/97 through (62/97 tiered) and
-    #: contains 527/588. Which trade to make is a product decision, so the default is
-    #: the one every published number was measured under.
+    #: Measured on an AgentDojo replay with provenance inferred from executed tool
+    #: outputs (the `inferred_provenance_summary.json` replay, not yet a published
+    #: claim): session contained 588/588 attacks and let 24/97 benign tasks through
+    #: (43/97 with read tools granted any provenance); argument let 37/97 through
+    #: (62/97 tiered) and contained 527/588. Which trade to make is a product
+    #: decision, so the default is the one every published number was measured under.
     taint_scope: str = "session"  # session | argument
 
     # --- Public playground demo -------------------------------------------

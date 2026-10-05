@@ -49,7 +49,7 @@ enforcement_budget_ms = {enforcement_budget_ms}
 #   "session"  - the worst untrusted content anywhere in the run so far, or in the
 #                call's own arguments. Contains more; escalates more benign calls.
 #   "argument" - only what the call's own arguments were copied from.
-# See docs/getting-started.md, "Learned permissions", for what each one measured.
+# Every published number was measured under "session". docs/getting-started.md, step 5b.
 taint_scope = "{taint_scope}"
 """
 

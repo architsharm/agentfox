@@ -152,11 +152,12 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 ```json
 { "verdict": "block",
   "rules_fired": [{ "rule_id": "capability.denied",
-                    "reason": "No capability grants this agent the requested tool and action (default deny)." }] }
+                    "reason": "no resolved identity for the caller, so it holds no grants (default deny). To have grants proposed from the calls this agent has made, run `agentfox proposals from-traffic` and approve them; to grant this one directly, `agentfox capability grant <agent> payments.transfer`." }] }
 ```
 
 Blocked, on a database you have never configured, for an agent that does not exist yet. That is
-default deny doing its job. The endpoint returns HTTP 200 with a verdict rather than an error
+default deny doing its job, and it is enforced from the first call: there is no grace period in
+which an agent nobody has configured may call anything. The refusal says what to do about it. The endpoint returns HTTP 200 with a verdict rather than an error
 status, so your code branches on `verdict` (`allow`, `redact`, `escalate` or `block`) rather than on
 exceptions. The sibling endpoints are `/v1/guard/input`, `/v1/guard/output`,
 `/v1/guard/memory_write`, `/v1/guard/agent_message` and `/v1/mcp/call`.
@@ -176,7 +177,73 @@ my-agent  production  limited  SHADOW      unowned  —
 The agent registered itself as **shadow** traffic, from the call, without anyone filling in a form.
 `agentfox findings` shows the matching `shadow_agent` finding.
 
-### 5b. Declare the tool and grant the capability
+### 5b. Let it propose the grants (learned permissions)
+
+You can write every declaration and grant by hand (5c). You do not have to. Let the agent run for
+a while as it is: every refused call is recorded with its tool, its arguments and where each
+argument came from. Then:
+
+```bash
+agentfox proposals from-traffic --agent my-agent        # --since 7d to narrow the window
+```
+
+```
+read 21 tool call(s): 10 benign, 11 held for provenance, 0 flagged
+filed 8, refreshed 0, superseded 0, verified 0
+  chp_…  tool.declare · proven
+      Declare issue_refund as irreversible (called 5 times by support-bot, never declared; impact guessed from its name)
+  chp_…  capability.grant · proven
+      Let support-bot call issue_refund with amount ≤ 120 (seen 5 times, max 112)
+  chp_…  capability.grant · proven
+      Let support-bot call send_email with to at example.com or example.org (seen 6 times)
+  …
+```
+
+Read one with `agentfox proposals show <id>`, then approve and apply it:
+
+```bash
+agentfox proposals approve <id> --actor you@example.com --note "matches its job"
+agentfox proposals apply <id> --actor you@example.com
+```
+
+What it will and will not learn from is the part to understand:
+
+- **Learned from:** calls refused only because no grant existed, the tool was undeclared, or no
+  intent was declared. Those say nothing about the call, only about your configuration.
+- **Held:** calls stopped for where their arguments came from (`taint.*`, `composition.escalation`),
+  or carrying untrusted content into a tool whose impact nobody had declared yet. An injected call
+  looks exactly like this, so held calls shape the argument limits but never the provenance
+  ceiling. Once the grant exists, calls like them are escalated to the approval queue. Approve the
+  ones that are fine there, and the next `from-traffic` proposes raising that grant's ceiling.
+- **Never learned from:** a call a detector matched (an injection, a credential; personal data in
+  an email address is not an attack), a call over an existing grant's limit, or one a person denied.
+
+Every proposal widens what an agent may do, so none is ever applied by automation. Grants are
+scoped to one agent and need one approver. Tool declarations apply to the whole organisation, so
+they need two different people. `agentfox proposals rollback <id>` undoes either. The scheduler
+runs the same loop daily (`grants.propose`); it files, a person decides.
+
+**When the report says composition.** A value an agent copies out of one tool's output into a
+higher-impact tool is blocked as `composition.escalation`: a CRM lookup's email address passed to
+`send_email` looks exactly like an attacker's address scraped from a web page. If the producing
+tool is a system of record you control, say so, and values copied out of it stop counting as
+untrusted input:
+
+```bash
+agentfox tools declare read_customer_record --impact read --output-trust trusted
+```
+
+Output is untrusted unless you declare otherwise.
+
+**Session or argument provenance.** One setting decides what a tool call's provenance is:
+`taint_scope` in `agentfox.toml` (or `AGENTFOX_TAINT_SCOPE`). `session`, the default, is the worst
+untrusted content anywhere in the run so far: once the agent has read a web page, every later
+irreversible call carries it, including a refund with no arguments at all. `argument` is only what
+the call's own arguments were copied from. Session contains more attacks and escalates more
+legitimate calls; argument lets more legitimate work through and misses an attack whose payload
+never lands in an argument. Every published number was measured under `session`.
+
+### 5c. Declare the tool and grant the capability by hand
 
 ```bash
 agentfox tools declare payments.transfer --impact irreversible
@@ -187,7 +254,8 @@ agentfox capability grant my-agent payments.transfer \
 `capability grant` is the only command that widens least privilege, so it prints exactly what it is
 about to allow and asks before it writes, then records the grant in the audit chain. Pass `--yes`
 in scripts. `--max-taint user` means: arguments a person typed are fine, anything that came out of
-a document or another tool needs a human.
+a document or another tool needs a human. A higher ceiling is respected: within it, the taint rules
+do not overrule the grant. `composition.escalation` still applies, and the command says so.
 
 Run the same three calls again and you get three different answers:
 
@@ -195,7 +263,7 @@ Run the same three calls again and you get three different answers:
 |---|---|---|
 | `amount: 250`, provenance `user` | `allow` | inside the grant |
 | `amount: 250`, provenance `tool_result` | `escalate` | `taint.irreversible_tool`, `capability.approval_required` |
-| `amount: 5000`, provenance `user` | `block` | `capability.denied`, over the argument limit |
+| `amount: 5000`, provenance `user` | `block` | `capability.constraint_violated`, over the argument limit |
 
 The middle row is the point of the product. Same tool, same amount, same agent. The only difference
 is that the value came out of something untrusted, and no detector was involved in noticing.
@@ -203,7 +271,7 @@ is that the value came out of something untrusted, and no detector was involved 
 An `escalate` verdict returns an `approval_id`. Poll `GET /api/approvals/{id}`, or decide it from
 the dashboard or the CLI.
 
-### 5c. Proxy the model call too (optional)
+### 5d. Proxy the model call too (optional)
 
 If you want the model traffic traced and evaluated as well, point your existing OpenAI or Anthropic
 client's `base_url` at `http://localhost:8080/v1` and change nothing else. The response carries the
@@ -226,7 +294,7 @@ into one execution path), `X-Nometria-Intent` (the declared task, used by intent
 and `X-Nometria-Trust` (a JSON map marking message indices as untrusted, e.g.
 `{"2":"retrieved"}`). Full surface: [Appendix C](appendix-c-api-spec.md).
 
-**If you are in Python instead**, the whole of 5c is one line at your entry point:
+**If you are in Python instead**, the whole of 5d is one line at your entry point:
 
 ```python
 import agentfox
@@ -236,7 +304,7 @@ agentfox.auto()
 **What this proves:** enforcement is a property of the deployment, not of your codebase, and an
 undeclared agent is refused before anybody writes a rule about it.
 
-### 5d. A token for the control-plane API
+### 5e. A token for the control-plane API
 
 The `/v1/guard/*` endpoints above read no credential. The control-plane API under `/api` does:
 
