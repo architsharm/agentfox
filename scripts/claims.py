@@ -92,6 +92,20 @@ def _doc(docs: dict[str, str], repo: Path, file: str) -> str:
     return docs[file]
 
 
+GLOB_CHARS = set("*?[")
+
+
+def expand(repo: Path, pattern: str) -> list[str]:
+    """A file entry, or every file a glob entry matches, as repo-relative paths.
+
+    Globs exist for the retired check: a withdrawn figure can come back on any page of
+    the website, and a list of named files only protects the pages someone remembered.
+    """
+    if not GLOB_CHARS & set(pattern):
+        return [pattern]
+    return sorted(str(p.relative_to(repo)) for p in repo.glob(pattern) if p.is_file())
+
+
 def check(manifest: Path = MANIFEST, repo: Path = REPO) -> tuple[list[dict[str, Any]], list[Drift]]:
     loaded = yaml.safe_load(manifest.read_text())
     claims = loaded["claims"]
@@ -123,11 +137,18 @@ def check(manifest: Path = MANIFEST, repo: Path = REPO) -> tuple[list[dict[str, 
     # the bound check cannot see.
     for retired in loaded.get("retired", []):
         phrase = normalise(retired["text"])
-        for file in retired["files"]:
-            if phrase in _doc(docs, repo, file):
-                drifts.append(
-                    Drift(retired["id"], file, "", f"quotes a retired figure: {retired['reason']}")
-                )
+        for pattern in retired["files"]:
+            files = expand(repo, pattern)
+            if not files:
+                # A glob that matches nothing checks nothing, which is the same as no check.
+                drifts.append(Drift(retired["id"], pattern, "", "file pattern matches no file"))
+            for file in files:
+                if phrase in _doc(docs, repo, file):
+                    drifts.append(
+                        Drift(
+                            retired["id"], file, "", f"quotes a retired figure: {retired['reason']}"
+                        )
+                    )
     return table, drifts
 
 

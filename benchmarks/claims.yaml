@@ -16,7 +16,9 @@
 #
 # `retired` lists figures that were withdrawn. Binding only checks numbers that are still bound,
 # so a superseded headline that a document keeps quoting needs its own check: any listed file that
-# still contains the phrase fails the build.
+# still contains the phrase fails the build. A `files` entry may be a glob (`**` recurses), so a
+# figure retired from the docs is also caught on any page of the website; a glob that matches no
+# file is itself a failure.
 
 claims:
   - id: containment.attacks_contained_with_detectors_off
@@ -51,6 +53,11 @@ claims:
       - {file: docs/benchmarking-whitepaper.md, text: "{n}/{d} attack pairs contained at session-level taint"}
       - {file: docs/PRD.md, text: "{n} of {d} attack pairs are contained at session-level taint"}
       - {file: docs/responding-to-the-critique.md, text: "{n} of {d} attack pairs were contained at session-level taint"}
+      # The website. Not markdown, but the same normalised substring check applies.
+      - {file: dashboard/components/marketing/home.tsx, text: "<b>{n} of {d}</b> <span>AgentDojo attack pairs contained"}
+      - {file: dashboard/app/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
+      - {file: dashboard/app/docs/benchmarks/page.tsx, text: "Session-level taint (the default): {n} of {d} attack pairs contained"}
+      - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
 
   - id: agentdojo.session_taint.benign_tasks_allowed
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -68,6 +75,11 @@ claims:
       - {file: docs/PRD.md, text: "a cost of {n} of {d} benign tasks running without escalation"}
       - {file: docs/responding-to-the-critique.md, text: "{n} of {d} benign tasks ran without escalation"}
       - {file: benchmarks/agentdojo_e2e/README.md, text: "Session-level taint (shipped default) | {n}/{d} ({pct}% {ci}) | 588/588 | 702/702"}
+      - {file: dashboard/components/marketing/home.tsx, text: "<b>{n} of {d}</b> <span>benign tasks ran without escalating to a human"}
+      - {file: dashboard/app/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
+      - {file: dashboard/app/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
+      - {file: dashboard/app/docs/benchmarks/page.tsx, text: "only {n} of {d} benign tasks ({pct}% {ci}) ran without escalating to a human"}
+      - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "benign tasks ran without escalating to a human"]'}
 
   - id: agentdojo.argument_taint
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -338,19 +350,19 @@ retired:
   - id: agentdojo.label_assigned_benign_utility
     text: "552/552 legitimate"
     reason: "label-assigned provenance and duplicated task versions; see benchmarks/agentdojo_e2e/README.md"
-    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md, docs/jev-vs-shipping.md]
+    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md, docs/jev-vs-shipping.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
   - id: agentdojo.label_assigned_benign_utility_prose
     text: "552 of 552 legitimate"
     reason: "label-assigned provenance and duplicated task versions"
-    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md]
+    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
   - id: agentdojo.label_assigned_acting_calls
     text: "42/42 attacker calls that act"
     reason: "label-assigned provenance and duplicated task versions"
-    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md]
+    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
   - id: agentdojo.label_assigned_acting_calls_prose
     text: "42 of 42 attacker calls that act"
     reason: "label-assigned provenance and duplicated task versions"
-    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md]
+    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
   - id: adaptive.pre_fix_containment_as_current
     text: "28/28 were still contained"
     reason: "pre-fix figure; the current result is bound by adaptive.bypasses_contained_at_the_action"
@@ -363,3 +375,41 @@ retired:
     text: "| ~150ms |"
     reason: "modelled, not measured; retracted in docs/jev-safepyramid.md"
     files: [docs/jev-cascade.md]
+  # The website quoted the label-assigned AgentDojo run in its own words. These are the
+  # phrasings it used, checked across every page and route.
+  - id: agentdojo.label_assigned_web_acting
+    text: "42 of 42"
+    reason: "label-assigned AgentDojo run; the current result is bound by agentdojo.session_taint.attack_pairs_contained"
+    files: [README.md, docs/PRD.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: agentdojo.label_assigned_web_benign
+    text: "552 of 552"
+    reason: "label-assigned AgentDojo run with duplicated task versions"
+    files: [README.md, docs/PRD.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: agentdojo.label_assigned_web_overall
+    text: "62 of 65"
+    reason: "label-assigned AgentDojo run with duplicated task versions"
+    files: [README.md, docs/PRD.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: agentdojo.label_assigned_web_reads
+    text: "20 of 23"
+    reason: "label-assigned AgentDojo run with duplicated task versions"
+    files: [README.md, docs/PRD.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: agentdojo.label_assigned_call_count
+    text: "617 ground-truth"
+    reason: "617 counted each AgentDojo task once per registered version; the current replay is 97 tasks and 949 pairs"
+    files: [README.md, benchmarks/README.md, docs/benchmarking-whitepaper.md, docs/PRD.md, docs/responding-to-the-critique.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: agentdojo.label_assigned_call_count_prose
+    text: "617 real tool calls"
+    reason: "617 counted each AgentDojo task once per registered version"
+    files: [README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: agentdojo.label_assigned_read_escapes
+    text: "Three reads got through"
+    reason: "label-assigned AgentDojo run"
+    files: [README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: injection.ensemble_recall_as_default
+    text: "in the default configuration"
+    reason: "66.7% held-out recall needs the opt-in classifier ensemble; the default heuristic is 26.7% (benchmarks/REPORT.md)"
+    files: [README.md]
+  - id: injection.ensemble_recall_as_shipped
+    text: "Held-out injection recall is 66.7%"
+    reason: "66.7% needs the opt-in classifier ensemble; the default heuristic is 26.7% (benchmarks/REPORT.md)"
+    files: [README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]

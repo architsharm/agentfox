@@ -171,5 +171,46 @@ def test_every_retired_entry_names_files_that_exist():
 
     manifest = yaml.safe_load((REPO / "benchmarks" / "claims.yaml").read_text())
     for retired in manifest.get("retired", []):
-        for file in retired["files"]:
-            assert (REPO / file).exists(), file
+        for pattern in retired["files"]:
+            files = claims.expand(REPO, pattern)
+            assert files, f"{pattern} matches no file"
+            for file in files:
+                assert (REPO / file).exists(), file
+
+
+def test_a_retired_figure_is_caught_anywhere_a_glob_reaches(tmp_path):
+    manifest = {
+        "claims": [],
+        "retired": [
+            {
+                "id": "demo.withdrawn",
+                "text": "42 of 42",
+                "reason": "label-assigned provenance",
+                "files": ["site/app/**/*.tsx"],
+            }
+        ],
+    }
+    _write(tmp_path, manifest, {}, "")
+    page = tmp_path / "site" / "app" / "benchmark" / "page.tsx"
+    page.parent.mkdir(parents=True)
+    page.write_text("<b>588 of 588</b>")
+    (tmp_path / "site" / "app" / "page.tsx").write_text("<p>home</p>")
+    assert run(tmp_path)[1] == []
+
+    page.write_text("<b>42 of\n   42</b>")
+    drifts = run(tmp_path)[1]
+    assert [(d.claim, d.file) for d in drifts] == [
+        ("demo.withdrawn", "site/app/benchmark/page.tsx")
+    ]
+
+
+def test_a_glob_that_matches_nothing_is_reported_not_skipped(tmp_path):
+    manifest = {
+        "claims": [],
+        "retired": [
+            {"id": "demo.withdrawn", "text": "x", "reason": "r", "files": ["nowhere/**/*.tsx"]}
+        ],
+    }
+    _write(tmp_path, manifest, {}, "")
+    drifts = run(tmp_path)[1]
+    assert [d.reason for d in drifts] == ["file pattern matches no file"]
