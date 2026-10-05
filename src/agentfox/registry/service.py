@@ -348,6 +348,13 @@ def unowned_agents(session: Session) -> list[Finding]:
 # Tools & lineage
 # ---------------------------------------------------------------------------
 
+#: Tool key -> impact, for every `@fox.tool(key, impact=...)` declared in this
+#: process. The decorator also writes the row, but it runs at import time, which can
+#: be before the database exists; this is what `auto()` consults when it registers a
+#: tool the model called, so a declaration made in code beats a guess from the name
+#: even when that write could not happen yet.
+DECLARED_TOOL_IMPACTS: dict[str, str] = {}
+
 
 def upsert_tool(
     session: Session,
@@ -359,11 +366,13 @@ def upsert_tool(
     schema: dict[str, Any] | None = None,
     description: str = "",
     mcp_server_id: str | None = None,
+    impact_source: str = "declared",
 ) -> Tool:
     tool = _get_or_create(session, Tool, key=key)
     tool.name = name or tool.name or key
     tool.kind = kind
     tool.impact = impact
+    tool.impact_source = impact_source
     tool.schema_json = schema or tool.schema_json or {}
     tool.description = description or tool.description
     tool.mcp_server_id = mcp_server_id or tool.mcp_server_id

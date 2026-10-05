@@ -2186,6 +2186,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
             {
                 "key": t.key,
                 "impact": t.impact,
+                "impact_source": t.impact_source,
                 "triggers": list(t.triggers_json or []),
                 "description": t.description,
             }
@@ -2206,9 +2207,12 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
         colour = {"irreversible": "red", "high_impact": "yellow", "write": "cyan"}.get(
             row["impact"], "dim"
         )
-        table.add_row(
-            row["key"], f"[{colour}]{row['impact']}[/]", ", ".join(row["triggers"]) or "—"
-        )
+        # An inferred impact is a guess from the tool's name; say so next to it, so
+        # nobody reads `read` on an unconfirmed tool as a decision someone made.
+        impact = f"[{colour}]{row['impact']}[/]"
+        if row["impact_source"] == "inferred":
+            impact += " [dim](inferred — confirm with `agentfox tools declare`)[/]"
+        table.add_row(row["key"], impact, ", ".join(row["triggers"]) or "—")
     console.print(table)
 
 

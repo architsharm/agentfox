@@ -201,6 +201,12 @@ class Tool(Base, TimestampMixin):
     kind: Mapped[str] = mapped_column(String(32), default="function")
     # The axis policy reasons over. `irreversible` is the class that warrants HITL.
     impact: Mapped[str] = mapped_column(String(24), default="read")
+    # Who said what `impact` is. `declared` — an operator, the CLI/API, or code
+    # (`@fox.tool(impact=...)`); `inferred` — guessed from the tool's name and
+    # description when `auto()` or MCP governance first saw it called, and waiting
+    # for a human to confirm with `agentfox tools declare`. A guess is still what
+    # policy reasons over until then; this column is how a reader tells the two apart.
+    impact_source: Mapped[str] = mapped_column(String(16), default="declared")
     schema_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     mcp_server_id: Mapped[str | None] = mapped_column(String(40))
     description: Mapped[str] = mapped_column(Text, default="")

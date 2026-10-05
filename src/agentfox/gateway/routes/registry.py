@@ -380,6 +380,7 @@ def list_tools(
                 "name": t.name,
                 "kind": t.kind,
                 "impact": t.impact,
+                "impact_source": t.impact_source,
                 "description": t.description,
                 "mcp_server_id": t.mcp_server_id,
             }
