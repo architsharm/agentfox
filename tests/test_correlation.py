@@ -173,7 +173,7 @@ def test_a_blocked_request_is_still_correlated(seeded, enforcer):
 def test_correlation_never_fails_the_request(seeded, enforcer, monkeypatch):
     """Correlation is a convenience for whoever debugs this later. It must not be able
     to take down the path it is describing."""
-    import agentfox.runtime.enforcement as enforcement
+    import agentfox.runtime.enforcement.completion as enforcement
 
     def explode(*args, **kwargs):
         raise RuntimeError("link store unavailable")
