@@ -74,7 +74,8 @@ history. Findings raised before fingerprints existed have none, and count 1.
 | `unowned_agent` | registered, no owner | assign an owner (`PATCH /api/agents/{slug}`) |
 | `registry_drift` | runtime behaviour ≠ declared tools/models | update the registration, or investigate |
 | `undeclared_mcp_tool`, `mcp_schema_drift` | MCP server changed under you | re-scan with `scan mcp SERVER --file tools.json`; treat drift as suspicious |
-| `guardrail_detection` | a detector fired | open the trace; true positive → keep, false positive → feedback/suppression |
+| `guardrail_detection` | a detector rule changed (or, in observe, would have changed) the outcome. Titled from the detector rules alone — a PII rule that merely fired alongside a capability refusal is no longer reported as the cause | open the trace; true positive → keep, false positive → feedback/suppression |
+| `containment` | a tool call was stopped or held by a non-detector rule: no grant, outside a grant's limits, untrusted provenance (taint), composition, blast radius, destructive SQL/shell, undeclared tool. One per (agent, tool, rule); the title is the story, e.g. `support-bot tried to send_email with data that came from a web page (contained)`; `would have been …` when the rule is in observe. `evidence_json.cause` names the cause | contained → confirm it was an attack or fix the grant; would-have-been → decide whether to promote the policy |
 | `regression`, `drift`, `over_refusal` | eval quality moved | compare with the baseline run |
 | `redteam`, `redteam_over_block` | a probe got through, or a benign probe was blocked | tighten policy, or loosen an over-broad rule |
 | `missed_escalation`, `incomplete_handoff`, `handoff_sla_breach` | a human should have been involved | `escalation scan`; fix the escalation policy |

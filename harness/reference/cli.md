@@ -33,10 +33,11 @@ HTTP API (`reference/http-api.md`) when you need structure.
 
 | Command | Effect | Exit / notes |
 |---|---|---|
-| `agentfox init [--path/-p .] [--env/-e development] [--demo]` | W, F | Idempotent. DB, the control catalog, and the 3 policy packs, each listed with its real mode (`tool-containment` enforces). Writes `agentfox.toml`, which settings read from the working directory. |
+| `agentfox init [--path/-p .] [--env/-e development] [--demo]` | W, F | Idempotent. DB, the control catalog, and the shipped policy packs, each listed with its real mode (`tool-containment` enforces). `coding-agent` is bound only to agents named in this repo's `.claude/settings.json` hook commands, and skipped when there are none; `hooks install --write` adds its agent. Writes `agentfox.toml`, which settings read from the working directory. |
 | `agentfox check [PATH=.] [--json] [--limit/-n 15] [--fail] [--submit/--no-submit]` | R (static AST scan, never imports target code) | `--fail` → exit 1 if any model call is ungoverned. Use in CI. |
 | `agentfox doctor [--json]` | R\* | Exit 1 if any check is bad, with or without `--json`. |
 | `agentfox findings [--severity/-s S] [--limit/-n 20] [--json]` | R\* | Newest first. |
+| `agentfox report [--agent/-a SLUG]... [--since 7d] [--format/-f md\|html] [--out/-o PATH]` | R\*, W (control status, when absent or a day old) | One page in plain language: inventory, risky combinations, what was contained (by cause, with examples), what observe mode would have stopped, feedback counts, OWASP agentic coverage labelled DRAFT — UNVERIFIED. `--since` takes `24h`, `7d`, `2w`. Exit 2 on a bad format or period. |
 | `agentfox quickstart` | R | Prints the 5-step path. |
 | `agentfox quickscan [PATH=.] [--json] [--skip-sessions] [--submit/--no-submit]` | R (reads `~/.claude/projects/**/*.jsonl` unless `--skip-sessions`) | Always exit 0. Pass `--skip-sessions` unless the user asked for the session scan. |
 | `agentfox version` | R | Versions of every component that participates in a decision. |
@@ -91,17 +92,17 @@ The default `echo` provider is offline. Real providers need `NOMETRIA_ALLOW_EGRE
 |---|---|---|
 | `audit verify [--start N] [--end N]` | R\* | **Exit 1 if the chain is broken** — the output names the first bad entry. |
 | `audit checkpoint` | W | Signed checkpoint over the chain head. |
-| `evidence export [--agent SLUG]... [--from DATE] [--to DATE] [--since-days 30] [--control KEY]... [--requested-by cli]` | W, F | Zip in `NOMETRIA_EVIDENCE_DIR` (default `var/evidence/`) with a bundled `verify_chain.py`. `--from`/`--to` take `YYYY-MM-DD` or a full ISO-8601 timestamp; a bare end date covers that whole day, so `--to 2026-08-17` includes the 17th. Without a range, `--since-days` applies; with only one end given, `--since-days` fills the other. A backwards range or an unparseable date is refused. |
+| `evidence export [--agent SLUG]... [--from DATE] [--to DATE] [--since-days 30] [--control KEY]... [--requested-by cli]` | W, F | Zip in `AGENTFOX_EVIDENCE_DIR` (default `var/evidence/`) that opens on `SUMMARY.md`/`SUMMARY.html` (the `agentfox report` page for the same scope), with a bundled `verify_chain.py`. `--from`/`--to` take `YYYY-MM-DD` or a full ISO-8601 timestamp; a bare end date covers that whole day, so `--to 2026-08-17` includes the 17th. Without a range, `--since-days` applies; with only one end given, `--since-days` fills the other. A backwards range or an unparseable date is refused. |
 | `compliance review-packet --framework KEY [--out PATH]` | R\* | Everything a qualified reviewer needs to sign off one framework, as markdown. |
 | `compliance review CONTROL --framework KEY --reviewer NAME [--reference REF]` | W | Records a named human's sign-off; moves mappings out of DRAFT. Exit 1 if nothing matched. |
 | `compliance validate` | R, offline | Catalog consistency: unique keys, known frameworks and rule kinds, obligations parse. Exit 1 on problems. |
 | `compliance sync` | W | Load control catalog + obligations from YAML. |
-| `compliance compute [--window-days 30]` | W | Recompute control status from telemetry. |
+| `compliance compute [--window-days 30]` | W | Recompute control status from telemetry. `report`, `evidence export` and `compliance board` do this themselves when no status exists or the newest is over a day old. |
 | `compliance status [--framework KEY] [--verbose]` | R\* | Framework keys: `eu-ai-act`, `nist-ai-rmf`, `iso-42001`, `soc2`, `owasp-llm`, `owasp-agentic`, `mitre-atlas`. `--verbose` lists only that framework's controls. |
 | `compliance frameworks` | R\* | Coverage and review status per framework. |
 | `compliance risk` | R\* | Agent risk register. |
 | `compliance obligations` | R\* | Regulatory obligation calendar against the agent inventory. |
-| `compliance board` | R\* | Executive risk view. |
+| `compliance board` | R\*, W | Executive risk view. Computes control status first if it is missing or stale; reports effective controls as a count of the catalogue, not a bare ratio. |
 
 All framework mappings are `review_status: draft` and ship chip-labelled
 `DRAFT — UNVERIFIED / NOT LEGAL ADVICE`. Never present them as legal conclusions.

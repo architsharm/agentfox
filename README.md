@@ -342,11 +342,19 @@ the audit chain. `--yes` skips the prompt in CI.
 **See what happened**
 
 ```bash
+agentfox report                        # one page for whoever signs off: what ran, what was
+                                       # contained and why, what observe mode would have stopped
 agentfox findings                      # what the platform found; --severity high to narrow
 agentfox doctor                        # is the runtime configured the way you think it is?
 agentfox audit verify                  # re-derive the chain; exits 1 if broken
 agentfox evidence export --agent support-triage --from 2026-08-01 --to 2026-09-30
 ```
+
+A refused tool call is a finding in its own right, titled by what refused it — `support-bot tried
+to send_email with data that came from a web page (contained)` — and one a rule in observe mode
+only recorded reads `would have been contained`. The evidence zip opens on the same one-page
+`SUMMARY.md` (and `.html`) that `agentfox report` prints; its framework-coverage section is a
+draft mapping and says so in its heading.
 
 **Test before you trust**
 
