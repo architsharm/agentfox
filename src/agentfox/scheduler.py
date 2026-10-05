@@ -32,6 +32,9 @@ kind                    interval   enabled   why
 ``drift.check``         1 day      yes       Persists drift windows and drift findings
                                              (groundedness) — the write `GET /api/eval/drift`
                                              no longer does.
+``grants.propose``      1 day      yes       Learned permissions: files ``tool.declare`` and
+                                             ``capability.grant`` proposals from observed
+                                             tool calls. Files only; a person approves.
 ``redteam.posture``     7 days     no        Adaptive red-team campaign per active agent. Off
                                              by default: it is the most expensive job and
                                              files findings, so a tenant opts in.
@@ -99,6 +102,13 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         True,
         {"days": 30},
         "file rule cut-off proposals from labelled false positives; a person decides each",
+    ),
+    DefaultSchedule(
+        "grants.propose",
+        DAY,
+        True,
+        {"days": 30},
+        "file tool declarations and grants learned from observed tool calls; a person decides each",
     ),
     DefaultSchedule(
         "redteam.posture",

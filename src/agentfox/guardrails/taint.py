@@ -48,6 +48,19 @@ class TaintTracker:
     marks: list[TaintMark] = field(default_factory=list)
     #: normalised content -> source, for inference
     _content: list[tuple[str, str, str]] = field(default_factory=list)
+    #: Registered keys of tools whose output an operator declared trusted
+    #: (`Tool.output_trust`). Content marked under such a tool's path stays in the
+    #: ledger — the record of what the agent read is not rewritten — but it neither
+    #: taints an argument copied out of it nor raises the run's high-water mark.
+    #: Refreshed from the registry by `Enforcer.guard_tool_call` on every call.
+    trusted_tools: frozenset[str] = field(default_factory=frozenset)
+
+    def _trusted(self, path: str | None) -> bool:
+        if not self.trusted_tools or not path:
+            return False
+        from .composition import tool_key_from_origin
+
+        return tool_key_from_origin(path) in self.trusted_tools
 
     # -- marking ---------------------------------------------------------
     def mark(self, path: str, source: str, content: str | None = None) -> TaintMark:
@@ -84,9 +97,10 @@ class TaintTracker:
 
     # -- querying --------------------------------------------------------
     def max_source(self) -> str:
-        if not self.marks:
+        sources = [m.source for m in self.marks if not self._trusted(m.path)]
+        if not sources:
             return "none"
-        return max((m.source for m in self.marks), key=taint_rank)
+        return max(sources, key=taint_rank)
 
     def infer_source(self, value: Any) -> tuple[str, str | None]:
         """Infer the provenance of a value by matching it against tainted content.
@@ -101,6 +115,10 @@ class TaintTracker:
         needle = _norm(text)
         best: tuple[str, str | None] = ("none", None)
         for haystack, source, path in self._content:
+            # A value that also appears in untrusted content is still found there:
+            # skipping the trusted copy can only ever make the answer stricter.
+            if self._trusted(path):
+                continue
             if needle and needle in haystack:
                 if taint_rank(source) > taint_rank(best[0]):
                     best = (source, path)
@@ -153,11 +171,19 @@ class TaintTracker:
         by_source: dict[str, int] = {}
         for mark in self.marks:
             by_source[mark.source] = by_source.get(mark.source, 0) + 1
-        return {
+        summary: dict[str, Any] = {
             "max_source": self.max_source(),
             "by_source": by_source,
-            "untrusted_paths": [m.path for m in self.marks if m.trust == "untrusted"][:50],
+            "untrusted_paths": [
+                m.path for m in self.marks if m.trust == "untrusted" and not self._trusted(m.path)
+            ][:50],
         }
+        trusted = [m.path for m in self.marks if self._trusted(m.path)]
+        if trusted:
+            # Only present when a declaration changed something, so a summary from a
+            # deployment that never declared trust is byte-for-byte what it was.
+            summary["trusted_tool_outputs"] = trusted[:50]
+        return summary
 
 
 def _flatten(content: Any) -> str:

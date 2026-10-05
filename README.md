@@ -344,8 +344,22 @@ agentfox scan mcp fetch --file tools.json   # one server, plus each tool in its 
 
 **Bound what an agent is allowed to do**
 
+Watch, propose, approve. Let the agent run; default deny refuses and records every call. Then:
+
+```bash
+agentfox proposals from-traffic --agent support-triage   # declarations + grants, from its calls
+agentfox proposals approve <id> --actor you@example.com --note "matches its job"
+agentfox proposals apply <id> --actor you@example.com    # rollback <id> undoes it
+```
+
+Each proposal reads like "Let support-triage call issue_refund with amount ≤ 120 (seen 14 times, max
+112)". Limits come from the observed calls; the provenance ceiling only from calls nothing flagged,
+or that a person approved in the approval queue. Nothing is applied without a person, and tool
+declarations, which are org-wide, need two. Or write them by hand:
+
 ```bash
 agentfox tools declare billing.export --impact write   # none | read | write | irreversible
+agentfox tools declare crm.lookup --impact read --output-trust trusted   # its output is yours
 agentfox capability grant support-triage tickets.close \
     --limit priority:in=low,normal --max-taint user
 agentfox capability list support-triage                # anything not listed is refused
@@ -353,9 +367,13 @@ agentfox capability revoke <capability-id>
 ```
 
 `--max-taint` is the worst provenance an argument may carry and still go through without an
-approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. `capability grant` is the
-only command that widens least privilege, so it confirms before it writes and records the result in
-the audit chain. `--yes` skips the prompt in CI.
+approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. Within it, the taint
+rules defer to the grant; `composition.escalation` (one tool's output fed into a higher-impact tool)
+does not, unless the producing tool's output is declared trusted. `capability grant` is the only
+command that widens least privilege, so it confirms before it writes and records the result in the
+audit chain. `--yes` skips the prompt in CI. Whether provenance is read per run or per argument is
+one setting, `taint_scope` (`session`, the default and what every number here was measured under,
+or `argument`); see [Getting started](docs/getting-started.md#5b-let-it-propose-the-grants-learned-permissions).
 
 **See what happened**
 

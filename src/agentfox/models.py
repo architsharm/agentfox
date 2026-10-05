@@ -212,6 +212,17 @@ class Tool(Base, TimestampMixin):
     # cascade_risk() walks. Undeclared triggers stay invisible by design (see that
     # function's own docstring); this column is how an operator declares one.
     triggers_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    #: P3-4: whether values copied out of this tool's output taint the arguments they
+    #: land in. ``untrusted`` (the default, and the behaviour before this column
+    #: existed) treats every tool result as content an attacker may have written.
+    #: ``trusted`` is an operator's declaration that the output comes from a system
+    #: of record they control — a CRM read — so a customer's email address copied
+    #: from it into ``send_email`` is not untrusted input. See guardrails/taint.py.
+    output_trust: Mapped[str] = mapped_column(String(16), default="untrusted")
+
+
+#: Values of `Tool.output_trust`.
+OUTPUT_TRUST_LEVELS = ("untrusted", "trusted")
 
 
 class McpServer(Base, TimestampMixin):

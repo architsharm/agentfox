@@ -2311,6 +2311,15 @@ def tools_declare(
     name: str = typer.Option("", "--name"),
     description: str = typer.Option("", "--description"),
     triggers: str = typer.Option("", "--triggers", help="Comma-separated downstream effects."),
+    output_trust: str | None = typer.Option(
+        None,
+        "--output-trust",
+        help=(
+            "untrusted | trusted — whether values copied out of this tool's output taint "
+            "the arguments they land in. Default for a new tool: untrusted. Declare "
+            "trusted only for a system of record you control, such as a CRM read."
+        ),
+    ),
 ) -> None:
     """Declare a tool and what it can do (P9).
 
@@ -2318,11 +2327,15 @@ def tools_declare(
     a tainted argument can reach. This is the command that makes least privilege real, and
     it is deliberately the first thing `agentfox init` points at.
     """
+    from ..models import OUTPUT_TRUST_LEVELS
     from ..registry.service import upsert_tool
 
     valid = ("read", "write", "high_impact", "irreversible")
     if impact not in valid:
         console.print(f"[red]impact must be one of: {', '.join(valid)}[/]")
+        raise typer.Exit(2)
+    if output_trust is not None and output_trust not in OUTPUT_TRUST_LEVELS:
+        console.print(f"[red]output trust must be one of: {', '.join(OUTPUT_TRUST_LEVELS)}[/]")
         raise typer.Exit(2)
 
     with _session() as session:
@@ -2332,14 +2345,21 @@ def tools_declare(
             name=name,
             impact=impact,
             description=description,
+            output_trust=output_trust,
         )
         if triggers:
             tool.triggers_json = [t.strip() for t in triggers.split(",") if t.strip()]
         declared_triggers = list(tool.triggers_json or [])
+        declared_trust = tool.output_trust
 
-    console.print(f"[bold]{key}[/] declared — impact [bold]{impact}[/]")
+    console.print(f"[bold]{key}[/] declared — impact [bold]{impact}[/], output {declared_trust}")
     if declared_triggers:
         console.print(f"  triggers: {', '.join(declared_triggers)}")
+    if declared_trust == "trusted":
+        console.print(
+            "  [dim]values an agent copies out of this tool's output no longer count as "
+            "untrusted input, and no longer raise the run's provenance[/]"
+        )
     if impact in ("high_impact", "irreversible"):
         console.print(
             "  [dim]arguments carrying untrusted provenance now require approval or are "
@@ -2363,6 +2383,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
                 "impact": t.impact,
                 "impact_source": impact_source_of(t),
                 "triggers": list(t.triggers_json or []),
+                "output_trust": t.output_trust or "untrusted",
                 "description": t.description,
             }
             for t in tools
@@ -2377,6 +2398,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
     table = Table(box=None, padding=(0, 2))
     table.add_column("tool")
     table.add_column("impact")
+    table.add_column("output")
     table.add_column("triggers")
     for row in rows:
         colour = {"irreversible": "red", "high_impact": "yellow", "write": "cyan"}.get(
@@ -2387,7 +2409,8 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
         impact = f"[{colour}]{row['impact']}[/]"
         if row["impact_source"] == "inferred":
             impact += " [dim](inferred — confirm with `agentfox tools declare`)[/]"
-        table.add_row(row["key"], impact, ", ".join(row["triggers"]) or "—")
+        trust = "[green]trusted[/]" if row["output_trust"] == "trusted" else "[dim]untrusted[/]"
+        table.add_row(row["key"], impact, trust, ", ".join(row["triggers"]) or "—")
     console.print(table)
 
 
@@ -2546,8 +2569,9 @@ def proposals_list(
         console.print(
             "[dim]no proposals match that filter[/]"
             if filtered
-            else "[dim]no proposals — `agentfox proposals from-labels` files them from "
-            "false positives you have labelled.[/]"
+            else "[dim]no proposals — `agentfox proposals from-traffic` files grants and tool "
+            "declarations from the calls your agents have made; `agentfox proposals "
+            "from-labels` files rule cut-offs from false positives you have labelled.[/]"
         )
         return
     table = Table(box=None, pad_edge=False)
@@ -2697,6 +2721,67 @@ def proposals_from_labels(
     for skip in report["skipped"]:
         where = "/".join(str(skip[k]) for k in ("detector_key", "policy", "rule_id") if k in skip)
         console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
+
+
+@proposals_app.command("from-traffic")
+def proposals_from_traffic(
+    agent: str | None = typer.Option(None, "--agent", help="Only this agent's calls (slug)."),
+    since: str | None = typer.Option(
+        None, "--since", help="Window: 7d, 24h, 30m or an ISO date. Default: the last 30 days."
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Propose tool declarations and grants from what your agents have called.
+
+    Learned permissions: observe, propose, approve. Reads every recorded tool call —
+    refused ones included — and files a `tool.declare` for each undeclared tool and a
+    `capability.grant` per agent and tool, with argument limits read off the calls and
+    a provenance ceiling from benign calls only. A call a detector matched, or that was
+    stopped for where its arguments came from and nobody approved, is never learned
+    from. Nothing is applied: approve and apply each proposal.
+    """
+    from ..improvement.proposals import get_proposal
+    from ..improvement.traffic import parse_since, propose_from_traffic
+
+    try:
+        window = parse_since(since)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
+    with _session() as session:
+        report = propose_from_traffic(session, agent=agent, since=window)
+        body = report.to_json()
+        titles = {}
+        for pid in body["filed"] + body["refreshed"]:
+            proposal = get_proposal(session, pid)
+            if proposal is not None:
+                titles[pid] = (proposal.kind, proposal.status, proposal.title)
+    if as_json:
+        _emit(body, True)
+        return
+
+    calls = body["calls"]
+    console.print(
+        f"read {sum(calls.values())} tool call(s): {calls.get('benign', 0)} benign, "
+        f"{calls.get('held', 0)} held for provenance, {calls.get('flagged', 0)} flagged"
+    )
+    console.print(
+        f"filed {len(body['filed'])}, refreshed {len(body['refreshed'])}, "
+        f"superseded {len(body['superseded'])}, verified {len(body['verified'])}"
+    )
+    for pid in body["filed"] + body["refreshed"]:
+        kind, status, title = titles[pid]
+        console.print(f"  [bold]{pid}[/]  [dim]{kind} · {status}[/]\n      {title}")
+    for skip in body["skipped"]:
+        where = "/".join(str(skip[k]) for k in ("agent", "tool_key") if k in skip)
+        console.print(f"  [dim]skipped {where}: {skip['reason']}[/]")
+    if body["filed"] or body["refreshed"]:
+        console.print(
+            "\n  [dim]Next: `agentfox proposals show <id>`, then `agentfox proposals approve "
+            "<id> --actor you@example.com --note why` and `agentfox proposals apply <id> "
+            "--actor you@example.com`. Tool declarations are org-wide loosenings and need "
+            "two different approvers.[/]"
+        )
 
 
 def main() -> None:  # pragma: no cover - console entry point
