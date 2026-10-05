@@ -15,7 +15,7 @@ jobs:
         run: uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev
       - run: uv run pytest -q
       # The agent harness (harness/) and Appendix C are checked against the live code, so
-      # neither can silently drift. Both also run inside pytest (tests/test_harness.py);
+      # neither can silently drift. Both also run inside pytest (tests/repo/test_harness.py);
       # these steps just make the failure obvious in the job log.
       - name: Harness matches the live CLI, repo paths and docs map
         run: uv run python harness/scripts/check_harness.py

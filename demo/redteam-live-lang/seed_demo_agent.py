@@ -2,7 +2,7 @@
 
 Registers `support-crew-live-lang` and its identity, capability grants and tool
 registrations, following the exact pattern `agentfox seed` and
-`tests/test_composition.py`'s `_governor` fixture already use — `ensure_identity`,
+`tests/detection/test_composition.py`'s `_governor` fixture already use — `ensure_identity`,
 `grant_capability`, `register_agent`, `McpGovernor.register_tools` — rather than
 inventing a new one. This is a near-verbatim port of
 `demo/redteam-live/seed_demo_agent.py`: same shape, same grants, same policy packs.

@@ -18,7 +18,7 @@ conflicts with a change to where it *lives*. Commands are looked up by their CLI
 
 Old paths are a compatibility promise, not a courtesy: ``hooks run``, ``hooks
 daemon`` and ``mcp serve`` are written into users' agent configs as stdio endpoints,
-and scripts in the wild call ``agentfox check --fail``. ``tests/test_cli_layout.py``
+and scripts in the wild call ``agentfox check --fail``. ``tests/cli/test_cli_layout.py``
 holds the full pre-consolidation command list and fails if any of it stops resolving.
 """
 
@@ -44,7 +44,7 @@ START, SEE, WATCH, CONTAIN, PROVE, OPERATE = (
 )
 
 # The visible top level, in the order `--help` lists it. Keep this at thirteen or
-# fewer: tests/test_cli_layout.py enforces the ceiling.
+# fewer: tests/cli/test_cli_layout.py enforces the ceiling.
 VISIBLE: list[tuple[str, str]] = [
     ("init", START),
     ("demo", START),

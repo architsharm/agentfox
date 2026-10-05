@@ -186,7 +186,7 @@ const HERO_ALLOW: Decision = {
  *           withheld_sources: ["hr/salaries-2026"]`. Note what this is NOT: the
  *           filter is an endpoint your retrieval code calls, not something that
  *           happens on its own. The in-path half of entitlement runs after the
- *           answer exists and files a finding — tests/test_provenance_integrity.py
+ *           answer exists and files a finding — tests/grounding/test_provenance_integrity.py
  *           :601 asserts it does not block. Saying "we filter your retrieval"
  *           would be claiming an integration nobody has written.
  *   ANSWER  /api/answerability/check returns `answerable: false` and the sentence

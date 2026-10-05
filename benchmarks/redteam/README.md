@@ -504,7 +504,7 @@ latency problem this module exists to prevent.
 
 The `readable` and `requires_decode` columns are unchanged, which is the honest read: this fix
 closed a structural bypass and did nothing whatever for detection, because it is not a detection
-fix. Regression cases for the nested shapes live in `tests/test_action_assurance.py`.
+fix. Regression cases for the nested shapes live in `tests/detection/test_action_assurance.py`.
 
 **Still open from the same run**, and deliberately not fixed here: glob grant overbreadth
 (`tickets.*` authorises `tickets.purge_all`, a key nobody granted — arguably correct behaviour for

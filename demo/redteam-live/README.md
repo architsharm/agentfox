@@ -6,7 +6,7 @@ AgentFox's red-team runner can be pointed at **live** to watch it actually block
 real attacks against real tool calls. Nothing here is a mock: `issue_refund`
 really flips an order's status, `send_email` really queues a message, and every
 call goes through the same governed path (`agentfox.integrations.mcp.McpGovernor`)
-the automated test suite (`tests/test_composition.py`) exercises.
+the automated test suite (`tests/detection/test_composition.py`) exercises.
 
 Everything below reflects a real run performed while building this demo (see the
 timestamps implied by the output — this is not a guess at what the tool *should*
@@ -27,7 +27,7 @@ say).
 
 **Use a separate virtualenv, not the main repo's `.venv`.** `crewai` pulls in
 `litellm` and `anthropic` as real dependencies, and several of the main test
-suite's tests (`tests/test_autoguard.py`) assert those libraries are *absent*, to
+suite's tests (`tests/runtime/test_autoguard.py`) assert those libraries are *absent*, to
 prove `agentfox.auto()` reports a missing library honestly instead of silently
 hiding it. Installing this demo's requirements into the tracked `.venv` will make
 those tests fail for reasons that have nothing to do with a regression — this was
@@ -55,7 +55,7 @@ four capability grants, and loads the three policy packs `agentfox` ships
 (`baseline`, `tool-containment`, `eu-ai-act-high-risk`) — the same packs
 `agentfox seed` loads, using the same `ensure_identity` / `grant_capability` /
 `register_agent` / `McpGovernor.register_tools` helpers `agentfox seed` and
-`tests/test_composition.py`'s `_governor` fixture already use. It's idempotent —
+`tests/detection/test_composition.py`'s `_governor` fixture already use. It's idempotent —
 safe to re-run.
 
 **This demo uses its own database file** (`demo/redteam-live/demo.db`, via
@@ -177,7 +177,7 @@ message in isolation has no way to know that this specific 8-character string
 in this specific tool call is the same one that came back from a search 30
 seconds ago. That's not a text property — it requires tracking data lineage
 across the whole tool-call sequence in one conversation, which is what taint
-tracking is for. This is the exact shape `tests/test_composition.py` proves
+tracking is for. This is the exact shape `tests/detection/test_composition.py` proves
 against a synthetic patient-records scenario; here it's the same mechanism
 against real tools with real state.
 
@@ -339,7 +339,7 @@ transport had already run the (possibly irreversible) call for real.
 
 Fixed by threading `arguments` through to `_govern_result` → `evaluate()`.
 Regression test: `test_a_call_within_an_argument_constraint_is_not_spuriously_blocked_post_call`
-in `tests/test_mcp_governance.py`. Re-verified directly against this demo
+in `tests/integrations/test_mcp_governance.py`. Re-verified directly against this demo
 after the fix (`verify_mechanics.py` scenario 1): the clean $45 refund now
 comes back `"status": "refunded"` with no spurious post-decision block, where
 before the fix `outcome.allowed` was `False` for that exact call.

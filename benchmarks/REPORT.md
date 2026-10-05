@@ -597,7 +597,7 @@ reports this fixed state; remaining degradation (1.7–3.3%, concentrated on the
 longest documents) is disclosed rather than hidden, and is a legitimate timeout on
 genuinely long inputs, not the budget-mismatch bug. Regression test:
 `test_detector_own_timeout_ms_is_honored_up_to_the_pipeline_budget` in
-`tests/test_guardrails.py` reproduces the exact mechanism — a detector's own higher
+`tests/detection/test_detectors_taint_and_budget.py` reproduces the exact mechanism — a detector's own higher
 `timeout_ms` is honored when the pipeline budget allows it, and is still correctly
 clipped when the pipeline budget is the tighter constraint, so this remains a
 conscious trade-off going forward rather than a silent one.
@@ -633,7 +633,7 @@ with no declared `timeout_ms` (the fast, always-on ones), one for detectors that
 declare their own (`injection.classifier` and `injection.similarity`). Stragglers
 from the heavy pool can now only ever starve each other, never the fast pool.
 Regression test: `test_a_stuck_heavy_detector_cannot_starve_the_fast_pool` in
-`tests/test_guardrails.py`.
+`tests/detection/test_detectors_taint_and_budget.py`.
 
 ## Two bugs the classifier's own latency exposed early on, and the fix
 
