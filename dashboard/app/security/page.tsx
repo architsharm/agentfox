@@ -178,7 +178,7 @@ export default function Security() {
                 <a href={`${SRC}/src/agentfox/core/tenancy.py`} target="_blank" rel="noreferrer">
                   src/agentfox/core/tenancy.py
                 </a>
-                :15-24, 35-38; src/agentfox/core/models.py:1669-1688
+                :15-24, 35-38; src/agentfox/core/models/:1669-1688
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 The playground rides on exactly this. A sandbox is a tenant whose{" "}

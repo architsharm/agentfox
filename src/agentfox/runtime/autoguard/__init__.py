@@ -66,6 +66,12 @@ which of those routes are actually governed.
 Everything is import-guarded: a codebase with only `anthropic` installed never sees an
 OpenAI import error, and `auto()` on a machine with neither still succeeds — it simply
 reports that there was nothing to patch, which is information rather than failure.
+
+The package: this module holds what has to share one namespace — the live state,
+the governed call, the streamed-response wrappers, the patchers and the public
+API (`auto`, `state`, `off`). Reading the client libraries' shapes (``shapes``),
+their tool calls (``tool_calls``) and the app's environment (``environment``) are
+pure helpers beside it.
 """
 
 from __future__ import annotations
@@ -73,9 +79,7 @@ from __future__ import annotations
 import atexit
 import contextvars
 import functools
-import json
 import logging
-import os
 import sys
 import time
 from collections.abc import Callable
@@ -84,7 +88,7 @@ from typing import Any
 
 from agentfox.core.config import get_settings
 from agentfox.core.db import init_db, session_scope
-from agentfox.detection.taint import TaintTracker, _flatten
+from agentfox.detection.taint import TaintTracker
 from agentfox.prove.audit.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
@@ -94,9 +98,32 @@ from agentfox.prove.audit.trace import (
     add_span,
 )
 from agentfox.registry.service import register_agent
+from agentfox.runtime.autoguard.environment import (
+    _FRAMEWORK_ROUTES,
+    _framework_routes,
+    default_agent_slug,
+    detect_frameworks,
+)
+from agentfox.runtime.autoguard.shapes import (
+    _chunk_text,
+    _chunk_tool_calls,
+    _chunk_usage,
+    _lc_messages_from,
+    _messages_from,
+    _text_of,
+    _usage_of,
+)
+from agentfox.runtime.autoguard.tool_calls import (
+    _arguments,
+    _provenance_of,
+    _tool_calls_of,
+    _tool_specs,
+    _ToolCall,
+)
 from agentfox.runtime.enforcement import _CAPABILITY_REFUSAL_RULE_IDS, EnforcementResult, Enforcer
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("agentfox.runtime.autoguard")
+
 
 #: Guards against governing the model calls the platform makes for itself — an
 #: LLM-as-judge call inside an eval would otherwise be traced as agent traffic and
@@ -107,10 +134,13 @@ _IN_AGENTFOX: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "agentfox_internal", default=False
 )
 
+
 _STATE: AutoState | None = None
+
 
 #: The accepted values of `auto(mode=...)`. See the module docstring.
 MODES = ("policy", "observe", "enforce")
+
 
 #: label -> (owner, attribute, owner-had-its-own-attribute). Everything we swapped,
 #: so `off()` restores exactly that — including entry points that were inherited
@@ -290,457 +320,6 @@ class AutoState:
         return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Framework detection
-# ---------------------------------------------------------------------------
-
-#: Modules whose presence in `sys.modules` tells us what the app is built on. Reading
-#: `sys.modules` rather than importing keeps detection free of side effects — we learn
-#: what the app already loaded, not what it *could* load.
-_FRAMEWORK_MODULES = {
-    "langgraph": "langgraph",
-    "langchain": "langchain",
-    "llama_index": "llamaindex",
-    "crewai": "crewai",
-    "autogen": "autogen",
-    "fastapi": "fastapi",
-    "flask": "flask",
-    "django": "django",
-    "mcp": "mcp",
-    "ragas": "ragas",
-    "litellm": "litellm",
-}
-
-#: Detected framework -> the client libraries (patch labels) it calls the model
-#: through. Only frameworks that make model calls are listed; web frameworks and MCP
-#: carry no model traffic of their own.
-_FRAMEWORK_ROUTES: dict[str, tuple[str, ...]] = {
-    "langgraph": ("langchain", "openai", "anthropic"),
-    "langchain": ("langchain",),
-    "crewai": ("litellm", "openai", "anthropic"),
-    "llamaindex": ("openai", "anthropic"),
-    "autogen": ("openai", "anthropic"),
-    "ragas": ("langchain", "openai"),
-}
-
-
-def detect_frameworks() -> list[str]:
-    return sorted({name for module, name in _FRAMEWORK_MODULES.items() if module in sys.modules})
-
-
-def _framework_routes(
-    frameworks: list[str], patches: list[PatchResult]
-) -> dict[str, dict[str, str]]:
-    by_label = {p.library: p for p in patches}
-    routes: dict[str, dict[str, str]] = {}
-    for framework in frameworks:
-        clients = _FRAMEWORK_ROUTES.get(framework)
-        if not clients:
-            continue
-        statuses: dict[str, str] = {}
-        for client in clients:
-            sync = by_label.get(client)
-            async_ = by_label.get(f"{client}.async")
-            sync_ok = bool(sync and sync.patched)
-            async_ok = bool(async_ and async_.patched)
-            if sync_ok and async_ok:
-                statuses[client] = "governed"
-            elif sync_ok:
-                statuses[client] = "governed (sync only)"
-            elif async_ok:
-                statuses[client] = "governed (async only)"
-            elif sync is not None and sync.detail != "not installed":
-                # Installed but we could not patch it: say so, loudly.
-                statuses[client] = f"NOT governed ({sync.detail})"
-            # Not installed: the framework cannot be routing through it — omitted.
-        routes[framework] = statuses
-    return routes
-
-
-def default_agent_slug() -> str:
-    """Guess a sensible agent name so `auto()` needs no arguments at all.
-
-    Order: explicit env var, then the service name conventions used by most
-    deployments, then the entry-point script. A wrong-but-stable guess is far better
-    than a required argument — the developer can rename the agent in the registry
-    later, and until then their traffic is at least attributed to *something*.
-    """
-    for var in (
-        "AGENTFOX_AGENT",
-        "NOMETRIA_AGENT",
-        "OTEL_SERVICE_NAME",
-        "SERVICE_NAME",
-        "APP_NAME",
-        "K_SERVICE",
-    ):
-        value = os.environ.get(var)
-        if value:
-            return value
-    entry = os.path.basename(sys.argv[0] or "")
-    if entry and entry not in ("python", "python3", "-c", "pytest"):
-        return os.path.splitext(entry)[0]
-    return "default-agent"
-
-
-# ---------------------------------------------------------------------------
-# Normalisation
-# ---------------------------------------------------------------------------
-
-
-def _plain(value: Any) -> Any:
-    """A pydantic SDK object as the dict it serialises to; anything else unchanged.
-
-    A tool-calling loop appends the SDK's own response message to `messages`
-    (``messages.append(response.choices[0].message)``) — a `ChatCompletionMessage`,
-    not a dict — and the turn that carried the tool calls was dropped on the floor.
-    """
-    if isinstance(value, dict):
-        return value
-    dump = getattr(value, "model_dump", None)
-    if callable(dump):
-        try:
-            dumped = dump()
-            if isinstance(dumped, dict):
-                return dumped
-        except Exception:  # pragma: no cover - defensive against SDK shape drift
-            pass
-    return value
-
-
-def _get(obj: Any, key: str, default: Any = None) -> Any:
-    """`obj[key]` or `obj.key`, whichever shape this SDK version handed back."""
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    return getattr(obj, key, default)
-
-
-def _messages_from(kwargs: dict[str, Any]) -> list[dict[str, Any]]:
-    """Normalise OpenAI and Anthropic shapes into our message list.
-
-    Anthropic carries the system prompt outside `messages`; folding it back in means
-    an injection in a system prompt is evaluated on the same surface either way. For
-    the same reason an Anthropic ``tool_result`` block — which arrives inside a
-    ``user`` message — becomes a ``tool`` message of its own: it is a tool's output,
-    and is evaluated and tainted as one, exactly like OpenAI's ``role="tool"``.
-    """
-    messages = [_plain(m) for m in kwargs.get("messages") or []]
-    system = kwargs.get("system")
-    if system:
-        text = (
-            system
-            if isinstance(system, str)
-            else " ".join(str(b.get("text", "")) for b in system if isinstance(b, dict))
-        )
-        messages = [{"role": "system", "content": text}, *messages]
-    out: list[dict[str, Any]] = []
-    for m in messages:
-        if not isinstance(m, dict):
-            continue
-        role, content = str(m.get("role", "user")), m.get("content")
-        if isinstance(content, list):
-            blocks = [_plain(b) for b in content]
-            results = [b for b in blocks if _get(b, "type") == "tool_result"]
-            if results:
-                out.extend({"role": "tool", "content": _get(b, "content")} for b in results)
-                content = [b for b in blocks if _get(b, "type") != "tool_result"]
-                if not content:
-                    continue
-        out.append({"role": role, "content": content})
-    return out
-
-
-def _text_of(response: Any) -> str:
-    """Pull the assistant text out of whichever client shape came back."""
-    try:
-        choices = getattr(response, "choices", None)
-        if choices:
-            return getattr(choices[0].message, "content", "") or ""
-        content = getattr(response, "content", None)
-        if isinstance(content, list):
-            return "".join(getattr(block, "text", "") or "" for block in content)
-        if isinstance(content, str):  # LangChain's AIMessage.content is a plain string
-            return content
-    except Exception:  # pragma: no cover - defensive against SDK shape drift
-        pass
-    return ""
-
-
-def _usage_of(response: Any) -> dict[str, int]:
-    """Pull input/output token counts out of whichever client shape came back —
-    same normalise-across-providers pattern as `_text_of`, needed because this path
-    governs the caller's own raw SDK response, never AgentFox's own
-    `CompletionResponse` (the shape `Enforcer._charge_budget` was written against).
-    OpenAI's `usage.prompt_tokens`/`completion_tokens` and Anthropic's
-    `usage.input_tokens`/`output_tokens` are both covered; an unrecognised shape
-    returns an empty dict rather than guessing, which is a silent no-charge, not a
-    wrong one.
-    """
-    usage = getattr(response, "usage", None)
-    if usage is None:
-        return {}
-    try:
-        input_tokens = getattr(usage, "input_tokens", None)
-        output_tokens = getattr(usage, "output_tokens", None)
-        if input_tokens is None:
-            input_tokens = getattr(usage, "prompt_tokens", 0) or 0
-        if output_tokens is None:
-            output_tokens = getattr(usage, "completion_tokens", 0) or 0
-        return {"input_tokens": int(input_tokens or 0), "output_tokens": int(output_tokens or 0)}
-    except Exception:  # pragma: no cover - defensive against SDK shape drift
-        return {}
-
-
-def _chunk_text(chunk: Any) -> str:
-    """The text a single streamed chunk carries.
-
-    OpenAI and LiteLLM: ``chunk.choices[0].delta.content``. Anthropic: the
-    ``content_block_delta`` event's ``delta.text`` (other event types carry none).
-    """
-    try:
-        choices = getattr(chunk, "choices", None)
-        if choices:
-            content = getattr(getattr(choices[0], "delta", None), "content", None)
-            return content if isinstance(content, str) else ""
-        if getattr(chunk, "type", None) == "content_block_delta":
-            text = getattr(getattr(chunk, "delta", None), "text", None)
-            return text if isinstance(text, str) else ""
-    except Exception:  # pragma: no cover - defensive against SDK shape drift
-        pass
-    return ""
-
-
-def _chunk_tool_calls(chunk: Any, parts: dict[int, dict[str, Any]]) -> None:
-    """Accumulate the tool-call fragments a streamed chunk carries into ``parts``.
-
-    OpenAI and LiteLLM: ``choices[0].delta.tool_calls[*]``, keyed by ``index``, the
-    name and id on the first fragment and the JSON arguments spread across the rest.
-    Anthropic: a ``content_block_start`` whose block is a ``tool_use`` opens one at
-    the event's ``index``; ``input_json_delta`` events extend its arguments.
-    """
-    choices = getattr(chunk, "choices", None)
-    if choices:
-        for fragment in _get(_get(choices[0], "delta"), "tool_calls") or []:
-            index = _get(fragment, "index", 0) or 0
-            part = parts.setdefault(int(index), {"name": "", "id": None, "args": []})
-            if _get(fragment, "id"):
-                part["id"] = _get(fragment, "id")
-            function = _get(fragment, "function")
-            if _get(function, "name"):
-                part["name"] = str(_get(function, "name"))
-            if _get(function, "arguments"):
-                part["args"].append(str(_get(function, "arguments")))
-        return
-    kind = getattr(chunk, "type", None)
-    if kind == "content_block_start":
-        block = getattr(chunk, "content_block", None)
-        if _get(block, "type") == "tool_use":
-            initial = _get(block, "input")
-            parts[int(getattr(chunk, "index", 0) or 0)] = {
-                "name": str(_get(block, "name") or ""),
-                "id": _get(block, "id"),
-                # Anthropic opens the block with an empty `input` and streams the
-                # real one; a non-empty one (a replayed stream) is kept as the start.
-                "args": [json.dumps(initial)] if initial else [],
-            }
-    elif kind == "content_block_delta":
-        delta = getattr(chunk, "delta", None)
-        if _get(delta, "type") == "input_json_delta":
-            part = parts.get(int(getattr(chunk, "index", 0) or 0))
-            if part is not None:
-                part["args"].append(str(_get(delta, "partial_json") or ""))
-
-
-def _chunk_usage(chunk: Any) -> dict[str, int]:
-    """Token counts a streamed chunk carries: OpenAI's final ``include_usage`` chunk,
-    Anthropic's ``message_start`` (input) and ``message_delta`` (output) events."""
-    if getattr(chunk, "type", None) == "message_start":
-        return _usage_of(getattr(chunk, "message", None))
-    return _usage_of(chunk)
-
-
-# ---------------------------------------------------------------------------
-# Tool calls
-# ---------------------------------------------------------------------------
-#
-# A model that calls tools does not act: it returns a request to act, and the
-# caller's own code runs it. That request is the one moment a patched client
-# library can stand between an injected instruction and its effect — so every tool
-# call in a governed response goes through `Enforcer.guard_tool_call`, the same path
-# `AgentSession.guard_tool` and MCP governance take, before the response is handed
-# back. Found by a fresh-user run: a support bot whose four tools ran 25 calls, among
-# them `send_email(to=attacker, body=<customer record>)`, and not one was recorded.
-
-
-@dataclass
-class _ToolCall:
-    """One tool call the model asked for, in either provider's shape."""
-
-    name: str
-    arguments: dict[str, Any]
-    call_id: str | None = None
-
-
-def _arguments(raw: Any) -> dict[str, Any]:
-    """Tool arguments as a dict. OpenAI sends a JSON string, Anthropic an object.
-
-    Unparseable arguments are kept as ``{"_raw": ...}`` rather than dropped: a
-    model can be talked into emitting malformed JSON, and a call whose arguments we
-    could not read must not be a call nothing looked at.
-    """
-    if isinstance(raw, str):
-        if not raw.strip():
-            return {}
-        try:
-            raw = json.loads(raw)
-        except ValueError:
-            return {"_raw": raw}
-    if raw is None:
-        return {}
-    raw = _plain(raw)
-    return raw if isinstance(raw, dict) else {"_value": raw}
-
-
-def _calls_in_message(message: Any) -> list[_ToolCall]:
-    """The tool calls one assistant message carries: OpenAI ``tool_calls`` (and the
-    legacy single ``function_call``), Anthropic ``tool_use`` content blocks, and
-    LangChain's ``AIMessage.tool_calls`` (``{"name", "args", "id"}``)."""
-    calls: list[_ToolCall] = []
-    for call in _get(message, "tool_calls") or []:
-        function = _get(call, "function")
-        if function is not None:
-            name = _get(function, "name")
-            raw = _get(function, "arguments")
-        else:  # LangChain
-            name = _get(call, "name")
-            raw = _get(call, "args")
-        if name:
-            calls.append(_ToolCall(str(name), _arguments(raw), _get(call, "id")))
-    legacy = _get(message, "function_call")
-    if legacy is not None and _get(legacy, "name"):
-        calls.append(_ToolCall(str(_get(legacy, "name")), _arguments(_get(legacy, "arguments"))))
-    content = _get(message, "content")
-    if isinstance(content, list):
-        for block in content:
-            if _get(block, "type") == "tool_use" and _get(block, "name"):
-                calls.append(
-                    _ToolCall(
-                        str(_get(block, "name")),
-                        _arguments(_get(block, "input")),
-                        _get(block, "id"),
-                    )
-                )
-    return calls
-
-
-def _tool_calls_of(response: Any) -> list[_ToolCall]:
-    """Every tool call in a buffered response, in order. Never raises."""
-    try:
-        choices = getattr(response, "choices", None)
-        if choices:
-            return [c for choice in choices for c in _calls_in_message(_get(choice, "message"))]
-        return _calls_in_message(response)
-    except Exception as exc:  # pragma: no cover - defensive against SDK shape drift
-        log.warning("agentfox: could not read tool calls from the response: %s", exc)
-        return []
-
-
-def _tool_specs(kwargs: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Tool name -> descriptor (``description``, ``inputSchema``) from the request's
-    ``tools``, in OpenAI's ``{"type": "function", "function": {...}}`` shape or
-    Anthropic's flat one. The description is what impact inference reads."""
-    specs: dict[str, dict[str, Any]] = {}
-    for raw in kwargs.get("tools") or []:
-        tool = _plain(raw)
-        function = _get(tool, "function") or tool
-        name = _get(function, "name")
-        if not name:
-            continue
-        specs[str(name)] = {
-            "description": str(_get(function, "description") or ""),
-            "inputSchema": _get(function, "parameters") or _get(function, "input_schema") or {},
-        }
-    return specs
-
-
-def _provenance_of(kwargs: dict[str, Any]) -> tuple[TaintTracker, list[str]]:
-    """A taint tracker over this conversation, and the tools already called in it.
-
-    The request carries the whole conversation — that is how a tool-calling client
-    works — so the tracker is rebuilt from it on every call rather than kept between
-    calls. A tool's result is marked ``tool:<tool>#<index>`` when the call that
-    produced it can be found (so composed-escalation checks can name the producing
-    tool), ``$.messages[i].content`` otherwise; both are ``tool_result`` taint. Roles
-    otherwise follow `TaintTracker.mark_messages`.
-    """
-    tracker = TaintTracker()
-    prior: list[str] = []
-    produced_by: dict[str, str] = {}
-
-    def mark_result(i: int, name: str | None, content: Any) -> None:
-        path = f"tool:{name}#{i}" if name else f"$.messages[{i}].content"
-        tracker.mark(path, "tool_result", _flatten(_plain(content)))
-
-    for i, raw in enumerate(kwargs.get("messages") or []):
-        message = _plain(raw)
-        for call in _calls_in_message(message):
-            prior.append(call.name)
-            if call.call_id:
-                produced_by[str(call.call_id)] = call.name
-        role = str(_get(message, "role") or "user")
-        content = _get(message, "content")
-        if role in ("tool", "function"):
-            call_id = _get(message, "tool_call_id")
-            mark_result(i, produced_by.get(str(call_id)) or _get(message, "name"), content)
-            continue
-        if isinstance(content, list):
-            rest = []
-            for block in (_plain(b) for b in content):
-                if _get(block, "type") == "tool_result":
-                    call_id = _get(block, "tool_use_id")
-                    mark_result(i, produced_by.get(str(call_id)), _get(block, "content"))
-                else:
-                    rest.append(block)
-            content = rest
-        source = {"system": "none", "developer": "none", "assistant": "none"}.get(role, "user")
-        tracker.mark(f"$.messages[{i}].content", source, _flatten(content))
-    return tracker, prior
-
-
-#: LangChain message `.type` -> our role vocabulary.
-_LC_ROLES = {"human": "user", "ai": "assistant", "system": "system", "tool": "tool"}
-
-
-def _lc_messages_from(chat_input: Any) -> list[dict[str, Any]]:
-    """Normalise whatever `BaseChatModel.invoke` was given into our message list.
-
-    LangChain accepts a bare string, a `PromptValue`, or a sequence of `BaseMessage`
-    (or plain dicts). Whichever shape arrives, the point is the same as
-    `_messages_from`: evaluate on the same surface regardless of how the caller built
-    the input.
-    """
-    if isinstance(chat_input, str):
-        return [{"role": "user", "content": chat_input}]
-
-    if hasattr(chat_input, "to_messages"):  # a PromptValue
-        chat_input = chat_input.to_messages()
-
-    sequence = chat_input if isinstance(chat_input, (list, tuple)) else [chat_input]
-    messages: list[dict[str, Any]] = []
-    for item in sequence:
-        if isinstance(item, dict):
-            messages.append({"role": str(item.get("role", "user")), "content": item.get("content")})
-            continue
-        content = getattr(item, "content", None)
-        msg_type = getattr(item, "type", None)
-        if content is None and msg_type is None:
-            continue
-        role = _LC_ROLES.get(str(msg_type), str(msg_type or "user"))
-        messages.append(
-            {"role": role, "content": content if isinstance(content, str) else str(content)}
-        )
-    return messages
-
-
 def _record_turn(
     state: AutoState, messages: list[dict[str, Any]], answer: str, trace_id: str
 ) -> None:
@@ -796,10 +375,6 @@ class Blocked(RuntimeError):
         self.result = result
         self.tool_call = tool_call
 
-
-# ---------------------------------------------------------------------------
-# The governed call
-# ---------------------------------------------------------------------------
 
 #: Reserved kwargs the caller may pass to any patched entry point. Popped before the
 #: real provider sees them (it would reject them as unrecognised).
@@ -1427,11 +1002,6 @@ async def _agovern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], 
     return response
 
 
-# ---------------------------------------------------------------------------
-# Streamed responses
-# ---------------------------------------------------------------------------
-
-
 class _StreamBase:
     """Shared by the sync and async stream wrappers: chunks pass through unchanged,
     their text and usage are accumulated, and post-flight runs once — when the stream
@@ -1548,11 +1118,6 @@ class _AsyncGovernedStream(_StreamBase):
         suppressed = await exit_(exc_type, exc, tb) if exit_ is not None else None
         self._nm_finish(may_raise=exc_type is None)
         return suppressed
-
-
-# ---------------------------------------------------------------------------
-# Patchers
-# ---------------------------------------------------------------------------
 
 
 def _live(state: AutoState) -> AutoState:
@@ -1790,11 +1355,6 @@ def _patch_langchain(state: AutoState) -> list[PatchResult]:
 
 
 _PATCHERS = (_patch_openai, _patch_anthropic, _patch_litellm, _patch_langchain)
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 
 def auto(

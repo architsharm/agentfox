@@ -65,7 +65,7 @@ path") was wired into `preflight` only. `guard_tool_call` — the function
 actually stopped by the kill switch.
 
 **Fixed**: `guard_tool_call` now checks `_control_verdict` first, exactly like
-`preflight` does (`src/agentfox/runtime/enforcement.py`). Regression test:
+`preflight` does (`src/agentfox/runtime/enforcement/`). Regression test:
 `test_quarantine_blocks_tool_calls_not_just_completions` in
 `tests/test_tranche0.py`.
 

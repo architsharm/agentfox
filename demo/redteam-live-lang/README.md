@@ -387,7 +387,7 @@ needing a live key:
 - **`agentfox.auto()`'s patch report.** Importing `agent.py` prints
   `Patched: openai, anthropic, langchain` — `_patch_langchain` patches
   `langchain_core.language_models.chat_models.BaseChatModel.invoke` directly (see
-  `src/agentfox/runtime/autoguard.py`), which every LangChain chat model inherits regardless
+  `src/agentfox/runtime/autoguard/`), which every LangChain chat model inherits regardless
   of provider. This is a real difference from the CrewAI demo worth calling out:
   CrewAI's `crew.py` had to pass `LLM(..., is_litellm=True)` specifically because
   `agentfox.auto()` only patches `litellm.completion`, not CrewAI's own client
@@ -400,7 +400,7 @@ needing a live key:
   that does *not* double-govern a single model call. `autoguard._govern()`'s
   `_IN_AGENTFOX` re-entrancy guard makes the inner raw-SDK patch a no-op
   pass-through once the outer `BaseChatModel.invoke` patch is already governing the
-  call in progress. Read `src/agentfox/runtime/autoguard.py` lines ~299-320 for exactly
+  call in progress. Read `src/agentfox/runtime/autoguard/` lines ~299-320 for exactly
   where that guard sits.)
 - **`GovernedToolkit`'s governed call path** (shared with the CrewAI demo,
   unmodified in its logic) — via `verify_mechanics.py`, exactly as the CrewAI demo

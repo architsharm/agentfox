@@ -218,6 +218,6 @@ remaining gap.
   added latency, the liveness block, and per-family breakdown.
 - The detector itself is `src/agentfox/detection/trajectory.py`; its wiring is
   `Enforcer._trajectory_checks` / `Enforcer.check_conversation_window` in
-  `src/agentfox/runtime/enforcement.py`; its tests, including all nine controls as negative
+  `src/agentfox/runtime/enforcement/`; its tests, including all nine controls as negative
   tests and an assertion that the hook is on the live SDK path, are
   `tests/test_crescendo_detection.py`.

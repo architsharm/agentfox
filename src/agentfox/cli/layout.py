@@ -1,6 +1,6 @@
 """The visible shape of the CLI: thirteen verbs in six panels.
 
-The commands themselves live where they always did (``main.py``, ``onboarding.py``,
+The commands themselves live in their own modules (``commands/``, ``onboarding.py``,
 ``controls_cli.py`` …). This module only decides what ``agentfox --help`` shows and
 under which name. It runs once, after every other module has registered its
 commands, and does three things:
