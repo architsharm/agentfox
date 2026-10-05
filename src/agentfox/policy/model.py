@@ -292,6 +292,25 @@ class FiredRule:
     #: several packs and they need not share a mode, which is exactly how a sandbox
     #: bound in observe ended up with a decision labelled `enforce`.
     mode: str = "observe"
+    #: Exact entity types this rule's detection condition names, and entity families
+    #: it names by prefix. Both empty for a rule that does not test detections at all
+    #: — a tool, capability or taint rule.
+    #:
+    #: Kept as two fields rather than one list because the engine matches them by
+    #: different operations (equality and `startswith`), and collapsing them would
+    #: mean the explanation re-deriving which is which from a naming convention the
+    #: policy files do not follow: they write `entity_prefix: INJECTION`, not
+    #: `INJECTION.`.
+    #:
+    #: Carried at all because the explanation has to say *which* match decided the
+    #: outcome, and without this it could only guess by score. On an injection
+    #: payload that guess was wrong in the most damaging possible way: the attacker's
+    #: own email address scored 0.90 against the injection's 0.85, so
+    #: `injection.direct` was reported as having fired on `PII.EMAIL`. A reader
+    #: concludes the product does not understand what it caught, and on that evidence
+    #: they are right.
+    entities: list[str] = field(default_factory=list)
+    entity_prefixes: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -301,6 +320,8 @@ class FiredRule:
             "severity": self.severity,
             "controls": self.controls,
             "mode": self.mode,
+            "entities": self.entities,
+            "entity_prefixes": self.entity_prefixes,
         }
 
 

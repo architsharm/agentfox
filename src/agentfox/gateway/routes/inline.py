@@ -785,6 +785,11 @@ class GuardContentRequest(BaseModel):
     surface: str = "input"
     taint_source: str = "user"
     intent: str | None = None
+    # Accepted so a caller guarding an input and then its output can tie the two
+    # together into one trace instead of two unrelated ones. Optional, because the
+    # commonest integration is a single call in a middleware that has no id to give.
+    session_id: str | None = None
+    trace_id: str | None = None
 
 
 class GuardToolCallRequest(BaseModel):
@@ -820,15 +825,63 @@ def guard_content(
     `would_be_verdict` is what the bound policy says should happen, which in observe
     mode is the one that did not take effect. Gate on the applied one.
     """
+    from ...audit.trace import end_trace, start_trace
+    from ...models import Trace
+    from ...registry.service import slugify
+
     surface = "output" if request.url.path.endswith("/output") else payload.surface
-    return with_verdict_aliases(
-        Enforcer(session).check_content(
-            agent_slug=payload.agent,
-            content=payload.content,
-            surface=surface,
-            taint_source=payload.taint_source,
+
+    # A governed request is a trace of one step, and recording it as one is what
+    # makes this integration visible.
+    #
+    # The three other guard routes — tool_call, memory_write, agent_message — have
+    # always called `start_trace`. This one, the most used of the four, did not, and
+    # the consequence was out of all proportion to the omission: `Trace` is what the
+    # Traces page lists, what `/api/onboarding` reads to decide whether anything is
+    # connected at all, what gives an agent a last-seen, and what the control
+    # telemetry computes effectiveness from. So a team integrating through
+    # `/v1/guard/input` — the lower-friction path, and the one picked by anyone
+    # unwilling to route every model call through a new proxy — could govern
+    # thousands of requests and still be told "Nothing is sending traffic yet", with
+    # the findings from those very requests counted in the header above the message.
+    #
+    # Same class of bug as the one `_record_turn` at the top of this module exists to
+    # fix: a capability wired to the SDK path only, and silently absent for everyone
+    # on the HTTP one.
+    enforcer = Enforcer(session)
+    # Resolve before starting the trace so the trace carries an agent id, which is
+    # what gives the agent a last-seen and lets the Traces page filter by agent.
+    # `resolve` also registers an unknown slug as shadow traffic, which is the
+    # behaviour this path is documented to have (P1-6) and did not reach from here.
+    agent, _identity, _shadow = enforcer.resolve(payload.agent)
+    # Reuse rather than insert when the caller names a trace that already exists:
+    # guarding the input and then the output is two calls about one request, and the
+    # whole point of accepting `trace_id` is to let a caller say so. `start_trace`
+    # always inserts, so passing a known id straight through turned the second call
+    # into a 500 on a primary-key collision — the integration would have worked right
+    # up until the moment somebody used the field as documented.
+    trace = session.get(Trace, payload.trace_id) if payload.trace_id else None
+    if trace is None:
+        trace = start_trace(
+            session,
+            agent_id=agent.id if agent else None,
+            agent_slug=slugify(payload.agent),
+            session_id=payload.session_id,
+            intent=payload.intent,
+            trace_id=payload.trace_id,
         )
+    result = enforcer.check_content(
+        agent_slug=payload.agent,
+        content=payload.content,
+        surface=surface,
+        taint_source=payload.taint_source,
+        trace=trace,
     )
+    # `evaluate` raises the trace's verdict to the strongest thing that happened on
+    # it, so ending it must not overwrite that with the default: a second guard call
+    # on the same trace_id that allows must not erase the first one that blocked.
+    end_trace(session, trace, verdict=trace.verdict, status=trace.status)
+    return with_verdict_aliases(result)
 
 
 @router.post("/v1/guard/tool_call", summary="Authorise a tool call (P3-4, P2-2)")

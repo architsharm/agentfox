@@ -51,6 +51,23 @@ def _get_path(data: Any, path: str) -> Any:
     return current
 
 
+def _rule_entities(rule: Rule) -> tuple[list[str], list[str]]:
+    """What a rule's detection condition names: (exact types, family prefixes).
+
+    Mirrors `_matches_detection` below rather than paraphrasing it — exact types
+    compare by equality, prefixes by `startswith` — so the explanation can never
+    disagree with the engine about which detection a rule was testing. A rule with
+    no detection condition returns two empty lists, read downstream as "no entity
+    constraint" rather than "matches nothing".
+    """
+    detection = getattr(rule.when, "detection", None)
+    if detection is None:
+        return [], []
+    exact = [str(detection.entity).upper()] if detection.entity else []
+    prefixes = [str(detection.entity_prefix).upper()] if detection.entity_prefix else []
+    return exact, prefixes
+
+
 class NativePolicyEngine:
     name = "native"
 
@@ -61,6 +78,7 @@ class NativePolicyEngine:
                 continue
             if not self._matches(rule.when, pinput):
                 continue
+            entities, entity_prefixes = _rule_entities(rule)
             fired.append(
                 FiredRule(
                     rule_id=rule.id,
@@ -70,6 +88,8 @@ class NativePolicyEngine:
                     controls=list(rule.controls),
                     redaction=rule.redaction,
                     mode=policy.mode,
+                    entities=entities,
+                    entity_prefixes=entity_prefixes,
                 )
             )
 

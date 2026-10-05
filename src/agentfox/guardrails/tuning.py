@@ -161,6 +161,22 @@ def _remedy_for(entity_types: list[str]) -> str:
     )
 
 
+def _names(exact: set[str], prefixes: tuple[str, ...], entity_type: str) -> bool:
+    """Whether a rule naming these entities is about a detection of `entity_type`.
+
+    The same two operations the policy engine applies — equality for `entity`,
+    `startswith` for `entity_prefix` — so this cannot drift from what actually
+    fired. Neither given means the rule has no entity constraint, so everything is
+    relevant.
+    """
+    if not exact and not prefixes:
+        return True
+    actual = entity_type.upper()
+    if actual in exact:
+        return True
+    return bool(prefixes) and actual.startswith(prefixes)
+
+
 def explain(
     result: Any,
     pipeline_result: Any,
@@ -179,13 +195,22 @@ def explain(
     # The decisive detection is the highest-scoring one among the entity types the
     # winning rule actually names — not simply the highest-scoring one overall, which
     # would credit a detector that had no bearing on the outcome.
-    named = {
-        str(e).upper()
-        for e in (rule or {}).get("entities", [])
-        or [c.get("entity_type") for c in (rule or {}).get("conditions", []) if c]
-    }
+    #
+    # This was already the intent, and it did not work, because nothing populated
+    # `entities`: `FiredRule.to_json()` dropped the rule's detection condition, so
+    # `named` was always empty and every explanation fell through to highest-score.
+    # On an injection payload carrying the attacker's own address, `PII.EMAIL` at
+    # 0.90 beat `INJECTION.INSTRUCTION_OVERRIDE` at 0.85 and the summary read
+    # "block on input: PII.EMAIL ... which rule `injection.direct` treats as block".
+    # The rule and the match named in one sentence had nothing to do with each other.
+    exact = {str(e).upper() for e in (rule or {}).get("entities", []) or []}
+    prefixes = tuple(str(e).upper() for e in (rule or {}).get("entity_prefixes", []) or [])
     candidates = list(getattr(pipeline_result, "detections", []) or [])
-    relevant = [d for d in candidates if not named or d.entity_type.upper() in named]
+    relevant = [d for d in candidates if _names(exact, prefixes, d.entity_type)]
+    # Falling back to every candidate when the rule names entities none of which were
+    # detected: the rule fired on something other than a detection (a tool, a
+    # capability, taint), so the best available answer is the strongest signal there
+    # was. An explanation with no match at all explains less than an imperfect one.
     decisive = max(relevant or candidates, key=lambda d: d.score, default=None)
 
     matches: list[Match] = []
