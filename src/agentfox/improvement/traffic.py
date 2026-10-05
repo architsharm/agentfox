@@ -314,7 +314,7 @@ def _leaves(arguments: dict[str, Any], prefix: str = "") -> dict[str, Any]:
 def nice_ceiling(value: float) -> float | int:
     """Round up to two significant figures: 112 -> 120, 45.5 -> 46, 7 -> 7.
 
-    A limit at exactly the largest amount ever seen refuses the next ordinary refund
+    A limit at exactly the largest amount ever seen refuses the next ordinary call
     that is a cent bigger; a limit at ten times it is not a limit. Two significant
     figures, rounded up, is headroom a person can read at a glance.
     """

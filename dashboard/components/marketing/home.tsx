@@ -153,9 +153,9 @@ export function Hero() {
 
       <div className="mk-wrap mk-hero" style={{ position: "relative" }}>
         <div>
-          <p className="mk-kicker mk-up mk-d1">Containment for AI agents</p>
+          <p className="mk-kicker mk-up mk-d1">AI agent security</p>
           <h1 className="mk-h1 mk-up mk-d2">
-            Know when your agent should stop.<br />
+            Secure your agents.<br />
             <em>One control plane.</em>
           </h1>
           <p className="mk-lede mk-up mk-d3" style={{ marginTop: 22 }}>

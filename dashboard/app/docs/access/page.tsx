@@ -37,7 +37,8 @@ agentfox policy proposals apply <id> --actor you@example.com`}</code>
       <p>
         It files a declaration for each tool nobody declared, with an impact guessed from
         the name, and one grant per tool the agent called, in plain English: &ldquo;Let
-        support-bot call issue_refund with amount &le; 120 (seen 5 times, max 112)&rdquo;.
+        support-triage call tickets.close with priority one of low, normal (seen 14
+        times)&rdquo;.
         The limits are read off the calls. It learns only from calls that were refused
         for configuration, never from a call a detector matched or one that broke a
         limit. A call stopped for where its arguments came from shapes the limits but not

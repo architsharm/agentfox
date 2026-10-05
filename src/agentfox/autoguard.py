@@ -1079,7 +1079,7 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     inferred from the tool's name and the description the request declared
     (`integrations.mcp.infer_impact`, the guess MCP governance already makes, read
     cautiously: a name that moves money or sends a message is irreversible, as the
-    learned-permissions guess has it — an unconfirmed `issue_refund` guessed `read`
+    learned-permissions guess has it — an unconfirmed payment tool guessed `read`
     is containment switched off for the one tool that needed it) and recorded as
     ``impact_source="inferred"``, for a human to confirm with `agentfox declare tool`.
     A declaration made in code (`@fox.tool(impact=...)`)

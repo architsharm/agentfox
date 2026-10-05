@@ -281,7 +281,7 @@ class Settings(BaseSettings):
     #:   later irreversible call carries it, including one with no arguments.
     #: ``argument`` — only the provenance inferred or declared for this call's own
     #:   arguments. A value copied from a web page still taints the call it lands in;
-    #:   a refund whose arguments the user typed does not inherit the page.
+    #:   a call whose arguments the user typed does not inherit the page.
     #:
     #: Measured on an AgentDojo replay with provenance inferred from executed tool
     #: outputs (the `inferred_provenance_summary.json` replay, not yet a published

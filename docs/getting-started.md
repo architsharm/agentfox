@@ -89,9 +89,8 @@ agentfox scan
 ```
 ╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────╮
 │ bot.py: can read customer records (read_customer_record), reads untrusted    │
-│ web pages (fetch_url), and can send email (send_email) or can move money     │
-│ (issue_refund). An instruction hidden in a web page could send customer data │
-│ out.                                                                         │
+│ web pages (fetch_url), and can send email (send_email). An instruction       │
+│ hidden in a web page could send customer data out.                           │
 │                                                                              │
 │ Contain it: `agentfox permit grant <agent> send_email --max-taint user`  │
 │ (...), or run with `agentfox.auto(mode="observe")` to watch it happen.       │
@@ -213,18 +212,18 @@ a while as it is: every refused call is recorded with its tool, its arguments an
 argument came from. Then:
 
 ```bash
-agentfox policy proposals from-traffic --agent my-agent        # --since 7d to narrow the window
+agentfox policy proposals from-traffic --agent support-triage  # --since 7d to narrow the window
 ```
 
 ```
 read 21 tool call(s): 10 benign, 11 held for provenance, 0 flagged
 filed 8, refreshed 0, superseded 0, verified 0
   chp_…  tool.declare · proven
-      Declare issue_refund as irreversible (called 5 times by support-bot, never declared; impact guessed from its name)
+      Declare send_email as irreversible (called 6 times by support-triage, never declared; impact guessed from its name)
   chp_…  capability.grant · proven
-      Let support-bot call issue_refund with amount ≤ 120 (seen 5 times, max 112)
+      Let support-triage call tickets.close with priority one of low, normal (seen 14 times)
   chp_…  capability.grant · proven
-      Let support-bot call send_email with to at example.com or example.org (seen 6 times)
+      Let support-triage call send_email with to at example.com or example.org (seen 6 times)
   …
 ```
 
@@ -267,7 +266,7 @@ Output is untrusted unless you declare otherwise.
 **Session or argument provenance.** One setting decides what a tool call's provenance is:
 `taint_scope` in `agentfox.toml` (or `AGENTFOX_TAINT_SCOPE`). `session`, the default, is the worst
 untrusted content anywhere in the run so far: once the agent has read a web page, every later
-irreversible call carries it, including a refund with no arguments at all. `argument` is only what
+irreversible call carries it, including one with no arguments at all. `argument` is only what
 the call's own arguments were copied from. Session contains more attacks and escalates more
 legitimate calls; argument lets more legitimate work through and misses an attack whose payload
 never lands in an argument. Every published number was measured under `session`.

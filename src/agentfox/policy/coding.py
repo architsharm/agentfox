@@ -3,7 +3,7 @@
 `coding-agent.yaml` is tuned for an agent that edits code and runs shell commands
 on a developer machine. Its scope said ``agents: ["*"]`` and `agentfox init` loaded
 every available pack, so the first customer-support bot in a fresh deployment got
-"Personal data in a tool-call argument from a coding session" on a refund email.
+"Personal data in a tool-call argument from a coding session" on an ordinary email to a customer.
 The rules were right for the job they were written for and wrong for every other.
 
 Two ways to stop that: give the rules a condition only a coding agent meets, or
