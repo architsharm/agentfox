@@ -59,13 +59,16 @@ rules:
     controls: [NOM-RTG-04, NOM-DSC-04]
 
   # --- Least privilege (NOM-IAM-02) -----------------------------------
+  # No `reason:` on purpose, like `capability.constraint_violated` below: the
+  # generated one names the agent, the tool, and the two commands that fix it
+  # (`agentfox proposals from-traffic`, `agentfox capability grant`). Default deny
+  # has no observe grace, so the refusal is where a new user learns what to run.
   - id: capability.denied
     description: The agent tried to use a tool or take an action nobody explicitly gave it permission for.
     when:
       capability: denied
     effect: block
     severity: high
-    reason: "No capability grants this agent the requested tool and action (default deny)."
     controls: [NOM-IAM-02]
 
   # The grant exists. A declared limit on one of the arguments did not hold, which
