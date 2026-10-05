@@ -163,8 +163,9 @@ export function Evidence() {
           className="mk-fine mk-up mk-d3"
           style={{ maxWidth: "var(--w-prose)", marginTop: 24 }}
         >
-          The three calls that escaped the AgentDojo replay are all read-only, and the
-          benchmark page names them one by one. The weakest figure is in the set on purpose.
+          Session-level taint contains every AgentDojo attack by escalating broadly: three
+          benign tasks in four went to a human too. Per-argument taint lets more work run and
+          misses 61 attacker calls. The weakest figures are in the set on purpose.
         </p>
         <div
           className="mk-row mk-up mk-d4"

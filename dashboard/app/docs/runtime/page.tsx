@@ -15,8 +15,8 @@ export default function Page() {
       <p className="docs-kicker">Product</p>
       <h1>Runtime</h1>
       <p>
-        <code>agentfox init</code> loads three packs. <code>baseline</code> and{" "}
-        <code>eu-ai-act-high-risk</code> start in observe: they record the verdict they
+        <code>agentfox init</code> loads four packs. <code>baseline</code>,{" "}
+        <code>coding-agent</code> and <code>eu-ai-act-high-risk</code> start in observe: they record the verdict they
         would have returned and change nothing. <code>tool-containment</code> starts in
         enforce, because a missing grant and an untrusted argument on an irreversible
         tool are structural facts, not classifier scores.

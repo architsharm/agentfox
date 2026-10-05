@@ -405,6 +405,10 @@ retired:
     text: "Three reads got through"
     reason: "label-assigned AgentDojo run"
     files: [README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: agentdojo.label_assigned_escapes
+    text: "escaped the AgentDojo replay"
+    reason: "the label-assigned run's three read-only escapes; the current replay has no read-only attacker calls in its denominator"
+    files: [README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
   - id: injection.ensemble_recall_as_default
     text: "in the default configuration"
     reason: "66.7% held-out recall needs the opt-in classifier ensemble; the default heuristic is 26.7% (benchmarks/REPORT.md)"
