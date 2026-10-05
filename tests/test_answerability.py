@@ -408,6 +408,14 @@ def test_the_answerability_api(client):
     ).json()
     assert allowed["answerable"] is True
 
+    one = client.get("/api/answerability/boundaries?agent=support-triage", headers=headers).json()
+    assert [b["agent"] for b in one["boundaries"]] == ["support-triage"]
+    none = client.get("/api/answerability/boundaries?agent=payments-ops", headers=headers).json()
+    assert none["boundaries"] == []
+    assert (
+        client.get("/api/answerability/boundaries?agent=nope", headers=headers).status_code == 404
+    )
+
     report = client.get("/api/answerability/report", headers=headers).json()
     assert report["boundaries_declared"] == 1 and report["enforcing"] == 1
     assert "payments-ops" in report["agents_without_boundary"]

@@ -253,18 +253,3 @@ def state(
         },
         "compliance": posture_info,
     }
-
-
-@router.get("/sessions/{session_id}/trace/{trace_id}")
-def trace_detail(
-    session_id: str,
-    trace_id: str,
-    record: PlaygroundSession = Depends(playground_session),
-) -> dict[str, Any]:
-    from ...audit.trace import full_trace
-
-    with record.session_scope() as session:
-        detail = full_trace(session, trace_id)
-    if detail is None:
-        raise HTTPException(404, "trace not found in this sandbox")
-    return detail

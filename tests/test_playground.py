@@ -204,22 +204,16 @@ def test_state_reflects_activity_and_a_verified_chain(client):
     assert body["compliance"]["effectiveness"] is not None
 
 
-def test_trace_detail_endpoint_returns_the_same_trace_as_state(client):
+def test_state_carries_the_full_trace_for_each_turn(client):
     sid = _create(client)
     reply = client.post(
         f"/api/playground/sessions/{sid}/chat",
         json={"agent": "support-triage", "message": "How long do I have to request a refund?"},
     ).json()
     trace_id = reply["verdict"]["trace_id"]
-    resp = client.get(f"/api/playground/sessions/{sid}/trace/{trace_id}")
-    assert resp.status_code == 200
-    assert resp.json()["trace"]["id"] == trace_id
-
-
-def test_trace_detail_404s_for_a_trace_outside_the_sandbox(client):
-    sid = _create(client)
-    resp = client.get(f"/api/playground/sessions/{sid}/trace/trc_does_not_exist")
-    assert resp.status_code == 404
+    traces = client.get(f"/api/playground/sessions/{sid}/state").json()["traces"]
+    detail = next(t for t in traces if t["trace"]["id"] == trace_id)
+    assert "decisions" in detail
 
 
 class TestRateLimiter:
@@ -475,8 +469,8 @@ def test_a_second_store_instance_resolves_the_first_ones_sandbox():
 
 
 def test_one_sandbox_cannot_read_anothers_data(client):
-    """Isolation is the tenant filter, so this asks for one sandbox's trace through
-    another sandbox's session id and expects a 404 rather than the trace."""
+    """Isolation is the tenant filter, so one sandbox's trace shows up in its own
+    state and never in another sandbox's."""
     sid_a = _create(client)
     sid_b = _create(client)
 
@@ -486,8 +480,8 @@ def test_one_sandbox_cannot_read_anothers_data(client):
     ).json()
     trace_id = reply["verdict"]["trace_id"]
 
-    assert client.get(f"/api/playground/sessions/{sid_a}/trace/{trace_id}").status_code == 200
-    assert client.get(f"/api/playground/sessions/{sid_b}/trace/{trace_id}").status_code == 404
+    state_a = client.get(f"/api/playground/sessions/{sid_a}/state").json()
+    assert trace_id in {t["trace"]["id"] for t in state_a["traces"]}
 
     state_b = client.get(f"/api/playground/sessions/{sid_b}/state").json()
     assert state_b["traces"] == []

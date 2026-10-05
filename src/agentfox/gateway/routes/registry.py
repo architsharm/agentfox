@@ -15,7 +15,6 @@ from ...findings import STATUSES as FINDING_STATUSES
 from ...identity import (
     assess_posture,
     check_capability,
-    delegate,
     expire_stale_approvals,
     grant_capability,
     issue_credential,
@@ -816,48 +815,6 @@ def check(
         payload.arguments,
         payload.argument_taint,
     ).to_json()
-
-
-class DelegateIn(BaseModel):
-    parent_identity_id: str
-    child_identity_id: str
-    trace_id: str | None = None
-
-
-@router.post("/identities/delegate", status_code=201)
-def create_delegation(
-    payload: DelegateIn, session: Session = Depends(db), user: User = Depends(require("identity"))
-) -> dict[str, Any]:
-    parent = session.get(Identity, payload.parent_identity_id)
-    child = session.get(Identity, payload.child_identity_id)
-    if parent is None or child is None:
-        raise HTTPException(404, "unknown identity")
-    try:
-        edge = delegate(session, parent, child, payload.trace_id)
-    except ValueError as exc:
-        # Widening is rejected at write time (P2-5), not audited afterwards.
-        raise HTTPException(400, str(exc)) from exc
-    chain.append(
-        session,
-        "identity.delegated",
-        actor_type="user",
-        actor_id=user.email or user.id,
-        subject_type="delegation",
-        subject_id=edge.id,
-        payload=edge.capability_diff_json,
-    )
-    return {"id": edge.id, "diff": edge.capability_diff_json}
-
-
-@router.get("/identities/posture")
-def posture(session: Session = Depends(db), _user: User = Depends(current_user)) -> dict[str, Any]:
-    findings = assess_posture(session)
-    return {
-        "findings": [
-            {"type": f.type, "severity": f.severity, "title": f.title, "evidence": f.evidence_json}
-            for f in findings
-        ]
-    }
 
 
 # ---------------------------------------------------------------------------

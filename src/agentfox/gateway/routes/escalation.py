@@ -18,13 +18,11 @@ from ...escalation import (
     DEFAULT_CONDITIONS,
     assess,
     breached_handoffs,
-    build_context,
     detect_false_resolution,
     detect_missed_escalation,
     escalation_report,
     get_policy,
     handoff_completeness,
-    raise_handoff,
     record_turn,
     set_policy,
     turn_depth_risk,
@@ -238,40 +236,6 @@ def report(
 # ---------------------------------------------------------------------------
 # Hand-offs (P11-6/7)
 # ---------------------------------------------------------------------------
-
-
-class HandoffIn(BaseModel):
-    session_id: str
-    agent: str | None = None
-    trace_id: str | None = None
-    reason: str = ""
-    context: dict[str, Any] = Field(default_factory=dict)
-
-
-@router.post("/handoffs", status_code=201)
-def create_handoff(
-    payload: HandoffIn,
-    session: Session = Depends(db),
-    _user: User = Depends(current_user),
-) -> dict[str, Any]:
-    turns = list(
-        session.scalars(
-            select(ConversationTurn).where(ConversationTurn.session_id == payload.session_id)
-        )
-    )
-    agent_id = _agent_id(session, payload.agent) or next(
-        (t.agent_id for t in turns if t.agent_id), None
-    )
-    context = payload.context or build_context(turns, payload.reason)
-    handoff = raise_handoff(
-        session,
-        agent_id=agent_id,
-        session_id=payload.session_id,
-        trace_id=payload.trace_id,
-        triggers=[],
-        context=context,
-    )
-    return _handoff_json(handoff, session)
 
 
 @router.get("/handoffs")

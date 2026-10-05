@@ -306,10 +306,10 @@ Policy documents themselves are static YAML under `src/agentfox/policies_data/`
   `discovery`, `memory`, `messaging`, `playground` (the **only** router without a
   `current_user` dependency — unauthenticated by design, per HLD §4's client-side exception).
 - App-level routes defined directly (not in a router module): `/api/health`, `/api/version`,
-  `/api/detectors`, `/api/reliability`, `/metrics` (Prometheus, unauthenticated), `/api/providers`,
-  and `/api/_migrate_policy_canaries` — a manual, owner-role-gated raw-DDL stopgap
-  (HLD §9) that exists specifically because the Vercel-deployed wheel doesn't bundle
-  `migrations/`.
+  `/api/detectors`, `/api/reliability`, `/metrics` (Prometheus, unauthenticated), `/api/providers`.
+  A one-off `/api/_migrate_policy_canaries` raw-DDL stopgap (HLD §9) used to live here; it was
+  removed once later migrations superseded it (re-running it would have rewound
+  `alembic_version` to `a1b2c3d4e5f6`).
 - `routes/` holds 17 files, 6170 lines total — one module roughly per router listed above.
   `routes/inline.py` is the request-path entry point: `chat_completions` (line 273, `/v1/chat/
   completions`) and `messages` (line 356, `/v1/messages`) both build an `Enforcer(session)`
@@ -364,9 +364,9 @@ inter-agent-message security → memory-write governance → policy canary rollo
 annotation queue.
 
 Notably, revision `a1b2c3d4e5f6` (policy canary) is the exact revision ID hardcoded into
-`gateway/app.py`'s `/api/_migrate_policy_canaries` stopgap (§10) — direct confirmation that
-endpoint exists because that specific migration couldn't be applied to a deployed
-environment through normal means.
+`gateway/app.py`'s since-removed `/api/_migrate_policy_canaries` stopgap (§10) — direct
+confirmation that endpoint existed because that specific migration couldn't be applied to a
+deployed environment through normal means.
 
 ---
 

@@ -295,7 +295,8 @@ def test_decision_row_mode_matches_the_returned_verdict(client):
         },
     ).json()
 
-    detail = client.get(f"/api/playground/sessions/{session_id}/trace/{body['trace_id']}").json()
+    state = client.get(f"/api/playground/sessions/{session_id}/state").json()
+    detail = next(t for t in state["traces"] if t["trace"]["id"] == body["trace_id"])
     for decision in detail["decisions"]:
         if decision["mode"] == "enforce":
             assert decision["verdict"] == "block"

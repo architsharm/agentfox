@@ -76,30 +76,6 @@ def upsert(
     return _json(record)
 
 
-class BulkIn(BaseModel):
-    sources: list[SourceIn]
-
-
-@router.post("/bulk", status_code=201)
-def bulk(
-    payload: BulkIn,
-    session: Session = Depends(db),
-    _user: User = Depends(require("registry")),
-) -> dict[str, Any]:
-    """Register many at once.
-
-    Tiering a corpus is inherently a bulk act — nobody classifies four hundred sources
-    one HTTP call at a time, and making them try is how the tiering never happens.
-    """
-    written = []
-    for item in payload.sources:
-        try:
-            written.append(_json(register_source(session, item.key, **_kwargs(item))))
-        except ValueError as exc:
-            raise HTTPException(400, f"{item.key}: {exc}") from exc
-    return {"registered": len(written), "sources": written}
-
-
 @router.get("")
 def list_sources(
     tier: str | None = None,

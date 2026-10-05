@@ -301,8 +301,8 @@ The original finding is recorded in [production-readiness-review.md](production-
 
 A related consequence: because the serverless deployment cannot run `alembic upgrade head`
 through normal channels (the deployed wheel doesn't bundle `migrations/`), `gateway/app.py`
-carries a manual, owner-role-gated raw-DDL endpoint (`/api/_migrate_policy_canaries`) as a
-one-off patch for exactly one migration. This is a deployment-model limitation, not a code
+once carried a manual, owner-role-gated raw-DDL endpoint (`/api/_migrate_policy_canaries`) as a
+one-off patch for exactly one migration (since removed). This is a deployment-model limitation, not a code
 defect — but it means the Vercel path's schema-upgrade story is "patch per table by hand,"
 not "run the migration," and any future schema change needs the same treatment or an
 alternative solution.
