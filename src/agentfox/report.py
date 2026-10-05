@@ -356,7 +356,7 @@ def _outcomes(
 
 
 _ENTITY_WORDS = {
-    "INJECTION": "an instruction hidden in content",
+    "INJECTION": "an injected instruction",
     "SECRET": "a credential",
     "PII": "personal data",
     "SAFETY": "harmful content",
