@@ -15,6 +15,8 @@ no runtime"), and those claims were explicitly retracted once checked against re
 docs. That discipline is preserved here — every claim below is either evidence-backed or
 flagged as a concession.
 
+For the architecture-level comparison (where each competitor sits, what it can see, and which of our measured results its design can or cannot reach), with corrections to two §4.1/§4.2 claims, see [architecture-differentiation.md](architecture-differentiation.md).
+
 ---
 
 ## 1. Who we actually compete with
