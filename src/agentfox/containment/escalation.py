@@ -212,8 +212,12 @@ def record_turn(
     escalated: bool = False,
     failed: bool = False,
     confidence: float | None = None,
+    act: bool = True,
 ) -> ConversationTurn:
     """Capture one turn with its signals.
+
+    With ``act`` (the default) a conversation under an enforcing escalation policy is
+    handed off as soon as it qualifies (see `handoff_if_due`).
 
     Signals are extracted at capture time rather than at detection time so that
     missed-escalation detection reads a stable record: re-deriving them later against
@@ -244,7 +248,46 @@ def record_turn(
     )
     session.add(turn)
     session.flush()
+    if act:
+        handoff_if_due(session, session_id=session_id, agent_id=agent_id, trace_id=trace_id)
     return turn
+
+
+def handoff_if_due(
+    session: Session,
+    *,
+    session_id: str,
+    agent_id: str | None,
+    trace_id: str | None = None,
+) -> Handoff | None:
+    """In enforce mode, hand the conversation to a person the moment it qualifies.
+
+    This is what the policy's ``mode`` means at runtime. In ``observe`` (the default)
+    nothing is queued live: the scheduled ``escalation.scan`` job records the missed
+    escalation as a finding instead. In ``enforce`` the conversation is handed off on
+    the turn that first meets a condition, rather than hours later by a scan. One
+    hand-off per conversation; an agent that escalated on its own needs none.
+    """
+    policy = get_policy(session, agent_id)
+    if policy.mode != "enforce" or policy.enabled is False:
+        return None
+    if session.scalar(select(Handoff.id).where(Handoff.session_id == session_id)) is not None:
+        return None
+    turns = list(
+        session.scalars(select(ConversationTurn).where(ConversationTurn.session_id == session_id))
+    )
+    assessment = assess(turns, policy)
+    if not assessment.missed:
+        return None
+    return raise_handoff(
+        session,
+        agent_id=agent_id,
+        session_id=session_id,
+        trace_id=trace_id or next((t.trace_id for t in turns if t.trace_id), None),
+        triggers=assessment.triggers,
+        context=build_context(turns, "escalation conditions met (enforce mode)"),
+        policy=policy,
+    )
 
 
 def _similar(a: str, b: str, threshold: float = 0.75) -> bool:
@@ -616,12 +659,19 @@ def detect_missed_escalation(
     since_hours: int = 24,
     agent_slug: str | None = None,
     raise_findings: bool = True,
+    retroactive_handoffs: bool | None = True,
 ) -> dict[str, Any]:
     """**The 31% control.** Which conversations qualified for a hand-off and got none?
 
     Runs as a second pass rather than at runtime, because at runtime there is nothing
     to see: the failure is the *absence* of an event, and absence is only visible once
     the conversation is over.
+
+    ``retroactive_handoffs`` decides whether acting (``raise_findings``) also queues a
+    hand-off for each missed conversation: True always (an operator's explicit scan),
+    False never, None per the conversation's escalation policy — only where its mode
+    is ``enforce``. The scheduled ``escalation.scan`` job passes None, so an observing
+    policy is recorded as findings and nothing is queued on its behalf.
     """
     since = utcnow() - dt.timedelta(hours=since_hours)
     stmt = select(ConversationTurn).where(ConversationTurn.created_at >= since)
@@ -657,6 +707,13 @@ def detect_missed_escalation(
         missed.append(record)
 
         if raise_findings:
+            policy = get_policy(session, agent_id)
+            queue = (
+                policy.mode == "enforce"
+                if retroactive_handoffs is None
+                else bool(retroactive_handoffs)
+            )
+            record["handed_off"] = queue
             severity = (
                 "critical" if any(t.severity == "critical" for t in assessment.triggers) else "high"
             )
@@ -677,16 +734,20 @@ def detect_missed_escalation(
             )
             # Retroactive hand-off: the point is that a real person is still waiting.
             # Recording the finding and leaving them waiting would be an audit artefact,
-            # not a control.
-            raise_handoff(
-                session,
-                agent_id=agent_id,
-                session_id=session_id,
-                trace_id=next((t.trace_id for t in turns if t.trace_id), None),
-                triggers=assessment.triggers,
-                context=build_context(turns, "detected retroactively by missed-escalation scan"),
-                retroactive=True,
-            )
+            # not a control — so it is queued whenever the scan is allowed to act.
+            if queue:
+                raise_handoff(
+                    session,
+                    agent_id=agent_id,
+                    session_id=session_id,
+                    trace_id=next((t.trace_id for t in turns if t.trace_id), None),
+                    triggers=assessment.triggers,
+                    context=build_context(
+                        turns, "detected retroactively by missed-escalation scan"
+                    ),
+                    policy=policy,
+                    retroactive=True,
+                )
 
     session.flush()
     return {
@@ -824,3 +885,50 @@ def escalation_report(
         "false_resolutions": len(false_res),
         "loops_without_handoff": loops,
     }
+
+
+def run_scan(
+    session: Session,
+    *,
+    since_hours: int = 24,
+    agent_slug: str | None = None,
+    retroactive_handoffs: bool | None = True,
+) -> dict[str, Any]:
+    """Run detection and act on it: findings, hand-offs, false resolutions, SLA breaches.
+
+    The one acting path, shared by `POST /api/escalation/scan`, `agentfox report
+    escalations --apply` (both ``retroactive_handoffs=True``: an operator asked) and the
+    scheduled ``escalation.scan`` job (None: hand off only where the policy enforces).
+    """
+    agent_id = None
+    if agent_slug:
+        agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))
+        agent_id = agent.id if agent else agent_slug  # unknown slug -> matches nothing
+    missed = detect_missed_escalation(
+        session,
+        since_hours=since_hours,
+        agent_slug=agent_slug,
+        raise_findings=True,
+        retroactive_handoffs=retroactive_handoffs,
+    )
+    false_resolutions = detect_false_resolution(session, since_hours=since_hours, agent_id=agent_id)
+    breached = breached_handoffs(session)
+    return {
+        **missed,
+        "handed_off": sum(1 for m in missed["missed"] if m.get("handed_off")),
+        "false_resolutions": len(false_resolutions),
+        "sla_breached": [h.id for h in breached],
+    }
+
+
+def scheduled_scan(session: Session, *, since_hours: int = 24) -> dict[str, Any]:
+    """The ``escalation.scan`` job: the second pass, run on a schedule.
+
+    Without it, missed escalations, false resolutions and SLA breaches only surfaced
+    when someone ran `agentfox report escalations --apply` by hand. Findings are raised
+    for every agent; retroactive hand-offs only where the escalation policy enforces;
+    overdue hand-offs are marked breached.
+    """
+    result = run_scan(session, since_hours=since_hours, retroactive_handoffs=None)
+    result["missed"] = len(result["missed"])
+    return result

@@ -106,7 +106,7 @@ anywhere.
 | `declare boundary AGENT [--systems CSV] [--coverage-months N] [--answerable CSV] [--out-of-scope CSV] [--mode observe\|enforce]` | W (**BLK** with `--mode enforce`) | What the agent may answer from. |
 | `declare source KEY [--tier/-t unverified] [--owner] [--domain] [--sla-hours N] [--updated ISO\|now] [--title]` | W | Tiers: `system_of_record`, `approved`, `unverified`, `external`. |
 | `declare import-sources FILE.json` | W | Bulk `declare source`. |
-| `declare escalation [--agent] [--turn-depth N] [--repeated-failure N] [--sla-minutes 60] [--owner support] [--mode observe]` | W | When a conversation must reach a human. |
+| `declare escalation [--agent] [--turn-depth N] [--repeated-failure N] [--sla-minutes 60] [--owner support] [--mode observe]` | W | When a conversation must reach a human. `--mode enforce` hands a conversation off on the turn it qualifies; observe records missed ones as findings (hourly `escalation.scan` job). |
 | `declare principal SUBJECT [--groups/-g CSV] [--clearances CSV] [--residency] [--display]` | W | The human an agent acts for. |
 | `declare list [tools\|sources] [--json]` | R\* | Declared tools (impact, triggers) and sources (tier, freshness). `--json` needs a kind. |
 

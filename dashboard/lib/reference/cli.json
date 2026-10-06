@@ -1436,7 +1436,7 @@
         "required": false,
         "multiple": false,
         "default": "observe",
-        "help": ""
+        "help": "observe: record missed escalations as findings. enforce: hand the conversation off on the turn it qualifies."
        }
       ],
       "default_subcommand": null,

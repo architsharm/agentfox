@@ -450,7 +450,9 @@ def test_the_escalation_api(client):
     assert (
         client.put(
             "/api/escalation/policy",
-            json={"agent": "support-triage", "conditions": {"turn_depth": 4}, "mode": "enforce"},
+            # Observe: nothing is handed off live, so the scan below has work to do.
+            # The enforce-mode live hand-off is covered by its own tests.
+            json={"agent": "support-triage", "conditions": {"turn_depth": 4}, "mode": "observe"},
             headers=headers,
         ).status_code
         == 201
@@ -540,3 +542,110 @@ def test_the_default_conditions_are_conservative():
     assert DEFAULT_CONDITIONS["repeated_failure"] >= 2
     assert DEFAULT_CONDITIONS["turn_depth"] >= 6
     assert DEFAULT_CONDITIONS["sentiment_below"] <= -0.5
+
+
+# ---------------------------------------------------------------------------
+# The policy's mode is honoured, and the scan runs on a schedule (#23)
+# ---------------------------------------------------------------------------
+
+
+def test_an_enforcing_policy_hands_off_live_on_the_qualifying_turn(seeded, agent_id):
+    """`declare escalation --mode enforce` used to be stored and never read."""
+    set_policy(seeded, agent_id=agent_id, mode="enforce")
+    _conversation(
+        seeded, agent_id, [("I want to speak to a manager", "Let me try.", {})], session_id="live-1"
+    )
+    handoff = seeded.query(Handoff).filter_by(session_id="live-1").one()
+    assert handoff.detected_retroactively is False
+    # A later turn on the same conversation does not queue a second one.
+    _conversation(seeded, agent_id, [("hello?", "Still here.", {})], session_id="live-1")
+    assert seeded.query(Handoff).filter_by(session_id="live-1").count() == 1
+
+
+def test_an_observing_policy_queues_nothing_live(seeded, agent_id):
+    set_policy(seeded, agent_id=agent_id, mode="observe")
+    _conversation(
+        seeded, agent_id, [("I want to speak to a manager", "Let me try.", {})], session_id="obs-1"
+    )
+    assert seeded.query(Handoff).filter_by(session_id="obs-1").count() == 0
+
+
+def test_the_scheduled_scan_records_observe_and_hands_off_enforce(seeded, agent_id):
+    from agentfox.containment.escalation import scheduled_scan
+
+    other = seeded.query(Agent).filter(Agent.id != agent_id).first()
+    set_policy(seeded, agent_id=agent_id, mode="observe")
+    set_policy(seeded, agent_id=other.id, mode="enforce")
+    # Recorded without acting, as an agent's turns would be before the policy existed.
+    for sid, aid in (("sched-obs", agent_id), ("sched-enf", other.id)):
+        record_turn(
+            seeded,
+            session_id=sid,
+            agent_id=aid,
+            user_text="get me a human",
+            agent_text="I can help.",
+            act=False,
+        )
+
+    result = scheduled_scan(seeded)
+    assert result["missed"] >= 2
+    assert seeded.query(Handoff).filter_by(session_id="sched-obs").count() == 0
+    assert seeded.query(Handoff).filter_by(session_id="sched-enf").one().detected_retroactively
+    sessions = {
+        (f.evidence_json or {}).get("session_id")
+        for f in seeded.query(Finding).filter_by(type="missed_escalation")
+    }
+    assert {"sched-obs", "sched-enf"} <= sessions
+
+
+def test_the_turn_api_returns_the_live_handoff(client):
+    headers = as_user("marcus@example.com")
+    client.put(
+        "/api/escalation/policy",
+        json={"agent": "support-triage", "mode": "enforce"},
+        headers=headers,
+    )
+    body = client.post(
+        "/api/escalation/turns",
+        json={
+            "session_id": "api-live",
+            "agent": "support-triage",
+            "user_text": "I need a human",
+            "agent_text": "I can help here.",
+        },
+        headers=headers,
+    ).json()
+    assert body["handoff_id"]
+    handoffs = client.get("/api/escalation/handoffs", headers=headers).json()["handoffs"]
+    assert any(h["id"] == body["handoff_id"] for h in handoffs)
+
+
+def test_the_escalation_scan_is_a_default_schedule_with_a_handler():
+    from agentfox.jobs import handlers as job_handlers
+    from agentfox.jobs import scheduler
+    from agentfox.jobs import store as jobs_db
+
+    schedule = {d.kind: d for d in scheduler.DEFAULT_SCHEDULES}["escalation.scan"]
+    assert schedule.enabled
+    assert "escalation.scan" in jobs_db._HANDLERS
+    assert job_handlers.HANDLERS["escalation.scan"] is jobs_db._HANDLERS["escalation.scan"]
+
+
+def test_the_scheduled_job_marks_sla_breaches(seeded, agent_id):
+    from agentfox.jobs import handlers as job_handlers
+
+    _conversation(seeded, agent_id, [("hi", "hello", {})], session_id="sla-job")
+    turns = seeded.query(ConversationTurn).filter_by(session_id="sla-job").all()
+    handoff = raise_handoff(
+        seeded,
+        agent_id=agent_id,
+        session_id="sla-job",
+        trace_id=None,
+        triggers=[],
+        context=build_context(turns),
+    )
+    handoff.due_at = utcnow() - dt.timedelta(minutes=5)
+    seeded.flush()
+    result = job_handlers.HANDLERS["escalation.scan"](seeded, {"since_hours": 24})
+    assert handoff.id in result["sla_breached"]
+    assert handoff.status == "breached"

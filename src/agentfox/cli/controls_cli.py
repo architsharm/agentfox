@@ -60,9 +60,7 @@ def boundary_set(
         "--answerable",
         help="Question types this agent may answer (default fact,aggregate,procedure).",
     ),
-    out_of_scope: str | None = typer.Option(
-        None, "--out-of-scope", help="Comma-separated topics."
-    ),
+    out_of_scope: str | None = typer.Option(None, "--out-of-scope", help="Comma-separated topics."),
     mode: str | None = typer.Option(
         None, "--mode", help="observe | enforce (a new boundary starts in observe)"
     ),
@@ -336,7 +334,12 @@ def escalation_set(
     repeated_failure: int | None = typer.Option(None, "--repeated-failure"),
     sla_minutes: int = typer.Option(60, "--sla-minutes"),
     owner_role: str = typer.Option("support", "--owner"),
-    mode: str = typer.Option("observe", "--mode"),
+    mode: str = typer.Option(
+        "observe",
+        "--mode",
+        help="observe: record missed escalations as findings. enforce: hand the "
+        "conversation off on the turn it qualifies.",
+    ),
 ) -> None:
     """Declare when this agent must hand off to a human."""
     from sqlalchemy import select
@@ -371,6 +374,16 @@ def escalation_set(
     console.print(f"[green]✓[/] escalation policy for [bold]{agent or 'all agents'}[/]")
     console.print(f"  owner {owner_role} · SLA {sla_minutes} min · {mode} mode")
     console.print(f"  [dim]conditions: {', '.join(sorted(applied))}[/]")
+    if mode == "enforce":
+        console.print(
+            "  [dim]enforce: a conversation is handed off on the turn it qualifies, and the "
+            "hourly scan queues any it missed.[/]"
+        )
+    else:
+        console.print(
+            "  [dim]observe: nothing is handed off for you; the hourly scan records missed "
+            "escalations as findings. --mode enforce queues hand-offs.[/]"
+        )
 
 
 def escalation_scan(
@@ -383,10 +396,15 @@ def escalation_scan(
     conversation where the agent kept going instead of handing off looks entirely
     ordinary in the telemetry.
     """
-    from agentfox.containment.escalation import detect_missed_escalation
+    from agentfox.containment.escalation import detect_missed_escalation, run_scan
 
     with _session() as session:
-        result = detect_missed_escalation(session, since_hours=hours, raise_findings=apply)
+        if apply:
+            # The same acting path as POST /api/escalation/scan: findings, hand-offs,
+            # false resolutions and SLA breaches.
+            result = run_scan(session, since_hours=hours)
+        else:
+            result = detect_missed_escalation(session, since_hours=hours, raise_findings=False)
 
     rate = result["missed_rate"]
     colour = "red" if rate > 0.05 else "green"
@@ -401,10 +419,13 @@ def escalation_scan(
             f"  [dim]{record['session_id']}[/] {record['turns']} turns · "
             f"qualified at turn {record['first_qualifying_turn']} · {triggers}"
         )
+    if apply and result.get("sla_breached"):
+        console.print(f"  [red]{len(result['sla_breached'])} hand-off(s) past their SLA[/]")
     if result["missed"] and not apply:
         console.print(
             "\n  [dim]Read-only. Re-run with --apply to raise findings and retroactive "
-            "hand-offs so the people still waiting are actually queued.[/]"
+            "hand-offs so the people still waiting are actually queued. The scheduled "
+            "escalation.scan job does this hourly where the policy's mode is enforce.[/]"
         )
 
 
