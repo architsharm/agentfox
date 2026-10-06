@@ -148,9 +148,9 @@ def fake_anthropic():
 @pytest.fixture(autouse=True)
 def _reset(monkeypatch):
     # Code-level declarations are process-global; a test must not inherit another's.
-    from agentfox.platform.registry import service
+    from agentfox.platform.registry import impact
 
-    monkeypatch.setattr(service, "DECLARED_TOOL_IMPACTS", {})
+    monkeypatch.setattr(impact, "_DECLARED", {})
     yield
     off()
 
@@ -633,9 +633,9 @@ def test_the_sdk_decorator_writes_its_impact_to_the_registry():
 def test_a_code_declaration_beats_the_inferred_impact(fake_openai, monkeypatch):
     """Declared before the database existed (so only held in-process), then the
     model calls the tool: the declaration is what gets registered."""
-    from agentfox.platform.registry import service
+    from agentfox.platform.registry import impact
 
-    monkeypatch.setitem(service.DECLARED_TOOL_IMPACTS, "lookup_order", "high_impact")
+    monkeypatch.setitem(impact._DECLARED, "lookup_order", "high_impact")
     client, script, _calls = fake_openai
     script.append(_openai_response(_openai_tool_call("c1", "lookup_order", {"order": "o-1"})))
     auto(agent="support-bot", quiet=True)
@@ -647,11 +647,11 @@ def test_a_code_declaration_beats_the_inferred_impact(fake_openai, monkeypatch):
 
 
 def test_a_declaration_confirms_an_inferred_row(fake_openai, monkeypatch):
-    from agentfox.platform.registry import service
+    from agentfox.platform.registry import impact, service
 
     with _db() as session:
         service.upsert_tool(session, "lookup_order", impact="read", impact_source="inferred")
-    monkeypatch.setitem(service.DECLARED_TOOL_IMPACTS, "lookup_order", "write")
+    monkeypatch.setitem(impact._DECLARED, "lookup_order", "write")
     client, script, _calls = fake_openai
     script.append(_openai_response(_openai_tool_call("c1", "lookup_order", {"order": "o-1"})))
     auto(agent="support-bot", quiet=True)

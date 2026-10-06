@@ -39,6 +39,7 @@ from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.models import McpToolSnapshot, Tool, Trace
 from agentfox.errors import AgentFoxError
 from agentfox.platform.ledger.findings import raise_finding
+from agentfox.platform.registry.impact import infer_impact
 from agentfox.platform.registry.service import (
     record_edge,
     scan_mcp_server,
@@ -53,12 +54,6 @@ log = logging.getLogger(__name__)
 #: Tool keys are namespaced by server so two servers exposing `search` stay distinct
 #: in the registry, in policy and in the audit trail.
 KEY_TEMPLATE = "mcp:{server}/{tool}"
-
-#: MCP verbs that change something. Everything else defaults to read, and an operator
-#: can override per tool in the registry — this is a starting classification, not a
-#: claim to understand every server's semantics.
-_WRITE_HINTS = ("create", "update", "delete", "write", "send", "post", "put", "execute", "run")
-_IRREVERSIBLE_HINTS = ("delete", "drop", "purge", "send", "transfer", "deploy", "revoke")
 
 
 class McpCallBlocked(AgentFoxError, RuntimeError):
@@ -94,15 +89,6 @@ def tool_digest(descriptor: dict[str, Any]) -> str:
         default=str,
     )
     return hashlib.sha256(material.encode()).hexdigest()[:32]
-
-
-def infer_impact(name: str, descriptor: dict[str, Any] | None = None) -> str:
-    haystack = f"{name} {(descriptor or {}).get('description', '')}".lower()
-    if any(h in haystack for h in _IRREVERSIBLE_HINTS):
-        return "irreversible"
-    if any(h in haystack for h in _WRITE_HINTS):
-        return "write"
-    return "read"
 
 
 @dataclass

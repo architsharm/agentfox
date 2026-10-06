@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import Agent, Capability, Tool
 from agentfox.hooks.harness import HARNESS_TOOLS
+from agentfox.platform.registry.impact import infer_impact
 
 GRANTED_BY = "hooks install"
 DEFAULT_ENVIRONMENT = "development"
@@ -82,7 +83,9 @@ def install_baseline(
         out.environment_changed = True
     out.environment = agent.environment
 
-    for key, impact in HARNESS_TOOLS.get(harness, {}).items():
+    tools = HARNESS_TOOLS.get(harness, {})
+    for key in tools:
+        impact = infer_impact(key, declared=tools)
         if session.scalar(select(Tool).where(Tool.key == key)) is None:
             session.add(
                 Tool(

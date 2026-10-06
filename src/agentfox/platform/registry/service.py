@@ -360,13 +360,6 @@ def unowned_agents(session: Session) -> list[Finding]:
 # Tools & lineage
 # ---------------------------------------------------------------------------
 
-#: Tool key -> impact, for every `@fox.tool(key, impact=...)` declared in this
-#: process. The decorator also writes the row, but it runs at import time, which can
-#: be before the database exists; this is what `auto()` consults when it registers a
-#: tool the model called, so a declaration made in code beats a guess from the name
-#: even when that write could not happen yet.
-DECLARED_TOOL_IMPACTS: dict[str, str] = {}
-
 #: Marks a tool whose `impact` was guessed — from its name and description, when
 #: `auto()` or MCP governance first saw it — rather than declared by an operator,
 #: the CLI/API or code. Kept as a JSON Schema vendor keyword in `schema_json`

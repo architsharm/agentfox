@@ -482,13 +482,14 @@ class AgentFox:
 
         Best effort, because a decorator runs at import time and must never be the
         reason an application fails to import: if the database is not reachable yet
-        the declaration is kept in-process (`DECLARED_TOOL_IMPACTS`, which `auto()`
-        consults) and the write is retried on the tool's first call. Remote mode
+        the declaration is kept in-process (`platform.registry.impact.declare_impact`,
+        which `auto()` consults) and the write is retried on the tool's first call. Remote mode
         writes nothing locally — the gateway's registry is that deployment's record.
         """
-        from agentfox.platform.registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
+        from agentfox.platform.registry.impact import declare_impact
+        from agentfox.platform.registry.service import upsert_tool
 
-        DECLARED_TOOL_IMPACTS[key] = impact
+        declare_impact(key, impact)
         if self.remote:
             return True
         try:

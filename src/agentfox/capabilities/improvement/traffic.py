@@ -8,8 +8,8 @@ tool, its arguments, their provenance and every rule that fired, and an ``agent
 calls_tool`` lineage edge. This loop reads them and files two kinds of proposal:
 
 * ``tool.declare`` for a tool the registry has never heard of, with an impact guessed
-  from its name (``integrations.mcp.infer_impact``, plus money-movement and messaging
-  words that guess misses). A guess, said to be one; a person confirms it.
+  from its name (``platform.registry.impact.infer_impact``, read cautiously: money-movement
+  and messaging words count as irreversible). A guess, said to be one; a person confirms it.
 * ``capability.grant`` per agent × tool, with argument limits read off the observed
   values (the largest amount, the recipient domains, a short list of codes) and a
   provenance ceiling matching what was observed — both **from benign calls only**.
@@ -71,6 +71,7 @@ from agentfox.core.models import (
 from agentfox.core.vocab import taint_rank
 from agentfox.platform.identity.service import _constraint_ok
 from agentfox.platform.ledger import chain
+from agentfox.platform.registry.impact import infer_impact
 
 SOURCE = "traffic.observed"
 GRANT_KIND = "capability.grant"
@@ -97,25 +98,6 @@ PROVENANCE_RULES = frozenset(
         "capability.requires_approval",
         "capability.approval_required",
     }
-)
-
-#: Words `infer_impact` does not treat as irreversible but a person would: money moves
-#: and messages leave. Kept here rather than added to `infer_impact`, which also decides
-#: impact for every MCP tool registered at runtime — this only shapes a suggestion a
-#: person reviews.
-_IRREVERSIBLE_WORDS = (
-    "refund",
-    "pay",
-    "charge",
-    "transfer",
-    "wire",
-    "email",
-    "sms",
-    "message",
-    "notify",
-    "publish",
-    "cancel",
-    "close",
 )
 
 _TAINT_PHRASE = {
@@ -278,7 +260,7 @@ def observed_calls(
             session.get(ApprovalRequest, decision.approval_id) if decision.approval_id else None
         )
         tool_key = str(decision.tool_key)
-        impact = declared.get(tool_key) or infer_declared_impact(tool_key)
+        impact = declared.get(tool_key) or infer_impact(tool_key.rsplit("/", 1)[-1], cautious=True)
         verdict, why = classify(decision, approval, impact)
         taint = decision.taint_summary_json or {}
         fired = {str(r.get("rule_id")) for r in decision.rules_fired_json or []}
@@ -392,16 +374,6 @@ def suggest_limits(calls: list[dict[str, Any]]) -> list[Limit]:
         ):
             limits.append(Limit(path, {"in": distinct}, f"{path} one of {', '.join(distinct)}"))
     return limits
-
-
-def infer_declared_impact(tool_key: str) -> str:
-    from agentfox.frameworks.mcp import infer_impact
-
-    name = tool_key.rsplit("/", 1)[-1]
-    impact = infer_impact(name)
-    if impact != "irreversible" and any(w in name.lower() for w in _IRREVERSIBLE_WORDS):
-        return "irreversible"
-    return impact
 
 
 # ---------------------------------------------------------------------------
@@ -646,7 +618,7 @@ def propose_from_traffic(
     for tool_key in sorted(seen_tools):
         if tool_key in declared:
             continue
-        impact = infer_declared_impact(tool_key)
+        impact = infer_impact(tool_key.rsplit("/", 1)[-1], cautious=True)
         by_agent = dict(seen_tools[tool_key])
         total = sum(by_agent.values())
         who = ", ".join(sorted(by_agent))
@@ -934,7 +906,6 @@ __all__ = [
     "SOURCE",
     "TrafficReport",
     "classify",
-    "infer_declared_impact",
     "nice_ceiling",
     "observed_calls",
     "parse_since",

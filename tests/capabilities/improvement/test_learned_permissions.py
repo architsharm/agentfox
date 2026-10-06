@@ -27,7 +27,6 @@ from agentfox.capabilities.improvement.proposals import (
 from agentfox.capabilities.improvement.traffic import (
     DECLARE_KIND,
     GRANT_KIND,
-    infer_declared_impact,
     nice_ceiling,
     parse_since,
     propose_from_traffic,
@@ -46,6 +45,7 @@ from agentfox.core.models import (
 from agentfox.platform.identity import resolve_approval
 from agentfox.platform.ledger.trace import start_trace
 from agentfox.platform.policy import load_from_dir, save_policy
+from agentfox.platform.registry.impact import infer_impact
 from agentfox.platform.registry.service import upsert_tool
 from agentfox.runtime.enforcement import Enforcer
 
@@ -178,10 +178,10 @@ def test_prose_and_repeated_identifiers_are_never_turned_into_a_list():
 
 
 def test_impact_is_guessed_from_the_name_including_money_and_messages():
-    assert infer_declared_impact("read_customer_record") == "read"
-    assert infer_declared_impact("issue_refund") == "irreversible"
-    assert infer_declared_impact("send_email") == "irreversible"
-    assert infer_declared_impact("mcp:billing/charge_card") == "irreversible"
+    assert infer_impact("read_customer_record", cautious=True) == "read"
+    assert infer_impact("issue_refund", cautious=True) == "irreversible"
+    assert infer_impact("send_email", cautious=True) == "irreversible"
+    assert infer_impact("mcp:billing/charge_card", cautious=True) == "irreversible"
 
 
 def test_since_accepts_a_window_or_a_date():

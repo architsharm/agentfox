@@ -13,11 +13,11 @@ from agentfox.core.models import Agent, Finding, Tool
 from agentfox.frameworks.mcp import (
     McpCallBlocked,
     McpGovernor,
-    infer_impact,
     tool_digest,
     tool_key,
 )
 from agentfox.platform.identity import ensure_identity, grant_capability
+from agentfox.platform.registry.impact import infer_impact
 from agentfox.platform.registry.service import scan_mcp_server
 from tests.conftest import INDIRECT_INJECTION, as_user
 

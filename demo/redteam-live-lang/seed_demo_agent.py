@@ -69,7 +69,7 @@ def main() -> None:
         # reviewed change: accept it rather than holding it as drift.
         governor.register_tools(TOOL_DESCRIPTORS, accept_changes=True)
         # `register_tools` infers each tool's impact from its name/description
-        # (`integrations/mcp.py`'s `infer_impact` — no DB access, just keyword
+        # (`platform/registry/impact.py`'s `infer_impact` — no DB access, just keyword
         # hints). "issue_refund" contains neither a write nor an irreversible hint
         # word, so it is misread as "read" — the one axis every containment and
         # composition rule reasons over, so it has to be right. Set explicitly

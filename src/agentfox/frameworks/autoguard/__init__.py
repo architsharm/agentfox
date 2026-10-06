@@ -657,7 +657,7 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     Containment reasons over `Tool.impact`, and an unregistered tool is reasoned
     about as ``read`` — the least dangerous value there is. So the impact is
     inferred from the tool's name and the description the request declared
-    (`integrations.mcp.infer_impact`, the guess MCP governance already makes, read
+    (`platform.registry.impact.infer_impact`, the guess MCP governance already makes, read
     cautiously: a name that moves money or sends a message is irreversible, as the
     learned-permissions guess has it — an unconfirmed payment tool guessed `read`
     is containment switched off for the one tool that needed it) and recorded as
@@ -669,25 +669,18 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     from sqlalchemy import select
     from sqlalchemy.exc import IntegrityError
 
-    from agentfox.capabilities.improvement.traffic import infer_declared_impact
     from agentfox.core.models import Tool
-    from agentfox.frameworks.mcp import infer_impact
-    from agentfox.platform.registry.service import (
-        DECLARED_TOOL_IMPACTS,
-        impact_source_of,
-        upsert_tool,
-    )
+    from agentfox.platform.registry.impact import declared_impact, infer_impact
+    from agentfox.platform.registry.service import impact_source_of, upsert_tool
 
-    declared = DECLARED_TOOL_IMPACTS.get(name)
+    declared = declared_impact(name)
     existing = session.scalar(select(Tool).where(Tool.key == name))
     if existing is not None:
         if declared and impact_source_of(existing) == "inferred":
             upsert_tool(session, name, impact=declared, impact_source="declared")
         return
     descriptor = descriptor or {}
-    guess = infer_impact(name, descriptor)
-    if infer_declared_impact(name) == "irreversible":
-        guess = "irreversible"
+    guess = infer_impact(name, descriptor, cautious=True)
     try:
         # A savepoint, because two processes meeting the same new tool at once is
         # ordinary, and losing that race must not roll back the decisions already
