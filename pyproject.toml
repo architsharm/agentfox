@@ -178,6 +178,20 @@ source_modules = [
 ]
 forbidden_modules = ["agentfox.harnesses.claude_code"]
 
+# The Enforcer runs the checks it finds in the registry (`platform/checks.py`); it
+# names the modules that register the built-in ones (`runtime/checks.py`) and never
+# imports them, so a check is added by registering it, not by editing the runtime.
+[[tool.importlinter.contracts]]
+name = "The runtime reaches checks through the registry, not by import"
+type = "forbidden"
+source_modules = ["agentfox.runtime"]
+forbidden_modules = [
+    "agentfox.capabilities.grounding.checks",
+    "agentfox.capabilities.containment.checks",
+    "agentfox.capabilities.detection.checks",
+    "agentfox.capabilities.business.checks",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # `tests/harnesses/conformance.py` is the harness conformance suite, named for what it is.
