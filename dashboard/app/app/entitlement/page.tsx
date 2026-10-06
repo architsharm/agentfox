@@ -225,7 +225,16 @@ export default async function Entitlement() {
               <input type="text" id="ent-grant-principal" name="principal" required placeholder="support-team" style={inputStyle} />
             </div>
           </div>
-          <input type="hidden" name="principal_kind" value="group" />
+          <div>
+            <label htmlFor="ent-grant-kind" className="small muted" style={{ display: "block", marginBottom: 4 }}>
+              That is
+            </label>
+            <select id="ent-grant-kind" name="principal_kind" defaultValue="auto" style={inputStyle}>
+              <option value="auto">worked out from the name (an email is a person)</option>
+              <option value="subject">one person</option>
+              <option value="group">a team everyone in it gets</option>
+            </select>
+          </div>
           {/* A <label> pointing at nothing does not name these five checkboxes;
               a fieldset's legend does, so each one is read as "insider-only,
               within sensitive categories" rather than as a loose checkbox. */}
