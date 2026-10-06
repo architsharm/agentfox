@@ -216,7 +216,9 @@ def classify_tool(name: str, description: str = "") -> Capabilities:
         words[-1] = _MASS_NOUNS.get(words[-1]) or _plural(words[-1])
         caps.phrases[PRIVATE] = f"can read {' '.join(words)}"
         noun = nouns[0]
-        caps.data_noun = noun if noun in ("ssn", "credentials", "address") else noun.rstrip("s")
+        caps.data_noun = {"crm": "CRM", "db": "database", "sql": "database"}.get(noun) or (
+            noun if noun in ("ssn", "credentials", "address") else noun.rstrip("s")
+        )
     elif (
         not nouns
         and reading

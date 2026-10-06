@@ -88,9 +88,9 @@ def run(message: str) -> str:
       <p>From the repository root:</p>
       <Code>{`agentfox scan`}</Code>
       <Output>{`╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────────────╮
-│ support_triage/agent.py: can read crms (crm_lookup), reads untrusted web pages       │
-│ (web_fetch), and can send email (email_send). An instruction hidden in a web page    │
-│ could send crm data out.                                                             │
+│ support_triage/agent.py: can read CRM records (crm_lookup), reads untrusted web      │
+│ pages (web_fetch), and can send email (email_send). An instruction hidden in a web   │
+│ page could send CRM data out.                                                        │
 │                                                                                      │
 │ Contain it: \`agentfox permit grant <agent> email_send --max-taint user\` (anything    │
 │ derived from untrusted content needs an approval before it reaches email_send), or   │
@@ -343,7 +343,7 @@ support-triage — blast radius 4
       "kind": "lethal_trifecta",
       "file": "support_triage/agent.py",
       "line": 9,
-      "detail": "support_triage/agent.py: can read crms (crm_lookup), reads untrusted web pages (web_fetch), and can send email (email_send). …",
+      "detail": "support_triage/agent.py: can read CRM records (crm_lookup), reads untrusted web pages (web_fetch), and can send email (email_send). …",
       "severity": "critical",
       "capabilities": ["private_data", "untrusted_input", "exfiltration"],
       "evidence": {
