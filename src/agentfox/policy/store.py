@@ -13,6 +13,7 @@ Two invariants live here:
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,13 +27,16 @@ from agentfox.policy.canary import active_canary, pick_version_id
 from agentfox.policy.engine import NativePolicyEngine, PolicyEngine
 from agentfox.policy.hierarchy import (
     EffectivePolicy,
+    LintFinding,
     PolicyLayer,
     lint_policy,
     lint_summary,
     resolve_effective,
 )
-from agentfox.policy.model import PolicyDocument
+from agentfox.policy.model import PROTECTED_RULES, PolicyDocument
 from agentfox.policy.opa import OpaPolicyEngine
+
+log = logging.getLogger(__name__)
 
 
 def get_engine(name: str | None = None) -> PolicyEngine:
@@ -82,6 +86,126 @@ def _read_pack(path: Path) -> PolicyDocument:
         return PolicyDocument.from_yaml(path.read_text())
     except Exception as exc:
         raise PolicyPackError(path, exc) from exc
+
+
+class UnloadablePolicyVersion(RuntimeError):
+    """A stored policy version that no longer validates, named by pack and version.
+
+    Stored rows outlive the validator that accepted them. A version saved before a
+    rule became mandatory, or before a field was tightened, is still bound and
+    still read on every request; without this it surfaced as a bare pydantic
+    `ValidationError` from deep inside the store and the request answered 500.
+
+    The runtime treats it like a degraded detector pipeline, under the
+    deployment's fail mode (`runtime/enforcement/enforcer.py`); read-only views
+    skip the layer and list it (`to_json`).
+    """
+
+    def __init__(
+        self, version: PolicyVersion, cause: Exception, *, binding_mode: str | None = None
+    ) -> None:
+        raw = _stored_payload(version)
+        self.key = str(raw.get("key") or version.policy_id)
+        self.version = version.version
+        self.version_id = version.id
+        self.binding_mode = binding_mode
+        #: What the stored document *declared*, read without validating it — the
+        #: pack's own fail_mode is one of the two sources the runtime consults.
+        self.fail_mode = str(raw.get("fail_mode") or "open")
+        self.detail = " ".join(str(cause).split())
+        self.cause = cause
+        super().__init__(
+            f"policy {self.key} v{self.version} ({self.version_id}) is stored but no "
+            f"longer loads: {self.detail}"
+        )
+
+    def to_json(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "version": self.version,
+            "version_id": self.version_id,
+            "mode": self.binding_mode,
+            "error": self.detail,
+        }
+
+
+def _stored_payload(version: PolicyVersion) -> dict:
+    try:
+        data = version.compiled_json or yaml.safe_load(version.body or "") or {}
+    except yaml.YAMLError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _shipped_pack(key: str) -> PolicyDocument | None:
+    """The shipped definition of ``key``, read the way `load_from_dir` reads it."""
+    directory = get_settings().policies_dir
+    if not directory.exists():
+        return None
+    for path in sorted(directory.glob("*.y*ml")):
+        try:
+            doc = _read_pack(path)
+        except PolicyPackError:
+            continue
+        if doc.key == key:
+            return doc
+    return None
+
+
+#: Version ids already warned about, so a restored version bound on a hot path
+#: logs once per process rather than once per request.
+_RESTORE_WARNED: set[str] = set()
+_SKIP_WARNED: set[str] = set()
+
+
+def load_version_document(version: PolicyVersion) -> PolicyDocument:
+    """A stored policy version as a document: the one way a stored row becomes one.
+
+    Every read of `compiled_json` / `body` into a `PolicyDocument` goes through
+    here, so the store, the runtime, canary, simulation and the API agree on what
+    a stored version means.
+
+    One repair, and only one. A version of a pack named in `PROTECTED_RULES` that
+    lacks a protected rule gets that rule back from the shipped pack, with a
+    warning. Those rules are non-overridable and the pack may not run without
+    them, so a version saved before the rule became mandatory is given the rule
+    it was always meant to carry — the alternative was refusing to load it, which
+    took the tenant's whole runtime with it. Nothing else is filled in: a rule
+    not in `PROTECTED_RULES` is never restored, and the validator for documents
+    being *saved* is unchanged, so a new version without the rule is refused.
+
+    Any other failure raises `UnloadablePolicyVersion`.
+    """
+    data = _stored_payload(version)
+    key = str(data.get("key") or "")
+    required = PROTECTED_RULES.get(key, ())
+    present = {rule.get("id") for rule in data.get("rules") or [] if isinstance(rule, dict)}
+    missing = [rule_id for rule_id in required if rule_id not in present]
+    if missing:
+        shipped = _shipped_pack(key)
+        restorable = [rule for rule in shipped.rules if rule.id in missing] if shipped else []
+        if restorable:
+            data = {
+                **data,
+                "rules": [
+                    *(data.get("rules") or []),
+                    *(rule.model_dump() for rule in restorable),
+                ],
+            }
+            if version.id not in _RESTORE_WARNED:
+                _RESTORE_WARNED.add(version.id)
+                log.warning(
+                    "policy %s v%s (%s) is missing protected rule(s) %s; restored from "
+                    "the shipped pack. Save a new version to make this permanent.",
+                    key,
+                    version.version,
+                    version.id,
+                    ", ".join(r.id for r in restorable),
+                )
+    try:
+        return PolicyDocument.model_validate(data)
+    except Exception as exc:
+        raise UnloadablePolicyVersion(version, exc) from exc
 
 
 def project_policy_dir(root: Path | None = None) -> Path:
@@ -188,6 +312,7 @@ def _bound_layers(
     *,
     scoped: bool = True,
     pick_canary: bool = False,
+    skipped: list[UnloadablePolicyVersion] | None = None,
 ) -> list[BoundLayer]:
     """Every live binding as a layer: the one place bindings become documents.
 
@@ -202,6 +327,10 @@ def _bound_layers(
     returns a hit when the binding still points at the canary's own recorded stable
     version, so a binding that moved out from under a stale canary (e.g. someone
     edited the policy directly) is never silently overridden.
+
+    A bound version that no longer loads (`UnloadablePolicyVersion`) raises, unless
+    ``skipped`` is given: then it is appended there and the layer left out, which
+    is what the read-only views and the enforcer's fail-mode handling want.
     """
     out: list[BoundLayer] = []
     for binding in _currently_bound(session):
@@ -216,7 +345,17 @@ def _bound_layers(
                     candidate_version = session.get(PolicyVersion, picked_id)
                     if candidate_version is not None:
                         version = candidate_version
-        doc = PolicyDocument.model_validate(version.compiled_json or yaml.safe_load(version.body))
+        try:
+            doc = load_version_document(version)
+        except UnloadablePolicyVersion as exc:
+            exc.binding_mode = binding.mode
+            if skipped is None:
+                raise
+            if version.id not in _SKIP_WARNED:
+                _SKIP_WARNED.add(version.id)
+                log.warning("skipping a bound policy version: %s", exc)
+            skipped.append(exc)
+            continue
         doc.scope = binding.scope_json or doc.scope
         if scoped and not doc.matches_scope(agent_slug, environment):
             continue
@@ -236,12 +375,25 @@ def _bound_layers(
     return out
 
 
-def active_layers(session: Session, subject: dict[str, str] | None = None) -> list[PolicyLayer]:
-    """Every bound policy version, as hierarchy layers (P12)."""
+def active_layers(
+    session: Session,
+    subject: dict[str, str] | None = None,
+    *,
+    skipped: list[UnloadablePolicyVersion] | None = None,
+) -> list[PolicyLayer]:
+    """Every bound policy version, as hierarchy layers (P12).
+
+    Read-only views use this, so a bound version that no longer loads is left
+    out rather than raised; pass ``skipped`` to find out which.
+    """
+    skipped = [] if skipped is None else skipped
     if subject is None:
-        return [b.layer for b in _bound_layers(session, scoped=False)]
+        return [b.layer for b in _bound_layers(session, scoped=False, skipped=skipped)]
     return [
-        b.layer for b in _bound_layers(session, subject.get("agent"), subject.get("environment"))
+        b.layer
+        for b in _bound_layers(
+            session, subject.get("agent"), subject.get("environment"), skipped=skipped
+        )
     ]
 
 
@@ -277,7 +429,10 @@ def effective_for(
     if team is None and agent_slug:
         team = agent_team(session, agent_slug)
     subject = _subject(agent_slug, environment, team, user, org)
-    return resolve_effective(active_layers(session, subject), subject)
+    skipped: list[UnloadablePolicyVersion] = []
+    effective = resolve_effective(active_layers(session, subject, skipped=skipped), subject)
+    effective.unloadable = [exc.to_json() for exc in skipped]
+    return effective
 
 
 def agent_team(session: Session, agent_slug: str | None) -> str | None:
@@ -301,6 +456,8 @@ def policies_in_force(
     team: str | None = None,
     user: str | None = None,
     org: str | None = None,
+    *,
+    skipped: list[UnloadablePolicyVersion] | None = None,
 ) -> list[tuple[PolicyDocument, PolicyVersion, PolicyBinding]]:
     """What the runtime evaluates for one subject: the hierarchy, resolved (P12).
 
@@ -319,10 +476,15 @@ def policies_in_force(
     ``team`` defaults to the agent's ``owner_team``. ``user`` is only known when the
     caller supplies it; without it, `user` layers scoped to a specific user do not
     apply (a `user` layer scoped to `*` does).
+
+    A bound version that no longer loads raises `UnloadablePolicyVersion`. With
+    ``skipped`` it is collected there instead and the remaining packs are still
+    returned, so the enforcer can evaluate them and then apply its fail mode to
+    the gap rather than losing every pack to one bad row.
     """
     if team is None and agent_slug:
         team = agent_team(session, agent_slug)
-    bound = _bound_layers(session, agent_slug, environment, pick_canary=True)
+    bound = _bound_layers(session, agent_slug, environment, pick_canary=True, skipped=skipped)
     subject = _subject(agent_slug, environment, team, user, org)
     effective = resolve_effective([b.layer for b in bound], subject)
     applicable = {id(layer) for layer in effective.applicable}
@@ -337,8 +499,24 @@ def policies_in_force(
 
 
 def lint_all(session: Session) -> dict:
-    """Lint every bound policy layer. Intended for CI (P12-4)."""
-    return lint_summary(lint_policy(active_layers(session)))
+    """Lint every bound policy layer. Intended for CI (P12-4).
+
+    A bound version that no longer loads is a `high` finding rather than a crash:
+    it is a policy the deployment believes is in force and the runtime cannot read.
+    """
+    skipped: list[UnloadablePolicyVersion] = []
+    findings = lint_policy(active_layers(session, skipped=skipped))
+    findings.extend(
+        LintFinding(
+            "unloadable-version",
+            "high",
+            "",
+            f"{exc}. Save a corrected version of '{exc.key}' or unbind it.",
+            "",
+        )
+        for exc in skipped
+    )
+    return lint_summary(findings)
 
 
 def save_policy(
@@ -440,11 +618,12 @@ def active_policies(
 
     The inventory: no hierarchy resolution, so a team-scoped layer is listed for
     everyone. What one request is actually evaluated against is
-    :func:`policies_in_force`.
+    :func:`policies_in_force`. A bound version that no longer loads is left out
+    (and logged), as in every other read-only view.
     """
     return [
         (b.layer.document, b.version, b.binding)
-        for b in _bound_layers(session, agent_slug, environment, pick_canary=True)
+        for b in _bound_layers(session, agent_slug, environment, pick_canary=True, skipped=[])
     ]
 
 

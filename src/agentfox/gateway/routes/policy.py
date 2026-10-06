@@ -23,7 +23,9 @@ from agentfox.policy import (
     MODES,
     CanaryError,
     PolicyDocument,
+    UnloadablePolicyVersion,
     active_canary,
+    active_layers,
     canary_health,
     canary_rollout,
     compile_to_rego,
@@ -33,6 +35,7 @@ from agentfox.policy import (
     lint_all,
     lint_documents,
     lint_summary,
+    load_version_document,
     policies_in_force,
     record_simulation,
     rollback_canary,
@@ -60,14 +63,20 @@ def list_policies(
     # by pattern. Reusing `policies_in_force` here means the filter agrees with what
     # actually gets enforced at request time, rather than a second, looser notion
     # of "applies to".
-    scoped_policy_ids = (
-        {
+    #
+    # A bound version that no longer loads is listed under `unloadable_policies`
+    # rather than failing the whole page.
+    unloadable: list[UnloadablePolicyVersion] = []
+    if agent:
+        scoped_policy_ids: set[str] | None = {
             version.policy_id
-            for _doc, version, _binding in policies_in_force(session, agent_slug=agent)
+            for _doc, version, _binding in policies_in_force(
+                session, agent_slug=agent, skipped=unloadable
+            )
         }
-        if agent
-        else None
-    )
+    else:
+        scoped_policy_ids = None
+        active_layers(session, skipped=unloadable)
     out = []
     for policy in session.scalars(select(Policy).order_by(Policy.key)):
         if scoped_policy_ids is not None and policy.id not in scoped_policy_ids:
@@ -103,7 +112,7 @@ def list_policies(
                 "proposed": policy.proposed,
             }
         )
-    return {"policies": out}
+    return {"policies": out, "unloadable_policies": [exc.to_json() for exc in unloadable]}
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +339,11 @@ def change_mode(
     if target is None:
         raise HTTPException(404, f"policy '{key}' has no versions")
 
-    if payload.mode == "enforce" and simulation_for(session, target) is None:
+    try:
+        simulated = payload.mode != "enforce" or simulation_for(session, target) is not None
+    except UnloadablePolicyVersion as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if not simulated:
         raise HTTPException(
             409,
             f"version {target.version} of '{key}' has not been simulated: replay recent "
@@ -605,7 +618,10 @@ def get_rego(
         .where(PolicyVersion.policy_id == policy.id)
         .order_by(PolicyVersion.version.desc())
     ).first()
-    doc = PolicyDocument.model_validate(latest.compiled_json)
+    try:
+        doc = load_version_document(latest)
+    except UnloadablePolicyVersion as exc:
+        raise HTTPException(422, str(exc)) from exc
     return {
         "key": key,
         "version": latest.version,

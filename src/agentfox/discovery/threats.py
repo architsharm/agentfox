@@ -293,7 +293,9 @@ def _safe_available(detector: Any) -> bool:
         return False
 
 
-def _rule_index(session: Session, control_titles: dict[str, str]) -> dict[str, list[dict]]:
+def _rule_index(
+    session: Session, control_titles: dict[str, str], skipped: list | None = None
+) -> dict[str, list[dict]]:
     """control key -> the live policy rules that provide evidence for it.
 
     Resolved through `active_layers`, which is the set of *bound* policy versions
@@ -302,11 +304,14 @@ def _rule_index(session: Session, control_titles: dict[str, str]) -> dict[str, l
     report a threat as enforced when nothing is enforcing it — the one error this
     view must not make, because it is the error that gets somebody breached while
     reading a green screen.
+
+    A bound version that no longer loads is left out and appended to ``skipped``
+    — not counted as covering anything, and not allowed to take the page down.
     """
     from agentfox.policy.store import active_layers
 
     out: dict[str, list[dict[str, Any]]] = {}
-    for layer in active_layers(session):
+    for layer in active_layers(session, skipped=skipped):
         document = layer.document
         for rule in document.rules:
             if not getattr(rule, "enabled", True):
@@ -335,7 +340,8 @@ def coverage(
 
     controls_by_threat, control_titles = _control_index(session)
     detectors_by_threat = _detector_index()
-    rules_by_control = _rule_index(session, control_titles)
+    unloadable: list[Any] = []
+    rules_by_control = _rule_index(session, control_titles, unloadable)
 
     detections = dict(
         session.execute(
@@ -412,6 +418,10 @@ def coverage(
         "enforcing": sum(1 for r in scored if r.status == "enforcing"),
         "gaps": [r.to_json() for r in scored if r.status in ("uncovered", "breached")],
         "threats": [r.to_json() for r in rows],
+        # Bound policy versions that no longer load, and so cover nothing above.
+        # Listed rather than hidden: a pack the operator believes is in force and
+        # is not is exactly what this page exists to show.
+        "unloadable_policies": [exc.to_json() for exc in unloadable],
     }
 
 

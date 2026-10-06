@@ -127,6 +127,8 @@ class EffectivePolicy:
     layer_modes: list[dict[str, str]] = field(default_factory=list)
     #: The applicable layers themselves, broadest first.
     applicable: list[PolicyLayer] = field(default_factory=list, repr=False)
+    #: Bound versions left out because they no longer load (`store.load_version_document`).
+    unloadable: list[dict[str, Any]] = field(default_factory=list)
 
     def rules_in_force(self, layer: PolicyLayer) -> list[Rule]:
         """The rules from ``layer`` that resolution kept, in the layer's own order.
@@ -163,6 +165,7 @@ class EffectivePolicy:
             "default_effect": self.default_effect,
             "rules": [r.to_json() for r in self.rules],
             "rejected": self.rejected,
+            "unloadable_policies": self.unloadable,
         }
 
 
