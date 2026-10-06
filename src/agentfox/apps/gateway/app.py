@@ -374,7 +374,7 @@ def create_app() -> FastAPI:
         return _health_payload()
 
     # `summary` pinned so the docstring below does not rewrite this route's label in
-    # the generated API route table (scripts/gen/api_routes.py) — the explanation belongs
+    # the generated API route table (scripts/api_routes.py) — the explanation belongs
     # in the description, and the public summary of this route has not changed.
     @app.get("/api/health", tags=["platform"], summary="Health")
     def health() -> dict[str, Any]:
