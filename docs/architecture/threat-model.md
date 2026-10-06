@@ -15,8 +15,8 @@ Taxonomy anchors: OWASP LLM Top 10 (2025), OWASP Agentic Threats T1–T15, MITRE
 
 | Threat | Vector | Control | Residual risk |
 |---|---|---|---|
-| **Direct prompt injection** — user overrides the system prompt | User message | NOM-RTG-01 (P3-1): heuristic + structural + classifier detection | Novel phrasings evade classifiers. Mitigated by defence-in-depth: even a successful injection must still pass tool authorisation (NOM-RTG-04). |
-| **Indirect prompt injection** — payload arrives via a retrieved document or tool result | RAG chunk, web page, tool response, email body | P3-1 runs on **all** untrusted surfaces, not just user input; taint tagging marks the content | The highest-severity realistic attack on agents. Our answer is not "detect every payload" — it is "a tainted argument cannot reach an irreversible tool without approval" (P3-4). |
+| **Direct prompt injection** — user overrides the system prompt | User message | NOM-RTG-01 (P3-1): heuristic + structural + classifier detection, over normalised views of the text (homoglyphs, zero-width and encoded payloads, letter-spaced words, instructions hidden in markup a reader would not see) | Novel phrasings evade classifiers. Mitigated by defence-in-depth: even a successful injection must still pass tool authorisation (NOM-RTG-04). |
+| **Indirect prompt injection** — payload arrives via a retrieved document or tool result | RAG chunk, web page, tool response, email body, tool-call arguments | P3-1 runs on **all** untrusted surfaces, not just user input, including `tool_args`; taint tagging marks the content | The highest-severity realistic attack on agents. Our answer is not "detect every payload" — it is "a tainted argument cannot reach an irreversible tool without approval" (P3-4). |
 | **Sub-agent / A2A poisoning** | Output of one agent becomes input to another | Taint propagates across delegation; `max_taint` on capabilities | Cross-process propagation is MVP-partial (P2-5). |
 | **Memory poisoning** (Agentic T1) | Persisted conversation/vector memory | Detectors run on memory reads; drift + red-team probes | We do not secure the vector store itself (§2.3 non-goal). |
 
@@ -36,11 +36,12 @@ Taxonomy anchors: OWASP LLM Top 10 (2025), OWASP Agentic Threats T1–T15, MITRE
 
 | Threat | Control |
 |---|---|
-| Agent takes an irreversible action it should not (LLM06, Agentic T2) | NOM-IAM-02 default-deny least privilege with **argument-level** constraints; NOM-IAM-03 HITL on `irreversible` tools |
+| Agent takes an irreversible action it should not (LLM06, Agentic T2) | NOM-IAM-02 default-deny least privilege with **argument-level** constraints; NOM-IAM-03 HITL on `irreversible` tools. An approval is bound to the agent, tool and arguments a person saw, lets exactly one retry through (`approved → used`), and cannot be granted while the agent is killed or quarantined |
 | Privilege escalation via delegation (T3) | NOM-IAM-05 — child ⊆ parent enforced at write time |
 | Confused deputy — agent used as a proxy to reach data the caller cannot | Capabilities bound to the *identity*, evaluated per call; taint provenance in the decision |
 | Runaway loop / resource exhaustion (LLM10, T4) | NOM-RTG-08 depth + budget limits, loop breaking |
-| Tool poisoning — malicious instructions inside an MCP tool description; silent schema swap | NOM-DSC-05 — snapshot digests, description-injection scanning, pinning |
+| Tool poisoning — malicious instructions inside an MCP tool description; silent schema swap | NOM-DSC-05 — snapshot digests, description-injection and poisoning-pattern scanning (`agentfox scan mcp` exits 1 on a critical finding), pinning; an `mcp_server` monitor re-reads a remote server's listing on a schedule and raises drift as a finding |
+| A coding agent widens its own permissions by running the CLI | The coding-agent harness turns every `agentfox` command that changes what is blocked or granted (`permit`, capability and enforcement commands) into a permission prompt for the person (`harness/scripts/guard_blocking_commands.py`) |
 
 ### E.1.4 Correctness failures (the pillar security vendors omit)
 
@@ -68,7 +69,7 @@ Taxonomy anchors: OWASP LLM Top 10 (2025), OWASP Agentic Threats T1–T15, MITRE
 
 | Threat | Impact | Mitigation |
 |---|---|---|
-| **Gateway outage takes the customer's agent down** | Catastrophic — the fastest way to be removed from production | NFR-2. P3-7 fail-open per policy and environment, chosen deliberately and audited. SDK path degrades to local-only enforcement. Health-check-driven bypass. **A governance tool that becomes an outage is uninstalled the same week.** |
+| **Gateway outage takes the customer's agent down** | Catastrophic — the fastest way to be removed from production | NFR-2. P3-7 fail-open per policy and environment, chosen deliberately and audited; a pack's own `fail_mode` is honoured. A stored policy version that no longer validates no longer fails the request: it is skipped under the fail mode and named in the decision (`policy.unloadable`). SDK path degrades to local-only enforcement. **A governance tool that becomes an outage is uninstalled the same week.** |
 | **Latency regression** | We become a performance problem | NFR-1 as a tested budget in CI; concurrent detectors with per-detector timeouts; heuristic fast path before any model-based detector; degrade-to-observe over budget |
 | **False blocks** (PRD R3) | Trust destroyed; product disabled and never re-enabled | Observe mode by default; P2-7 simulation before enforcement; per-decision override with feedback; per-detector precision tracked and surfaced (P3-11) |
 
@@ -112,6 +113,31 @@ governance product into one that quietly rewrites itself.
 | **A quietly loosened control ships through canary** | A candidate that blocks *less* | The canary gate rolls back in both directions, with a minimum dwell time per step | A loosening too small to cross `max_block_rate_drop` |
 | **Privacy leak through learned artefacts** | Raw conversation text, span attributes and approval arguments copied into a learned corpus | Redaction before anything is learned; learned artefacts carry provenance so deletion cascades; learning jobs bind to one tenant and never run in `system_scope` | Retention enforcement is not yet implemented for source tables (declared gap) |
 | **Approval fatigue** — people approve without reading | Proposal volume | Dedupe by fingerprint; rank by impact; cap open proposals per owner; measure time-to-decision | Fatigue that looks like diligence |
+
+
+### E.2.6 The control plane and what we expose
+
+The gateway is reachable by agents, operators, the dashboard, schedulers and (for two
+routes) the public. Each of those is an attack surface on us rather than on the customer's
+agents.
+
+| Threat | Vector | Mitigation |
+|---|---|---|
+| **Owner takeover through a published secret** | The service secret mints an owner token for any GitHub identity; the signing key makes the chain tamper-evident. Both ship with development defaults that are in this repository | Outside a development environment the process refuses to start while either is unset or a published value (`assert_production_secrets`, `InsecureConfigurationError`); `docker-compose.yml` will not start without both. The image no longer seeds demo users on boot; the first operator is created explicitly (`agentfox admin users create`) |
+| **Impersonating an agent with a made-up key** | A `nom_agt_…` string that does not verify | A presented agent key that does not verify (wrong, revoked, expired, or a sandbox's) is a **401** on every route. No credential at all is still served, as shadow traffic in the default tenant, so it is observed rather than attributed to the agent the body names |
+| **A stopped agent keeps acting** | The kill switch checked on only some surfaces; an approval granted during an incident | The kill switch is checked at the top of `Enforcer.evaluate()`, so every surface that reaches a decision refuses a killed or quarantined agent (completions, tool calls, guard input/output, memory writes, agent messages, streams). Approving is refused while the agent is stopped |
+| **Stolen operator session** | A dashboard token that outlives sign-out | Signing out revokes that session's token; a GitHub sign-in keeps at most 5 live login tokens and revokes the oldest; tokens expire by default, and every revocation is recorded on the audit chain |
+| **SSRF through a URL we fetch** | An OpenAPI spec, a remote MCP server, a provenance source or a probe target pointing at loopback, the private network or cloud metadata | `core/outbound.py` (`guarded_get`, `guarded_post`): http(s) only; every address the name resolves to is vetted and the connection pinned to the vetted one (no DNS rebinding); private and loopback refused unless `outbound_allow_private_hosts`; link-local (metadata), multicast and reserved always refused; GET redirects re-vetted per hop and never handed the caller's `Authorization`; POST redirects refused; bodies read under a size cap |
+| **Forged push webhook** | `POST /api/integrations/github/webhook` is unauthenticated by nature | Acted on only when `X-Hub-Signature-256` verifies against the deployment's `github_webhook_secret` or the tenant connection's own (encrypted) secret, and only for monitors of tenants whose secret signed it. 503 when no secret is configured, 401 on a bad signature, 413 over 5 MB. A verified push can only queue a rescan of a repository already being monitored, and only for the watched branch |
+| **Turning live probes into an attack tool** | A probe target URL pointing at someone else's system; probing at volume | Targets are created disabled; opting in is a separate call by `owner`/`admin`/`security` that must carry the exact warning text and records who agreed, on the target and the audit chain. Probes go only to the host registered at opt-in (checked before DNS), through `guarded_post`, with redirects refused; changing the URL clears the opt-in. Per-target probes per run, rate, interval and timeout are clamped to hard caps, jobs are bounded in targets and wall-clock, and `AGENTFOX_LIVE_PROBES_ENABLED=false` stops all of it. Probe requests carry `X-AgentFox-Probe` so the target can tag or drop them |
+| **Probe data mistaken for production data** | Probe traffic written to a tenant's traces | Probe sessions start `afx-probe:`, campaigns are `runner="live"`, findings are `live_probe_escape`: three markers that separate them |
+| **Abuse of the public showcase** | `GET /api/public/showcase` is unauthenticated | Off unless `AGENTFOX_SHOWCASE_ENABLED`; reads only the dedicated showcase tenant through the same session-level tenant filter as everything else; returns counts, probe keys and finding titles, never probe text or replies; cached for a minute and rate limited to 30 requests per minute per client address |
+| **Data leaving through alerts** | Slack messages carry finding titles out of the deployment; a tenant-set URL could point anywhere | Nothing is sent with `allow_egress` off. A tenant's channel must be an `https://hooks.slack.com/` URL, is stored encrypted, and redirects are not followed. Messages are queued on the session and sent only after commit, so rolled-back work sends nothing |
+| **Unauthenticated cron trigger** | `/api/internal/jobs/run` drives every tenant's scheduled work | Requires `AGENTFOX_CRON_SECRET` or `CRON_SECRET`, compared in constant time; 503 when neither is set. Running it is idempotent: schedules and monitors refuse to run before they are due |
+
+The admission controller and rate limiters (including the showcase limiter) are per-process,
+so N replicas allow N times the stated rate. That is a known, declared limitation, not a
+mitigation we claim at cluster scope.
 
 ---
 

@@ -52,19 +52,29 @@ agentfox init
 ```
 
 ```
-  ✓ database ready
+Setting up AgentFox
+  ✓ database ready  sqlite:///…/agentfox.db
   ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
   ✓ 3 policy pack(s) loaded
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
       tool-containment         enforce  violations are blocked now
       coding-agent not enabled — no coding-agent hooks in this repo. `agentfox admin hooks install --agent <slug> --write` turns it on for that agent.
+      tool-containment blocks from the start — demote with `agentfox policy observe <key>`.
+  ✓ wrote agentfox.toml
 ```
 
-This creates a SQLite database in the current directory, loads the control catalogue and the
-policy packs, and writes a `agentfox.toml` if there isn't one. The coding-agent pack is bound only
-to agents whose Claude Code hooks are installed, so a plain repository gets three. It is idempotent and offline, so it
-is safe to run again.
+This creates a SQLite database, loads the control catalogue and the policy packs, and writes an
+`agentfox.toml` in the current directory if there isn't one. The database lives in
+`~/.agentfox/` (or `$XDG_DATA_HOME/agentfox/`), not in your project, so `agentfox findings` shows the
+same thing from whichever directory you type it in; set `AGENTFOX_STATE_DIR` to put it somewhere
+else. The coding-agent pack is bound only to agents whose Claude Code hooks are installed, so a plain
+repository gets three. It is idempotent and offline, so it is safe to run again.
+
+If the agent you want to govern is Claude Code itself, `agentfox admin hooks install --agent <slug>
+--write` is the shortcut: besides writing the hooks, it registers the agent, declares Claude Code's
+built-in tools with their real impact and grants them to it, and binds the coding-agent pack in
+observe, so ordinary work is not refused by default deny. Destructive commands are still refused.
 
 Read the mode column carefully, because it is the whole shape of the product. The three
 detector-driven packs start in **observe**: they record what they would have done and block
@@ -93,17 +103,18 @@ agentfox scan
 │ web pages (fetch_url), and can send email (send_email). An instruction       │
 │ hidden in a web page could send customer data out.                           │
 │                                                                              │
-│ Contain it: `agentfox permit grant <agent> send_email --max-taint user`  │
-│ (...), or run with `agentfox.auto(mode="observe")` to watch it happen.       │
+│ Contain it: `agentfox permit grant <agent> send_email --max-taint user`      │
+│ (...), or run with `agentfox.auto(mode="observe")` to watch it happen        │
+│ without blocking anything.                                                   │
 ╰─ private data + untrusted content + a way out ───────────────────────────────╯
 Scanned 2 files in /path/to/your/project
   built on: OpenAI SDK
 
   1 of 1 model call sites are ungoverned  (0% covered)
-  can reach: 4 tools · 2 MCP servers (filesystem, fetch)
-     read_customer_record  bot.py     private data
-     fetch_url             bot.py     untrusted input
-     send_email            bot.py     sends out / irreversible
+  can reach: 3 tools · 0 MCP servers
+     read_customer_record  bot.py  private data
+     fetch_url             bot.py  untrusted input
+     send_email            bot.py  sends out / irreversible
      ...
 ```
 
@@ -124,6 +135,8 @@ reported as unknown, never as safe. `--json` carries the same data as flags (`pr
 
 To look closer at the MCP servers, `agentfox scan mcp` reads the same configs, registers every
 server, and reports reach, version pinning and remote auth for each without starting any of them.
+It exits 1 on a critical finding (a poisoned tool description, a critical config issue, or a lethal
+trifecta across the servers), so it can fail a CI step.
 
 For a first look at a machine you have not installed anything on, `agentfox scan --sessions` does the
 same thing plus a scan of local AI-tool session transcripts, and runs a handful of known-adversarial
@@ -198,13 +211,19 @@ agentfox agents list
 ```
 
 ```
-agent     env         risk     registered  owner    framework
-my-agent  production  limited  SHADOW      unowned  —
-  1 agents · 1 shadow · 1 unowned · 1 lineage edges
+agent               env         risk     registered  owner               framework
+hr-screening        production  limited  yes         unowned             crewai
+marketing-copy-bot  production  limited  SHADOW      unowned             —
+my-agent            production  limited  SHADOW      unowned             —
+payments-ops        production  high     yes         marcus@example.com  claude-agent-sdk
+support-triage      production  limited  yes         priya@example.com   langgraph
+  5 agents · 2 shadow · 3 unowned · 4 lineage edges
 ```
 
-The agent registered itself as **shadow** traffic, from the call, without anyone filling in a form.
-`agentfox findings` shows the matching `shadow_agent` finding.
+The other four are the demo's seeded agents. `my-agent` registered itself as **shadow** traffic,
+from the call, without anyone filling in a form. `agentfox findings` shows the matching
+`shadow_agent` finding; `agentfox agents register my-agent --owner you@example.com` makes it a
+registered agent with an owner.
 
 ### 5b. Let it propose the grants (learned permissions)
 
@@ -280,7 +299,7 @@ agentfox permit grant my-agent payments.transfer \
     --limit amount:lt=1000 --max-taint user
 ```
 
-`capability grant` is the only command that widens least privilege, so it prints exactly what it is
+`permit grant` is the only command that widens least privilege, so it prints exactly what it is
 about to allow and asks before it writes, then records the grant in the audit chain. Pass `--yes`
 in scripts. `--max-taint user` means: arguments a person typed are fine, anything that came out of
 a document or another tool needs a human. A higher ceiling is respected: within it, the taint rules
@@ -309,16 +328,23 @@ client's `base_url` at `http://localhost:8080/v1` and change nothing else. The r
 decision in headers:
 
 ```
-x-nometria-trace: trc_01m376q450vgp786rg
+x-nometria-trace: trc_01m48c2p7k1fan1r6r
 x-nometria-verdict: allow
 x-nometria-effective-verdict: allow
+x-nometria-applied-verdict: allow
+x-nometria-would-be-verdict: allow
+x-nometria-decision: dec_01m48c2p81b1tgqnvx
 x-nometria-mode: enforce
-x-nometria-latency-ms: 2.72
+x-nometria-latency-ms: 4.97
 ```
 
 `x-nometria-verdict` is what happened. `x-nometria-effective-verdict` is what the policy would have
-done regardless of mode. In observe mode they differ, and that gap is the thing you watch before
-turning enforcement on.
+done regardless of mode (`applied` and `would-be` repeat the two under clearer names). In observe
+mode they differ, and that gap is the thing you watch before turning enforcement on.
+
+A proxied call held for a person returns HTTP **428**, which the OpenAI and Anthropic SDKs raise as
+an error rather than parse as a completion. The body carries the `approval_id`; once it is approved,
+send the same request again with the header `X-Nometria-Approval: <id>`.
 
 Useful request headers: `X-Nometria-Agent` (the agent slug), `X-Nometria-Session` (correlates calls
 into one execution path), `X-Nometria-Intent` (the declared task, used by intent-based containment),
@@ -362,6 +388,12 @@ expiry. `agentfox admin auth status` tells you whether this deployment is actual
 development environment it accepts an `X-Nometria-User` header instead, which is fine locally and
 unacceptable anywhere else.
 
+Outside development (`AGENTFOX_ENVIRONMENT` set to anything but `development`, `dev`, `test`,
+`testing` or `local`), `/api` requires a token, and the gateway refuses to start until two secrets
+have real values: `AGENTFOX_SERVICE_AUTH_SECRET` and `AGENTFOX_AUDIT_SIGNING_KEY`. Their defaults are
+published in this repository, so they are no secret at all. `openssl rand -hex 32` makes either one;
+keep a copy of the signing key outside the database.
+
 ---
 
 ## Step 6. Read what it found (10 minutes)
@@ -384,19 +416,25 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
 `doctor` is the more interesting one, because it grades the configuration rather than the traffic:
 
 ```
-  ✓    database            reachable — 4 agent(s), 4 trace(s)
-  ✓    enforcement         25 of 25 decisions enforced
-  !    authentication      the X-Nometria-User header is accepted, anyone who can reach
-                           this port is any user they name. Fine locally, unacceptable
-                           anywhere else.
-  ✓    containment         11 of 16 tool(s) can act, 15 capability grant(s)
-  ✓    detectors           8 available
-  !    detector failure    fail-open: a detector that times out lets the request through
-                           and records the gap
-  !    findings            9 open — run `agentfox findings`
+  ✓    database            reachable — 5 agent(s), 11 trace(s)
+  ✓    enforcement         17 of 22 decisions enforced
+  !    authentication      DEVELOPMENT auth is active (environment=development, auth_mode=auto):
+                           an /api request with no token acts as the user named in
+                           X-Nometria-User, or as admin@example.com (an owner, once seeded) —
+                           anyone who can reach this port is any user they name. Fine locally,
+                           unacceptable anywhere else.
+  ✓    secrets             development: the published default secrets are allowed here, and
+                           refused (the gateway will not start) in any other environment
+  ✓    containment         11 of 16 tool(s) can act, 16 capability grant(s) — an action outside
+                           these is refused whether or not a detector fires
+  ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
+                           schema.json, secrets.native
+  !    detector failure    fail-open: a detector that times out lets the request through and
+                           records the gap
+  !    findings            18 open — run `agentfox findings`
 ```
 
-Note the two lines marked `!` that are not about your agents at all. AgentFox tells you that it
+Trimmed. Note the two lines marked `!` that are not about your agents at all. AgentFox tells you that it
 fails open, and that your auth mode is a development mode, rather than leaving you to discover it.
 
 Three commands worth knowing here:
@@ -414,7 +452,7 @@ for it.
 
 ## Step 7. Test before you trust (10 minutes)
 
-Two things worth running before you turn enforcement on.
+Three things worth running before you turn enforcement on.
 
 ```bash
 agentfox test redteam my-agent
@@ -423,18 +461,25 @@ agentfox test redteam my-agent
 Fires the built-in adversarial probe suite (mapped to OWASP LLM Top 10 and MITRE ATLAS) at this
 deployment's actual capability grants and policy bindings, and reports what got through. It
 includes benign controls, so a configuration that blocks everything scores badly rather than
-perfectly. Read the result as configuration regression testing: it tells you whether *this
-deployment* got weaker, and it is not a robustness certificate.
+perfectly. The probes are a dry run: their tool calls are evaluated without writing decisions, so
+they never appear in your findings or in what `policy simulate` replays. It exits 1 when any attack
+got through (`--allow-escapes` to report without failing). Read the result as configuration
+regression testing: it tells you whether *this deployment* got weaker, and it is not a robustness
+certificate.
 
 ```bash
+agentfox policy validate candidate.yaml
 agentfox policy simulate --file candidate.yaml
 ```
 
-Replays the traffic already recorded in your database against a candidate policy, so you can see
-what a rule change would have done before it does it.
+`validate` parses, lints and compiles a policy file without saving it, and exits 1 on a parse error
+or a critical or high lint finding, such as a rule that can never fire. `simulate` replays the
+traffic already recorded in your database against the candidate, so you can see what a rule change
+would have done before it does it; it exits non-zero when the change would newly block production
+traffic.
 
-If you have an eval suite, `agentfox test gate <suite>` exits 1 on regression and is meant to run
-in CI.
+If you have an eval suite, `agentfox test gate <suite>` exits 1 on a regression or on any case that
+errored, and is meant to run in CI.
 
 **What this proves:** you can measure the change before you make it, against your own recorded
 traffic.
@@ -453,6 +498,11 @@ agentfox policy enforce baseline        # the one step that starts blocking mode
 
 This is the only command in this guide that changes what reaches production. `tool-containment`
 was already enforcing from step 2. Promoting `baseline` adds the detector-driven rules on top.
+
+Saving and promoting are separate steps. A policy version you save in the dashboard's editor (or
+with `POST /api/policies`) is stored next to the live one and changes nothing in force until it is
+promoted. Over HTTP, promoting a version to enforce needs a recorded simulation of exactly that
+version first, and is refused with a 409 otherwise.
 
 If it goes wrong, `agentfox policy observe baseline` demotes it again, and
 `agentfox agents quarantine <agent> --reason "..."` stops one agent without touching the rest. Both

@@ -26,7 +26,7 @@ labels.
 
 ## The table
 
-This is exactly what `python scripts/final_numbers.py` prints.
+This is exactly what `python scripts/final_numbers.py` (kept outside this repository) prints.
 
 ```
 corpus / configuration                    n trivial     acc      prec   recall     F1  breach   fblock    esc      $/1k
@@ -154,6 +154,10 @@ Do not claim:
 - Autonomous blocking at SafePyramid's precision.
 
 ## Reproducing
+
+These scripts are kept outside this repository; the commands are recorded so the method is
+clear. The judgment-tier figures this repository publishes are re-run with
+`benchmarks/judgment/run_judgment_benchmark.py`.
 
 ```bash
 export AGENTFOX_JEV_DATA=local/datasets/jev-corpora   # the default; see docs/jev-datasets.md

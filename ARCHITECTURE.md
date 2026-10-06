@@ -8,7 +8,7 @@ disagrees with the code, the code is right; please fix this file in the same PR.
 
 Deeper material: [docs/architecture/high-level-design.md](docs/architecture/high-level-design.md)
 (design rationale, deployment topology), [docs/architecture/low-level-design.md](docs/architecture/low-level-design.md)
-(class-level detail, partly dated), [docs/status.md](docs/status.md) (what is built, generated
+(class-level detail), [docs/status.md](docs/status.md) (what is built, generated
 by probe).
 
 ## What AgentFox is
@@ -28,7 +28,7 @@ order:
 
 | Step | Question | Where it lives |
 |---|---|---|
-| **See** | What agents, tools and MCP servers do I have? | `discovery/`, `registry/` (`agentfox scan`, `agentfox agents`) |
+| **See** | What agents, tools and MCP servers do I have, and what changed? | `discovery/`, `registry/`, `monitoring/` (`agentfox scan`, `agentfox scan monitors`, `agentfox agents`) |
 | **Watch** | What are they doing right now? | `runtime/`, `detection/`, `gateway/` (`agentfox serve`, `agentfox findings`) |
 | **Contain** | What may each one do? | `identity/`, `policy/`, `containment/` (`agentfox permit`, `declare`, `policy`) |
 | **Prove** | Can I show what happened? | `prove/`, `evaluation/` (`agentfox report`, `agentfox test`) |
@@ -66,10 +66,12 @@ order:
 | **Capability grant** | Permission for one identity to call one tool, with optional argument limits and a provenance ceiling (`--max-taint`). No matching grant means default deny. The one softening: `auto()` in its default mode does not raise for an agent that holds no grants at all, until its first grant. | `core/models/identity.py` (`Capability`), `identity/service.py` (`grant_capability`, `check_capability`), `cli/capability_cli.py` |
 | **Provenance / taint** | Where each argument's value came from. Inferred from the conversation (a value copied out of a tool result is `tool_result`) or declared by the caller. `taint_scope` chooses per-session or per-argument reading. | `detection/taint.py` (`TaintTracker`, `TaintMark`), `detection/base.py` (`TAINT_ORDER`), `policy/taint_view.py` |
 | **Detector, detection** | A check over text on one surface (`input`, `output`, `retrieved`, `tool_result`, `tool_args`, …) that returns scored entities. Run in a budgeted, concurrent pipeline. | `detection/base.py` (`Detector`, `BaseDetector`), `detection/pipeline.py` (`DetectorPipeline`), `detection/detectors/`, `detection/adapters/` |
-| **Policy, pack, rule, mode** | A policy document (a "pack") is YAML: rules with a `when` condition and an `effect` (`allow` … `escalate`, `block`). Each bound pack is in `observe` (records what it would do) or `enforce` (applies it). Shipped packs: `baseline`, `eu-ai-act-high-risk`, `tool-containment`, `coding-agent`. Versions are immutable. | `policy/model.py` (`PolicyDocument`, `Rule`, `Condition`), `policy/engine.py` (`NativePolicyEngine`, `combine`), `policy/store.py` (`active_policies`, `set_mode`), `policies_data/*.yaml` |
+| **Policy, pack, rule, mode** | A policy document (a "pack") is YAML: rules with a `when` condition and an `effect` (`allow` … `escalate`, `block`). Each bound pack is in `observe` (records what it would do) or `enforce` (applies it). Shipped packs: `baseline`, `eu-ai-act-high-risk`, `tool-containment`, `coding-agent`. Versions are immutable. | `policy/model.py` (`PolicyDocument`, `Rule`, `Condition`), `policy/engine.py` (`NativePolicyEngine`, `combine`), `policy/store.py` (`active_policies`, `set_mode`, and `load_version_document`, the one loader for stored versions), `policies_data/*.yaml` |
 | **Decision, verdict** | One row per evaluated surface. `verdict` is what was applied; `effective_verdict` is what would have happened with every pack enforcing. Records every policy version in force, so it can be replayed. | `core/models/policy.py` (`Decision`), `runtime/enforcement/result.py` (`EnforcementResult`) |
 | **Finding** | A problem a person should look at, deduplicated by fingerprint and counted on recurrence. A refused tool call is a containment finding titled by what refused it. | `core/models/registry.py` (`Finding`), `prove/findings.py` (`raise_finding`), `containment/findings.py` (`raise_containment_findings`) |
-| **Approval** | A held call waiting for a human; `timeout_action` defaults to deny. | `core/models/identity.py` (`ApprovalRequest`), `identity/service.py` (`request_approval`, `resolve_approval`) |
+| **Approval** | A held call waiting for a human; `timeout_action` defaults to deny. Approved, it lets exactly one retry of the same call through, then reads `used`. | `core/models/identity.py` (`ApprovalRequest`), `identity/service.py` (`request_approval`, `resolve_approval`, `redeem_approval`) |
+| **Monitor** | A connected source re-checked on a schedule (a GitHub repo, a hosted API spec, a remote MCP server, a deployed agent). Each run is diffed against the last; what appeared becomes a finding, what cleared closes. | `core/models/registry.py` (`Monitor`, `AlertChannel`), `monitoring/service.py` (`run_monitor`, `run_due`) |
+| **Probe target** | A deployed agent's endpoint that live red-team probes may be sent to, after an explicit, recorded opt-in. | `core/models/evaluation.py` (`ProbeTarget`), `evaluation/live_probes.py` (`opt_in`, `run_target`) |
 | **Proposal** | A change the platform wants to make (a grant learned from traffic, a declaration, a tuning change), with evidence. Filed → proven → approved → applied → verified, or rolled back. Loosening is never applied automatically. | `core/models/improvement.py` (`ChangeProposal`), `improvement/proposals.py`, `improvement/traffic.py` (`propose_from_traffic`) |
 | **Trace, span** | The execution record of one request: an llm span, guardrail spans, tool spans. | `core/models/audit.py`, `prove/audit/trace.py` (`start_trace`, `add_span`, `end_trace`) |
 | **Audit chain, evidence** | Append-only hash chain over every decision and operator action; evidence packages ship a stdlib-only `verify_chain.py`. | `prove/audit/chain.py` (`append`, `verify`), `prove/audit/evidence.py`, `prove/audit/operator_log.py` |
@@ -135,8 +137,8 @@ recorded. New surfaces must call these methods, not reimplement them.
 2. The route `guard_tool_call` in `gateway/routes/inline.py` takes a `GuardToolCallRequest`
    body (`agent`, `tool`, `arguments`, `provenance`, `intent`, …). Its dependencies are
    `gateway/deps.py:db` (a session from `core/db.py:get_session`, committed when the
-   response is produced) and `agent_credential`, which resolves the bearer key and binds
-   the session to that agent's tenant (`core/tenancy.py:bind_session`) and judgment posture.
+   response is produced) and `agent_credential`, which resolves the bearer key (one that does
+   not verify is a 401) and binds the session to that agent's tenant (`core/tenancy.py:bind_session`) and judgment posture.
 3. The handler builds `Enforcer(session)`, resolves the agent, opens a trace
    (`prove/audit/trace.py:start_trace`) and calls `Enforcer.guard_tool_call` with the
    caller's declared `provenance`. From here it is steps 7–9 above, unchanged.
@@ -157,15 +159,15 @@ All paths are under `src/agentfox/` unless they start at the repo root.
 |---|---|---|
 | `core/` | Settings (`AGENTFOX_*` env, `agentfox.toml`), engine and sessions, ORM models for every table, tenancy, ids, seed data, outbound URL safety, finding webhooks. | `config.py:Settings`, `db.py:get_sessionmaker`, `models/`, `tenancy.py` |
 | `runtime/` | The request path. `enforcement/` is the `Enforcer` split into mixins (`enforcer`, `tool_calls`, `surfaces`, `completion`, `streaming`, `checks`, `limits`, `findings`, `rules`, `result`); `autoguard/` is `auto()`; plus availability (fail modes, admission), reliability (breaker, fallback) and loop governance. | `enforcement/__init__.py` docstring, `enforcement/enforcer.py:evaluate`, `autoguard/__init__.py:auto` |
-| `detection/` | Detectors and the pipeline that runs them; taint tracking; text normalisation; action analysis (SQL/shell semantics); composed-escalation checks; tuning and suppressions; `judgment/`, the optional model tiers and the routing table that limits what each may decide. | `base.py`, `pipeline.py`, `taint.py`, `detectors/`, `judgment/capability.py` |
-| `policy/` | The YAML policy model, the native engine and the OPA adapter, storage and binding, hierarchy and lint, simulation, canaries. | `model.py`, `engine.py`, `store.py` |
+| `detection/` | Detectors and the pipeline that runs them; taint tracking; text normalisation; `prefilter.py`, which skips a regex on text that cannot match it; action analysis (SQL/shell semantics); composed-escalation checks; tuning and suppressions; `judgment/`, the optional model tiers and the routing table that limits what each may decide. | `base.py`, `pipeline.py`, `taint.py`, `detectors/`, `judgment/capability.py` |
+| `policy/` | The YAML policy model, the native engine and the OPA adapter, storage and binding, the stored-version loader (`load_version_document`, `UnloadablePolicyVersion`), hierarchy and lint, simulation, canaries. | `model.py`, `engine.py`, `store.py` |
 | `identity/` | Non-human identities, credentials, capability grants and their constraints, delegation, approvals. | `service.py:check_capability` |
 | `containment/` | What an agent may do beyond the grant: control-flow integrity, data-access scoping, effects that outlive a call, inter-agent message signing, escalation governance, containment findings. | `findings.py`, `control_flow.py` |
 | `grounding/` | What an answer may say: answerability and abstention, provenance and source authority, entitlement filtering, commitments, numeric/temporal integrity, context integrity, tool contracts, sycophancy. | `answerability.py`, `entitlement.py` |
 | `discovery/` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, exposure (the lethal trifecta), threat coverage. | `repo.py`, `exposure.py` |
 | `registry/` | The agent registry, observed lineage, kill switch and quarantine, skills scanning. | `service.py`, `control.py` |
 | `prove/` | Audit chain, traces, evidence packages, SIEM/OTLP, operator and system logs, compliance catalog and status, findings, the one-page report, failure attribution. | `audit/chain.py`, `findings.py`, `report.py` |
-| `evaluation/` | Eval runner and scorers, CI gating, drift, silent-failure sampling, red team (native probes, adaptive campaigns, Garak/PyRIT adapters), Ragas. | `runner.py`, `gating.py`, `redteam.py` |
+| `evaluation/` | Eval runner and scorers, CI gating, drift, silent-failure sampling, red team (native probes, adaptive campaigns, Garak/PyRIT adapters), live probes of deployed agents and the public showcase, Ragas. | `runner.py`, `gating.py`, `redteam.py`, `live_probes.py` |
 | `improvement/` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. | `contract.py`, `proposals.py`, `traffic.py` |
 | `business/` | Business rules as guardrails: threshold ladders, compiling written policy into rules, merging rules from many authors, the guardrail catalogue. | `ladder.py`, `compile.py` |
 | `gateway/` | The FastAPI app: inline `/v1/*` enforcement and the `/api/*` control plane the dashboard calls; auth, RBAC, playground sandboxes. One router per file in `routes/`. | `app.py:create_app`, `routes/inline.py`, `deps.py` |
@@ -174,7 +176,8 @@ All paths are under `src/agentfox/` unless they start at the repo root.
 | `integrations/` | LangGraph guard (`AgentFoxGuard`), MCP governor (`McpGovernor`) and the read-only MCP server, FastAPI middleware, LangSmith/Langfuse correlation, Prometheus. | `langgraph.py`, `mcp.py`, `mcp_server.py` |
 | `sdk/` | The explicit Python SDK: `AgentFox`, `AgentSession`, `@fox.tool(impact=…)`, local or remote mode. | `__init__.py` |
 | `providers/` | The `ModelProvider` seam: `echo` (offline default), OpenAI, Anthropic, Azure, Bedrock, Vertex, LiteLLM. | `base.py`, `echo.py` |
-| `jobs/` | Work outside the request: an in-process queue with retries and a dead letter, its persisted store, handlers, a scheduler. | `queue.py`, `scheduler.py` |
+| `jobs/` | Work outside the request: an in-process queue with retries and a dead letter, its persisted store, handlers, a scheduler. Driven by the cron endpoint or `agentfox admin jobs run-due`. | `queue.py`, `scheduler.py` |
+| `monitoring/` | Continuous monitoring of connected sources: run, diff against the last snapshot, raise and close findings, Slack alerts; GitHub push webhooks queue a rescan. | `service.py`, `snapshots.py`, `alerts.py` |
 | `policies_data/`, `compliance_data/` | Shipped YAML: the four policy packs; controls, obligations and threats. | — |
 | `src/nometria/` | Deprecated compatibility shim: `import nometria` resolves to the same `agentfox` modules. | — |
 
@@ -217,7 +220,9 @@ whether a refusal is raised in-process.
 reason; findings are titled by what actually refused the call.
 
 **Fail-open and fail-closed are explicit and bounded.** `Settings.fail_mode` (default `open`)
-governs what happens when a check cannot run; `runtime/availability.py` converts a
+governs what happens when a check cannot run, and a pack's own `fail_mode` can close it too;
+a bound policy version that no longer loads is handled the same way (`policy.unloadable`).
+`runtime/availability.py` converts a
 long-lasting degradation to closed, and its `NEVER_OPEN` controls (tenant isolation,
 entitlement filter, data-access scope, audit chain) refuse to be configured open. A degraded
 `/v1/*` response is stamped `X-Nometria-Degraded`. Admission and budget state are
@@ -226,8 +231,9 @@ per-process.
 **Nothing leaves the machine by default.** `Settings.allow_egress` (`AGENTFOX_ALLOW_EGRESS`)
 is false; the `echo` provider makes the whole path run with no model or key. Detectors never
 download weights during a request: a missing model reports itself unavailable. Hosted
-judgment tiers need egress on, and the admin's posture is clamped by the deployment (`detection/judgment/posture.py`, `egress.py`). Fetching a
-URL a user typed goes through `core/outbound.py`.
+judgment tiers, the finding webhook and Slack alerts need egress on, and the admin's posture is clamped by the deployment (`detection/judgment/posture.py`, `egress.py`). Fetching a
+URL a user typed (a spec, an MCP server, a probe target) goes through `core/outbound.py`
+(`guarded_get`, `guarded_post`).
 
 **`import agentfox` has no side effects.** The top-level package re-exports lazily; it must
 not open a database or import a client library.
@@ -309,13 +315,13 @@ user-facing version is the website's [limits page](https://useagentfox.com/docs/
 - Admission control, rate limits and the fail-open budget are per-process, so N replicas get
   N times the declared budget.
 - No live IdP, SSO, OIDC or SCIM; principals and grants are declared in AgentFox.
-- `jobs/` is in-process; there is no external queue backend.
+- `jobs/` is in-process; there is no external queue backend, and scheduled work (monitors,
+  probes, canaries) runs only when something calls the runner.
 - `auto()` does not cover the OpenAI Responses API, or tools your code calls without the model
   asking.
 - The Vercel deployment (`api/`) cannot run Alembic migrations through normal channels.
-- `docs/architecture/low-level-design.md`, `api-spec.md` prose and `data-model.md` contain
-  stale paths and counts from before the package was split into subpackages; trust the code
-  and `harness/reference/docs-map.md`'s drift notes.
+- The hand-written prose in `docs/architecture/api-spec.md` (outside the generated route
+  tables) still uses some `NOMETRIA_*` names; trust the code.
 - Much of the source carries internal tracking codes (`P3-4`, `PL-7`, `F8.3`) and history in
   docstrings. They map to [docs/design/PRD.md](docs/design/PRD.md) and
   [docs/design/traceability.md](docs/design/traceability.md); new code should not add more

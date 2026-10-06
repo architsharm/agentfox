@@ -1,6 +1,6 @@
 # Gap Analysis — Enterprise Readiness & Competitive Position
 
-**Date:** 2026-08-18, updated 2026-08-29 · **Scope:** AgentFox Control Plane (grown from 18.7k LOC/178 tests to 50k+ LOC/1,131 tests over that window; those are dated figures, and current counts are in [../status.md](../status.md))
+**Date:** 2026-08-18, updated 2026-08-29 and 2026-10-06 · **Scope:** AgentFox Control Plane (grown from 18.7k LOC/178 tests to 50k+ LOC/1,131 tests over that window; those are dated figures, and current counts are in [../status.md](../status.md))
 **Question:** what stops us selling this to an enterprise, and where do we stand against the field?
 
 **2026-08-29 update:** a full grep/execution-verified re-audit (same discipline as the original —
@@ -24,6 +24,16 @@ consolidated PRD found most of it was **already fixed same-day** in the version 
 corrected in place to show exactly what was already fixed, what's a genuine gap, and what's just
 missing — the "stub-only" pattern in this note is the same *category* of finding: work that
 exists but isn't where the summary claims it is.
+
+**2026-10-06 update:** a round of fixes and two new capabilities, re-verified against the code.
+Closed or narrowed: the gateway refuses to start outside development on published secrets;
+sign-out revokes the token; a fresh self-hosted install creates its first operator from the CLI;
+the kill switch covers every guard surface; an approved retry is redeemed once; the policy
+hierarchy is what the runtime enforces; red-team probe calls stay out of the production tables.
+New: connected GitHub repositories, hosted-API specs and remote MCP servers are re-checked on a
+schedule, with findings from run-to-run diffs and Slack alerts; opted-in deployed agents are
+probed on a schedule. The rows below carry these changes, and Part 7 lists what is still open
+and what is deliberately deferred.
 
 ---
 
@@ -110,7 +120,7 @@ SSO/SAML: 2 references — a seam, not an integration. Questionnaires: 2 referen
 | framework instrumentation (LangChain/LangGraph callbacks) | ◐ real for LangGraph specifically | `integrations/langgraph.py` (`AgentFoxGuard`, 386 lines), verified via 34 passing tests in `tests/runtime/test_streaming_kill_switch_and_langgraph.py`. LlamaIndex/CrewAI/Claude Agent SDK still absent as instrumentation SDKs (only present as static-scan detection strings) |
 | bias / fairness testing | ◐ narrow | `commitments.py::fairness_probe`/`FairnessResult` — one disparate-impact-style probe, not a named LL144/DSA audit workflow |
 | dynamic risk scoring | ◐ real but categorical | `compliance/risk.py::classify()` computes a live prohibited/high/limited/minimal class from capability/tool/data signals, with `RiskAssessment`/`next_review_at`/`signed_off_by` — not a continuous numeric score per the literal Gartner bar, but no longer static or 0-refs |
-| notifications (Slack/PagerDuty/SMTP) | ✗ still absent | unchanged |
+| notifications (Slack/PagerDuty/SMTP) | ◐ partial (2026-10-06) | Monitor findings go to Slack (a deployment channel and a per-tenant one), and findings at or above a set severity go to the finding webhook (HMAC-signed when a secret is set); both are gated by egress. No PagerDuty or SMTP |
 | secrets manager (Vault/KMS) | ✗ still absent | Fernet-at-rest encryption exists for tokens/credentials; no external KMS/Vault |
 | model registry / SR 11-7 | ✗ still absent | drift monitoring exists; no inventory/validation/challenge workflow |
 | ITSM (ServiceNow/Jira) | ✗ still absent | unchanged |
@@ -185,14 +195,14 @@ Four camps, not two. Our PRD modelled two.
 
 | Competitor | Their capability | Our status |
 |---|---|---|
-| ServiceNow AI Control Tower | ~30 discovery integrations; MCP gateway; per-agent **kill switches** | ✗ none |
+| ServiceNow AI Control Tower | ~30 discovery integrations; MCP gateway; per-agent **kill switches** | ◐ per-agent kill switch on every guard surface and inline MCP governance; no discovery integrations |
 | Kosmoy | Kernel-enforced sandboxing, per-task credentials, kill switch, 4 cloud registries, air-gap K8s | ✗ none |
 | Zenity | Inline step-level prevention *inside Copilot Studio*; low-code/Copilot agent coverage; Gartner "company to beat" | ✗ none |
-| Noma | Adaptive red-team engine; per-agent identity + tool-level policy; self-host; $132M raised | ◐ static 11-probe suite |
+| Noma | Adaptive red-team engine; per-agent identity + tool-level policy; self-host; $132M raised | ◐ 22 static probes, an adaptive campaign engine, and opt-in probing of deployed agents |
 | WitnessAI | Network-level capture of desktop apps and IDEs; PII **tokenisation**; warn/route/redact | ◐ tokenise yes, network capture no |
 | Cisco AI Defense | Model validation, algorithmic red teaming, network-enforced guardrails, DefenseClaw sandbox | ✗ none |
 | Astrix / Microsoft Entra | NHI lifecycle, secret rotation automation, Conditional Access, access packages, ITSM/SIEM/SOAR | ◐ NHI yes; no IdP, no SOAR |
-| Credo AI | Policy Packs incl. NYC LL144; CE-marking support; Forrester Leader | ◐ 2 packs, all DRAFT |
+| Credo AI | Policy Packs incl. NYC LL144; CE-marking support; Forrester Leader | ◐ one framework pack (EU AI Act high-risk); all mappings DRAFT |
 | IBM watsonx.governance | AI Factsheets, SR 11-7 model-risk workflows, FedRAMP GovCloud | ✗ none |
 | OneTrust | ~14,000-org installed base; third-party AI vendor risk; automated control mapping | ✗ none |
 | Holistic AI | Published jailbreak audits; bias auditing; NYC LL144 / EU DSA audit heritage | ✗ none |
@@ -215,10 +225,10 @@ Status as of 2026-08-29: **five of seven closed, two stub-only** (real, tested, 
 | 0.1 | **Streaming (SSE) unsupported and silently dropped** | 🔴 | M | verified: `stream:true` → non-streaming JSON | ✅ closed — real SSE streaming in `gateway/routes/inline.py` |
 | 0.2 | **No DB migrations** — `create_all()` only; a deployed instance cannot be upgraded | 🔴 | S | verified absent | ✅ closed — Alembic wired and applied against prod |
 | 0.3 | **No kill switch / quarantine** — cannot stop a misbehaving agent; every competitor has one | 🔴 | S | verified absent | ✅ closed — per-agent kill switch shipped and tested |
-| 0.4 | **Agent tool-calling loop not governed** — proxy forwards `tools`/`tool_calls` but does not enforce across the multi-turn loop | 🔴 | M | 2 refs only | ✅ closed (2026-09-16) — `gateway/routes/inline.py::_govern_tool_loop` reconstructs the tool-calling run from the request body on both proxy routes (`/v1/chat/completions`, `/v1/messages`, streaming included) and scores it with `agent_loop.govern_loop` under the configured `NOMETRIA_LOOP_*` budgets. A stopped verdict returns the route's existing `agentfox_policy_violation` body under the shipped `loop.runaway` rule (NOM-RTG-08) and records a trace plus an `agent_loop_stopped` finding. Correlated by `X-Nometria-Session`; a request with no session header, or no tool calls, is unaffected. |
+| 0.4 | **Agent tool-calling loop not governed** — proxy forwards `tools`/`tool_calls` but does not enforce across the multi-turn loop | 🔴 | M | 2 refs only | ✅ closed (2026-09-16) — `gateway/routes/inline.py::_govern_tool_loop` reconstructs the tool-calling run from the request body on both proxy routes (`/v1/chat/completions`, `/v1/messages`, streaming included) and scores it with `agent_loop.govern_loop` under the configured `AGENTFOX_LOOP_*` budgets. A stopped verdict returns the route's existing `agentfox_policy_violation` body under the shipped `loop.runaway` rule (NOM-RTG-08) and records a trace plus an `agent_loop_stopped` finding. Correlated by `X-Nometria-Session`; a request with no session header, or no tool calls, is unaffected. |
 | 0.5 | **Everything synchronous** — evidence build, red-team, compliance compute run in-request | 🔴 | M | no queue/scheduler | ✅ closed (2026-09-16) — evidence and red-team requests run their own job and return 202 `queued_for_retry` when the first attempt fails. Recurring work runs through `scheduler.py` schedules drained by the cron. |
 | 0.6 | **No HA / scale validation**; SQLite default is single-writer; NFR-3 never tested | 🔴 | M | acknowledged in traceability | ✅ closed — `db.py::configure_pool` supports pooled/HA deployment, live on Neon |
-| 0.7 | No graceful degradation path if the control plane is down (fail-open exists per-detector, not per-service) | 🟠 | S | — | ✅ closed (2026-09-16) — `gateway/app.py::degradation_gate` probes the four dependencies a `/v1/*` request needs (detector pipeline, policy engine including a remote OPA, database beyond the request's own session, configured model provider) and applies `service_fallback`/`DegradationLedger` under `NOMETRIA_FAIL_MODE`, constructed through `FailPolicy` so the `NEVER_OPEN` rule still binds. Fail-closed returns 503 `agentfox_service_degraded`; fail-open serves, records, stamps `X-Nometria-Degraded`, and converts to closed past its budget. Visible on `GET /api/health` and `GET /api/reliability`. |
+| 0.7 | No graceful degradation path if the control plane is down (fail-open exists per-detector, not per-service) | 🟠 | S | — | ✅ closed (2026-09-16) — `gateway/app.py::degradation_gate` probes the four dependencies a `/v1/*` request needs (detector pipeline, policy engine including a remote OPA, database beyond the request's own session, configured model provider) and applies `service_fallback`/`DegradationLedger` under `AGENTFOX_FAIL_MODE`, constructed through `FailPolicy` so the `NEVER_OPEN` rule still binds. Fail-closed returns 503 `agentfox_service_degraded`; fail-open serves, records, stamps `X-Nometria-Degraded`, and converts to closed past its budget. Visible on `GET /api/health` and `GET /api/reliability`. |
 
 **Net, updated 2026-09-16:** Tier 0 is closed. Streaming and migrations closed earlier; 0.5 closed with the deferred job queue (PL-5); **0.4 and 0.7 closed this cycle**, each wired onto the live request path with tests that drive the real FastAPI app rather than the library. The "built the library, didn't plug it in" pattern this row used to describe is now closed across Tier 0 and — for nine of eleven detectors — in [failure-modes.md](failure-modes.md)'s F6/F8 as well. Two things stay deliberately unwired with stated reasons (F6.5, F8.4); that judgement should be re-read rather than reversed by default.
 
@@ -228,7 +238,7 @@ Status as of 2026-08-29: **four closed, one stub-only, four still organisational
 
 | # | Gap | Sev | Effort | 2026-08-18 note | 2026-08-29 status |
 |---|---|---|---|---|---|
-| 1.1 | **No real SSO (OIDC/SAML) or SCIM** — dev identity header in production code path | 🔴 | M | 40–60% of a SIG questionnaire is answerable from SOC 2 + SSO evidence | ◐ partial — dev header now refused outside development mode, real API-token auth shipped (`gateway/deps.py`/`gateway/auth.py`); OIDC still only a schema seam (`User.external_id`), no live IdP integration, SCIM 0 matches |
+| 1.1 | **No real SSO (OIDC/SAML) or SCIM** — dev identity header in production code path | 🔴 | M | 40–60% of a SIG questionnaire is answerable from SOC 2 + SSO evidence | ◐ partial — dev header now refused outside development mode, real API-token auth shipped (`gateway/deps.py`/`gateway/auth.py`). 2026-10-06: the gateway refuses to start outside development on published or default secrets (`core/config.py::assert_production_secrets`), sign-out revokes the token with at most five live login sessions, an invalid agent key is a 401 everywhere, and `agentfox admin users create` makes the first operator. OIDC still only a schema seam (`User.external_id`), no live IdP integration, SCIM 0 matches |
 | 1.2 | **Multi-tenancy not enforced** — `org_id` column exists, 0 queries filter on it | 🔴 | M | a single leak here ends the company | ✅ closed, and closed the strong way — `tenancy.py`'s session-level `with_loader_criteria` enforces isolation structurally, not via per-query filters that could be individually forgotten |
 | 1.3 | **No rate limiting / quota** on the control plane | 🔴 | S | verified absent | ◐ partial, not stub-only anymore — `AdmissionController` is now wired live on `/v1/*` (`gateway/app.py::admission_gate`), which is where an overloaded or misbehaving agent actually generates load; the control plane (`/api/*`) this row names specifically is operator-authenticated and was left out of the same budget deliberately — still genuinely unquota'd if that's the literal surface meant here |
 | 1.4 | **Signing key and provider keys in env vars** — no Vault/KMS/CSFLE | 🔴 | M | undermines our own NFR-7 claim | ◐ partial — Fernet encryption at rest for tokens/credentials now real (`config.py:token_encryption_key`, `*_encrypted` model columns); still no external KMS/Vault |
@@ -248,8 +258,8 @@ Status as of 2026-08-29: **still short of full qualification, but every "0 refs"
 |---|---|---|---|---|---|
 | 2.1 | **Dynamic risk scoring** — continuous, signal-driven score per agent | ✗ static classification only, 0 refs | ◐ real but categorical — `compliance/risk.py::classify()` computes `proposed_class` (prohibited/high/limited/minimal) from live capability/tool/data signals with a re-assessment cycle (`next_review_at`, `signed_off_by`); still not a continuous numeric score per the literal Gartner bar | 🟠 | M |
 | 2.2 | **Interoperability** — connectors to the estate (Bedrock, Azure AI, Vertex, Salesforce, ServiceNow, M365) | ✗ 0 refs; gateway + OTel only | ◐ model-provider connectors real (`providers/enterprise.py`: Azure/Bedrock/Vertex/LiteLLM, tested); business-platform connectors (Salesforce/ServiceNow/M365) still 0 refs — this criterion means estate connectors, not LLM API connectors, so the gap is narrower but not closed | 🔴 | L |
-| 2.3 | **Workflow and approvals** — assessments, review cycles, attestations, task routing | ◐ runtime approvals only; no workflow engine | ◐ stronger — risk assessment cycle real (`risk.py`), escalation/handoff task routing real (`escalation.py`: `EscalationPolicy`, `Handoff`); still no *general* cross-domain workflow engine, task routing exists specifically for escalation | 🟠 | L |
-| 2.4 | Discovery and registry at **estate scale** | ◐ inline + OTel; no agentic-platform enumeration | ◐ unchanged — `discovery.py` is still a static repo/OpenAPI scan, no agentic-platform enumeration (Bedrock console, Copilot Studio catalog) | 🟠 | L |
+| 2.3 | **Workflow and approvals** — assessments, review cycles, attestations, task routing | ◐ runtime approvals only; no workflow engine | ◐ stronger — risk assessment cycle real (`risk.py`), escalation/handoff task routing real (`escalation.py`: `EscalationPolicy`, `Handoff`); 2026-10-06: an approved call is redeemed once on retry, and approvals have a CLI (`agentfox permit approvals`) and an SDK wait. Still no *general* cross-domain workflow engine | 🟠 | L |
+| 2.4 | Discovery and registry at **estate scale** | ◐ inline + OTel; no agentic-platform enumeration | ◐ narrowed (2026-10-06) — repository, OpenAPI and MCP scans are now re-run on a schedule (and on GitHub push) by the `monitoring` package, so drift after connection is caught. Still no agentic-platform enumeration (Bedrock console, Copilot Studio catalog) | 🟠 | L |
 | 2.5 | Evidence collection | ✅ strong — arguably best-in-class | ✅ confirmed, unchanged | — | — |
 | 2.6 | Complete audit trail | ✅ strong — genuinely differentiated | ✅ strengthened — now also covers operator/control-plane actions via `operator_log.py`, same hash chain | — | — |
 | 2.7 | **Findings do not auto-escalate to a human** — no owner routing, SLA, or deadline | 🟠 | ✅ closed — `escalation.py`'s `EscalationPolicy.owner_role`/`sla_minutes`, `breached_handoffs()`, `detect_missed_escalation()`; 36 tests | — | — |
@@ -261,7 +271,7 @@ Status as of 2026-08-29: **3 closed, 6 real-but-partial, 7 still genuinely absen
 | # | Gap | 2026-08-18 status | 2026-08-29 status | Sev | Effort |
 |---|---|---|---|---|---|
 | 3.1 | Business-platform agents (M365 Copilot, Copilot Studio, Power Platform, Salesforce Agentforce) | absent | ✗ still absent — 0 refs to any of these platform names | 🟠 | XL |
-| 3.2 | Adaptive / generative red teaming (ours is 11 static probes) | absent | ✅ closed (2026-09-16) — a native adaptive campaign engine (`evaluation/adaptive.py`, `agentfox redteam run --adaptive`) mutates a blocked probe and retries under a per-probe budget, steering from the failure, and generates probes from *this deployment's* own grants, tool impacts and bound policies. It reports a **posture delta** against the last comparable campaign rather than a pass rate, because a pass rate here would be a robustness claim the engine cannot support. Garak/PyRIT still wrap in as optional external runners. Found two real bugs on first run: a nested-argument blind spot in action assurance (fixed) and glob-grant overbreadth. | 🟠 | L |
+| 3.2 | Adaptive / generative red teaming (ours is 11 static probes) | absent | ✅ closed (2026-09-16) — a native adaptive campaign engine (`evaluation/adaptive.py`, `agentfox redteam run --adaptive`) mutates a blocked probe and retries under a per-probe budget, steering from the failure, and generates probes from *this deployment's* own grants, tool impacts and bound policies. It reports a **posture delta** against the last comparable campaign rather than a pass rate, because a pass rate here would be a robustness claim the engine cannot support. Garak/PyRIT still wrap in as optional external runners. Found two real bugs on first run: a nested-argument blind spot in action assurance (fixed) and glob-grant overbreadth. 2026-10-06: opted-in deployed agents are also probed on a schedule against their live endpoint, with a finding when a contained attack escapes. | 🟠 | L |
 | 3.3 | Framework instrumentation SDKs — LangChain/LangGraph callbacks, LlamaIndex, CrewAI, Claude Agent SDK | absent | ◐ LangGraph, MCP, and FastAPI real and tested (`integrations/langgraph.py`, 34 passing tests in `tests/runtime/test_streaming_kill_switch_and_langgraph.py`; `integrations/mcp.py`, `integrations/fastapi.py`); LlamaIndex/CrewAI only appear as static-scan detection strings, not instrumentation SDKs; no Claude Agent SDK integration | 🟠 | M |
 | 3.4 | Entra Agent ID / Okta / Ping integration for NHI | absent | ◐ unchanged — NHI lifecycle itself is real and self-contained (`identity/service.py`, 532 lines) but 0 refs to any external IdP | 🟠 | M |
 | 3.5 | FinOps — token cost attribution, budgets, chargeback | absent | ◐ budgets and cost tracking real (`reliability.py::check_budget/charge`, `Budget` model with `max_cost_usd`/`cost_usd`/`tokens`); no chargeback/cost-report-by-team endpoint | 🟠 | M |
@@ -274,7 +284,7 @@ Status as of 2026-08-29: **3 closed, 6 real-but-partial, 7 still genuinely absen
 | 3.12 | AWS / Azure Marketplace listing | absent | ✗ still absent — organisational | 🟠 | M (org) |
 | 3.13 | Analyst engagement (Gartner MQ, Forrester Wave) | absent | unverifiable — organisational | 🟠 | L (org) |
 | 3.14 | Eval UX depth — dataset splits, pairwise comparison, human review queues, experiment tracking | absent | ✗ still basic — no splits/pairwise/review-queue/experiment-tracking hits beyond a literal `split="production"` | 🟡 | L |
-| 3.15 | **All 257 framework mappings are DRAFT** — our own gate excludes them from evidence packages | 🔴 gap | ◐ review mechanism now real and tested (`compliance/catalog.py::review_mapping()`, draft mappings still excluded from evidence per `test_draft_mappings_excluded_from_evidence`) — some real mappings have been reviewed as part of this session's work, but full legal sign-off across all 210 current mappings remains an organisational/domain-expert task, not a code gap | 🔴→◐ | L (needs qualified reviewer) |
+| 3.15 | **All framework mappings are DRAFT** (317 today) | 🔴 gap | ◐ review mechanism real and tested (`compliance/catalog.py::review_mapping()`); draft mappings ship in evidence packages with a `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` chip rather than being excluded. Legal sign-off across all 317 mappings remains an organisational/domain-expert task, not a code gap | 🔴→◐ | L (needs qualified reviewer) |
 | 3.16 | No published pricing or self-serve tier — every Tier-A motion in the PRD assumes PLG | absent | ✗ still absent — organisational | 🟠 | M |
 
 ---
@@ -307,7 +317,7 @@ What a Tier-B/C buyer will require before signing, and our status. Updated 2026-
 | ISO 27001 certification | ✗ | ✗ unchanged — organisational |
 | SIG Lite / SIG Core questionnaire response | ✗ no completed questionnaire | ✗ still no completed response |
 | Third-party penetration test report | ✗ | ✗ unchanged — organisational |
-| SSO (SAML/OIDC) + MFA + SCIM | ✗ | ◐ auth hardened — real API-token auth, dev header refused outside dev mode; OIDC still only a schema seam, no live SSO/SCIM |
+| SSO (SAML/OIDC) + MFA + SCIM | ✗ | ◐ auth hardened — real API-token auth, dev header refused outside dev mode, startup refusal on published secrets, revoking sign-out; OIDC still only a schema seam, no live SSO/SCIM |
 | RBAC with least privilege | ✅ (6 roles, enforced, tested) | ✅ confirmed unchanged — `ALL_ROLES = {owner, admin, security, compliance, developer, auditor}`, `WRITE_ROLES` matrix enforced |
 | Data residency / regional hosting | ◐ self-host yes; no managed regions | ◐ unchanged |
 | Encryption at rest + in transit, key management | ◐ transport yes; no KMS/CSFLE | ◐ stronger — Fernet-encrypted credentials/tokens at rest now real; still no external KMS/Vault |
@@ -322,22 +332,33 @@ What a Tier-B/C buyer will require before signing, and our status. Updated 2026-
 
 ---
 
-## Part 7 — Recommendation (updated 2026-08-29)
+## Part 7 — Recommendation (updated 2026-08-29; open and deferred lists 2026-10-06)
 
 **The original four-phase sequencing has mostly played out. Here's the honest status of each phase, and what's actually left.**
 
-- **Phase A — Make it deployable (Tier 0).** ✅ **substantially done.** Streaming, migrations, kill switch, and HA are real and verified. Agent-loop governance (`agent_loop.py`) and per-service graceful degradation (`availability.py`'s admission controller, wired into `gateway/app.py`'s middleware) are now both **wired into the live path**, not stub-only — confirmed 2026-09-04. Async workers (`jobs.py`) remain genuinely **stub-only**: a real, tested in-process queue interface with zero callers, deliberately not wired into a Redis/SQS implementation until scale demands it.
-- **Phase B — Make it buyable (Tier 1).** ◐ **mostly done.** Multi-tenancy enforcement, operator audit log, and a writable/authenticated dashboard are closed. Rate limiting is stub-only (same pattern as Phase A). SSO/SCIM and KMS remain partial. The SOC 2 clock still hasn't been started — it's organisational, not engineering, and remains the longest pole by far.
+- **Phase A — Make it deployable (Tier 0).** ✅ **substantially done.** Streaming, migrations, kill switch, and HA are real and verified. Agent-loop governance (`agent_loop.py`) and per-service graceful degradation (`availability.py`'s admission controller, wired into `gateway/app.py`'s middleware) are now both **wired into the live path**, not stub-only — confirmed 2026-09-04. Async workers were wired on 2026-09-16: a database-backed queue drained by a cron call (Vercel cron, a 30-minute GitHub Actions runner, or `agentfox admin jobs run-due`); a Redis/SQS worker is still not built.
+- **Phase B — Make it buyable (Tier 1).** ◐ **mostly done.** Multi-tenancy enforcement, operator audit log, and a writable/authenticated dashboard are closed. Rate limiting is wired on the inline `/v1/*` surface. SSO/SCIM and KMS remain partial. The SOC 2 clock still hasn't been started — it's organisational, not engineering, and remains the longest pole by far.
 - **Phase C — Qualify for the category (Tier 2).** ◐ **meaningfully advanced, not complete.** Dynamic risk scoring and escalation task-routing are now real (moved off "0 refs"). The finding→HITL escalation gap (2.7) is fully closed. Estate-scale connectors (Salesforce/ServiceNow/M365) and a general workflow/approvals engine remain the honest gaps — what exists today is real but narrower than the Gartner MQ criterion asks for.
 - **Phase D — Differentiate on real failure modes, not competitor features.** ✅ **done, and it's now the strongest part of the story** — with one honest asterisk. Per [failure-modes.md](failure-modes.md), all four families named here (entitlement-aware data access, action semantics/blast radius, answerability & abstention, source authority) plus escalation governance (F5) are built, tested, and **live on the request path** — 40 of 57 failure modes now covered vs. 1 of 50 when this phase was proposed. The asterisk: a seventh family, context/retrieval integrity (F8), turned out to have the same built-but-unwired problem as F6 below. Sandboxing and business-platform coverage remain deliberately skipped, unchanged from the original call.
 
-**What's actually left, in priority order:**
+**What's actually left (2026-10-06), in priority order.** The stub-only list from the last
+update is closed: the job queue is wired, and the F6 and F8 checks run on the request path
+(see [failure-modes.md](failure-modes.md)). F7.7 is now covered. What remains:
 
-1. **Wire the remaining stub-only modules.** Updated 2026-09-04: `agent_loop.py` and `availability.py`'s admission controller are now both wired into the live path (the former including a step-history-aware wiring through both the gateway's `/v1/guard/tool_call` and the LangGraph SDK, not just a per-tool repeat count). `context_integrity.py` moved partway — reachable via a real `POST /provenance/context-check` route, but still not on the automatic inline gateway path. What's left: **`jobs.py`** (fully stub, no callers at all) and **F6's `commitments.py`/`register.py`** (confirmed fully stub-only by tracing their actual exported functions, not just a grep for "register" — zero real call sites outside their own modules and tests). The logic exists and is tested for five failure modes (F6.1-F6.5); it just isn't called from anywhere a live request passes through. This is still the highest-leverage remaining item, just a smaller one than it was.
-2. **Start the SOC 2 / ISO 27001 / pentest clock.** Still the longest pole, still entirely organisational, still unstarted.
-3. **Close the two remaining genuinely absent failure modes** (F7.7 cross-turn self-contradiction, F8.3 stale index) — real, scoped, moderate-effort builds, not XL. F3.8 composed privilege escalation, previously third on this list, was built 2026-08-30 (`guardrails/composition.py`) — see failure-modes.md.
-4. **Build the five modes an independent audit found that this taxonomy never catalogued** — failure-modes.md's F9 (invalid logical inference, sycophancy, non-English quality parity, crescendo manipulation, context stuffing), each with a concrete detection design that reuses already-wired infrastructure.
-5. **Decide on Salesforce/ServiceNow/M365 estate connectors** — the one remaining Tier 2 gap that's a real, if large, build rather than organisational work or a wiring fix.
+1. **Start the SOC 2 / ISO 27001 / pentest clock.** Still the longest pole, still entirely organisational, still unstarted.
+2. **SSO/SCIM and KMS/Vault.** Both need infrastructure to develop against (a live IdP, a deployment with a KMS).
+3. **Shared state for per-process limits.** The fail-open budget, admission control and circuit breaker are per-process, so N workers get N times the declared budget.
+4. **The remaining failure modes.** F8.3 (stale index) has no implementation; invalid logical inference and context stuffing are absent, and non-English quality is partial ([coverage-map.md](coverage-map.md) L0.4, L1.9, L0.10).
+5. **Organisational eval surfaces:** an annotation queue (P4-11) and non-developer rule authoring (P12-7).
+6. **Monitoring breadth:** GitHub is the only code host, and there is no PagerDuty or email alert channel.
+7. **A benchmark results refresh.** Re-runs after the October detection changes moved two bound figures slightly; the results files and `benchmarks/claims.yaml` have not been refreshed yet, so the published numbers stand until they are.
+8. **Decide on Salesforce/ServiceNow/M365 estate connectors** — the one remaining Tier 2 gap that's a real, if large, build.
+
+**Deferred, deliberately** (decided, not gaps to fix now):
+
+- The last of the Nometria→AgentFox rename. The `NOMETRIA_*` environment fallback, the `nometria` console script and the `x-nometria-*` headers stay, because production environments set them.
+- Committing the vendored wheels. They stay until the restructure; the pre-commit hook and CI freshness check keep them current meanwhile.
+- New coding-agent harnesses: Codex, then Cursor, after the restructure in [structure-proposal.md](structure-proposal.md).
 
 Two decisions from the original document remain genuinely unresolved:
 

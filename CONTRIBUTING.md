@@ -58,8 +58,8 @@ and its source is `dashboard/app/docs/`.
 ## Tests
 
 `tests/` mirrors `src/agentfox/`: a change to `src/agentfox/policy/engine.py` is tested in
-`tests/policy/`, so `just test-fast tests/policy` is the inner loop. The whole suite is about
-2,800 tests and takes most of 20 minutes on a laptop, because every test builds its own
+`tests/policy/`, so `just test-fast tests/policy` is the inner loop. The whole suite is over
+3,200 tests and takes most of 20 minutes on a laptop, because every test builds its own
 database; run it (`just test`) before you push. Two directories are different:
 
 - `tests/e2e/` runs the request path end to end across packages: the gateway API (through
@@ -110,6 +110,9 @@ code. The pre-commit hook (`scripts/rebuild_vendored_wheels.py`) does this for y
 
 `git commit --no-verify` skips the hook. If you use it on a commit that touches
 `src/agentfox/`, run `just wheels` and commit the result yourself.
+
+Building the deploys from source instead of committed wheels is planned and not done yet; until it
+is, this rule stands.
 
 ## Branches, commits and pull requests
 

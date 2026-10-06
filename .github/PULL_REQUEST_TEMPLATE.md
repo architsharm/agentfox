@@ -5,17 +5,22 @@ Say what breaks without it.
 # Checks
 
 [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md) has the detail. `just ci` runs everything CI
-runs; these four are the Python checks, and a red one will not merge:
+runs; these are the Python checks, and a red one will not merge:
 
 ```bash
+uvx ruff@0.15.7 check . && uvx ruff@0.15.7 format --check .
 pytest -q
 python scripts/api_routes.py --check
+python scripts/docs_reference.py --check
 python scripts/claims.py --check
 python harness/scripts/check_harness.py
 ```
 
+- [ ] `ruff check` and `ruff format --check` pass at CI's pinned version.
 - [ ] `pytest -q` passes.
 - [ ] `scripts/api_routes.py --check` passes, or Appendix C was regenerated with it.
+- [ ] `scripts/docs_reference.py --check` passes, or the docs reference was regenerated with
+      `--write`, if the CLI, the API or a docs page changed.
 - [ ] `scripts/claims.py --check` passes. If a published number moved, the benchmark was
       re-run and its result file is in this PR. Numbers are not edited by hand.
 - [ ] `harness/scripts/check_harness.py` passes, if `harness/` or the CLI changed.

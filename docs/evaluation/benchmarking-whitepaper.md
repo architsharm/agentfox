@@ -87,7 +87,7 @@ argument can reach. `agentfox doctor` now grades that readiness directly.
 
 ### 4.1 Prompt-injection & content-safety detection
 
-**What it does.** A three-layer detector — fast regex heuristics, a fine-tuned classifier ensemble, and local embedding-similarity matching against a curated attack corpus — screens every input, output, tool argument, tool result, and retrieved chunk for injection/jailbreak attempts.
+**What it does.** A three-layer detector — fast regex heuristics, a fine-tuned classifier ensemble, and local embedding-similarity matching against a curated attack corpus — screens every input, output, tool argument, tool result, and retrieved chunk for injection/jailbreak attempts. Since this edition the heuristic layer also reads two extra views of the text before matching: words written one letter at a time (spaced, dotted, hyphenated or split by zero-width characters) rejoined, and the text inside HTML comments, hidden elements and markdown link titles, which raises `INJECTION.HIDDEN_INSTRUCTION` only when the hidden text both addresses the model and gives it a directive. Persona jailbreaks now need a persona switch and a removed restriction in the same sentence. The results files behind this section were written before that change.
 
 **Benchmarked — yes, most extensively of anything in this document.** Primary dataset [`deepset/prompt-injections`](https://huggingface.co/datasets/deepset/prompt-injections) (662 examples): held-out recall went from **0% → 66.7%** across four rounds of measured changes, at **100% precision held throughout** — zero false positives at every step. That 66.7% is the opt-in configuration (heuristic plus the classifier ensemble, which needs `agentfox[classifiers]` and a one-time weights download); the default install runs the heuristic alone, at **26.7%** held-out recall and the same 100% precision. Generalization measured against four further independent, license-clean datasets the detectors were never tuned against — **with the opt-in classifier ensemble, which is not the shipped default** (5,345 examples total: [`spml`](https://huggingface.co/datasets/reshabhs/SPML_Chatbot_Prompt_Injection), [`yanismiraoui`](https://huggingface.co/datasets/yanismiraoui/prompt_injections), [`notinject`](https://huggingface.co/datasets/leolee99/NotInject), [`trustairlab`](https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts)): recall of 85.6% and 98.6% on two of them through the real pipeline (re-measured 2026-09-16), with the honest cost disclosed on the other two (see below). Full methodology and every round: [`benchmarks/REPORT.md`](../../benchmarks/REPORT.md).
 
@@ -144,7 +144,7 @@ Full methodology: [`benchmarks/agent_security/README.md`](../../benchmarks/agent
 
 ### 4.4 Destructive-action & blast-radius analysis (database and irreversible-action safety)
 
-**What it does and why it matters.** Deterministic parsing (not an LLM checking its own SQL) of generated database statements and tool calls — classifying operation type, targets, estimated affected rows, reversibility, and environment — with policy expressed on blast radius rather than argument values. This is the control aimed directly at incidents like the 1.9M-row production wipe named in Section 2. Live on the enforcement path (`guardrails/actions.py`, wired into `enforcement.py`): tautology-as-unbounded-`WHERE` detection, comment/stacked-statement evasion, environment binding, state-verification preconditions.
+**What it does and why it matters.** Deterministic parsing (not an LLM checking its own SQL) of generated database statements and tool calls — classifying operation type, targets, estimated affected rows, reversibility, and environment — with policy expressed on blast radius rather than argument values. This is the control aimed directly at incidents like the 1.9M-row production wipe named in Section 2. Live on the enforcement path (`detection/actions.py`, wired into `runtime/enforcement/`): tautology-as-unbounded-`WHERE` detection, comment/stacked-statement evasion, environment binding, state-verification preconditions.
 
 **Benchmarked.** Destructive-SQL classification against [`gretelai/synthetic_text_to_sql`](https://huggingface.co/datasets/gretelai/synthetic_text_to_sql) (Apache-2.0): **100% accuracy, precision and recall** on the held-out split across all four tested categories (real DML/DDL, and adversarial unbounded/tautology variants), ground-truthed against an independent third-party SQL parser rather than the product's own verdict. The generic argument-scope backstop (catches wildcard-scope values and SQL-injection fragments arriving through *unnamed* fields, not just declared SQL fields) scores **89.3% recall / 100% precision** against [payload-box's SQL-injection payload list](https://github.com/payload-box/sql-injection-payload-list) (MIT) after two rounds of directed fixes. Full methodology: [`benchmarks/action_safety/README.md`](../../benchmarks/action_safety/README.md).
 
@@ -174,7 +174,7 @@ Full methodology: [`benchmarks/agent_security/README.md`](../../benchmarks/agent
 
 **What it exists to do.** Detect binding commitments an agent shouldn't be able to make unilaterally (refunds, SLAs), flag unlicensed financial/medical/legal advice, check EU AI Act Art. 50 disclosure, and run a fairness probe for discriminatory screening outcomes.
 
-**Status, stated plainly:** the logic is real and individually unit-tested (`commitments.py`, `register.py`) — but **nothing in the live enforcement path calls it today.** A real production request gets zero benefit from any of it right now, despite the code being correct in isolation. We're naming this explicitly rather than letting "built and tested" imply "shipping" — see [`docs/design/gap-analysis.md`](../design/gap-analysis.md) for the fuller pattern (several other modules share this status). Wiring it in is the single highest-leverage remaining fix in the whole product roadmap: it's routing, not invention.
+**Status, stated plainly:** this section's first edition said nothing in the live enforcement path called this logic. That is no longer true. `commitments.py` and `register.py` now run on the output surface of every governed call, and what they find is recorded as findings and as risks a policy can act on; observe-first, they do not decide a verdict by themselves. An answer that claims to be a person feeds the `eu.art50.impersonation` rule, which escalates (its pack ships in observe). The disclosure and adverse-action checks run only when the caller supplies the channel or the decision record they need, and the fairness probe stays on the compliance path, because one request cannot show disparate impact. None of this is benchmarked here; see [`docs/design/gap-analysis.md`](../design/gap-analysis.md) for build status across modules.
 
 ### 4.10 Numeric, temporal & entity integrity
 
@@ -192,14 +192,16 @@ Full methodology: [`benchmarks/agent_security/README.md`](../../benchmarks/agent
 
 ### 4.13 Automated red-teaming
 
-**What it does.** A campaign runner (`agentfox redteam run <agent>`) fires a suite of
+**What it does.** A campaign runner (`agentfox test redteam <agent>`) fires a suite of
 adversarial probes at a deployed agent's *actual* configuration — real capability
 grants, real policy bindings, real detector stack — and reports posture: recall (attacks
 caught) and, as of this round, precision (legitimate traffic wrongly blocked) together,
 mapped to OWASP LLM Top 10 and MITRE ATLAS. NVIDIA Garak and Microsoft PyRIT wrap in as
 optional external scanners; what this adds on top is campaign tracking, posture over
 time, and the tie-in to controls that turns a red-team result into compliance evidence
-rather than a log line.
+rather than a log line. Probes are a dry run: their tool calls are evaluated without writing
+decisions, so they never reach findings or the traffic `policy simulate` replays. The command
+exits 1 when an attack got through, so it can gate CI.
 
 **Benchmarked, after closing a structural gap the benchmark itself found.** Every probe
 used to only reach `Enforcer.check_content()` — which never exercises capability/

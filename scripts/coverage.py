@@ -224,10 +224,37 @@ PROBES: list[Probe] = [
         "connector-based estate discovery (P1-8) absent",
     ),
     Probe(
+        "P1-9",
+        "Continuous monitoring of connected sources",
+        "1 Registry",
+        ["def diff_repo", "def diff_api", "def fetch_tools", "def run_monitor", "def reconcile"],
+        ["def queue_finding_alert", "def verify_signature"],
+        "",
+        "re-checks connected GitHub repositories (on a schedule and on a signed push "
+        "webhook), hosted-API specs and remote MCP servers, raises findings from the "
+        "difference between runs and closes them when they clear, and alerts to Slack and "
+        "the finding webhook. GitHub is the only code host; there is no PagerDuty or "
+        "email channel; each job runs a bounded batch of due monitors",
+        test_files=(
+            "monitoring/test_monitor_runs.py",
+            "monitoring/test_monitor_routes.py",
+            "monitoring/test_monitor_schema.py",
+            "monitoring/test_snapshots.py",
+            "cli/test_monitor_cli.py",
+        ),
+    ),
+    Probe(
         "P12",
         "Hierarchical policy, override semantics, lint",
         "12 Policy Composition",
-        ["class PolicyDocument", "def resolve_effective", "def lint_policy"],
+        [
+            "class PolicyDocument",
+            "def resolve_effective",
+            "def lint_policy",
+            # One loader turns a stored version into a document, so the runtime and
+            # every read-only view agree on what an unloadable version means.
+            "def load_version_document",
+        ],
         ["def canary_rollout"],
         "policy|hierarchy",
         "non-developer authoring (P12-7) absent",
@@ -237,10 +264,11 @@ PROBES: list[Probe] = [
         "P2",
         "NHI, least privilege, delegation narrowing, approvals",
         "2 Identity",
-        ["def check_capability", "def delegate", "def request_approval"],
+        ["def check_capability", "def delegate", "def request_approval", "def redeem_approval"],
         ["def link_external_identity"],
         "capability|delegation|approval",
-        "no live IdP; Entra/Okta integration (P2-8) absent",
+        "an approved retry is redeemed once, for the same agent, tool and arguments. No "
+        "live IdP: Entra/Okta integration (P2-8) absent",
     ),
     Probe(
         "P3",
@@ -346,13 +374,30 @@ PROBES: list[Probe] = [
         ["def gate", "class SilentFailureScorer", "def compute", "def run_campaign"],
         ["def score_sample", "class ModelGroundednessScorer", "def annotation_queue"],
         "gate|silent_failure|drift|campaign|groundedness|ragas",
-        "the 'no Ragas adapter' half of this note was stale: score_sample/score_dataset "
-        "(I-8) were already registered as selectable scorers and callable from the "
-        "runner, not a disconnected integration — the note just never said so. "
-        "Model-based groundedness is now real too (model_groundedness.py, via "
-        "ModelProvider.judge(), the same mechanism LlmJudgeScorer already used), "
-        "alongside the lexical scorer rather than replacing it. An annotation queue "
-        "for human review of borderline eval results is still not built",
+        "Ragas scorers (I-8) and model-based groundedness (via ModelProvider.judge()) "
+        "run from the runner alongside the lexical scorer, and a gate fails on an errored "
+        "case rather than skipping it. Red-team probe calls leave no decisions or "
+        "findings in the production tables. An annotation queue for human review of "
+        "borderline eval "
+        "results is not built",
+    ),
+    Probe(
+        "P4-13",
+        "Live probing of deployed agents (P4-13) and the public showcase (P4-14)",
+        "4 Evaluation",
+        ["class LiveProbe", "def opt_in", "def signals_for", "def run_target"],
+        ["def public_summary"],
+        "",
+        "sends a fixed probe library to an agent's own endpoint only after a recorded "
+        "opt-in, scores it on observed behaviour (a reversed canary, forbidden tools, leak "
+        "markers) and opens a finding when a contained attack escapes. The probe set is "
+        "fixed rather than adaptive, and an http target must speak the small JSON contract "
+        "the adapter sends. The public showcase is off unless AGENTFOX_SHOWCASE_ENABLED is set",
+        test_files=(
+            "evaluation/test_live_probes.py",
+            "gateway/test_probes_and_showcase.py",
+            "monitoring/test_deployed_agent_monitor.py",
+        ),
     ),
     Probe(
         "P13",
@@ -455,13 +500,15 @@ PROBES: list[Probe] = [
         "PL-5",
         "Async workers",
         "Platform",
-        ["class JobQueue", "def run_pending"],
+        ["class JobQueue", "def run_pending", "def enqueue_due", "def recover_stuck"],
         [],
         "",
-        "in-process with retries and a dead letter that is public state rather than a "
-        "log line. The interface is the deliverable; a Redis or SQS implementation "
-        "belongs behind it, and building that before anyone runs this at that scale "
-        "would be committing to infrastructure early",
+        "a database-backed queue with retries, backoff, stuck-job recovery and a dead "
+        "letter that is public state rather than a log line, filled by per-tenant "
+        "schedules and drained by a cron call (Vercel cron, a 30-minute GitHub Actions "
+        "runner, or `agentfox admin jobs run-due`). Each drain runs in the calling "
+        "process; a Redis or SQS worker belongs behind the same interface and is not built",
+        test_files=("jobs/test_scheduler_and_jobs.py",),
     ),
     Probe(
         "PL-6",
@@ -493,10 +540,17 @@ PROBES: list[Probe] = [
         "PL-9",
         "Authentication and operator tokens",
         "Platform",
-        ["def authenticate", "def issue_token", "def header_identity_allowed"],
+        [
+            "def authenticate",
+            "def issue_token",
+            "def header_identity_allowed",
+            "def assert_production_secrets",
+        ],
         ["def resolve_oidc"],
-        "auth|token|credential|header_identity|production_refuses",
-        "OIDC/SCIM absent; tokens and the dev-mode gate ship",
+        "auth|token|credential|header_identity|production_refuses|logout|first_operator",
+        "API tokens, the dev-mode gate, a refusal to start outside development on published "
+        "secrets, sign-out that revokes the token and a first operator created from the CLI "
+        "ship. OIDC/SCIM absent",
     ),
     Probe(
         "P18",

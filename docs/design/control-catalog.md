@@ -2,7 +2,7 @@
 
 Companion to [PRD §13](PRD.md#13-compliance-framework-coverage) and requirement **P6-2**. This is the "map once, satisfy many" content set: 43 platform controls with 317 mappings across seven frameworks.
 
-The machine-readable form is `src/agentfox/compliance_data/controls.yaml` (controls, framework list and mappings) plus `src/agentfox/compliance_data/obligations.yaml` (the dated obligation calendar), loaded by the compliance engine. **This document is the human-readable source of truth; the YAML carries the same content and must stay in sync.** `agentfox compliance validate` checks the YAML's internal consistency: unique keys, known frameworks and status rules, and that the obligation calendar parses.
+The machine-readable form is `src/agentfox/compliance_data/controls.yaml` (controls, framework list and mappings) plus `src/agentfox/compliance_data/obligations.yaml` (the dated obligation calendar), loaded by the compliance engine. **This document is the human-readable source of truth; the YAML carries the same content and must stay in sync.** `agentfox admin catalog validate` checks the YAML's internal consistency: unique keys, known frameworks and status rules, and that the obligation calendar parses.
 
 > ⚠️ **Status of these mappings.** They are *informed engineering drafts* produced from the framework texts, intended to make the product's control story concrete and testable. They are **not legal advice and have not been reviewed by compliance counsel or a certification body.** Before any mapping is shown to a customer's auditor it must go through the review gate in §B.6. This caveat ships in the product UI too, on every framework view.
 
@@ -29,12 +29,12 @@ The machine-readable form is `src/agentfox/compliance_data/controls.yaml` (contr
 | Prefix | Family | Pillar | Controls |
 |---|---|---|---|
 | `NOM-DSC` | Discovery & Inventory | 1 | 5 |
-| `NOM-IAM` | Identity & Access | 2 | 6 |
-| `NOM-RTG` | Runtime Guardrails | 3 | 8 |
+| `NOM-IAM` | Identity & Access | 2 | 8 |
+| `NOM-RTG` | Runtime Guardrails | 3 | 13 |
 | `NOM-EVL` | Evaluation & Reliability | 4 | 6 |
 | `NOM-AUD` | Audit & Traceability | 5 | 5 |
 | `NOM-GOV` | Governance & Compliance | 6 | 6 |
-| | | | **36** |
+| | | | **43** |
 
 Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (the FR that delivers it), `evidence_sources` (what telemetry proves it operating — this is what makes **P6-4 continuous monitoring** possible rather than attestation-based), `status_rule` (how `effective`/`degraded`/`failing` is computed), and `mappings`.
 
@@ -50,7 +50,7 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 | **NOM-DSC-02** | Agents operating outside the governed inventory are detected and reported. | P1-2 | `Finding[type=shadow_agent]` | Art. 26 (deployer obligations) | MAP 1.1, MANAGE 4.1 | A.9 (use of AI systems) | CC7.2 | — | T13 Rogue Agents | — |
 | **NOM-DSC-03** | Every agent has a named accountable owner, business purpose and assigned risk tier. | P1-4 | `Agent.owner`, `.purpose`, `.risk_tier` | Art. 9, Art. 26 | GOVERN 2.1, MAP 1.1 | A.3 (internal organisation) | CC1.3, CC3.2 | — | — | — |
 | **NOM-DSC-04** | Dependencies between agents, models, tools, data sources and sub-agents are mapped from observed behaviour. | P1-3 | `LineageEdge` derived from spans | Art. 11, Art. 15 | MAP 2.1, MAP 4.1 | A.6, A.10 (third parties) | CC3.2, CC9.2 | LLM03 Supply Chain | T12 Agent Communication Poisoning | — |
-| **NOM-DSC-05** | Third-party tool/MCP surfaces are inventoried and monitored for schema drift and instruction injection. | P1-5 | `McpToolSnapshot` diffs; `Finding[type=tool_poisoning]` | Art. 15, Art. 25 | MAP 4.1, MEASURE 2.7 | A.10 | CC9.2 | LLM03 Supply Chain | T2 Tool Misuse | AML.T0053 LLM Plugin Compromise |
+| **NOM-DSC-05** | Third-party tool/MCP surfaces are inventoried and monitored for schema drift and instruction injection. | P1-5 | `McpToolSnapshot` diffs; `Finding[type=tool_poisoning]`; scheduled `Monitor` runs (`mcp_server`, `github_repo`, `hosted_api`) raising `Finding[type=monitor_*]` | Art. 15, Art. 25 | MAP 4.1, MEASURE 2.7 | A.10 | CC9.2 | LLM03 Supply Chain | T2 Tool Misuse | AML.T0053 LLM Plugin Compromise |
 
 ### NOM-IAM — Identity & Access (Pillar 2)
 
@@ -58,10 +58,10 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 |---|---|---|---|---|---|---|---|---|---|---|
 | **NOM-IAM-01** | Every agent holds a unique, governed non-human identity with a lifecycle (issue, rotate, revoke, expire). | P2-1 | `Identity`, `Credential` events | Art. 15 (cybersecurity) | GOVERN 1.5, MANAGE 2.2 | A.3, A.9 | CC6.1, CC6.2, CC6.3 | — | T9 Identity Spoofing | AML.T0055 Unsecured Credentials |
 | **NOM-IAM-02** | Agent access to tools and actions is least-privilege and default-deny, enforced on every call. | P2-2 | `Decision` records with policy version | Art. 15 | MANAGE 2.2, GOVERN 1.5 | A.9 | CC6.1, CC6.3 | LLM06 Excessive Agency | T3 Privilege Compromise | — |
-| **NOM-IAM-03** | High-impact actions require documented human approval before execution. | P2-3 | `ApprovalRequest` + resolution | **Art. 14 (human oversight)** | GOVERN 3.2, MANAGE 2.3 | A.9 | CC5.2 | LLM06 Excessive Agency | T10 Overwhelming HITL | — |
-| **NOM-IAM-04** | Control-plane access is authenticated, role-based, and provisioned/de-provisioned through the identity system. | P2-4 | `User`, `Role`, session log | Art. 26 | GOVERN 2.1 | A.3 | CC6.1, CC6.2, CC6.6 | — | — | — |
+| **NOM-IAM-03** | High-impact actions require documented human approval before execution. | P2-3 | `ApprovalRequest` + resolution; redemption (`status=used`, `approval.redeemed` on the decision) — one call per approval, bound to agent, tool and arguments, refused while the agent is stopped | **Art. 14 (human oversight)** | GOVERN 3.2, MANAGE 2.3 | A.9 | CC5.2 | LLM06 Excessive Agency | T10 Overwhelming HITL | — |
+| **NOM-IAM-04** | Control-plane access is authenticated, role-based, and provisioned/de-provisioned through the identity system. | P2-4 | `User` (role), `ApiToken` issue and revoke on the audit chain; sign-out revokes the token; startup refused on a published service secret | Art. 26 | GOVERN 2.1 | A.3 | CC6.1, CC6.2, CC6.6 | — | — | — |
 | **NOM-IAM-05** | Delegated (sub-agent) authority is narrowed, never widened, and the chain is recorded. | P2-5 | `DelegationEdge` w/ capability diff | Art. 14, Art. 15 | MANAGE 2.2 | A.9 | CC6.3 | LLM06 Excessive Agency | T3 Privilege Compromise | — |
-| **NOM-IAM-06** | Policy changes are simulated against recorded traffic and reviewed before enforcement. | P2-7 | `SimulationRun` diff report | Art. 17 (QMS) | MANAGE 4.1, GOVERN 1.2 | A.6 | **CC8.1 (change mgmt)** | — | — | — |
+| **NOM-IAM-06** | Policy changes are simulated against recorded traffic and reviewed before enforcement. | P2-7 | `SimulationRun` diff report; promotion to enforce refused without a recorded simulation of that version | Art. 17 (QMS) | MANAGE 4.1, GOVERN 1.2 | A.6 | **CC8.1 (change mgmt)** | — | — | — |
 | **NOM-IAM-07** | The end-user principal is propagated through the agent into retrieval; content the principal is not entitled to is withheld before generation and the withholding is recorded; restricted classes require an explicit clearance rather than a grant; and over-permissioned retrieval is measured continuously. | P10-1, P10-2, P10-3, P10-4, P10-6, P10-7, P10-8, P10-9 | `disclosure_events`, `end_user_principals` | Art. 10 — data governance, Art. 15 | MAP 4.1, MANAGE 2.2 | A.5, A.8 | CC6.1, CC6.3 | LLM02 Sensitive Information Disclosure, LLM06 Excessive Agency | — | — |
 | **NOM-IAM-08** | Inter-agent messages are evaluated on their own surface (not folded into tool results), signed and verified where the transport is ours, and rejected on replay; unsigned traffic is reported, not silently trusted. | P17-1 | `AgentMessageLog`, `AgentSigningKey` | Art. 15 | MANAGE 2.2 | A.9 | CC6.1, CC6.3 | — | **T12 Agent Communication Poisoning**, T16 Insecure Inter-Agent Protocol Abuse | — |
 
@@ -69,12 +69,12 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 
 | ID | Control | Implements | Evidence source | EU AI Act | NIST AI RMF | ISO 42001 | SOC 2 | OWASP LLM | OWASP Agentic | ATLAS |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **NOM-RTG-01** | Prompt-injection and jailbreak attempts are detected and blocked on all untrusted input surfaces, including indirect (retrieved/tool) content. | P3-1 | `DetectorRun`, `Decision[verdict=block]` | **Art. 15 (robustness & cybersecurity)** | MEASURE 2.7, MANAGE 2.2 | A.6 | CC6.6, CC7.2 | **LLM01 Prompt Injection** | T6 Intent Breaking & Goal Manipulation | **AML.T0051** LLM Prompt Injection; AML.T0054 LLM Jailbreak |
+| **NOM-RTG-01** | Prompt-injection and jailbreak attempts are detected and blocked on all untrusted input surfaces, including indirect (retrieved/tool) content. | P3-1 | `DetectorRun` (incl. `tool_args`), `Decision[verdict=block]`; live-probe campaigns | **Art. 15 (robustness & cybersecurity)** | MEASURE 2.7, MANAGE 2.2 | A.6 | CC6.6, CC7.2 | **LLM01 Prompt Injection** | T6 Intent Breaking & Goal Manipulation | **AML.T0051** LLM Prompt Injection; AML.T0054 LLM Jailbreak |
 | **NOM-RTG-02** | Personal and sensitive data is detected and redacted or blocked in both directions. | P3-2 | `DetectionFinding[entity=PII]` | **Art. 10 (data governance)**; GDPR Art. 5, 32 | MEASURE 2.10, MANAGE 2.2 | **A.7 (data for AI)** | CC6.7 | **LLM02 Sensitive Information Disclosure** | — | AML.T0057 LLM Data Leakage |
 | **NOM-RTG-03** | Credentials and secrets are detected and prevented from transiting prompts, outputs or tool arguments. | P3-3 | `DetectionFinding[entity=SECRET]` | Art. 15 | MEASURE 2.7 | A.7 | CC6.1, CC6.7 | LLM02 | — | AML.T0055 Unsecured Credentials |
 | **NOM-RTG-04** | Tool invocations are authorised against intent and argument provenance, not text alone; tainted arguments cannot reach high-impact tools unapproved. | P3-4 | `Decision` w/ taint context | Art. 14, Art. 15 | MANAGE 2.2 | A.9 | CC6.3 | LLM01, **LLM06 Excessive Agency** | **T2 Tool Misuse**, T6 | AML.T0053 |
 | **NOM-RTG-05** | Model input and output are screened against a documented content-safety policy. | P3-5 | `DetectorRun[safety]` scores | Art. 15, Art. 50 | MEASURE 2.6, MEASURE 2.11 | A.6 | CC7.2 | LLM09 Misinformation | T7 Misaligned & Deceptive Behaviors | — |
-| **NOM-RTG-06** | Enforcement operates within a documented latency budget; degradation is detected and recorded rather than silently skipped. | P3-6, P3-7 | `DetectorRun.duration_ms`, `Finding[type=budget_breach]` | Art. 15 | MEASURE 2.5 | A.6 | CC7.2, **A1.1 (availability)** | — | T4 Resource Overload | — |
+| **NOM-RTG-06** | Enforcement operates within a documented latency budget; degradation is detected and recorded rather than silently skipped. | P3-6, P3-7 | `DetectorRun.duration_ms`, `Finding[type=budget_breach]`; `Decision` rules `policy.unloadable` (a bound policy version that no longer loads, handled under the fail mode) | Art. 15 | MEASURE 2.5 | A.6 | CC7.2, **A1.1 (availability)** | — | T4 Resource Overload | — |
 | **NOM-RTG-07** | Model output conforms to its declared schema/contract; violations are repaired, retried or blocked. | P3-9 | `DetectorRun[schema]` | Art. 15 | MEASURE 2.5 | A.6 | CC7.2 | **LLM05 Improper Output Handling** | — | — |
 | **NOM-RTG-08** | Consumption (calls, tokens, spend, recursion depth) is bounded per agent, and runaway loops are broken. | P3-10 | `Budget` counters, `Finding[type=loop]` | Art. 15 | MANAGE 2.2 | A.4 | A1.1 | **LLM10 Unbounded Consumption** | **T4 Resource Overload** | — |
 | **NOM-RTG-09** | SQL, shell and API artefacts generated by an agent are parsed deterministically before execution; operation class, blast radius and reversibility are established, unbounded and destructive operations are refused, and irreversible acts require a verified read from the system of record. | P9-1, P9-2, P9-3, P9-4, P9-5, P9-6, P9-7, P9-10 | `decisions`, `findings` | Art. 15, Art. 14 — human oversight | MANAGE 2.2, MEASURE 2.6 | A.6, A.8 | CC7.2, CC8.1 | LLM06 Excessive Agency | — | — |
@@ -87,10 +87,10 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 
 | ID | Control | Implements | Evidence source | EU AI Act | NIST AI RMF | ISO 42001 | SOC 2 | OWASP LLM | OWASP Agentic | ATLAS |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **NOM-EVL-01** | Agent changes are evaluated against a versioned dataset before release; regressions block deployment. | P4-1 | `EvalRun`, gate result in CI | **Art. 15 (accuracy)**, Art. 17 (QMS) | **MEASURE 2.3**, MANAGE 4.1 | **A.6 (lifecycle)** | **CC8.1** | — | — | — |
+| **NOM-EVL-01** | Agent changes are evaluated against a versioned dataset before release; regressions block deployment. | P4-1 | `EvalRun`, gate result in CI (an errored case fails the gate) | **Art. 15 (accuracy)**, Art. 17 (QMS) | **MEASURE 2.3**, MANAGE 4.1 | **A.6 (lifecycle)** | **CC8.1** | — | — | — |
 | **NOM-EVL-02** | Production behaviour is continuously sampled, scored, and monitored for drift against a baseline. | P4-2 | `DriftWindow`, online `EvalResult` | **Art. 72 (post-market monitoring)** | **MANAGE 4.1**, MEASURE 2.4 | A.6 | CC7.2 | — | — | AML.T0031 Erode ML Model Integrity |
 | **NOM-EVL-03** | Plausible-but-incorrect outputs (silent failures) are detected and surfaced. | P4-3 | `EvalResult[scorer∈silent_failure]` | Art. 15, Art. 72 | MEASURE 2.3, MEASURE 2.9 | A.6 | CC7.2 | **LLM09 Misinformation** | **T5 Cascading Hallucination**, T7 | — |
-| **NOM-EVL-04** | The system is adversarially tested on a recurring basis and results tracked as posture over time. | P4-4 | `RedTeamCampaign` results | **Art. 15 (cybersecurity)**, Art. 55 (GPAI systemic risk) | **MEASURE 2.7**, MANAGE 2.2 | A.6 | CC7.1 | LLM01, LLM04 Data & Model Poisoning | T1 Memory Poisoning | **AML.T0043** Craft Adversarial Data |
+| **NOM-EVL-04** | The system is adversarially tested on a recurring basis and results tracked as posture over time. | P4-4 | `RedTeamCampaign` results, incl. scheduled live probes of deployed agents (`runner=live`, `Finding[type=live_probe_escape]`) | **Art. 15 (cybersecurity)**, Art. 55 (GPAI systemic risk) | **MEASURE 2.7**, MANAGE 2.2 | A.6 | CC7.1 | LLM01, LLM04 Data & Model Poisoning | T1 Memory Poisoning | **AML.T0043** Craft Adversarial Data |
 | **NOM-EVL-05** | Reliability targets are declared, measured, and error-budget burn is reported. | P4-7 | `SLO` status series | Art. 15, Art. 72 | MEASURE 2.5, MANAGE 4.1 | A.6 | A1.1 | — | — | — |
 | **NOM-EVL-06** | Model/provider substitutions are evaluated comparatively before adoption. | P4-8, X-2 | Cross-model `EvalRun` | Art. 15, Art. 25 | MEASURE 2.3, MAP 4.1 | A.10 | CC8.1 | LLM03 Supply Chain | — | — |
 
@@ -121,10 +121,10 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 
 | Framework | Controls touching it | Notable gaps we do **not** claim to cover |
 |---|---|---|
-| EU AI Act | 36 / 36 | Conformity assessment procedure (Art. 43), CE marking, notified-body interaction, registration in the EU database (Art. 49), FRIA *content* (Art. 27) — we provide inputs, not the filing. |
-| NIST AI RMF | 36 / 36 | Organisational culture/workforce items under GOVERN 3–4 that are not technical. |
-| ISO/IEC 42001 | 31 / 36 | Clauses 4–10 management-system requirements (context, leadership, competence, internal audit, management review) — an AIMS programme, not a platform. |
-| SOC 2 | 30 / 36 | The customer's own entity-level controls; our platform supports their evidence, it is not their SOC 2. |
+| EU AI Act | 43 / 43 | Conformity assessment procedure (Art. 43), CE marking, notified-body interaction, registration in the EU database (Art. 49), FRIA *content* (Art. 27) — we provide inputs, not the filing. |
+| NIST AI RMF | 43 / 43 | Organisational culture/workforce items under GOVERN 3–4 that are not technical. |
+| ISO/IEC 42001 | 43 / 43 | Clauses 4–10 management-system requirements (context, leadership, competence, internal audit, management review) — an AIMS programme, not a platform. |
+| SOC 2 | 43 / 43 | The customer's own entity-level controls; our platform supports their evidence, it is not their SOC 2. |
 | OWASP LLM Top 10 | 8 / 10 covered | **LLM04** Data & Model Poisoning and **LLM08** Vector & Embedding Weaknesses are partially addressed (we detect downstream symptoms, we do not secure the training or embedding pipeline). |
 | OWASP Agentic T1–T15 | 10 / 15 covered | T11 Unexpected RCE (sandbox concern — §2.3 non-goal), T14 Human Attacks on Multi-Agent, T15 Human Manipulation are out of scope. |
 | MITRE ATLAS | 8 techniques mapped | Training-time and model-supply-chain techniques are out of scope. |
@@ -157,15 +157,16 @@ Before any mapping in this appendix is presented to a customer's auditor:
 
 1. **Engineering** confirms the `implemented_by` FR actually ships and the `evidence_sources` actually populate.
 2. **Compliance counsel / qualified assessor** reviews the framework citation for accuracy and scope.
-3. The mapping is version-stamped and recorded in `compliance/frameworks/<key>.yaml` with `reviewed_by` and `reviewed_at`.
+3. The mapping is marked reviewed on its `framework_mappings` row (`review_status`, `reviewed_by`, `reviewed_at`; `prove/compliance/catalog.py:review_mapping`).
 4. Unreviewed mappings render in the UI with a `DRAFT — not reviewed` badge and ship inside evidence packages with a `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` chip on each row, instead of being excluded, so reviewers can see exactly what is still outstanding.
 
-**As of 2026-08-17: all mappings are `DRAFT`.** None have completed step 2.
+**As of 2026-10-06: all mappings are still `DRAFT`.** None have completed step 2.
 
 ### Changelog
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-06 | 0.1.0-draft | No new controls. Evidence sources updated where the mechanism changed: approvals redeemed once and refused while an agent is stopped (NOM-IAM-03), token revocation and the startup secret check (NOM-IAM-04), simulation required to promote to enforce (NOM-IAM-06), injection detection on tool arguments and live probes (NOM-RTG-01, NOM-EVL-04), unloadable policy versions under the fail mode (NOM-RTG-06), errored eval cases fail the gate (NOM-EVL-01), scheduled monitors of connected sources (NOM-DSC-05). Family and coverage counts corrected to 43 controls. |
 | 2026-08-29 | 0.1.0-draft | Evidence packages now include draft mappings (chip-labeled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE`) instead of excluding them, so reviewers can see exactly what is outstanding. |
 | 2026-08-17 | 0.1.0-draft | Initial catalog — 36 controls, 7 frameworks. All mappings DRAFT. |
 | 2026-08-18 | 0.1.0-draft | Added NOM-RTG-09 (generated actions analysed before execution, P9) — 37 controls, 266 mappings. |

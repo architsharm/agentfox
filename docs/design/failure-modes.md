@@ -291,6 +291,27 @@ Megabytes of filler before the real instruction, diluting or displacing the syst
 
 ---
 
+## When AgentFox itself fails — platform failure modes
+
+F1–F9 are how the *governed agent* fails. This section is the other side: how AgentFox
+degrades when one of its own parts cannot do its job. The rule throughout is that "could not
+check" is never recorded as "nothing there", and that every degradation is either visible in
+a decision, a finding or a refusal, never silent. Each row is verified against the code named.
+
+| Failure | What happens | Where |
+|---|---|---|
+| **A stored policy version no longer validates** (saved before a rule became mandatory, or before a field was tightened) | Every stored version loads through one function. A missing protected rule is restored from the shipped pack, with a warning once per version. Anything else raises `UnloadablePolicyVersion`; the other packs are still evaluated, and the decision records a `policy.unloadable` rule. A pack bound in observe never blocks; one bound in enforce blocks if the deployment's `fail_mode` or the pack's declared `fail_mode` is `closed`, and otherwise the call is allowed with the gap named. Promoting an unloadable version answers 422. | `policy/store.py:load_version_document`, `runtime/enforcement/enforcer.py` |
+| **Detectors time out or error** | Recorded per run on `detector_runs.status`; the decision is taken under the same two fail-mode sources and says so. | `detection/pipeline.py`, `runtime/availability.py` |
+| **A monitor run fails** (GitHub down, token revoked, spec unreachable, URL refused by the outbound guard) | The run is recorded `failed` with its error; it closes no finding and keeps the previous baseline. After `monitor_failure_threshold` (default 3) consecutive failures one `monitor_failing` finding opens (medium), and the next successful run closes it. A run that read nothing it understood (an empty spec where there were operations, a repository scan that was inconclusive) is `inconclusive`: baseline kept, nothing closed. | `monitoring/service.py:run_monitor`, `_record_failure` |
+| **A probe target is unreachable or does not speak the contract** | Each probe is scored `error`, never `contained`: errors are counted in the campaign and neither open nor close a finding. A target whose URL host no longer matches the host registered at opt-in, or that resolves to a refused address, is refused before anything is sent. A deleted target fails its monitor run; a target not opted in, or live probes turned off, makes the run `inconclusive`. | `evaluation/live_probes.py`, `monitoring/service.py:_run_deployed_agent` |
+| **The cron is not configured** | `/api/internal/jobs/run` answers 503 until `AGENTFOX_CRON_SECRET` or `CRON_SECRET` is set, and nothing periodic runs: no monitors, probes, canary advancement, drift checks or escalation scans. The GitHub Actions workflow without its two secrets says so and exits successfully. The Vercel cron alone fires once a day. Self-hosted deployments run `agentfox admin jobs run-due` from their own scheduler. | `gateway/routes/jobs.py`, `.github/workflows/monitors.yml`, `jobs/scheduler.py` |
+| **Slack is configured but egress is off** | Nothing is sent, and the gateway logs once that a channel is configured while `AGENTFOX_ALLOW_EGRESS=false`. A delivery that fails is retried once on a 5xx, timeout or connection error, then logged and dropped; a full queue (500) drops the message; a tenant channel that cannot be decrypted is skipped. None of this fails the run that raised the finding. | `monitoring/alerts.py` |
+| **The GitHub push webhook cannot be verified** | No secret configured: 503 and nothing queued. A bad signature: 401. A verified push whose rescan cannot run after the response (a host that freezes the process) leaves a queued job the next cron run picks up. | `gateway/routes/integrations.py:github_webhook` |
+| **The gateway is started without real secrets** | Outside a development environment the process refuses to start while `AGENTFOX_SERVICE_AUTH_SECRET` or `AGENTFOX_AUDIT_SIGNING_KEY` is unset or a published value, naming the variable to set. Failing loudly at boot is the intended mode: running degraded would mean an owner token anyone can mint, or an audit chain anyone can forge. | `core/config.py:assert_production_secrets`, `gateway/app.py:create_app` |
+| **A retry presents an approval that does not fit** (used, expired, denied, another agent's, different arguments) | The call escalates again, as it would have without the approval, and the decision's reason says why the approval was not used. An approval is never treated as a broader permission than the call a person saw. | `identity/service.py:redeem_approval` |
+
+---
+
 ## What this implies for the build
 
 Highest-leverage items first — note how many of these are wiring, not invention:

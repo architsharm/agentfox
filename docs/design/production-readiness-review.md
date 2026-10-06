@@ -1,6 +1,6 @@
 # Production Readiness Review
 
-**Date: 2026-09-04. Scope: [docs/hld.md](../architecture/high-level-design.md) and [docs/lld.md](../architecture/low-level-design.md), checked against
+**Date: 2026-09-04, with a 2026-10-06 addendum (§7). Scope: [docs/hld.md](../architecture/high-level-design.md) and [docs/lld.md](../architecture/low-level-design.md), checked against
 the live codebase.**
 
 This document is **not** a replacement for [docs/gap-analysis.md](gap-analysis.md), which
@@ -131,7 +131,9 @@ gap-analysis.md's existing "stub-only" call on F6 as still the best available an
 real request through the full path) rather than a follow-up grep**, since grep has now
 produced one false positive already for the same question. Effort: S.
 
-### 1.7 🟡 No frontend test coverage anywhere in the repo
+### 1.7 ✅ (was 🟡) No frontend test coverage anywhere in the repo
+
+> **Resolved in `c512ee3`** — vitest was added with tests for `lib/proxy.ts` and the legacy redirects; the suite has grown since (the auth routes among others), and CI runs `npm test`.
 
 The LLD's module/test inventory pass (§2) found 46 backend test files and zero anywhere
 exercising `dashboard/`. Given the dashboard is a genuine client of the API with real
@@ -240,7 +242,7 @@ Ranked by severity, effort noted:
 | 1.1 | `deploy/Dockerfile` COPY paths don't exist — primary deployment path may not build | ✅ fixed in `6863b8b` | S |
 | 1.2 | Vercel-vendored wheel is currently stale (19+ modules changed since) | ✅ automated in `6863b8b` | S (automate) |
 | 1.4 | `jobs.py` still fully stub-only | ✅ fixed in `56767b0` | M |
-| 1.7 | Zero frontend test coverage despite a recent structural refactor | 🟡 | M |
+| 1.7 | Zero frontend test coverage despite a recent structural refactor | ✅ fixed in `c512ee3` | M |
 | 1.8 | Docs disagreed on DRAFT-mapping evidence-package behavior — settled against code (chip-labeled, not excluded) and fixed in README.md/traceability.md | ✅ fixed | S |
 | 3 | Admission control / budget enforcement is per-process, undermines the "scales out" claim if not scoped honestly | 🟡 | L / doc-only |
 | 1.3 | PL-4 loop-governance wiring is in flight — finish and commit | 🟢 (in progress) | S |
@@ -265,3 +267,45 @@ prevents gateway/SDK enforcement drift (LLD §3, §7), and the swappable-OSS-sea
 under direct code inspection with no new concerns. These remain the parts of the system worth
 leading with in any external conversation — see [competitor-analysis.md](competitor-analysis.md)
 §4 for how to frame them.
+
+---
+
+## 7. Addendum, 2026-10-06: security and operations fixes, and new production configuration
+
+Re-verified against the code on 2026-10-06. Nothing here changes §§1–6; it records what a
+deployment must know about the fixes and features merged since.
+
+### 7.1 Security and operations fixes
+
+| Fix | What it does | Where | Tests |
+|---|---|---|---|
+| Startup secret refusal | Outside development (any `AGENTFOX_ENVIRONMENT` other than development, dev, test, testing or local — an unrecognised value counts as production), the gateway refuses to start while `AGENTFOX_SERVICE_AUTH_SECRET` or `AGENTFOX_AUDIT_SIGNING_KEY` is unset, a default, or a placeholder our deploy files have shipped. The GitHub provisioning route refuses a published secret too, even if startup was bypassed. | `core/config.py::assert_production_secrets` | `tests/gateway/test_auth_hardening.py` |
+| First operator | `agentfox admin users create EMAIL` creates an operator on a fresh database without demo data, and can issue its token in the same step; the action is audited. The Docker image no longer seeds demo data on boot; a self-hoster signs in to the dashboard with that token. | `cli/auth_cli.py::create_user`, `deploy/Dockerfile`, `deploy/docker-compose.yml` | `tests/cli/test_first_operator.py` |
+| Token logout | `POST /api/auth/logout` revokes the presented token and only that one. GitHub sign-in keeps at most five live login tokens and revokes the oldest beyond that. | `gateway/routes/integrations.py` (`MAX_LOGIN_SESSIONS`) | `tests/gateway/test_auth_hardening.py` |
+| Agent keys and the kill switch | An invalid or revoked agent key is a 401 on every route, in development too; a request with no credential is still served as shadow traffic. A stopped agent is refused on every guard surface, and no approval can be granted while it is stopped. | `gateway/deps.py`, `runtime/enforcement` | `tests/gateway/test_auth_hardening.py`, `tests/runtime/test_kill_switch_every_surface.py` |
+| Fail modes | A policy pack's own `fail_mode` is honoured alongside the deployment's `AGENTFOX_FAIL_MODE`, so a pack that declares `fail_mode: closed` fails closed on its own. | `runtime/enforcement/enforcer.py` | `tests/runtime/test_pack_fail_mode.py` |
+| Unloadable stored policy | Every stored version becomes a document through `policy/store.py::load_version_document`. A version missing a protected rule gets only that rule restored from the shipped pack, with a warning; saving a new document without it is still refused. Any other unloadable version raises `UnloadablePolicyVersion`: read-only views (coverage, effective, lint, the policy list) skip it and report it as `unloadable_policies`, and the enforcer evaluates the healthy packs and records `policy.unloadable` on the decision, blocking only for an enforce binding when the deployment or the pack is fail-closed. This replaced a production 500 on the Overview page. | `policy/store.py`, `runtime/enforcement/enforcer.py`, `discovery/threats.py` | `tests/policy/test_stored_version_loading.py` |
+
+### 7.2 New production configuration
+
+Settings are read as `AGENTFOX_<name>` first and the legacy `NOMETRIA_<name>` second.
+
+| Setting | Purpose | When unset |
+|---|---|---|
+| `AGENTFOX_SERVICE_AUTH_SECRET`, `AGENTFOX_AUDIT_SIGNING_KEY` | Already required; now enforced at startup (§7.1). | The gateway refuses to start outside development. |
+| `AGENTFOX_CRON_SECRET` (or Vercel's `CRON_SECRET`) | Bearer secret for `GET`/`POST /api/internal/jobs/run`, the job runner that drives monitors, live probes, escalation scans and the other schedules. The `Run monitors` GitHub Actions workflow calls it every 30 minutes and needs the repository secrets `AGENTFOX_API_URL` and `AGENTFOX_CRON_SECRET`. | The endpoint answers 503 and nothing scheduled runs, except by hand with `agentfox admin jobs run-due`. The workflow exits successfully without calling anything. |
+| `AGENTFOX_GITHUB_WEBHOOK_SECRET` | Verifies GitHub push deliveries to `/api/integrations/github/webhook`, which queue an immediate rescan. A connection can carry its own secret instead (`POST /api/integrations/github/webhook-secret`). | With neither, every delivery is refused; scheduled rescans still run. |
+| `AGENTFOX_WEBHOOK_URL`, `AGENTFOX_WEBHOOK_SECRET`, `AGENTFOX_WEBHOOK_MIN_SEVERITY` | The finding webhook. With the secret set, each request carries an HMAC signature header (still named `X-Nometria-Signature`). | No webhook; with a URL but no secret, requests are unsigned. |
+| `AGENTFOX_SLACK_WEBHOOK_URL`, `AGENTFOX_SLACK_MIN_SEVERITY` (default `medium`) | Slack messages for monitor findings opened, reopened or closed. A tenant can set its own channel with `PUT /api/alerts/slack`. | No deployment-wide Slack channel. |
+| `AGENTFOX_SHOWCASE_ENABLED` (default `false`), `AGENTFOX_SHOWCASE_ORG_ID` (default `org_showcase`) | Runs AgentFox against its own demo agent in a dedicated tenant and publishes the result at `GET /api/public/showcase` for the `/live` page. Only the hosted deployment behind the marketing site should turn it on. | Off: the public endpoint reports the showcase as disabled. |
+| `AGENTFOX_LIVE_PROBES_ENABLED` (default `true`) | Kill switch for every live probe target at once. Each target also needs its own recorded opt-in. | — |
+
+Slack and the finding webhook send nothing while `AGENTFOX_ALLOW_EGRESS` is off. Monitors, alert
+channels and probe targets add tables: run `agentfox admin db upgrade` before serving.
+
+### 7.3 Still open from this review
+
+§3's per-process admission and budget state is unchanged: it also applies to the circuit
+breaker and to the fail-open budget. The code restructure, the last of the Nometria→AgentFox
+rename and building the vendored wheels at deploy time are deferred by decision; see
+[gap-analysis.md](gap-analysis.md) Part 7.

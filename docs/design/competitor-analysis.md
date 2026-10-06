@@ -1,6 +1,6 @@
 # Competitor Analysis & Positioning
 
-**Date: 2026-09-04.** Synthesized from [docs/PRD.md](PRD.md) §1.4 and §4,
+**Date: 2026-09-04; our side of each comparison updated 2026-10-06.** Synthesized from [docs/PRD.md](PRD.md) §1.4 and §4,
 [docs/gap-analysis.md](gap-analysis.md) Parts 3 and 5, and the raw research in
 docs/research/ (kept outside this repository) (market-reality-check.md, enterprise-infrastructure-analysis.md,
 practitioner-evidence.md, practitioner-signal.md). Those research files are background
@@ -98,6 +98,8 @@ asking "show me a competitor that already does this."
 | Control status computed from telemetry, not attested | A claim only an inline platform can make credibly — weakened somewhat now that OpenAI Frontier is also inline |
 | Self-host, zero-egress default | Real and valuable against SaaS-only competitors (Zenity, Credo AI, OneTrust are all SaaS-only) — but it's an architecture choice a competitor could make too, not IP |
 | Tamper-evident audit chain with an independent, stdlib-only verifier | Genuinely nobody else advertises this combination — but no enterprise RFP leads with "do you have a hash-chained log," so it's a closer for the last mile of a regulated deal, not an opener |
+| Approvals that complete the held call | Human-in-the-loop is table stakes. The narrower point: an approval is bound to the agent, tool and arguments it was asked for and redeemed once on retry, and none is granted while the agent is stopped |
+| Continuous re-checking of connected sources, and opt-in probing of deployed agents | Re-scanning on a schedule is ordinary posture-management practice, not IP. Ours is narrow: GitHub repositories, OpenAPI specs and remote MCP servers someone connected, plus a fixed probe set sent only to endpoints that opted in |
 
 ### 4.3 Explicitly retired claims — do not use these, on record as corrected
 
@@ -123,17 +125,17 @@ Conceding ground precisely, with the specific competitor and the specific gap:
 
 | Competitor | Their strength | Our current position |
 |---|---|---|
-| **ServiceNow AI Control Tower** | ~30 discovery integrations, MCP gateway, per-agent kill switches | We have a kill switch; discovery is repo/config-based only, nowhere near estate-scale connector breadth |
+| **ServiceNow AI Control Tower** | ~30 discovery integrations, MCP gateway, per-agent kill switches | We have a kill switch that covers every guard surface, and inline MCP governance; discovery is repo/config-based (now re-checked on a schedule), nowhere near estate-scale connector breadth |
 | **Zenity** | Inline step-level prevention *inside Copilot Studio*; Gartner's "company to beat" | We have zero coverage of the low-code/Copilot agent surface — this is a deliberate non-goal today, not an oversight, but it's real ceded ground |
 | **Kosmoy** | Kernel-enforced sandboxing, per-task credentials, air-gapped Kubernetes support | We do not sandbox at all — explicitly out of scope (that's E2B/Modal/Daytona's job), but a buyer asking for it gets a "no" |
-| **Noma** | Adaptive, learning red-team engine; $132M raised | We ship 22 static probes; no adaptive campaign engine |
-| **Credo AI** | Purpose-built Policy Packs (e.g. NYC Local Law 144), CE-marking support for EU AI Act filings | Our 2 policy packs, and all 300 framework mappings, remain **DRAFT** — unreviewed by compliance counsel |
+| **Noma** | Adaptive, learning red-team engine; $132M raised | We ship 22 static probes, an adaptive campaign engine that mutates attacks against this deployment's own grants and policies, and opt-in scheduled probing of deployed agents. Ours reports a change in posture against the last run, not a robustness score, and it does not learn |
+| **Credo AI** | Purpose-built Policy Packs (e.g. NYC Local Law 144), CE-marking support for EU AI Act filings | Our one framework pack (EU AI Act high-risk) and all 317 framework mappings remain **DRAFT** — unreviewed by compliance counsel |
 | **OneTrust** | ~14,000-organization installed base, third-party AI vendor risk workflows | We have none of this — no vendor-risk module, no comparable market presence |
 | **IBM watsonx.governance** | AI Factsheets, SR 11-7 model-risk workflows, FedRAMP GovCloud | We have none of this — if the deal requires SR 11-7 (banking model risk) or FedRAMP, we're not in the conversation today |
 | **Cleanlab / Vectara / Galileo / Patronus** | Model-based hallucination/groundedness scoring, benchmarked ahead of our lexical scorer | Acknowledged directly above — don't contest this point in a technical eval |
 | **LangSmith** | Dataset splits, pairwise comparison, annotation queues; public **$39/seat** pricing | Our eval-suite tooling is comparably basic; **we have no published pricing at all** |
 | **WitnessAI** | Network-level capture of desktop apps and IDEs, not just API traffic | We tokenize PII once content reaches us; we don't capture at the network layer |
-| **Astrix + Microsoft Entra Agent ID** | Full NHI lifecycle, Conditional Access, ITSM/SIEM/SOAR integration | We model non-human identity but have no live IdP integration and no SOAR hooks |
+| **Astrix + Microsoft Entra Agent ID** | Full NHI lifecycle, Conditional Access, ITSM/SIEM/SOAR integration | We model non-human identity but have no live IdP integration and no SOAR hooks; findings leave only through SIEM export, the finding webhook and (for monitor findings) Slack |
 | **Almost every named competitor** | AWS/Azure Marketplace listing | We have none |
 
 **Procurement-bar honesty**: 8 of 14 standard enterprise procurement requirements remain

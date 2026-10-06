@@ -43,7 +43,7 @@ your code calls without the model asking.
 
 ```bash
 agentfox serve                        # gateway + control-plane API on 127.0.0.1:8080
-agentfox admin auth issue you@example.com  # mint an API token; shown once
+agentfox admin users create you@example.com --token  # first operator + API token, shown once
 ```
 
 Point an existing OpenAI or Anthropic client at `http://localhost:8080/v1` and change nothing else,
@@ -63,8 +63,10 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 ```
 
 Flip `"to"` to `"user"` and the same call returns `allow`. Once a person approves it
-(`agentfox permit approvals approve apr_…`), the same call with `"approval_id"` added runs, once.
-Full surface:
+(`agentfox permit approvals approve apr_…`), the same call with `"approval_id"` added runs, once;
+a second retry with the same id is held again. A proxied model call that is held returns HTTP 428
+with the `approval_id` in its body, so the OpenAI and Anthropic SDKs raise it as an error; resend it
+with `X-Nometria-Approval: <id>` once approved. Full surface:
 [Appendix C](architecture/api-spec.md).
 
 ### LangGraph
@@ -117,9 +119,14 @@ against a live session, `UserPromptSubmit` was read in the shipped bundle, and a
 checked has no row at all.
 
 A hook runs in a process the harness creates and destroys per call, so it talks to a warm daemon over
-a private Unix socket: 3.9s cold, about 6ms warm. `hooks install --write` also binds the pack built
-for this job, `coding-agent`, to the agent it just installed and to no other — so a support bot in the
-same deployment is never told it is in "a coding session". `agentfox init` does the same for any agent
+a private Unix socket: 3.9s cold, about 6ms warm. `hooks install --write` also sets up a working
+baseline: it registers the agent (in `development` unless `--env` says otherwise), declares Claude
+Code's built-in tools with their real impact and grants them to it (`--no-grant` skips that), so
+ordinary work is not refused by default deny. Other tools, such as MCP servers, get no grant;
+`agentfox policy proposals from-traffic --agent <slug>` proposes them from what the agent was seen to
+call. And it binds the pack built for this job, `coding-agent`, to the agent it just installed and to
+no other — so a support bot in the
+same deployment is never told it is in "a coding session". `agentfox init` binds the pack for any agent
 already named in `.claude/settings.json`, and skips the pack when there is none. It ships in observe;
 promote it when its decisions look right:
 
@@ -156,12 +163,21 @@ agentfox scan monitors add github_repo acme/bot   # or created for you when you 
 agentfox admin jobs run-due                       # self-hosted: put this on cron
 ```
 
-Findings go out through the signed finding webhook and, with `AGENTFOX_SLACK_WEBHOOK_URL` set, to
-Slack, both only with `AGENTFOX_ALLOW_EGRESS=true`. The hosted runner is triggered by
+A fourth kind, `deployed_agent`, sends the live probe library to a deployed agent you have opted in
+(`/api/probes`); it runs daily, and `AGENTFOX_LIVE_PROBES_ENABLED=false` turns every target off at once.
+
+Findings go out through the signed finding webhook (`AGENTFOX_WEBHOOK_URL`, `AGENTFOX_WEBHOOK_SECRET`)
+and, with `AGENTFOX_SLACK_WEBHOOK_URL` set, to Slack, both only with `AGENTFOX_ALLOW_EGRESS=true`.
+Push-triggered runs need a webhook secret: `AGENTFOX_GITHUB_WEBHOOK_SECRET`, or one set on the
+connection. The hosted runner is triggered by
 [`.github/workflows/monitors.yml`](../.github/workflows/monitors.yml) every 30 minutes (secrets
 `AGENTFOX_API_URL` and `AGENTFOX_CRON_SECRET`; without them it does nothing).
 
 ## Commands, grouped by what you are trying to do
+
+`agentfox --help` lists eleven top-level commands in six groups: Start (`init`, `demo`), See (`scan`,
+`agents`), Watch (`serve`, `findings`), Contain (`permit`, `declare`, `policy`), Prove (`test`,
+`report`) and Operate (`doctor`, `admin`). Below, the same commands by task.
 
 Every decision lands in a tamper-evident audit chain and maps to the controls you answer to.
 Evidence packages ship with a stdlib-only `verify_chain.py`, so an auditor re-derives the hash chain
@@ -178,6 +194,10 @@ agentfox agents lineage payments-ops   # what one agent reaches: its blast radiu
 agentfox scan mcp                      # every MCP server in .mcp.json: reach, pinning, auth; nothing started
 agentfox scan mcp fetch --file tools.json   # one server, plus each tool in its real tools/list
 ```
+
+`scan mcp` exits 1 on a critical finding (a poisoned tool description, a critical config issue or a
+lethal trifecta), and `scan --fail` exits non-zero when a repository has an ungoverned model call,
+so either can fail a CI step.
 
 **Bound what an agent is allowed to do**
 
@@ -209,9 +229,24 @@ approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. With
 rules defer to the grant; `composition.escalation` (one tool's output fed into a higher-impact tool)
 does not, unless the producing tool's output is declared trusted. `permit grant` is the only
 command that widens least privilege, so it confirms before it writes and records the result in the
-audit chain. `--yes` skips the prompt in CI. Whether provenance is read per run or per argument is
+audit chain. `--yes` skips the prompt in CI. `agentfox agents register <slug> --owner you@example.com` turns a
+shadow agent into an owned one, and `agentfox agents budget` sets the caps `budget.exceeded` blocks on.
+Whether provenance is read per run or per argument is
 one setting, `taint_scope` (`session`, the default and what every number here was measured under,
 or `argument`); see [Getting started](getting-started.md#5b-let-it-propose-the-grants-learned-permissions).
+
+**Decide what is held for a person**
+
+```bash
+agentfox permit approvals list         # calls waiting for a person; unanswered ones expire, and expiry denies
+agentfox permit approvals show <id>    # the call, its arguments, why it was held
+agentfox permit approvals approve <id> --rationale "checked the refund"   # the retry runs, once
+agentfox permit approvals deny <id>
+```
+
+`list` accepts the short id it prints. The agent can read its own approval at
+`GET /api/approvals/{id}` with its own key, or wait on it with `fox.wait_for_approval(id)` in Python.
+Approving is refused while the agent is killed or quarantined.
 
 **See what happened**
 
@@ -234,42 +269,56 @@ draft mapping and says so in its heading.
 
 ```bash
 agentfox test run support-quality      # score a suite
-agentfox test gate support-quality     # CI regression gate; exits 1 on regression
-agentfox test redteam support-triage   # probe the deployed configuration
+agentfox test gate support-quality     # CI gate; exits 1 on a regression or any errored case
+agentfox test redteam support-triage   # probe the deployed configuration; exits 1 if an attack got through
 agentfox policy lint                   # exits 1 on critical or high findings
-agentfox policy simulate --file candidate.yaml   # replay recorded traffic against a candidate
+agentfox policy validate candidate.yaml          # parse, lint and compile without saving; exits 1 on failure
+agentfox policy simulate --file candidate.yaml   # replay recorded traffic; non-zero if it newly blocks
 ```
+
+Red-team probes are a dry run: their tool calls are evaluated without writing decisions, so they
+never show up in findings or in what `policy simulate` replays. `--allow-escapes` reports without
+failing.
+
+Saving a policy and putting it in force are separate. A version saved in the dashboard's editor or
+with `POST /api/policies` sits next to the live one and changes nothing until it is promoted;
+promoting it to enforce over HTTP needs a recorded simulation of that exact version (409 otherwise).
+`agentfox policy enforce <key>` and `observe <key>` change the live version's mode from the CLI.
 
 **Run it**
 
 ```bash
 agentfox serve                         # gateway + control-plane API
+agentfox admin users create you@example.com --role owner   # the first operator, no demo data
 agentfox admin auth issue you@example.com  # mint an API token
 agentfox admin db upgrade              # apply migrations
+agentfox admin jobs run-due            # one pass of scheduled work (monitors, drift, compliance); put it on cron
 agentfox policy effective --agent support-triage  # what is in force, and where each rule came from
 agentfox report status --framework eu-ai-act
 agentfox agents quarantine support-triage --reason "investigating"   # kill switch, reversible
+agentfox agents kill support-triage    # stop it now
 agentfox agents resume support-triage
 ```
 
 ## What the demo prints
 
-Real output from `agentfox init && agentfox demo`, trimmed. Step 3 is the one worth reading, and it
-arrives about six seconds in — the injection has already succeeded, and the transfer is refused
-anyway:
+Real output from `agentfox init && agentfox demo`, trimmed. Step 3 is the one worth reading: the
+injection has already succeeded, and the transfer is refused anyway:
 
 ```
-  transfer, argument from the user  enforced=allow  policy-would=escalate  9.5ms
+  transfer, argument from the user  enforced=allow  policy-would=escalate  12.9ms
       eu.art14.human_oversight → escalate  eu-ai-act-high-risk is in observe
 
-  transfer, recipient from the poisoned document  enforced=escalate  policy-would=escalate  3.9ms
+  transfer, recipient from the poisoned document  enforced=escalate  policy-would=escalate  4.6ms
       taint.irreversible_tool → escalate  tool-containment is in enforce
-        Irreversible tool invoked with arguments originating in untrusted content
-  → suspended pending human approval (apr_01m376v9x66a0k5yn4)
+        Irreversible tool invoked with arguments originating in untrusted content (retrieved document, tool result or
+      capability.approval_required → escalate  tool-containment is in enforce
+        arguments ['to'] carry provenance above the capability's max_taint 'user' (to from tool_result), so a person m
+  → suspended pending human approval (apr_01m48cfawhd0qv8mr1)
 
-  transfer above the capability's argument constraint  enforced=block  policy-would=block  3.6ms
-      capability.denied → block  tool-containment is in enforce
-        No capability grants this agent the requested tool and action (default deny).
+  transfer above the capability's argument constraint  enforced=block  policy-would=block  5.2ms
+      capability.constraint_violated → block  tool-containment is in enforce
+        agent:payments-ops holds a grant for 'payments.transfer', so this is not a missing permission. The grant allow
 ```
 
 Three calls, three outcomes, none decided by a detector. The first is clean. The second is identical
@@ -279,8 +328,8 @@ exceeds the argument limit written into the capability.
 Step 10 verifies the audit chain, edits an entry directly in the database, and verifies again:
 
 ```
-  chain: 25 entries, head seq 25
-  verification: INTACT  (25 entries checked)
+  chain: 14 entries, head seq 14
+  verification: INTACT  (14 entries checked)
   after editing entry 3 directly in the database: TAMPERED
       seq 3 · payload_mismatch — payload does not match its recorded digest
 ```
@@ -347,6 +396,26 @@ an existing deployment does not need to change; where both are set, `AGENTFOX_*`
 list, including the few still read only under the old name, is
 [harness/reference/config.md](../harness/reference/config.md).
 
+**Two secrets are required outside development.** With `AGENTFOX_ENVIRONMENT` set to anything but
+`development`, `dev`, `test`, `testing` or `local`, the gateway refuses to start until
+`AGENTFOX_SERVICE_AUTH_SECRET` (authenticates the dashboard's call that mints an owner token; the
+dashboard needs the same value) and `AGENTFOX_AUDIT_SIGNING_KEY` (signs the audit chain's checkpoints;
+keep a copy outside the database) are set to values that are not the published defaults.
+`openssl rand -hex 32` makes either. `agentfox doctor` has a `secrets` line that says where you stand.
+
+**Nothing seeds itself.** A new deployment has no demo data, no operators and no policy packs bound
+(only built-in default deny on tool calls). Run `agentfox init` against its database once to load the
+control catalogue and the packs. Create the first operator with `agentfox admin users create you@example.com --role owner --token`, then sign in to the
+dashboard with "Self-hosted? Sign in with an API token"; signing out revokes the token. `agentfox
+admin seed` loads the demo agents and traffic, deliberately and only where you want them.
+
+**Scheduled work needs a scheduler.** Monitors, drift, compliance and canaries run as jobs.
+Self-hosted, put `agentfox admin jobs run-due` on cron or a systemd timer every 10 to 30 minutes; it is
+safe to run as often as you like.
+
+The public `/live` showcase is off unless `AGENTFOX_SHOWCASE_ENABLED=true`; only the hosted
+deployment behind the website runs it.
+
 Set `AGENTFOX_CONSOLE_URL` to wherever your dashboard is reachable and every governed response
 carries an `explain_url` — and an `X-Nometria-Explain` header — pointing at the decision it
 describes, so a block in a log is one click from the reason for it. It is left empty by default
@@ -359,7 +428,8 @@ and a link to somewhere that does not exist is worse than no link.
 
 The blueprint is [`render.yaml`](../render.yaml). The gateway needs Render's `starter` instance type
 rather than `free` — the image carries the classifier extra — and the blueprint says so rather than
-letting you find out on a failed build. The database and the dashboard run on free.
+letting you find out on a failed build. The database and the dashboard run on free. Render generates
+both required secrets for you.
 
 **2. Docker Compose** — the whole stack, including OPA, on one machine:
 
@@ -379,15 +449,26 @@ gateway image pre-fetches 1–2GB of permissive-licence detector weights so the 
 never needs network access for them. The licence-gated Llama Guard tier is off by default and is
 never in the published image; the compose file's header has the opt-in steps.
 
-[`deploy/docker-compose.yml`](../deploy/docker-compose.yml) is commented line by line, including which
-values you must change before a real deployment — `AGENTFOX_AUDIT_SIGNING_KEY` above all, since the
-audit chain is only as trustworthy as the key that signs it.
+[`deploy/docker-compose.yml`](../deploy/docker-compose.yml) is commented line by line. It runs the
+gateway in `production`, so export `AGENTFOX_SERVICE_AUTH_SECRET` and `AGENTFOX_AUDIT_SIGNING_KEY`
+(or put them in `deploy/.env`) before `up`; Compose stops with a message if either is missing. Then
+load the packs and create the first operator inside the container:
+
+```bash
+docker compose -f deploy/docker-compose.yml exec gateway agentfox init
+docker compose -f deploy/docker-compose.yml exec gateway \
+  agentfox admin users create you@example.com --role owner --token
+```
 
 **3. Python, no containers** — the gateway is an ordinary ASGI app:
 
 ```bash
 pip install "agentfox[postgres]"
 agentfox init                      # SQLite by default; set AGENTFOX_DATABASE_URL for Postgres
+export AGENTFOX_ENVIRONMENT=production
+export AGENTFOX_SERVICE_AUTH_SECRET="$(openssl rand -hex 32)"
+export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"   # keep a copy
+agentfox admin users create you@example.com --role owner --token
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080
 ```
 

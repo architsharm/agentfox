@@ -73,7 +73,7 @@ Any language can ask the gateway about one call before running it:
 
 ```bash
 agentfox serve                              # gateway + control-plane API on 127.0.0.1:8080
-agentfox admin auth issue you@example.com   # mint an API token; shown once
+agentfox admin users create you@example.com --token   # first operator + API token, shown once
 
 curl -s -X POST http://localhost:8080/v1/guard/tool_call \
   -H "Authorization: Bearer $AGENTFOX_TOKEN" -H "Content-Type: application/json" \
@@ -90,6 +90,8 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 The recipient came from a tool result, so the transfer waits for a human. Flip `"to"` to
 `"user"` and the same call returns `allow`. Once a person approves it
 (`agentfox permit approvals approve apr_…`), the same call with `"approval_id"` added runs, once.
+Pointed at `/v1` as an OpenAI or Anthropic base URL, the gateway proxies model calls too, and a held
+one returns HTTP 428 with its `approval_id`.
 LangGraph, MCP, Claude Code hooks, the SDK and the
 full command set are in the [website guides](https://useagentfox.com/docs) and the
 [product tour](docs/product-tour.md).

@@ -33,7 +33,7 @@ the first thing to check before trusting any containment result in your own depl
 
 **Compliance mappings are drafts.** Every framework mapping ships marked
 `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a named, qualified reviewer signs it
-(`agentfox compliance review-packet`). Draft mappings are not legal conclusions.
+(`agentfox report review-packet`). Draft mappings are not legal conclusions.
 
 **A benchmark is not a deployment.** Seed fixtures use real shipped policies and grants, but your agents,
 tools and policies are different. Every script here runs against your own database if you point it there.
@@ -69,7 +69,7 @@ more useful than one quietly left out.
 
 ```bash
 uv run python benchmarks/containment/run_containment_benchmark.py
-uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py
+uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py   # superseded label-assigned run
 uv run python benchmarks/adaptive/run_adaptive_benchmark.py
 uv run python benchmarks/run_prompt_injection_benchmark.py
 uv run python scripts/coverage.py --write
@@ -77,3 +77,8 @@ uv run python scripts/probe/run.py --md > docs/design/coverage-map.md
 ```
 
 Everything above runs offline, with no API key and no model weights, against a throwaway database.
+The AgentDojo headline (provenance inferred from the real tool outputs) needs AgentDojo installed in a
+separate environment; its commands are under "Reproducing" in
+[`benchmarks/agentdojo_e2e/README.md`](../../benchmarks/agentdojo_e2e/README.md). Detector changes
+since some results files were written mean a few of them are due for a re-run; until then the
+published figures are the ones those files hold.

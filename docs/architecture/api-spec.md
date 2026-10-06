@@ -13,9 +13,9 @@ Base: `http://localhost:8080` (self-host default). All control-plane routes unde
 | **Agent key** (`nom_agt_…`) | `Authorization: Bearer <key>` | Agents calling the inline gateway | Bound to one `Identity`; binds the tenant. Optional: unauthenticated inline traffic is served in the default org and recorded as shadow traffic |
 | **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations | Bound to a `User` + role. Mint with `agentfox auth issue` or `POST /api/tokens`; shown once |
 | **Session cookie** | `nometria_session` | Dashboard browser sessions | Holds an API token the dashboard forwards as `Bearer` |
-| **Development header** | `X-Nometria-User: <email>` | Local development and tests | Accepted only when `NOMETRIA_AUTH_MODE=development`, or `auto` with a dev/test/local environment. `agentfox auth status` reports it |
+| **Development header** | `X-Nometria-User: <email>` | Local development and tests | Accepted only when `AGENTFOX_AUTH_MODE=development`, or `auto` with a dev/test/local environment. `agentfox admin auth status` reports it |
 | **Service secret** | `X-Nometria-Service-Secret` | Dashboard OAuth provisioning | `POST /api/auth/github/provision` only |
-| **Cron secret** | `Authorization: <cron_secret>` | Scheduler | `GET` or `POST /api/internal/jobs/run` only; `NOMETRIA_CRON_SECRET` or `CRON_SECRET`; 503 if neither is set |
+| **Cron secret** | `Authorization: <cron_secret>` | Scheduler | `GET` or `POST /api/internal/jobs/run` only; `AGENTFOX_CRON_SECRET` or `CRON_SECRET` (the older `NOMETRIA_CRON_SECRET` is still read); 503 if neither is set |
 
 Keys and tokens are hashed at rest (`argon2id`), looked up by prefix, shown once at issuance, and carry `expires_at`. Credential rotation issues a new key (P2-1). Reads need any authenticated operator; writes need a role permitted for the route's family (§C.4).
 

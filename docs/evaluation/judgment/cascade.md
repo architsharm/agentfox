@@ -148,6 +148,10 @@ change the top rung's cost and accuracy together.
 
 ## Reproducing
 
+These scripts are kept outside this repository; the commands are recorded so the method is
+clear. The judgment-tier figures this repository publishes are re-run with
+`benchmarks/judgment/run_judgment_benchmark.py`.
+
 ```bash
 JEV_API_KEY=...       python scripts/jev_domains_run.py     # Jev rung
 ANTHROPIC_API_KEY=... python scripts/jev_llm_judge.py       # LLM rung
