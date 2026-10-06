@@ -79,6 +79,22 @@ class ResolvedRule:
     overrides: list[str] = field(default_factory=list)
     #: Set when this rule replaced a weaker one from a broader level.
     loosened: bool = False
+    #: The layer this rule came from. The runtime evaluates each rule under its own
+    #: layer's binding (and so its own observe/enforce mode); `policy effective`
+    #: only needs the level and scope above.
+    layer: PolicyLayer | None = field(default=None, repr=False, compare=False)
+    #: Broader rules this one tightened. They stay in force at runtime, each under
+    #: its own layer's mode: a `restrict` may only ever add caution, so an org rule
+    #: that a team tightened in an observe-mode layer is still enforced by the org.
+    #: Under the lattice maximum the outcome is the tighter rule either way; keeping
+    #: them is what stops a tightening from quietly demoting the broader rule's mode.
+    #: Cleared by a granted loosening, which is the one way a rule leaves force.
+    superseded: list[tuple[PolicyLayer, Rule]] = field(default_factory=list, repr=False)
+
+    @property
+    def enforcement(self) -> str:
+        """observe | enforce — the mode of the binding this rule came from."""
+        return self.layer.document.mode if self.layer is not None else "observe"
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -88,6 +104,7 @@ class ResolvedRule:
             "level": self.level,
             "scope": self.scope_id,
             "mode": self.mode,
+            "enforcement": self.enforcement,
             "overrides": self.overrides,
             "loosened": self.loosened,
             "source": f"{self.level}:{self.scope_id}",
@@ -99,10 +116,34 @@ class EffectivePolicy:
     """The composed policy, plus why each rule is in it."""
 
     rules: list[ResolvedRule] = field(default_factory=list)
+    #: "enforce" when any applicable layer enforces. A summary of the deployment,
+    #: not of any one rule: each layer keeps its own mode (`layer_modes`), and each
+    #: rule is applied or only recorded according to its own layer's mode.
     mode: str = "observe"
     default_effect: str = "allow"
     layers: list[str] = field(default_factory=list)
     rejected: list[dict[str, Any]] = field(default_factory=list)
+    #: One entry per applicable layer: which policy, where it sits, and its mode.
+    layer_modes: list[dict[str, str]] = field(default_factory=list)
+    #: The applicable layers themselves, broadest first.
+    applicable: list[PolicyLayer] = field(default_factory=list, repr=False)
+
+    def rules_in_force(self, layer: PolicyLayer) -> list[Rule]:
+        """The rules from ``layer`` that resolution kept, in the layer's own order.
+
+        This is what the runtime evaluates for that layer: the rules that won
+        resolution plus the broader rules they tightened (see
+        :attr:`ResolvedRule.superseded`). A rule rejected as an illegal loosening,
+        or replaced by a granted loosening, is not in force and is not returned.
+        """
+        kept: set[int] = set()
+        for resolved in self.rules:
+            if resolved.layer is layer:
+                kept.add(id(resolved.rule))
+            for source, rule in resolved.superseded:
+                if source is layer:
+                    kept.add(id(rule))
+        return [rule for rule in layer.document.rules if id(rule) in kept]
 
     def document(self, key: str = "effective") -> PolicyDocument:
         """Collapse to a single document the existing engine can evaluate."""
@@ -117,6 +158,7 @@ class EffectivePolicy:
     def explain(self) -> dict[str, Any]:
         return {
             "layers": self.layers,
+            "layer_modes": self.layer_modes,
             "mode": self.mode,
             "default_effect": self.default_effect,
             "rules": [r.to_json() for r in self.rules],
@@ -139,15 +181,28 @@ def resolve_effective(
     applicable.sort(key=lambda layer: level_rank(layer.level))
 
     effective = EffectivePolicy(
-        layers=[f"{layer.level}:{layer.scope_id}({layer.mode})" for layer in applicable]
+        layers=[f"{layer.level}:{layer.scope_id}({layer.mode})" for layer in applicable],
+        layer_modes=[
+            {
+                "policy": layer.document.key,
+                "level": layer.level,
+                "scope": layer.scope_id,
+                "compose": layer.mode,
+                "mode": layer.document.mode,
+            }
+            for layer in applicable
+        ],
+        applicable=applicable,
     )
     by_id: dict[str, ResolvedRule] = {}
     overridable: dict[str, bool] = {}
 
     for layer in applicable:
         document = layer.document
-        # Enforcement mode escalates and never relaxes down the hierarchy: a team
-        # cannot quietly put itself back into observe once the org is enforcing.
+        # The summary mode is "enforce" if any applicable layer enforces. It is a
+        # summary only: each rule is applied under its own layer's mode, and a
+        # narrower observe layer never demotes a broader enforced rule (a rule it
+        # tightens stays in force under the broader layer — `superseded`).
         if document.mode == "enforce":
             effective.mode = "enforce"
         if EFFECT_RANK.get(document.default_effect, 0) > EFFECT_RANK.get(
@@ -161,7 +216,11 @@ def resolve_effective(
 
             if existing is None:
                 by_id[rule.id] = ResolvedRule(
-                    rule=rule, level=layer.level, scope_id=layer.scope_id, mode=layer.mode
+                    rule=rule,
+                    level=layer.level,
+                    scope_id=layer.scope_id,
+                    mode=layer.mode,
+                    layer=layer,
                 )
                 overridable[rule.id] = marked
                 continue
@@ -207,6 +266,14 @@ def resolve_effective(
                 mode=layer.mode,
                 overrides=[*existing.overrides, f"{existing.level}:{existing.scope_id}"],
                 loosened=not tightening,
+                layer=layer,
+                # A tightening keeps the broader rule in force beside it; a granted
+                # loosening is the one thing that takes a rule out of force.
+                superseded=(
+                    [*existing.superseded, (existing.layer, existing.rule)]
+                    if tightening and existing.layer is not None
+                    else []
+                ),
             )
             overridable[rule.id] = marked
 

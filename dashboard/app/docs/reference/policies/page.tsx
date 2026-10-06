@@ -509,18 +509,36 @@ critical  illegal-loosening  injection.direct  agent  weakens 'block' from org:*
   {'critical': 1}
 
 LINT FAIL — critical/high findings block the build`}</Output>
-      <Callout kind="warning" title="Runtime enforcement ignores the hierarchy placement">
-        <p>
-          <code>policy effective</code> and <code>policy lint</code> honour levels and
-          compose modes. The runtime enforcer does not: it evaluates every bound pack
-          whose own <code>scope</code> matches the agent and environment, and takes the
-          strongest effect. In the example above, the <code>team:finance</code> layer
-          also blocked PII in <code>support-triage</code>&apos;s replies, which is not
-          in that team. To limit a pack at runtime, set its <code>scope.agents</code>{" "}
-          and <code>scope.environments</code>. Because the strongest effect wins, an{" "}
-          <code>allow</code> rule never loosens anything at runtime either.
-        </p>
-      </Callout>
+      <h3 id="hierarchy-runtime">What the runtime enforces</h3>
+      <p>
+        The enforcer resolves the hierarchy the same way <code>policy effective</code>{" "}
+        does, for each request:
+      </p>
+      <ul>
+        <li>
+          A layer applies only to the subject its level and <code>scope_id</code> name.
+          An agent&apos;s team is its <code>owner_team</code> (set with{" "}
+          <code>PATCH /api/agents/{"{slug}"}</code> or when registering it); an agent with
+          no team gets only <code>team</code> layers scoped to <code>*</code>. In the
+          example above, <code>team:finance</code> does not apply to{" "}
+          <code>support-triage</code>.
+        </li>
+        <li>
+          A rule rejected as an illegal loosening is not enforced; the broader rule
+          stands. A granted <code>override</code> replaces the broader rule, so an{" "}
+          <code>allow</code> there really loosens it.
+        </li>
+        <li>
+          A rule that a narrower layer tightened stays in force beside the tighter one,
+          each under its own pack&apos;s mode. A team that trials a stricter rule in
+          observe does not switch off the org&apos;s enforced rule.
+        </li>
+        <li>
+          <code>user</code> layers scoped to a specific user apply only where the caller
+          identifies the user, which the runtime does not do today; a{" "}
+          <code>user</code> layer scoped to <code>*</code> applies to everyone.
+        </li>
+      </ul>
 
       <h2 id="fail-mode">fail_mode and the enforcement budget</h2>
       <p>
@@ -664,7 +682,7 @@ fired contains out if {
       <h2 id="limits">Limits</h2>
       <ul>
         <li>Rules see what the detectors and the registry give them. A wrong impact declaration or a missed detection is not fixed by a better rule.</li>
-        <li>Hierarchy levels are honoured by <code>effective</code> and <code>lint</code>, not by runtime enforcement (above).</li>
+        <li>The runtime does not know the end user, so <code>user</code> layers scoped to one user never apply at runtime (above).</li>
         <li>A pack&apos;s <code>fail_mode</code> field has no runtime effect.</li>
         <li>The <code>completion</code> surface needs the caller to report facts; over HTTP there is no field for them, so <code>completion_requires</code> rules always see them as unmet there.</li>
       </ul>

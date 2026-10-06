@@ -29,7 +29,7 @@ from agentfox.detection.composition import check_composed_escalation
 from agentfox.detection.tuning import LatencyLedger, active_suppressions, explain, filter_suppressed
 from agentfox.grounding.context_integrity import assemble_context
 from agentfox.identity import check_capability, request_approval, verify_credential
-from agentfox.policy import PolicyInput, active_policies, combine, get_engine
+from agentfox.policy import PolicyInput, combine, get_engine, policies_in_force
 from agentfox.policy.taint_view import policy_taint
 from agentfox.prove.audit import chain
 from agentfox.prove.audit.trace import (
@@ -369,7 +369,17 @@ class Enforcer(
             completion=completion or {},
         )
 
-        bound = active_policies(self.session, agent_slug, environment)
+        # P12: the hierarchy decides what is in force for this subject — the same
+        # resolution `policy effective` prints — so a team-scoped `restrict` binds
+        # only that team's agents and a granted `override` really loosens.
+        bound = policies_in_force(
+            self.session,
+            agent_slug,
+            environment,
+            # "" rather than None: the agent is known and has no team, so there is
+            # nothing to look up.
+            team=(agent.owner_team or "") if agent else None,
+        )
         # Nothing bound is not the same as nothing to check.
         #
         # A database that has never been initialised holds no policies, so every
