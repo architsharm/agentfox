@@ -358,3 +358,39 @@ def _push_langfuse(link: TraceLink, metadata: dict[str, Any], tags: list[str]) -
         return PushResult(LANGFUSE, response.status_code < 400, f"http {response.status_code}")
     except Exception as exc:
         return PushResult(LANGFUSE, False, str(exc))
+
+
+class TraceCorrelation:
+    """The runtime's trace exporter (`agentfox.runtime.trace_exporters`): links a governed
+    trace to the caller's LangSmith/Langfuse/OTel trace and pushes its verdicts there."""
+
+    def link(self, session: Session, trace_id: str, correlation: Any) -> None:
+        """Record the caller's external references, from headers, a list, or the env."""
+        if isinstance(correlation, dict):
+            refs = refs_from_headers(correlation)
+        elif correlation:
+            refs = list(correlation)
+        else:
+            refs = []
+        refs = refs + refs_from_env()
+        if refs:
+            link_trace(session, trace_id, refs)
+
+    def push(
+        self,
+        session: Session,
+        trace_id: str,
+        *,
+        verdict: str,
+        effective_verdict: str,
+        rules: list[str],
+        agent_slug: str | None,
+    ) -> None:
+        push_verdict(
+            session,
+            trace_id,
+            verdict=verdict,
+            effective_verdict=effective_verdict,
+            rules=rules,
+            agent_slug=agent_slug,
+        )
