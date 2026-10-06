@@ -20,7 +20,7 @@ from agentfox.core.config import reset_settings_cache
 from agentfox.core.models import Trace
 from agentfox.detection.tuning import explain_recorded
 from agentfox.prove.audit.trace import full_trace
-from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user
+from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user, promote
 
 
 @pytest.fixture
@@ -68,11 +68,7 @@ def test_an_allowed_request_gets_the_link_too(client, console):
 def test_the_blocked_proxy_response_carries_the_link_in_body_and_header(client, console):
     """`curl -i` is how this is actually read, and a streamed completion's body is a
     sequence of SSE frames rather than a JSON object to read a field out of."""
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     response = client.post(
         "/v1/chat/completions",
         json={

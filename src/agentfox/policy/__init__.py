@@ -42,7 +42,13 @@ from agentfox.policy.model import (
     Rule,
 )
 from agentfox.policy.opa import OpaPolicyEngine, compile_to_rego
-from agentfox.policy.simulate import SimulationDiff, record_simulation, simulate
+from agentfox.policy.simulate import (
+    SimulationDiff,
+    record_simulation,
+    rules_fingerprint,
+    simulate,
+    simulation_for,
+)
 from agentfox.policy.store import (
     PROJECT_POLICY_DIR,
     PolicyPackError,
@@ -108,6 +114,8 @@ __all__ = [
     "project_policy_dir",
     "pick_version_id",
     "record_simulation",
+    "rules_fingerprint",
+    "simulation_for",
     "resolve_effective",
     "rollback_canary",
     "save_policy",

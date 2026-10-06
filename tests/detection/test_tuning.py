@@ -30,7 +30,7 @@ from agentfox.detection.tuning import (
     suppression_health,
     threshold_recommendations,
 )
-from tests.conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user
+from tests.conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user, promote
 
 # ---------------------------------------------------------------------------
 # P3-12 — violation specificity
@@ -487,11 +487,7 @@ def test_suppression_health_surfaces_dead_weight(seeded, enforcer):
 
 @pytest.fixture
 def blocked_decision(client) -> dict:
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     response = client.post(
         "/v1/chat/completions",
         json={

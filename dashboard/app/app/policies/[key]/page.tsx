@@ -161,6 +161,15 @@ export default async function PolicyDetail({
             {binding?.mode || "unbound"}
           </span>
         </span>
+        {binding?.bound_version != null && (
+          <span>
+            <span className="muted">live </span>
+            <span className="mono">v{binding.bound_version}</span>
+            {binding.latest_version != null && binding.latest_version !== binding.bound_version && (
+              <span className="muted"> (v{binding.latest_version} saved, not live)</span>
+            )}
+          </span>
+        )}
         <span>
           <span className="muted">rules </span>
           <span className="mono">{binding?.rules ?? 0}</span>
@@ -224,7 +233,9 @@ export default async function PolicyDetail({
         <p className="sub">
           Validation runs the exact same check the engine applies at enforcement
           time, so an error here is an error there. Saving creates a new immutable
-          version; nothing currently in force changes until you promote it.
+          version; nothing currently in force changes, whatever <code>mode</code> the
+          file says, until you simulate it and promote it. A new policy is saved live
+          in observe, which records and blocks nothing.
         </p>
         <PolicyEditor
           policyKey={key}
@@ -234,6 +245,9 @@ export default async function PolicyDetail({
           initialLevel={initialLevel}
           initialScopeId={initialScopeId}
           initialCompose={policy.compose}
+          latestVersion={policy.latest_version ?? null}
+          liveVersion={policy.bound_version ?? null}
+          liveMode={policy.mode ?? null}
         />
       </details>
 

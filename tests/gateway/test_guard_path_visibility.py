@@ -24,7 +24,7 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from agentfox.core.models import Agent, Decision, Trace
-from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user
+from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user, promote
 
 
 def _guard(client, content: str, surface: str = "input", **extra):
@@ -71,11 +71,7 @@ def test_the_trace_carries_the_verdict_not_the_default(client):
     """
     from agentfox.core.db import session_scope
 
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     _guard(client, INDIRECT_INJECTION)
     with session_scope() as s:
         trace = s.scalars(select(Trace)).one()
@@ -102,11 +98,7 @@ def test_a_second_guard_on_the_same_trace_cannot_erase_the_first_verdict(client)
     the verdict already on the trace for this reason."""
     from agentfox.core.db import session_scope
 
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     first = _guard(client, INDIRECT_INJECTION)
     trace_id = first.json()["trace_id"]
     assert trace_id, "a caller cannot correlate two calls it was never given an id for"

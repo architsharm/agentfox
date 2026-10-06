@@ -350,8 +350,16 @@ def save_policy(
     level: str = "org",
     scope_id: str = "*",
     compose: str = "extend",
+    rebind: bool = True,
 ) -> tuple[Policy, PolicyVersion]:
-    """Upsert a policy and append an immutable version."""
+    """Upsert a policy and append an immutable version.
+
+    ``rebind=False`` saves without changing what is in force: when the policy
+    already has a live binding it is left exactly as it is (same version, same
+    mode), and the new version waits for an explicit promotion
+    (:func:`set_mode` with ``version``). A policy with no live binding is bound,
+    in ``bind_mode``. The editor saves this way (#64).
+    """
     policy = session.scalar(select(Policy).where(Policy.key == doc.key))
     if policy is None:
         policy = Policy(key=doc.key, name=doc.name or doc.key, description=doc.description)
@@ -380,14 +388,17 @@ def save_policy(
         session.add(version)
         session.flush()
 
+    if not rebind and current_binding(session, policy.id)[0] is not None:
+        return policy, version  # saved; what is in force is untouched
+
     mode = bind_mode or doc.mode
-    current_binding = _open_binding_for_version(session, version.id) if body_unchanged else None
+    open_binding = _open_binding_for_version(session, version.id) if body_unchanged else None
     if (
-        current_binding is not None
-        and current_binding.mode == mode
-        and current_binding.level == level
-        and current_binding.scope_id == scope_id
-        and current_binding.compose == compose
+        open_binding is not None
+        and open_binding.mode == mode
+        and open_binding.level == level
+        and open_binding.scope_id == scope_id
+        and open_binding.compose == compose
     ):
         return policy, version  # rules, mode, and hierarchy placement all unchanged
 
@@ -466,7 +477,14 @@ def current_binding(
 
 
 def set_mode(
-    session: Session, policy_key: str, mode: str, version: int | None = None
+    session: Session,
+    policy_key: str,
+    mode: str,
+    version: int | None = None,
+    *,
+    level: str | None = None,
+    scope_id: str | None = None,
+    compose: str | None = None,
 ) -> PolicyBinding | None:
     """Promote (or demote) a policy between observe and enforce.
 
@@ -476,9 +494,9 @@ def set_mode(
     left the policy with two open bindings.
 
     ``version`` (a version number) makes that version the live one, in ``mode``,
-    replacing the current binding but keeping its hierarchy placement. This is how
-    a version saved from the editor goes live. With no binding at all, the newest
-    version is bound.
+    replacing the current binding but keeping its hierarchy placement unless
+    ``level``/``scope_id``/``compose`` say otherwise. This is how a version saved
+    from the editor goes live. With no binding at all, the newest version is bound.
     """
     policy = session.scalar(select(Policy).where(Policy.key == policy_key))
     if policy is None:
@@ -505,17 +523,22 @@ def set_mode(
         if target is None:
             return None
 
-    if binding is not None and binding.policy_version_id == target.id:
+    placement = {
+        "scope_json": binding.scope_json if binding is not None else {},
+        "level": level or (binding.level if binding is not None else "org"),
+        "scope_id": scope_id or (binding.scope_id if binding is not None else "*"),
+        "compose": compose or (binding.compose if binding is not None else "extend"),
+    }
+    if (
+        binding is not None
+        and binding.policy_version_id == target.id
+        and (binding.level, binding.scope_id, binding.compose)
+        == (placement["level"], placement["scope_id"], placement["compose"])
+    ):
         binding.mode = mode
         session.flush()
         return binding
 
-    placement = {
-        "scope_json": binding.scope_json if binding is not None else {},
-        "level": binding.level if binding is not None else "org",
-        "scope_id": binding.scope_id if binding is not None else "*",
-        "compose": binding.compose if binding is not None else "extend",
-    }
     _close_open_bindings(session, policy.id)
     new_binding = PolicyBinding(policy_version_id=target.id, mode=mode, **placement)
     session.add(new_binding)

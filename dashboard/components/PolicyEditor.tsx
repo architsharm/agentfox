@@ -247,6 +247,9 @@ export function PolicyEditor({
   initialLevel,
   initialScopeId,
   initialCompose,
+  latestVersion,
+  liveVersion,
+  liveMode,
 }: {
   policyKey: string;
   initialBody: string;
@@ -263,6 +266,12 @@ export function PolicyEditor({
   initialLevel?: string;
   initialScopeId?: string;
   initialCompose?: string;
+  /** Newest saved version, which is what the editor holds and what Simulate replays. */
+  latestVersion?: number | null;
+  /** The version in force (its binding), and that binding's mode. Saving never
+   * changes either; only a promotion does. */
+  liveVersion?: number | null;
+  liveMode?: string | null;
 }) {
   const [body, setBody] = useState(initialBody);
   const [level, setLevel] = useState(initialLevel || "org");
@@ -274,6 +283,9 @@ export function PolicyEditor({
   const [simulatedBody, setSimulatedBody] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dismissedTemplate, setDismissedTemplate] = useState(false);
+  // A saved version that is not the one in force: saving never changes what is
+  // live, so it waits here until it is promoted.
+  const pending = latestVersion != null && liveVersion != null && latestVersion !== liveVersion;
 
   async function validate() {
     setBusy(true);
@@ -326,7 +338,9 @@ export function PolicyEditor({
     }
   }
 
-  async function setMode(mode: "observe" | "enforce") {
+  /** `version` makes that saved version live; omitted, only the live version's mode
+   * changes. Placement (level/scope/compose) travels with a version promotion. */
+  async function setMode(mode: "observe" | "enforce", version?: number | null) {
     if (mode === "enforce") {
       if (simulatedBody !== body) {
         setSaveResult({
@@ -341,7 +355,7 @@ export function PolicyEditor({
         : "The last simulation found nothing would newly block — ";
       if (
         !window.confirm(
-          `${riskNote}this will start actually blocking real traffic that matches this policy's rules, starting now. Are you sure?`,
+          `${riskNote}this will make version ${version ?? liveVersion ?? ""} live and start actually blocking real traffic that matches its rules, starting now. Are you sure?`,
         )
       ) {
         return;
@@ -352,7 +366,9 @@ export function PolicyEditor({
       const res = await fetch(`/api/policies/${policyKey}/mode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify(
+          version != null ? { mode, version, level, scope_id: scopeId, compose } : { mode },
+        ),
       });
       if (res.ok) window.location.reload();
       else setSaveResult({ ok: false, detail: (await res.json()).detail });
@@ -444,17 +460,29 @@ export function PolicyEditor({
             <button type="button" className="btn-scan" onClick={simulate} disabled={busy}>
               Simulate against recent traffic
             </button>
-            <button type="button" className="btn-scan" onClick={() => setMode("observe")} disabled={busy}>
-              Set observe
-            </button>
+            {pending ? (
+              <button
+                type="button"
+                className="btn-scan"
+                onClick={() => setMode("observe", latestVersion)}
+                disabled={busy}
+                title={`Make version ${latestVersion} live in observe: it records what it would do and blocks nothing`}
+              >
+                Make v{latestVersion} live in observe
+              </button>
+            ) : (
+              <button type="button" className="btn-scan" onClick={() => setMode("observe")} disabled={busy}>
+                Set observe
+              </button>
+            )}
             <button
               type="button"
               className="btn-reject"
-              onClick={() => setMode("enforce")}
+              onClick={() => setMode("enforce", latestVersion)}
               disabled={busy}
               title={simulatedBody !== body ? "Run Simulate first — rules have changed since the last simulation" : undefined}
             >
-              Promote to enforce
+              {pending ? `Promote v${latestVersion} to enforce` : "Promote to enforce"}
             </button>
           </>
         )}
@@ -482,8 +510,9 @@ export function PolicyEditor({
         <div className={validation.valid ? "note-panel" : "error"}>
           {validation.valid ? (
             <>
-              <strong>Valid</strong> — {validation.rules} rule(s), mode {validation.mode}, controls:{" "}
-              {validation.controls?.length ? validation.controls.join(", ") : "none declared"}
+              <strong>Valid</strong> — {validation.rules} rule(s), controls:{" "}
+              {validation.controls?.length ? validation.controls.join(", ") : "none declared"}.
+              The file&apos;s <code>mode</code> is not applied on save; promotion sets it.
             </>
           ) : (
             <>
@@ -496,7 +525,11 @@ export function PolicyEditor({
         <div className={saveResult.ok ? "note-panel" : "error"}>
           {saveResult.ok ? (
             <>
-              <strong>Saved</strong> — version {saveResult.version}. Reloading…
+              <strong>Saved</strong> — version {saveResult.version}.{" "}
+              {saveResult.pending && saveResult.live_version != null
+                ? `Version ${saveResult.live_version} stays in force (${saveResult.mode}) until you simulate and promote version ${saveResult.version}. `
+                : `It is live in ${saveResult.mode || "observe"}, which records and blocks nothing. `}
+              Reloading…
             </>
           ) : (
             <>

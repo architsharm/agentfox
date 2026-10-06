@@ -225,6 +225,51 @@ def effective_verdict_of(verdict: str, rules_fired: list[dict[str, Any]] | None)
     return best
 
 
+def rules_fingerprint(doc: PolicyDocument) -> str:
+    """What a simulation actually tested: the rules and the default effect.
+
+    Mode, name and version number are deliberately left out — a simulation is
+    always run as if enforcing, so the same rules saved in observe are the same
+    candidate.
+    """
+    import json
+
+    return json.dumps(
+        {
+            "default_effect": doc.default_effect,
+            "scope": doc.scope,
+            "rules": [rule.model_dump() for rule in doc.rules],
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+
+def simulation_for(session: Session, version: PolicyVersion) -> SimulationRun | None:
+    """The most recent recorded simulation of exactly this version's rules, if any.
+
+    The server-side half of "simulate before you enforce" (#64): promoting a
+    version to enforce over the API requires one.
+    """
+    target = rules_fingerprint(
+        PolicyDocument.model_validate(version.compiled_json or yaml.safe_load(version.body))
+    )
+    runs = session.scalars(
+        select(SimulationRun)
+        .where(or_(SimulationRun.policy_id == version.policy_id, SimulationRun.policy_id.is_(None)))
+        .order_by(SimulationRun.created_at.desc())
+        .limit(500)
+    )
+    for run in runs:
+        try:
+            candidate = PolicyDocument.from_yaml(run.candidate_body)
+        except Exception:
+            continue
+        if rules_fingerprint(candidate) == target:
+            return run
+    return None
+
+
 def record_simulation(
     session: Session,
     candidate: PolicyDocument,
@@ -232,8 +277,9 @@ def record_simulation(
     run_by: str = "system",
     scope: dict[str, Any] | None = None,
 ) -> SimulationRun:
+    policy = session.scalar(select(Policy).where(Policy.key == candidate.key))
     run = SimulationRun(
-        policy_id=None,
+        policy_id=policy.id if policy is not None else None,
         candidate_body=candidate.to_yaml(),
         scope_json=scope or {},
         replayed_count=diff.replayed,

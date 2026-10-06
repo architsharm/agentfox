@@ -37,6 +37,7 @@ from agentfox.policy import (
     save_policy,
     set_mode,
     simulate,
+    simulation_for,
     start_canary,
 )
 from agentfox.policy.canary import evaluate_gate
@@ -184,22 +185,39 @@ def upsert_policy(
     if payload.compose not in MODES:
         raise HTTPException(400, f"compose must be one of {MODES}")
 
-    # Binding a policy straight to enforce in production requires the stronger role.
-    if (payload.mode or doc.mode) == "enforce" and user.role not in {"owner", "admin", "security"}:
+    # Saving never changes what is in force (#64). It used to bind the YAML's own
+    # `mode`, so saving `mode: enforce` enforced with no simulation, and saving the
+    # observe starter over an enforcing policy demoted it — while the editor said
+    # nothing in force changes until you promote. Promotion (`/{key}/mode`, which
+    # requires a recorded simulation to enforce) is now the only way to change it.
+    if payload.mode == "enforce":
+        if user.role not in {"owner", "admin", "security"}:
+            raise HTTPException(
+                403, f"role '{user.role}' may author policies but not bind them to enforce"
+            )
         raise HTTPException(
-            403, f"role '{user.role}' may author policies but not bind them to enforce"
+            409,
+            "saving does not change what is in force: save the version, simulate it "
+            "(POST /api/policies/simulate), then promote it with "
+            f'POST /api/policies/{doc.key}/mode {{"mode": "enforce", "version": N}}',
         )
+    if payload.mode not in (None, "observe"):
+        raise HTTPException(400, "mode must be 'observe' or omitted")
 
     policy, version = save_policy(
         session,
         doc,
         author=user.email,
         notes=payload.notes,
-        bind_mode=payload.mode,
+        # A policy with nothing live yet is bound, in observe; one that is live
+        # keeps its binding, version and mode until a promotion moves them.
+        bind_mode="observe",
         level=payload.level,
         scope_id=payload.scope_id,
         compose=payload.compose,
+        rebind=False,
     )
+    binding, live = current_binding(session, policy.id)
     chain.append(
         session,
         "policy.version_created",
@@ -210,14 +228,23 @@ def upsert_policy(
         payload={
             "policy": policy.key,
             "version": version.version,
-            "mode": payload.mode or doc.mode,
+            "live_version": live.version if live else None,
+            "mode": binding.mode if binding else None,
             "notes": payload.notes,
             "level": payload.level,
             "scope_id": payload.scope_id,
             "compose": payload.compose,
         },
     )
-    return {"key": policy.key, "version": version.version, "version_id": version.id}
+    return {
+        "key": policy.key,
+        "version": version.version,
+        "version_id": version.id,
+        # What is in force after the save — unchanged unless nothing was live.
+        "live_version": live.version if live else None,
+        "mode": binding.mode if binding else None,
+        "pending": live is None or live.id != version.id,
+    }
 
 
 @router.post("/validate")
@@ -238,6 +265,12 @@ def validate_policy(payload: PolicyIn) -> dict[str, Any]:
 
 class ModeIn(BaseModel):
     mode: str
+    #: Make this saved version the live one. Omitted: change the live version's mode.
+    version: int | None = None
+    #: Hierarchy placement for the promoted binding. Omitted: keep the current one.
+    level: str | None = None
+    scope_id: str | None = None
+    compose: str | None = None
 
 
 @router.post("/{key}/mode")
@@ -247,9 +280,61 @@ def change_mode(
     session: Session = Depends(db),
     user: User = Depends(require("policy_production")),
 ) -> dict[str, Any]:
+    """Promote or demote a policy, optionally making a saved version live.
+
+    Promoting to ``enforce`` requires a recorded simulation of exactly the rules
+    being enforced (``POST /api/policies/simulate`` with that version's body) —
+    the server-side half of the editor's simulate-before-promote gate (#64).
+    Demoting to ``observe`` never needs one: it can only stop blocking.
+    """
     if payload.mode not in ("observe", "enforce"):
         raise HTTPException(400, "mode must be 'observe' or 'enforce'")
-    binding = set_mode(session, key, payload.mode)
+    if payload.level is not None and payload.level not in LEVELS:
+        raise HTTPException(400, f"level must be one of {LEVELS}")
+    if payload.compose is not None and payload.compose not in MODES:
+        raise HTTPException(400, f"compose must be one of {MODES}")
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+
+    _binding, live = current_binding(session, policy.id)
+    if payload.version is not None:
+        target = session.scalar(
+            select(PolicyVersion).where(
+                PolicyVersion.policy_id == policy.id, PolicyVersion.version == payload.version
+            )
+        )
+        if target is None:
+            raise HTTPException(404, f"policy '{key}' has no version {payload.version}")
+    else:
+        target = (
+            live
+            or session.scalars(
+                select(PolicyVersion)
+                .where(PolicyVersion.policy_id == policy.id)
+                .order_by(PolicyVersion.version.desc())
+            ).first()
+        )
+    if target is None:
+        raise HTTPException(404, f"policy '{key}' has no versions")
+
+    if payload.mode == "enforce" and simulation_for(session, target) is None:
+        raise HTTPException(
+            409,
+            f"version {target.version} of '{key}' has not been simulated: replay recent "
+            "traffic against it first (POST /api/policies/simulate with its body, or "
+            "Simulate in the editor), then promote",
+        )
+
+    binding = set_mode(
+        session,
+        key,
+        payload.mode,
+        version=payload.version,
+        level=payload.level,
+        scope_id=payload.scope_id,
+        compose=payload.compose,
+    )
     if binding is None:
         raise HTTPException(404, f"unknown policy '{key}'")
     chain.append(
@@ -259,9 +344,9 @@ def change_mode(
         actor_id=user.email or user.id,
         subject_type="policy",
         subject_id=key,
-        payload={"mode": payload.mode},
+        payload={"mode": payload.mode, "version": target.version},
     )
-    return {"key": key, "mode": binding.mode}
+    return {"key": key, "mode": binding.mode, "version": target.version}
 
 
 class SimulateIn(BaseModel):

@@ -29,16 +29,12 @@ from agentfox.detection.tuning import (
     record_feedback,
     sample_hash,
 )
-from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user
+from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user, promote
 
 
 @pytest.fixture
 def decision_id(client) -> str:
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     response = client.post(
         "/v1/chat/completions",
         json={
