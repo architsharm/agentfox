@@ -445,19 +445,23 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         and says which layer each rule came from:
       </p>
       <Code>{`agentfox policy effective --agent support-triage`}</Code>
-      <Output>{`effective policy in development — mode enforce, default allow
-  layers: org:*(extend), org:*(extend), org:*(extend), org:*(extend)
+      <Output>{`effective policy in development — default allow
+  layers:
+    org:*(extend)  baseline  observe
+    org:*(extend)  eu-ai-act-high-risk  observe
+    org:*(extend)  support-desk  enforce
+    org:*(extend)  tool-containment  enforce
 
-rule                                 effect    from   overrides
-access.undeclared_table              escalate  org:*  —
-access.unscoped_table                block     org:*  —
+rule                                 effect    mode     from   overrides
+access.undeclared_table              escalate  enforce  org:*  —
+access.unscoped_table                block     enforce  org:*  —
 …
-billing.large_export                 block     org:*  —
+billing.large_export                 block     enforce  org:*  —
 …`}</Output>
       <p>
-        The single <code>mode</code> on the first line is <code>enforce</code> if any
-        layer enforces; it does not mean every rule listed is enforcing. Use{" "}
-        <code>agentfox policy list</code> for each pack&apos;s own mode.
+        Each layer is listed with its own mode, and each rule with the mode it is
+        applied under: <code>enforce</code> rules block, <code>observe</code> rules are
+        recorded as the effective verdict only.
       </p>
 
       <h2 id="hierarchy">Hierarchy: org, team, agent, user</h2>
@@ -496,11 +500,15 @@ for f, level, scope, compose in [("finance-team.yaml", "team", "finance", "restr
 201 {'key': 'payments-ops-exceptions', 'version': 1, 'version_id': 'pvr_01m469r2q1s0kh1bq6'}`}</Output>
       <Code>{`agentfox policy effective --agent payments-ops --team finance
 agentfox policy lint`}</Code>
-      <Output>{`effective policy in development — mode enforce, default allow
-  layers: org:*(extend), org:*(extend), org:*(extend), team:finance(restrict), agent:payments-ops(override)
+      <Output>{`effective policy in development — default allow
+  layers:
+    org:*(extend)  baseline  observe
+    …
+    team:finance(restrict)  finance-team  observe
+    agent:payments-ops(override)  payments-ops-exceptions  observe
 …
-injection.direct                     block     org:*         —
-pii.outbound_redact                  block     team:finance  org:*
+injection.direct                     block     observe  org:*         —
+pii.outbound_redact                  block     observe  team:finance  org:*
 …
 rejected layer rules
   injection.direct at agent:payments-ops — cannot loosen 'block' (from org) to 'allow' — the upstream rule is not marked

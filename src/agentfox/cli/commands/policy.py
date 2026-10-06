@@ -196,20 +196,32 @@ def policy_effective(
         )
         explanation = effective.explain()
 
+    # Per layer, not one mode for the lot: "mode enforce" whenever any layer
+    # enforced read as though every rule listed was enforcing (#49).
     console.print(
         f"[bold]effective policy[/] in [bold]{environment}[/] — "
-        f"mode [bold]{explanation['mode']}[/], "
         f"default {explanation['default_effect']}"
     )
-    console.print(f"  [dim]layers: {', '.join(explanation['layers']) or 'none'}[/]\n")
+    if explanation["layer_modes"]:
+        console.print("  [dim]layers:[/]")
+        for layer in explanation["layer_modes"]:
+            colour = "green" if layer["mode"] == "enforce" else "yellow"
+            console.print(
+                f"    {layer['level']}:{layer['scope']}({layer['compose']})  "
+                f"{layer['policy']}  [{colour}]{layer['mode']}[/]"
+            )
+        console.print()
+    else:
+        console.print("  [dim]layers: none[/]\n")
 
     table = Table(box=None, pad_edge=False)
-    for column in ("rule", "effect", "from", "overrides"):
+    for column in ("rule", "effect", "mode", "from", "overrides"):
         table.add_column(column, style="bold" if column == "rule" else None)
     for rule in explanation["rules"]:
         table.add_row(
             rule["rule_id"],
             rule["effect"],
+            rule["enforcement"],
             rule["source"],
             ", ".join(rule["overrides"]) or "—",
         )
