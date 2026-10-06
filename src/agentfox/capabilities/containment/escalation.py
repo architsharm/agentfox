@@ -33,6 +33,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.detection.trajectory import claims_resolution
 from agentfox.core.models import (
     Agent,
     ConversationTurn,
@@ -109,15 +110,6 @@ _TOPIC_MARKERS = {
     "discrimination": [r"\b(?:discriminat|racist|sexist|ageis|disabilit)\w*\b"],
 }
 
-#: A resolution claim the agent makes about itself.
-_RESOLUTION_CLAIMS = [
-    r"\b(?:i(?:'ve| have)?\s+)?(?:resolved|fixed|sorted|completed|taken care of)\b",
-    r"\bis (?:now )?(?:resolved|fixed|complete|sorted)\b",
-    r"\banything else (?:i can help|you need)\b",
-    r"\bglad (?:i could|to have) help",
-    r"\bmarking this (?:as )?(?:resolved|closed)\b",
-]
-
 #: An agent declining is not the same as an agent escalating. Repeated
 #: abstention with no hand-off is the shape where the user gets nothing and leaves.
 _ABSTENTION = [
@@ -133,7 +125,6 @@ _EXPLICIT_RE = [re.compile(p, re.I) for p in _EXPLICIT_REQUEST]
 _FRUSTRATION_RE = [(re.compile(p, re.I), w) for p, w in _FRUSTRATION]
 _URGENT_RE = [(re.compile(p, re.I), label) for p, label in _URGENT]
 _TOPIC_RE = {k: [re.compile(p, re.I) for p in v] for k, v in _TOPIC_MARKERS.items()}
-_RESOLUTION_RE = [re.compile(p, re.I) for p in _RESOLUTION_CLAIMS]
 _ABSTENTION_RE = [re.compile(p, re.I) for p in _ABSTENTION]
 
 
@@ -177,10 +168,6 @@ def topic_signal(text: str) -> list[str]:
 
 def is_abstention(text: str) -> bool:
     return any(p.search(text or "") for p in _ABSTENTION_RE)
-
-
-def claims_resolution(text: str) -> bool:
-    return any(p.search(text or "") for p in _RESOLUTION_RE)
 
 
 def turn_signals(user_text: str, agent_text: str) -> dict[str, Any]:

@@ -41,8 +41,8 @@ What it does, following the crescendo entry in `docs/design/failure-modes.md`:
 
 2. Keep it as a **rolling window** (5-8 turns), never cumulative, so that a
    conversation which drifts and then genuinely resolves stops being penalised.
-   Resolution is read with `escalation.claims_resolution` — the existing
-   lexicon, not a second one.
+   Resolution is read with `claims_resolution` below, the same lexicon
+   escalation governance uses, not a second one.
 
 3. Fire on the **slope** of that score across the window, independent of whether
    any single turn crossed a per-message threshold.
@@ -260,6 +260,23 @@ def reframing_markers(text: str) -> list[str]:
     )
 
 
+#: A resolution claim the agent makes about itself. Escalation governance reads the
+#: same lexicon (`containment.escalation.turn_signals`).
+_RESOLUTION_CLAIMS = [
+    r"\b(?:i(?:'ve| have)?\s+)?(?:resolved|fixed|sorted|completed|taken care of)\b",
+    r"\bis (?:now )?(?:resolved|fixed|complete|sorted)\b",
+    r"\banything else (?:i can help|you need)\b",
+    r"\bglad (?:i could|to have) help",
+    r"\bmarking this (?:as )?(?:resolved|closed)\b",
+]
+_RESOLUTION_RE = [re.compile(p, re.I) for p in _RESOLUTION_CLAIMS]
+
+
+def claims_resolution(text: str) -> bool:
+    """Whether the agent's text claims the issue is resolved."""
+    return any(p.search(text or "") for p in _RESOLUTION_RE)
+
+
 @dataclass(slots=True)
 class TurnRisk:
     """One turn's risk-adjacent score and where it came from."""
@@ -298,8 +315,6 @@ def score_turn(
     stays out of it, which also stops a single blatant turn from manufacturing
     a trajectory out of nothing.
     """
-    from agentfox.capabilities.containment.escalation import claims_resolution
-
     # Truncated once, here, and every component below reads the truncated body —
     # including `claims_resolution`, whose lexicon would otherwise be run over the
     # whole turn. Cheap to get wrong and expensive to leave wrong: this check runs
