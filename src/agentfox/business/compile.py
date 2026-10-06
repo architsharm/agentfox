@@ -185,7 +185,18 @@ _TOOL_HINTS = {
     "credit": "billing.credit",
     "delete": "db.query",
     "email": "email.send",
+    "export": "data.export",
 }
+
+#: A number followed by a thing being counted: "10,000 rows", "500 records". Such a
+#: threshold is a count, not an amount of money, and needs no unit question. Nouns
+#: that a typed extractor owns (attempts, contributors, requests per minute) are left
+#: out on purpose, so those sentences still reach their extractor.
+_COUNT_NOUN = re.compile(
+    r"\d[\d,]*(?:\.\d+)?(?:\s*(?:k|thousand|million)\b)?\s+"
+    r"(rows?|records?|items?|results?|entries|entry|lines?|files?|documents?)\b",
+    re.I,
+)
 
 #: The scale suffix must be a whole word. Without the boundary, "$100 must run" read
 #: the `m` of "must" as "million" and turned a hundred-dollar threshold into a
@@ -444,6 +455,8 @@ class _Clause:
     #: sentence granularity or it silently loses the ones that were split.
     sentence: str = ""
     ambiguous_role: str | None = None
+    #: For a count threshold, what is counted ("rows"); names the field it reads.
+    counted: str | None = None
 
 
 def _clauses(sentence: str) -> list[_Clause]:
@@ -453,8 +466,12 @@ def _clauses(sentence: str) -> list[_Clause]:
     $100 verify, above $100 needs review" — so splitting on commas and conjunctions
     recovers the bands that a per-sentence parser would collapse into one.
     """
+    # A comma between digits followed by exactly three more is a thousands separator
+    # ("10,000 rows"), not a clause break: splitting there turned "over 10,000 rows
+    # require approval" into a clause "000 rows require approval" with a band of 0.
     parts = re.split(
-        r",|;| and (?=[^,]*\b(?:under|over|above|below|between|more|less)\b)", sentence
+        r",(?!(?<=\d,)\d{3}(?!\d))|;| and (?=[^,]*\b(?:under|over|above|below|between|more|less)\b)",
+        sentence,
     )
     out: list[_Clause] = []
     for part in parts:
@@ -466,27 +483,46 @@ def _clauses(sentence: str) -> list[_Clause]:
             continue
         role, ambiguous = _role(text)
         unit = None
+        count = _COUNT_NOUN.search(text)
+        counted = _counted_field(count.group(1)) if count else None
 
         between = _BETWEEN.search(text)
         if between:
             low, low_unit = _amount(between.group(1))
             high, high_unit = _amount(between.group(2))
+            unit = low_unit or high_unit or ("count" if counted else None)
             out.append(
-                _Clause(low, high, outcome, low_unit or high_unit, role, text, sentence, ambiguous)
+                _Clause(low, high, outcome, unit, role, text, sentence, ambiguous, counted)
             )
             continue
 
         value, unit = _amount(text)
         if value is None:
             continue
+        if unit is None and counted:
+            unit = "count"
         lowered = text.lower()
         if any(word in lowered for word in _UPPER):
-            out.append(_Clause(None, value, outcome, unit, role, text, sentence, ambiguous))
+            out.append(
+                _Clause(None, value, outcome, unit, role, text, sentence, ambiguous, counted)
+            )
         elif any(word in lowered for word in _LOWER):
-            out.append(_Clause(value, None, outcome, unit, role, text, sentence, ambiguous))
+            out.append(
+                _Clause(value, None, outcome, unit, role, text, sentence, ambiguous, counted)
+            )
         else:
-            out.append(_Clause(None, value, outcome, unit, role, text, sentence, ambiguous))
+            out.append(
+                _Clause(None, value, outcome, unit, role, text, sentence, ambiguous, counted)
+            )
     return out
+
+
+def _counted_field(noun: str) -> str:
+    """'row' / 'rows' / 'entry' -> 'rows' / 'entries': the argument a count ladder reads."""
+    noun = noun.lower()
+    if noun == "entry":
+        return "entries"
+    return noun if noun.endswith("s") else noun + "s"
 
 
 # ---------------------------------------------------------------------------
@@ -546,7 +582,7 @@ def compile_document(text: str, *, key_prefix: str = "policy") -> Compilation:
             continue
         result.governance.append(sentence)
         found = _clauses(sentence)
-        if found and any(c.unit for c in found):
+        if found and any(c.unit and c.unit != "count" for c in found):
             ladder_clauses.extend(found)
         elif found:
             # A number with no currency. "escalate after 3 failed attempts" and
@@ -559,8 +595,15 @@ def compile_document(text: str, *, key_prefix: str = "policy") -> Compilation:
         else:
             _handle_non_threshold(sentence, result, key_prefix)
 
-    if ladder_clauses:
-        _build_ladders(ladder_clauses, result, key_prefix)
+    # A count threshold ("over 10,000 rows") and a money threshold ("above $500") are
+    # different ladders over different fields. Built together, the export sentence
+    # became the top band of the billing.credit ladder.
+    counts = [c for c in ladder_clauses if c.unit == "count"]
+    others = [c for c in ladder_clauses if c.unit != "count"]
+    if others:
+        _build_ladders(others, result, key_prefix)
+    if counts:
+        _build_ladders(counts, result, key_prefix)
     return result
 
 
@@ -1119,6 +1162,26 @@ def _build_ladders(clauses: list[_Clause], result: Compilation, key_prefix: str)
 
     if open_ended:
         top = open_ended[-1]
+        # "Exports over 10,000 rows require approval" says what happens above 10,000
+        # and nothing below it. Without a band up to the bound, the single open band
+        # covered every value, so a 5-row export escalated too.
+        # Only when it is the ladder's only threshold: a gap between two stated bands
+        # is a sentence the compiler did not understand, and assuming "allow" there
+        # would fail open.
+        if top.lower is not None and not bands:
+            bands.append(
+                {
+                    "upto": top.lower,
+                    "outcome": "allow",
+                    "reason": f"below the threshold in: {top.source[:90]}",
+                }
+            )
+            assumptions.append(
+                Assumption(
+                    what=f"values up to {top.lower:g} are allowed",
+                    why="the policy only says what happens above that threshold",
+                )
+            )
         band = {"outcome": top.outcome, "reason": top.source[:120]}
         if top.role:
             band["approver_role"] = top.role
@@ -1181,10 +1244,21 @@ def _build_ladders(clauses: list[_Clause], result: Compilation, key_prefix: str)
         )
     )
 
+    field_path = "arguments.amount"
+    if unit == "count":
+        counted = next((c.counted for c in clauses if c.counted), None) or "count"
+        field_path = f"arguments.{counted}"
+        assumptions.append(
+            Assumption(
+                what=f"reads the count from '{field_path}'",
+                why="the policy counts "
+                f"{counted} but does not say which argument carries the number",
+            )
+        )
     definition = {
-        "key": f"{key_prefix}-{tool.replace('.', '-')}",
+        "key": f"{key_prefix}-{tool.replace('.', '-')}" + ("-count" if unit == "count" else ""),
         "tool": tool,
-        "field": "arguments.amount",
+        "field": field_path,
         "unit": unit,
         "mode": "observe",
         "bands": bands,
