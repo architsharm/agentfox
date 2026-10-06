@@ -27,6 +27,7 @@ from agentfox.core.models import (
 from agentfox.gateway.auth import issue_token
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 from agentfox.identity import (
+    AgentStopped,
     assess_posture,
     check_capability,
     expire_stale_approvals,
@@ -923,7 +924,10 @@ def deny(
 def _resolve(
     session: Session, approval_id: str, approved: bool, user: User, rationale: str
 ) -> dict[str, Any]:
-    approval = resolve_approval(session, approval_id, approved, user.id, rationale)
+    try:
+        approval = resolve_approval(session, approval_id, approved, user.id, rationale)
+    except AgentStopped as exc:
+        raise HTTPException(409, str(exc)) from exc
     if approval is None:
         raise HTTPException(404, "unknown approval")
     chain.append(

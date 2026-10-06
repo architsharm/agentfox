@@ -528,6 +528,30 @@ def request_approval(
     return request
 
 
+class AgentStopped(Exception):
+    """An approval cannot be granted while its agent is killed or quarantined."""
+
+    def __init__(self, state: str, slug: str | None) -> None:
+        self.state = state
+        self.slug = slug
+        super().__init__(
+            f"agent {slug or ''} is {state}: an approval cannot be granted while the "
+            "kill switch is on. Deny it, or resume the agent first."
+        )
+
+
+def _stopped_state(session: Session, agent_id: str | None) -> tuple[str, str | None] | None:
+    if not agent_id:
+        return None
+    from agentfox.core.models import Agent, AgentControl
+
+    control = session.scalar(select(AgentControl).where(AgentControl.agent_id == agent_id))
+    if control is None or control.state == "active":
+        return None
+    agent = session.get(Agent, agent_id)
+    return control.state, agent.slug if agent else None
+
+
 def resolve_approval(
     session: Session,
     approval_id: str,
@@ -535,6 +559,13 @@ def resolve_approval(
     resolver_user_id: str,
     rationale: str = "",
 ) -> ApprovalRequest | None:
+    """Approve or deny a pending request.
+
+    Approving is refused (:class:`AgentStopped`) while the agent is killed or
+    quarantined: the kill switch means the operator has stopped trusting this
+    agent, and an approval granted in that window is a standing yes that outlives
+    the incident. Denying is always allowed — it only makes things stricter.
+    """
     request = session.get(ApprovalRequest, approval_id)
     if request is None or request.status != "pending":
         return request
@@ -543,6 +574,10 @@ def resolve_approval(
         request.status = "expired"
         session.flush()
         return request
+    if approved:
+        stopped = _stopped_state(session, request.agent_id)
+        if stopped is not None:
+            raise AgentStopped(*stopped)
     request.status = "approved" if approved else "denied"
     request.resolver_user_id = resolver_user_id
     request.resolution_rationale = rationale
