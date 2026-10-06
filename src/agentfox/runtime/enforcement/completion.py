@@ -85,7 +85,7 @@ class _CompletionMixin:
             # add an abstention it found; it can never remove one, so the
             # deterministic verdict above stays authoritative where it fired.
             # No-ops entirely when no judgment tier is enabled.
-            from agentfox.detection.judgment.answerability import augment as _judge_answerability
+            from agentfox.capabilities.judgment.answerability import augment as _judge_answerability
 
             verdict = _judge_answerability(verdict, question)
         if verdict.answerable:

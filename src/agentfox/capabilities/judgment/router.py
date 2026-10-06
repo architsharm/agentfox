@@ -24,8 +24,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from agentfox.detection.judgment.jev import JevClient, JevResult, JevUnavailable
-from agentfox.detection.judgment.predicate import (
+from agentfox.capabilities.judgment.jev import JevClient, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.predicate import (
     Comparison,
     Identity,
     Policy,

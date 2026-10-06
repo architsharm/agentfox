@@ -116,7 +116,7 @@ def activate_posture(session: Session) -> None:
     could not be read would turn a configuration problem into an outage, and the
     fallback — the deployment's own settings — is the stricter answer anyway.
     """
-    from agentfox.detection.judgment import posture as _posture
+    from agentfox.capabilities.judgment import posture as _posture
 
     try:
         _posture.activate(_posture.load(session))

@@ -38,6 +38,10 @@ from __future__ import annotations
 
 import logging
 
+from agentfox.capabilities.judgment import panel
+from agentfox.capabilities.judgment.capability import DecisionKind
+from agentfox.capabilities.judgment.egress import JudgmentGateway
+from agentfox.capabilities.judgment.jev import JevUnavailable
 from agentfox.detection.base import (
     BaseDetector,
     Detection,
@@ -45,10 +49,6 @@ from agentfox.detection.base import (
     DetectorResult,
     redact_sample,
 )
-from agentfox.detection.judgment import panel
-from agentfox.detection.judgment.capability import DecisionKind
-from agentfox.detection.judgment.egress import JudgmentGateway
-from agentfox.detection.judgment.jev import JevUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -134,9 +134,9 @@ def _why_unavailable(kind: DecisionKind) -> str:
     not alike. These are off because of a *policy* choice, and the fix is a
     setting rather than an install, so the reason names the setting.
     """
+    from agentfox.capabilities.judgment.capability import CapabilityRouter, Tier
+    from agentfox.capabilities.judgment.jev import JevClient
     from agentfox.core.config import get_settings
-    from agentfox.detection.judgment.capability import CapabilityRouter, Tier
-    from agentfox.detection.judgment.jev import JevClient
 
     settings = get_settings()
     tiers = [str(t) for t in (getattr(settings, "judgment_tiers", None) or [])]

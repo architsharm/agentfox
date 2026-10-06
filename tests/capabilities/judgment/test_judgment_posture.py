@@ -17,11 +17,11 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from agentfox.capabilities.judgment import posture as P
+from agentfox.capabilities.judgment.capability import CapabilityRouter, DecisionKind, Tier
+from agentfox.capabilities.judgment.egress import Backend, PiiEgress
 from agentfox.core.config import get_settings, reset_settings_cache
 from agentfox.core.models import AuditEntry
-from agentfox.detection.judgment import posture as P
-from agentfox.detection.judgment.capability import CapabilityRouter, DecisionKind, Tier
-from agentfox.detection.judgment.egress import Backend, PiiEgress
 from tests.conftest import as_user
 
 
@@ -223,7 +223,7 @@ def test_the_registry_knows_this_surface_must_record():
     """The structural check, not a runtime one — see operator_log's docstring."""
     from agentfox.platform.ledger.operator_log import PRIVILEGED, unaudited
 
-    assert any(a.target == "agentfox.detection.judgment.posture.save" for a in PRIVILEGED)
+    assert any(a.target == "agentfox.capabilities.judgment.posture.save" for a in PRIVILEGED)
     assert unaudited() == []
 
 
@@ -261,7 +261,7 @@ def test_an_unset_posture_behaves_exactly_as_settings_did(session):
 
 def test_the_egress_gate_reads_the_active_posture(egress_on):
     """A tenant tightened to `block` is obeyed by the gate, not just by the page."""
-    from agentfox.detection.judgment.egress import JudgmentGateway
+    from agentfox.capabilities.judgment.egress import JudgmentGateway
 
     with P.use(P.Posture(tiers={Tier.JEV}, pii_egress=PiiEgress.BLOCK)):
         assert JudgmentGateway(backend=Backend.REMOTE)._pii_mode() is PiiEgress.BLOCK

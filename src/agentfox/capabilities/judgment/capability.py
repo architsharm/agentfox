@@ -294,7 +294,7 @@ class CapabilityRouter:
         not a ceiling.
         """
         if settings is None:
-            from agentfox.detection.judgment import posture as _posture
+            from agentfox.capabilities.judgment import posture as _posture
 
             active = _posture.effective()
             from agentfox.core.config import get_settings

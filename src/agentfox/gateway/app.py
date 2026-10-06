@@ -116,9 +116,9 @@ def _judgment_posture() -> dict[str, Any]:
     drift from the policy it is describing: each kind reports who may decide
     it and, for every tier that may not, the measured reason it was refused.
     """
+    from agentfox.capabilities.judgment import posture as _posture
+    from agentfox.capabilities.judgment.capability import CapabilityRouter, DecisionKind, Tier
     from agentfox.core.config import get_settings
-    from agentfox.detection.judgment import posture as _posture
-    from agentfox.detection.judgment.capability import CapabilityRouter, DecisionKind, Tier
 
     settings = get_settings()
     # The *effective* posture, which is this tenant's stored choice where there is one

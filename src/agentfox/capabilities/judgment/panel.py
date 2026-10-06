@@ -30,7 +30,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from agentfox.detection.judgment.capability import (
+from agentfox.capabilities.judgment.capability import (
     EGRESS_TIERS,
     ROUTING,
     CapabilityRouter,
@@ -38,8 +38,8 @@ from agentfox.detection.judgment.capability import (
     DecisionKind,
     Tier,
 )
-from agentfox.detection.judgment.egress import JudgmentGateway
-from agentfox.detection.judgment.jev import JevAnswer, JevClient, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.egress import JudgmentGateway
+from agentfox.capabilities.judgment.jev import JevAnswer, JevClient, JevResult, JevUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def _jev_judge() -> Judge | None:
 
 
 def _llm_judge(tier: Tier) -> Judge | None:
-    from agentfox.detection.judgment.llm import LlmJudge
+    from agentfox.capabilities.judgment.llm import LlmJudge
 
     judge = LlmJudge()
     if judge.tier() is not tier or not judge.available():

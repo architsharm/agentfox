@@ -151,7 +151,7 @@ existed — which is what keeps the published numbers comparable.
 ## Tests
 
 `test_judgment_capability.py`, `test_judgment_egress.py` and
-`test_judgment_posture.py`, under `tests/detection/judgment/`. The ones that matter: no capability
+`test_judgment_posture.py`, under `tests/capabilities/judgment/`. The ones that matter: no capability
 can take a structural decision from code, enabling more never shrinks the
 decider set, excluded votes are discarded, hosted tiers drop out on both egress
 gates, the table cannot forbid a tier that actually measured best — and posture

@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.capabilities.judgment import JevUnavailable, LlmJudge, judges_for
+from agentfox.capabilities.judgment.capability import DecisionKind, Tier
+from agentfox.capabilities.judgment.llm import _parse
 from agentfox.core.config import get_settings
-from agentfox.detection.judgment import JevUnavailable, LlmJudge, judges_for
-from agentfox.detection.judgment.capability import DecisionKind, Tier
-from agentfox.detection.judgment.llm import _parse
 from agentfox.platform.providers.base import (
     CompletionRequest,
     CompletionResponse,
@@ -175,7 +175,7 @@ class CountingJudge:
         return True
 
     def ask(self, state, questions):
-        from agentfox.detection.judgment.jev import JevAnswer, JevResult
+        from agentfox.capabilities.judgment.jev import JevAnswer, JevResult
 
         self.calls.append(dict(questions))
         return JevResult(
@@ -189,8 +189,8 @@ class CountingJudge:
 
 def test_a_decisive_cheap_answer_never_reaches_the_expensive_tier() -> None:
     """The whole point: stop paying once the question is settled."""
-    from agentfox.detection.judgment import panel
-    from agentfox.detection.judgment.capability import DecisionKind
+    from agentfox.capabilities.judgment import panel
+    from agentfox.capabilities.judgment.capability import DecisionKind
 
     cheap = CountingJudge({"settles": 0.97})  # outside the band -> decisive
     dear = CountingJudge({"settles": 0.5})
@@ -206,8 +206,8 @@ def test_a_decisive_cheap_answer_never_reaches_the_expensive_tier() -> None:
 
 
 def test_an_uncertain_answer_is_carried_to_the_next_tier() -> None:
-    from agentfox.detection.judgment import panel
-    from agentfox.detection.judgment.capability import DecisionKind
+    from agentfox.capabilities.judgment import panel
+    from agentfox.capabilities.judgment.capability import DecisionKind
 
     cheap = CountingJudge({"settles": 0.5})  # inside the band -> unsettled
     dear = CountingJudge({"settles": 0.95})
@@ -223,8 +223,8 @@ def test_an_uncertain_answer_is_carried_to_the_next_tier() -> None:
 
 def test_only_the_unsettled_questions_are_carried() -> None:
     """A mixed batch sends the expensive tier the remainder, not the lot."""
-    from agentfox.detection.judgment import panel
-    from agentfox.detection.judgment.capability import DecisionKind
+    from agentfox.capabilities.judgment import panel
+    from agentfox.capabilities.judgment.capability import DecisionKind
 
     cheap = CountingJudge({"settles": 0.98, "undertakes": 0.5})
     dear = CountingJudge({"undertakes": 0.9})
@@ -240,8 +240,8 @@ def test_only_the_unsettled_questions_are_carried() -> None:
 
 
 def test_one_tier_failing_degrades_to_the_next() -> None:
-    from agentfox.detection.judgment import panel
-    from agentfox.detection.judgment.capability import DecisionKind
+    from agentfox.capabilities.judgment import panel
+    from agentfox.capabilities.judgment.capability import DecisionKind
 
     class Broken:
         def available(self):

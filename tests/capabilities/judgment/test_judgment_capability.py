@@ -12,7 +12,7 @@ import itertools
 
 import pytest
 
-from agentfox.detection.judgment import (
+from agentfox.capabilities.judgment import (
     EVIDENCE,
     ROUTING,
     CapabilityRouter,
@@ -208,7 +208,7 @@ def test_a_cheap_negative_cannot_end_the_performative_cascade() -> None:
     that can see it is ever asked. `lo` therefore sits below every possible
     score: only a confident yes is decisive.
     """
-    from agentfox.detection.judgment.capability import ROUTING
+    from agentfox.capabilities.judgment.capability import ROUTING
 
     plan = CapabilityRouter({Tier.JEV, Tier.LLM}, allow_egress=True).plan(DecisionKind.PERFORMATIVE)
     assert plan.deciders.index(Tier.JEV) < plan.deciders.index(Tier.LLM)

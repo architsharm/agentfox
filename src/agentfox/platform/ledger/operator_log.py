@@ -120,7 +120,7 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "undoes a change; reverting a tightening loosens a control again",
     ),
     PrivilegedAction(
-        "agentfox.detection.judgment.posture.save",
+        "agentfox.capabilities.judgment.posture.save",
         "operator.judgment_posture.changed",
         "decides whether customer payloads leave this machine for a third party — "
         "the one configuration change whose consequence is invisible from the screen "

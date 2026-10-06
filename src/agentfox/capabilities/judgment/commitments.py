@@ -35,10 +35,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from agentfox.detection.judgment import panel
-from agentfox.detection.judgment.capability import DecisionKind
-from agentfox.detection.judgment.egress import JudgmentGateway
-from agentfox.detection.judgment.jev import JevUnavailable
+from agentfox.capabilities.judgment import panel
+from agentfox.capabilities.judgment.capability import DecisionKind
+from agentfox.capabilities.judgment.egress import JudgmentGateway
+from agentfox.capabilities.judgment.jev import JevUnavailable
 
 if TYPE_CHECKING:  # pragma: no cover
     from agentfox.grounding.commitments import Commitment

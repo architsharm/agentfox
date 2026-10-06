@@ -3,7 +3,7 @@ evaluate it. Code owns comparisons and identity; Jev owns meaning."""
 
 from __future__ import annotations
 
-from agentfox.detection.judgment.capability import (
+from agentfox.capabilities.judgment.capability import (
     EVIDENCE,
     ROUTING,
     CapabilityRouter,
@@ -14,18 +14,18 @@ from agentfox.detection.judgment.capability import (
     Plan,
     Tier,
 )
-from agentfox.detection.judgment.egress import (
+from agentfox.capabilities.judgment.egress import (
     Backend,
     EgressRefused,
     EgressReport,
     JudgmentGateway,
     PiiEgress,
 )
-from agentfox.detection.judgment.jev import JevAnswer, JevClient, JevResult, JevUnavailable
-from agentfox.detection.judgment.llm import LlmJudge
-from agentfox.detection.judgment.panel import PanelResult, judges_for
-from agentfox.detection.judgment.posture import Ceiling, Posture, PostureRefused
-from agentfox.detection.judgment.predicate import (
+from agentfox.capabilities.judgment.jev import JevAnswer, JevClient, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.llm import LlmJudge
+from agentfox.capabilities.judgment.panel import PanelResult, judges_for
+from agentfox.capabilities.judgment.posture import Ceiling, Posture, PostureRefused
+from agentfox.capabilities.judgment.predicate import (
     Comparison,
     Identity,
     Policy,
@@ -36,7 +36,13 @@ from agentfox.detection.judgment.predicate import (
     Semantic,
     lint_semantic,
 )
-from agentfox.detection.judgment.router import Decision, Outcome, PredicateResult, Router, resolve
+from agentfox.capabilities.judgment.router import (
+    Decision,
+    Outcome,
+    PredicateResult,
+    Router,
+    resolve,
+)
 
 __all__ = [
     "Ceiling",

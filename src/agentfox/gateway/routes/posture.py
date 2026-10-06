@@ -10,7 +10,7 @@ history, and changing one needs a deploy — so in practice the answer to "who t
 this on in March" would be nobody.
 
 So there are two layers, and the rule between them is enforced in
-:mod:`agentfox.detection.judgment.posture`: **posture may only narrow what the deployment
+:mod:`agentfox.capabilities.judgment.posture`: **posture may only narrow what the deployment
 permits.** This module is the HTTP face of that rule. Three things follow from it, and
 they are the reason this is a route module rather than three fields on an existing one:
 
@@ -38,9 +38,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import User
-from agentfox.detection.judgment import posture as _posture
-from agentfox.detection.judgment.capability import (
+from agentfox.capabilities.judgment import posture as _posture
+from agentfox.capabilities.judgment.capability import (
     EGRESS_TIERS,
     EVIDENCE,
     ROUTING,
@@ -49,7 +48,8 @@ from agentfox.detection.judgment.capability import (
     DecisionKind,
     Tier,
 )
-from agentfox.detection.judgment.egress import Backend, PiiEgress
+from agentfox.capabilities.judgment.egress import Backend, PiiEgress
+from agentfox.core.models import User
 from agentfox.gateway.deps import current_user, db, require
 
 router = APIRouter(prefix="/api/judgment", tags=["judgment"])

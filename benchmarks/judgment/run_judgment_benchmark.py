@@ -69,6 +69,9 @@ def score(rows: list[tuple[bool, bool]]) -> dict:
 
 
 def main() -> int:
+    from agentfox.capabilities.judgment.answerability import augment as augment_answerability
+    from agentfox.capabilities.judgment.capability import DecisionKind, Tier
+    from agentfox.capabilities.judgment.commitments import augment as augment_commitments
     from agentfox.core.config import get_settings
     from agentfox.core.models import KnowledgeBoundary
     from agentfox.detection import DetectorPipeline
@@ -79,9 +82,6 @@ def main() -> int:
         PiiJudgmentDetector,
     )
     from agentfox.detection.detectors.pii import NativePiiDetector
-    from agentfox.detection.judgment.answerability import augment as augment_answerability
-    from agentfox.detection.judgment.capability import DecisionKind, Tier
-    from agentfox.detection.judgment.commitments import augment as augment_commitments
     from agentfox.grounding.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability
     from agentfox.grounding.commitments import detect_commitments
 
@@ -263,8 +263,8 @@ def main() -> int:
         buckets[c["answer_template"]].append(c)
     per = max(1, N // len(buckets))
     sample = [c for t in sorted(buckets) for c in buckets[t][:per]]
-    from agentfox.detection.judgment import panel
-    from agentfox.detection.judgment.commitments import QUESTIONS as C_Q
+    from agentfox.capabilities.judgment import panel
+    from agentfox.capabilities.judgment.commitments import QUESTIONS as C_Q
 
     def one_commitment(c):
         want = bool(c["promises_refund"] or c["other_undertaking"])
@@ -303,9 +303,9 @@ def main() -> int:
     # balanced set, and checks two independent things: that the verdicts are
     # byte-identical to code alone, and that the router itself refuses to seat
     # any judgment tier for STRUCTURAL_PARSED.
+    from agentfox.capabilities.judgment import panel as panel_mod
+    from agentfox.capabilities.judgment.capability import CapabilityRouter
     from agentfox.detection.actions import analyse_sql
-    from agentfox.detection.judgment import panel as panel_mod
-    from agentfox.detection.judgment.capability import CapabilityRouter
 
     sql_cases = []
     for split in ("test_natural_dml", "test_adversarial_tautology", "test_natural_ddl"):

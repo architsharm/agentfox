@@ -112,7 +112,7 @@ is not something `NativePiiDetector` will mask.
 
 ## Tests
 
-`tests/detection/judgment/test_judgment_egress.py`: default sends nothing, remote is
+`tests/capabilities/judgment/test_judgment_egress.py`: default sends nothing, remote is
 refused with egress off, PII and secret fields are masked, nested structures
 are walked, a missing redactor fails closed, a *faulting* redactor fails closed,
 `inspect()` reports without sending, and the client refuses on its own when the

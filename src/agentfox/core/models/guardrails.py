@@ -542,7 +542,7 @@ class JudgmentPosture(Base, TimestampMixin):
     people answering them and different blast radii when answered wrong.
 
     So the relationship is one-directional and enforced in
-    :mod:`agentfox.detection.judgment.posture`: a row here may only ever *narrow* what the
+    :mod:`agentfox.capabilities.judgment.posture`: a row here may only ever *narrow* what the
     deployment permits. Enabling a remote tier on a deployment whose ``allow_egress``
     is off is refused rather than stored-and-ignored, because a posture page that
     shows JEV as on while nothing is being sent to JEV is worse than one that will not
@@ -558,11 +558,11 @@ class JudgmentPosture(Base, TimestampMixin):
     __table_args__ = (UniqueConstraint("org_id", name="uq_judgment_posture_org"),)
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("jpo"))
-    #: Tier names from :class:`agentfox.detection.judgment.Tier`. ``deterministic`` is implicit
+    #: Tier names from :class:`agentfox.capabilities.judgment.Tier`. ``deterministic`` is implicit
     #: and always on — it needs no key, no weights and no network, and a kind with no
     #: permitted decider at all is not a posture anyone meant to choose.
     tiers: Mapped[list[str]] = mapped_column(JSON, default=list)
-    #: ``block`` | ``redact`` | ``allow`` — see :class:`agentfox.detection.judgment.PiiEgress`.
+    #: ``block`` | ``redact`` | ``allow`` — see :class:`agentfox.capabilities.judgment.PiiEgress`.
     pii_egress: Mapped[str] = mapped_column(String(16), default="redact")
     #: Whether a remote tier's outage denies the request or is treated as no-signal.
     fail_closed: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.capabilities.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
+from agentfox.capabilities.judgment.answerability import augment
+from agentfox.capabilities.judgment.egress import EgressRefused
 from agentfox.core.config import get_settings
 from agentfox.detection.base import DetectionContext
 from agentfox.detection.detectors.judgment import PiiJudgmentDetector
-from agentfox.detection.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
-from agentfox.detection.judgment.answerability import augment
-from agentfox.detection.judgment.egress import EgressRefused
 from agentfox.grounding.answerability import UNKNOWABLE, UNSUPPORTED_TYPE, AnswerabilityVerdict
 
 
@@ -146,7 +146,7 @@ def test_the_widened_regexes_still_leave_the_hedges_alone() -> None:
 
 
 def test_judgment_adds_a_commitment_with_no_binding_word(judgment_on) -> None:
-    from agentfox.detection.judgment.commitments import augment
+    from agentfox.capabilities.judgment.commitments import augment
 
     text = "That's sorted — the 50 USD is on its way back to you."
     from agentfox.grounding.commitments import detect_commitments
@@ -160,7 +160,7 @@ def test_judgment_adds_a_commitment_with_no_binding_word(judgment_on) -> None:
 
 def test_judgment_never_drops_a_deterministic_finding(judgment_on) -> None:
     """Those are the findings that survive a hearing."""
-    from agentfox.detection.judgment.commitments import augment
+    from agentfox.capabilities.judgment.commitments import augment
     from agentfox.grounding.commitments import Commitment
 
     existing = [Commitment("promise", "I guarantee", "binds the company")]
@@ -169,7 +169,7 @@ def test_judgment_never_drops_a_deterministic_finding(judgment_on) -> None:
 
 
 def test_an_authorised_agent_is_not_second_guessed(judgment_on) -> None:
-    from agentfox.detection.judgment.commitments import augment
+    from agentfox.capabilities.judgment.commitments import augment
 
     out = augment(
         [], "I've approved it.", authorised=True, gateway=_commit_gateway(settles_outcome=1.0)
@@ -178,12 +178,12 @@ def test_an_authorised_agent_is_not_second_guessed(judgment_on) -> None:
 
 
 def test_it_no_ops_with_no_tier_enabled() -> None:
-    from agentfox.detection.judgment.commitments import augment
+    from agentfox.capabilities.judgment.commitments import augment
 
     assert augment([], "That's sorted, money's on its way.") == []
 
 
 def test_an_outage_leaves_the_deterministic_answer(judgment_on) -> None:
-    from agentfox.detection.judgment.commitments import augment
+    from agentfox.capabilities.judgment.commitments import augment
 
     assert augment([], "That's sorted.", gateway=FakeGateway(refuse="down")) == []

@@ -46,8 +46,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
 
+from agentfox.capabilities.judgment.jev import JevClient, JevResult, JevUnavailable
 from agentfox.core.config import get_settings
-from agentfox.detection.judgment.jev import JevClient, JevResult, JevUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -196,7 +196,7 @@ class JudgmentGateway:
         """
         if self._pii_egress is not None:
             return self._pii_egress
-        from agentfox.detection.judgment import posture as _posture
+        from agentfox.capabilities.judgment import posture as _posture
 
         return _posture.effective().pii_egress
 
@@ -283,6 +283,6 @@ def _setting(name: str, default: str) -> str:
 
 def _effective_backend() -> Backend:
     """The backend the active posture selects, clamped by the deployment's ceiling."""
-    from agentfox.detection.judgment import posture as _posture
+    from agentfox.capabilities.judgment import posture as _posture
 
     return _posture.effective().backend

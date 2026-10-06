@@ -11,13 +11,13 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.capabilities.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
+from agentfox.capabilities.judgment.egress import EgressRefused
 from agentfox.core.config import get_settings
 from agentfox.detection import DetectorPipeline
 from agentfox.detection.base import DetectionContext
 from agentfox.detection.detectors.injection import InjectionHeuristicDetector
 from agentfox.detection.detectors.judgment import InjectionJudgmentDetector
-from agentfox.detection.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
-from agentfox.detection.judgment.egress import EgressRefused
 
 #: An encoded payload of the shape the adaptive benchmark showed our pattern
 #: detectors cannot read: the instruction is in the framing, not the blob.

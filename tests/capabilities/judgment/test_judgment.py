@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from agentfox.detection.judgment import (
+from agentfox.capabilities.judgment import (
     Comparison,
     Identity,
     JevAnswer,
@@ -303,7 +303,7 @@ def test_every_semantic_question_goes_in_one_request():
 def test_the_payload_is_serialised_with_sorted_keys():
     """The same question over the same values returned a median 0.53 under
     one key order and 0.98 on eight consecutive runs under another."""
-    from agentfox.detection.judgment.jev import JevClient
+    from agentfox.capabilities.judgment.jev import JevClient
 
     captured: dict = {}
 

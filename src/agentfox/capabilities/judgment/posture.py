@@ -41,8 +41,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
-from agentfox.detection.judgment.capability import EGRESS_TIERS, Tier
-from agentfox.detection.judgment.egress import Backend, PiiEgress
+from agentfox.capabilities.judgment.capability import EGRESS_TIERS, Tier
+from agentfox.capabilities.judgment.egress import Backend, PiiEgress
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle at runtime, types only
     from sqlalchemy.orm import Session

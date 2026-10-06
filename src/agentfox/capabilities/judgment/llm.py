@@ -35,8 +35,8 @@ import re
 import time
 from typing import Any
 
-from agentfox.detection.judgment.capability import Tier
-from agentfox.detection.judgment.jev import JevAnswer, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.capability import Tier
+from agentfox.capabilities.judgment.jev import JevAnswer, JevResult, JevUnavailable
 from agentfox.platform.providers.base import is_local_endpoint
 
 log = logging.getLogger(__name__)

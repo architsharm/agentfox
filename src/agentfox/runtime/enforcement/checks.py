@@ -392,7 +392,7 @@ class _ChecksMixin:
         # double negative, an oblique "that's sorted", or Spanish — which a
         # regex cannot express. An enabled judgment tier adds those; it never
         # drops a deterministic finding, and no-ops when no tier is enabled.
-        from agentfox.detection.judgment.commitments import augment as _judge_commitments
+        from agentfox.capabilities.judgment.commitments import augment as _judge_commitments
 
         commitments = _judge_commitments(commitments, text, authorised=authorised)
         if commitments:
