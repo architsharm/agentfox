@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import Finding, utcnow
 from agentfox.core.tenancy import session_org
-from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
+from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.prove.audit import chain
 
 OPEN = "open"

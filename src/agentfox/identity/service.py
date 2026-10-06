@@ -40,8 +40,7 @@ from agentfox.core.models import (
     as_aware,
     utcnow,
 )
-from agentfox.detection.base import taint_rank
-from agentfox.policy.model import COMPARATORS
+from agentfox.core.vocab import COMPARATORS, taint_rank
 from agentfox.prove.findings import auto_resolve, raise_finding
 
 _hasher = PasswordHasher()

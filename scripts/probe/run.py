@@ -657,7 +657,7 @@ def probe_delegation_narrowing() -> Result:
 
 
 def probe_subagent_taint() -> Result:
-    from agentfox.detection.base import taint_rank
+    from agentfox.core.vocab import taint_rank
 
     return taint_rank("subagent") >= 2, f"subagent rank {taint_rank('subagent')} (>=2 untrusted)"
 

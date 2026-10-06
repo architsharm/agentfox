@@ -32,7 +32,6 @@ from agentfox.policy.hierarchy import (
     resolve_effective,
 )
 from agentfox.policy.model import (
-    EFFECT_RANK,
     Condition,
     DetectionCondition,
     Effect,
@@ -73,7 +72,6 @@ from agentfox.policy.store import (
 )
 
 __all__ = [
-    "EFFECT_RANK",
     "LEVELS",
     "MODES",
     "CanaryError",

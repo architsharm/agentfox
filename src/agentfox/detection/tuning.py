@@ -995,7 +995,7 @@ def explain_recorded(
     original content, and per-detector timings beyond what the run rows carry. The
     caller gets `None` for the excerpt rather than a plausible-looking blank.
     """
-    from agentfox.policy.model import EFFECT_RANK
+    from agentfox.core.vocab import EFFECT_RANK
 
     rules = list(decision.get("rules_fired") or [])
     # The *effective* verdict, which is what the live explanation describes and what

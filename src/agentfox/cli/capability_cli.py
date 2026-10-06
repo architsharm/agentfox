@@ -64,7 +64,7 @@ def _parse_limit(raw: str) -> tuple[str, Any]:
     string. A comparison the engine does not implement is rejected here rather than
     stored and silently skipped at decision time.
     """
-    from agentfox.policy.model import COMPARATORS
+    from agentfox.core.vocab import COMPARATORS
 
     if "=" not in raw:
         raise typer.BadParameter(
@@ -458,7 +458,7 @@ def _explain_taint_ceiling(tool: str, max_taint: str) -> None:
     escalation does not, and a grant that looked like it allowed a flow which is then
     blocked anyway is exactly the surprise this warning exists to remove.
     """
-    from agentfox.detection.base import taint_rank
+    from agentfox.core.vocab import taint_rank
 
     if taint_rank(max_taint) <= taint_rank("user"):
         return

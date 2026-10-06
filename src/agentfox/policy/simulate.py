@@ -22,8 +22,9 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from agentfox.core.models import Agent, Decision, Policy, PolicyVersion, SimulationRun, Trace
+from agentfox.core.vocab import EFFECT_RANK
 from agentfox.policy.engine import NativePolicyEngine
-from agentfox.policy.model import EFFECT_RANK, PolicyDecision, PolicyDocument, PolicyInput
+from agentfox.policy.model import PolicyDecision, PolicyDocument, PolicyInput
 from agentfox.policy.taint_view import policy_taint
 
 

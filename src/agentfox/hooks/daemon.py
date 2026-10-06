@@ -232,7 +232,7 @@ class HookDaemon:
         own rules, it is the existing engine bound at another moment.
         """
         from agentfox.core.db import session_scope
-        from agentfox.detection.base import SURFACES
+        from agentfox.core.vocab import SURFACES
         from agentfox.runtime.enforcement import Enforcer
 
         started = time.perf_counter()

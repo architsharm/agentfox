@@ -141,7 +141,7 @@ def _rego_conditions(rule) -> list[str]:
         elif c.argument.op == "matches":
             out.append(f"regex.match({json.dumps(c.argument.value)}, input.arguments.{path})")
     if c.taint_exceeds:
-        from agentfox.detection.base import TAINT_ORDER
+        from agentfox.core.vocab import TAINT_ORDER
 
         worse = [
             s for s in TAINT_ORDER if TAINT_ORDER.index(s) > TAINT_ORDER.index(c.taint_exceeds)

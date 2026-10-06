@@ -176,7 +176,7 @@ def test_a_validator_that_throws_is_an_error_not_a_pass(fake_guardrails):
 
 
 def test_catalogue_entries_are_well_formed():
-    from agentfox.detection.base import SURFACES
+    from agentfox.core.vocab import SURFACES
 
     slugs = [s.slug for s in CATALOGUE]
     assert len(slugs) == len(set(slugs)), "duplicate slug in the catalogue"

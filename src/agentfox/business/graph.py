@@ -33,7 +33,7 @@ from typing import Any
 
 from agentfox.business.ladder import Ladder, LadderDecision
 from agentfox.business.ladder import evaluate as evaluate_ladder
-from agentfox.policy.model import EFFECT_RANK
+from agentfox.core.vocab import EFFECT_RANK
 
 #: Business outcomes mapped onto the security lattice, so the two can be compared.
 #: `verify` sits just above allow: it permits the action conditionally, which is

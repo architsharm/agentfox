@@ -195,7 +195,7 @@ def attribution(*, automated: bool, actor: str | None = None) -> dict[str, str]:
     Only attribution; it has no bearing on how an entry is hashed.
     """
     if automated:
-        from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
+        from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 
         return {
             "actor_type": AUTOMATION_ACTOR_TYPE,

@@ -41,7 +41,7 @@ Handlers take a session already bound to the job's tenant (see
 
 Every change a handler makes is attributed on the audit chain. Work a person requested
 carries that person (`payload["requested_by"]`); work a schedule enqueued carries
-`contract.AUTOMATION_ACTOR_TYPE` and `settings.improvement_actor_id`, so an automated
+`core.vocab.AUTOMATION_ACTOR_TYPE` and `settings.improvement_actor_id`, so an automated
 change is never recorded as a human decision.
 
 Imported by `gateway/routes/jobs.py`, so registration happens wherever the jobs router
@@ -57,7 +57,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, EvalSuite, Policy, PolicyCanary, utcnow
-from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
+from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.jobs import store as jobs_db
 from agentfox.prove.audit import chain
 

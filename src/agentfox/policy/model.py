@@ -13,48 +13,15 @@ force, which is what stops "that rule was always on" retro-fitting (Appendix E.1
 from __future__ import annotations
 
 import fnmatch
-import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from agentfox.core.vocab import COMPARATORS
+
 Effect = Literal["allow", "redact", "mask", "tokenize", "abstain", "block", "escalate"]
-
-#: Effect precedence — a decision takes the strongest effect any rule produced.
-EFFECT_RANK: dict[str, int] = {
-    "allow": 0,
-    "tokenize": 1,
-    "mask": 2,
-    "redact": 3,
-    # P7: `abstain` withholds the answer without treating the user as an adversary,
-    # which is strictly stronger than redacting part of one and strictly weaker than
-    # pulling a human in.
-    "abstain": 4,
-    "escalate": 5,
-    "block": 6,
-}
-
-COMPARATORS = {
-    "eq": lambda a, b: a == b,
-    "ne": lambda a, b: a != b,
-    "gt": lambda a, b: _num(a) > _num(b),
-    "gte": lambda a, b: _num(a) >= _num(b),
-    "lt": lambda a, b: _num(a) < _num(b),
-    "lte": lambda a, b: _num(a) <= _num(b),
-    "in": lambda a, b: a in b,
-    "not_in": lambda a, b: a not in b,
-    "contains": lambda a, b: str(b).lower() in str(a).lower(),
-    "matches": lambda a, b: bool(re.search(str(b), str(a))),
-}
-
-
-def _num(value: Any) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return float("nan")
 
 
 class DetectionCondition(BaseModel):

@@ -33,8 +33,8 @@ import fnmatch
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.detection.base import SURFACES
-from agentfox.policy.model import EFFECT_RANK, PolicyDocument, Rule
+from agentfox.core.vocab import EFFECT_RANK, SURFACES
+from agentfox.policy.model import PolicyDocument, Rule
 from agentfox.prove.compliance.risk import EU_CLASSES
 
 #: Broadest to narrowest. Order is load-bearing: later levels win ties.

@@ -12,42 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-# Surfaces a detector can run on. The agent-native point is that `input` is the
-# *least* interesting one: indirect injection arrives via retrieved content and
-# tool results (Appendix E.1.1).
-#
-# `memory_write` (NOM-RTG-13, ASI06) and `agent_message` (NOM-IAM-08, ASI07) are
-# deliberately distinct from `tool_args`/`tool_result`: a write into an agent's
-# long-term store and a sub-agent's claim are not the same trust boundary as a
-# tool call or its return value, even though both used to be folded into one of
-# those two surfaces before these controls existed.
-SURFACES = (
-    "input",
-    "output",
-    "tool_args",
-    "tool_result",
-    "retrieved",
-    "memory_write",
-    "agent_message",
-    # The agent declaring itself finished. Not content arriving or leaving —
-    # a claim, checked against what actually happened. See
-    # `Enforcer.guard_completion`.
-    "completion",
-    # The model's own reasoning, before it acts on it. The only surface where a
-    # detection means the payload was *adopted* rather than merely present —
-    # see `Enforcer.guard_reasoning`.
-    "reasoning",
-)
-
-# Trust sources, ordered least → most dangerous. Used for taint comparison.
-TAINT_ORDER = ("none", "user", "retrieved", "tool_result", "subagent", "memory")
-
-
-def taint_rank(source: str) -> int:
-    try:
-        return TAINT_ORDER.index(source)
-    except ValueError:
-        return len(TAINT_ORDER)
+from agentfox.core.vocab import SURFACES
 
 
 @dataclass(slots=True)

@@ -6,7 +6,7 @@ import functools
 import logging
 from typing import Any
 
-from agentfox.policy import EFFECT_RANK
+from agentfox.core.vocab import EFFECT_RANK
 
 log = logging.getLogger("agentfox.runtime.enforcement")
 

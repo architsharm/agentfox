@@ -25,6 +25,7 @@ from agentfox.core.models import (
     Suppression,
     as_aware,
 )
+from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.detection.tuning import apply_suppression, record_feedback
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import min_score_direction
@@ -511,7 +512,7 @@ def test_a_completed_canary_settles_the_proposal_as_applied(seeded):
 
 
 def test_every_step_is_on_the_chain_with_the_right_actor(seeded, enforcer):
-    automation = contract.AUTOMATION_ACTOR_TYPE
+    automation = AUTOMATION_ACTOR_TYPE
     improver = get_settings().improvement_actor_id
 
     suppression = _suppression(seeded, enforcer)

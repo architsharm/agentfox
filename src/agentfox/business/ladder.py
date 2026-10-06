@@ -349,7 +349,7 @@ def _satisfies(result: Any, expect: dict[str, Any]) -> tuple[bool, str]:
     if not isinstance(result, dict):
         return False, f"expected an object to match against, got {type(result).__name__}"
 
-    from agentfox.policy.model import COMPARATORS
+    from agentfox.core.vocab import COMPARATORS
 
     for path, condition in expect.items():
         value: Any = result

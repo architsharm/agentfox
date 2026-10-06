@@ -27,9 +27,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from agentfox.detection.base import taint_rank
+from agentfox.core.vocab import EFFECT_RANK, taint_rank
 from agentfox.detection.composition import tool_key_from_origin
-from agentfox.policy import EFFECT_RANK
 
 #: The finding type. Distinct from ``guardrail_detection`` on purpose: a detector
 #: catch and a containment refusal are triaged differently — the first asks "was the

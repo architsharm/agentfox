@@ -21,13 +21,13 @@ from __future__ import annotations
 import base64
 import re
 
+from agentfox.core.vocab import taint_rank
 from agentfox.detection.base import (
     BaseDetector,
     Detection,
     DetectionContext,
     redact_sample,
     snippet,
-    taint_rank,
 )
 from agentfox.detection.normalize import despaced, evasion_score, hidden_markup, normalize
 from agentfox.detection.prefilter import LoweredText, opening_literals

@@ -19,8 +19,6 @@ from agentfox.detection.adapters.hub import HubValidatorDetector, hub_detectors
 from agentfox.detection.adapters.presidio import PresidioPiiDetector
 from agentfox.detection.adapters.rails import GuardrailsAiDetector, NemoRailsDetector
 from agentfox.detection.base import (
-    SURFACES,
-    TAINT_ORDER,
     BaseDetector,
     Detection,
     DetectionContext,
@@ -31,7 +29,6 @@ from agentfox.detection.base import (
     get_detector,
     redact_sample,
     register_detector,
-    taint_rank,
     warm_all,
 )
 from agentfox.detection.detectors.injection import InjectionHeuristicDetector
@@ -77,8 +74,6 @@ for _hub_detector in hub_detectors():
 register_detector(RestrictedClassifierDetector())
 
 __all__ = [
-    "SURFACES",
-    "TAINT_ORDER",
     "BaseDetector",
     "Detection",
     "DetectionContext",
@@ -111,6 +106,5 @@ __all__ = [
     "HubValidatorDetector",
     "hub_detectors",
     "register_detector",
-    "taint_rank",
     "warm_all",
 ]

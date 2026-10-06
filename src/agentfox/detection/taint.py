@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.detection.base import TAINT_ORDER, taint_rank
+from agentfox.core.vocab import taint_rank
 
 #: Values shorter than this are ignored when inferring provenance — matching on
 #: "1" or "ok" would taint everything and make the signal useless.
@@ -206,4 +206,4 @@ def exceeds(actual: str, allowed: str) -> bool:
     return taint_rank(actual) > taint_rank(allowed)
 
 
-__all__ = ["TaintTracker", "TaintMark", "exceeds", "TAINT_ORDER", "taint_rank", "_flatten"]
+__all__ = ["TaintTracker", "TaintMark", "exceeds", "_flatten"]
