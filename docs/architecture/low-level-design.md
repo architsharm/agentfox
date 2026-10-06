@@ -242,7 +242,7 @@ raises on anything a policy would block. `off()` reverses every patch.
 
 ---
 
-## 8. LangGraph integration — `src/agentfox/integrations/langgraph.py`
+## 8. LangGraph integration — `src/agentfox/frameworks/langgraph.py`
 
 LangGraph is an optional import; trace identity lives **in graph state**
 (`STATE_KEY = "__nometria__"`) so it survives checkpointing, resumption and time-travel;
@@ -259,7 +259,7 @@ escalation maps to LangGraph's own `interrupt()`; enforcement failures always ra
 | `tool_node(fn=None, *, tool, provenance=None)` | Calls `Enforcer.guard_tool_call()` **before** the wrapped body runs, threading `prior_steps` (tool, arguments, observation) so the loop governor sees alternating cycles and stalled runs |
 | `_stop(result)` | On escalate with `raise_on_escalate`: calls `interrupt()` inside a running graph, and on resume only an explicit approval lets the node continue (a denial raises `PolicyViolation`); outside a graph raises `ApprovalRequired`. On block raises `PolicyViolation` |
 
-Both exceptions come from `agentfox.errors` (§3.2). `tests/integrations/test_langgraph_real_graph.py`
+Both exceptions come from `agentfox.errors` (§3.2). `tests/frameworks/test_langgraph_real_graph.py`
 runs the guard inside a compiled graph with a checkpointer.
 
 ---

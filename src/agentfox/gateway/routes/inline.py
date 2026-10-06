@@ -829,7 +829,7 @@ def mcp_call(
     ceiling; post-call the result is evaluated on the ``tool_result`` surface and
     returned redacted where policy says so.
     """
-    from agentfox.integrations.mcp import McpGovernor
+    from agentfox.frameworks.mcp import McpGovernor
 
     governor = McpGovernor(
         session=session,

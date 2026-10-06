@@ -395,7 +395,7 @@ def suggest_limits(calls: list[dict[str, Any]]) -> list[Limit]:
 
 
 def infer_declared_impact(tool_key: str) -> str:
-    from agentfox.integrations.mcp import infer_impact
+    from agentfox.frameworks.mcp import infer_impact
 
     name = tool_key.rsplit("/", 1)[-1]
     impact = infer_impact(name)

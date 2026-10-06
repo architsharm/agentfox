@@ -57,7 +57,7 @@ def test_an_enabled_model_detector_is_warmed(slow, entry):
 
         AgentFox("warm-bot")
     else:
-        from agentfox.integrations.langgraph import AgentFoxGuard
+        from agentfox.frameworks.langgraph import AgentFoxGuard
 
         AgentFoxGuard(agent="warm-bot")
     assert slow.warmed.wait(5), f"{entry} did not warm the enabled detector"

@@ -671,7 +671,7 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
 
     from agentfox.capabilities.improvement.traffic import infer_declared_impact
     from agentfox.core.models import Tool
-    from agentfox.integrations.mcp import infer_impact
+    from agentfox.frameworks.mcp import infer_impact
     from agentfox.platform.registry.service import (
         DECLARED_TOOL_IMPACTS,
         impact_source_of,

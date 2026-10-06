@@ -6,7 +6,7 @@ capability-ceiling probes need real tool *output* to propagate taint through, an
 real mutation (an order actually flips to "refunded") to prove a block actually
 stopped something rather than just returning a denial string nobody checked.
 
-Every call goes through `agentfox.integrations.mcp.McpGovernor` — the same governed
+Every call goes through `agentfox.frameworks.mcp.McpGovernor` — the same governed
 call path `tests/capabilities/detection/test_composition.py`'s `_governor` fixture exercises, reused as-is
 rather than inventing a parallel one. Treating these four Python functions as an
 "MCP server" (`support-tools`) is a convenience, not a protocol claim: `McpGovernor`
@@ -34,7 +34,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agentfox.integrations.mcp import McpCallOutcome, McpGovernor, tool_key
+from agentfox.frameworks.mcp import McpCallOutcome, McpGovernor, tool_key
 from agentfox.platform.ledger.trace import start_trace
 from agentfox.runtime.enforcement import Enforcer
 

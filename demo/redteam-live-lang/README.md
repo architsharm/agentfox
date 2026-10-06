@@ -4,7 +4,7 @@ The LangChain sibling of `demo/redteam-live/` (a real CrewAI crew) — same real
 in-memory customer/order data, same real refund and email side effects, same
 `agentfox.auto()` wiring, same three demo scenarios. Nothing here is a mock:
 `issue_refund` really flips an order's status, `send_email` really queues a message,
-and every call goes through the same governed path (`agentfox.integrations.mcp.
+and every call goes through the same governed path (`agentfox.frameworks.mcp.
 McpGovernor`) the automated test suite (`tests/capabilities/detection/test_composition.py`) exercises.
 
 **What's actually different from `demo/redteam-live/`: only the agent framework.**

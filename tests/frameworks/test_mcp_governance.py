@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from agentfox.core.models import Agent, Finding, Tool
-from agentfox.integrations.mcp import (
+from agentfox.frameworks.mcp import (
     McpCallBlocked,
     McpGovernor,
     infer_impact,

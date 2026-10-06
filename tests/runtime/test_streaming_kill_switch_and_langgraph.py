@@ -13,7 +13,7 @@ import sys
 import pytest
 
 from agentfox.core.models import AgentControl, AuditEntry, Finding
-from agentfox.integrations.langgraph import (
+from agentfox.frameworks.langgraph import (
     STATE_KEY,
     AgentFoxGuard,
     ApprovalRequired,
@@ -431,7 +431,7 @@ def test_app_runs_on_a_migrated_schema(tmp_path, monkeypatch):
 
 def test_integration_imports_without_langgraph():
     """`pip install agentfox` must stay light — the module loads regardless."""
-    from agentfox.integrations import langgraph as integration
+    from agentfox.frameworks import langgraph as integration
 
     assert hasattr(integration, "AgentFoxGuard")
 
@@ -578,7 +578,7 @@ def test_tool_node_alternating_cycle_trips_the_real_loop_governor(seeded):
 
 
 def test_langchain_message_objects_are_normalised():
-    from agentfox.integrations.langgraph import _normalise
+    from agentfox.frameworks.langgraph import _normalise
 
     class FakeHumanMessage:
         type = "human"

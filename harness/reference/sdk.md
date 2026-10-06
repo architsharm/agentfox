@@ -68,7 +68,7 @@ A decision on a held call: `agentfox permit approvals list|show|approve|deny`. O
 ## 3. LangGraph
 
 ```python
-from agentfox.integrations.langgraph import AgentFoxGuard   # needs the [langgraph] extra
+from agentfox.frameworks.langgraph import AgentFoxGuard   # needs the [langgraph] extra
 
 guard = AgentFoxGuard(agent="support-triage", intent="answer a refund question")
 builder.add_node("retrieve", guard.retrieval_node(fetch_docs))
@@ -85,7 +85,7 @@ blocks raise `agentfox.PolicyViolation` (all refusals are `agentfox.AgentFoxErro
 
 ```python
 from fastapi import Depends
-from agentfox.integrations.fastapi import install, guard
+from agentfox.frameworks.fastapi import install, guard
 
 install(app, service="support-api")               # observe-only middleware + /agentfox/health
 
@@ -96,7 +96,7 @@ def ask(payload: dict, result=Depends(guard(agent="support-triage", field="promp
 ## 5. MCP client governor
 
 ```python
-from agentfox.integrations import McpGovernor
+from agentfox.frameworks import McpGovernor
 
 gov = McpGovernor(session=db_session, agent_slug="support-triage", server_name="billing")
 gov.register_tools(tools_list)                    # snapshot; later drift is detected

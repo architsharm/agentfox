@@ -505,7 +505,7 @@ def probe_shell() -> Result:
 
 
 def probe_mcp_drift() -> Result:
-    from agentfox.integrations.mcp import McpGovernor
+    from agentfox.frameworks.mcp import McpGovernor
     from agentfox.platform.registry.service import scan_mcp_server
 
     tools = [{"name": "search", "description": "Search.", "inputSchema": {"type": "object"}}]
@@ -519,7 +519,7 @@ def probe_mcp_drift() -> Result:
 
 
 def probe_mcp_undeclared() -> Result:
-    from agentfox.integrations.mcp import McpGovernor
+    from agentfox.frameworks.mcp import McpGovernor
 
     with _seeded_session() as s:
         gov = McpGovernor(session=s, agent_slug="support-triage", server_name="probe-server-2")

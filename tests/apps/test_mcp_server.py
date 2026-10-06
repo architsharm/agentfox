@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from agentfox import __version__
-from agentfox.integrations.mcp_server import SUPPORTED_PROTOCOL_VERSIONS, TOOLS, serve
+from agentfox.apps.mcp_server import SUPPORTED_PROTOCOL_VERSIONS, TOOLS, serve
 
 SRC = Path(__file__).resolve().parents[2] / "src"
 BASELINE = SRC / "agentfox" / "policies_data" / "baseline.yaml"
@@ -371,7 +371,7 @@ def test_stdio_subprocess_end_to_end(tmp_path):
         [
             sys.executable,
             "-c",
-            "import sys; from agentfox.integrations.mcp_server import serve; sys.exit(serve())",
+            "import sys; from agentfox.apps.mcp_server import serve; sys.exit(serve())",
         ],
         input="".join(json.dumps(m) + "\n" for m in messages),
         capture_output=True,

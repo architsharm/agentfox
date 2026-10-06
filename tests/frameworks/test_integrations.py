@@ -21,13 +21,13 @@ from agentfox.capabilities.evaluation.ragas_adapter import (
     score_sample,
 )
 from agentfox.core.config import get_settings
-from agentfox.integrations.fastapi import (
+from agentfox.exporters.prometheus import render_metrics
+from agentfox.frameworks.fastapi import (
     AgentFoxMiddleware,
     context,
     guard,
     install,
 )
-from agentfox.integrations.prometheus import render_metrics
 from agentfox.platform.providers import all_providers, available_providers, get_provider
 from tests.conftest import PII_TEXT
 
@@ -285,7 +285,7 @@ def test_metrics_expose_counts_never_content(seeded, enforcer):
 
 
 def test_label_values_are_escaped(seeded):
-    from agentfox.integrations.prometheus import _line
+    from agentfox.exporters.prometheus import _line
 
     rendered = _line("m", {"detector": 'a"b\nc'}, 1.0)
     assert '\\"' in rendered and "\n" not in rendered

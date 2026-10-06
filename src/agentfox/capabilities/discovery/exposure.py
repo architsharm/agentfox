@@ -18,7 +18,7 @@ So every tool and every MCP server a static scan finds is classified into three 
 
 The classification is a name-and-description heuristic, deliberately: this runs on a
 repository nobody has imported, and a tool's name is usually the most honest
-description of it there is. It reuses :func:`agentfox.integrations.mcp.infer_impact`
+description of it there is. It reuses :func:`agentfox.frameworks.mcp.infer_impact`
 and the AgentDojo irreversible-tool pattern the benchmarks grade against, so the scan
 and the runtime agree on what "irreversible" means. A tool whose name says nothing is
 left unflagged rather than guessed at, and an MCP server this module does not know is
@@ -157,7 +157,7 @@ class Capabilities:
 
 def classify_tool(name: str, description: str = "") -> Capabilities:
     """Classify one tool by its name, falling back to its description."""
-    from agentfox.integrations.mcp import infer_impact
+    from agentfox.frameworks.mcp import infer_impact
 
     toks = tokens(name)
     tset = set(toks)

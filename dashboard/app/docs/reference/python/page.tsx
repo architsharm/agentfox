@@ -27,7 +27,9 @@ export default function Page() {
         <code>off</code>, <code>Blocked</code>, <code>AgentFox</code>,{" "}
         <code>PolicyViolation</code> and <code>ApprovalRequired</code>. They load lazily,
         so <code>import agentfox</code> opens no database and imports no client library.
-        The integrations live under <code>agentfox.integrations</code>.
+        The framework integrations live under <code>agentfox.frameworks</code> (the SDK,{" "}
+        <code>auto()</code>, LangGraph, FastAPI, the MCP governor) and the exporters under{" "}
+        <code>agentfox.exporters</code>.
       </p>
 
       <h2 id="which">Which surface to use</h2>
@@ -593,7 +595,7 @@ PolicyViolation: capability.denied`}</Output>
             <td><code>result</code>, <code>approval_id</code>, <code>trace_id</code></td>
           </tr>
           <tr>
-            <td><code>agentfox.integrations.McpCallBlocked</code> (also a <code>RuntimeError</code>)</td>
+            <td><code>agentfox.frameworks.McpCallBlocked</code> (also a <code>RuntimeError</code>)</td>
             <td><code>McpGovernor.call(..., raise_on_block=True)</code></td>
             <td><code>result</code></td>
           </tr>
@@ -630,7 +632,7 @@ PolicyViolation: capability.denied`}</Output>
       <h2 id="integrations">Integrations</h2>
 
       <h3 id="langgraph">LangGraph: AgentFoxGuard</h3>
-      <Code lang="python">{`from agentfox.integrations.langgraph import AgentFoxGuard
+      <Code lang="python">{`from agentfox.frameworks.langgraph import AgentFoxGuard
 
 AgentFoxGuard(agent: str, *, environment: str = "production", intent: str | None = None,
               session: Any = None, raise_on_escalate: bool = True)
@@ -675,7 +677,7 @@ guard.tool_node(fn=None, *, tool: str, provenance=None, arguments=None, messages
         not granted.
       </p>
       <Code lang="python" title="lg_nodes.py">{`from agentfox import PolicyViolation
-from agentfox.integrations.langgraph import AgentFoxGuard, STATE_KEY
+from agentfox.frameworks.langgraph import AgentFoxGuard, STATE_KEY
 
 guard = AgentFoxGuard(agent="research-bot", intent="summarise the support knowledge base")
 
@@ -719,7 +721,7 @@ PolicyViolation: capability.denied`}</Output>
       </p>
 
       <h3 id="mcp">MCP: McpGovernor</h3>
-      <Code lang="python">{`from agentfox.integrations import McpGovernor, McpCallBlocked, tool_key
+      <Code lang="python">{`from agentfox.frameworks import McpGovernor, McpCallBlocked, tool_key
 
 McpGovernor(session: Session, agent_slug: str, server_name: str,
             transport: Callable[[str, dict], Any] | None = None, trust_level: str = "untrusted",
@@ -749,7 +751,7 @@ tool_key(server, tool) -> str      # "mcp:{server}/{tool}"`}</Code>
         <code>McpCallBlocked</code> only with <code>raise_on_block=True</code>.
       </p>
       <Code lang="python" title="mcp_gov.py">{`from agentfox.core.db import session_scope
-from agentfox.integrations import McpGovernor, tool_key
+from agentfox.frameworks import McpGovernor, tool_key
 
 TOOLS = [{"name": "search_tickets", "description": "Search support tickets by keyword.",
           "inputSchema": {"type": "object", "properties": {"q": {"type": "string"}}}}]
@@ -774,7 +776,7 @@ with session_scope() as db:
       </p>
       <Code lang="python" title="mcp_drift.py">{`from agentfox.core.db import session_scope
 from agentfox.platform.registry.service import scan_mcp_server
-from agentfox.integrations import McpGovernor, McpCallBlocked
+from agentfox.frameworks import McpGovernor, McpCallBlocked
 
 V1 = [{"name": "search_tickets", "description": "Search support tickets by keyword.",
        "inputSchema": {"type": "object", "properties": {"q": {"type": "string"}}}}]
@@ -806,7 +808,7 @@ McpCallBlocked: the tool's schema or description changed after this agent was au
       </Callout>
 
       <h3 id="fastapi">FastAPI: install() and guard()</h3>
-      <Code lang="python">{`from agentfox.integrations.fastapi import install, guard, context, AgentFoxMiddleware
+      <Code lang="python">{`from agentfox.frameworks.fastapi import install, guard, context, AgentFoxMiddleware
 
 install(app, *, service: str = "app") -> app
 guard(*, agent: str | None = None, surface: str = "input", field: str = "prompt",
@@ -830,7 +832,7 @@ context(request) -> GovernanceContext`}</Code>
         </li>
       </ul>
       <Code lang="python" title="api.py">{`from fastapi import Depends, FastAPI
-from agentfox.integrations.fastapi import guard, install
+from agentfox.frameworks.fastapi import guard, install
 
 app = FastAPI()
 install(app, service="support-api")      # observe-only middleware + GET /agentfox/health
@@ -857,14 +859,14 @@ print(r.status_code, r.json(), {k: v for k, v in r.headers.items() if k.startswi
       </p>
 
       <h3 id="prometheus">Prometheus</h3>
-      <Code lang="python">{`from agentfox.integrations import render_metrics
+      <Code lang="python">{`from agentfox.exporters import render_metrics
 render_metrics(session, *, window_hours: int = 24) -> str`}</Code>
       <p>
         Returns the Prometheus text format for the last <code>window_hours</code>. The
         gateway serves the same at <code>GET /metrics</code>.
       </p>
       <Code lang="python" title="metrics.py">{`from agentfox.core.db import session_scope
-from agentfox.integrations import render_metrics
+from agentfox.exporters import render_metrics
 
 with session_scope() as db:
     print(render_metrics(db, window_hours=24))`}</Code>

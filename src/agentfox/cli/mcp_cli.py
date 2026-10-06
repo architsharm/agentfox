@@ -14,14 +14,14 @@ def serve() -> None:
 
     Read-only by design: nothing that changes enforcement or stops an agent is exposed.
     """
-    from agentfox.integrations.mcp_server import serve as serve_stdio
+    from agentfox.apps.mcp_server import serve as serve_stdio
 
     raise typer.Exit(serve_stdio())
 
 
 def tools() -> None:
     """List the tools an MCP client gets, with a one-line description of each."""
-    from agentfox.integrations.mcp_server import TOOLS
+    from agentfox.apps.mcp_server import TOOLS
 
     width = max(len(name) for name in TOOLS)
     for tool in TOOLS.values():

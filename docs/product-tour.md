@@ -72,7 +72,7 @@ with `X-Nometria-Approval: <id>` once approved. Full surface:
 ### LangGraph
 
 ```python
-from agentfox.integrations.langgraph import AgentFoxGuard
+from agentfox.frameworks.langgraph import AgentFoxGuard
 
 guard = AgentFoxGuard(agent="support-triage", intent="answer a refund question")
 

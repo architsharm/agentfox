@@ -46,7 +46,7 @@ from agentfox.core.db import session_scope
 # One class each, shared with the LangGraph integration and under `AgentFoxError`:
 # see `agentfox.errors`.
 from agentfox.errors import AgentFoxError, ApprovalRequired, PolicyViolation
-from agentfox.integrations.correlation import refs_from_env
+from agentfox.exporters.correlation import refs_from_env
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)

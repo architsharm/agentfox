@@ -524,7 +524,7 @@ def create_app() -> FastAPI:
         that needs a bearer token is a scrape job nobody configures. It exposes counts
         and rates, never content — no prompt, no finding detail, no identifier.
         """
-        from agentfox.integrations.prometheus import render_metrics
+        from agentfox.exporters.prometheus import render_metrics
 
         return render_metrics(session)
 

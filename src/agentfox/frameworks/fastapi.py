@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from agentfox.core.db import session_scope
-from agentfox.integrations.correlation import link_trace, refs_from_headers
+from agentfox.exporters.correlation import link_trace, refs_from_headers
 from agentfox.platform.ledger.trace import end_trace, start_trace
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
@@ -149,7 +149,7 @@ def guard(
     so pin it where you can.
     """
     if not FASTAPI_AVAILABLE:  # pragma: no cover
-        raise RuntimeError("agentfox.integrations.fastapi requires fastapi")
+        raise RuntimeError("agentfox.frameworks.fastapi requires fastapi")
 
     async def dependency(request: Request) -> EnforcementResult:
         ctx = context(request)
@@ -211,7 +211,7 @@ def guard(
 
 
 def install(app: Any, *, service: str = "app") -> Any:
-    """One-line install: `agentfox.integrations.fastapi.install(app)`.
+    """One-line install: `agentfox.frameworks.fastapi.install(app)`.
 
     Adds observe-only middleware and a `/agentfox/health` probe. Enforcement stays
     opt-in per route, which is the whole adoption argument — a team can ship this to

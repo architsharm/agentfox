@@ -15,8 +15,8 @@ import pytest
 
 import agentfox
 from agentfox.errors import AgentFoxError
-from agentfox.integrations import langgraph as integration
-from agentfox.integrations.langgraph import STATE_KEY, AgentFoxGuard
+from agentfox.frameworks import langgraph as integration
+from agentfox.frameworks.langgraph import STATE_KEY, AgentFoxGuard
 
 
 def test_the_guard_raises_the_sdks_exception_classes():

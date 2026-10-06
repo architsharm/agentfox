@@ -510,7 +510,7 @@ def register_mcp_tools(
     A changed listing for an already-registered tool is held (reported in ``held``,
     not registered) unless ``accept_changes`` is true.
     """
-    from agentfox.integrations.mcp import McpGovernor
+    from agentfox.frameworks.mcp import McpGovernor
 
     governor = McpGovernor(session=session, agent_slug="", server_name=name)
     report = governor.register_tools(payload.tools, accept_changes=payload.accept_changes)

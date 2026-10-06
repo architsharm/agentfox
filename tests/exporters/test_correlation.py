@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from agentfox.core.models import Trace
-from agentfox.integrations.correlation import (
+from agentfox.exporters.correlation import (
     LANGFUSE,
     LANGSMITH,
     OTEL,
@@ -189,7 +189,7 @@ def test_correlation_never_fails_the_request(seeded, enforcer, monkeypatch):
 
 def test_push_is_off_without_egress(seeded, enforcer):
     """NFR-4: nothing leaves the customer boundary by default, including a verdict."""
-    from agentfox.integrations.correlation import push_verdict
+    from agentfox.exporters.correlation import push_verdict
 
     trace = _trace(seeded)
     link_trace(seeded, trace.id, [ExternalRef(LANGSMITH, "ls-1")])
@@ -199,7 +199,7 @@ def test_push_is_off_without_egress(seeded, enforcer):
 def test_push_failure_is_recorded_not_raised(seeded, monkeypatch):
     """An observability vendor having an outage must not become our outage."""
     from agentfox.core.config import get_settings
-    from agentfox.integrations.correlation import push_verdict
+    from agentfox.exporters.correlation import push_verdict
 
     settings = get_settings()
     monkeypatch.setattr(settings, "allow_egress", True)

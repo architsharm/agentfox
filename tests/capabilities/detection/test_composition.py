@@ -14,7 +14,7 @@ from agentfox.capabilities.detection.composition import (
     tool_key_from_origin,
 )
 from agentfox.core.models import Agent
-from agentfox.integrations.mcp import McpGovernor, tool_key
+from agentfox.frameworks.mcp import McpGovernor, tool_key
 from agentfox.platform.identity import ensure_identity, grant_capability
 
 SERVER = "patient-records"

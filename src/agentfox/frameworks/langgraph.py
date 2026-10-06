@@ -28,7 +28,7 @@ Design decisions:
 
 Usage::
 
-    from agentfox.integrations.langgraph import AgentFoxGuard
+    from agentfox.frameworks.langgraph import AgentFoxGuard
 
     guard = AgentFoxGuard(agent="support-triage")
 
@@ -54,7 +54,7 @@ from agentfox.core.db import init_db, session_scope
 # The SDK's classes, not look-alikes: `except agentfox.PolicyViolation` must catch
 # what a guarded node raises. Re-exported here so existing imports work.
 from agentfox.errors import AgentFoxError, ApprovalRequired, PolicyViolation
-from agentfox.integrations.correlation import links_for
+from agentfox.exporters.correlation import links_for
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)

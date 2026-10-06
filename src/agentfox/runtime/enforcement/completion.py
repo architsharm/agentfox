@@ -17,7 +17,7 @@ from agentfox.capabilities.grounding.answerability import (
     verify_boundary,
 )
 from agentfox.core.models import Agent, TaintTag, Trace
-from agentfox.integrations.correlation import (
+from agentfox.exporters.correlation import (
     link_trace,
     push_verdict,
     refs_from_env,

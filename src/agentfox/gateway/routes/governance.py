@@ -50,8 +50,8 @@ from agentfox.core.models import (
 )
 from agentfox.core.tenancy import session_org
 from agentfox.exporters import siem
+from agentfox.exporters.correlation import links_for, resolve_external
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
-from agentfox.integrations.correlation import links_for, resolve_external
 from agentfox.platform.jobs import store as jobs_db
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger.trace import full_trace, search_traces

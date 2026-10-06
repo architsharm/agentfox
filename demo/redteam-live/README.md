@@ -5,7 +5,7 @@ data, real refund and email side effects, wrapped in `agentfox.auto()` — that
 AgentFox's red-team runner can be pointed at **live** to watch it actually block
 real attacks against real tool calls. Nothing here is a mock: `issue_refund`
 really flips an order's status, `send_email` really queues a message, and every
-call goes through the same governed path (`agentfox.integrations.mcp.McpGovernor`)
+call goes through the same governed path (`agentfox.frameworks.mcp.McpGovernor`)
 the automated test suite (`tests/capabilities/detection/test_composition.py`) exercises.
 
 Everything below reflects a real run performed while building this demo (see the
@@ -322,7 +322,7 @@ Found while wiring `issue_refund` through `McpGovernor`, reported rather than
 patched at the time (per that round's instructions, since `src/agentfox/` was
 being edited elsewhere in parallel). **Now fixed**, in the same round as the
 red-team probe/benchmark work: `McpGovernor._govern_result()`
-(`src/agentfox/integrations/mcp.py`) re-runs the full capability check —
+(`src/agentfox/frameworks/mcp.py`) re-runs the full capability check —
 including argument constraints — on the *post*-call evaluation of a tool's own
 result, but was never threading the original call's arguments into that second
 `Enforcer.evaluate()` call. Concretely: `_govern_result` called
@@ -339,7 +339,7 @@ transport had already run the (possibly irreversible) call for real.
 
 Fixed by threading `arguments` through to `_govern_result` → `evaluate()`.
 Regression test: `test_a_call_within_an_argument_constraint_is_not_spuriously_blocked_post_call`
-in `tests/integrations/test_mcp_governance.py`. Re-verified directly against this demo
+in `tests/frameworks/test_mcp_governance.py`. Re-verified directly against this demo
 after the fix (`verify_mechanics.py` scenario 1): the clean $45 refund now
 comes back `"status": "refunded"` with no spurious post-decision block, where
 before the fix `outcome.allowed` was `False` for that exact call.
