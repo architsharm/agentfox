@@ -446,7 +446,7 @@ def test_the_ladder_governs_a_real_tool_call(isolated_db):
     """The whole point: not another engine nobody can reach."""
     from agentfox.core.models import Agent
     from agentfox.fixtures.seed import seed
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
     from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
@@ -471,7 +471,7 @@ def test_the_ladder_governs_a_real_tool_call(isolated_db):
 def test_the_decision_records_which_rule_decided(isolated_db):
     from agentfox.core.models import Agent
     from agentfox.fixtures.seed import seed
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
     from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:

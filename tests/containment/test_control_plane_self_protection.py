@@ -168,7 +168,7 @@ def test_other_packs_are_unaffected():
 @pytest.fixture
 def shell_agent(seeded):
     from agentfox.core.models import Agent
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)

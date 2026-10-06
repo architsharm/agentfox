@@ -61,7 +61,6 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.core.vocab import taint_rank
-from agentfox.identity.service import _constraint_ok
 from agentfox.improvement import contract
 from agentfox.improvement.loops import SUPERSEDE_ACTION, LoopReport
 from agentfox.improvement.proposals import (
@@ -70,6 +69,7 @@ from agentfox.improvement.proposals import (
     file_proposal,
     verify_proposal,
 )
+from agentfox.platform.identity.service import _constraint_ok
 from agentfox.prove.audit import chain
 
 SOURCE = "traffic.observed"
@@ -523,7 +523,7 @@ def _matching_grant(grants: list[Capability], tool_key: str) -> Capability | Non
 
 
 def _within_limits(constraints: dict[str, Any], call: ObservedCall) -> bool:
-    from agentfox.identity.service import RESERVED_CONSTRAINTS
+    from agentfox.platform.identity.service import RESERVED_CONSTRAINTS
 
     for path, spec in (constraints or {}).items():
         if path in RESERVED_CONSTRAINTS:

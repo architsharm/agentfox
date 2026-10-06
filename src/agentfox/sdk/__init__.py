@@ -431,7 +431,7 @@ class AgentFox:
             response.raise_for_status()
             return response.json()
         from agentfox.core.models import ApprovalRequest
-        from agentfox.identity import expire_stale_approvals
+        from agentfox.platform.identity import expire_stale_approvals
 
         with self._db() as session:
             # Unanswered fails closed (NOM-IAM-03), here as on the route.

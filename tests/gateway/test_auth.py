@@ -237,7 +237,7 @@ def test_an_agent_credential_binds_its_agents_tenant(isolated_db):
     """This path bound no tenant at all: every governed completion ran in the default
     org whatever the agent's owner, and once isolation existed the credential lookup
     was itself filtered to that org, so an agent elsewhere could not authenticate."""
-    from agentfox.identity import ensure_identity, issue_credential
+    from agentfox.platform.identity import ensure_identity, issue_credential
 
     with tenant("org_acme"), session_scope() as session:
         agent = Agent(slug="acme-bot", name="acme-bot", environment="production")
@@ -317,7 +317,7 @@ def test_a_credential_with_an_expiry_does_not_crash_the_inline_path(ready):
     credentials began resolving there.
     """
     from agentfox.core.models import Credential
-    from agentfox.identity import ensure_identity, issue_credential
+    from agentfox.platform.identity import ensure_identity, issue_credential
 
     with session_scope() as session:
         agent = session.scalars(select(Agent).where(Agent.slug == "support-triage")).one()

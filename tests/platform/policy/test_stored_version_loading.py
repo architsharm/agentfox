@@ -101,7 +101,7 @@ def _broken(session, key: str = "tool-containment", fail_mode: str = "open") -> 
 @pytest.fixture
 def shell_agent(seeded):
     from agentfox.core.models import Agent
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)

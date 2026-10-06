@@ -15,7 +15,7 @@ import type { CSSProperties, ReactNode } from "react";
  *   - the refused transfer .......... dashboard/app/page.tsx Proof(), and
  *                                     Playground.tsx TOOL_PRESETS
  *   - capability.denied reason ...... dashboard/app/page.tsx Proof()
- *   - constraint_violated reason .... src/agentfox/identity/service.py
+ *   - constraint_violated reason .... src/agentfox/platform/identity/service.py
  *                                     check_capability() + _describe_violation()
  *   - synthetic rule ids ............ src/agentfox/runtime/enforcement/ (~line 650)
  *   - grant record layout ........... src/agentfox/cli/capability_cli.py grant()

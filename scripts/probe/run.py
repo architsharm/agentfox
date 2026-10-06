@@ -433,7 +433,7 @@ def probe_environment() -> Result:
 
 def probe_verified_state() -> Result:
     from agentfox.core.models import Agent
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
     from agentfox.runtime.enforcement import Enforcer
 
     with _seeded_session() as s:
@@ -638,7 +638,7 @@ def probe_timezone() -> Result:
 
 def probe_delegation_narrowing() -> Result:
     from agentfox.core.models import Agent
-    from agentfox.identity import delegate, ensure_identity, grant_capability
+    from agentfox.platform.identity import delegate, ensure_identity, grant_capability
 
     with _seeded_session() as s:
         parent_agent = s.query(Agent).filter_by(slug="support-triage").one()

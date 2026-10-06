@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from agentfox.core.models import Agent
-from agentfox.identity import ensure_identity, grant_capability
+from agentfox.platform.identity import ensure_identity, grant_capability
 from agentfox.platform.policy.engine import NativePolicyEngine
 from agentfox.platform.policy.model import Condition, PolicyDocument, PolicyInput, Rule
 from agentfox.runtime.enforcement import Enforcer

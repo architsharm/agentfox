@@ -246,7 +246,7 @@ TOOL_DESCRIPTORS: list[dict[str, Any]] = [
 #: Least-privilege grants for the demo agent's identity — mirrors the shape of
 #: `agentfox.fixtures.seed`'s own `payments-ops` agent (refund capped below a ceiling, email
 #: gated behind approval) rather than inventing a new pattern. See
-#: `seed_demo_agent.py` for how these are applied via `agentfox.identity.grant_capability`.
+#: `seed_demo_agent.py` for how these are applied via `agentfox.platform.identity.grant_capability`.
 CAPABILITY_GRANTS: list[dict[str, Any]] = [
     {"tool": "lookup_customer", "max_taint": "user"},
     {"tool": "search_orders", "max_taint": "user"},

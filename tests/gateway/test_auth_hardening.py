@@ -191,7 +191,7 @@ BOGUS_AGENT_KEY = "nom_agt_notarealkeynotarealkeynotareal"
 
 
 def _agent_key(slug: str = "support-triage") -> tuple[str, str]:
-    from agentfox.identity.service import ensure_identity, issue_credential
+    from agentfox.platform.identity.service import ensure_identity, issue_credential
 
     with system_scope("test setup"), session_scope() as s:
         agent = s.scalars(select(Agent).where(Agent.slug == slug)).first()
@@ -228,7 +228,7 @@ def test_an_invalid_agent_key_is_refused_in_development_too(ready):
 
 
 def test_a_revoked_agent_key_is_refused(ready, production):
-    from agentfox.identity.service import revoke_credential
+    from agentfox.platform.identity.service import revoke_credential
 
     raw, cred_id = _agent_key()
     client = _app()

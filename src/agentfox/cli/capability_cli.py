@@ -96,7 +96,7 @@ def _parse_limit(raw: str) -> tuple[str, Any]:
 
 
 def _describe_constraints(constraints: dict[str, Any]) -> str:
-    from agentfox.identity.service import RESERVED_CONSTRAINTS
+    from agentfox.platform.identity.service import RESERVED_CONSTRAINTS
 
     bits = []
     for path, spec in (constraints or {}).items():
@@ -120,7 +120,7 @@ def _resolve_identity(session, agent: str):
     from sqlalchemy import select
 
     from agentfox.core.models import Agent, Identity
-    from agentfox.identity import ensure_identity
+    from agentfox.platform.identity import ensure_identity
 
     record = session.scalar(select(Agent).where(Agent.slug == agent))
     if record is not None:
@@ -260,7 +260,7 @@ def capability_grant(
         console.print("[yellow]nothing granted[/]")
         raise typer.Exit(1)
 
-    from agentfox.identity import grant_capability
+    from agentfox.platform.identity import grant_capability
 
     with _session() as session:
         identity = _resolve_identity(session, agent)
@@ -411,7 +411,7 @@ def capability_revoke(
     from sqlalchemy import select
 
     from agentfox.core.models import Agent, Identity
-    from agentfox.identity import revoke_capability
+    from agentfox.platform.identity import revoke_capability
 
     with _session() as session:
         capability = _find_capability(session, capability_id)

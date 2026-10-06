@@ -108,7 +108,7 @@ def approvals_list(
     from sqlalchemy import select
 
     from agentfox.core.models import ApprovalRequest
-    from agentfox.identity import APPROVAL_STATUSES, expire_stale_approvals
+    from agentfox.platform.identity import APPROVAL_STATUSES, expire_stale_approvals
 
     if status != "all" and status not in APPROVAL_STATUSES:
         raise typer.BadParameter(
@@ -160,7 +160,7 @@ def approvals_show(
     as_json: bool = typer.Option(False, "--json", help="Machine-readable output for scripts."),
 ) -> None:
     """One approval in full: the call, its arguments, why it was held, and the decision."""
-    from agentfox.identity import expire_stale_approvals
+    from agentfox.platform.identity import expire_stale_approvals
 
     with _session() as session:
         expire_stale_approvals(session)
@@ -184,7 +184,7 @@ def approvals_show(
 
 
 def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None) -> None:
-    from agentfox.identity import resolve_approval
+    from agentfox.platform.identity import resolve_approval
     from agentfox.prove.audit import chain
 
     who = actor or "cli"

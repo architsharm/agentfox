@@ -485,7 +485,7 @@ def _provision_tool_and_grant(
         )
     )
     if existing is None:
-        from agentfox.identity.service import grant_capability
+        from agentfox.platform.identity.service import grant_capability
 
         grant_capability(session, identity, tool_key, constraints=constraints, max_taint=max_taint)
 
@@ -510,7 +510,7 @@ class NativeRedTeamRunner:
         self, session: Session, agent_slug: str, probes: list[Probe] | None = None
     ) -> list[ProbeOutcome]:
         from agentfox.detection.taint import TaintTracker
-        from agentfox.identity.service import ensure_identity
+        from agentfox.platform.identity.service import ensure_identity
         from agentfox.runtime.enforcement import Enforcer
 
         enforcer = Enforcer(session)

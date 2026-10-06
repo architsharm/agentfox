@@ -17,7 +17,7 @@ from typer.testing import CliRunner
 from agentfox.core.config import get_settings
 from agentfox.core.models import Tool
 from agentfox.detection.taint import TaintTracker
-from agentfox.identity import ensure_identity, grant_capability
+from agentfox.platform.identity import ensure_identity, grant_capability
 from agentfox.platform.policy import load_from_dir, save_policy
 from agentfox.platform.policy.taint_view import grant_ceiling, policy_taint
 from agentfox.platform.registry.service import register_agent, upsert_tool

@@ -23,7 +23,7 @@ from agentfox.core.models import AuditEntry, EvalSuite, Finding
 from agentfox.evaluation import gate, run_campaign, set_baseline
 from agentfox.evaluation.runner import NativeEvalRunner
 from agentfox.fixtures.seed import POISONED_DOCUMENT
-from agentfox.identity import assess_posture
+from agentfox.platform.identity import assess_posture
 from agentfox.platform.policy import set_mode
 from agentfox.platform.registry.service import (
     attest_registry,

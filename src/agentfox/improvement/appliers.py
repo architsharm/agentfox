@@ -530,7 +530,7 @@ def _grant_diff(proposal: ChangeProposal) -> dict[str, Any]:
 
 def _grant_identity(session: Session, slug: str):
     from agentfox.core.models import Agent
-    from agentfox.identity import ensure_identity
+    from agentfox.platform.identity import ensure_identity
 
     agent = session.scalar(select(Agent).where(Agent.slug == slug))
     if agent is None:
@@ -589,7 +589,7 @@ def _grant_direction(session: Session, proposal: ChangeProposal) -> str:
 
 def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
     from agentfox.core.models import Capability
-    from agentfox.identity import grant_capability
+    from agentfox.platform.identity import grant_capability
 
     diff = _grant_diff(proposal)
     identity = _grant_identity(session, str(diff["agent"]))
@@ -663,7 +663,7 @@ def _grant_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> d
 
 def _grant_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
     from agentfox.core.models import Capability
-    from agentfox.identity import revoke_capability
+    from agentfox.platform.identity import revoke_capability
 
     result = applied_result(session, proposal)
     capability_id = result.get("capability_id")

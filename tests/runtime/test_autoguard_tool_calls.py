@@ -210,7 +210,7 @@ def _db():
 
 
 def _grant(agent_slug: str, tool_key: str) -> None:
-    from agentfox.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
     from agentfox.platform.registry.service import register_agent
 
     with _db() as session:

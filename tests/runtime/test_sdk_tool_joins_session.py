@@ -16,7 +16,7 @@ from agentfox.sdk import AgentFox, ApprovalRequired
 @pytest.fixture
 def fox(seeded):
     from agentfox.core.models import Agent
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     grant_capability(seeded, ensure_identity(seeded, agent), "email.send", max_taint="user")

@@ -25,7 +25,7 @@ from agentfox.detection.actions import (
     environment_risk,
     summarise,
 )
-from agentfox.identity import ensure_identity, grant_capability
+from agentfox.platform.identity import ensure_identity, grant_capability
 
 # ---------------------------------------------------------------------------
 # Parsing: deterministic, never a model

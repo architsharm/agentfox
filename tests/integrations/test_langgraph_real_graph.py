@@ -58,7 +58,7 @@ class PlainState(TypedDict, total=False):
 @pytest.fixture
 def granted(seeded):
     """`lg-bot` may refund up to 500, with arguments a person typed."""
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
     from agentfox.platform.registry.service import register_agent, upsert_tool
 
     agent = register_agent(seeded, "lg-bot")

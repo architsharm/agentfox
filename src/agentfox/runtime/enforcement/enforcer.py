@@ -29,7 +29,7 @@ from agentfox.detection.actions import summarise as summarise_actions
 from agentfox.detection.composition import check_composed_escalation
 from agentfox.detection.tuning import LatencyLedger, active_suppressions, explain, filter_suppressed
 from agentfox.grounding.context_integrity import assemble_context
-from agentfox.identity import (
+from agentfox.platform.identity import (
     check_capability,
     redeem_approval,
     request_approval,

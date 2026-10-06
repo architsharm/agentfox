@@ -322,7 +322,7 @@ def resolve_agent(session: Session, raw: str) -> tuple[Identity, str] | None:
     doubly wrong — the credential lookup itself was filtered to the default org, so an
     agent belonging to any other tenant simply could not authenticate.
     """
-    from agentfox.identity.service import verify_credential
+    from agentfox.platform.identity.service import verify_credential
 
     with system_scope("resolving an agent credential to its identity", routine=True):
         identity = verify_credential(session, raw)

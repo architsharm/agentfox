@@ -1,6 +1,6 @@
 """Pillar 2 — Identity, Access & Authorization."""
 
-from agentfox.identity.service import (
+from agentfox.platform.identity.service import (
     AGENT_KEY_PREFIX,
     API_KEY_PREFIX,
     APPROVAL_STATUSES,

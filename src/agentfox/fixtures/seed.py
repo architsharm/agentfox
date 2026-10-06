@@ -38,7 +38,7 @@ from agentfox.grounding.answerability import FACT, PROCEDURE, declare_boundary
 from agentfox.grounding.entitlement import grant as grant_resource
 from agentfox.grounding.entitlement import upsert_principal
 from agentfox.grounding.provenance import APPROVED, SYSTEM_OF_RECORD, register_source
-from agentfox.identity import ensure_identity, grant_capability, issue_credential
+from agentfox.platform.identity import ensure_identity, grant_capability, issue_credential
 from agentfox.platform.policy import load_available, save_policy
 from agentfox.platform.registry.service import (
     register_agent,

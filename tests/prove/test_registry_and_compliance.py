@@ -324,7 +324,7 @@ def test_classification_is_advisory_only(seeded):
 
 
 def test_ungated_irreversible_tool_raises_the_proposal(session):
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
     from agentfox.platform.registry.service import upsert_tool
 
     upsert_tool(session, "payments.transfer", impact="irreversible")

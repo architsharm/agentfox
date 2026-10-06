@@ -55,7 +55,7 @@ def install_baseline(
     grant: bool = True,
 ) -> Baseline:
     """Register the hook agent, declare the harness's tools and grant them. Idempotent."""
-    from agentfox.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
     from agentfox.platform.registry.service import register_agent, slugify
     from agentfox.prove.audit import chain
 

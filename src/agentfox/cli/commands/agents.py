@@ -274,7 +274,7 @@ def agents_budget(
 def agents_discover() -> None:
     """Sweep for shadow agents, unowned agents, registry drift, identity posture and
     delegation cycles/depth."""
-    from agentfox.identity import assess_posture
+    from agentfox.platform.identity import assess_posture
     from agentfox.platform.registry.service import (
         assess_delegation,
         attest_registry,

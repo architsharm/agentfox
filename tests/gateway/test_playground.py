@@ -597,7 +597,7 @@ def test_an_agent_credential_from_a_sandbox_is_useless_on_the_inline_api(client)
     from agentfox.core.models import Agent
     from agentfox.core.tenancy import bind_session
     from agentfox.gateway.auth import resolve_agent
-    from agentfox.identity import ensure_identity, issue_credential
+    from agentfox.platform.identity import ensure_identity, issue_credential
 
     sid = _create(client)
     with session_scope() as session:

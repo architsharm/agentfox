@@ -32,7 +32,7 @@ from agentfox.gateway.deps import (
     operator_or_agent,
     require,
 )
-from agentfox.identity import (
+from agentfox.platform.identity import (
     AgentStopped,
     assess_posture,
     check_capability,

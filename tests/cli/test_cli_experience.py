@@ -46,7 +46,7 @@ def test_capability_grant_writes_a_grant_the_engine_then_honours():
 
     from agentfox.core.db import session_scope
     from agentfox.core.models import Agent
-    from agentfox.identity import check_capability, ensure_identity
+    from agentfox.platform.identity import check_capability, ensure_identity
 
     _seed()
     result = runner.invoke(
@@ -115,7 +115,7 @@ def test_capability_grant_expiry_stops_the_grant_matching():
 
     from agentfox.core.db import session_scope
     from agentfox.core.models import Agent, Capability, utcnow
-    from agentfox.identity import check_capability, ensure_identity
+    from agentfox.platform.identity import check_capability, ensure_identity
 
     _seed()
     runner.invoke(
@@ -147,7 +147,7 @@ def test_capability_revoke_takes_the_permission_away_and_audits_it():
 
     from agentfox.core.db import session_scope
     from agentfox.core.models import Agent, AuditEntry
-    from agentfox.identity import check_capability, ensure_identity
+    from agentfox.platform.identity import check_capability, ensure_identity
 
     _seed()
     runner.invoke(app, ["permit", "grant", "support-triage", "reports.export", "--yes"])

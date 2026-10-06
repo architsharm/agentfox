@@ -11,7 +11,7 @@ import json
 from typer.testing import CliRunner
 
 from agentfox.cli.main import app
-from agentfox.identity import request_approval
+from agentfox.platform.identity import request_approval
 
 runner = CliRunner()
 

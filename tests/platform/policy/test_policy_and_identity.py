@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 
 from agentfox.core.models import utcnow
-from agentfox.identity import (
+from agentfox.platform.identity import (
     check_capability,
     delegate,
     ensure_identity,

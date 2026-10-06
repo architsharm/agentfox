@@ -11,7 +11,7 @@ from agentfox.business import Ladder, save_ladder
 from agentfox.core.db import session_scope
 from agentfox.core.models import Agent
 from agentfox.fixtures.seed import seed
-from agentfox.identity import ensure_identity, grant_capability
+from agentfox.platform.identity import ensure_identity, grant_capability
 from agentfox.platform.policy import set_mode
 from agentfox.runtime.enforcement import Enforcer
 

@@ -92,7 +92,7 @@ from agentfox.core.models import utcnow
 from agentfox.detection.taint import TaintTracker
 from agentfox.detection.warmup import warm_in_background
 from agentfox.errors import AgentFoxError
-from agentfox.identity import ensure_identity
+from agentfox.platform.identity import ensure_identity
 from agentfox.platform.registry.service import register_agent
 from agentfox.prove.audit.trace import (
     ATTR_AGENT,

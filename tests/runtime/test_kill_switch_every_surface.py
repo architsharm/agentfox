@@ -14,7 +14,7 @@ from sqlalchemy import select
 from agentfox.core.db import session_scope
 from agentfox.core.models import Agent, MemoryEntry
 from agentfox.gateway.app import create_app
-from agentfox.identity import AgentStopped, request_approval, resolve_approval
+from agentfox.platform.identity import AgentStopped, request_approval, resolve_approval
 from agentfox.platform.registry.control import set_state
 
 AGENT = "support-triage"

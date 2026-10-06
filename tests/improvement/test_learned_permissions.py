@@ -26,7 +26,6 @@ from agentfox.core.models import (
     Tool,
 )
 from agentfox.detection.taint import TaintTracker
-from agentfox.identity import resolve_approval
 from agentfox.improvement import contract
 from agentfox.improvement.proposals import (
     AutomationRefused,
@@ -44,6 +43,7 @@ from agentfox.improvement.traffic import (
     propose_from_traffic,
     suggest_limits,
 )
+from agentfox.platform.identity import resolve_approval
 from agentfox.platform.policy import load_from_dir, save_policy
 from agentfox.platform.registry.service import upsert_tool
 from agentfox.prove.audit.trace import start_trace
@@ -452,7 +452,7 @@ def test_rolling_back_a_grant_withdraws_it(session, packs):
 
 def test_a_grant_made_by_hand_meanwhile_is_not_doubled(session, packs):
     from agentfox.core.models import Agent
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
 
     _traffic(session)
     propose_from_traffic(session, agent=AGENT)
