@@ -232,10 +232,24 @@ refused: the tool's schema or description changed after this agent was authorise
           itself, the new listing is snapshotted and a <code>schema_drift</code> finding is
           raised, but the registered tool keeps its reviewed description and schema, so calls
           stay refused with <code>mcp.schema_drift</code>. The changed tools come back in the
-          result&apos;s <code>held</code> list. To accept the change after reviewing it, call{" "}
-          <code>gov.register_tools(tools, accept_changes=True)</code> or{" "}
-          <code>POST /api/mcp-servers/&#123;name&#125;/tools</code> with{" "}
-          <code>&quot;accept_changes&quot;: true</code>.
+          result&apos;s <code>held</code> list, and each one is filed as an{" "}
+          <code>mcp.tool.accept</code> change proposal, whose id is in <code>proposals</code>.
+        </p>
+        <p>
+          Accepting a changed tool lifts the block for every agent, so it takes two different
+          people. The first reviewer approves with{" "}
+          <code>gov.register_tools(tools, accept_changes=True, actor=&quot;you@example.com&quot;)</code>{" "}
+          or <code>POST /api/mcp-servers/&#123;name&#125;/tools</code> with{" "}
+          <code>&quot;accept_changes&quot;: true</code> (as the signed-in person, who needs the
+          role that approves policy proposals). Without an <code>actor</code> the call raises{" "}
+          <code>ValueError</code>: an agent that hands its own listing back cannot approve it. The
+          tool then appears in <code>awaiting_second_approver</code> and calls stay refused.
+        </p>
+        <p>
+          The change applies when a second, different person approves: the same call with their
+          own <code>actor</code>, or <code>agentfox policy proposals approve &lt;id&gt; --actor
+          … --note …</code> followed by <code>agentfox policy proposals apply &lt;id&gt;</code>.
+          Both approvals are recorded in the audit chain.
         </p>
       </Callout>
       <p>

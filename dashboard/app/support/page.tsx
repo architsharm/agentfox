@@ -151,7 +151,7 @@ const DOCS: { title: string; body: React.ReactNode }[] = [
     body: (
       <>
         The <Out href={HARNESS}>harness</Out> packages the product as skills, commands, subagents
-        and safety hooks, so an agent can do the setup without learning 17 CLI groups.
+        and safety hooks, so an agent can do the setup without learning 13 CLI commands and their subcommands.
       </>
     ),
   },
