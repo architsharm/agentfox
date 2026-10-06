@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.platform.ledger.trace import full_trace, start_trace
 
 
@@ -311,6 +312,6 @@ def test_full_trace_is_reachable_for_a_seeded_enforcer_decision(enforcer, seeded
         tool_key="payments.transfer",
         arguments={"amount": 5000, "currency": "USD", "to": "acct_x"},
     )
-    detail = full_trace(seeded, result.trace_id)
+    detail = full_trace(seeded, result.trace_id, explain=explain_recorded)
     assert detail is not None
     assert detail["decisions"]

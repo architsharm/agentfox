@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox import __version__
+from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     Agent,
@@ -356,7 +357,9 @@ def build(
             indent=2,
         ),
         "traces.json": json.dumps(
-            [full_trace(session, t.id) for t in traces], indent=2, default=str
+            [full_trace(session, t.id, explain=explain_recorded) for t in traces],
+            indent=2,
+            default=str,
         ),
         "decisions.json": json.dumps(
             [

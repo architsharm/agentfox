@@ -96,7 +96,7 @@ def test_the_trace_detail_rebuilds_the_reason_it_used_to_throw_away(client):
     live = _guard(client, INDIRECT_INJECTION).json()
     with session_scope() as s:
         trace_id = s.scalars(select(Trace)).one().id
-        detail = full_trace(s, trace_id)
+        detail = full_trace(s, trace_id, explain=explain_recorded)
 
     recorded = detail["decisions"][0]["explanation"]
     # The same sentence the caller got, reconstructed from storage alone.
@@ -112,7 +112,7 @@ def test_the_rebuilt_reason_blames_the_same_match_as_the_live_one(client):
 
     _guard(client, INDIRECT_INJECTION)
     with session_scope() as s:
-        detail = full_trace(s, s.scalars(select(Trace)).one().id)
+        detail = full_trace(s, s.scalars(select(Trace)).one().id, explain=explain_recorded)
 
     decisive = [m for m in detail["decisions"][0]["explanation"]["matches"] if m["decisive"]]
     assert [m["entity_type"] for m in decisive] == ["INJECTION.INSTRUCTION_OVERRIDE"]
@@ -123,7 +123,7 @@ def test_the_dispute_names_the_detector_worth_arguing_with(client):
 
     _guard(client, PII_TEXT, surface="output")
     with session_scope() as s:
-        detail = full_trace(s, s.scalars(select(Trace)).one().id)
+        detail = full_trace(s, s.scalars(select(Trace)).one().id, explain=explain_recorded)
 
     payload = detail["decisions"][0]["explanation"]["dispute"]["payload"]
     assert payload["detector_key"] == "pii.native"
@@ -146,7 +146,7 @@ def test_one_decisions_matches_are_not_attributed_to_another(client):
         headers=as_user("admin@example.com"),
     )
     with session_scope() as s:
-        detail = full_trace(s, first["trace_id"])
+        detail = full_trace(s, first["trace_id"], explain=explain_recorded)
 
     assert len(detail["decisions"]) == 2
     by_surface = {d["surface"]: d["explanation"] for d in detail["decisions"]}

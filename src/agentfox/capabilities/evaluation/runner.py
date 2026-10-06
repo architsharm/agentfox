@@ -263,6 +263,7 @@ def sample_production(
     session.add(run)
     session.flush()
 
+    from agentfox.capabilities.detection.tuning import explain_recorded
     from agentfox.platform.ledger.trace import full_trace
 
     envelope = fit_envelope(session, agent_slug)
@@ -273,7 +274,7 @@ def sample_production(
     skipped_no_output: list[str] = []
 
     for trace in sampled:
-        detail = full_trace(session, trace.id) or {}
+        detail = full_trace(session, trace.id, explain=explain_recorded) or {}
         spans = detail.get("spans", [])
         output = ""
         retrieved: list[str] = []

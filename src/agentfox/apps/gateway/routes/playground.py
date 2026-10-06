@@ -234,12 +234,16 @@ def state(
     posture — all real, already-existing functions, just called and serialized.
     """
     from agentfox.capabilities.compliance.status import compute_all, posture
+    from agentfox.capabilities.detection.tuning import explain_recorded
     from agentfox.platform.ledger import chain
     from agentfox.platform.ledger.trace import full_trace
 
     with record.session_scope() as session:
         compute_all(session)
-        traces = [full_trace(session, tid) for tid in reversed(record.trace_ids(session))]
+        traces = [
+            full_trace(session, tid, explain=explain_recorded)
+            for tid in reversed(record.trace_ids(session))
+        ]
         chain_info = chain.chain_stats(session)
         verification = chain.verify_range(session)
         posture_info = posture(session)

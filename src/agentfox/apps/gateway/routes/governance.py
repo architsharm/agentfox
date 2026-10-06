@@ -39,6 +39,7 @@ from agentfox.capabilities.compliance import (
     register as risk_register,
 )
 from agentfox.capabilities.compliance.risk import assess
+from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.models import (
     AuditEntry,
     Control,
@@ -138,7 +139,7 @@ def resolve_trace(
 def get_trace(
     trace_id: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    detail = full_trace(session, trace_id)
+    detail = full_trace(session, trace_id, explain=explain_recorded)
     if detail is None:
         raise HTTPException(404, "unknown trace")
     detail["links"] = [

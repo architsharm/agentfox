@@ -161,13 +161,14 @@ def promote_trace(
     The shortest path from "this went wrong in production" to "this can never ship
     again" is the feature that makes an eval suite grow instead of rot.
     """
+    from agentfox.capabilities.detection.tuning import explain_recorded
     from agentfox.platform.ledger.trace import full_trace
 
     suite = _suite(session, key)
     trace = session.get(Trace, trace_id)
     if trace is None:
         raise HTTPException(404, "unknown trace")
-    detail = full_trace(session, trace_id) or {}
+    detail = full_trace(session, trace_id, explain=explain_recorded) or {}
 
     retrieved: list[str] = []
     output = ""

@@ -13,7 +13,7 @@ dashboards and SIEMs understand our spans without a translation layer.
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
@@ -160,8 +160,18 @@ def span(
 # ---------------------------------------------------------------------------
 
 
-def full_trace(session: Session, trace_id: str) -> dict[str, Any] | None:
-    """Assemble the complete execution path: spans, decisions, detector runs, taint."""
+def full_trace(
+    session: Session,
+    trace_id: str,
+    *,
+    explain: Callable[[dict[str, Any], list[dict[str, Any]]], dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Assemble the complete execution path: spans, decisions, detector runs, taint.
+
+    ``explain`` rebuilds each decision's "why" from what was recorded; callers pass
+    `capabilities.detection.tuning.explain_recorded`. It is a parameter because the
+    explanation is detection's to give, and the ledger sits below detection.
+    """
     trace = session.get(Trace, trace_id)
     if trace is None:
         return None
@@ -246,15 +256,8 @@ def full_trace(session: Session, trace_id: str) -> dict[str, Any] | None:
     # once per trace because a trace can hold several — an input that escalated and
     # an output that blocked are two different answers to "why", and merging them
     # would produce a third that is true of neither.
-    #
-    # Imported here rather than at module scope: `guardrails.tuning` reaches
-    # `operator_log`, which reaches `audit.chain`, which is this package — a cycle
-    # that the test suite's import order happened to avoid and starting the gateway
-    # did not.
-    from agentfox.capabilities.detection.tuning import explain_recorded
-
     for row in decision_rows:
-        row["explanation"] = explain_recorded(row, run_rows)
+        row["explanation"] = explain(row, run_rows)
 
     return {
         "trace": {

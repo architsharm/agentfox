@@ -20,6 +20,7 @@ from rich.table import Table
 from agentfox.apps.cli._style import SEVERITY_COLOUR
 from agentfox.apps.report import evidence
 from agentfox.capabilities.compliance import compute_all, posture
+from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.capabilities.evaluation import gate, run_campaign, set_baseline
 from agentfox.capabilities.evaluation.runner import NativeEvalRunner
 from agentfox.core.db import session_scope
@@ -478,7 +479,7 @@ def _walkthrough() -> dict[str, Any]:
     # ---------------------------------------------------------------
     _rule("The execution path a CISO can read", "09")
     with session_scope() as session:
-        detail = full_trace(session, normal_trace)
+        detail = full_trace(session, normal_trace, explain=explain_recorded)
         if detail:
             console.print(
                 f"  trace [bold]{detail['trace']['id']}[/]  "
