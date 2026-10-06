@@ -85,6 +85,7 @@ RENAMED: dict[str, str] = {
     "entitlement": "agentfox permit user / declare principal / report entitlement",
     "guardrails": "agentfox policy rules",
     "capability": "agentfox permit",
+    "approvals": "agentfox permit approvals",
     "proposals": "agentfox policy proposals",
 }
 
@@ -289,11 +290,16 @@ def apply_layout(app: typer.Typer) -> None:
     app.add_typer(serve_app, name="serve")
 
     # -- Contain: permit -----------------------------------------------------------
-    permit_app = _new_group("Grant, list and withdraw what an agent — or an end user — may do.")
+    permit_app = _new_group(
+        "Grant, list and withdraw what an agent — or an end user — may do, and decide "
+        "the calls held for a person (`permit approvals`)."
+    )
     _alias(permit_app, find("capability", "grant"), "grant")
     _alias(permit_app, find("capability", "list"), "list")
     _alias(permit_app, find("capability", "revoke"), "revoke")
     _alias(permit_app, find("entitlement", "grant"), "user")
+    # Deciding a held call is granting it once, so the queue lives beside the grants.
+    permit_app.add_typer(sub["approvals"].typer_instance, name="approvals")
     app.add_typer(permit_app, name="permit")
 
     # -- Contain: declare ----------------------------------------------------------

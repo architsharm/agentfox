@@ -33,6 +33,7 @@ class _StreamingMixin:
         temperature: float = 0.0,
         max_tokens: int | None = None,
         mode: str | None = None,
+        approval_id: str | None = None,
     ) -> Iterator[StreamEvent]:
         """Enforced streaming completion (PL-1).
 
@@ -65,6 +66,7 @@ class _StreamingMixin:
             trust_map=trust_map,
             correlation=correlation,
             known_entities=known_entities,
+            approval_id=approval_id,
         )
         if evidence is not None:
             self.evidence = evidence

@@ -56,6 +56,10 @@ CLI_RULES: list[tuple[re.Pattern[str], str]] = [
     ),
     (r"agents\s+resume" + _END, "restarts a stopped agent."),
     (
+        r"(?:permit\s+)?approvals\s+(?:approve|deny)" + _END,
+        "decides an approval: an approved call held for a person runs when the agent retries it.",
+    ),
+    (
         r"demo" + _END,
         "runs the demo, which writes demo agents and data and briefly enforces `baseline` "
         "in whatever DB NOMETRIA_DATABASE_URL points at. Use a scratch DB.",

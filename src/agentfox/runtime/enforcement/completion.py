@@ -193,6 +193,7 @@ class _CompletionMixin:
         trust_map: dict[str, str] | None = None,
         correlation: dict[str, str] | list[Any] | None = None,
         known_entities: list[str] | None = None,
+        approval_id: str | None = None,
     ) -> PreflightOutcome:
         """Steps 2-6 of the request path, shared by buffered and streaming calls.
 
@@ -304,6 +305,9 @@ class _CompletionMixin:
                 taint_source=source,
                 intent=intent,
                 tracker=tracker,
+                # A retry of a held message presents its approval (#12); the message
+                # it was granted for is the one it releases.
+                approval_id=approval_id,
             )
             if outcome.content is not None:
                 redacted_messages[i] = {**message, "content": outcome.content}
@@ -498,6 +502,7 @@ class _CompletionMixin:
         schema: dict[str, Any] | None = None,
         temperature: float = 0.0,
         max_tokens: int | None = None,
+        approval_id: str | None = None,
     ) -> tuple[EnforcementResult, Any]:
         """The complete request path (PRD §9.3). Returns (result, response|None)."""
         pre = self.preflight(
@@ -512,6 +517,7 @@ class _CompletionMixin:
             trust_map=trust_map,
             correlation=correlation,
             known_entities=known_entities,
+            approval_id=approval_id,
         )
         if evidence is not None:
             self.evidence = evidence

@@ -40,12 +40,15 @@ auditor). Reads need any operator.
 
 Proxy request headers: `X-Nometria-Agent`, `-Session`, `-Environment`, `-Intent`,
 `-Trust` (JSON map of message index → source, e.g. `{"2":"retrieved"}`), `-Provider`,
-`-Stream-Mode`. Every inline response carries `X-Nometria-Trace`, `-Verdict`,
+`-Stream-Mode`, `-Approval` (the id of an approved hold: the same request then runs once). Every inline response carries `X-Nometria-Trace`, `-Verdict`,
 `-Effective-Verdict`, `-Decision`, `-Mode`, `-Latency-Ms`.
 
 Outcomes: **200** allowed (content may be redacted) · **403**
 `{error:{type:"agentfox_policy_violation", verdict, trace_id, rules_fired, entities, explanation, …}}`
-blocked · **202** `{approval_id}` escalated to a human · **429** load shed (honour `Retry-After`).
+blocked · **428** `{error:{type:"agentfox_approval_required", approval_id, poll, …}}` held for a
+person (was 202 before 2026-10; provider SDKs raise on 428 and do not retry it) · **429** load
+shed (honour `Retry-After`). `/v1/guard/tool_call` answers 200 with `verdict: escalate` and an
+`approval_id`; once approved, send the same call with `"approval_id"` and it runs once.
 
 ```bash
 curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' \
@@ -60,7 +63,7 @@ curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' \
 | Agents | `GET/POST /api/agents`, `GET/PATCH /api/agents/{slug}`, `GET …/lineage?depth=`, `GET …/posture`, `POST …/quarantine`, `…/kill`, `…/resume`, `GET /api/agent-controls` |
 | Discovery | `GET /api/discovery/shadow?window_days=`, `POST /api/discovery/scan`, `POST /api/discovery/submit` |
 | Findings | `GET /api/findings`, `GET /api/findings/{id}`, `PATCH /api/findings/{id}` `{status, suppression_reason?, note?}`. Status must be open, suppressed or resolved; suppressing needs a reason and resolving needs a note. A recurring problem updates one finding's `occurrences` rather than adding rows. |
-| Approvals | `GET /api/approvals?status=pending`, `POST /api/approvals/{id}/approve`, `…/deny` |
+| Approvals | `GET /api/approvals?status=pending\|approved\|denied\|expired\|used`, `GET /api/approvals/{id}` (an agent key may read its own agent's), `POST /api/approvals/{id}/approve`, `…/deny` |
 | Policies | `GET /api/policies`, `GET /api/policies/{key}`, `GET …/{key}/rego`, `GET /api/policies/effective`, `GET /api/policies/lint`, `POST /api/policies/validate` (no auth), `POST /api/policies/simulate`, `POST /api/policies` `{body: <yaml>, notes, mode?}`, `POST /api/policies/{key}/mode` |
 | Canary rollout | `POST /api/policies/{key}/canary/start` `{…, max_block_rate_drop?, min_dwell_seconds?}` (rolls back if the candidate blocks much more *or* much less than stable), `GET …/canary`, `POST …/canary/advance`, `…/canary/rollback` |
 | Tools / MCP | `GET/POST /api/tools`, `GET/POST /api/mcp-servers`, `POST /api/mcp-servers/{name}/scan` |

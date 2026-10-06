@@ -137,8 +137,10 @@ class AgentSession:
         provider: str | None = None,
         schema: dict[str, Any] | None = None,
         raise_on_block: bool = True,
+        approval_id: str | None = None,
         **kwargs: Any,
     ) -> Any:
+        """A governed model call. ``approval_id`` retries one a person approved."""
         result, response = self._client._complete(
             agent=self.agent,
             messages=messages,
@@ -149,6 +151,7 @@ class AgentSession:
             intent=self.intent,
             trust_map=self._trust_map(messages),
             schema=schema,
+            approval_id=approval_id,
             **kwargs,
         )
         self.trace_id = result.trace_id
@@ -166,7 +169,15 @@ class AgentSession:
         *,
         provenance: dict[str, str] | None = None,
         raise_on_block: bool = True,
+        approval_id: str | None = None,
     ) -> EnforcementResult:
+        """Authorise one tool call before it runs.
+
+        ``approval_id`` is the retry of a call that raised `ApprovalRequired` and a
+        person has since approved (see `AgentFox.wait_for_approval`). It lets this
+        call through once, and only if the tool and arguments are the ones that
+        were approved.
+        """
         result = self._client._guard_tool(
             agent=self.agent,
             tool=tool,
@@ -175,6 +186,7 @@ class AgentSession:
             intent=self.intent,
             tracker=self.tracker,
             prior_tools=list(self.prior_tools),
+            approval_id=approval_id,
         )
         self.prior_tools.append(tool)
         if raise_on_block:
@@ -183,6 +195,12 @@ class AgentSession:
             if result.escalated:
                 raise ApprovalRequired(result)
         return result
+
+    def wait_for_approval(
+        self, approval_id: str, timeout: float = 1800.0, *, interval: float = 2.0
+    ) -> str:
+        """`AgentFox.wait_for_approval`, from inside a session."""
+        return self._client.wait_for_approval(approval_id, timeout, interval=interval)
 
     # -- helpers ----------------------------------------------------------
     def _trust_map(self, messages: list[dict[str, Any]]) -> dict[str, str]:
@@ -364,6 +382,67 @@ class AgentFox:
                 taint_source=taint_source,
             )
 
+    # -- approvals ----------------------------------------------------------
+    def approval(self, approval_id: str) -> dict[str, Any]:
+        """The approval's current state: ``status``, ``reason``, ``tool``, ``arguments``.
+
+        Remote mode reads ``GET /api/approvals/{id}`` with this client's key — an
+        agent key may read its own agent's approvals. Local mode reads the database.
+        """
+        if self.remote:
+            response = httpx.get(
+                f"{self.base_url}/api/approvals/{approval_id}",
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return response.json()
+        from agentfox.core.models import ApprovalRequest
+        from agentfox.identity import expire_stale_approvals
+
+        with self._db() as session:
+            # Unanswered fails closed (NOM-IAM-03), here as on the route.
+            expire_stale_approvals(session)
+            approval = session.get(ApprovalRequest, approval_id)
+            if approval is None:
+                raise LookupError(f"no approval '{approval_id}'")
+            return {
+                "id": approval.id,
+                "status": approval.status,
+                "reason": approval.reason,
+                "tool": approval.tool_key,
+                "arguments": approval.arguments_json,
+                "rationale": approval.resolution_rationale,
+            }
+
+    def wait_for_approval(
+        self, approval_id: str, timeout: float = 1800.0, *, interval: float = 2.0
+    ) -> str:
+        """Wait for a person to decide an approval. Returns its status.
+
+        ``approved`` — retry the call with ``approval_id=`` and it runs once.
+        ``denied``, ``expired`` (nobody decided in time) — it will not run.
+        ``pending`` — ``timeout`` seconds passed with no decision.
+
+            try:
+                s.guard_tool("billing.export", args)
+            except ApprovalRequired as held:
+                if fox.wait_for_approval(held.approval_id) != "approved":
+                    return
+                s.guard_tool("billing.export", args, approval_id=held.approval_id)
+        """
+        import time
+
+        deadline = time.monotonic() + max(0.0, timeout)
+        while True:
+            status = str(self.approval(approval_id).get("status", "pending"))
+            if status != "pending":
+                return status
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return "pending"
+            time.sleep(min(interval, remaining))
+
     # -- internals ---------------------------------------------------------
     def _declare_tool(self, key: str, impact: str, description: str = "") -> bool:
         """Record a code-level tool declaration. Returns whether the row was written.
@@ -402,6 +481,8 @@ class AgentFox:
             headers["X-Nometria-Intent"] = kwargs["intent"]
         if kwargs.get("session_id"):
             headers["X-Nometria-Session"] = kwargs["session_id"]
+        if kwargs.get("approval_id"):
+            headers["X-Nometria-Approval"] = kwargs["approval_id"]
         if kwargs.get("trust_map"):
             import json
 
@@ -438,7 +519,8 @@ class AgentFox:
             result.rules_fired = error.get("rules_fired", [])
             result.entities = error.get("entities", [])
             return result, None
-        if response.status_code == 202:
+        # 428 since #20; 202 from a gateway that predates it.
+        if response.status_code in (428, 202):
             body = response.json()
             result.verdict = "escalate"
             result.approval_id = body.get("approval_id")
@@ -458,6 +540,7 @@ class AgentFox:
                     "provenance": kwargs.get("provenance") or {},
                     "intent": kwargs.get("intent"),
                     "prior_tools": kwargs.get("prior_tools") or [],
+                    **({"approval_id": kwargs["approval_id"]} if kwargs.get("approval_id") else {}),
                 },
             )
             return EnforcementResult(
@@ -492,6 +575,7 @@ class AgentFox:
                 trace=trace,
                 tracker=kwargs.get("tracker"),
                 prior_tools=kwargs.get("prior_tools"),
+                approval_id=kwargs.get("approval_id"),
             )
 
     def _headers(self) -> dict[str, str]:

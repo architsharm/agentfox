@@ -13,6 +13,7 @@ import sys
 
 import typer
 
+from agentfox.cli.approvals_cli import register as _register_approvals
 from agentfox.cli.auth_cli import register as _register_auth
 from agentfox.cli.business_cli import register as _register_business
 from agentfox.cli.capability_cli import register as _register_capability
@@ -67,6 +68,7 @@ _register_controls(app)
 _register_business(app)
 _register_mcp(app)
 _register_capability(app)
+_register_approvals(app)
 _register_report(app)
 root.register(app)
 

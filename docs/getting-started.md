@@ -297,8 +297,10 @@ Run the same three calls again and you get three different answers:
 The middle row is the point of the product. Same tool, same amount, same agent. The only difference
 is that the value came out of something untrusted, and no detector was involved in noticing.
 
-An `escalate` verdict returns an `approval_id`. Poll `GET /api/approvals/{id}`, or decide it from
-the dashboard or the CLI.
+An `escalate` verdict returns an `approval_id`. Decide it from the dashboard or the CLI
+(`agentfox permit approvals list`, then `approve ID` or `deny ID`). The agent can poll
+`GET /api/approvals/{id}` with its own key (or `fox.wait_for_approval(id)` in Python); once it
+reads `approved`, send the same call again with `"approval_id": "<id>"` and it runs, once.
 
 ### 5d. Proxy the model call too (optional)
 

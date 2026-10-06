@@ -66,7 +66,7 @@ export default function ApprovalsGuide() {
               An argument came from somewhere worse than the grant&apos;s{" "}
               <code>--max-taint</code> (a retrieved document, another tool&apos;s output).
             </td>
-            <td><code>capability.approval_required</code>, with the reason in <code>taint.capability.reasons</code></td>
+            <td><code>capability.approval_required</code>, with a reason naming the argument and where it came from</td>
             <td>
               Any grant. The default <code>--max-taint</code> is <code>user</code>; see{" "}
               <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>.
@@ -134,9 +134,11 @@ curl -s http://localhost:8080/v1/guard/tool_call \\
   …
 }`}</Output>
           <p>
-            Through the proxy (<code>/v1/chat/completions</code>) an escalation is an HTTP
-            202 with <code>{`{"status":"awaiting_approval","approval_id","poll","reason","trace_id"}`}</code>{" "}
-            and the model is not called.
+            Through the proxy (<code>/v1/chat/completions</code>, <code>/v1/messages</code>) an
+            escalation is an HTTP 428 with{" "}
+            <code>{`{"error":{"type":"agentfox_approval_required","approval_id","poll",…}}`}</code>{" "}
+            and the model is not called. The OpenAI and Anthropic SDKs raise it as{" "}
+            <code>APIStatusError</code>.
           </p>
         </Step>
 
@@ -163,10 +165,13 @@ curl -s "http://localhost:8080/api/approvals?status=pending" \\
 }`}</Output>
           <p>
             <code>status</code> filters by <code>pending</code>, <code>approved</code>,{" "}
-            <code>denied</code> or <code>expired</code>. An approval held over a{" "}
-            <em>message</em> rather than a tool call has <code>tool: null</code> and empty{" "}
-            <code>arguments</code>; open its <code>trace_id</code> to see what was held.
+            <code>denied</code>, <code>expired</code> or <code>used</code>. An approval held over
+            a <em>message</em> rather than a tool call has <code>tool: "message:input"</code>{" "}
+            (or <code>message:output</code>, <code>message:agent_message</code>) and the message
+            in <code>arguments.content</code>, with personal data masked. From the CLI:
           </p>
+          <Code>{`agentfox permit approvals list
+agentfox permit approvals show apr_01m46jnb2j2zszsbsm`}</Code>
           <InTheApp path="/app/approvals">Approvals: pending requests, with Approve and Deny</InTheApp>
         </Step>
 
@@ -177,59 +182,68 @@ curl -s "http://localhost:8080/api/approvals?status=pending" \\
 curl -s http://localhost:8080/api/approvals/apr_01m46jnb2j2zszsbsm \\
   -H "Authorization: Bearer $AGENTFOX_API_TOKEN"`}</Code>
           <Output>{`{"id":"apr_01m46jnb2j2zszsbsm","status":"approved","resolver":"marcus@example.com"}
-{"id":"apr_01m46jnb2j2zszsbsm","status":"approved","reason":"The granting capability requires human approval for this action.","tool":"billing.export","arguments":{"account":"acme","period":"2026-09"},"rationale":"Finance asked for the September export (ticket 4411)."}`}</Output>
+{"id":"apr_01m46jnb2j2zszsbsm","status":"approved","reason":"The granting capability requires human approval for this action.","tool":"billing.export","arguments":{"account":"acme","period":"2026-09"},"rationale":"Finance asked for the September export (ticket 4411).","agent_id":"agt_01m469q1nfsd4b4c3h","expires_at":"2026-10-05T18:16:02.114023+00:00","trace_id":"trc_01m46jnb1tvwstznav"}`}</Output>
           <p>
             <code>…/deny</code> takes the same body. Both are written to the audit chain
             with the person who decided. A user without the role is refused:
           </p>
           <Output>{`{"detail":"role 'developer' may not modify 'approvals'. Permitted: ['admin', 'owner', 'security']."}`}</Output>
+          <p>Or from the CLI, against the same database:</p>
+          <Code>{`agentfox permit approvals approve apr_01m46jnb2j2zszsbsm -r "Finance asked for the September export (ticket 4411)." --as marcus@example.com`}</Code>
+        </Step>
+
+        <Step title="Run it">
+          <p>
+            Approving does not run anything. The agent sends the same call again with the
+            approval id, and that call runs:
+          </p>
+          <Code>{`curl -s http://localhost:8080/v1/guard/tool_call \
+  -H 'Content-Type: application/json' \
+  -d '{"agent":"support-triage","tool":"billing.export",
+       "arguments":{"account":"acme","period":"2026-09"},
+       "provenance":{"account":"user","period":"user"},
+       "intent":"export September invoices for acme",
+       "approval_id":"apr_01m46jnb2j2zszsbsm"}'`}</Code>
+          <Output>{`{"verdict": "allow", "rules_fired": [{"rule_id": "capability.approval_required", …}, {"rule_id": "approval.redeemed", "effect": "allow", …}], …}`}</Output>
+          <p>
+            An approval lets exactly one call through: the same agent, the same tool and the
+            same arguments the person saw, within 30 minutes of the approval. Sending it again,
+            or with different arguments, escalates as before and files a new approval; the
+            reason says why the approval presented was not used. It never turns a block into
+            an allow. Through the proxy, send the same request with the header{" "}
+            <code>X-Nometria-Approval: apr_…</code>.
+          </p>
         </Step>
       </Steps>
-
-      <Callout kind="warning" title="Approving does not let the same call through on retry">
-        An approval is a record of a person&apos;s decision, not a pass. Sending the same{" "}
-        <code>billing.export</code> call to <code>/v1/guard/tool_call</code> again after it
-        was approved escalates again and files a new approval (
-        <code>escalate apr_01m469sb9910vq0mwe</code>). The pattern is: when the decision
-        comes back <code>approved</code>, your code runs the tool itself, without asking
-        again.
-      </Callout>
 
       <p>
         Nobody answering is a denial. An approval expires 30 minutes after it was filed and
         its <code>timeout_action</code> is <code>deny</code>, so polling it after that
-        returns <code>expired</code>.
+        returns <code>expired</code>. Once approved, it can be redeemed for 30 minutes; once
+        redeemed it reads <code>used</code>.
       </p>
 
       <h2>In Python: ApprovalRequired</h2>
       <p>
         The SDK (<code>agentfox.sdk.AgentFox</code>) raises <code>ApprovalRequired</code> on
         an escalate verdict and <code>PolicyViolation</code> on a block. The exception
-        carries <code>approval_id</code> and <code>trace_id</code>. The SDK has no wait
-        helper, so poll <code>GET /api/approvals/&#123;id&#125;</code> yourself. This one talks
-        to the gateway (<code>base_url</code>); without it the same code checks in-process
+        carries <code>approval_id</code> and <code>trace_id</code>.{" "}
+        <code>fox.wait_for_approval(id, timeout)</code> waits for the decision and returns{" "}
+        <code>approved</code>, <code>denied</code>, <code>expired</code>, or{" "}
+        <code>pending</code> if the timeout ran out; <code>guard_tool(…, approval_id=id)</code>{" "}
+        is the retry that runs. This one talks to the gateway (<code>base_url</code>) with the
+        agent&apos;s own key; without <code>base_url</code> the same code checks in-process
         against the local database.
       </p>
       <Code lang="python" title="export.py">{`import os
-import time
 
-import httpx
 from agentfox.sdk import AgentFox, ApprovalRequired, PolicyViolation
 
-GATEWAY = "http://localhost:8080"
-OPERATOR = {"Authorization": f"Bearer {os.environ['AGENTFOX_API_TOKEN']}"}
-
-fox = AgentFox(agent="support-triage", base_url=GATEWAY)
-
-
-def wait_for_decision(approval_id: str, every: float = 2.0, give_up_after: float = 1800) -> str:
-    deadline = time.monotonic() + give_up_after
-    while time.monotonic() < deadline:
-        approval = httpx.get(f"{GATEWAY}/api/approvals/{approval_id}", headers=OPERATOR).json()
-        if approval["status"] != "pending":
-            return approval["status"]  # approved | denied | expired
-        time.sleep(every)
-    return "expired"
+fox = AgentFox(
+    agent="support-triage",
+    base_url="http://localhost:8080",
+    api_key=os.environ["AGENTFOX_AGENT_KEY"],  # nom_agt_…, the agent's own key
+)
 
 
 def export_invoices(account: str, period: str) -> None:
@@ -239,10 +253,12 @@ def export_invoices(account: str, period: str) -> None:
             s.guard_tool("billing.export", arguments)
         except ApprovalRequired as held:
             print(f"held for a person: {held.approval_id}")
-            status = wait_for_decision(held.approval_id)
+            status = fox.wait_for_approval(held.approval_id, timeout=1800)
             print(f"decision: {status}")
             if status != "approved":
                 return
+            # The retry: the same call, presenting the approval. Runs once.
+            s.guard_tool("billing.export", arguments, approval_id=held.approval_id)
         except PolicyViolation as refused:
             print(f"refused: {refused}")
             return
@@ -257,11 +273,10 @@ exporting 2026-09 for acme`}</Output>
       <p>Denied instead:</p>
       <Output>{`held for a person: apr_01m469xcaf6c5vkj7s
 decision: denied`}</Output>
-      <Callout kind="note" title="Polling needs an operator token">
-        <code>/api/approvals</code> is on the control plane, so in token mode the poller
-        needs a <code>nom_api_</code> token. An agent&apos;s own <code>nom_agt_</code> key is
-        refused there. Give the worker a token for a low-privilege operator; reading an
-        approval needs no role.
+      <Callout kind="note" title="Polling with the agent's key">
+        An agent&apos;s own <code>nom_agt_</code> key may read{" "}
+        <code>GET /api/approvals/&#123;id&#125;</code> for its own agent&apos;s approvals (another
+        agent&apos;s read as 404). Listing and deciding stay with operators.
       </Callout>
       <p>
         With <code>agentfox.auto()</code> the model&apos;s tool call is withheld and{" "}
@@ -271,7 +286,7 @@ decision: denied`}</Output>
       <Output>{`agentfox: tool call billing.export needs human approval (approval apr_01m469ya25jgwswme8) by capability.approval_required: The granting capability requires human approval for this action. No argument came from untrusted content.`}</Output>
       <p>
         The response that asked for the call is not handed back, so after an approval your
-        code makes the call itself, as above.
+        code makes the call itself, through <code>guard_tool(…, approval_id=…)</code> as above.
       </p>
 
       <h2>Conversations that should reach a person</h2>
@@ -498,7 +513,11 @@ No open findings at severity 'critical'.`}</Output>
           <p>Use <code>kill</code> instead if you already know it is doing harm.</p>
         </Step>
         <Step title="2. Deny what it is waiting on">
-          <p>Pending approvals survive a quarantine. Deny the agent&apos;s pending approvals:</p>
+          <p>
+            Pending approvals survive a quarantine. Deny the agent&apos;s pending approvals
+            (<code>agentfox permit approvals list --agent payments-ops</code>, then{" "}
+            <code>deny ID</code>), or over HTTP:
+          </p>
           <Code>{`API=http://localhost:8080
 AUTH="Authorization: Bearer $AGENTFOX_API_TOKEN"
 AGENT_ID=$(curl -s "$API/api/agents/payments-ops" -H "$AUTH" | jq -r .id)
@@ -588,8 +607,12 @@ CHAIN INTACT — 52 entries verified (seq 1..52)`}</Output>
             </td>
           </tr>
           <tr>
-            <td>Every retry files a new approval.</td>
-            <td>Expected: run the tool yourself once the approval reads <code>approved</code>.</td>
+            <td>A retry with the approval id files a new approval.</td>
+            <td>
+              The reason ends with why the approval was not used: it was already used, is not
+              yet approved, expired, or the arguments differ from the ones approved. Each
+              approval lets one identical call through.
+            </td>
           </tr>
           <tr>
             <td>A pending approval turned into <code>expired</code>.</td>
@@ -638,7 +661,7 @@ CHAIN INTACT — 52 entries verified (seq 1..52)`}</Output>
       <NextSteps
         items={[
           { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "grants, max-taint and the declarations approvals hang off" },
-          { href: "/docs/guides/gateway", label: "Any language: the gateway", why: "the 202 response and the guard endpoints" },
+          { href: "/docs/guides/gateway", label: "Any language: the gateway", why: "the 428 response and the guard endpoints" },
           { href: "/docs/app/approvals", label: "Approvals in the web app", why: "the queue a person works from" },
           { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", why: "where the decisions and stops end up" },
         ]}

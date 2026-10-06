@@ -22,8 +22,8 @@ agentfox report verify
 
 With a server running, open the recent traces:
 `GET /api/traces?agent=<slug>` and `GET /api/traces/{id}`. Also check pending approvals with
-`GET /api/approvals?status=pending`, because an attack may be queued waiting for a human to
-click approve.
+`GET /api/approvals?status=pending` (or `agentfox permit approvals list`), because an attack
+may be queued waiting for a human to click approve.
 
 Tell the user, in three lines:
 
@@ -37,7 +37,7 @@ Offer the smallest effective option:
 
 | Option | Effect | Command |
 |---|---|---|
-| Deny a pending approval | stops one queued action | `POST /api/approvals/{id}/deny` |
+| Deny a pending approval | stops one queued action | `POST /api/approvals/{id}/deny` or `agentfox permit approvals deny ID` |
 | Quarantine | agent stops, reversible, audited | `agentfox agents quarantine <slug> --reason "<incident id / what>"` |
 | Kill | stop now | `agentfox agents kill <slug> --reason "…"` |
 | Enforce a policy that's in observe | start blocking a class of action for every agent | `agentfox policy enforce <key>` |

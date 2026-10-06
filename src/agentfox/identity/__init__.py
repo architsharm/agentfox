@@ -3,6 +3,7 @@
 from agentfox.identity.service import (
     AGENT_KEY_PREFIX,
     API_KEY_PREFIX,
+    APPROVAL_STATUSES,
     CapabilityDecision,
     assess_posture,
     capability_set,
@@ -12,6 +13,7 @@ from agentfox.identity.service import (
     expire_stale_approvals,
     grant_capability,
     issue_credential,
+    redeem_approval,
     request_approval,
     resolve_approval,
     revoke_capability,
@@ -23,6 +25,7 @@ from agentfox.identity.service import (
 __all__ = [
     "AGENT_KEY_PREFIX",
     "API_KEY_PREFIX",
+    "APPROVAL_STATUSES",
     "CapabilityDecision",
     "assess_posture",
     "capability_set",
@@ -32,6 +35,7 @@ __all__ = [
     "expire_stale_approvals",
     "grant_capability",
     "issue_credential",
+    "redeem_approval",
     "request_approval",
     "resolve_approval",
     "revoke_capability",

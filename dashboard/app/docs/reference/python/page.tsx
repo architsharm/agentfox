@@ -377,6 +377,8 @@ None`}</Output>
           <tr><td><code>tool</code></td><td><code>(key, *, impact=&quot;read&quot;, session=None)</code></td><td>Decorator. Writes the tool and its impact to the registry; authorises every call before the function runs. Raises <code>PolicyViolation</code> or <code>ApprovalRequired</code>.</td></tr>
           <tr><td><code>guard</code></td><td><code>(surface=&quot;input&quot;)</code></td><td>Decorator for a function that returns a string. Checks the string on that surface; raises <code>PolicyViolation</code> only on an enforced block.</td></tr>
           <tr><td><code>check</code></td><td><code>(content, *, surface=&quot;input&quot;, taint_source=&quot;user&quot;)</code></td><td>A decision as a dict. Never raises on a verdict.</td></tr>
+          <tr><td><code>wait_for_approval</code></td><td><code>(approval_id, timeout=1800.0, *, interval=2.0) -&gt; str</code></td><td>Waits for a person to decide. Returns <code>approved</code>, <code>denied</code>, <code>expired</code>, or <code>pending</code> when <code>timeout</code> seconds pass first. Remote mode polls <code>GET /api/approvals/&#123;id&#125;</code> with this client&apos;s key; an agent key may read its own agent&apos;s approvals.</td></tr>
+          <tr><td><code>approval</code></td><td><code>(approval_id) -&gt; dict</code></td><td>The approval now: <code>status</code>, <code>reason</code>, <code>tool</code>, <code>arguments</code>, <code>rationale</code>.</td></tr>
           <tr><td><code>remote</code></td><td>property</td><td><code>True</code> when <code>base_url</code> was given</td></tr>
         </tbody>
       </table>
@@ -396,8 +398,9 @@ None`}</Output>
           <tr><td><code>retrieved</code></td><td><code>(text, path=None) -&gt; TaggedContent</code></td><td>Marks text from a document store or web page as untrusted (<code>retrieved</code>).</td></tr>
           <tr><td><code>tool_result</code></td><td><code>(text, path=None, tool=None) -&gt; TaggedContent</code></td><td>Marks a tool&apos;s output as untrusted (<code>tool_result</code>). Name the producing <code>tool</code> so a later, higher-impact call fed by it can be caught as composed escalation.</td></tr>
           <tr><td><code>subagent_output</code></td><td><code>(text, path=None) -&gt; TaggedContent</code></td><td>Marks another agent&apos;s output as untrusted (<code>subagent</code>).</td></tr>
-          <tr><td><code>guard_tool</code></td><td><code>(tool, arguments, *, provenance=None, raise_on_block=True) -&gt; EnforcementResult</code></td><td>Authorises one tool call. <code>TaggedContent</code> values in <code>arguments</code> carry their provenance; plain strings copied out of tagged content are matched by the session&apos;s taint tracker. Raises <code>PolicyViolation</code> on block, <code>ApprovalRequired</code> on escalate.</td></tr>
-          <tr><td><code>complete</code></td><td><code>(messages, *, model=&quot;default&quot;, provider=None, schema=None, raise_on_block=True, **kwargs)</code></td><td>Sends a chat completion through the enforcer (input and output checked). Returns the provider&apos;s response, or <code>None</code> when blocked with <code>raise_on_block=False</code>.</td></tr>
+          <tr><td><code>guard_tool</code></td><td><code>(tool, arguments, *, provenance=None, raise_on_block=True, approval_id=None) -&gt; EnforcementResult</code></td><td>Authorises one tool call. <code>TaggedContent</code> values in <code>arguments</code> carry their provenance; plain strings copied out of tagged content are matched by the session&apos;s taint tracker. Raises <code>PolicyViolation</code> on block, <code>ApprovalRequired</code> on escalate. <code>approval_id</code> is the retry of a call a person approved: the same tool and arguments run once.</td></tr>
+          <tr><td><code>complete</code></td><td><code>(messages, *, model=&quot;default&quot;, provider=None, schema=None, raise_on_block=True, approval_id=None, **kwargs)</code></td><td>Sends a chat completion through the enforcer (input and output checked). Returns the provider&apos;s response, or <code>None</code> when blocked with <code>raise_on_block=False</code>.</td></tr>
+          <tr><td><code>wait_for_approval</code></td><td><code>(approval_id, timeout=1800.0, *, interval=2.0) -&gt; str</code></td><td>The client&apos;s <code>wait_for_approval</code>.</td></tr>
         </tbody>
       </table>
       <p>
@@ -452,8 +455,12 @@ ApprovalRequired: apr_01m469f0qrp7pvr67x | ['taint.irreversible_tool', 'capabili
 PolicyViolation: capability.denied | trace trc_01m469f0qxk7gq4k4k`}</Output>
       <p>
         The approval is waiting in the queue; see{" "}
-        <Link href="/docs/guides/approvals">Approvals and the kill switch</Link>.
+        <Link href="/docs/guides/approvals">Approvals and the kill switch</Link>. Once a
+        person approves it, the same call with <code>approval_id=exc.approval_id</code>{" "}
+        runs, once:
       </p>
+      <Code lang="python">{`if fox.wait_for_approval(exc.approval_id, timeout=600) == "approved":
+    s.guard_tool("email.send", args, approval_id=exc.approval_id)`}</Code>
 
       <Callout kind="warning" title="A decorated tool does not join the session you are in">
         <p>

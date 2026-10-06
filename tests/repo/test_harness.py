@@ -81,6 +81,9 @@ def _decision(command: str) -> str:
         "agentfox policy proposals apply chp_01h2",
         "agentfox policy proposals rollback chp_01h2 --actor a@b.c --reason x",
         "agentfox policy proposals verify chp_01h2 --actor a@b.c --note worse --failed",
+        # Deciding an approval lets a held call run.
+        "agentfox permit approvals approve apr_01h2",
+        "agentfox approvals deny apr_01h2 -r no",
     ],
 )
 def test_blocking_commands_require_confirmation(command):
@@ -101,6 +104,7 @@ def test_blocking_commands_require_confirmation(command):
         "agentfox scan . --fail",
         "agentfox declare escalation --agent a --mode observe",
         "agentfox policy proposals list",
+        "agentfox permit approvals list",
         "agentfox report",
         "agentfox demo-notes.md",
         "git commit -m 'agentfox policy enforce baseline'",
