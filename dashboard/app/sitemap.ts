@@ -19,6 +19,7 @@
  */
 
 import type { MetadataRoute } from "next";
+import { BLOG_POSTS, blogPath } from "@/lib/blog";
 import { DOC_PAGES } from "@/lib/docs";
 import { ALL_PAGES } from "@/lib/nav";
 import { SITE_URL } from "@/lib/site";
@@ -48,5 +49,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "monthly" as const,
     priority: 0.6,
   })).filter((page) => !listed.has(page.url));
-  return [...pages, ...docs];
+  // Every blog post, from lib/blog.ts. A post's own date rather than the build
+  // time: a post does not change because the site was redeployed, and a
+  // lastModified that moves on every deploy teaches a crawler to ignore it.
+  const posts: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
+    url: `${SITE_URL}${blogPath(post.slug)}`,
+    lastModified: new Date(`${post.updated ?? post.published}T00:00:00Z`),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+  return [...pages, ...docs, ...posts];
 }

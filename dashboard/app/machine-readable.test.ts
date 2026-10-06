@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 import { GET as agentsMd } from "./AGENTS.md/route";
 import { GET as llmsTxt } from "./llms.txt/route";
 import { GET as securityTxt } from "./.well-known/security.txt/route";
+import { BLOG_POSTS, blogPath } from "@/lib/blog";
 import { ALL_PATHS } from "@/lib/nav";
 import { SITE_URL } from "@/lib/site";
 
@@ -54,7 +55,9 @@ describe("/llms.txt", () => {
     );
     expect(ours.length).toBeGreaterThan(5);
 
-    const allowed = new Set([...ALL_PATHS, ...ALSO_SERVED]);
+    // Blog posts are public routes from lib/blog.ts, the list sitemap.ts reads.
+    const posts = BLOG_POSTS.map((p) => blogPath(p.slug));
+    const allowed = new Set([...ALL_PATHS, ...posts, ...ALSO_SERVED]);
     const unknown = [...new Set(ours)].filter((p) => !allowed.has(p));
     expect(unknown, "llms.txt names paths that are not public routes").toEqual([]);
   });
