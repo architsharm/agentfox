@@ -34,7 +34,13 @@ from agentfox.identity import (
     request_approval,
     verify_credential,
 )
-from agentfox.policy import PolicyInput, combine, get_engine, policies_in_force
+from agentfox.policy import (
+    PolicyInput,
+    UnloadablePolicyVersion,
+    combine,
+    get_engine,
+    policies_in_force,
+)
 from agentfox.policy.taint_view import policy_taint
 from agentfox.prove.audit import chain
 from agentfox.prove.audit.trace import (
@@ -419,6 +425,12 @@ class Enforcer(
         # P12: the hierarchy decides what is in force for this subject — the same
         # resolution `policy effective` prints — so a team-scoped `restrict` binds
         # only that team's agents and a granted `override` really loosens.
+        #
+        # A bound version that no longer loads (a row older than the validator
+        # that now reads it) is collected rather than raised: the other packs are
+        # still evaluated, and the gap is handled below under the fail mode, the
+        # way a degraded detector pipeline is.
+        unloadable: list[UnloadablePolicyVersion] = []
         bound = policies_in_force(
             self.session,
             agent_slug,
@@ -426,6 +438,7 @@ class Enforcer(
             # "" rather than None: the agent is known and has no team, so there is
             # nothing to look up.
             team=(agent.owner_team or "") if agent else None,
+            skipped=unloadable,
         )
         # Nothing bound is not the same as nothing to check.
         #
@@ -453,7 +466,10 @@ class Enforcer(
         # or binds their own, this stops applying and their policies decide. A
         # fallback that seeded itself into the database would be a tool editing
         # the configuration it is supposed to be governed by.
-        if not bound:
+        #
+        # Not when a pack is bound but unloadable: something *is* configured, and
+        # substituting the observe-only baseline for it would read as governed.
+        if not bound and not unloadable:
             fallback = _fallback_policies(getattr(agent, "risk_tier", None))
             if fallback:
                 bound = [
@@ -684,6 +700,36 @@ class Enforcer(
                     "block",
                     f"detectors degraded ({pipeline_result.degraded}) and {source}",
                     severity="medium",
+                    controls=["NOM-RTG-06"],
+                )
+            )
+
+        # The same two sources for a bound policy version that no longer loads: the
+        # deployment's `fail_mode`, and the fail_mode the stored pack declared. A
+        # pack bound in observe would not have blocked anything, so its absence is
+        # recorded and never blocks; an enforcing pack fails closed if either
+        # source says closed, and otherwise the call is allowed with the gap named
+        # in the decision.
+        for missing in unloadable:
+            closed = missing.binding_mode == "enforce" and (
+                self.settings.fail_mode == "closed" or missing.fail_mode == "closed"
+            )
+            if closed:
+                verdict = "block"
+                effective = "block"
+            source = (
+                "fail_mode=closed"
+                if self.settings.fail_mode == "closed"
+                else f"policy {missing.key} declares fail_mode={missing.fail_mode}"
+            )
+            rules_fired.append(
+                _fired_rule(
+                    "policy.unloadable",
+                    "block" if closed else "allow",
+                    f"policy {missing.key} v{missing.version} is bound "
+                    f"({missing.binding_mode}) but no longer loads, and {source}: "
+                    f"{missing.detail[:200]}",
+                    severity="high",
                     controls=["NOM-RTG-06"],
                 )
             )

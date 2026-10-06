@@ -199,8 +199,18 @@ class _OwnRules:
                 version = self.session.get(PolicyVersion, version_id)
                 ids: set[str] = set()
                 if version is not None and version.policy_id == self.policy_id:
-                    body = version.compiled_json or yaml.safe_load(version.body) or {}
-                    ids = {str(rule.get("id")) for rule in body.get("rules", [])}
+                    from agentfox.policy.store import (
+                        UnloadablePolicyVersion,
+                        load_version_document,
+                    )
+
+                    try:
+                        ids = {rule.id for rule in load_version_document(version).rules}
+                    except UnloadablePolicyVersion:
+                        # Still attribute what the stored row names, so a decision
+                        # made under it is not silently dropped from the diff.
+                        body = version.compiled_json or yaml.safe_load(version.body) or {}
+                        ids = {str(rule.get("id")) for rule in body.get("rules", [])}
                 self._cache[version_id] = ids
             out |= self._cache[version_id]
         return out
@@ -251,9 +261,9 @@ def simulation_for(session: Session, version: PolicyVersion) -> SimulationRun | 
     The server-side half of "simulate before you enforce" (#64): promoting a
     version to enforce over the API requires one.
     """
-    target = rules_fingerprint(
-        PolicyDocument.model_validate(version.compiled_json or yaml.safe_load(version.body))
-    )
+    from agentfox.policy.store import load_version_document
+
+    target = rules_fingerprint(load_version_document(version))
     runs = session.scalars(
         select(SimulationRun)
         .where(or_(SimulationRun.policy_id == version.policy_id, SimulationRun.policy_id.is_(None)))

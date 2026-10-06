@@ -268,11 +268,12 @@ def _live_policy(session: Session, policy_key: str) -> tuple[Policy, PolicyVersi
 
 
 def _document(version: PolicyVersion):
-    import yaml
+    from agentfox.policy.store import UnloadablePolicyVersion, load_version_document
 
-    from agentfox.policy.model import PolicyDocument
-
-    return PolicyDocument.model_validate(version.compiled_json or yaml.safe_load(version.body))
+    try:
+        return load_version_document(version)
+    except UnloadablePolicyVersion as exc:
+        raise ApplierError(str(exc)) from exc
 
 
 def _rule(doc, rule_id: str):
