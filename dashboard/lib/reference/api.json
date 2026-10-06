@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/docs_reference.py",
- "count": 182,
+ "count": 207,
  "routes": [
   {
    "method": "GET",
@@ -68,6 +68,12 @@
     },
     {
      "name": "x-nometria-stream-mode",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-approval",
      "in": "header",
      "required": false,
      "type": null
@@ -151,7 +157,14 @@
    "audience": "public",
    "summary": "Enforce on content without proxying.",
    "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in Appendix C.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
-   "params": [],
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
    "body": {
     "model": "GuardContentRequest",
     "fields": [
@@ -194,6 +207,12 @@
      {
       "name": "trace_id",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
       "required": false,
       "description": ""
      }
@@ -276,7 +295,14 @@
    "audience": "public",
    "summary": "Enforce on content without proxying.",
    "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in Appendix C.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
-   "params": [],
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
    "body": {
     "model": "GuardContentRequest",
     "fields": [
@@ -319,6 +345,12 @@
      {
       "name": "trace_id",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
       "required": false,
       "description": ""
      }
@@ -387,6 +419,12 @@
      },
      {
       "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "approval_id",
       "type": "string",
       "required": false,
       "description": ""
@@ -508,6 +546,12 @@
      "type": null
     },
     {
+     "name": "x-nometria-approval",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
      "name": "authorization",
      "in": "header",
      "required": false,
@@ -522,7 +566,7 @@
    "section": "v1/traces",
    "audience": "public",
    "summary": "OTLP/HTTP trace ingest",
-   "description": "",
+   "description": "OTLP/HTTP trace ingest\n\nAccepts protobuf (`application/x-protobuf`, what the OpenTelemetry exporters send by\ndefault) and JSON, either one gzip-compressed. A protobuf request gets the empty\nprotobuf `ExportTraceServiceResponse` the OTLP spec asks for; a JSON request gets\nthe ingest summary.",
    "params": [
     {
      "name": "authorization",
@@ -1103,6 +1147,114 @@
    "body": null
   },
   {
+   "method": "DELETE",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Stop sending this tenant's alerts to its own Slack channel.",
+   "description": "Stop sending this tenant's alerts to its own Slack channel.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Whether this tenant has its own Slack channel, and whether alerts can leave at all.",
+   "description": "Whether this tenant has its own Slack channel, and whether alerts can leave at all.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Send this tenant's monitor alerts to its own Slack incoming webhook.",
+   "description": "Send this tenant's monitor alerts to its own Slack incoming webhook.\n\nThe URL must be ``https://hooks.slack.com/services/…``; it is stored encrypted.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SlackIn",
+    "fields": [
+     {
+      "name": "url",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "min_severity",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/alerts/slack/test",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Send a test message to every channel this tenant's alerts go to, now.",
+   "description": "Send a test message to every channel this tenant's alerts go to, now.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/answerability/boundaries",
    "section": "answerability",
@@ -1320,8 +1472,8 @@
    "path": "/api/approvals/{approval_id}",
    "section": "approvals",
    "audience": "operator",
-   "summary": "Get Approval",
-   "description": "",
+   "summary": "One approval. An operator may read any; an agent key only its own agent's.",
+   "description": "One approval. An operator may read any; an agent key only its own agent's.\n\nThe SDK's `wait_for_approval` polls this with the agent's own key (#14): the\nagent that is waiting is the one caller certain to need the answer, and it\nused to need an operator token to read it.",
    "params": [
     {
      "name": "approval_id",
@@ -1550,7 +1702,7 @@
    "section": "auth",
    "audience": "operator",
    "summary": "Find-or-create the user behind a GitHub identity, and mint them a token.",
-   "description": "Find-or-create the user behind a GitHub identity, and mint them a token.\n\nRuns in system scope for the lookup because — like every credential resolution\nin auth.py — we cannot know the tenant until we know who this is. A first-time\nGitHub login gets a brand new org: there is no invite flow yet, so \"new GitHub\nidentity\" and \"new tenant\" are the same event.",
+   "description": "Find-or-create the user behind a GitHub identity, and mint them a token.\n\n**Trust model.** This route believes the GitHub identity in the body because of\nwho is allowed to send it, not because of anything in the body. The only holder\nof ``service_auth_secret`` is the dashboard's OAuth callback, which calls here\nonly after it has completed GitHub's OAuth exchange itself (state cookie checked,\ncode exchanged for a token, ``/user`` read with that token) — so\n``github_user_id`` is GitHub's own answer to \"who signed in\", relayed by a party\nthat holds the deployment's secret. Under that model:\n\n* The secret is equivalent to \"sign in as any GitHub-linked user of this\n  deployment\". It must be random, shared only between the gateway and the\n  dashboard, and never the published default — `create_app()` refuses to start\n  outside development with the default, and :func:`_require_service_secret`\n  refuses this route on its own as well.\n* Find-or-create keys on ``github_user_id`` and nothing else: GitHub's numeric\n  id is immutable, unlike a login (renameable, then claimable by someone else)\n  or an email (the body's email is whatever GitHub reported, and keying on it\n  would let any GitHub account that lists an address take over the user who\n  owns that address here). An existing user is therefore only ever returned to\n  a sign-in that GitHub attested as that same account.\n* A deactivated user is refused rather than handed a token that every other\n  route would then reject.\n\nRuns in system scope for the lookup because — like every credential resolution\nin auth.py — we cannot know the tenant until we know who this is. A first-time\nGitHub login gets a brand new org: there is no invite flow yet, so \"new GitHub\nidentity\" and \"new tenant\" are the same event.\n\nEach sign-in mints a fresh token (the raw value of an old one is not stored, so\nit cannot be reused) and retires all but the newest ``MAX_LOGIN_SESSIONS`` login\ntokens; signing out revokes the session's own token (``POST /api/auth/logout``).",
    "params": [
     {
      "name": "x-nometria-service-secret",
@@ -1588,6 +1740,23 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/logout",
+   "section": "auth",
+   "audience": "operator",
+   "summary": "Revoke the bearer token this request presents — the dashboard's Sign Out.",
+   "description": "Revoke the bearer token this request presents — the dashboard's Sign Out.\n\nDeleting the cookie alone left the token valid for the rest of its 365 days, so\na copied cookie outlived the sign-out. Idempotent: an already-revoked, expired or\nunknown token is reported as not revoked, never as an error, so a browser whose\nsession already ended can still sign out cleanly.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "GET",
@@ -4248,6 +4417,52 @@
   },
   {
    "method": "POST",
+   "path": "/api/integrations/github/webhook",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "GitHub push webhook: a signed push to a monitored repository queues a rescan.",
+   "description": "GitHub push webhook: a signed push to a monitored repository queues a rescan.\n\n``X-Hub-Signature-256`` is verified first; then each monitor of the pushed\nrepository whose tenant's secret signed the delivery gets a rescan of the commit.\n\nRegister it on the repository (or organisation) with payload URL\n``https://<api host>/api/integrations/github/webhook``, content type\n``application/json``, the ``push`` event, and as secret either the deployment's\n``AGENTFOX_GITHUB_WEBHOOK_SECRET`` or the one ``POST\n/api/integrations/github/webhook-secret`` returned for the connection. A delivery\nis acted on only for the tenants whose secret signed it.",
+   "params": [
+    {
+     "name": "x-github-event",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-hub-signature-256",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/github/webhook-secret",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Create or replace the GitHub connection's push-webhook secret (shown once).",
+   "description": "Create or replace the GitHub connection's push-webhook secret (shown once).\n\nPaste it into the GitHub webhook's \"Secret\" field.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
    "path": "/api/integrations/hosted-api/scan",
    "section": "integrations",
    "audience": "operator",
@@ -4303,7 +4518,7 @@
    "section": "internal",
    "audience": "internal",
    "summary": "The cron entry point. GET because that is what Vercel Cron sends; POST for anything else that drives it.",
-   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
+   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n0. With `settings.showcase_enabled`, make sure the public showcase tenant and its\n   opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants\n   the scheduling pass below finds.\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
    "params": [
     {
      "name": "limit",
@@ -4326,7 +4541,7 @@
    "section": "internal",
    "audience": "internal",
    "summary": "The cron entry point. GET because that is what Vercel Cron sends; POST for anything else that drives it.",
-   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
+   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n0. With `settings.showcase_enabled`, make sure the public showcase tenant and its\n   opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants\n   the scheduling pass below finds.\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
    "params": [
     {
      "name": "limit",
@@ -4595,8 +4810,8 @@
    "path": "/api/mcp-servers",
    "section": "mcp-servers",
    "audience": "operator",
-   "summary": "Create Mcp",
-   "description": "",
+   "summary": "Register an MCP server, and start monitoring it for tool drift.",
+   "description": "Register an MCP server, and start monitoring it for tool drift.\n\nA remote (Streamable HTTP) server's tool listing is re-read on a schedule; a stdio\nserver's pushed listings are watched.",
    "params": [
     {
      "name": "authorization",
@@ -4834,6 +5049,306 @@
    "params": [
     {
      "name": "entry_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/monitors",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Every monitor in the tenant, with its last result and when it next runs.",
+   "description": "Every monitor in the tenant, with its last result and when it next runs.",
+   "params": [
+    {
+     "name": "kind",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "enabled",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Watch a source by hand. The first run stores a baseline; later runs report changes.",
+   "description": "Watch a source by hand. The first run stores a baseline; later runs report changes.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MonitorIn",
+    "fields": [
+     {
+      "name": "kind",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "target",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Stop watching a source. Its findings are kept.",
+   "description": "Stop watching a source. Its findings are kept.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "One monitor, with the findings it raised that are still open.",
+   "description": "One monitor, with the findings it raised that are still open.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Rename, retune the interval, change config, or pause/resume (``enabled``).",
+   "description": "Rename, retune the interval, change config, or pause/resume (``enabled``).",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MonitorPatch",
+    "fields": [
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/pause",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Stop scheduled runs. Open findings stay open; nothing is closed while paused.",
+   "description": "Stop scheduled runs. Open findings stay open; nothing is closed while paused.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/resume",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Resume scheduled runs from the monitor's next due time.",
+   "description": "Resume scheduled runs from the monitor's next due time.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/run",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Run one monitor now, through the job queue, and return its result.",
+   "description": "Run one monitor now, through the job queue, and return its result.",
+   "params": [
+    {
+     "name": "monitor_id",
      "in": "path",
      "required": true,
      "type": "string"
@@ -5512,8 +6027,8 @@
    "path": "/api/policies/{key}/mode",
    "section": "policies",
    "audience": "operator",
-   "summary": "Change Mode",
-   "description": "",
+   "summary": "Promote or demote a policy, optionally making a saved version live.",
+   "description": "Promote or demote a policy, optionally making a saved version live.\n\nPromoting to ``enforce`` requires a recorded simulation of exactly the rules\nbeing enforced (``POST /api/policies/simulate`` with that version's body) —\nthe server-side half of the editor's simulate-before-promote gate (#64).\nDemoting to ``observe`` never needs one: it can only stop blocking.",
    "params": [
     {
      "name": "key",
@@ -5541,6 +6056,30 @@
       "name": "mode",
       "type": "string",
       "required": true,
+      "description": ""
+     },
+     {
+      "name": "version",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "scope_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "compose",
+      "type": "string",
+      "required": false,
       "description": ""
      }
     ]
@@ -5618,6 +6157,399 @@
      "required": true,
      "type": "string"
     },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "List Targets",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Register a target. It is created disabled; nothing is sent until opt-in.",
+   "description": "Register a target. It is created disabled; nothing is sent until opt-in.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TargetCreate",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "adapter",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "model",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_header",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "forbidden_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "leak_markers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_probes_per_run",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "rate_limit_per_minute",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets/{target_id}",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Get Target",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/probes/targets/{target_id}",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Update Target",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TargetUpdate",
+    "fields": [
+     {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "forbidden_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "leak_markers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_probes_per_run",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "rate_limit_per_minute",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets/{target_id}/campaigns",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Campaigns",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/opt-in",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Opt In",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "OptIn",
+    "fields": [
+     {
+      "name": "acknowledgement",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/opt-out",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Opt Out",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/run",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Probe the target now. Same consent and caps as a scheduled run, and refused within `MIN_MANUAL_GAP_SECONDS` of the previous run.",
+   "description": "Probe the target now. Same consent and caps as a scheduled run, and refused\nwithin `MIN_MANUAL_GAP_SECONDS` of the previous run.",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/warning",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "What a person must read before enabling probes, plus the probe library, the hard caps and the adapter contract a target endpoint has to speak.",
+   "description": "What a person must read before enabling probes, plus the probe library, the\nhard caps and the adapter contract a target endpoint has to speak.",
+   "params": [
     {
      "name": "authorization",
      "in": "header",
@@ -5894,6 +6826,16 @@
      "type": null
     }
    ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/public/showcase",
+   "section": "public",
+   "audience": "public-unauthenticated",
+   "summary": "AgentFox probing its own demo agent: recent runs, attacks attempted, contained and escaped, findings opened and closed. Unauthenticated and read-only; returns ``{\"enabled\": false}`` on a deployment that does not run the showcase.",
+   "description": "AgentFox probing its own demo agent: recent runs, attacks attempted, contained\nand escaped, findings opened and closed. Unauthenticated and read-only; returns\n``{\"enabled\": false}`` on a deployment that does not run the showcase.",
+   "params": [],
    "body": null
   },
   {
@@ -6851,8 +7793,8 @@
    "path": "/api/version",
    "section": "version",
    "audience": "operator",
-   "summary": "Every version that participates in a decision (X-4 determinism).",
-   "description": "Every version that participates in a decision (X-4 determinism).",
+   "summary": "Every version that participates in a decision, so a verdict can be reproduced.",
+   "description": "Every version that participates in a decision, so a verdict can be reproduced.",
    "params": [],
    "body": null
   },

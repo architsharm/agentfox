@@ -56,6 +56,10 @@ CLI_RULES: list[tuple[re.Pattern[str], str]] = [
     ),
     (r"agents\s+resume" + _END, "restarts a stopped agent."),
     (
+        r"(?:permit\s+)?approvals\s+(?:approve|deny)" + _END,
+        "decides an approval: an approved call held for a person runs when the agent retries it.",
+    ),
+    (
         r"demo" + _END,
         "runs the demo, which writes demo agents and data and briefly enforces `baseline` "
         "in whatever DB NOMETRIA_DATABASE_URL points at. Use a scratch DB.",
@@ -79,6 +83,20 @@ CLI_RULES: list[tuple[re.Pattern[str], str]] = [
         "mints or revokes an API token (a minted token is shown once, in this transcript).",
     ),
     (
+        r"(?:admin\s+)?users\s+create" + _END,
+        "creates a control-plane operator (an owner by default) who can be issued tokens.",
+    ),
+    (
+        # `permit` is the current name; `capability` the pre-consolidation one.
+        r"(?:permit|capability)\s+(?:grant|revoke)" + _END,
+        "changes what an agent may do: a grant lets it call a tool that containment "
+        "refused until now; a revoke refuses calls that were working.",
+    ),
+    (
+        r"(?:permit\s+user|entitlement\s+grant)" + _END,
+        "grants an end user access to a resource pattern.",
+    ),
+    (
         r"(?:check|quickscan|scan)\s.*--submit" + _END,
         "uploads a redacted scan summary to a remote AgentFox API.",
     ),
@@ -87,10 +105,11 @@ CLI_RULES = [(re.compile(_PREFIX + pat), why) for pat, why in CLI_RULES]  # type
 
 CURL_RULE = (
     re.compile(
-        r"^(?:\w+=\S*\s+)*curl\b.*(?:/api/policies/[^/\s]+/mode|/api/agents/[^/\s]+/(?:kill|quarantine|resume)|/api/approvals/[^/\s]+/(?:approve|deny)|/api/proposals/[^/\s]+/(?:apply|rollback|verify))"
+        r"^(?:\w+=\S*\s+)*curl\b.*(?:/api/policies/[^/\s]+/mode|/api/agents/[^/\s]+/(?:kill|quarantine|resume)|/api/approvals/[^/\s]+/(?:approve|deny)|/api/identities/[^/\s]+/capabilities|/api/proposals/[^/\s]+/(?:apply|rollback|verify))"
     ),
     "calls a control-plane endpoint that changes enforcement, stops an agent, "
-    "decides an approval, or applies or undoes a change proposal.",
+    "decides an approval, grants or revokes a capability, or applies or undoes a "
+    "change proposal.",
 )
 
 _SPLIT = re.compile(r"\s*(?:&&|\|\||;|\||\n|\$\(|`|\()\s*")

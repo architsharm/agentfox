@@ -117,6 +117,32 @@ export default async function Login({
             using, and never execute it.
           </p>
 
+          {/* Self-hosted installs often have no GitHub OAuth app. The operator mints a
+              token on the gateway host and signs in with it (api/auth/token/route.ts). */}
+          <details style={{ marginTop: 18 }}>
+            <summary className="small muted" style={{ cursor: "pointer" }}>
+              Self-hosted? Sign in with an API token
+            </summary>
+            <form action="/api/auth/token" method="POST" style={{ marginTop: 10 }}>
+              <label className="small muted" htmlFor="token">
+                Create one on the gateway host:{" "}
+                <code>agentfox admin users create you@example.com --role owner --token</code>
+              </label>
+              <input
+                id="token"
+                name="token"
+                type="password"
+                autoComplete="off"
+                placeholder="nom_api_…"
+                required
+                style={{ display: "block", width: "100%", marginTop: 8 }}
+              />
+              <button type="submit" className="btn" style={{ marginTop: 8 }}>
+                Sign in with token
+              </button>
+            </form>
+          </details>
+
           <div className="auth-or">
             <span>or</span>
           </div>

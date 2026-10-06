@@ -132,7 +132,12 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
-    from agentfox.registry.service import scan_mcp_server, upsert_mcp_server
+    from agentfox.monitoring.service import safe_ensure_monitor
+    from agentfox.registry.service import (
+        normalise_tool_list,
+        scan_mcp_server,
+        upsert_mcp_server,
+    )
 
     if file is not None and seed_fixture:
         console.print("[red]pass either --file or --seed-fixture, not both[/]")
@@ -148,7 +153,16 @@ def scan_mcp(
         for decl in parse_mcp_config(path, root=root):
             declared.setdefault(decl.name, decl)
 
-    tools = json.loads(file.read_text()) if file else (MCP_TOOLS if seed_fixture else None)
+    tools = MCP_TOOLS if seed_fixture else None
+    if file is not None:
+        try:
+            tools = normalise_tool_list(json.loads(file.read_text()))
+        except FileNotFoundError:
+            console.print(f"[red]no such file:[/] {file}")
+            raise typer.Exit(2) from None
+        except (json.JSONDecodeError, ValueError) as exc:
+            console.print(f"[red]{file} is not a tools/list result:[/] {exc}")
+            raise typer.Exit(2) from None
     if server is None and tools is not None:
         console.print("[red]name the server the tool list belongs to[/]")
         raise typer.Exit(2)
@@ -158,13 +172,21 @@ def scan_mcp(
         # An existing record keeps the trust level an operator gave it.
         for decl in declared.values():
             existing = session.scalar(select(McpServer).where(McpServer.name == decl.name))
-            upsert_mcp_server(
+            record = upsert_mcp_server(
                 session,
                 decl.name,
                 url=decl.url,
                 transport=decl.transport,
                 trust_level=existing.trust_level if existing else "untrusted",
                 pinned_version=decl.pinned_version,
+            )
+            # Registered means watched: `agentfox scan monitors list` shows it.
+            safe_ensure_monitor(
+                session,
+                kind="mcp_server",
+                target=record.name,
+                config={"mcp_server_id": record.id},
+                created_by="cli",
             )
         names = [server] if server else sorted(declared)
         if not names:
@@ -233,10 +255,24 @@ def scan_mcp(
         )
         trifecta = found[0] if found else None
 
+    # Critical means stop: a poisoned tool description, a critical config issue, or
+    # a lethal trifecta across the declared servers. Exit 1 so a CI step fails on it
+    # the way `scan skills` already does.
+    critical = bool(trifecta) or any(
+        issue.get("severity") == "critical"
+        for entry in results
+        for issue in [*entry.get("issues", []), *entry.get("config_issues", [])]
+    )
+
     if as_json:
         console.print_json(
-            json.dumps({"servers": results, "lethal_trifecta": trifecta}, default=str)
+            json.dumps(
+                {"servers": results, "lethal_trifecta": trifecta, "critical": critical},
+                default=str,
+            )
         )
+        if critical:
+            raise typer.Exit(1)
         return
 
     if trifecta:
@@ -298,6 +334,9 @@ def scan_mcp(
         external = entry["external_scan"]
         if not external["ran"]:
             console.print("  [dim]mcp-scan: not installed (optional external scanner)[/]")
+    if critical:
+        console.print("\n[bold red]critical issue(s) found[/] — exit 1")
+        raise typer.Exit(1)
 
 
 #: Where `scan mcp` looked, for the message when it found nothing.
@@ -316,3 +355,9 @@ _MCP_ISSUE_TEXT = {
     "tool_poisoning": "instructions hidden in a tool description",
     "unpinned_server": "no version pinned — its tools can change silently",
 }
+
+
+# `agentfox scan monitors …` — the scheduled counterpart of every scan above.
+from agentfox.cli.commands.monitors import monitors_app  # noqa: E402
+
+scan_app.add_typer(monitors_app, name="monitors")

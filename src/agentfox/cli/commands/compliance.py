@@ -343,10 +343,10 @@ def compliance_review(
     moves a mapping from `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` to reviewed, and it should
     be run by whoever is actually accountable for the claim — not by whoever runs the CLI.
     """
-    from agentfox.prove.compliance.catalog import review_mapping
+    from agentfox.prove.compliance.catalog import sign_off_mapping
 
     with _session() as session:
-        count = review_mapping(session, control, framework, reviewer, reference)
+        count = sign_off_mapping(session, control, framework, reviewer, reference)
 
     if not count:
         console.print(

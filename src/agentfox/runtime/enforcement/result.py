@@ -10,6 +10,9 @@ from typing import Any
 from agentfox.core.models import Agent, Identity, Trace
 from agentfox.detection import TaintTracker
 
+#: Verdicts whose outcome is a rewritten copy of the content rather than a yes or no.
+REWRITE_VERDICTS = frozenset({"redact", "mask", "tokenize"})
+
 
 class ProviderUnavailable(RuntimeError):
     """Every provider on the fallback ladder failed or is circuit-open."""
@@ -54,6 +57,10 @@ class EnforcementResult:
     def to_json(self) -> dict[str, Any]:
         return {
             "verdict": self.verdict,
+            # The rewritten text when the applied verdict rewrites it (redact, mask,
+            # tokenize); null otherwise. Without it a guard endpoint could say
+            # "redact" and leave every caller to mask the content themselves.
+            "content": self.content if self.verdict in REWRITE_VERDICTS else None,
             "effective_verdict": self.effective_verdict,
             "mode": self.mode,
             "decision_id": self.decision_id,

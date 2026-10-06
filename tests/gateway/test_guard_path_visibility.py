@@ -24,7 +24,7 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from agentfox.core.models import Agent, Decision, Trace
-from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user
+from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user, promote
 
 
 def _guard(client, content: str, surface: str = "input", **extra):
@@ -71,11 +71,7 @@ def test_the_trace_carries_the_verdict_not_the_default(client):
     """
     from agentfox.core.db import session_scope
 
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     _guard(client, INDIRECT_INJECTION)
     with session_scope() as s:
         trace = s.scalars(select(Trace)).one()
@@ -102,11 +98,7 @@ def test_a_second_guard_on_the_same_trace_cannot_erase_the_first_verdict(client)
     the verdict already on the trace for this reason."""
     from agentfox.core.db import session_scope
 
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     first = _guard(client, INDIRECT_INJECTION)
     trace_id = first.json()["trace_id"]
     assert trace_id, "a caller cannot correlate two calls it was never given an id for"
@@ -171,3 +163,21 @@ def test_the_red_team_runner_still_leaves_no_trace(seeded, enforcer):
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     enforcer.check_content(agent_slug=agent.slug, content=INDIRECT_INJECTION, surface="input")
     assert seeded.scalar(select(func.count()).select_from(Trace)) == 0
+
+
+def test_a_redact_verdict_returns_the_rewritten_text(client):
+    """A guard endpoint that says "redact" and hands back nothing leaves every caller
+    to mask the content themselves from spans (#17). The rewrite is in `content`."""
+    promote(client, "baseline")
+    text = "Reach Jane at jane.doe@example.com today."
+    body = _guard(client, text, surface="output").json()
+    assert body["verdict"] == "redact", body
+    assert body["content"] is not None
+    assert "jane.doe@example.com" not in body["content"]
+    assert body["content"] == "Reach Jane at [REDACTED:PII.EMAIL] today."
+
+
+def test_an_allowed_request_has_no_rewritten_content(client):
+    body = _guard(client, "Where is my order #44812?").json()
+    assert body["verdict"] == "allow"
+    assert body["content"] is None

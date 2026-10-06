@@ -42,6 +42,9 @@ def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
     monkeypatch.setenv("NOMETRIA_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("NOMETRIA_EVIDENCE_DIR", str(tmp_path / "evidence"))
     monkeypatch.setenv("NOMETRIA_AUDIT_SIGNING_KEY", "test-key")
+    # Not the published default: create_app() refuses to start a non-development
+    # environment on it, and many tests switch the environment to production.
+    monkeypatch.setenv("NOMETRIA_SERVICE_AUTH_SECRET", "test-service-secret")
     monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "false")
     # A developer's shell NOMETRIA_CONFIG, or a agentfox.toml left in the cwd by
     # `agentfox init`, must never leak into a test. Tests of file loading delenv this.
@@ -111,3 +114,15 @@ INDIRECT_INJECTION = (
 )
 PII_TEXT = "Contact jane.doe@example.com, SSN 123-45-6789, card 4111 1111 1111 1111."
 SECRET_TEXT = "deploy with sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345 in the header"
+
+
+def promote(client, key: str, email: str = "admin@example.com"):
+    """Promote a policy to enforce over the API the way the editor does: simulate the
+    live version's rules, then promote. Enforcing without a recorded simulation is
+    refused server-side (#64)."""
+    headers = as_user(email)
+    policy = client.get(f"/api/policies/{key}", headers=headers).json()
+    client.post("/api/policies/simulate", json={"body": policy["body"]}, headers=headers)
+    response = client.post(f"/api/policies/{key}/mode", json={"mode": "enforce"}, headers=headers)
+    assert response.status_code == 200, response.text
+    return response

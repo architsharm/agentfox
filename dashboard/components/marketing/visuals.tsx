@@ -734,7 +734,7 @@ function SeverityMark({ severity, governed }: { severity: ScanRow["severity"]; g
 }
 
 /**
- * `agentfox check` run against a repository: what talks to a model, which of it is
+ * `agentfox scan` run against a repository: what talks to a model, which of it is
  * ungoverned, what each registered agent reaches, and how much of the tree the scan
  * could not read.
  *
@@ -758,7 +758,7 @@ function SeverityMark({ severity, governed }: { severity: ScanRow["severity"]; g
  */
 export function DiscoveryMock({ className }: { className?: string }) {
   return (
-    <Frame title="agentfox check" className={className}>
+    <Frame title="agentfox scan" className={className}>
       <div style={{ display: "grid", gap: 7 }}>
         {/* cli/onboarding.py:248 */}
         <Field name="scanned">412 files in ~/work/checkout-agents</Field>
@@ -866,7 +866,7 @@ const SCORERS: ScorerRow[] = [
  */
 export function EvalMock({ className }: { className?: string }) {
   return (
-    <Frame title="agentfox eval gate" className={className}>
+    <Frame title="agentfox test gate" className={className}>
       <div style={{ display: "grid", gap: 6 }}>
         {/* seed.py:462-463 */}
         <Field name="suite">support-quality</Field>

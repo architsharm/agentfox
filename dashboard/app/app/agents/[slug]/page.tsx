@@ -22,7 +22,7 @@ const TABS: { key: string; label: string }[] = [
 ];
 
 /**
- * The four tiers a tool can be declared at (`agentfox tools declare --impact`).
+ * The four tiers a tool can be declared at (`agentfox declare tool --impact`).
  * high_impact was missing here, so a tool at that tier rendered as an untoned
  * tag — visually identical to a read-only one, which is the opposite of what it
  * means. Every containment rule reasons over this axis, so it has to be complete.
@@ -96,7 +96,7 @@ export default async function AgentDetail({
           <span
             className="tag"
             style={{ marginLeft: 10, verticalAlign: "middle" }}
-            title="Created by `agentfox seed` for demo purposes — not a real registration."
+            title="Created by `agentfox admin seed` for demo purposes — not a real registration."
           >
             sample data
           </span>
@@ -571,7 +571,7 @@ export default async function AgentDetail({
 
         <h2>
           Kill switch
-          <InfoTip text="Quarantine: reversible, 'stop while I investigate.' Kill: the stronger incident action, requires the identity role rather than the registry role. Both refuse every governed call from this agent immediately and are logged to the audit chain." />
+          <InfoTip text="Quarantine: reversible, 'stop while I investigate.' Kill: the stronger incident action, requires the identity role rather than the registry role. Both refuse every governed call from this agent immediately (model calls, tool calls, and every /v1/guard check: input, output, memory writes, agent messages), block approving its pending approvals until it is resumed, and are logged to the audit chain." />
         </h2>
         <div className="panel body stack">
           <div className="row" style={{ gap: 10, alignItems: "center", flexWrap: "wrap" }}>

@@ -307,9 +307,11 @@ class NativePolicyEngine:
             # that failed it. Printing "capability constraint_violated" instead would
             # be the boilerplate this rule exists to replace.
             detail = str(p.capability.get("constraint_reason") or "")
-            if not detail and rule.when.capability == "denied":
+            if not detail and rule.when.capability in ("denied", "requires_approval"):
                 # Same principle for a missing grant: the capability check already
-                # names the agent, the tool and the command that would fix it.
+                # names the agent, the tool and the command that would fix it. And for
+                # a held call, it knows whether the grant asks for a person or an
+                # argument came from somewhere above the grant's max_taint.
                 detail = "; ".join(str(r) for r in p.capability.get("reasons") or [])
             bits.append(detail if detail else f"capability {rule.when.capability}")
         return "; ".join(bits) or f"rule '{rule.id}' matched"

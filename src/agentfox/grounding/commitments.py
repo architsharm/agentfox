@@ -240,6 +240,33 @@ def disclosure_required(
     return DisclosureCheck(True, False, "human counterparty on a conversational channel")
 
 
+#: An answer saying it is a person, or that it is not a machine. Narrow on purpose:
+#: first person, present tense, and not followed by a role noun, so "I am a human
+#: resources assistant" and "as a human would" do not match.
+_CLAIMS_HUMAN = re.compile(
+    r"\bi(?:'m| am)\s+(?:a\s+)?(?:real\s+|actual\s+|live\s+)?(?:human|person)\b"
+    r"(?!\s*(?:-|\s)?(?:resources|rights|error|readable|in\s+the\s+loop))"
+    r"|\bi(?:'m| am)\s+not\s+(?:a\s+|an\s+)?(?:bot|robot|chatbot|ai|a\.i\.|machine|"
+    r"computer|program|automated)\b"
+    r"(?!\s*(?:-|\s)?(?:learning|science|scientist|vision|expert|engineer|programmer|"
+    r"system|specialist|generated))"
+    r"|\byou(?:'re| are)\s+(?:talking|speaking|chatting)\s+(?:to|with)\s+a\s+"
+    r"(?:real\s+|live\s+)?(?:human|person)\b",
+    re.I,
+)
+
+
+def claims_human(text: str) -> str | None:
+    """The sentence in which an answer claims to be a person, or None.
+
+    The plainest Art. 50 breach there is: not a missing disclosure but a false one.
+    Unlike the disclosure duty it needs no declared counterparty — a system telling
+    whoever it is talking to that it is human is wrong on any channel.
+    """
+    match = _CLAIMS_HUMAN.search(text or "")
+    return match.group(0) if match else None
+
+
 def check_disclosure(
     text: str,
     *,

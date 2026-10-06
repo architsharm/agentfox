@@ -182,28 +182,59 @@ def declare_boundary(
     answerable_types: list[str] | None = None,
     out_of_scope_topics: list[str] | None = None,
     freshness_hours: int | None = None,
-    mode: str = "observe",
+    mode: str | None = None,
+    replace: bool = False,
 ) -> KnowledgeBoundary:
     """P7-1 — declare what this agent can actually answer from.
 
     Declared rather than inferred, because the fact that decides the question — what
     the index behind the agent contains — is not visible to the model and is not
     derivable from the corpus without the operator saying so.
+
+    A field passed as None is left as it is on an existing boundary (and takes its
+    default on a new one), so `declare boundary AGENT --mode enforce` flips the mode
+    without wiping the systems, coverage and out-of-scope topics declared earlier.
+    Pass an empty list to clear a list field. `replace=True` (the HTTP PUT) resets
+    every field first, so the call states the whole boundary.
     """
     boundary = session.scalar(
         select(KnowledgeBoundary).where(KnowledgeBoundary.agent_id == agent_id)
     )
     if boundary is None:
-        boundary = KnowledgeBoundary(agent_id=agent_id)
+        boundary = KnowledgeBoundary(
+            agent_id=agent_id,
+            systems_of_record=[],
+            entity_types=[],
+            answerable_types=[FACT, AGGREGATE, PROCEDURE],
+            out_of_scope_topics=[],
+            mode="observe",
+        )
         session.add(boundary)
-    boundary.systems_of_record = systems_of_record or []
-    boundary.coverage_months = coverage_months
-    boundary.coverage_start = coverage_start
-    boundary.entity_types = entity_types or []
-    boundary.answerable_types = answerable_types or [FACT, AGGREGATE, PROCEDURE]
-    boundary.out_of_scope_topics = out_of_scope_topics or []
-    boundary.freshness_hours = freshness_hours
-    boundary.mode = mode
+    elif replace:
+        boundary.systems_of_record = []
+        boundary.coverage_months = None
+        boundary.coverage_start = None
+        boundary.entity_types = []
+        boundary.answerable_types = [FACT, AGGREGATE, PROCEDURE]
+        boundary.out_of_scope_topics = []
+        boundary.freshness_hours = None
+        boundary.mode = "observe"
+    if systems_of_record is not None:
+        boundary.systems_of_record = list(systems_of_record)
+    if coverage_months is not None:
+        boundary.coverage_months = coverage_months
+    if coverage_start is not None:
+        boundary.coverage_start = coverage_start
+    if entity_types is not None:
+        boundary.entity_types = list(entity_types)
+    if answerable_types is not None:
+        boundary.answerable_types = list(answerable_types) or [FACT, AGGREGATE, PROCEDURE]
+    if out_of_scope_topics is not None:
+        boundary.out_of_scope_topics = list(out_of_scope_topics)
+    if freshness_hours is not None:
+        boundary.freshness_hours = freshness_hours
+    if mode is not None:
+        boundary.mode = mode
     session.flush()
     return boundary
 

@@ -28,8 +28,13 @@ from agentfox.detection.actions import summarise as summarise_actions
 from agentfox.detection.composition import check_composed_escalation
 from agentfox.detection.tuning import LatencyLedger, active_suppressions, explain, filter_suppressed
 from agentfox.grounding.context_integrity import assemble_context
-from agentfox.identity import check_capability, request_approval, verify_credential
-from agentfox.policy import PolicyInput, active_policies, combine, get_engine
+from agentfox.identity import (
+    check_capability,
+    redeem_approval,
+    request_approval,
+    verify_credential,
+)
+from agentfox.policy import PolicyInput, combine, get_engine, policies_in_force
 from agentfox.policy.taint_view import policy_taint
 from agentfox.prove.audit import chain
 from agentfox.prove.audit.trace import (
@@ -42,6 +47,7 @@ from agentfox.prove.audit.trace import (
 )
 from agentfox.prove.findings import raise_finding
 from agentfox.registry.service import observe_agent
+from agentfox.runtime.enforcement.approvals import held_call
 from agentfox.runtime.enforcement.checks import _ChecksMixin
 from agentfox.runtime.enforcement.completion import _CompletionMixin
 from agentfox.runtime.enforcement.findings import _FindingsMixin
@@ -58,6 +64,16 @@ from agentfox.runtime.enforcement.rules import (
 from agentfox.runtime.enforcement.streaming import _StreamingMixin
 from agentfox.runtime.enforcement.surfaces import _SurfacesMixin
 from agentfox.runtime.enforcement.tool_calls import _ToolCallMixin
+
+
+def _relies_on_detections(doc: Any, surface: str) -> bool:
+    """Does this pack have an enabled detection rule that applies on ``surface``?"""
+    return any(
+        rule.enabled
+        and rule.when.detection is not None
+        and (not rule.when.surface or surface in rule.when.surface)
+        for rule in doc.rules
+    )
 
 
 class Enforcer(
@@ -125,7 +141,12 @@ class Enforcer(
             model=model,
             framework=framework,
         )
-        if identity is None:
+        if identity is None and not credential:
+            # Only when no credential was presented: an unauthenticated caller naming
+            # a registered agent is governed under that agent's identity, which is
+            # the shadow-traffic rule. A credential that was presented and did *not*
+            # verify must never be upgraded to the named agent's identity — that
+            # would make a wrong key indistinguishable from the right one.
             identity = self.session.scalar(select(Identity).where(Identity.agent_id == agent.id))
         return agent, identity, is_shadow
 
@@ -161,6 +182,9 @@ class Enforcer(
         conversation_window: list[str] | None = None,
         completion: dict[str, Any] | None = None,
         persist: bool = True,
+        forced_rules: list[dict[str, Any]] | None = None,
+        extra_taint: dict[str, Any] | None = None,
+        approval_id: str | None = None,
     ) -> EnforcementResult:
         """One decision on one surface. The single point every guarantee flows through.
 
@@ -168,7 +192,29 @@ class Enforcer(
         message: it is the recent user turns, oldest first, ending with this one,
         supplied by `check_conversation_window`. It exists so F9.4's trajectory check
         can run through the same channel as every other check rather than beside it.
+
+        `forced_rules` are synthetic rules a surface decided before calling this — an
+        agent message's replay or bad-signature refusal, say. They are applied (by
+        lattice maximum, whatever the packs' mode) *before* the decision is persisted
+        and audited, so the record says what the caller is told. An effect outside
+        the lattice (``observe``) is recorded and changes nothing. `extra_taint` is
+        merged into the recorded taint summary.
+
+        `approval_id` is a retry presenting a person's approval of this exact call
+        (#12). It only ever turns an escalation into an allow, and only when the
+        approval is for this agent, tool and arguments, unexpired and unused.
         """
+        # PL-3: a killed or quarantined agent is refused on every surface, before
+        # anything else runs. The check used to live only on the completion
+        # (`preflight`) and tool-call paths, so /v1/guard/input, /output,
+        # /memory_write and /agent_message kept answering `allow` for an agent the
+        # operator had just stopped — and the kill switch's promise that every
+        # governed call is refused was true of two surfaces out of six. Here, it
+        # covers every surface that reaches a decision.
+        control = self._control_verdict(agent)
+        if control is not None:
+            return control
+
         started = time.perf_counter()
         agent_slug = agent.slug if agent else None
         environment = agent.environment if agent else "production"
@@ -284,7 +330,8 @@ class Enforcer(
         # compose by different algebras: rules take the lattice maximum, ladders select
         # exactly one band. Security dominates the combination, so a band that says
         # auto-approve can never loosen a rule that says block.
-        ladder_decision = self._business_ladders(agent, surface, tool_key, arguments)
+        ladder_decisions = self._business_ladders(agent, surface, tool_key, arguments)
+        ladder_decision = ladder_decisions[0] if ladder_decisions else None
 
         # --- P9 action assurance ------------------------------------------
         # Argument-level containment governs *the call*; this governs *the artefact*.
@@ -369,7 +416,17 @@ class Enforcer(
             completion=completion or {},
         )
 
-        bound = active_policies(self.session, agent_slug, environment)
+        # P12: the hierarchy decides what is in force for this subject — the same
+        # resolution `policy effective` prints — so a team-scoped `restrict` binds
+        # only that team's agents and a granted `override` really loosens.
+        bound = policies_in_force(
+            self.session,
+            agent_slug,
+            environment,
+            # "" rather than None: the agent is known and has no team, so there is
+            # nothing to look up.
+            team=(agent.owner_team or "") if agent else None,
+        )
         # Nothing bound is not the same as nothing to check.
         #
         # A database that has never been initialised holds no policies, so every
@@ -500,6 +557,31 @@ class Enforcer(
                 fingerprint_parts=(issue.get("code"), surface),
             )
 
+        # P10 (#4): an answer quoting a chunk the asking human is not entitled to see is
+        # the oversharing failure itself, not a quality issue, so unlike the F2/F7
+        # issues above it is preventive: the answer is withheld whenever the decision
+        # enforces, and recorded as would-have-blocked when it observes. Gated on the
+        # decision's mode like an approval requirement, because a principal declared
+        # in observe mode is how an operator dry-runs an entitlement model.
+        leaks = [
+            i for i in evidence.get("evidence_issues", []) if i["type"] == "entitlement_disclosure"
+        ]
+        if leaks and "entitlement.disclosure" not in fired_ids:
+            effective = "block"
+            if mode == "enforce":
+                verdict = "block"
+            fired_ids.add("entitlement.disclosure")
+            rules_fired.append(
+                _fired_rule(
+                    "entitlement.disclosure",
+                    "block",
+                    "; ".join(i["title"] for i in leaks),
+                    severity="critical",
+                    controls=["NOM-IAM-07"],
+                    mode=mode,
+                )
+            )
+
         # P9: a critical action risk stands on its own, exactly as a capability denial
         # does. It is a fact about what the statement will do, not a policy opinion —
         # and a customer who wrote the rule explicitly does not see it twice.
@@ -570,14 +652,37 @@ class Enforcer(
 
         # P3-7: a degraded pipeline means reduced coverage. Fail-closed converts that
         # into a block; fail-open accepts it and records the gap.
-        if pipeline_result.degraded and self.settings.fail_mode == "closed" and mode == "enforce":
+        #
+        # Two sources, the stricter wins (#42): the deployment-wide `fail_mode`, for
+        # an enforcing decision, and each pack's own `fail_mode` — which used to be
+        # stored and never read. A pack fails closed only where its coverage
+        # actually depended on the detectors: it is enforcing, says `closed`, and
+        # has an enabled detection rule for this surface.
+        closed_packs = (
+            [
+                doc.key
+                for doc, _version, _decision in evaluated
+                if doc.mode == "enforce"
+                and doc.fail_mode == "closed"
+                and _relies_on_detections(doc, surface)
+            ]
+            if pipeline_result.degraded
+            else []
+        )
+        deployment_closed = self.settings.fail_mode == "closed" and mode == "enforce"
+        if pipeline_result.degraded and (deployment_closed or closed_packs):
             verdict = "block"
             effective = "block"
+            source = (
+                f"policy {', '.join(closed_packs)} declares fail_mode=closed"
+                if closed_packs and not deployment_closed
+                else "fail_mode=closed"
+            )
             rules_fired.append(
                 _fired_rule(
                     "pipeline.fail_closed",
                     "block",
-                    f"detectors degraded ({pipeline_result.degraded}) and fail_mode=closed",
+                    f"detectors degraded ({pipeline_result.degraded}) and {source}",
                     severity="medium",
                     controls=["NOM-RTG-06"],
                 )
@@ -586,28 +691,91 @@ class Enforcer(
         # The ladder outcome joins here rather than in the rule list, so that its
         # `verify` and `allow` outcomes cannot be swept into the lattice maximum and
         # silently promoted or ignored.
-        if ladder_decision is not None and ladder_decision.outcome != "allow":
-            combined = combine_business(effective, ladder_decision)
-            if combined.verdict != effective:
-                effective = combined.verdict
-                if mode == "enforce":
-                    verdict = combined.verdict
+        #
+        # Each ladder's own `mode` decides whether its outcome is applied (#1). The
+        # policy packs' mode used to decide it, so an observe ladder escalated as soon
+        # as an enforcing pack governed the call, and an enforce ladder was only
+        # recorded when nothing else enforced. Every ladder raises the effective
+        # verdict (what enforcement would do); only enforcing ladders raise the
+        # applied one.
+        for decision in ladder_decisions:
+            if decision.outcome == "allow":
+                continue
+            effective = combine_business(effective, decision).verdict
+            if decision.mode == "enforce":
+                verdict = combine_business(verdict, decision).verdict
             rules_fired.append(
                 _fired_rule(
-                    f"business.{ladder_decision.ladder_key}",
-                    ladder_decision.outcome,
-                    ladder_decision.reason,
+                    f"business.{decision.ladder_key}",
+                    decision.outcome,
+                    decision.reason,
                     severity="medium",
                     controls=["NOM-GOV-07"],
-                    evidence=ladder_decision.to_json(),
-                    mode=mode,
+                    evidence=decision.to_json(),
+                    mode=decision.mode,
                 )
             )
+
+        for forced in forced_rules or []:
+            rank = _RANK.get(str(forced.get("effect")))
+            if rank is not None:
+                if rank > _RANK.get(verdict, 0):
+                    verdict = str(forced["effect"])
+                if rank > _RANK.get(effective, 0):
+                    effective = str(forced["effect"])
+            rules_fired.append(forced)
+        if extra_taint:
+            taint_summary.update(extra_taint)
+
+        # --- a retry presenting an approval (#12) ---------------------------
+        # Placed after every rule has had its say, so an approval can only release
+        # what was held for a person: a block stays a block.
+        held = (
+            held_call(
+                surface=surface,
+                tool_key=tool_key,
+                arguments=arguments,
+                content=content,
+                detections=pipeline_result.detections,
+            )
+            if effective == "escalate"
+            else (tool_key, arguments or {})
+        )
+        redeemed_approval = None
+        if approval_id and effective == "escalate" and persist:
+            redeemed_approval, refusal = redeem_approval(
+                self.session,
+                approval_id,
+                agent_id=agent.id if agent else None,
+                tool_key=held[0],
+                arguments=held[1],
+            )
+            taint_summary["approval"] = {
+                "id": approval_id,
+                "redeemed": redeemed_approval is not None,
+                **({"refused": refusal} if refusal else {}),
+            }
+            if redeemed_approval is not None:
+                verdict = "allow"
+                effective = "allow"
+                rules_fired.append(
+                    _fired_rule(
+                        "approval.redeemed",
+                        "allow",
+                        f"approved by a person ({approval_id}); this call is the one they approved",
+                        severity="low",
+                        controls=["NOM-IAM-03"],
+                    )
+                )
 
         latency_ms = (time.perf_counter() - started) * 1000
         reason = "; ".join(r.get("reason", "") for r in rules_fired if r.get("reason")) or (
             "no policy rule matched"
         )
+        if approval_id and redeemed_approval is None and effective == "escalate":
+            refused = (taint_summary.get("approval") or {}).get("refused")
+            if refused:
+                reason = f"{reason}; the approval presented was not used: {refused}"
 
         result = EnforcementResult(
             verdict=verdict,
@@ -761,17 +929,22 @@ class Enforcer(
 
         # --- 6. escalation (P2-3) ----------------------------------------
         if effective == "escalate":
+            # Filed under what the approver needs to see: the tool and arguments, or
+            # for a held message its (masked) content and the digest a retry is
+            # matched against (#24).
             approval = request_approval(
                 self.session,
                 agent_id=agent.id if agent else None,
-                tool_key=tool_key,
-                arguments=arguments or {},
+                tool_key=held[0],
+                arguments=held[1],
                 reason=reason,
                 trace_id=trace_id,
                 decision_id=decision_row.id,
             )
             decision_row.approval_id = approval.id
             result.approval_id = approval.id
+        elif redeemed_approval is not None:
+            decision_row.approval_id = redeemed_approval.id
 
         if trace_id:
             add_span(

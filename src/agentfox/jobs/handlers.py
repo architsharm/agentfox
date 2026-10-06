@@ -21,9 +21,19 @@ kind                   what it does
                        agent with enough online samples. This is where drift
                        windows and drift findings are written now that
                        ``GET /api/eval/drift`` is read-only.
+``escalation.scan``    The missed-escalation second pass (``since_hours``): findings
+                       for every agent, retroactive hand-offs where the escalation
+                       policy's mode is ``enforce``, and SLA breaches marked.
 ``redteam.posture``    Runs an adaptive red-team campaign against every active agent
                        (``budget``, ``seed``). Expensive and finding-producing, so its
                        default schedule is created disabled.
+``monitors.run``       Runs every due monitor of connected sources (GitHub repos,
+                       hosted-API specs, MCP servers), or one (``monitor_id``,
+                       ``ref``, ``trigger``) — see ``agentfox.monitoring``.
+``probes.run``         Sends the live probe library to every *opted-in* probe target
+                       in the tenant that is due (``evaluation.live_probes``), records
+                       a campaign per target and opens/closes ``live_probe_escape``
+                       findings. A no-op in a tenant with no opted-in target.
 =====================  ===========================================================
 
 Handlers take a session already bound to the job's tenant (see
@@ -249,6 +259,19 @@ def redteam_posture(session: Session, payload: dict[str, Any]) -> dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
+# probes.run
+# ---------------------------------------------------------------------------
+
+
+def run_live_probes(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Probe every opted-in, due target in the tenant. Consent is per target and
+    checked inside `run_target`; a tenant without one does nothing here."""
+    from agentfox.evaluation.live_probes import run_due
+
+    return run_due(session, payload)
+
+
+# ---------------------------------------------------------------------------
 # tuning.propose
 # ---------------------------------------------------------------------------
 
@@ -274,7 +297,32 @@ def propose_from_traffic(session: Session, payload: dict[str, Any]) -> dict[str,
     ).to_json()
 
 
+# ---------------------------------------------------------------------------
+# escalation.scan
+# ---------------------------------------------------------------------------
+
+
+def scan_escalations(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Missed escalations, false resolutions and SLA breaches, on a schedule."""
+    from agentfox.containment.escalation import scheduled_scan
+
+    return scheduled_scan(session, since_hours=int(payload.get("since_hours", 24)))
+
+
+# ---------------------------------------------------------------------------
+# monitors.run
+# ---------------------------------------------------------------------------
+
+
+def run_monitors(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Re-check connected sources: every due monitor, or the one ``monitor_id`` names."""
+    from agentfox.monitoring.service import handle_job
+
+    return handle_job(session, payload)
+
+
 HANDLERS = {
+    "escalation.scan": scan_escalations,
     "tuning.propose": propose_threshold_changes,
     "grants.propose": propose_from_traffic,
     "eval.run": run_eval,
@@ -282,6 +330,8 @@ HANDLERS = {
     "canary.advance": advance_canaries,
     "drift.check": check_drift,
     "redteam.posture": redteam_posture,
+    "monitors.run": run_monitors,
+    "probes.run": run_live_probes,
 }
 
 

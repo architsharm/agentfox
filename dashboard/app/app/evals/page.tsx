@@ -364,7 +364,7 @@ export default async function Evals({
         </select>
         <button type="submit" className="btn-scan">Run built-in probes</button>
         <span className="small muted">
-          Or from the CLI: <code className="mono">agentfox redteam run &lt;agent&gt;</code>
+          Or from the CLI: <code className="mono">agentfox test redteam &lt;agent&gt;</code>
         <InfoTip text="Add --adaptive and it mutates a blocked probe and retries it, reporting the change in posture against the last comparable campaign instead of a pass rate. It exits zero whatever it finds, so read the output rather than the exit code. The probes it can draw on are catalogued on the Policies page." />
         </span>
       </form>
@@ -456,15 +456,15 @@ export default async function Evals({
               <tbody>
                 <tr>
                   <td className="small">Record the run to be judged against</td>
-                  <td className="mono small">agentfox eval baseline RUN_ID --label main</td>
+                  <td className="mono small">agentfox test baseline RUN_ID --label main</td>
                 </tr>
                 <tr>
                   <td className="small">Gate a build on it</td>
-                  <td className="mono small">agentfox eval gate SUITE --baseline RUN_ID</td>
+                  <td className="mono small">agentfox test gate SUITE --baseline RUN_ID</td>
                 </tr>
                 <tr>
                   <td className="small">Or gate on an absolute floor instead</td>
-                  <td className="mono small">agentfox eval gate SUITE --min-pass-rate 0.9</td>
+                  <td className="mono small">agentfox test gate SUITE --min-pass-rate 0.9</td>
                 </tr>
                 <tr>
                   <td className="small">Write results your CI already reads</td>

@@ -121,14 +121,15 @@ agentfox --version`}</Code>
       <p>Then check which detectors this process can actually run:</p>
       <Code>{`agentfox doctor`}</Code>
       <Output>{`…
-  ✓    detectors           5 available: injection.heuristic, pii.native, safety.lexicon,
+  ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native
 …`}</Output>
-      <Callout kind="warning" title="Compare the list yourself">
-        The <code>detectors</code> line lists what is <em>available</em>. It does not name a
-        detector you enabled whose extra or weights are missing: enabling{" "}
-        <code>injection.classifier</code> without the <code>classifiers</code> extra prints the
-        same five. Compare the line against your <code>enabled_detectors</code>.
+      <Callout kind="note" title="Enabled but unavailable">
+        The <code>detectors</code> line lists what is enabled <em>and</em> can run. A
+        detector you enabled whose extra or weights are missing turns the line into a
+        warning and is named with the reason: enabling <code>injection.classifier</code>{" "}
+        without the <code>classifiers</code> extra prints{" "}
+        <code>enabled but unavailable: injection.classifier (…)</code>.
       </Callout>
 
       <h2 id="state">Where state lives</h2>
@@ -204,18 +205,15 @@ agentfox init`}</Code>
       <h2 id="init">agentfox init and agentfox.toml</h2>
       <Code>{`agentfox init`}</Code>
       <Output>{`Setting up AgentFox
-INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
-INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
-INFO  [alembic.runtime.migration] Running stamp_revision  -> b8d3f6a2c915
   ✓ database ready
-sqlite:////…/agentfox.core.db
+sqlite:////…/agentfox.db
   ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
   ✓ 3 policy pack(s) loaded
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
       tool-containment         enforce  violations are blocked now
-      coding-agent not enabled — no coding-agent hooks in this repo. \`agentfox hooks install --agent
-<slug> --write\` turns it on for that agent.
+      coding-agent not enabled — no coding-agent hooks in this repo. \`agentfox admin hooks install
+--agent <slug> --write\` turns it on for that agent.
       tool-containment blocks from the start — demote with \`agentfox policy observe <key>\`.
   ✓ wrote agentfox.toml
 …`}</Output>
@@ -223,15 +221,15 @@ sqlite:////…/agentfox.core.db
         It creates and migrates the database, loads 43 controls and the policy packs, and
         writes <code>agentfox.toml</code> in the current directory (or <code>--path</code>).
         Run it again and it changes nothing it does not need to:{" "}
-        <code>· agentfox.toml already exists, left alone</code>. The hint about hooks uses an
-        older command name; the current one is <code>agentfox admin hooks install</code> (
-        <Link href="/docs/guides/coding-agents">Coding agents</Link>).
+        <code>· agentfox.toml already exists, left alone</code>. Three packs load in a plain
+        repository; the fourth, <code>coding-agent</code>, applies only once a coding agent
+        has hooks installed (<Link href="/docs/guides/coding-agents">Coding agents</Link>).
       </p>
       <p>The generated file, exactly:</p>
       <Code lang="toml" title="agentfox.toml">{`# AgentFox configuration.
 # Everything here has a safe default; this file exists so the defaults are visible
 # rather than implicit. The [agentfox] table is read from the working directory;
-# environment variables (NOMETRIA_*) override it.
+# environment variables (AGENTFOX_*, or the older NOMETRIA_*) override it.
 
 [agentfox]
 environment = "development"
@@ -255,8 +253,8 @@ taint_scope = "session"`}</Code>
       <p>How settings are read, highest precedence first:</p>
       <ol>
         <li>
-          <code>AGENTFOX_*</code> environment variables (the comment in the file still says{" "}
-          <code>NOMETRIA_*</code>, which are read too, below the new names);
+          <code>AGENTFOX_*</code> environment variables (the older <code>NOMETRIA_*</code>{" "}
+          names are still read, below the new ones);
         </li>
         <li>the pre-rename <code>NOMETRIA_*</code> environment variables;</li>
         <li>
@@ -296,9 +294,10 @@ taint_scope = "session"`}</Code>
   !    data scope          no table row-scoping declared — a query across every customer's rows
                            reads as ordinary. Declare with \`agentfox declare scope <table>
                            --column ...\`.
-  ✓    detectors           5 available: injection.heuristic, pii.native, safety.lexicon,
+  ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native
-  ✓    providers           echo
+  ✓    providers           offline only (echo). No model call can leave this machine — set
+                           AGENTFOX_ALLOW_EGRESS=1 and a key to change that.
   !    detector failure    fail-open: a detector that times out lets the request through and
                            records the gap
   !    answerability       no knowledge boundary declared — nothing stops an agent answering a

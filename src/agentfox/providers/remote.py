@@ -4,7 +4,7 @@ Both are adapters of the same weight behind the same protocol; neither is privil
 in core. That symmetry is the neutrality claim made structural rather than asserted:
 there is no code path that works better because the customer chose one vendor.
 
-Egress is gated. With ``NOMETRIA_ALLOW_EGRESS=false`` (the default, NFR-4) these
+Egress is gated. With ``AGENTFOX_ALLOW_EGRESS=false`` (the default, NFR-4) these
 providers report themselves unavailable rather than quietly making a network call
 from inside a customer's regulated boundary.
 """

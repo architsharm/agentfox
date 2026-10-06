@@ -16,7 +16,7 @@ enforcement path demonstrable with nothing installed.
 - **Agent**: a program that calls a model and can take actions. AgentFox identifies each one by a
   slug such as `support-triage`.
 - **Tool**: something an agent can call that is not the model: a function, an API, an MCP server
-  method. Each tool is declared with an **impact** of `none`, `read`, `write` or `irreversible`.
+  method. Each tool is declared with an **impact** of `read`, `write`, `high_impact` or `irreversible`.
 - **Capability grant**: permission for one agent to call one tool, with argument limits. Default
   is deny: an agent with no grant cannot call the tool at all.
 - **Provenance** (also called taint): where an argument's value came from. `user` means a person
@@ -36,7 +36,7 @@ pip install agentfox
 agentfox --help
 ```
 
-AgentFox is not on PyPI yet, so install from git. The core install is deliberately light: it pulls
+AgentFox is on PyPI (from 0.3.1). The core install is deliberately light: it pulls
 no model weights and no detector frameworks. Optional extras (`[pii]`, `[classifiers]`, `[redteam]`,
 `[langgraph]`, `[sql]`, `[otel]`, `[postgres]`, or `[all]` for everything permissive) add wrapped
 third-party engines later, as configuration rather than as a prerequisite.
@@ -297,8 +297,10 @@ Run the same three calls again and you get three different answers:
 The middle row is the point of the product. Same tool, same amount, same agent. The only difference
 is that the value came out of something untrusted, and no detector was involved in noticing.
 
-An `escalate` verdict returns an `approval_id`. Poll `GET /api/approvals/{id}`, or decide it from
-the dashboard or the CLI.
+An `escalate` verdict returns an `approval_id`. Decide it from the dashboard or the CLI
+(`agentfox permit approvals list`, then `approve ID` or `deny ID`). The agent can poll
+`GET /api/approvals/{id}` with its own key (or `fox.wait_for_approval(id)` in Python); once it
+reads `approved`, send the same call again with `"approval_id": "<id>"` and it runs, once.
 
 ### 5d. Proxy the model call too (optional)
 
@@ -347,14 +349,15 @@ undeclared agent is refused before anybody writes a rule about it.
 The `/v1/guard/*` endpoints above read no credential. The control-plane API under `/api` does:
 
 ```bash
+agentfox admin users create you@example.com --role owner   # once, on a fresh database
 agentfox admin auth issue you@example.com --name "ci"
 curl -H "Authorization: Bearer nom_api_..." http://localhost:8080/api/findings
 ```
 
-One honest caveat: `auth issue` mints a token for an operator that already exists, and a database
-created by `agentfox init` alone has no operators in it. Today the first operator account comes
-from `agentfox admin seed` (which creates `admin@example.com` and four other roles) or from signing in to
-the dashboard with GitHub. Token values are shown once, hashed at rest with argon2id, and carry an
+`auth issue` mints a token for an operator that already exists, and a database created by
+`agentfox init` alone has none: `admin users create` makes the first one without loading any demo
+data (`agentfox admin seed` also creates operators, but writes demo agents and traffic too). Token
+values are shown once, hashed at rest with argon2id, and carry an
 expiry. `agentfox admin auth status` tells you whether this deployment is actually requiring them: in a
 development environment it accepts an `X-Nometria-User` header instead, which is fine locally and
 unacceptable anywhere else.

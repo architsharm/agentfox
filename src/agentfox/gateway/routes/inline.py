@@ -30,7 +30,7 @@ import logging
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -189,6 +189,55 @@ def _blocked_response(result, status: int = 403) -> JSONResponse:
     )
 
 
+#: The status a proxied call held for a person returns (#20). It used to be 202, a
+#: success status: the OpenAI and Anthropic SDKs parse a 2xx as a completion, so
+#: `create()` returned a ChatCompletion with `choices=None` and the caller's
+#: `choices[0]` failed far from the cause. 428 is an error to every client (the
+#: OpenAI and Anthropic SDKs raise `APIStatusError` and do not retry it) and says
+#: what is true: the request may go ahead once a condition, a person's approval,
+#: holds — retried with that approval in `X-Nometria-Approval`.
+HELD_STATUS = 428
+
+
+def _held_response(result, *, poll: bool = True) -> JSONResponse:
+    """A proxied call held for a person, as an error a client SDK raises on."""
+    poll_path = f"/api/approvals/{result.approval_id}"
+    message = (
+        f"held for human approval ({result.approval_id}): {result.reason or 'approval required'}. "
+        f"Once it is approved, send the same request again with the header "
+        f"'X-Nometria-Approval: {result.approval_id}'."
+    )
+    held = {
+        "status": "awaiting_approval",
+        "approval_id": result.approval_id,
+        **({"poll": poll_path} if poll else {}),
+        "reason": result.reason,
+        "trace_id": result.trace_id,
+    }
+    return JSONResponse(
+        status_code=HELD_STATUS,
+        content={
+            # The provider SDKs read `error`; `exc.body` is this object.
+            "error": {
+                "type": "agentfox_approval_required",
+                "code": "approval_required",
+                "message": message,
+                **held,
+                "poll": poll_path,
+                "retry_header": "X-Nometria-Approval",
+                "decision_id": result.decision_id,
+                "verdict": result.verdict,
+                "effective_verdict": result.effective_verdict,
+                "rules_fired": result.rules_fired,
+            },
+            # The fields the 202 body had, at the top level as before, for code that
+            # reads them from the raw response.
+            **held,
+        },
+        headers={**_headers(result), "x-should-retry": "false"},
+    )
+
+
 def _headers(result) -> dict[str, str]:
     """Governance headers, with both namings of the two verdicts.
 
@@ -295,7 +344,7 @@ def _tool_steps(messages: list[dict[str, Any]]) -> list[Step]:
 
 
 def _loop_budget() -> LoopBudget:
-    """The deployment's declared `NOMETRIA_LOOP_*` budgets — the same ones
+    """The deployment's declared `AGENTFOX_LOOP_*` budgets — the same ones
     `enforcement.py::_budget_state` reads, so the proxy and the direct guard endpoint
     cannot disagree about what a runaway loop is."""
     settings = get_settings()
@@ -458,6 +507,13 @@ def _openai_chunk(
     }
 
 
+def _stream_error_type(result) -> str:
+    """A held stream says so, with the approval to retry with (#20)."""
+    if result.escalated and result.approval_id:
+        return "agentfox_approval_required"
+    return "agentfox_policy_violation"
+
+
 def _stream_openai(events, model: str):
     """Render enforced stream events as an OpenAI-compatible SSE stream.
 
@@ -474,8 +530,9 @@ def _stream_openai(events, model: str):
             yield _sse(
                 {
                     "error": {
-                        "type": "agentfox_policy_violation",
+                        "type": _stream_error_type(result),
                         "message": result.reason or "blocked by policy",
+                        "approval_id": result.approval_id,
                         "verdict": result.verdict,
                         "applied_verdict": result.verdict,
                         "would_be_verdict": result.effective_verdict,
@@ -533,8 +590,9 @@ def _stream_anthropic(events, model: str):
                 {
                     "type": "error",
                     "error": {
-                        "type": "agentfox_policy_violation",
+                        "type": _stream_error_type(result),
                         "message": result.reason or "blocked by policy",
+                        "approval_id": result.approval_id,
                         "trace_id": result.trace_id,
                         "rules_fired": result.rules_fired,
                     },
@@ -579,6 +637,7 @@ async def chat_completions(
     x_nometria_trust: Annotated[str | None, Header()] = None,
     x_nometria_provider: Annotated[str | None, Header()] = None,
     x_nometria_stream_mode: Annotated[str | None, Header()] = None,
+    x_nometria_approval: Annotated[str | None, Header()] = None,
 ) -> Any:
     body = await request.json()
     enforcer = Enforcer(session)
@@ -614,6 +673,7 @@ async def chat_completions(
             max_tokens=body.get("max_tokens"),
             mode=x_nometria_stream_mode,
             evidence=evidence,
+            approval_id=x_nometria_approval,
         )
         return StreamingResponse(
             _stream_openai(events, body.get("model", "")),
@@ -635,21 +695,12 @@ async def chat_completions(
         temperature=float(body.get("temperature", 0.0)),
         max_tokens=body.get("max_tokens"),
         evidence=evidence,
+        approval_id=x_nometria_approval,
     )
     if result.blocked:
         return _blocked_response(result)
     if result.escalated:
-        return JSONResponse(
-            status_code=202,
-            content={
-                "status": "awaiting_approval",
-                "approval_id": result.approval_id,
-                "poll": f"/api/approvals/{result.approval_id}",
-                "reason": result.reason,
-                "trace_id": result.trace_id,
-            },
-            headers=_headers(result),
-        )
+        return _held_response(result)
     _record_turn(
         session,
         agent_slug=x_nometria_agent,
@@ -673,6 +724,7 @@ async def messages(
     x_nometria_trust: Annotated[str | None, Header()] = None,
     x_nometria_provider: Annotated[str | None, Header()] = None,
     x_nometria_stream_mode: Annotated[str | None, Header()] = None,
+    x_nometria_approval: Annotated[str | None, Header()] = None,
 ) -> Any:
     body = await request.json()
     payload = list(body.get("messages", []))
@@ -707,6 +759,7 @@ async def messages(
             max_tokens=body.get("max_tokens"),
             mode=x_nometria_stream_mode,
             evidence=evidence,
+            approval_id=x_nometria_approval,
         )
         return StreamingResponse(
             _stream_anthropic(events, body.get("model", "")),
@@ -728,20 +781,12 @@ async def messages(
         temperature=float(body.get("temperature", 0.0)),
         max_tokens=body.get("max_tokens"),
         evidence=evidence,
+        approval_id=x_nometria_approval,
     )
     if result.blocked:
         return _blocked_response(result)
     if result.escalated:
-        return JSONResponse(
-            status_code=202,
-            content={
-                "status": "awaiting_approval",
-                "approval_id": result.approval_id,
-                "reason": result.reason,
-                "trace_id": result.trace_id,
-            },
-            headers=_headers(result),
-        )
+        return _held_response(result)
     _record_turn(
         session,
         agent_slug=x_nometria_agent,
@@ -771,7 +816,7 @@ class McpCallRequest(BaseModel):
     result: Any = None
 
 
-@router.post("/v1/mcp/call", summary="Govern an MCP tool call (I-2)")
+@router.post("/v1/mcp/call", summary="Govern an MCP tool call")
 def mcp_call(
     payload: McpCallRequest,
     session: Session = Depends(db),
@@ -819,6 +864,11 @@ class GuardContentRequest(BaseModel):
     # commonest integration is a single call in a middleware that has no id to give.
     session_id: str | None = None
     trace_id: str | None = None
+    # #47: with `surface: "completion"`, the facts the caller observed when the agent
+    # claimed to be done — `{"work_verified": true}` — which `completion_requires`
+    # rules check. Without a way to send them, every completion claim over HTTP was
+    # held by `completion.unverified_claim`. A fact not reported counts as unmet.
+    completion: dict[str, Any] | None = None
 
 
 class GuardToolCallRequest(BaseModel):
@@ -836,6 +886,9 @@ class GuardToolCallRequest(BaseModel):
     # repeats>=3 fallback instead of falling through to it.
     prior_steps: list[dict[str, Any]] | None = None
     session_id: str | None = None
+    # #12: the retry of a call a person approved. The same agent, tool and
+    # arguments run once; anything else escalates as it would have without it.
+    approval_id: str | None = None
 
 
 @router.post("/v1/guard/input", summary="Enforce on an input without proxying")
@@ -844,6 +897,10 @@ def guard_content(
     payload: GuardContentRequest,
     request: Request,
     session: Session = Depends(db),
+    # Like every other guard route: an agent key, when presented, must verify (a bad
+    # one is a 401) and binds the agent's tenant. Without it this route ignored the
+    # Authorization header entirely, so a wrong or revoked key "worked".
+    _credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
     """Enforce on content without proxying.
 
@@ -900,13 +957,23 @@ def guard_content(
             intent=payload.intent,
             trace_id=payload.trace_id,
         )
-    result = enforcer.check_content(
-        agent_slug=payload.agent,
-        content=payload.content,
-        surface=surface,
-        taint_source=payload.taint_source,
-        trace=trace,
-    )
+    if surface == "completion":
+        # The completion gate (F9.5): the claim is checked like any output, and the
+        # caller's reported facts decide the `completion_requires` rules.
+        result = enforcer.guard_completion(
+            agent_slug=payload.agent,
+            claim=payload.content,
+            completion=payload.completion or {},
+            trace=trace,
+        ).to_json()
+    else:
+        result = enforcer.check_content(
+            agent_slug=payload.agent,
+            content=payload.content,
+            surface=surface,
+            taint_source=payload.taint_source,
+            trace=trace,
+        )
     # `evaluate` raises the trace's verdict to the strongest thing that happened on
     # it, so ending it must not overwrite that with the default: a second guard call
     # on the same trace_id that allows must not erase the first one that blocked.
@@ -920,7 +987,7 @@ def guard_content(
     return with_verdict_aliases(result)
 
 
-@router.post("/v1/guard/tool_call", summary="Authorise a tool call (P3-4, P2-2)")
+@router.post("/v1/guard/tool_call", summary="Authorise a tool call")
 def guard_tool_call(
     payload: GuardToolCallRequest,
     session: Session = Depends(db),
@@ -948,6 +1015,7 @@ def guard_tool_call(
         credential=credential,
         prior_tools=payload.prior_tools,
         prior_steps=payload.prior_steps,
+        approval_id=payload.approval_id,
     )
     return with_verdict_aliases(result.to_json())
 
@@ -963,7 +1031,7 @@ class GuardMemoryWriteRequest(BaseModel):
     session_id: str | None = None
 
 
-@router.post("/v1/guard/memory_write", summary="Authorise a memory write (P14, NOM-RTG-13)")
+@router.post("/v1/guard/memory_write", summary="Authorise a memory write")
 def guard_memory_write(
     payload: GuardMemoryWriteRequest,
     session: Session = Depends(db),
@@ -1004,9 +1072,7 @@ class GuardAgentMessageRequest(BaseModel):
     session_id: str | None = None
 
 
-@router.post(
-    "/v1/guard/agent_message", summary="Authorise an inter-agent message (P17, NOM-IAM-08)"
-)
+@router.post("/v1/guard/agent_message", summary="Authorise an inter-agent message")
 def guard_agent_message(
     payload: GuardAgentMessageRequest,
     session: Session = Depends(db),
@@ -1045,8 +1111,29 @@ async def ingest_traces(
     request: Request,
     session: Session = Depends(db),
     _credential: str | None = Depends(ingest_credential),
-) -> dict[str, Any]:
-    payload = await request.json()
+) -> Any:
+    """OTLP/HTTP trace ingest
+
+    Accepts protobuf (`application/x-protobuf`, what the OpenTelemetry exporters send by
+    default) and JSON, either one gzip-compressed. A protobuf request gets the empty
+    protobuf `ExportTraceServiceResponse` the OTLP spec asks for; a JSON request gets
+    the ingest summary.
+    """
+    from agentfox.prove.audit.otel import (
+        PROTOBUF_CONTENT_TYPE,
+        OtlpDecodeError,
+        decode_otlp_body,
+    )
+
+    content_type = request.headers.get("content-type")
+    try:
+        payload = decode_otlp_body(
+            await request.body(),
+            content_type=content_type,
+            content_encoding=request.headers.get("content-encoding"),
+        )
+    except OtlpDecodeError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
     summary = ingest_otlp(session, payload)
 
     # Passive observation is enough to populate the registry and raise shadow-agent
@@ -1060,4 +1147,7 @@ async def ingest_traces(
             framework=summary.get("frameworks", {}).get(slug),
         )
     summary["shadow_agents"] = detect_shadow_agents(session)
+    if (content_type or "").split(";", 1)[0].strip().lower() == PROTOBUF_CONTENT_TYPE:
+        # An empty ExportTraceServiceResponse (full success) serialises to zero bytes.
+        return Response(content=b"", media_type=PROTOBUF_CONTENT_TYPE)
     return summary

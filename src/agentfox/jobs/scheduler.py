@@ -35,10 +35,24 @@ kind                    interval   enabled   why
 ``grants.propose``      1 day      yes       Learned permissions: files ``tool.declare`` and
                                              ``capability.grant`` proposals from observed
                                              tool calls. Files only; a person approves.
+``escalation.scan``     1 hour     yes       Missed-escalation pass over the last 24 hours:
+                                             findings for every agent, retroactive hand-offs
+                                             where the escalation policy enforces, overdue
+                                             hand-offs marked breached.
 ``redteam.posture``     7 days     no        Adaptive red-team campaign per active agent. Off
                                              by default: it is the most expensive job and
                                              files findings, so a tenant opts in.
+``monitors.run``        10 min     yes       Runs the tenant's due monitors. Each monitor keeps
+                                             its own interval (`Monitor.next_run_at`), so this
+                                             only decides how often "due" is checked; with no
+                                             monitor due the job does nothing.
 ======================  =========  ========  ===================================================
+
+How often anything runs is bounded by how often the runner is triggered. The Vercel
+cron fires once a day (Hobby tier); `.github/workflows/monitors.yml` calls the same
+endpoint every 30 minutes, and self-hosted deployments run `agentfox admin jobs
+run-due` from their own scheduler. Calling it more often than an interval is always
+safe: schedules and monitors both refuse to run before they are due.
 
 `eval.run` has a handler but no default schedule: it needs a suite and a target that
 only the tenant can name. Add a `JobSchedule` row with that payload to run one on a
@@ -55,7 +69,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
-from agentfox.core.models import Agent, Job, JobSchedule, Policy, User, utcnow
+from agentfox.core.models import Agent, Job, JobSchedule, Monitor, Policy, User, utcnow
 from agentfox.core.tenancy import bind_session, session_org, system_scope
 from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
 from agentfox.jobs import store as jobs_db
@@ -111,11 +125,32 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         "file tool declarations and grants learned from observed tool calls; a person decides each",
     ),
     DefaultSchedule(
+        "escalation.scan",
+        HOUR,
+        True,
+        {"since_hours": 24},
+        "missed escalations and SLA breaches; hand-offs only where the policy enforces",
+    ),
+    DefaultSchedule(
+        "monitors.run",
+        10 * 60,
+        True,
+        {},
+        "re-check connected sources whose own interval has passed",
+    ),
+    DefaultSchedule(
         "redteam.posture",
         7 * DAY,
         False,
         {"budget": 3, "seed": 1337},
         "adaptive red-team posture per agent; expensive, opt-in",
+    ),
+    DefaultSchedule(
+        "probes.run",
+        HOUR,
+        True,
+        {},
+        "probe opted-in deployed agents that are due; sends nothing without an opt-in",
     ),
 )
 
@@ -206,11 +241,11 @@ def enqueue_due(session: Session, now: dt.datetime | None = None) -> list[Job]:
 
 
 def known_tenants(session: Session) -> list[str]:
-    """Every tenant with users, agents, policies or schedules — the ones a cron run
-    should create default schedules for and enqueue due work in."""
+    """Every tenant with users, agents, policies, schedules or monitors — the ones a cron
+    run should create default schedules for and enqueue due work in."""
     orgs: set[str] = set()
     with system_scope("scheduler: enumerating tenants to enqueue recurring work"):
-        for model in (User, Agent, Policy, JobSchedule):
+        for model in (User, Agent, Policy, JobSchedule, Monitor):
             orgs.update(o for o in session.scalars(select(model.org_id).distinct()) if o)
     return sorted(orgs)
 
@@ -232,3 +267,18 @@ def schedule_all_tenants(session: Session, now: dt.datetime | None = None) -> di
         ensure_default_schedules(session)
         out[org_id] = len(enqueue_due(session, now))
     return out
+
+
+def run_due(session: Session, *, limit: int = 50, now: dt.datetime | None = None) -> dict[str, Any]:
+    """One pass of the job runner — what the cron route and `agentfox admin jobs run-due`
+    both do: fill the queue from schedules, recover stuck jobs, run everything due."""
+    scheduled = schedule_all_tenants(session, now)
+    recovered = jobs_db.recover_stuck(session, org_id=None, now=now)
+    finished = jobs_db.run_pending(session, org_id=None, limit=limit, now=now)
+    return {
+        "processed": finished,
+        "recovered": recovered,
+        "scheduled": sum(scheduled.values()),
+        "scheduled_by_tenant": scheduled,
+        "scheduler_enabled": get_settings().scheduler_enabled,
+    }

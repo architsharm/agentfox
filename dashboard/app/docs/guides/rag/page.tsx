@@ -182,8 +182,8 @@ agentfox permit user "hr/*" hr --purposes payroll`}</Code>
             pass the caller and the retrieved chunks on the model call. These keyword arguments
             are removed before the provider sees them. After the model answers, AgentFox runs the
             same filter and raises a critical finding if the answer quotes a chunk the caller
-            was not entitled to. This is the safety net for a retriever that skipped the
-            pre-filter.
+            was not entitled to. When the decision enforces, the answer is also withheld. This
+            is the safety net for a retriever that skipped the pre-filter.
           </p>
           <Code lang="python" title="answer.py">{`import agentfox
 import mock  # an offline stand-in for the OpenAI client
@@ -209,16 +209,19 @@ print(reply.choices[0].message.content)`}</Code>
                                               'ana@example.com' is not entitled to see
 
   1 open finding(s).`}</Output>
-          <Callout kind="warning" title="This check records; it does not withhold">
-            The answer above was returned to the caller. The output check raises a finding,
-            and it does so in <code>mode=&quot;enforce&quot;</code> too. To stop the disclosure,
-            filter before generation with <code>/api/entitlement/filter</code>.
+          <Callout kind="warning" title="In observe mode this check records; in enforce mode it withholds">
+            The answer above was returned to the caller, because the example runs in{" "}
+            <code>mode=&quot;observe&quot;</code>. With <code>mode=&quot;enforce&quot;</code>, or
+            when the gateway decision enforces, the same answer is refused under the rule{" "}
+            <code>entitlement.disclosure</code> (in Python, <code>agentfox.Blocked</code> is
+            raised). The check matches an answer that quotes a withheld chunk; a paraphrase gets
+            past it, so filter before generation with <code>/api/entitlement/filter</code> as well.
           </Callout>
         </Step>
 
         <Step title="Read the over-permission number">
           <Code>{`agentfox report entitlement`}</Code>
-          <Output>{`3 request(s) · 2 principal(s) · 75.0% of retrieved content was withheld
+          <Output>{`3 request(s) checked · 3 withheld something · 2 principal(s) · 75.0% of retrieved content was withheld
   not_entitled          4
   restricted:mnpi       1
   purpose_limitation    1
@@ -362,8 +365,8 @@ agentfox declare list sources`}</Code>
 }`}</Output>
           <p>
             At run time the same checks run on the model&apos;s answer when{" "}
-            <code>agentfox.auto()</code> is given <code>agentfox_chunks</code> together with{" "}
-            <code>agentfox_principal</code>. An answer grounded in the deprecated page above
+            <code>agentfox.auto()</code> is given <code>agentfox_chunks</code> (with or without{" "}
+            <code>agentfox_principal</code>). An answer grounded in the deprecated page above
             produced:
           </p>
           <Output>{` …qdjh27k7  high      source_authority        'kb/support/legacy-billing.md' is marked deprecated
@@ -601,11 +604,12 @@ say:     That asks for a projection rather than a recorded fact. I can only repo
           <Link href="/docs/guides/gateway">the gateway guide</Link>.
         </li>
         <li>
-          <strong>No finding from <code>auto()</code>.</strong> An{" "}
-          <code>agentfox_principal</code> that is not registered is skipped silently, with
-          nothing recorded. <code>agentfox_chunks</code> without{" "}
-          <code>agentfox_principal</code> runs neither the entitlement check nor the source
-          checks.
+          <strong>No finding from <code>auto()</code>.</strong> Pass the passages as{" "}
+          <code>agentfox_chunks</code>: the source checks run on them with or without a
+          principal. An <code>agentfox_principal</code> that is not registered is evaluated
+          as that subject with no groups or clearances, so it sees only what is granted to
+          the subject directly, and what it could not see is recorded against it. Register
+          it (<code>agentfox declare principal</code>) to give it its groups.
         </li>
         <li>
           <strong>A source reads <code>age unknown</code> or stale right after import.</strong>{" "}
@@ -655,8 +659,9 @@ say:     That asks for a projection rather than a recorded fact. I can only repo
           problems. They do not repair chunk boundaries or re-extract a corrupt document.
         </li>
         <li>
-          <strong>The output-side entitlement check is detective.</strong> It records a
-          critical finding and does not withhold the answer. Only the pre-filter prevents the
+          <strong>The output-side entitlement check matches quotes, not paraphrases.</strong> In
+          enforce mode it withholds an answer that quotes a withheld chunk; an answer that
+          restates it in other words is not caught. The pre-filter is what prevents the
           disclosure.
         </li>
         <li>

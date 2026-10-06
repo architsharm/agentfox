@@ -13,6 +13,7 @@ Two invariants live here:
 from __future__ import annotations
 
 import datetime as dt
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -20,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
-from agentfox.core.models import Policy, PolicyBinding, PolicyVersion, utcnow
+from agentfox.core.models import Agent, Policy, PolicyBinding, PolicyVersion, utcnow
 from agentfox.policy.canary import active_canary, pick_version_id
 from agentfox.policy.engine import NativePolicyEngine, PolicyEngine
 from agentfox.policy.hierarchy import (
@@ -171,33 +172,93 @@ def _open_binding_for_version(session: Session, version_id: str) -> PolicyBindin
     )
 
 
-def active_layers(session: Session, subject: dict[str, str] | None = None) -> list[PolicyLayer]:
-    """Every bound policy version, as hierarchy layers (P12)."""
-    rows = _currently_bound(session)
+@dataclass
+class BoundLayer:
+    """One live binding, as a hierarchy layer, with the rows it came from."""
 
-    layers: list[PolicyLayer] = []
-    for binding in rows:
+    layer: PolicyLayer
+    version: PolicyVersion
+    binding: PolicyBinding
+
+
+def _bound_layers(
+    session: Session,
+    agent_slug: str | None = None,
+    environment: str | None = None,
+    *,
+    scoped: bool = True,
+    pick_canary: bool = False,
+) -> list[BoundLayer]:
+    """Every live binding as a layer: the one place bindings become documents.
+
+    `active_layers` (for `policy effective` / `policy lint`), `active_policies` (the
+    inventory) and `policies_in_force` (the runtime) all read through here, so the
+    three can never disagree about which version a binding means or what mode it
+    is in.
+
+    ``pick_canary`` routes a request to the canary candidate when one is rolling
+    (P12-6): a running canary splits live traffic between the bound (stable)
+    version and a candidate by percentage, per request. `active_canary` only
+    returns a hit when the binding still points at the canary's own recorded stable
+    version, so a binding that moved out from under a stale canary (e.g. someone
+    edited the policy directly) is never silently overridden.
+    """
+    out: list[BoundLayer] = []
+    for binding in _currently_bound(session):
         version = session.get(PolicyVersion, binding.policy_version_id)
         if version is None:
             continue
+        if pick_canary:
+            canary = active_canary(session, version.policy_id)
+            if canary is not None and canary.stable_version_id == version.id:
+                picked_id = pick_version_id(canary)
+                if picked_id != version.id:
+                    candidate_version = session.get(PolicyVersion, picked_id)
+                    if candidate_version is not None:
+                        version = candidate_version
         doc = PolicyDocument.model_validate(version.compiled_json or yaml.safe_load(version.body))
-        scope = binding.scope_json or doc.scope
-        doc.scope = scope
-        doc.mode = binding.mode
-        if subject is not None:
-            agent = subject.get("agent")
-            environment = subject.get("environment")
-            if not doc.matches_scope(agent, environment):
-                continue
-        layers.append(
-            PolicyLayer(
-                document=doc,
-                level=binding.level or "org",
-                scope_id=binding.scope_id or "*",
-                mode=binding.compose or "extend",
+        doc.scope = binding.scope_json or doc.scope
+        if scoped and not doc.matches_scope(agent_slug, environment):
+            continue
+        doc.mode = binding.mode  # the binding, not the document, decides enforcement
+        out.append(
+            BoundLayer(
+                layer=PolicyLayer(
+                    document=doc,
+                    level=binding.level or "org",
+                    scope_id=binding.scope_id or "*",
+                    mode=binding.compose or "extend",
+                ),
+                version=version,
+                binding=binding,
             )
         )
-    return layers
+    return out
+
+
+def active_layers(session: Session, subject: dict[str, str] | None = None) -> list[PolicyLayer]:
+    """Every bound policy version, as hierarchy layers (P12)."""
+    if subject is None:
+        return [b.layer for b in _bound_layers(session, scoped=False)]
+    return [
+        b.layer for b in _bound_layers(session, subject.get("agent"), subject.get("environment"))
+    ]
+
+
+def _subject(
+    agent_slug: str | None,
+    environment: str | None,
+    team: str | None,
+    user: str | None,
+    org: str | None,
+) -> dict[str, str]:
+    return {
+        "org": org or get_settings().org_id,
+        "team": team or "*",
+        "agent": agent_slug or "*",
+        "user": user or "*",
+        "environment": environment or "*",
+    }
 
 
 def effective_for(
@@ -208,15 +269,71 @@ def effective_for(
     user: str | None = None,
     org: str | None = None,
 ) -> EffectivePolicy:
-    """Resolve the policy actually in force for a subject, with provenance."""
-    subject = {
-        "org": org or get_settings().org_id,
-        "team": team or "*",
-        "agent": agent_slug or "*",
-        "user": user or "*",
-        "environment": environment or "*",
-    }
+    """Resolve the policy actually in force for a subject, with provenance.
+
+    ``team`` defaults to the agent's registered ``owner_team`` — the same team the
+    runtime resolves for it — so `policy effective --agent X` shows what X gets.
+    """
+    if team is None and agent_slug:
+        team = agent_team(session, agent_slug)
+    subject = _subject(agent_slug, environment, team, user, org)
     return resolve_effective(active_layers(session, subject), subject)
+
+
+def agent_team(session: Session, agent_slug: str | None) -> str | None:
+    """The team an agent belongs to, for the `team` level of the hierarchy.
+
+    Team membership is `Agent.owner_team` (set by `agents register --owner-team`,
+    the registry API, or seed). An agent with no owner team belongs to no team, so
+    only `team` layers scoped to `*` apply to it.
+    """
+    if not agent_slug:
+        return None
+    return session.scalar(
+        select(Agent.owner_team).where(Agent.slug == agent_slug).order_by(Agent.created_at)
+    )
+
+
+def policies_in_force(
+    session: Session,
+    agent_slug: str | None = None,
+    environment: str | None = None,
+    team: str | None = None,
+    user: str | None = None,
+    org: str | None = None,
+) -> list[tuple[PolicyDocument, PolicyVersion, PolicyBinding]]:
+    """What the runtime evaluates for one subject: the hierarchy, resolved (P12).
+
+    The same `resolve_effective` that `policy effective` prints decides this, so the
+    command shows what the enforcer does. Per layer that means:
+
+    * a layer whose level/scope does not cover the subject is skipped — a team's
+      `restrict` applies to that team's agents only;
+    * a rule rejected as an illegal loosening is dropped (the broader rule stands);
+    * a rule replaced by a granted `override` is dropped, so the override loosens;
+    * a rule a narrower layer tightened stays in force beside the tighter one.
+
+    Each pack is returned with only its rules in force, still under its own binding
+    mode, so observe packs keep recording and enforce packs keep blocking.
+
+    ``team`` defaults to the agent's ``owner_team``. ``user`` is only known when the
+    caller supplies it; without it, `user` layers scoped to a specific user do not
+    apply (a `user` layer scoped to `*` does).
+    """
+    if team is None and agent_slug:
+        team = agent_team(session, agent_slug)
+    bound = _bound_layers(session, agent_slug, environment, pick_canary=True)
+    subject = _subject(agent_slug, environment, team, user, org)
+    effective = resolve_effective([b.layer for b in bound], subject)
+    applicable = {id(layer) for layer in effective.applicable}
+    out = []
+    for b in bound:
+        if id(b.layer) not in applicable:
+            continue
+        doc = b.layer.document.model_copy()
+        doc.rules = effective.rules_in_force(b.layer)
+        out.append((doc, b.version, b.binding))
+    return out
 
 
 def lint_all(session: Session) -> dict:
@@ -233,8 +350,16 @@ def save_policy(
     level: str = "org",
     scope_id: str = "*",
     compose: str = "extend",
+    rebind: bool = True,
 ) -> tuple[Policy, PolicyVersion]:
-    """Upsert a policy and append an immutable version."""
+    """Upsert a policy and append an immutable version.
+
+    ``rebind=False`` saves without changing what is in force: when the policy
+    already has a live binding it is left exactly as it is (same version, same
+    mode), and the new version waits for an explicit promotion
+    (:func:`set_mode` with ``version``). A policy with no live binding is bound,
+    in ``bind_mode``. The editor saves this way (#64).
+    """
     policy = session.scalar(select(Policy).where(Policy.key == doc.key))
     if policy is None:
         policy = Policy(key=doc.key, name=doc.name or doc.key, description=doc.description)
@@ -263,14 +388,17 @@ def save_policy(
         session.add(version)
         session.flush()
 
+    if not rebind and current_binding(session, policy.id)[0] is not None:
+        return policy, version  # saved; what is in force is untouched
+
     mode = bind_mode or doc.mode
-    current_binding = _open_binding_for_version(session, version.id) if body_unchanged else None
+    open_binding = _open_binding_for_version(session, version.id) if body_unchanged else None
     if (
-        current_binding is not None
-        and current_binding.mode == mode
-        and current_binding.level == level
-        and current_binding.scope_id == scope_id
-        and current_binding.compose == compose
+        open_binding is not None
+        and open_binding.mode == mode
+        and open_binding.level == level
+        and open_binding.scope_id == scope_id
+        and open_binding.compose == compose
     ):
         return policy, version  # rules, mode, and hierarchy placement all unchanged
 
@@ -308,56 +436,114 @@ def _close_open_bindings(session: Session, policy_id: str) -> None:
 def active_policies(
     session: Session, agent_slug: str | None = None, environment: str | None = None
 ) -> list[tuple[PolicyDocument, PolicyVersion, PolicyBinding]]:
-    """Every policy version currently bound and in scope, with its mode applied."""
-    rows = _currently_bound(session)
+    """Every policy version currently bound and in (pack) scope, with its mode applied.
 
-    out = []
-    for binding in rows:
-        version = session.get(PolicyVersion, binding.policy_version_id)
-        if version is None:
-            continue
-        # P12-6 — a running canary splits live traffic between the bound (stable)
-        # version and a candidate by percentage, per request. `active_canary` only
-        # returns a hit when the binding still points at the canary's own recorded
-        # stable version, so a binding that moved out from under a stale canary
-        # (e.g. someone edited the policy directly) is never silently overridden.
-        canary = active_canary(session, version.policy_id)
-        if canary is not None and canary.stable_version_id == version.id:
-            picked_id = pick_version_id(canary)
-            if picked_id != version.id:
-                candidate_version = session.get(PolicyVersion, picked_id)
-                if candidate_version is not None:
-                    version = candidate_version
-        doc = PolicyDocument.model_validate(version.compiled_json or yaml.safe_load(version.body))
-        scope = binding.scope_json or doc.scope
-        doc.scope = scope
-        if not doc.matches_scope(agent_slug, environment):
-            continue
-        doc.mode = binding.mode  # the binding, not the document, decides enforcement
-        out.append((doc, version, binding))
-    return out
+    The inventory: no hierarchy resolution, so a team-scoped layer is listed for
+    everyone. What one request is actually evaluated against is
+    :func:`policies_in_force`.
+    """
+    return [
+        (b.layer.document, b.version, b.binding)
+        for b in _bound_layers(session, agent_slug, environment, pick_canary=True)
+    ]
 
 
-def set_mode(session: Session, policy_key: str, mode: str) -> PolicyBinding | None:
-    """Promote (or demote) a policy between observe and enforce."""
+def current_binding(
+    session: Session, policy_id: str
+) -> tuple[PolicyBinding, PolicyVersion] | tuple[None, None]:
+    """The open binding for a policy, whichever version it points at.
+
+    Not "the binding of the latest version": after a canary is started or rolled
+    back, the live binding points at an *earlier* version than the newest one, and
+    reading only the newest made the policy look unbound.
+    """
+    version_ids = {
+        v.id: v
+        for v in session.scalars(select(PolicyVersion).where(PolicyVersion.policy_id == policy_id))
+    }
+    if not version_ids:
+        return None, None
+    binding = session.scalars(
+        select(PolicyBinding)
+        .where(
+            PolicyBinding.policy_version_id.in_(list(version_ids)),
+            PolicyBinding.effective_to.is_(None),
+        )
+        .order_by(PolicyBinding.effective_from.desc())
+    ).first()
+    if binding is None:
+        return None, None
+    return binding, version_ids[binding.policy_version_id]
+
+
+def set_mode(
+    session: Session,
+    policy_key: str,
+    mode: str,
+    version: int | None = None,
+    *,
+    level: str | None = None,
+    scope_id: str | None = None,
+    compose: str | None = None,
+) -> PolicyBinding | None:
+    """Promote (or demote) a policy between observe and enforce.
+
+    Changes the mode of the version that is *live* — the open binding — not of the
+    newest version. After a canary rollback the newest version is the one that was
+    rolled back; binding it here re-shipped exactly what the rollback removed and
+    left the policy with two open bindings.
+
+    ``version`` (a version number) makes that version the live one, in ``mode``,
+    replacing the current binding but keeping its hierarchy placement unless
+    ``level``/``scope_id``/``compose`` say otherwise. This is how a version saved
+    from the editor goes live. With no binding at all, the newest version is bound.
+    """
     policy = session.scalar(select(Policy).where(Policy.key == policy_key))
     if policy is None:
         return None
-    version = session.scalars(
-        select(PolicyVersion)
-        .where(PolicyVersion.policy_id == policy.id)
-        .order_by(PolicyVersion.version.desc())
-    ).first()
-    if version is None:
-        return None
-    binding = _open_binding_for_version(session, version.id)
-    if binding is None:
-        binding = PolicyBinding(policy_version_id=version.id, scope_json={}, mode=mode)
-        session.add(binding)
+    binding, bound_version = current_binding(session, policy.id)
+
+    target: PolicyVersion | None
+    if version is not None:
+        target = session.scalar(
+            select(PolicyVersion).where(
+                PolicyVersion.policy_id == policy.id, PolicyVersion.version == version
+            )
+        )
+        if target is None:
+            return None
+    elif bound_version is not None:
+        target = bound_version
     else:
+        target = session.scalars(
+            select(PolicyVersion)
+            .where(PolicyVersion.policy_id == policy.id)
+            .order_by(PolicyVersion.version.desc())
+        ).first()
+        if target is None:
+            return None
+
+    placement = {
+        "scope_json": binding.scope_json if binding is not None else {},
+        "level": level or (binding.level if binding is not None else "org"),
+        "scope_id": scope_id or (binding.scope_id if binding is not None else "*"),
+        "compose": compose or (binding.compose if binding is not None else "extend"),
+    }
+    if (
+        binding is not None
+        and binding.policy_version_id == target.id
+        and (binding.level, binding.scope_id, binding.compose)
+        == (placement["level"], placement["scope_id"], placement["compose"])
+    ):
         binding.mode = mode
+        session.flush()
+        return binding
+
+    _close_open_bindings(session, policy.id)
+    new_binding = PolicyBinding(policy_version_id=target.id, mode=mode, **placement)
+    session.add(new_binding)
     session.flush()
-    return binding
+    return new_binding
 
 
 def history(session: Session, policy_key: str) -> list[dict]:

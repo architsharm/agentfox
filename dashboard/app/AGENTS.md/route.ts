@@ -88,7 +88,7 @@ Apache-2.0. Python 3.11+. \`pip install agentfox\`, or use it over HTTP with no 
 \`\`\`
 pip install agentfox
 agentfox init
-agentfox check .        # scan a repository for ungoverned agents
+agentfox scan .         # scan a repository for ungoverned agents
 \`\`\`
 
 Or one line in an existing Python entry point, which governs calls made through the

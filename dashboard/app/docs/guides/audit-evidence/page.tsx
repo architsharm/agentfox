@@ -166,13 +166,14 @@ Controls with working evidence: 35 of 43; 2 have no evidence yet.`}</Output>
   period                   2026-09-05 → 2026-10-05
   agents                   1
   traces                   0
-  decisions                25
-  audit entries            26
+  decisions                3
+  audit entries            27
+  audit payloads withheld  22
   checkpoints              1
-  approvals                3
-  eval runs                1
-  findings                 26
-  control statuses         86
+  approvals                2
+  eval runs                0
+  findings                 4
+  control statuses         43
   reviewed mappings        0
   draft mappings included  317
   chain verification       valid
@@ -608,13 +609,12 @@ For each row: does this control, as implemented, support the clause claimed? App
         </li>
         <li>
           <strong>
-            <code>--agent</code> did not narrow everything.
+            <code>audit payloads withheld</code> is not zero.
           </strong>{" "}
-          It narrows the agent inventory, traces and summary. The audit chain is exported in
-          full for the period (it has to be, to verify), and decisions and findings can
-          include other agents&apos; rows. In the example above, the package for{" "}
-          <code>payments-ops</code> has 25 decisions, all of the decisions recorded in that
-          period, for every agent. Tell the recipient.
+          Expected with <code>--agent</code>. The audit chain is exported for the whole period
+          so it still verifies, but entries about other agents carry{" "}
+          <code>&quot;payload_withheld&quot;: true</code> and no payload or subject. Decisions,
+          findings, approvals and eval runs are limited to the agents named.
         </li>
         <li>
           <strong>

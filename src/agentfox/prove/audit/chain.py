@@ -333,7 +333,14 @@ def verify(
             expected_seq = seq
         expected_seq += 1
 
-        recomputed_payload = compute_payload_digest(row.get("payload") or {})
+        # A scoped evidence package withholds the payload of entries about agents
+        # outside its scope. The entry digest still covers the payload digest, so
+        # the chain linkage is verified; only the payload itself cannot be.
+        recomputed_payload = (
+            row["payload_digest"]
+            if row.get("payload_withheld") and row.get("payload") is None
+            else compute_payload_digest(row.get("payload") or {})
+        )
         if recomputed_payload != row["payload_digest"]:
             result.breaks.append(
                 ChainBreak(seq, "payload_mismatch", "payload does not match its recorded digest")

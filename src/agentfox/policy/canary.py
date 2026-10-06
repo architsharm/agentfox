@@ -104,12 +104,12 @@ def start_canary(
     """Begin rolling a candidate version out against the version that precedes it.
 
     ``candidate_version`` is a version *number* (the one shown in the UI and
-    ``history()``), defaulting to the latest. Every save auto-binds the new version
-    it creates (there is no separate "draft" state), so by the time this is called
-    the candidate is typically already the live binding at 100% — that save is what
-    prompted wanting a canary in the first place. This pulls the binding back to
-    whatever was live immediately before the candidate, so the canary, not the save,
-    now controls how much traffic the candidate actually sees.
+    ``history()``), defaulting to the latest. A version saved through the API or
+    editor is not live until promoted, so the candidate is usually not yet bound and
+    the live binding is the stable side. A candidate that *is* already live (bound
+    directly with ``save_policy``) has the binding pulled back to whatever was live
+    immediately before it, so the canary, not the save, controls how much traffic
+    the candidate actually sees.
 
     ``max_block_rate_drop`` and ``min_dwell_seconds`` default from settings
     (``canary_max_block_rate_drop``, ``canary_min_dwell_seconds``) — fail-safe defaults,
@@ -225,14 +225,33 @@ class CohortHealth:
 
 
 def _cohort_health(session: Session, canary: PolicyCanary, version_id: str) -> CohortHealth:
+    """Decisions this version of *this* policy was in force for, and how many it
+    would have blocked.
+
+    Membership is read from `Decision.policy_version_ids` — every version in force
+    for the decision — not `policy_version_id`, which names only the pack that
+    governed the outcome and is usually some other policy's version. Blocking is
+    read from the effective verdict (what enforcement would have done), so a policy
+    in observe can be canaried: its applied verdict is always `allow`.
+    """
+    from agentfox.policy.simulate import effective_verdict_of
+
     rows = session.execute(
-        select(Decision.verdict).where(
-            Decision.policy_version_id == version_id,
-            Decision.created_at >= canary.created_at,
-        )
+        select(
+            Decision.policy_version_id,
+            Decision.policy_version_ids,
+            Decision.verdict,
+            Decision.rules_fired_json,
+        ).where(Decision.created_at >= canary.created_at)
     ).all()
-    decisions = len(rows)
-    blocked = sum(1 for (verdict,) in rows if verdict in ("block", "escalate"))
+    decisions = blocked = 0
+    for single_id, version_ids, verdict, rules_fired in rows:
+        in_force = version_ids if version_ids else [single_id]
+        if version_id not in in_force:
+            continue
+        decisions += 1
+        if effective_verdict_of(verdict, rules_fired) in ("block", "escalate"):
+            blocked += 1
     return CohortHealth(version_id=version_id, decisions=decisions, blocked=blocked)
 
 

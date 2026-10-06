@@ -664,7 +664,7 @@ class CliOutcome:
 
 
 def _child_env() -> dict[str, str]:
-    env = dict(os.environ)  # NOMETRIA_* (database, keys, mode) reaches the CLI unchanged
+    env = dict(os.environ)  # AGENTFOX_* (database, keys, mode) reaches the CLI unchanged
     env.update({"COLUMNS": "160", "NO_COLOR": "1", "TERM": "dumb", "PYTHONIOENCODING": "utf-8"})
     env.pop("FORCE_COLOR", None)
     # The child must run the same agentfox as this server, source checkout or installed.

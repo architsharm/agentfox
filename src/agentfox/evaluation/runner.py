@@ -196,6 +196,9 @@ def summarise(outcomes: list[CaseOutcome], scorer_keys: list[str]) -> dict[str, 
     return {
         "cases": total,
         "errors": len(errors),
+        # Which cases errored and why: without it the count is all a gate, a JUnit
+        # report or a reader gets, and nobody can tell a bad key from a bad agent.
+        "errored_cases": [{"case_id": o.case_id, "error": o.error} for o in errors[:50]],
         "scorers": per_scorer,
         "failing_cases": failing_cases[:50],
         "failing_count": len(failing_cases),
@@ -264,6 +267,10 @@ def sample_production(
 
     envelope = fit_envelope(session, agent_slug)
     outcomes: list[CaseOutcome] = []
+    # Traces sampled but not scorable: no LLM span recorded an output (a trace
+    # from a guard-only integration, or one that ended before the model answered).
+    # Counted and reported, so `--rate 1.0` sampling 3 of 10 says why.
+    skipped_no_output: list[str] = []
 
     for trace in sampled:
         detail = full_trace(session, trace.id) or {}
@@ -280,6 +287,7 @@ def sample_production(
             if span.get("kind") == "tool":
                 tool_calls.append(str(attrs.get("gen_ai.tool.name") or span.get("name")))
         if not output:
+            skipped_no_output.append(trace.id)
             continue
 
         case = EvalCase(
@@ -327,6 +335,8 @@ def sample_production(
         "sampled": len(outcomes),
         "sample_rate": rate,
         "population": len(traces),
+        "skipped_no_output": len(skipped_no_output),
+        "skipped_trace_ids": skipped_no_output[:50],
     }
     run.status = "completed"
     run.finished_at = utcnow()

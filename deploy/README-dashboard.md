@@ -23,10 +23,14 @@ ungoverned agent code, and issues them an API token their agents authenticate wi
 Two values must be byte-identical on the API (Vercel) and the UI (Render or Fly),
 and one exists only on the API.
 
+Every variable here is read as `AGENTFOX_*`. The pre-rename `NOMETRIA_*` names are
+still accepted by both services, so an existing deployment keeps working; if both
+are set, the `AGENTFOX_*` value wins.
+
 | Value | Where | What breaks without it |
 |---|---|---|
-| `NOMETRIA_SERVICE_AUTH_SECRET` | both | Sign-in fails at the provisioning step. **If this is still `dev-insecure-service-secret`, anyone who reads the source can mint accounts in your tenant — rotate it before launch.** |
-| `NOMETRIA_TOKEN_ENCRYPTION_KEY` | API only | Connecting GitHub returns 503. It fails closed rather than storing the access token unencrypted. |
+| `AGENTFOX_SERVICE_AUTH_SECRET` | both | Sign-in fails at the provisioning step. Outside development the gateway **refuses to start** while it is unset or the published `dev-insecure-service-secret`, which would let anyone who reads the source mint owner tokens. Must be byte-identical on both. |
+| `AGENTFOX_TOKEN_ENCRYPTION_KEY` | API only | Connecting GitHub returns 503. It fails closed rather than storing the access token unencrypted. |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | UI only | Sign-in returns 503, or the callback fails. |
 
 Generate the two you control:
@@ -48,11 +52,11 @@ vercel env ls production
 Set anything missing on the API, then redeploy it so the new environment is picked up:
 
 ```bash
-vercel env add NOMETRIA_SERVICE_AUTH_SECRET production
+vercel env add AGENTFOX_SERVICE_AUTH_SECRET production
 ```
 
 ```bash
-vercel env add NOMETRIA_TOKEN_ENCRYPTION_KEY production
+vercel env add AGENTFOX_TOKEN_ENCRYPTION_KEY production
 ```
 
 ## 1b. Migrate Neon first — the API cannot do it itself
@@ -71,13 +75,13 @@ which is idempotent, in the Neon SQL editor (Vercel → Storage → guardrails-d
 read-only off). Or, from a checkout against the Neon URL:
 
 ```bash
-NOMETRIA_DATABASE_URL='<neon url>' uv run alembic upgrade head
+AGENTFOX_DATABASE_URL='<neon url>' uv run alembic upgrade head
 ```
 
 Then confirm the head revision matches the newest file in `migrations/versions/`:
 
 ```bash
-NOMETRIA_DATABASE_URL='<neon url>' uv run alembic current
+AGENTFOX_DATABASE_URL='<neon url>' uv run alembic current
 ```
 
 ## 2. Deploy the UI on Render
@@ -114,7 +118,7 @@ The playground page calls the API directly from the visitor's browser, so the AP
 to allow that origin:
 
 ```bash
-vercel env add NOMETRIA_PLAYGROUND_CORS_ORIGIN production
+vercel env add AGENTFOX_PLAYGROUND_CORS_ORIGIN production
 ```
 
 The value is comma-separated, so list every host that serves the playground, with no

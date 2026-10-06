@@ -88,9 +88,19 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 ```
 
 The recipient came from a tool result, so the transfer waits for a human. Flip `"to"` to
-`"user"` and the same call returns `allow`. LangGraph, MCP, Claude Code hooks, the SDK and the
+`"user"` and the same call returns `allow`. Once a person approves it
+(`agentfox permit approvals approve apr_…`), the same call with `"approval_id"` added runs, once.
+LangGraph, MCP, Claude Code hooks, the SDK and the
 full command set are in the [website guides](https://useagentfox.com/docs) and the
 [product tour](docs/product-tour.md).
+
+## Tracking without anyone running a command
+
+A scan is a snapshot. Connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
+once and AgentFox keeps re-checking it: every few hours, and on every push once the GitHub webhook
+is registered. What changed since the last run becomes a finding, and the finding closes itself
+when the condition clears. Setup and every finding type:
+[Monitor connected sources](https://useagentfox.com/docs/guides/monitoring).
 
 ## What we measured
 

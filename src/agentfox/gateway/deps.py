@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.db import get_session
-from agentfox.core.models import Agent, User
+from agentfox.core.models import Agent, Identity, User
 from agentfox.core.tenancy import bind_session
 from agentfox.gateway.auth import (
     AuthenticationRequired,
@@ -53,6 +53,14 @@ WRITE_ROLES: dict[str, set[str]] = {
     # sends a support ticket to a third party is not a developer's call to make, for
     # the same reason silencing a detector is not.
     "judgment_posture": {"owner", "admin", "security"},
+    # Adding, pausing or running a monitor of a connected source: the same people who
+    # can connect the source or scan it in the first place.
+    "monitors": {"owner", "admin", "security", "developer"},
+    # Where alerts about the tenant's findings are sent outside the deployment.
+    "alerts": {"owner", "admin", "security"},
+    # Enabling live probes points adversarial traffic at a running agent; the opt-in
+    # is recorded with the caller's name, and it is a security call to make.
+    "probes": {"owner", "admin", "security"},
 }
 
 ALL_ROLES = {"owner", "admin", "security", "compliance", "developer", "auditor"}
@@ -144,9 +152,10 @@ def agent_credential(
     was in place the credential lookup was itself filtered to that org, so an agent in
     any other tenant could not authenticate at all.
 
-    An absent or unrecognised credential is not an error here: the inline path
-    deliberately serves unregistered agents so that shadow traffic is *observed*
-    rather than turned away (P1-6). It simply stays in the default tenant.
+    An absent credential is not an error here: the inline path deliberately serves
+    unregistered agents so that shadow traffic is *observed* rather than turned away
+    (P1-6). It simply stays in the default tenant. A presented ``nom_agt_`` key that
+    does not verify is a 401.
     """
     if not (authorization and authorization.lower().startswith("bearer ")):
         activate_posture(session)
@@ -156,14 +165,54 @@ def agent_credential(
         activate_posture(session)
         return None
     resolved = resolve_agent(session, token)
-    if resolved is not None:
-        _identity, org_id = resolved
-        bind_session(session, org_id)
+    if resolved is None:
+        # A presented agent key that does not verify — wrong, revoked, expired, or
+        # belonging to a playground sandbox — is a refusal, in every environment.
+        # It used to be passed through, and the call was then attributed to
+        # whichever agent the body named: a made-up `nom_agt_` string worked exactly
+        # as well as the real one. "No credential" (shadow traffic, served and
+        # observed) and "a bad credential" are different things.
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "invalid, expired or revoked agent key. Issue a new one from the "
+                "agent's Identity page (POST /api/identities/{id}/credentials), or "
+                "send no Authorization header to be governed as an unregistered agent."
+            ),
+        )
+    _identity, org_id = resolved
+    bind_session(session, org_id)
     # After the binding, so an unregistered agent gets the default tenant's posture
     # rather than none at all — shadow traffic is governed, which is the point of
     # serving it in the first place.
     activate_posture(session)
     return token
+
+
+def operator_or_agent(
+    request: Request,
+    session: Session = Depends(get_session),
+    authorization: Annotated[str | None, Header()] = None,
+    x_nometria_user: Annotated[str | None, Header()] = None,
+) -> User | Identity:
+    """An operator, or an agent presenting its own key (``nom_agt_…``).
+
+    For the few control-plane reads an agent needs about *itself* — the approval it
+    is waiting on (#14). The route decides what an agent may see; an operator goes
+    through exactly the same resolution as `current_user`.
+    """
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        if token.startswith("nom_agt_"):
+            resolved = resolve_agent(session, token)
+            if resolved is None:
+                raise HTTPException(status_code=401, detail="invalid, expired or revoked agent key")
+            identity, org_id = resolved
+            bind_session(session, org_id)
+            request.state.org_id = org_id
+            activate_posture(session)
+            return identity
+    return current_user(request, session, authorization, x_nometria_user)
 
 
 def ingest_credential(

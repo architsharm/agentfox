@@ -77,7 +77,8 @@ def policy_list() -> None:
     """List policies and their enforcement mode."""
     from sqlalchemy import select
 
-    from agentfox.core.models import Policy, PolicyBinding, PolicyVersion
+    from agentfox.core.models import Policy, PolicyVersion
+    from agentfox.policy import current_binding
 
     with _session() as session:
         table = Table(box=None, pad_edge=False)
@@ -91,35 +92,63 @@ def policy_list() -> None:
             ).first()
             if latest is None:
                 continue
-            binding = session.scalars(
-                select(PolicyBinding).where(
-                    PolicyBinding.policy_version_id == latest.id,
-                    PolicyBinding.effective_to.is_(None),
-                )
-            ).first()
+            # The live binding, whichever version it points at — mid-canary or after
+            # a rollback that is not the newest version (#65).
+            binding, bound = current_binding(session, policy.id)
             mode = binding.mode if binding else "unbound"
+            shown = bound or latest
+            version = f"v{shown.version}"
+            if bound is not None and bound.id != latest.id:
+                version += f" [dim](v{latest.version} saved, not live)[/]"
             table.add_row(
                 policy.key,
-                f"v{latest.version}",
+                version,
                 f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
-                str(len((latest.compiled_json or {}).get("rules", []))),
+                str(len((shown.compiled_json or {}).get("rules", []))),
             )
         console.print(table)
 
 
 @policy_app.command("lint")
-def policy_lint() -> None:
-    """Lint the policy hierarchy. Exits 1 on critical or high findings.
+def policy_lint(
+    files: list[Path] | None = typer.Argument(
+        None,
+        help="Policy files to lint, as org-level layers in the order given. "
+        "Without files, lints every bound policy layer.",
+    ),
+) -> None:
+    """Lint the policy hierarchy, or policy files. Exits 1 on critical or high findings.
 
     This is the half of hierarchical policy that produces the 87% misconfiguration
     reduction — composition without a linter just moves the confusion somewhere
-    harder to see.
+    harder to see. Pass files to check them before they are loaded, e.g. in CI.
     """
-    from agentfox.policy import lint_all
+    from agentfox.policy import lint_all, lint_documents, lint_summary
 
-    with _session() as session:
-        report = lint_all(session)
+    if files:
+        report = lint_summary(lint_documents([_read_policy_file(path) for path in files]))
+    else:
+        with _session() as session:
+            report = lint_all(session)
+    _print_lint(report)
+    if not report["passed"]:
+        console.print("\n[bold red]LINT FAIL[/] — critical/high findings block the build")
+        raise typer.Exit(1)
+    if report["findings"]:
+        console.print("\n[green]LINT PASS[/] [dim](advisory findings only)[/]")
 
+
+def _read_policy_file(path: Path):
+    from agentfox.policy import PolicyDocument
+
+    try:
+        return PolicyDocument.from_yaml(path.read_text())
+    except Exception as exc:
+        console.print(f"[red]invalid:[/] {path}: {' '.join(str(exc).split())}")
+        raise typer.Exit(1) from exc
+
+
+def _print_lint(report: dict) -> None:
     if not report["findings"]:
         console.print("[green]no policy issues[/]")
         return
@@ -140,11 +169,6 @@ def policy_lint() -> None:
     console.print(table)
     console.print(f"  [dim]{report['counts']}[/]")
 
-    if not report["passed"]:
-        console.print("\n[bold red]LINT FAIL[/] — critical/high findings block the build")
-        raise typer.Exit(1)
-    console.print("\n[green]LINT PASS[/] [dim](advisory findings only)[/]")
-
 
 @policy_app.command("effective")
 def policy_effective(
@@ -155,7 +179,7 @@ def policy_effective(
         None,
         "--environment",
         help="Environment to resolve for. Defaults to the configured environment "
-        "(NOMETRIA_ENVIRONMENT), which is what the runtime itself uses.",
+        "(AGENTFOX_ENVIRONMENT), which is what the runtime itself uses.",
     ),
 ) -> None:
     """Show the policy actually in force for a subject, and where each rule came from.
@@ -172,20 +196,32 @@ def policy_effective(
         )
         explanation = effective.explain()
 
+    # Per layer, not one mode for the lot: "mode enforce" whenever any layer
+    # enforced read as though every rule listed was enforcing (#49).
     console.print(
         f"[bold]effective policy[/] in [bold]{environment}[/] — "
-        f"mode [bold]{explanation['mode']}[/], "
         f"default {explanation['default_effect']}"
     )
-    console.print(f"  [dim]layers: {', '.join(explanation['layers']) or 'none'}[/]\n")
+    if explanation["layer_modes"]:
+        console.print("  [dim]layers:[/]")
+        for layer in explanation["layer_modes"]:
+            colour = "green" if layer["mode"] == "enforce" else "yellow"
+            console.print(
+                f"    {layer['level']}:{layer['scope']}({layer['compose']})  "
+                f"{layer['policy']}  [{colour}]{layer['mode']}[/]"
+            )
+        console.print()
+    else:
+        console.print("  [dim]layers: none[/]\n")
 
     table = Table(box=None, pad_edge=False)
-    for column in ("rule", "effect", "from", "overrides"):
+    for column in ("rule", "effect", "mode", "from", "overrides"):
         table.add_column(column, style="bold" if column == "rule" else None)
     for rule in explanation["rules"]:
         table.add_row(
             rule["rule_id"],
             rule["effect"],
+            rule["enforcement"],
             rule["source"],
             ", ".join(rule["overrides"]) or "—",
         )
@@ -230,11 +266,22 @@ def policy_simulate(
     console.print(f"  newly blocked    [red]{len(diff.newly_blocked)}[/]")
     console.print(f"  newly escalated  [yellow]{len(diff.newly_escalated)}[/]")
     console.print(f"  newly allowed    [green]{len(diff.newly_allowed)}[/]")
-    for record in diff.newly_blocked[:10]:
-        console.print(
-            f"    [red]would block[/] {record['agent']} {record['surface']} "
-            f"{record['tool'] or ''} — {(record['reasons'] or [''])[0][:80]}"
-        )
+    for label, colour, records in (
+        ("would block", "red", diff.newly_blocked),
+        ("would escalate", "yellow", diff.newly_escalated),
+        ("would allow", "green", diff.newly_allowed),
+    ):
+        for record in records[:10]:
+            why = (record["reasons"] or [""])[0] or (
+                f"was {record['was']}; no longer fires: "
+                + (", ".join(record.get("no_longer_fires") or []) or "—")
+            )
+            console.print(
+                f"    [{colour}]{label}[/] {record['agent'] or '—'} {record['surface']} "
+                f"{record['tool'] or ''} — {why[:80]}"
+            )
+        if len(records) > 10:
+            console.print(f"    [dim]… and {len(records) - 10} more {label}[/]")
     if diff.risky:
         console.print(
             "\n[bold red]This change would block production traffic. "
@@ -292,16 +339,24 @@ def _set_mode(key: str, mode: str) -> None:
 
 @policy_app.command("validate")
 def policy_validate(file: Path) -> None:
-    """Lint and compile a policy without saving it."""
-    from agentfox.policy import PolicyDocument, compile_to_rego
+    """Check, lint and compile a policy file without saving it.
 
-    try:
-        doc = PolicyDocument.from_yaml(file.read_text())
-    except Exception as exc:
-        console.print(f"[red]invalid:[/] {exc}")
-        raise typer.Exit(1) from exc
+    Runs the full lint (`policy lint FILE`), so a rule that can never fire or a
+    condition naming an unknown value (`surface: [toolargs]`) fails validation.
+    Exits 1 on a parse error or a critical/high finding.
+    """
+    from agentfox.policy import compile_to_rego, lint_documents, lint_summary
+
+    doc = _read_policy_file(file)
+    report = lint_summary(lint_documents([doc]))
+    if not report["passed"]:
+        console.print(f"[red]invalid:[/] {doc.key} — {len(report['blocking'])} blocking finding(s)")
+        _print_lint(report)
+        raise typer.Exit(1)
     console.print(
         f"[green]valid[/] — {doc.key} v{doc.version}, {len(doc.rules)} rules, mode={doc.mode}"
     )
     console.print(f"  controls: {sorted({c for r in doc.rules for c in r.controls})}")
     console.print(f"  [dim]compiles to {len(compile_to_rego(doc).splitlines())} lines of Rego[/]")
+    if report["findings"]:
+        _print_lint(report)

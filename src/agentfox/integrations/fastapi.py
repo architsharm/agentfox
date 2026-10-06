@@ -221,11 +221,36 @@ def install(app: Any, *, service: str = "app") -> Any:
 
     @app.get("/agentfox/health", tags=["agentfox"])
     def _health() -> dict[str, Any]:
+        """`middleware` is always observe: it never refuses a request. `mode` is what
+        the `guard` dependency applies — ``enforce`` when any bound policy enforces —
+        and `policies` gives each bound policy's own mode. Reporting ``observe`` here
+        unconditionally told an operator nothing was enforced while it was."""
         from agentfox import __version__
 
-        return {"status": "ok", "version": __version__, "mode": "observe", "service": service}
+        policies = _bound_policy_modes()
+        mode = "enforce" if "enforce" in policies.values() else "observe"
+        return {
+            "status": "ok",
+            "version": __version__,
+            "mode": mode,
+            "middleware": "observe",
+            "policies": policies,
+            "service": service,
+        }
 
     return app
+
+
+def _bound_policy_modes() -> dict[str, str]:
+    """{policy key: mode} for every policy currently bound, any scope."""
+    try:
+        from agentfox.policy.store import active_policies
+
+        with session_scope() as session:
+            return {doc.key: doc.mode for doc, _version, _binding in active_policies(session)}
+    except Exception as exc:  # a health probe reports, it does not fail
+        log.debug("agentfox health: policy modes unavailable: %s", exc)
+        return {}
 
 
 def blocked_response(result: EnforcementResult) -> Any:  # pragma: no cover - convenience

@@ -72,6 +72,37 @@ def state_root() -> Path:
 
 STATE_ROOT = state_root()
 
+#: Environments where development conveniences (the unverified identity header, the
+#: published default secrets below) are acceptable. Everything else — including any
+#: name not in this set — is treated as production, because the failure direction
+#: matters: a typo in a deployment variable must not silently open the door.
+DEV_ENVIRONMENTS = frozenset({"development", "dev", "test", "testing", "local"})
+
+#: The two secrets that ship with a value, so a laptop install works with no setup.
+#: Both values are in this public repository, which makes them no secret at all: the
+#: service secret authenticates the call that mints an *owner* token for any GitHub
+#: identity, and the signing key is what makes the audit chain tamper-evident. A
+#: production process refuses to start while either still has its published value
+#: (see :func:`insecure_production_secrets`).
+DEFAULT_SERVICE_AUTH_SECRET = "dev-insecure-service-secret"
+DEFAULT_AUDIT_SIGNING_KEY = "dev-insecure-checkpoint-key"
+#: Placeholders our own deploy files have shipped. Refused for the same reason: they
+#: are published, so they are as good as the defaults to anyone who reads the repo.
+PUBLISHED_SECRET_VALUES = frozenset(
+    {
+        DEFAULT_SERVICE_AUTH_SECRET,
+        DEFAULT_AUDIT_SIGNING_KEY,
+        "change-me-before-any-real-deployment",
+        "change-me",
+        "",
+    }
+)
+
+
+class InsecureConfigurationError(RuntimeError):
+    """A production deployment is configured with a published secret."""
+
+
 #: Env var naming an explicit config file. Deliberately *not* a Settings field: it
 #: decides where settings come from, so it cannot itself come from that file.
 CONFIG_ENV_VAR = "AGENTFOX_CONFIG"
@@ -333,6 +364,24 @@ class Settings(BaseSettings):
     webhook_timeout_seconds: float = 3.0
     webhook_min_severity: str = "high"  # critical | high | medium | low
 
+    # --- Monitoring connected sources (agentfox.monitoring) --------------------
+    # A Slack incoming-webhook URL that receives a short message for every monitor
+    # finding opened, reopened or closed at or above `slack_min_severity`. A tenant can
+    # also set its own (`PUT /api/alerts/slack`). Like `webhook_url`, gated by
+    # `allow_egress`: the message carries finding titles out of the deployment.
+    slack_webhook_url: str | None = None
+    slack_min_severity: str = "medium"  # critical | high | medium | low
+    # The secret GitHub signs push deliveries to `/api/integrations/github/webhook`
+    # with. A connection may carry its own instead (`POST
+    # /api/integrations/github/webhook-secret`); with neither, the route refuses.
+    github_webhook_secret: str | None = None
+    # How many due monitors one `monitors.run` job runs. Each one downloads and scans
+    # a repository or fetches a document, so this bounds a single serverless call.
+    monitor_batch_limit: int = 5
+    # After this many failed runs in a row a monitor raises a `monitor_failing`
+    # finding (closed by the next successful run).
+    monitor_failure_threshold: int = 3
+
     # --- Detector cut-offs that used to be hard-coded -------------------------
     #: A cut-off nothing can change without a code edit is a cut-off the improvement loop
     #: cannot tune and an operator cannot adjust. Read once when detectors register, like
@@ -366,6 +415,19 @@ class Settings(BaseSettings):
     #: Base for exponential backoff between attempts.
     job_backoff_base_seconds: int = 60
 
+    # --- Live red-team probes and the public showcase ------------------------
+    #: Kill switch for scheduled probes against deployed agents
+    #: (`evaluation.live_probes`). Each target also needs its own recorded opt-in;
+    #: this turns every target off at once without touching those records.
+    live_probes_enabled: bool = True
+    #: Run AgentFox against its own demo agent in a dedicated tenant and publish the
+    #: results at `GET /api/public/showcase` (`evaluation.showcase`). Off by default:
+    #: only the hosted deployment that backs the marketing site's /live page runs it.
+    showcase_enabled: bool = False
+    #: The tenant the showcase lives in. Nothing outside it is ever read by the
+    #: public endpoint.
+    showcase_org_id: str = "org_showcase"
+
     @field_validator("taint_scope")
     @classmethod
     def _check_taint_scope(cls, value: str) -> str:
@@ -376,7 +438,7 @@ class Settings(BaseSettings):
             raise ValueError(f"must be one of {', '.join(TAINT_SCOPES)}")
         return value
 
-    @field_validator("webhook_min_severity")
+    @field_validator("webhook_min_severity", "slack_min_severity")
     @classmethod
     def _check_webhook_min_severity(cls, value: str) -> str:
         value = value.strip().lower()
@@ -497,7 +559,7 @@ class Settings(BaseSettings):
     # The dashboard's OAuth callback runs the one privileged "find-or-create user and
     # mint a token" call before any user token exists — it authenticates with this
     # shared secret instead. Must match the dashboard's own copy of the same value.
-    service_auth_secret: str = "dev-insecure-service-secret"
+    service_auth_secret: str = DEFAULT_SERVICE_AUTH_SECRET
     # Fernet key encrypting stored GitHub access tokens at rest. `None` means "not
     # configured" — connecting a repo fails closed rather than storing a raw token.
     token_encryption_key: str | None = None
@@ -592,7 +654,7 @@ class Settings(BaseSettings):
     drift_psi_threshold: float = 0.2
 
     # --- Audit (Pillar 5) ------------------------------------------------
-    audit_signing_key: str = "dev-insecure-checkpoint-key"
+    audit_signing_key: str = DEFAULT_AUDIT_SIGNING_KEY
     audit_checkpoint_interval: int = 100
     # P5-5 / R8: the audit log must not become a new PII liability.
     redact_at_capture: bool = True
@@ -660,6 +722,48 @@ def env(name: str, default: str | None = None) -> str | None:
     `LEGACY_ENV_PREFIX` exists. An empty value counts as unset.
     """
     return os.environ.get(ENV_PREFIX + name) or os.environ.get(LEGACY_ENV_PREFIX + name) or default
+
+
+def is_development(settings: Settings | None = None) -> bool:
+    """Whether ``environment`` names a development environment (see DEV_ENVIRONMENTS)."""
+    settings = settings or get_settings()
+    return (settings.environment or "").lower() in DEV_ENVIRONMENTS
+
+
+def insecure_production_secrets(settings: Settings | None = None) -> list[str]:
+    """The published secrets this deployment is running with, outside development.
+
+    Empty in development, where the defaults are the convenience they exist to be.
+    Anywhere else each entry names the variable to set and why it matters.
+    """
+    settings = settings or get_settings()
+    if is_development(settings):
+        return []
+    problems: list[str] = []
+    if settings.service_auth_secret in PUBLISHED_SECRET_VALUES:
+        problems.append(
+            "AGENTFOX_SERVICE_AUTH_SECRET is unset or still a published value — anyone "
+            "could call /api/auth/github/provision and mint an owner token. Set it to a "
+            "random value (e.g. `openssl rand -hex 32`) and give the dashboard the same one."
+        )
+    if settings.audit_signing_key in PUBLISHED_SECRET_VALUES:
+        problems.append(
+            "AGENTFOX_AUDIT_SIGNING_KEY is unset or still a published value — anyone could "
+            "forge audit checkpoints. Set it to a random value you keep outside the database."
+        )
+    return problems
+
+
+def assert_production_secrets(settings: Settings | None = None) -> None:
+    """Refuse to serve a non-development environment that runs on published secrets."""
+    settings = settings or get_settings()
+    problems = insecure_production_secrets(settings)
+    if problems:
+        raise InsecureConfigurationError(
+            f"refusing to start in environment '{settings.environment}':\n  - "
+            + "\n  - ".join(problems)
+            + "\n(Set AGENTFOX_ENVIRONMENT=development only for a local, unexposed install.)"
+        )
 
 
 @lru_cache

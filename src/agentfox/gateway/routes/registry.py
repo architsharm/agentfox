@@ -25,8 +25,15 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.gateway.auth import issue_token
-from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.gateway.deps import (
+    current_user,
+    db,
+    get_agent_or_404,
+    operator_or_agent,
+    require,
+)
 from agentfox.identity import (
+    AgentStopped,
     assess_posture,
     check_capability,
     expire_stale_approvals,
@@ -441,10 +448,27 @@ def list_mcp(session: Session = Depends(db), _user: User = Depends(current_user)
 
 @router.post("/mcp-servers", status_code=201)
 def create_mcp(
-    payload: McpIn, session: Session = Depends(db), _user: User = Depends(require("registry"))
+    payload: McpIn, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
+    """Register an MCP server, and start monitoring it for tool drift.
+
+    A remote (Streamable HTTP) server's tool listing is re-read on a schedule; a stdio
+    server's pushed listings are watched."""
     server = upsert_mcp_server(session, **payload.model_dump())
-    return {"id": server.id, "name": server.name}
+    monitor = _monitor_mcp(session, server, user)
+    return {"id": server.id, "name": server.name, "monitor_id": monitor.id if monitor else None}
+
+
+def _monitor_mcp(session: Session, server: McpServer, user: User | None):
+    from agentfox.monitoring.service import safe_ensure_monitor
+
+    return safe_ensure_monitor(
+        session,
+        kind="mcp_server",
+        target=server.name,
+        config={"mcp_server_id": server.id},
+        created_by=(user.email or user.id) if user else "",
+    )
 
 
 class McpScanIn(BaseModel):
@@ -475,7 +499,7 @@ def register_mcp_tools(
     name: str,
     payload: McpRegisterIn,
     session: Session = Depends(db),
-    _user: User = Depends(require("registry")),
+    user: User = Depends(require("registry")),
 ) -> dict[str, Any]:
     """I-2 — snapshot a listing *and* register each tool in the registry.
 
@@ -490,6 +514,7 @@ def register_mcp_tools(
 
     governor = McpGovernor(session=session, agent_slug="", server_name=name)
     report = governor.register_tools(payload.tools, accept_changes=payload.accept_changes)
+    _monitor_mcp(session, governor.server, user)
     held = set(report.get("held", []))
     return {
         **report,
@@ -877,14 +902,27 @@ def list_approvals(
 
 @router.get("/approvals/{approval_id}")
 def get_approval(
-    approval_id: str, session: Session = Depends(db), _user: User = Depends(current_user)
+    approval_id: str,
+    session: Session = Depends(db),
+    caller: User | Identity = Depends(operator_or_agent),
 ) -> dict[str, Any]:
+    """One approval. An operator may read any; an agent key only its own agent's.
+
+    The SDK's `wait_for_approval` polls this with the agent's own key (#14): the
+    agent that is waiting is the one caller certain to need the answer, and it
+    used to need an operator token to read it.
+    """
     # The SDK polls this single-approval route, not the bulk list below — without
     # expiring here too, a stale approval reads "pending" forever unless something
     # else happens to hit /approvals first (NOM-IAM-03: unanswered must fail closed).
     expire_stale_approvals(session)
     approval = session.get(ApprovalRequest, approval_id)
     if approval is None:
+        raise HTTPException(404, "unknown approval")
+    if isinstance(caller, Identity) and (
+        approval.agent_id is None or approval.agent_id != caller.agent_id
+    ):
+        # Not "forbidden": another agent's approval is not this agent's to know of.
         raise HTTPException(404, "unknown approval")
     return {
         "id": approval.id,
@@ -893,6 +931,9 @@ def get_approval(
         "tool": approval.tool_key,
         "arguments": approval.arguments_json,
         "rationale": approval.resolution_rationale,
+        "agent_id": approval.agent_id,
+        "expires_at": _iso(approval.expires_at),
+        "trace_id": approval.trace_id,
     }
 
 
@@ -923,7 +964,10 @@ def deny(
 def _resolve(
     session: Session, approval_id: str, approved: bool, user: User, rationale: str
 ) -> dict[str, Any]:
-    approval = resolve_approval(session, approval_id, approved, user.id, rationale)
+    try:
+        approval = resolve_approval(session, approval_id, approved, user.id, rationale)
+    except AgentStopped as exc:
+        raise HTTPException(409, str(exc)) from exc
     if approval is None:
         raise HTTPException(404, "unknown approval")
     chain.append(

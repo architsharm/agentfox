@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Policy, PolicyBinding, PolicyCanary, PolicyVersion, User
+from agentfox.core.models import Policy, PolicyCanary, PolicyVersion, User
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.policy import (
     LEVELS,
@@ -24,18 +24,22 @@ from agentfox.policy import (
     CanaryError,
     PolicyDocument,
     active_canary,
-    active_policies,
     canary_health,
     canary_rollout,
     compile_to_rego,
+    current_binding,
     effective_for,
     history,
     lint_all,
+    lint_documents,
+    lint_summary,
+    policies_in_force,
     record_simulation,
     rollback_canary,
     save_policy,
     set_mode,
     simulate,
+    simulation_for,
     start_canary,
 )
 from agentfox.policy.canary import evaluate_gate
@@ -51,14 +55,15 @@ def list_policies(
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
     # A policy's real scope lives in its declared `scope.agents` glob (checked by
-    # `matches_scope`, honouring the binding's own scope override) — not a simple
-    # FK, since one policy commonly governs many agents by pattern. Reusing
-    # `active_policies` here means the filter agrees with what actually gets
-    # enforced at request time, rather than a second, looser notion of "applies to".
+    # `matches_scope`, honouring the binding's own scope override) and its place in
+    # the hierarchy — not a simple FK, since one policy commonly governs many agents
+    # by pattern. Reusing `policies_in_force` here means the filter agrees with what
+    # actually gets enforced at request time, rather than a second, looser notion
+    # of "applies to".
     scoped_policy_ids = (
         {
             version.policy_id
-            for _doc, version, _binding in active_policies(session, agent_slug=agent)
+            for _doc, version, _binding in policies_in_force(session, agent_slug=agent)
         }
         if agent
         else None
@@ -75,16 +80,9 @@ def list_policies(
             )
         )
         latest = versions[0] if versions else None
-        binding = (
-            session.scalars(
-                select(PolicyBinding).where(
-                    PolicyBinding.policy_version_id == latest.id,
-                    PolicyBinding.effective_to.is_(None),
-                )
-            ).first()
-            if latest
-            else None
-        )
+        # The live binding, whichever version it points at: mid-canary or after a
+        # rollback it is an earlier version than the newest one (#65).
+        binding, bound = current_binding(session, policy.id)
         out.append(
             {
                 "id": policy.id,
@@ -93,8 +91,12 @@ def list_policies(
                 "description": policy.description,
                 "versions": len(versions),
                 "latest_version": latest.version if latest else None,
+                "bound_version": bound.version if bound else None,
                 "mode": binding.mode if binding else None,
-                "rules": len((latest.compiled_json or {}).get("rules", [])) if latest else 0,
+                # The rules of the version in force; the newest version's when unbound.
+                "rules": len(((bound or latest).compiled_json or {}).get("rules", []))
+                if (bound or latest)
+                else 0,
                 # A repo-scan proposal (routes/integrations.py) awaiting human review —
                 # already created in `observe` mode (never blocks), just not
                 # acknowledged yet.
@@ -143,16 +145,7 @@ def get_policy(
         .where(PolicyVersion.policy_id == policy.id)
         .order_by(PolicyVersion.version.desc())
     ).first()
-    binding = (
-        session.scalars(
-            select(PolicyBinding).where(
-                PolicyBinding.policy_version_id == latest.id,
-                PolicyBinding.effective_to.is_(None),
-            )
-        ).first()
-        if latest
-        else None
-    )
+    binding, bound = current_binding(session, policy.id)
     return {
         "key": policy.key,
         "name": policy.name,
@@ -160,6 +153,9 @@ def get_policy(
         "versions": versions,
         "body": latest.body if latest else "",
         "compiled": latest.compiled_json if latest else {},
+        "latest_version": latest.version if latest else None,
+        "bound_version": bound.version if bound else None,
+        "mode": binding.mode if binding else None,
         "level": binding.level if binding else "org",
         "scope_id": binding.scope_id if binding else "*",
         "compose": binding.compose if binding else "extend",
@@ -191,22 +187,39 @@ def upsert_policy(
     if payload.compose not in MODES:
         raise HTTPException(400, f"compose must be one of {MODES}")
 
-    # Binding a policy straight to enforce in production requires the stronger role.
-    if (payload.mode or doc.mode) == "enforce" and user.role not in {"owner", "admin", "security"}:
+    # Saving never changes what is in force (#64). It used to bind the YAML's own
+    # `mode`, so saving `mode: enforce` enforced with no simulation, and saving the
+    # observe starter over an enforcing policy demoted it — while the editor said
+    # nothing in force changes until you promote. Promotion (`/{key}/mode`, which
+    # requires a recorded simulation to enforce) is now the only way to change it.
+    if payload.mode == "enforce":
+        if user.role not in {"owner", "admin", "security"}:
+            raise HTTPException(
+                403, f"role '{user.role}' may author policies but not bind them to enforce"
+            )
         raise HTTPException(
-            403, f"role '{user.role}' may author policies but not bind them to enforce"
+            409,
+            "saving does not change what is in force: save the version, simulate it "
+            "(POST /api/policies/simulate), then promote it with "
+            f'POST /api/policies/{doc.key}/mode {{"mode": "enforce", "version": N}}',
         )
+    if payload.mode not in (None, "observe"):
+        raise HTTPException(400, "mode must be 'observe' or omitted")
 
     policy, version = save_policy(
         session,
         doc,
         author=user.email,
         notes=payload.notes,
-        bind_mode=payload.mode,
+        # A policy with nothing live yet is bound, in observe; one that is live
+        # keeps its binding, version and mode until a promotion moves them.
+        bind_mode="observe",
         level=payload.level,
         scope_id=payload.scope_id,
         compose=payload.compose,
+        rebind=False,
     )
+    binding, live = current_binding(session, policy.id)
     chain.append(
         session,
         "policy.version_created",
@@ -217,14 +230,23 @@ def upsert_policy(
         payload={
             "policy": policy.key,
             "version": version.version,
-            "mode": payload.mode or doc.mode,
+            "live_version": live.version if live else None,
+            "mode": binding.mode if binding else None,
             "notes": payload.notes,
             "level": payload.level,
             "scope_id": payload.scope_id,
             "compose": payload.compose,
         },
     )
-    return {"key": policy.key, "version": version.version, "version_id": version.id}
+    return {
+        "key": policy.key,
+        "version": version.version,
+        "version_id": version.id,
+        # What is in force after the save — unchanged unless nothing was live.
+        "live_version": live.version if live else None,
+        "mode": binding.mode if binding else None,
+        "pending": live is None or live.id != version.id,
+    }
 
 
 @router.post("/validate")
@@ -233,8 +255,18 @@ def validate_policy(payload: PolicyIn) -> dict[str, Any]:
         doc = PolicyDocument.from_yaml(payload.body)
     except Exception as exc:
         return {"valid": False, "error": str(exc)}
+    # The same full lint `policy validate FILE` runs: a rule that can never fire, or
+    # one naming an unknown value, is not a valid policy (#50, X5).
+    lint = lint_summary(lint_documents([doc]))
+    if not lint["passed"]:
+        return {
+            "valid": False,
+            "error": "; ".join(f["message"] for f in lint["blocking"]),
+            "lint": lint,
+        }
     return {
         "valid": True,
+        "lint": lint,
         "key": doc.key,
         "rules": len(doc.rules),
         "mode": doc.mode,
@@ -245,6 +277,12 @@ def validate_policy(payload: PolicyIn) -> dict[str, Any]:
 
 class ModeIn(BaseModel):
     mode: str
+    #: Make this saved version the live one. Omitted: change the live version's mode.
+    version: int | None = None
+    #: Hierarchy placement for the promoted binding. Omitted: keep the current one.
+    level: str | None = None
+    scope_id: str | None = None
+    compose: str | None = None
 
 
 @router.post("/{key}/mode")
@@ -254,9 +292,61 @@ def change_mode(
     session: Session = Depends(db),
     user: User = Depends(require("policy_production")),
 ) -> dict[str, Any]:
+    """Promote or demote a policy, optionally making a saved version live.
+
+    Promoting to ``enforce`` requires a recorded simulation of exactly the rules
+    being enforced (``POST /api/policies/simulate`` with that version's body) —
+    the server-side half of the editor's simulate-before-promote gate (#64).
+    Demoting to ``observe`` never needs one: it can only stop blocking.
+    """
     if payload.mode not in ("observe", "enforce"):
         raise HTTPException(400, "mode must be 'observe' or 'enforce'")
-    binding = set_mode(session, key, payload.mode)
+    if payload.level is not None and payload.level not in LEVELS:
+        raise HTTPException(400, f"level must be one of {LEVELS}")
+    if payload.compose is not None and payload.compose not in MODES:
+        raise HTTPException(400, f"compose must be one of {MODES}")
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+
+    _binding, live = current_binding(session, policy.id)
+    if payload.version is not None:
+        target = session.scalar(
+            select(PolicyVersion).where(
+                PolicyVersion.policy_id == policy.id, PolicyVersion.version == payload.version
+            )
+        )
+        if target is None:
+            raise HTTPException(404, f"policy '{key}' has no version {payload.version}")
+    else:
+        target = (
+            live
+            or session.scalars(
+                select(PolicyVersion)
+                .where(PolicyVersion.policy_id == policy.id)
+                .order_by(PolicyVersion.version.desc())
+            ).first()
+        )
+    if target is None:
+        raise HTTPException(404, f"policy '{key}' has no versions")
+
+    if payload.mode == "enforce" and simulation_for(session, target) is None:
+        raise HTTPException(
+            409,
+            f"version {target.version} of '{key}' has not been simulated: replay recent "
+            "traffic against it first (POST /api/policies/simulate with its body, or "
+            "Simulate in the editor), then promote",
+        )
+
+    binding = set_mode(
+        session,
+        key,
+        payload.mode,
+        version=payload.version,
+        level=payload.level,
+        scope_id=payload.scope_id,
+        compose=payload.compose,
+    )
     if binding is None:
         raise HTTPException(404, f"unknown policy '{key}'")
     chain.append(
@@ -266,9 +356,9 @@ def change_mode(
         actor_id=user.email or user.id,
         subject_type="policy",
         subject_id=key,
-        payload={"mode": payload.mode},
+        payload={"mode": payload.mode, "version": target.version},
     )
-    return {"key": key, "mode": binding.mode}
+    return {"key": key, "mode": binding.mode, "version": target.version}
 
 
 class SimulateIn(BaseModel):
@@ -516,4 +606,8 @@ def get_rego(
         .order_by(PolicyVersion.version.desc())
     ).first()
     doc = PolicyDocument.model_validate(latest.compiled_json)
-    return {"key": key, "version": latest.version, "rego": compile_to_rego(doc)}
+    return {
+        "key": key,
+        "version": latest.version,
+        "rego": compile_to_rego(doc, version=latest.version),
+    }

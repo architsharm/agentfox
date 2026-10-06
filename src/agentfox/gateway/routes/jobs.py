@@ -8,7 +8,7 @@ record of every attempt — including one that's dead-lettered, or one stuck in
 `running` because the request that started it never got to finish.
 
 The cron endpoint accepts GET (what Vercel Cron sends) and POST, and authenticates
-with either `NOMETRIA_CRON_SECRET` or Vercel's own `CRON_SECRET`. Each call first
+with either `AGENTFOX_CRON_SECRET` or Vercel's own `CRON_SECRET`. Each call first
 fills the queue from per-tenant `JobSchedule` rows (`agentfox.jobs.scheduler`), then
 recovers stuck jobs and drains everything due. Calling it twice in a row is safe:
 a schedule enqueues at most once per interval and never while its previous job
@@ -17,6 +17,7 @@ is still pending or running.
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from typing import Annotated, Any
@@ -28,14 +29,18 @@ from sqlalchemy.orm import Session
 from agentfox.core.config import get_settings
 from agentfox.core.models import Job, User
 from agentfox.core.tenancy import session_org
+from agentfox.evaluation import showcase
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.jobs import handlers as job_handlers
 from agentfox.jobs import scheduler
 from agentfox.jobs import store as jobs_db
 
 # Imported for its side effect: registers the eval.run, compliance.recompute,
-# canary.advance, drift.check and redteam.posture handlers wherever this router loads.
+# canary.advance, drift.check, redteam.posture, monitors.run and probes.run handlers
+# wherever this router loads.
 _REGISTERED_KINDS = tuple(job_handlers.HANDLERS)
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["jobs"])
 
@@ -90,7 +95,7 @@ def retry_job(
 
 
 def _cron_secrets() -> list[str]:
-    """Every configured cron secret. `NOMETRIA_CRON_SECRET` is ours; `CRON_SECRET` is
+    """Every configured cron secret. `AGENTFOX_CRON_SECRET` is ours; `CRON_SECRET` is
     the name Vercel sets and sends as `Authorization: Bearer <value>` on cron calls —
     accepting only the former meant the deployed cron was always refused."""
     candidates = [get_settings().cron_secret, os.environ.get("CRON_SECRET")]
@@ -105,7 +110,7 @@ def _require_cron_secret(
         raise HTTPException(
             503,
             (
-                "no cron secret is configured (NOMETRIA_CRON_SECRET or CRON_SECRET) — this "
+                "no cron secret is configured (AGENTFOX_CRON_SECRET or CRON_SECRET) — this "
                 "endpoint is disabled"
             ),
         )
@@ -133,19 +138,19 @@ def run_pending_jobs(limit: int = 50, session: Session = Depends(db)) -> dict[st
     """The cron entry point. GET because that is what Vercel Cron sends; POST for
     anything else that drives it.
 
+    0. With `settings.showcase_enabled`, make sure the public showcase tenant and its
+       opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants
+       the scheduling pass below finds.
     1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default
        schedules and enqueue whatever is due.
     2. Recover jobs stuck in `running`, then run every pending job whose backoff has
        elapsed, across every tenant — the one place that's correct, since nothing
        about a cron trigger belongs to a single tenant's request.
     """
-    scheduled = scheduler.schedule_all_tenants(session)
-    recovered = jobs_db.recover_stuck(session, org_id=None)
-    finished = jobs_db.run_pending(session, org_id=None, limit=limit)
-    return {
-        "processed": finished,
-        "recovered": recovered,
-        "scheduled": sum(scheduled.values()),
-        "scheduled_by_tenant": scheduled,
-        "scheduler_enabled": get_settings().scheduler_enabled,
-    }
+    try:
+        with session.begin_nested():
+            showcase_state = showcase.ensure_showcase(session)
+    except Exception as exc:  # noqa: BLE001 - the showcase must never stop the cron
+        log.warning("showcase setup failed: %s", exc, exc_info=True)
+        showcase_state = {"error": f"{type(exc).__name__}: {exc}"}
+    return {**scheduler.run_due(session, limit=limit), "showcase": showcase_state}

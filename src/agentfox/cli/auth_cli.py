@@ -42,7 +42,11 @@ def issue(
     with system_scope("issuing an operator token"), _session() as session:
         user = session.scalar(select(User).where(User.email == email))
         if user is None:
-            console.print(f"[red]unknown user '{email}'[/]")
+            console.print(
+                f"[red]unknown user '{email}'[/]\n"
+                f"  [dim]Create the operator first (no demo data is loaded):[/]\n"
+                f"    agentfox admin users create {email} --role owner"
+            )
             raise typer.Exit(1)
         # The lookup above has to run unfiltered (that's what system_scope is for —
         # the recipient's org isn't known yet). Once it is, bind the session to it so
@@ -194,7 +198,7 @@ def status() -> None:
                 f"{settings.auth_mode}\n"
                 "Anyone who can reach this port is any user they name. That is fine for "
                 "local work and unacceptable anywhere else.\n\n"
-                "Set NOMETRIA_ENVIRONMENT=production, or NOMETRIA_AUTH_MODE=token, to "
+                "Set AGENTFOX_ENVIRONMENT=production, or AGENTFOX_AUTH_MODE=token, to "
                 "require API tokens.[/]",
                 title="[bold]Authentication: development mode[/]",
                 title_align="left",
@@ -215,6 +219,87 @@ def status() -> None:
         )
 
 
+def create_user(
+    email: str = typer.Argument(..., help="The operator's email; what `auth issue` takes."),
+    role: str = typer.Option(
+        "owner",
+        "--role",
+        "-r",
+        help="owner | admin | security | compliance | developer | auditor.",
+    ),
+    name: str = typer.Option("", "--name", "-n", help="Display name."),
+    org: str = typer.Option(
+        "", "--org", help="Tenant to create them in. Default: this deployment's AGENTFOX_ORG_ID."
+    ),
+    token: bool = typer.Option(
+        False, "--token", help="Also issue an API token for them now, shown once."
+    ),
+) -> None:
+    """Create an operator — the first one on a fresh self-hosted install, with no demo data.
+
+    Then `agentfox admin auth issue EMAIL` mints their API token (or pass --token).
+    """
+    from agentfox.gateway.auth import OperatorExists, create_operator, issue_token
+
+    with _session() as session:
+        try:
+            user = create_operator(session, email, role=role, name=name, org_id=org or None)
+        except OperatorExists as exc:
+            console.print(f"[yellow]{exc}[/]")
+            raise typer.Exit(1) from exc
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/]")
+            raise typer.Exit(2) from exc
+        raw = None
+        if token:
+            _rec, raw = issue_token(session, user, name="first-operator")
+        org_id, user_role = user.org_id, user.role
+    console.print(f"[green]created[/] {email} · {user_role} · org {org_id}")
+    if raw:
+        console.print(
+            Panel(
+                f"[bold]{raw}[/]",
+                title="[bold]Token issued — copy it now[/]",
+                title_align="left",
+                border_style="yellow",
+            )
+        )
+        console.print("  [dim]Only a hash is stored; this value cannot be shown again.[/]")
+    else:
+        console.print(f"  [dim]Next: agentfox admin auth issue {email}[/]")
+
+
+def list_users(as_json: bool = typer.Option(False, "--json")) -> None:
+    """List operators in every tenant on this database."""
+    import json
+
+    from sqlalchemy import select
+
+    from agentfox.core.models import User
+    from agentfox.core.tenancy import system_scope
+
+    with system_scope("listing operators"), _session() as session:
+        rows = [
+            {"email": u.email, "role": u.role, "org": u.org_id, "active": u.active}
+            for u in session.scalars(select(User).order_by(User.org_id, User.email))
+        ]
+    if as_json:
+        console.print_json(json.dumps(rows))
+        return
+    if not rows:
+        console.print(
+            "[dim]No operators. Create one with "
+            "`agentfox admin users create EMAIL --role owner`.[/]"
+        )
+        return
+    table = Table(box=None, padding=(0, 2), header_style="dim")
+    for column in ("email", "role", "org", "active"):
+        table.add_column(column)
+    for row in rows:
+        table.add_row(row["email"], row["role"], row["org"], "yes" if row["active"] else "no")
+    console.print(table)
+
+
 def register(app: typer.Typer) -> None:
     auth_app = typer.Typer(help="Operator tokens and authentication mode.", no_args_is_help=True)
     auth_app.command(name="issue")(issue)
@@ -222,3 +307,10 @@ def register(app: typer.Typer) -> None:
     auth_app.command(name="revoke")(revoke)
     auth_app.command(name="status")(status)
     app.add_typer(auth_app, name="auth")
+    users_app = typer.Typer(
+        help="Operators: create the first one on a fresh install, list them.",
+        no_args_is_help=True,
+    )
+    users_app.command(name="create")(create_user)
+    users_app.command(name="list")(list_users)
+    app.add_typer(users_app, name="users")

@@ -313,3 +313,56 @@ def test_held_out_document_mostly_compiles(held_out):
     """
     assert held_out.auto_rate >= 0.6
     assert len(held_out.rules) >= 7
+
+
+# ---------------------------------------------------------------------------
+# #2 / #3 — thousands separators and count ladders
+# ---------------------------------------------------------------------------
+
+
+def test_a_thousands_separator_is_not_a_clause_break():
+    from agentfox.business.compile import _clauses
+
+    clauses = _clauses("Exports over 10,000 rows require approval from the data team.")
+    assert len(clauses) == 1
+    assert clauses[0].lower == 10_000
+    assert not clauses[0].source.startswith("000")
+
+
+def test_a_row_count_sentence_is_not_folded_into_a_money_ladder():
+    from agentfox.business.compile import compile_document
+
+    result = compile_document(
+        "Credits under $50 are auto-approved. Credits above $500 require finance approval.\n"
+        "Exports over 10,000 rows require approval from the data team.",
+        key_prefix="billing",
+    )
+    ladders = {r.definition["tool"]: r.definition for r in result.rules}
+    credit = ladders["billing.credit"]
+    assert all("rows" not in band["reason"] for band in credit["bands"])
+    assert all(not band["reason"].startswith("000") for band in credit["bands"])
+
+    export = ladders["data.export"]
+    assert export["unit"] == "count"
+    assert export["field"] == "arguments.rows"
+    assert export["bands"][0] == {
+        "upto": 10_000,
+        "outcome": "allow",
+        "reason": export["bands"][0]["reason"],
+    }
+    assert export["bands"][-1]["outcome"] == "escalate"
+
+
+def test_a_row_count_ladder_compiles_without_asking_for_a_unit():
+    from agentfox.business.compile import compile_document
+
+    result = compile_document(
+        "Data exports under 1,000 rows are allowed. Exports between 1,000 and 50,000 rows "
+        "require a verification step, and exports over 50,000 rows require approval from "
+        "the data team.",
+        key_prefix="rows",
+    )
+    assert not [r for r in result.review if "unit" in r.question.lower()]
+    (rule,) = result.rules
+    assert rule.definition["unit"] == "count"
+    assert [b.get("upto") for b in rule.definition["bands"]] == [1000, 50000, None]

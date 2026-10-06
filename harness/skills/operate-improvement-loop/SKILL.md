@@ -135,9 +135,15 @@ agentfox policy proposals from-labels --days 30 --json
 ```
 
 It turns labelled false positives into `policy.rule_min_score` proposals against the rule
-that enforces the cut-off. Raising a rule's `min_score` loosens it, so the loop **files
-proposals and applies nothing**. Read the skipped reasons out loud; they usually mean no rule
-covers that detector. The same work runs daily as the `tuning.propose` job.
+that enforces the cut-off and fired on the labelled decisions. Raising a rule's `min_score`
+loosens it, so the loop **files proposals and applies nothing**. Each proposal is scoped to
+the agents the labels came from (`agent:<slug>`; org-wide only when the labels cover every
+agent the rule governs) and carries a replay proof, so it is `proven` and a person can
+approve it; one that would lose a labelled true positive stays `proposed`. Show the user
+`proof.recorded_detections_that_would_stop_firing`: detections nobody labelled that the
+change would also let through. A proposal the labels no longer support is superseded on the
+next run. Read the skipped reasons out loud; they usually mean no rule covers that detector.
+The same work runs daily as the `tuning.propose` job.
 
 ## 9. The kill switch
 

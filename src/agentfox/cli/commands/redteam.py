@@ -25,10 +25,18 @@ def redteam_run(
     ),
     budget: int = typer.Option(3, "--budget", help="Attempts per probe in adaptive mode."),
     seed: int = typer.Option(1337, "--seed", help="Fixes the mutation program."),
-    deployment_probes: bool = typer.Option(
-        True,
+    deployment_probes: bool | None = typer.Option(
+        None,
         "--deployment-probes/--no-deployment-probes",
-        help="Generate probes from this deployment's own grants, impacts and bound policies.",
+        help="Adaptive mode only: also generate probes from this deployment's own grants, "
+        "impacts and bound policies (on by default with --adaptive). The static suite "
+        "always runs the built-in probes alone.",
+    ),
+    allow_escapes: bool = typer.Option(
+        False,
+        "--allow-escapes",
+        help="Exit 0 even when an attack got through. By default an escaped attack exits 1, "
+        "so the command can gate CI.",
     ),
 ) -> None:
     """Run adversarial probes against the deployed configuration.
@@ -36,12 +44,23 @@ def redteam_run(
     This measures whether *this configuration* got weaker, against known attack classes.
     It is not a robustness certificate, and `--adaptive` does not make it one: every
     published result says an attacker who adapts eventually gets through.
+
+    Exits 1 when any attack got through (unless --allow-escapes). Probes are simulated:
+    their tool calls are evaluated without writing decisions, so they never show up
+    in findings or in what `policy simulate` replays. The campaign itself, and a
+    finding naming the attacks that got through, are recorded.
     """
     from sqlalchemy import select
 
     from agentfox.core.models import RedTeamFinding
     from agentfox.evaluation import run_campaign
 
+    if deployment_probes and not adaptive:
+        console.print(
+            "[yellow]--deployment-probes has no effect without --adaptive[/] — the static "
+            "suite runs the built-in probes only. Add --adaptive to probe this "
+            "deployment's own grants."
+        )
     keys = [p.strip() for p in probes.split(",")] if probes else None
     with _session() as session:
         campaign = run_campaign(
@@ -51,7 +70,7 @@ def redteam_run(
             adaptive=adaptive,
             budget=budget,
             seed=seed,
-            include_deployment_probes=deployment_probes,
+            include_deployment_probes=deployment_probes is not False,
         )
         stats = campaign.summary_json
         findings = list(
@@ -105,10 +124,7 @@ def redteam_run(
     adaptive_stats = stats.get("adaptive") or {}
     by_class = adaptive_stats.get("escape_rate_by_semantics") or {}
     if by_class:
-        console.print(
-            "  escapes by payload kind: "
-            + "  ".join(f"{name} {value}" for name, value in sorted(by_class.items()))
-        )
+        console.print("  escapes by payload kind: " + "  ".join(_escape_cells(by_class)))
     if adaptive_stats.get("observe_mode_policies"):
         console.print(
             "  [yellow]note[/] — "
@@ -132,6 +148,30 @@ def redteam_run(
             row["probe"], row["severity"], row["owasp"] or "—", row["verdict"] or "—", result
         )
     console.print(table)
+
+    escaped = int(stats.get("attacks_succeeded") or 0)
+    if escaped and not allow_escapes:
+        console.print(
+            f"\n[bold red]{escaped} attack(s) got through[/] — exit 1. "
+            "[dim]Pass --allow-escapes to report without failing.[/]"
+        )
+        raise typer.Exit(1)
+
+
+def _escape_cells(by_class: dict) -> list[str]:
+    """``readable 0/8  requires_decode 2/3 (67%)`` rather than the raw stats dicts."""
+    cells = []
+    for name, value in sorted(by_class.items()):
+        if isinstance(value, dict):
+            escapes, attempts = value.get("escapes", 0), value.get("attempts", 0)
+            rate = value.get("escape_rate")
+            cell = f"{name} {escapes}/{attempts}"
+            if escapes and rate is not None:
+                cell += f" ({rate:.0%})"
+            cells.append(cell)
+        else:
+            cells.append(f"{name} {value}")
+    return cells
 
 
 @redteam_app.command("probes")

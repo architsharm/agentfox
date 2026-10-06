@@ -17,13 +17,12 @@ from sqlalchemy.orm import Session
 from agentfox.containment.escalation import (
     DEFAULT_CONDITIONS,
     assess,
-    breached_handoffs,
-    detect_false_resolution,
     detect_missed_escalation,
     escalation_report,
     get_policy,
     handoff_completeness,
     record_turn,
+    run_scan,
     set_policy,
     turn_depth_risk,
 )
@@ -122,7 +121,17 @@ def capture_turn(
         failed=payload.failed,
         confidence=payload.confidence,
     )
-    return {"id": turn.id, "turn_index": turn.turn_index, "signals": turn.signals_json}
+    # Set when an enforcing escalation policy handed the conversation off on this turn
+    # (or an earlier one): the caller should stop answering and tell the user.
+    handoff_id = session.scalar(
+        select(Handoff.id).where(Handoff.session_id == payload.session_id).limit(1)
+    )
+    return {
+        "id": turn.id,
+        "turn_index": turn.turn_index,
+        "signals": turn.signals_json,
+        "handoff_id": handoff_id,
+    }
 
 
 @router.get("/conversations/{session_id}")
@@ -213,14 +222,7 @@ def scan(
     Retroactive hand-offs are the point. Recording that a person was left waiting and
     then leaving them waiting produces an audit artefact, not a control.
     """
-    result = detect_missed_escalation(session, since_hours=since_hours, agent_slug=agent)
-    false_resolutions = detect_false_resolution(session, since_hours=since_hours)
-    breached = breached_handoffs(session)
-    return {
-        **result,
-        "false_resolutions": len(false_resolutions),
-        "sla_breached": [h.id for h in breached],
-    }
+    return run_scan(session, since_hours=since_hours, agent_slug=agent)
 
 
 @router.get("/report")

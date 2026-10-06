@@ -88,7 +88,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "service_auth_secret",
         "env": "AGENTFOX_SERVICE_AUTH_SECRET",
         "def": "dev-insecure-service-secret",
-        "what": "Shared between the gateway and the dashboard for the GitHub sign-in provisioning call. Must be identical on both, and must be changed for any real deployment."
+        "what": "Shared between the gateway and the dashboard for the GitHub sign-in provisioning call, which mints owner tokens. Must be identical on both. Outside development the gateway refuses to start while it is the published default."
       },
       {
         "key": "token_encryption_key",
@@ -550,7 +550,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "audit_signing_key",
         "env": "AGENTFOX_AUDIT_SIGNING_KEY",
         "def": "dev-insecure-checkpoint-key",
-        "what": "Signs audit-chain checkpoints. Change it before any real deployment, and keep it outside the database."
+        "what": "Signs audit-chain checkpoints. Keep it outside the database. Outside development the gateway refuses to start while it is the published default."
       },
       {
         "key": "audit_checkpoint_interval",
@@ -613,6 +613,18 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Whether scheduled jobs are queued."
       },
       {
+        "key": "monitor_batch_limit",
+        "env": "AGENTFOX_MONITOR_BATCH_LIMIT",
+        "def": "5",
+        "what": "Most due monitors one monitors.run job runs; the rest wait for the next runner call."
+      },
+      {
+        "key": "monitor_failure_threshold",
+        "env": "AGENTFOX_MONITOR_FAILURE_THRESHOLD",
+        "def": "3",
+        "what": "Failed runs in a row before a monitor raises a monitor_failing finding."
+      },
+      {
         "key": "job_stuck_after_seconds",
         "env": "AGENTFOX_JOB_STUCK_AFTER_SECONDS",
         "def": "900",
@@ -623,6 +635,24 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_JOB_BACKOFF_BASE_SECONDS",
         "def": "60",
         "what": "Base of the exponential retry delay."
+      },
+      {
+        "key": "live_probes_enabled",
+        "env": "AGENTFOX_LIVE_PROBES_ENABLED",
+        "def": "true",
+        "what": "Kill switch for scheduled probes against deployed agents. Each target also needs its own recorded opt-in."
+      },
+      {
+        "key": "showcase_enabled",
+        "env": "AGENTFOX_SHOWCASE_ENABLED",
+        "def": "false",
+        "what": "Probe the demo support agent in its own tenant every hour and publish the counts at GET /api/public/showcase."
+      },
+      {
+        "key": "showcase_org_id",
+        "env": "AGENTFOX_SHOWCASE_ORG_ID",
+        "def": "org_showcase",
+        "what": "The tenant the showcase lives in. The public endpoint reads nothing else."
       }
     ]
   },
@@ -683,6 +713,24 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_WEBHOOK_MIN_SEVERITY",
         "def": "high",
         "what": "critical, high, medium or low."
+      },
+      {
+        "key": "slack_webhook_url",
+        "env": "AGENTFOX_SLACK_WEBHOOK_URL",
+        "def": "unset",
+        "what": "Slack incoming webhook for monitor findings opened, reopened or closed. Needs allow_egress. A tenant can also set its own (PUT /api/alerts/slack)."
+      },
+      {
+        "key": "slack_min_severity",
+        "env": "AGENTFOX_SLACK_MIN_SEVERITY",
+        "def": "medium",
+        "what": "critical, high, medium or low."
+      },
+      {
+        "key": "github_webhook_secret",
+        "env": "AGENTFOX_GITHUB_WEBHOOK_SECRET",
+        "def": "unset",
+        "what": "Verifies X-Hub-Signature-256 on /api/integrations/github/webhook. A connection may carry its own instead; with neither, push deliveries are refused."
       },
       {
         "key": "correlation_push",
@@ -812,7 +860,7 @@ export default function Page() {
         <code>webhook_min_severity</code>) stop startup on a typo rather than falling back.
         Settings are read once per process.
       </p>
-      <Code>{`export NOMETRIA_FAIL_MODE=closed
+      <Code>{`export AGENTFOX_FAIL_MODE=closed
 export AGENTFOX_ENABLED_DETECTORS='["pii.native","secrets.native"]'
 python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail_mode, s.enabled_detectors)"`}</Code>
       <Output>{`closed ['pii.native', 'secrets.native']`}</Output>

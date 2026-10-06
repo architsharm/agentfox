@@ -51,29 +51,46 @@ TIER_COLOUR = {
 
 def boundary_set(
     agent: str = typer.Argument(..., help="Agent slug."),
-    systems: str = typer.Option("", "--systems", help="Comma-separated systems of record."),
-    months: int | None = typer.Option(None, "--coverage-months", help="Rolling window."),
-    answerable: str = typer.Option(
-        "fact,aggregate,procedure", "--answerable", help="Question types this agent may answer."
+    systems: str | None = typer.Option(
+        None, "--systems", help="Comma-separated systems of record."
     ),
-    out_of_scope: str = typer.Option("", "--out-of-scope", help="Comma-separated topics."),
-    mode: str = typer.Option("observe", "--mode", help="observe | enforce"),
+    months: int | None = typer.Option(None, "--coverage-months", help="Rolling window."),
+    answerable: str | None = typer.Option(
+        None,
+        "--answerable",
+        help="Question types this agent may answer (default fact,aggregate,procedure).",
+    ),
+    out_of_scope: str | None = typer.Option(None, "--out-of-scope", help="Comma-separated topics."),
+    mode: str | None = typer.Option(
+        None, "--mode", help="observe | enforce (a new boundary starts in observe)"
+    ),
 ) -> None:
     """Declare what an agent is allowed to answer from.
 
     Until this exists nothing stops the agent inventing an answer to a question it has
     no data for, which is the single failure most likely to reach a customer.
+
+    Re-running it changes only the options you pass, so `--mode enforce` on its own
+    switches enforcement on and keeps the systems, coverage and topics already declared.
     """
     from sqlalchemy import select
 
     from agentfox.core.models import Agent
     from agentfox.grounding.answerability import QUESTION_TYPES, declare_boundary
 
-    types = [t.strip() for t in answerable.split(",") if t.strip()]
-    unknown = set(types) - set(QUESTION_TYPES)
+    def _split(value: str | None) -> list[str] | None:
+        if value is None:
+            return None
+        return [v.strip() for v in value.split(",") if v.strip()]
+
+    types = _split(answerable)
+    unknown = set(types or ()) - set(QUESTION_TYPES)
     if unknown:
         console.print(f"[red]unknown question type(s): {sorted(unknown)}[/]")
         console.print(f"[dim]choose from: {', '.join(QUESTION_TYPES)}[/]")
+        raise typer.Exit(1)
+    if mode is not None and mode not in ("observe", "enforce"):
+        console.print(f"[red]unknown mode {mode!r}[/] [dim](observe | enforce)[/]")
         raise typer.Exit(1)
 
     with _session() as session:
@@ -81,21 +98,28 @@ def boundary_set(
         if record is None:
             print_unknown_agent(console, session, agent)
             raise typer.Exit(1)
-        declare_boundary(
+        boundary = declare_boundary(
             session,
             agent_id=record.id,
-            systems_of_record=[s.strip() for s in systems.split(",") if s.strip()],
+            systems_of_record=_split(systems),
             coverage_months=months,
             answerable_types=types,
-            out_of_scope_topics=[t.strip() for t in out_of_scope.split(",") if t.strip()],
+            out_of_scope_topics=_split(out_of_scope),
             mode=mode,
         )
+        stored_types = list(boundary.answerable_types or [])
+        stored_months = boundary.coverage_months
+        stored_systems = list(boundary.systems_of_record or [])
+        stored_mode = boundary.mode
 
     console.print(f"[green]✓[/] boundary declared for [bold]{agent}[/]")
-    console.print(f"  answerable: {', '.join(types)}")
-    if months:
-        console.print(f"  coverage:   last {months} months")
-    if mode == "observe":
+    console.print(f"  answerable: {', '.join(stored_types)}")
+    if stored_systems:
+        console.print(f"  systems:    {', '.join(stored_systems)}")
+    if stored_months:
+        console.print(f"  coverage:   last {stored_months} months")
+    console.print(f"  mode:       {stored_mode}")
+    if stored_mode == "observe":
         console.print(
             "  [dim]observe mode — refusals are recorded, not applied. "
             "Re-run with --mode enforce when the dry runs look right.[/]"
@@ -310,7 +334,12 @@ def escalation_set(
     repeated_failure: int | None = typer.Option(None, "--repeated-failure"),
     sla_minutes: int = typer.Option(60, "--sla-minutes"),
     owner_role: str = typer.Option("support", "--owner"),
-    mode: str = typer.Option("observe", "--mode"),
+    mode: str = typer.Option(
+        "observe",
+        "--mode",
+        help="observe: record missed escalations as findings. enforce: hand the "
+        "conversation off on the turn it qualifies.",
+    ),
 ) -> None:
     """Declare when this agent must hand off to a human."""
     from sqlalchemy import select
@@ -345,6 +374,16 @@ def escalation_set(
     console.print(f"[green]✓[/] escalation policy for [bold]{agent or 'all agents'}[/]")
     console.print(f"  owner {owner_role} · SLA {sla_minutes} min · {mode} mode")
     console.print(f"  [dim]conditions: {', '.join(sorted(applied))}[/]")
+    if mode == "enforce":
+        console.print(
+            "  [dim]enforce: a conversation is handed off on the turn it qualifies, and the "
+            "hourly scan queues any it missed.[/]"
+        )
+    else:
+        console.print(
+            "  [dim]observe: nothing is handed off for you; the hourly scan records missed "
+            "escalations as findings. --mode enforce queues hand-offs.[/]"
+        )
 
 
 def escalation_scan(
@@ -357,10 +396,15 @@ def escalation_scan(
     conversation where the agent kept going instead of handing off looks entirely
     ordinary in the telemetry.
     """
-    from agentfox.containment.escalation import detect_missed_escalation
+    from agentfox.containment.escalation import detect_missed_escalation, run_scan
 
     with _session() as session:
-        result = detect_missed_escalation(session, since_hours=hours, raise_findings=apply)
+        if apply:
+            # The same acting path as POST /api/escalation/scan: findings, hand-offs,
+            # false resolutions and SLA breaches.
+            result = run_scan(session, since_hours=hours)
+        else:
+            result = detect_missed_escalation(session, since_hours=hours, raise_findings=False)
 
     rate = result["missed_rate"]
     colour = "red" if rate > 0.05 else "green"
@@ -375,10 +419,13 @@ def escalation_scan(
             f"  [dim]{record['session_id']}[/] {record['turns']} turns · "
             f"qualified at turn {record['first_qualifying_turn']} · {triggers}"
         )
+    if apply and result.get("sla_breached"):
+        console.print(f"  [red]{len(result['sla_breached'])} hand-off(s) past their SLA[/]")
     if result["missed"] and not apply:
         console.print(
             "\n  [dim]Read-only. Re-run with --apply to raise findings and retroactive "
-            "hand-offs so the people still waiting are actually queued.[/]"
+            "hand-offs so the people still waiting are actually queued. The scheduled "
+            "escalation.scan job does this hourly where the policy's mode is enforce.[/]"
         )
 
 
@@ -471,7 +518,9 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
     ratio = report["over_permission"]
     colour = "red" if ratio > 0.2 else "yellow" if ratio else "green"
     console.print(
-        f"[bold]{report['requests']}[/] request(s) · {report['principals']} principal(s) · "
+        f"[bold]{report['requests']}[/] request(s) checked · "
+        f"{report.get('requests_withholding', 0)} withheld something · "
+        f"{report['principals']} principal(s) · "
         f"[{colour}]{ratio:.1%}[/] of retrieved content was withheld"
     )
     for reason, count in report["reasons"].items():

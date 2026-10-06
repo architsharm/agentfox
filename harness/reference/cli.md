@@ -63,7 +63,7 @@ in CI and under the MCP server it prints nothing extra. `hooks run`, `hooks daem
 | `agentfox demo` | W, F, **BLK** | 13-step offline walkthrough. Promotes `baseline` to enforce for step 8, then restores its previous mode. Writes demo data, so use a scratch DB. |
 | `agentfox scan [PATH=.] [--json] [--limit/-n 15] [--fail] [--submit/--no-submit]` | R (static AST scan, never imports target code) | Same as `scan repo`. `--fail` → exit 1 if any model call is ungoverned. Use in CI. |
 | `agentfox scan --sessions [PATH=.] [--json] [--skip-sessions] [--submit/--no-submit]` | R (reads `~/.claude/projects/**/*.jsonl` unless `--skip-sessions`) | Repo scan + local AI-tool sessions + a live detector check. Always exit 0. Pass `--skip-sessions` unless the user asked for the session scan. |
-| `agentfox scan mcp [SERVER] [--config PATH] [--file tools.json \| --seed-fixture] [--json]` | W | No setup: reads `.mcp.json`, `.cursor/mcp.json` or `claude_desktop_config.json` and registers every declared server. Reports where each is declared, what it can reach, config problems (unpinned, plain-http remote, no auth, literal credentials) and the lethal trifecta across one config. Never starts a server. `--file` adds the server's real `tools/list`. |
+| `agentfox scan mcp [SERVER] [--config PATH] [--file tools.json \| --seed-fixture] [--json]` | W | No setup: reads `.mcp.json`, `.cursor/mcp.json` or `claude_desktop_config.json` and registers every declared server. Reports where each is declared, what it can reach, config problems (unpinned, plain-http remote, no auth, literal credentials) and the lethal trifecta across one config. Never starts a server. `--file` adds the server's real `tools/list` (`{"tools": [...]}`, the bare array, or the JSON-RPC response). Exit 1 on any critical issue (poisoned description, critical config issue, lethal trifecta). |
 | `agentfox scan skills [PATH=.] [--persist]` | R (W with `--persist`) | `SKILL.md` files: planted instructions and declared danger. |
 | `agentfox scan runtime` | W | Shadow/unowned agents, registry drift, identity posture, delegation cycles. |
 | `agentfox serve [--host 127.0.0.1] [--port 8080] [--reload]` | FG | Same as `serve api`. Gateway + API (`/v1/*`, `/api/*`, `/docs`). No `--workers`. |
@@ -81,6 +81,8 @@ anywhere.
 | Command | Effect | Notes |
 |---|---|---|
 | `agents list [--json] [--stopped]` | R\* | Registered + shadow agents. `--stopped`: only quarantined/killed agents, with reason and actor. |
+| `agents register SLUG [--name] [--owner EMAIL] [--team] [--env] [--risk-tier]` | W | Register (or update) an agent so it is owned, not shadow. Options left out keep the current values. Audited. |
+| `agents budget SLUG [--max-calls N] [--max-tokens N] [--max-cost-usd F] [--max-depth N] [--window minute\|hour\|day] [--clear]` | W | No option: show caps and usage. Each option sets one cap (0 removes it); over a cap, `budget.exhausted` blocks until the window rolls. Exit 1 on unknown agent. Audited. |
 | `agents lineage SLUG [--depth 2]` | W | Blast radius: what the agent can reach. |
 | `agents quarantine SLUG [--reason/-r TEXT]` | W, **BLK** | Reversible, audited. Exit 1 on unknown agent. |
 | `agents kill SLUG [--reason/-r TEXT]` | W, **BLK** | Stop now. |
@@ -94,6 +96,9 @@ anywhere.
 | `permit list [AGENT] [--json]` | R | Grants with their limits, taint ceiling and expiry. |
 | `permit revoke CAPABILITY_ID [--yes]` | W | Accepts the short id the table prints. |
 | `permit user RESOURCE PRINCIPAL [--kind group\|subject] [--classes CSV] [--purposes CSV]` | W | An end user's entitlement to a resource. |
+| `permit approvals list [--status pending\|approved\|denied\|expired\|used\|all] [--agent SLUG] [--json]` | R | Calls held for a person. Expires stale ones first (expiry denies). |
+| `permit approvals show ID [--json]` | R | The held call, its arguments, why, and the decision. Accepts the short id. |
+| `permit approvals approve ID [--rationale/-r TEXT] [--as WHO]` · `permit approvals deny ID …` | W, **BLK** | Approving lets the agent's retry with that `approval_id` run once (same agent, tool, arguments, within 30 min). Audited. |
 
 ## `declare` — the facts containment reasons over (P7, P8, P9, P10, P11, P18)
 
@@ -106,7 +111,7 @@ anywhere.
 | `declare boundary AGENT [--systems CSV] [--coverage-months N] [--answerable CSV] [--out-of-scope CSV] [--mode observe\|enforce]` | W (**BLK** with `--mode enforce`) | What the agent may answer from. |
 | `declare source KEY [--tier/-t unverified] [--owner] [--domain] [--sla-hours N] [--updated ISO\|now] [--title]` | W | Tiers: `system_of_record`, `approved`, `unverified`, `external`. |
 | `declare import-sources FILE.json` | W | Bulk `declare source`. |
-| `declare escalation [--agent] [--turn-depth N] [--repeated-failure N] [--sla-minutes 60] [--owner support] [--mode observe]` | W | When a conversation must reach a human. |
+| `declare escalation [--agent] [--turn-depth N] [--repeated-failure N] [--sla-minutes 60] [--owner support] [--mode observe]` | W | When a conversation must reach a human. `--mode enforce` hands a conversation off on the turn it qualifies; observe records missed ones as findings (hourly `escalation.scan` job). |
 | `declare principal SUBJECT [--groups/-g CSV] [--clearances CSV] [--residency] [--display]` | W | The human an agent acts for. |
 | `declare list [tools\|sources] [--json]` | R\* | Declared tools (impact, triggers) and sources (tier, freshness). `--json` needs a kind. |
 
@@ -115,9 +120,9 @@ anywhere.
 | Command | Effect | Notes |
 |---|---|---|
 | `policy list` · `policy packs` | R\* | Latest version, mode, rule count · the bundled packs. |
-| `policy lint` | R\* | The whole hierarchy. Exit 1 on critical/high findings. |
+| `policy lint [FILE...]` | R\* | The whole bound hierarchy, or the given files. Exit 1 on critical/high findings. |
 | `policy effective [--agent] [--team] [--user] [--environment ENV]` | R\* | Which rules are in force and where each came from. `--environment` defaults to `NOMETRIA_ENVIRONMENT`. |
-| `policy validate FILE` | R, offline | One file: parse + compile to Rego without saving. Exit 1 if invalid. **Always run before simulate.** |
+| `policy validate FILE` | R, offline | One file: parse, full lint (unreachable rules, unknown enum values) and compile to Rego, without saving. Exit 1 if invalid or on critical/high findings. **Always run before simulate.** |
 | `policy simulate --file/-f FILE [--agent] [--since-days 30] [--limit 1000]` | W (records the simulation) | Replays recorded decisions. **Exit 1 if the candidate would newly block production traffic.** |
 | `policy enforce KEY` | W, **BLK** | The step that starts blocking. Audited. |
 | `policy observe KEY` | W, **BLK** | Demote back to observe. |
@@ -159,12 +164,12 @@ or superseded. A change that loosens a control is never applied automatically.
 | Command | Effect | Notes |
 |---|---|---|
 | `test suites` | R\* | Registered eval suites. |
-| `test run SUITE [--provider echo] [--model echo-1] [--agent] [--scorers CSV]` | W | |
-| `test gate SUITE [--provider echo] [--model echo-1] [--baseline RUN_ID] [--min-pass-rate F] [--junit PATH] [--sarif PATH]` | W, F | **Exit 1 on regression.** No `--agent`. |
+| `test run SUITE [--provider echo] [--model echo-1] [--agent] [--scorers CSV]` | W | An unknown scorer key exits 1. |
+| `test gate SUITE [--provider echo] [--model echo-1] [--baseline RUN_ID] [--min-pass-rate F] [--agent] [--scorers CSV] [--junit PATH] [--sarif PATH]` | W, F | **Exit 1 on regression or on any errored case.** Scorers and agent default to the baseline run's. |
 | `test baseline RUN_ID [--label main]` | W | |
-| `test online AGENT [--since-days 7] [--rate F]` | W | Scores sampled production traces. |
+| `test online AGENT [--since-days 7] [--rate F]` | W | Scores sampled production traces; reports sampled traces with no recorded output as not scored. |
 | `test probes` | R, offline | 22 built-in probes + wrapped runners. |
-| `test redteam AGENT [--probes CSV] [--adaptive] [--budget N] [--seed N] [--no-deployment-probes]` | W | Probes the agent's real grants and policy bindings. `--adaptive` mutates a blocked probe and retries, and reports a posture delta against the last comparable campaign rather than a pass rate. Never a robustness certificate. Exit 0 always. |
+| `test redteam AGENT [--probes CSV] [--adaptive] [--budget N] [--seed N] [--no-deployment-probes] [--allow-escapes]` | W | Probes the agent's real grants and policy bindings. `--adaptive` mutates a blocked probe and retries, and reports a posture delta against the last comparable campaign rather than a pass rate; deployment probes run only with `--adaptive`. Probe tool calls are not stored as decisions. Never a robustness certificate. Exit 1 when an attack got through, unless `--allow-escapes`. |
 | `test action STATEMENT [--kind sql\|shell\|http] [--method GET] [--dialect postgres] [--environment production]` | R, offline | Exit 1 if critical. Blast radius / reversibility of a SQL/shell/HTTP artefact. |
 | `test boundary AGENT "QUESTION"` | R | Would it abstain, and what would it say? |
 | `test rule KEY "V1,V2,..."` | R | Try values against a business rule. |
@@ -199,6 +204,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin auth status` | R | Is the dev `X-Nometria-User` header accepted here? It must not be in production. |
 | `admin auth issue EMAIL [--name/-n] [--days 365]` | W | **Shows the token once.** Never paste it into chat logs or files. |
 | `admin auth tokens [--json]` · `admin auth revoke TOKEN_ID` | W (audit entry) · W | |
+| `admin users create EMAIL [--role owner] [--name/-n] [--org] [--token]` · `admin users list [--json]` | W (audit entry) · R | First operator on a fresh install, no demo data. `--token` shows a token once. |
 | `admin db upgrade [--revision head]` · `admin db current` · `admin db downgrade REVISION` | W · R · W (**destructive**) | Needs a source checkout (`alembic.ini`, `migrations/`). |
 | `admin catalog validate` | R, offline | Catalog consistency: unique keys, known frameworks and rule kinds, obligations parse. Exit 1 on problems. |
 | `admin catalog sync` | W | Load control catalog + obligations from YAML. |
@@ -206,7 +212,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin checkpoint` | W | Signed checkpoint over the audit chain head. |
 | `admin seed [--show-keys]` | W | Demo agents, policies, controls, eval suite. Agent keys are masked unless `--show-keys`; they're only created on first seed. |
 | `admin version` | R | Versions of every component that participates in a decision. |
-| `admin hooks install --agent SLUG [--harness claude] [--path .] [--write]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. |
+| `admin hooks install --agent SLUG [--harness claude] [--path .] [--write] [--env ENV] [--grant/--no-grant]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. `--write` also registers the agent (development unless `--env`), declares the harness's built-in tools and grants them (`--no-grant` to skip). |
 | `admin hooks status` | R | Is the daemon up, and does a deny on this harness actually stop anything? |
 | `admin hooks daemon [--socket PATH]` · `admin hooks run --harness H [--agent]` | FG · stdio | The warm process and the per-call hook. Installed configs call `agentfox hooks run`, which keeps working. |
 | `admin mcp tools` | R | Lists the MCP server's tools with one-line descriptions. |

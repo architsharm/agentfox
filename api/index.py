@@ -6,10 +6,12 @@ database, which evidence directory, which auth mode) is entirely environment var
 by the same design that lets one container run in dev, docker-compose, or a VPC without
 a rebuild (see dashboard/next.config.mjs for the equivalent reasoning on the frontend).
 
-`agentfox` is installed as a regular dependency from requirements.txt (which points
-at the repo root, `..`) rather than reached via a sys.path trick: Root Directory for
-this Vercel project is "api", so only files that land in site-packages ship with the
-function — a loose sibling directory like ../src never does.
+`agentfox` is installed from the prebuilt wheel checked in at `api/vendor/`, listed
+in requirements.txt next to this file (that file explains why a path dependency on
+the repo root does not work on Vercel). Root Directory for this Vercel project is
+"api", so only what lands in site-packages ships with the function. The wheel is
+therefore the deployed code: a change to src/agentfox reaches production only once
+the wheel is rebuilt (`uv build --wheel --out-dir api/vendor`) and committed.
 """
 
 from agentfox.gateway.app import app

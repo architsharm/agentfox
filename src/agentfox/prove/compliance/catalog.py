@@ -182,6 +182,43 @@ def review_mapping(
     return count
 
 
+def sign_off_mapping(
+    session: Session,
+    control_key: str,
+    framework: str,
+    reviewer: str,
+    reference: str | None = None,
+    *,
+    actor_id: str | None = None,
+) -> int:
+    """Record a reviewer's sign-off and its audit-chain entry, as one act.
+
+    The only sign-off path: the web app's review button and `agentfox report signoff`
+    both call this, so a sign-off made from either leaves the same
+    `compliance.mapping_reviewed` entry. Nothing is appended when no mapping matched.
+    """
+    from agentfox.prove.audit import chain
+
+    count = review_mapping(session, control_key, framework, reviewer, reference)
+    if count:
+        chain.append(
+            session,
+            "compliance.mapping_reviewed",
+            actor_type="user",
+            actor_id=actor_id or reviewer,
+            subject_type="control",
+            subject_id=control_key,
+            payload={
+                "control_key": control_key,
+                "framework": framework,
+                "reference": reference,
+                "reviewer": reviewer,
+                "mappings": count,
+            },
+        )
+    return count
+
+
 def framework_coverage(
     session: Session, framework: str, directory: Path | None = None
 ) -> dict[str, Any]:

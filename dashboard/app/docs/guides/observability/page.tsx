@@ -43,7 +43,7 @@ export default function Page() {
 
       <TaskTable
         rows={[
-          { task: "Send OpenTelemetry spans in", run: "POST /v1/traces (OTLP/JSON)", href: "#otlp" },
+          { task: "Send OpenTelemetry spans in", run: "POST /v1/traces (OTLP protobuf or JSON)", href: "#otlp" },
           { task: "Find the decision behind a Langfuse or LangSmith run", run: "GET /api/traces/resolve", href: "#correlation" },
           { task: "Scrape metrics", run: "GET /metrics", href: "#metrics" },
           { task: "Export decisions and findings to a SIEM", run: "GET /api/export/siem", href: "#siem" },
@@ -70,7 +70,7 @@ agentfox admin auth status`}</Code>
 │ Anyone who can reach this port is any user they name. That is fine for local     │
 │ work and unacceptable anywhere else.                                             │
 │                                                                                  │
-│ Set NOMETRIA_ENVIRONMENT=production, or NOMETRIA_AUTH_MODE=token, to require API │
+│ Set AGENTFOX_ENVIRONMENT=production, or AGENTFOX_AUTH_MODE=token, to require API │
 │ tokens.                                                                          │
 ╰──────────────────────────────────────────────────────────────────────────────────╯`}</Output>
       <p>
@@ -194,73 +194,29 @@ agentfox admin auth status`}</Code>
       </ul>
       <InTheApp path="/app/traces">Traces → the trace, with each span and its attributes</InTheApp>
 
-      <Callout kind="warning" title="JSON only: the default OTLP exporters will fail">
-        The route parses the body as JSON. A protobuf body (
-        <code>application/x-protobuf</code>, the default for OTLP/HTTP exporters) or a
-        gzip-compressed one gets <code>500 Internal Server Error</code>. The Python SDK&apos;s{" "}
-        <code>OTLPSpanExporter</code> only speaks protobuf, so pointed at{" "}
-        <code>/v1/traces</code> it retries and then logs{" "}
-        <code>Failed to export span batch due to timeout, max retries or shutdown.</code>
-      </Callout>
       <p>
-        From Python, export JSON instead. This exporter reuses the OpenTelemetry SDK&apos;s
-        own OTLP encoder (it ships with <code>opentelemetry-exporter-otlp-proto-http</code>)
-        and posts the JSON form:
+        The route accepts both OTLP/HTTP encodings: protobuf (<code>application/x-protobuf</code>,
+        what the OpenTelemetry exporters send by default) and JSON (
+        <code>application/json</code>), either one gzip-compressed (
+        <code>Content-Encoding: gzip</code>). A protobuf request gets the empty protobuf{" "}
+        <code>ExportTraceServiceResponse</code> the OTLP spec asks for; a JSON request gets
+        the summary above. So the stock exporter works as it is:
       </p>
-      <Code lang="python" title="otlp_json_exporter.py">{`"""Send OpenTelemetry spans to AgentFox's /v1/traces as OTLP/JSON."""
-import base64
-import json
-import urllib.request
-
-from google.protobuf.json_format import MessageToDict
-from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-
-
-def _hex_ids(node):
-    # OTLP/JSON carries trace and span ids as hex; protobuf's JSON mapping uses base64.
-    if isinstance(node, dict):
-        for key in ("traceId", "spanId", "parentSpanId"):
-            if key in node:
-                node[key] = base64.b64decode(node[key]).hex()
-        for value in node.values():
-            _hex_ids(value)
-    elif isinstance(node, list):
-        for value in node:
-            _hex_ids(value)
-    return node
-
-
-class AgentFoxJSONExporter(SpanExporter):
-    def __init__(self, endpoint="http://127.0.0.1:8080/v1/traces"):
-        self.endpoint = endpoint
-
-    def export(self, spans):
-        body = _hex_ids(MessageToDict(encode_spans(spans)))
-        request = urllib.request.Request(
-            self.endpoint,
-            data=json.dumps(body).encode(),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=5) as response:
-                return SpanExportResult.SUCCESS if response.status == 200 else SpanExportResult.FAILURE
-        except OSError:
-            return SpanExportResult.FAILURE
-
-    def shutdown(self):
-        pass`}</Code>
       <Code lang="python" title="agent.py">{`from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http import Compression
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-
-from otlp_json_exporter import AgentFoxJSONExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 provider = TracerProvider(resource=Resource.create({"service.name": "research-bot"}))
 provider.add_span_processor(
-    SimpleSpanProcessor(AgentFoxJSONExporter("http://127.0.0.1:8080/v1/traces"))
+    BatchSpanProcessor(
+        OTLPSpanExporter(
+            endpoint="http://127.0.0.1:8080/v1/traces",
+            compression=Compression.Gzip,  # optional
+        )
+    )
 )
 trace.set_tracer_provider(provider)
 
@@ -270,10 +226,13 @@ with tracer.start_as_current_span("tool db.query") as span:
 provider.shutdown()`}</Code>
       <p>
         Run with OpenTelemetry SDK 1.44, the span arrives as a <code>tool</code> span named{" "}
-        <code>tool db.query</code> on a <code>research-bot</code> trace. Use{" "}
-        <code>BatchSpanProcessor</code> instead of <code>SimpleSpanProcessor</code> in
-        production. If you run an OpenTelemetry Collector, its OTLP/HTTP exporter must
-        likewise send JSON without compression; that setup was not tested here.
+        <code>tool db.query</code> on a <code>research-bot</code> trace, with or without gzip.
+        An OpenTelemetry Collector&apos;s <code>otlphttp</code> exporter can point at the same
+        URL. Decoding protobuf needs the <code>opentelemetry-proto</code> package (part of{" "}
+        <code>agentfox[otel]</code>); a server without it answers a protobuf body with{" "}
+        <code>415</code> and a message saying so, and JSON still works. With a token-mode
+        server, add the <code>Authorization: Bearer</code> header through the exporter&apos;s{" "}
+        <code>headers=</code> argument.
       </p>
       <p>
         What ingest does not do: it runs no policy and no detectors over the spans (the trace
@@ -735,7 +694,7 @@ accepted finding.created high Ungoverned agent 'triage-experimental' observed in
           <strong>No webhook arrives.</strong> Egress is off. <code>send_test_event()</code>{" "}
           says so:{" "}
           <code>
-            (False, &apos;egress is disabled (NOMETRIA_ALLOW_EGRESS=false); nothing sent&apos;)
+            (False, &apos;egress is disabled (AGENTFOX_ALLOW_EGRESS=false); nothing sent&apos;)
           </code>
           . The message uses the older variable name; <code>AGENTFOX_ALLOW_EGRESS</code> is the
           one to set. Also check the finding&apos;s severity against{" "}
@@ -744,9 +703,13 @@ accepted finding.created high Ungoverned agent 'triage-experimental' observed in
         </li>
         <li>
           <strong>
-            <code>/v1/traces</code> returns 500.
+            <code>/v1/traces</code> returns 415 or 400.
           </strong>{" "}
-          The body is protobuf or compressed. Send uncompressed JSON (see the exporter above).
+          415: the body is neither protobuf nor JSON, it uses a compression other than gzip or
+          deflate, or it is protobuf and the server lacks <code>opentelemetry-proto</code>{" "}
+          (install <code>agentfox[otel]</code>, or set{" "}
+          <code>OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/json</code>). 400: the body does not
+          decode as what its headers say. The <code>detail</code> field names which.
         </li>
         <li>
           <strong>

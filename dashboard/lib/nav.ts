@@ -243,6 +243,13 @@ export const FLAT: NavItem[] = [
     sitemap: { changeFrequency: "monthly", priority: 0.8 },
   },
   {
+    label: "Live",
+    href: "/live",
+    note: "Our own agent, attacked hourly",
+    summary: "AgentFox probes its own demo agent every hour through the real enforcement path. The results, unedited, including what got through.",
+    sitemap: { changeFrequency: "weekly", priority: 0.7 },
+  },
+  {
     label: "Docs",
     href: "/docs",
     note: "Install and commands",

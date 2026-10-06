@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox import __version__
-from agentfox.core.config import get_settings
+from agentfox.core.config import assert_production_secrets, get_settings
 from agentfox.core.db import init_db
 from agentfox.detection import all_detectors, available_detectors
 from agentfox.gateway.deps import current_user, db
@@ -35,10 +35,12 @@ from agentfox.gateway.routes import (
     jobs,
     memory,
     messaging,
+    monitors,
     onboarding,
     playground,
     policy,
     posture,
+    probes,
     proposals,
     provenance,
     registry,
@@ -93,6 +95,10 @@ async def lifespan(app: FastAPI):
         settings.default_policy_mode,
         settings.allow_egress,
     )
+    from agentfox.gateway.auth import auth_posture
+
+    posture = auth_posture()
+    (log.warning if posture.startswith("DEVELOPMENT") else log.info)("auth: %s", posture)
     # Pay any model-loading cost now, off the request path — a classifier detector
     # that only gets slow once, on its very first call, would otherwise silently
     # degrade the first real request every time this process starts (P3-6's 40ms
@@ -146,6 +152,12 @@ def _judgment_posture() -> dict[str, Any]:
 
 
 def create_app() -> FastAPI:
+    # Before anything else, and here rather than in `lifespan`: a serverless host may
+    # never run the lifespan, and a process that is going to refuse should refuse
+    # before it has served a single request. Outside development, a published service
+    # secret lets anyone mint an owner token, and a published signing key lets anyone
+    # forge the audit chain — neither is a configuration to run degraded on.
+    assert_production_secrets()
     app = FastAPI(
         title="AgentFox Control Plane",
         version=__version__,
@@ -160,7 +172,7 @@ def create_app() -> FastAPI:
     # localhost; nothing here opens the control plane to the internet by itself.
     # The public playground page is the one deliberate exception — it is designed
     # to be called cross-origin, unauthenticated, from wherever it's hosted, so its
-    # origin is additive here via NOMETRIA_PLAYGROUND_CORS_ORIGIN rather than
+    # origin is additive here via AGENTFOX_PLAYGROUND_CORS_ORIGIN rather than
     # widening this list's intent for every other route.
     cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
     cors_origins.extend(get_settings().playground_cors_origins)
@@ -292,6 +304,7 @@ def create_app() -> FastAPI:
     app.include_router(entitlement.router)
     app.include_router(integrations.router)
     app.include_router(jobs.router)
+    app.include_router(monitors.router)
     app.include_router(discovery.router)
     app.include_router(memory.router)
     app.include_router(messaging.router)
@@ -308,6 +321,11 @@ def create_app() -> FastAPI:
     # with. It writes one row to the one table that holds no tenant's data, and calls
     # nothing — see waitlist.py's module docstring for what keeps a public write safe.
     app.include_router(waitlist.router)
+    app.include_router(probes.router)
+    # Unauthenticated and read-only: the marketing site's /live page. It reads only the
+    # showcase tenant, returns counts rather than content, and is cached and rate
+    # limited — see probes.py and evaluation/showcase.py.
+    app.include_router(probes.public_router)
 
     def _health_payload() -> dict[str, Any]:
         degradation = service_health()
@@ -373,7 +391,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/version", tags=["platform"])
     def version() -> dict[str, Any]:
-        """Every version that participates in a decision (X-4 determinism)."""
+        """Every version that participates in a decision, so a verdict can be reproduced."""
         settings = get_settings()
         catalog = load_catalog()
         return {
@@ -436,7 +454,7 @@ def create_app() -> FastAPI:
             "safety.restricted": (
                 "Meta Llama Guard / Google ShieldGemma — capable, but their licences "
                 "aren't OSI-approved (usage restrictions, a MAU clause), so this stays "
-                "opt-in only via NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1, "
+                "opt-in only via AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1, "
                 "regardless of deployment."
             ),
         }
@@ -524,7 +542,7 @@ def create_app() -> FastAPI:
                 for key in sorted(all_providers())
             ],
             "note": (
-                "Hosted providers report unavailable unless NOMETRIA_ALLOW_EGRESS=1 and "
+                "Hosted providers report unavailable unless AGENTFOX_ALLOW_EGRESS=1 and "
                 "a key is configured. Zero egress is the default (NFR-4)."
             ),
         }

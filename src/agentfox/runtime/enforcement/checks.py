@@ -14,7 +14,12 @@ from agentfox.detection import DetectionContext
 from agentfox.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
 from agentfox.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
 from agentfox.detection.trajectory import assess as assess_trajectory
-from agentfox.grounding.commitments import adverse_action_risk, check_disclosure, detect_commitments
+from agentfox.grounding.commitments import (
+    adverse_action_risk,
+    check_disclosure,
+    claims_human,
+    detect_commitments,
+)
 from agentfox.grounding.context_integrity import (
     chunk_quality,
     document_quality,
@@ -444,6 +449,29 @@ class _ChecksMixin:
                         "evidence": finding.to_json(),
                     }
                 )
+
+        # F6.3 — an answer that says it is a person. Ungated, unlike the disclosure
+        # duty below: a false claim to be human is wrong whoever is listening. This is
+        # what `eu.art50.impersonation` reads (via `action_risk`).
+        human_claim = claims_human(text)
+        if human_claim:
+            out["claims_human"] = human_claim
+            issues.append(
+                {
+                    "type": "ai_impersonation",
+                    "severity": "high",
+                    "title": f"the answer claims to be a person: {human_claim!r}",
+                    "control_keys": ["NOM-GOV-05"],
+                }
+            )
+            risks.append(
+                {
+                    "code": "disclosure.claims_human",
+                    "severity": "high",
+                    "detail": f"the answer claims to be a person: {human_claim!r}",
+                    "evidence": {"match": human_claim},
+                }
+            )
 
         # F6.3 — see the docstring: gated on a declared counterparty, never inferred.
         if evidence.get("channel") or evidence.get("counterparty"):

@@ -62,6 +62,23 @@ _LEXICON: dict[str, list[re.Pattern[str]]] = {
             re.I,
         ),
     ],
+    # A request to produce sexual content, not a mention of sex: each pattern needs a
+    # production verb, so "protect children from sexual abuse" and "sex education"
+    # stay quiet. The first is sexual content involving a minor.
+    "sexual": [
+        re.compile(
+            r"\b(?:write|generate|create|draw|describe|show|send|find|share)\b.{0,60}?"
+            r"\b(?:sexual|sexy|nude|naked|erotic|porn\w*)\b.{0,40}?"
+            r"\b(?:child|children|minors?|underage|kids?|\d{1,2}[- ]years?[- ]olds?)\b",
+            re.I,
+        ),
+        re.compile(
+            r"\b(?:write|generate|create|describe)\s+(?:me\s+)?(?:an?\s+)?"
+            r"(?:explicit|graphic|pornographic|erotic|x-rated)\s+(?:sex(?:ual)?\s+)?"
+            r"(?:story|scene|content|roleplay|fan\s*fiction|description)\b",
+            re.I,
+        ),
+    ],
 }
 
 

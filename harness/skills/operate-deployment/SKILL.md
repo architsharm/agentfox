@@ -28,11 +28,25 @@ NOMETRIA_PLAYGROUND_CORS_ORIGIN=http://localhost:3000 agentfox serve --port 8080
 
 ```bash
 export HF_TOKEN=…              # build secret for model weights; ask the user to set it, never write it
+export AGENTFOX_SERVICE_AUTH_SECRET="$(openssl rand -hex 32)"
+export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"   # the user keeps a copy
 docker compose -f deploy/docker-compose.yml up --build
 ```
 
 Services: `db` (Postgres 16), `opa` (8181, optional), `gateway` (8080), `dashboard` (3000).
-The defaults are egress off, the echo provider, observe mode, and fail-open.
+The defaults are egress off, the echo provider, observe mode, and fail-open. Outside
+development the gateway refuses to start while either secret is unset or a published value.
+
+The image loads no demo data. Create the first operator, then sign in on `/login` with
+"Self-hosted? Sign in with an API token" (GitHub OAuth is optional: `GITHUB_CLIENT_ID` and
+`GITHUB_CLIENT_SECRET`):
+
+```bash
+docker compose -f deploy/docker-compose.yml exec gateway \
+  agentfox admin users create you@example.com --role owner --token
+```
+
+Demo data only on request: `docker compose … exec gateway agentfox admin seed`.
 
 ## Production hardening checklist
 
@@ -41,13 +55,13 @@ several of them.
 
 | # | Check | How |
 |---|---|---|
-| 1 | Dev auth header refused | `NOMETRIA_ENVIRONMENT=production`, `NOMETRIA_AUTH_MODE=token` (or `oidc`); `agentfox admin auth status` |
+| 1 | Dev auth header refused | `AGENTFOX_ENVIRONMENT=production`, `AGENTFOX_AUTH_MODE=token` (or `oidc`); `agentfox admin auth status` |
 | 2 | Postgres, not SQLite | `NOMETRIA_DATABASE_URL=postgresql+psycopg://…`, `[postgres]` extra |
-| 3 | Secrets changed from dev defaults | `NOMETRIA_AUDIT_SIGNING_KEY`, `NOMETRIA_SERVICE_AUTH_SECRET`, `NOMETRIA_TOKEN_ENCRYPTION_KEY`, `NOMETRIA_CRON_SECRET` |
+| 3 | Secrets changed from dev defaults | `AGENTFOX_AUDIT_SIGNING_KEY` and `AGENTFOX_SERVICE_AUTH_SECRET` (the gateway refuses to start outside development without them; `agentfox doctor` checks), `AGENTFOX_TOKEN_ENCRYPTION_KEY`, `AGENTFOX_CRON_SECRET` |
 | 4 | Fail mode deliberate | `NOMETRIA_FAIL_MODE=closed` for high-risk agents; know that `open` lets requests through on detector timeout |
 | 5 | Egress intentional | `NOMETRIA_ALLOW_EGRESS=true` only when a real provider is configured |
 | 6 | Detectors as expected | `agentfox doctor` lists them; add extras for Presidio or classifiers |
-| 7 | Operator tokens, not shared logins | `agentfox admin auth issue <email> --days 90` (shown once; the user stores it) |
+| 7 | Operator tokens, not shared logins | First operator: `agentfox admin users create <email> --role owner`; then `agentfox admin auth issue <email> --days 90` (shown once; the user stores it) |
 | 8 | Migrations current | `agentfox admin db current` = head; `agentfox admin db upgrade` |
 | 9 | Audit checkpoints scheduled | `agentfox admin checkpoint` on a timer; jobs runner via `/api/internal/jobs/run` with the cron secret |
 

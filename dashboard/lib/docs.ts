@@ -26,6 +26,7 @@ export const DOC_NAV: DocSection[] = [
     heading: "Guides",
     items: [
       { href: "/docs/guides/scan-a-repo", label: "Audit a repository", description: "Inventory, the lethal trifecta, and a CI gate." },
+      { href: "/docs/guides/monitoring", label: "Monitor connected sources", description: "Rescan repos, APIs and MCP servers on a schedule and on push." },
       { href: "/docs/guides/python-auto", label: "One line in Python", description: "agentfox.auto(): observe, then enforce." },
       { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", description: "Declarations, grants, provenance, learned permissions." },
       { href: "/docs/guides/langgraph", label: "LangGraph", description: "Guard the retrieval, model and tool nodes." },
@@ -36,6 +37,7 @@ export const DOC_NAV: DocSection[] = [
       { href: "/docs/guides/approvals", label: "Approvals and the kill switch", description: "Escalations, hand-offs, quarantine." },
       { href: "/docs/guides/business-rules", label: "Business rules", description: "Threshold ladders, and policy compiled from prose." },
       { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", description: "Probe the deployment; fail the build on regression." },
+      { href: "/docs/guides/live-probes", label: "Probe deployed agents", description: "Scheduled, opt-in attacks on a running agent." },
       { href: "/docs/guides/tuning", label: "Tune detectors", description: "Feedback, suppressions, simulate, canary." },
       { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", description: "The report, evidence packages, compliance." },
       { href: "/docs/guides/observability", label: "Traces and integrations", description: "OpenTelemetry, Langfuse, LangSmith, SIEM, webhooks." },

@@ -70,8 +70,19 @@ class _ToolCallMixin:
         prior_steps: list[dict[str, Any]] | None = None,
         verified_state: dict[str, Any] | None = None,
         dry_run: bool = False,
+        approval_id: str | None = None,
+        persist: bool = True,
     ) -> EnforcementResult:
-        """Authorise a tool call on the full execution path (P3-4, P2-2, P9)."""
+        """Authorise a tool call on the full execution path (P3-4, P2-2, P9).
+
+        ``approval_id`` is a retry of a call a person approved (#12): the same agent,
+        tool and arguments run once. A dry run never spends one.
+
+        ``persist=False`` computes the verdict without writing a Decision, its
+        findings, taint tags or a lineage edge. The red-team runner uses it: a
+        simulated attack is not production traffic, and persisting it put
+        ``redteam.sim.*`` calls into findings and into what ``simulate`` replays.
+        """
         agent, identity, _ = self.resolve(agent_slug, credential)
 
         # PL-3: a killed or quarantined agent must not execute tools either, not
@@ -103,7 +114,7 @@ class _ToolCallMixin:
             path: mark.propagated_from for path, mark in marks.items() if mark.propagated_from
         }
 
-        if trace:
+        if trace and persist:
             for path, mark in marks.items():
                 self.session.add(
                     TaintTag(
@@ -116,7 +127,7 @@ class _ToolCallMixin:
                 )
         # Lineage is a property of the agent-to-tool relationship, not of whether a
         # trace object happened to be passed in — so it is recorded either way.
-        if agent is not None:
+        if agent is not None and persist:
             record_edge(self.session, "agent", agent.slug, "tool", tool_key, "calls_tool")
 
         worst_source = max(argument_taint.values(), key=taint_rank) if argument_taint else "none"
@@ -135,6 +146,8 @@ class _ToolCallMixin:
             prior_tools=prior_tools,
             prior_steps=prior_steps,
             tracker=tracker,
+            approval_id=None if dry_run else approval_id,
+            persist=persist,
         )
 
         # P9-7: an irreversible act on a record the agent has not read back from the
@@ -198,7 +211,7 @@ class _ToolCallMixin:
         surface: str,
         tool_key: str | None,
         arguments: dict[str, Any] | None,
-    ) -> LadderDecision | None:
+    ) -> list[LadderDecision]:
         """Evaluate the business ladders that apply to this call.
 
         Only on the tool-argument surface: a ladder bands a number the caller is about
@@ -206,18 +219,22 @@ class _ToolCallMixin:
         apply, the strictest wins and the disagreement is a lint finding rather than a
         silent precedence rule — two authors disagreeing is a fact about the
         organisation, not a merge conflict.
+
+        Every deciding ladder is returned, strictest first, because each carries its
+        own mode: the strictest *enforcing* ladder is what is applied, and an
+        observe ladder stricter than it is only recorded.
         """
         if surface != "tool_args" or not arguments:
-            return None
+            return []
         try:
             ladders = load_ladders(
                 self.session, tool=tool_key, agent_id=agent.id if agent else None
             )
         except Exception as exc:  # pragma: no cover - storage must not break the path
             log.warning("business ladders unavailable: %s", exc)
-            return None
+            return []
         if not ladders:
-            return None
+            return []
 
         request = {"arguments": arguments, "tool": tool_key}
         decisions = [
@@ -226,9 +243,7 @@ class _ToolCallMixin:
             if ladder.tool in (None, tool_key)
         ]
         decisions = [d for d in decisions if d.matched or d.undecidable]
-        if not decisions:
-            return None
-        return max(decisions, key=lambda d: BUSINESS_RANK.get(d.outcome, 0))
+        return sorted(decisions, key=lambda d: BUSINESS_RANK.get(d.outcome, 0), reverse=True)
 
     def _cascade_and_access_risks(
         self, tool_key: str | None, arguments: dict[str, Any] | None

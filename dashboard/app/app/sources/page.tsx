@@ -122,7 +122,7 @@ export default async function Sources({
               name and a trust tier), then come back to actually connect it to a real
               database or API — that's step 2, and it's what turns this from a claim into
               a checked fact. Or import a whole corpus at once with{" "}
-              <code className="mono">agentfox sources import sources.json</code>.
+              <code className="mono">agentfox declare import-sources sources.json</code>.
             </p>
           </div>
           <Panel title="Add a source">
@@ -211,7 +211,7 @@ export default async function Sources({
                       {s.is_seed && (
                         <span
                           className="tag"
-                          title="Created by `agentfox seed` for demo purposes — not a real registration."
+                          title="Created by `agentfox admin seed` for demo purposes — not a real registration."
                         >
                           sample data
                         </span>

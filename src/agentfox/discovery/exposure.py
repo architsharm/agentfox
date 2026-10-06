@@ -107,6 +107,19 @@ _EXFIL_VERBS = {
 _WRITE_VERBS = {
     "create", "update", "add", "set", "insert", "edit", "modify", "cancel", "schedule",
     "append", "save", "put", "patch",
+    # State changes on an existing record: `tickets_close` closes a ticket, it does
+    # not read one in, so it is neither private data nor untrusted input.
+    "close", "resolve", "reopen", "assign", "archive", "approve", "reject", "merge",
+    "rename", "move", "tag", "label", "lock", "unlock", "mark",
+}  # fmt: skip
+
+#: Nouns that read wrong with an "s" stuck on ("can read crms"), and what to say.
+_MASS_NOUNS = {
+    "crm": "CRM records", "db": "the database", "sql": "the database",
+    "database": "the database", "history": "history", "memory": "memory",
+    "health": "health records", "medical": "medical records", "ssn": "SSNs",
+    "drive": "drive files", "repo": "the repository", "repository": "the repository",
+    "calendar": "the calendar", "inbox": "the inbox", "mail": "mail",
 }  # fmt: skip
 
 _TOKEN_SPLIT = re.compile(r"[^a-z0-9]+")
@@ -196,13 +209,16 @@ def classify_tool(name: str, description: str = "") -> Capabilities:
     if nouns and reading and not web:
         caps.flags.add(PRIVATE)
         # "read_customer_record" -> "customer records": every non-verb token, in order.
-        subject = " ".join(t for t in toks if t not in _READ_VERBS)
+        verbs = _READ_VERBS | _WRITE_VERBS | _EXFIL_VERBS
+        subject = " ".join(t for t in toks if t not in verbs or t in nouns)
         subject = subject or nouns[0]
         words = subject.split()
-        words[-1] = _plural(words[-1])
+        words[-1] = _MASS_NOUNS.get(words[-1]) or _plural(words[-1])
         caps.phrases[PRIVATE] = f"can read {' '.join(words)}"
         noun = nouns[0]
-        caps.data_noun = noun if noun in ("ssn", "credentials", "address") else noun.rstrip("s")
+        caps.data_noun = {"crm": "CRM", "db": "database", "sql": "database"}.get(noun) or (
+            noun if noun in ("ssn", "credentials", "address") else noun.rstrip("s")
+        )
     elif (
         not nouns
         and reading

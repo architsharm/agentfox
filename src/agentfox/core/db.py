@@ -1,7 +1,7 @@
 """Database session management.
 
 SQLite by default so the whole control plane runs with no infrastructure at all
-(NFR-9); Postgres via ``NOMETRIA_DATABASE_URL`` for anything real.
+(NFR-9); Postgres via ``AGENTFOX_DATABASE_URL`` for anything real.
 """
 
 from __future__ import annotations
@@ -144,6 +144,14 @@ def get_sessionmaker() -> sessionmaker[Session]:
             import logging
 
             logging.getLogger(__name__).warning("finding webhooks not installed", exc_info=True)
+        try:
+            from agentfox.monitoring.alerts import install as install_alerts
+
+            install_alerts(_SessionLocal)
+        except Exception:  # pragma: no cover - alerts must never block sessions
+            import logging
+
+            logging.getLogger(__name__).warning("monitor alerts not installed", exc_info=True)
     return _SessionLocal
 
 
@@ -176,6 +184,8 @@ def init_db(stamp: bool = True) -> None:
 _ADDITIVE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # b8d3f6a2c915 — a tool can declare that its output is trusted.
     ("tools", "output_trust", "VARCHAR(16) NOT NULL DEFAULT 'untrusted'"),
+    # c3e9a7d15f42 — a GitHub connection can carry its own push-webhook secret.
+    ("github_connections", "webhook_secret_encrypted", "TEXT"),
 )
 
 

@@ -85,6 +85,7 @@ RENAMED: dict[str, str] = {
     "entitlement": "agentfox permit user / declare principal / report entitlement",
     "guardrails": "agentfox policy rules",
     "capability": "agentfox permit",
+    "approvals": "agentfox permit approvals",
     "proposals": "agentfox policy proposals",
 }
 
@@ -264,7 +265,8 @@ def apply_layout(app: typer.Typer) -> None:
         "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.\n\n"
         "`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). "
         "`agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs "
-        "the live detector check. `mcp`, `skills` and `runtime` scan the rest."
+        "the live detector check. `mcp`, `skills` and `runtime` scan the rest; "
+        "`monitors` re-checks connected sources on a schedule."
     )
     scan_app = scan.typer_instance
     _alias(scan_app, find("check"), "repo")
@@ -289,11 +291,16 @@ def apply_layout(app: typer.Typer) -> None:
     app.add_typer(serve_app, name="serve")
 
     # -- Contain: permit -----------------------------------------------------------
-    permit_app = _new_group("Grant, list and withdraw what an agent — or an end user — may do.")
+    permit_app = _new_group(
+        "Grant, list and withdraw what an agent — or an end user — may do, and decide "
+        "the calls held for a person (`permit approvals`)."
+    )
     _alias(permit_app, find("capability", "grant"), "grant")
     _alias(permit_app, find("capability", "list"), "list")
     _alias(permit_app, find("capability", "revoke"), "revoke")
     _alias(permit_app, find("entitlement", "grant"), "user")
+    # Deciding a held call is granting it once, so the queue lives beside the grants.
+    permit_app.add_typer(sub["approvals"].typer_instance, name="approvals")
     app.add_typer(permit_app, name="permit")
 
     # -- Contain: declare ----------------------------------------------------------
@@ -368,8 +375,12 @@ def apply_layout(app: typer.Typer) -> None:
     app.add_typer(report_app, name="report")
 
     # -- Operate: admin ------------------------------------------------------------
-    admin_app = _new_group("Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.")
+    admin_app = _new_group(
+        "Run the deployment: operators, tokens, schema, scheduled jobs, catalog upkeep, hooks, "
+        "seed data."
+    )
     admin_app.add_typer(sub["auth"].typer_instance, name="auth")
+    admin_app.add_typer(sub["users"].typer_instance, name="users")
     admin_app.add_typer(sub["db"].typer_instance, name="db")
     catalog_app = _new_group("Keep the control catalog and its computed status current.")
     for name in ("sync", "compute", "validate"):
@@ -379,6 +390,10 @@ def apply_layout(app: typer.Typer) -> None:
     _alias(admin_app, find("seed"), "seed")
     _alias(admin_app, find("version"), "version")
     admin_app.add_typer(sub["hooks"].typer_instance, name="hooks")
+    # New rather than relocated, so it has no old top-level name to keep working.
+    from agentfox.cli.commands.monitors import jobs_app
+
+    admin_app.add_typer(jobs_app, name="jobs")
     mcp_admin = _new_group("Inspect the MCP server. To run it: `agentfox serve mcp`.")
     _alias(mcp_admin, find("mcp", "tools"), "tools")
     admin_app.add_typer(mcp_admin, name="mcp")

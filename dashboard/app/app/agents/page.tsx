@@ -88,7 +88,7 @@ export default async function Agents({
             href: "/app/agents",
             ...(inv.unowned ? { tone: "warn" as const } : {}),
           },
-          { n: inv.tools, label: "tools", href: "/app/policies?tab=tools" },
+          { n: inv.tools, label: "tools", href: "#tools" },
           { n: inv.lineage_edges, label: "lineage edges", href: "/app/traces" },
         ]}
       />
@@ -230,7 +230,7 @@ export default async function Agents({
                     {a.status === "draft" && <div><span className="tag warn">draft</span></div>}
                     {a.is_seed && (
                       <div>
-                        <span className="tag" title="Created by `agentfox seed` for demo purposes — not a real registration.">
+                        <span className="tag" title="Created by `agentfox admin seed` for demo purposes — not a real registration.">
                           sample data
                         </span>
                       </div>
@@ -306,7 +306,7 @@ function CapabilityGrants() {
           the foot of a page somebody opened to look at their agents. The claim is
           the part that has to be visible; the mechanism is the part you read once.
           So the claim stays and the rest is behind the button. */}
-      <h2>What an agent is allowed to do</h2>
+      <h2 id="tools">What an agent is allowed to do</h2>
       <p className="sub">
         The table above is what these agents have been <em>seen</em> calling. What
         they are <em>permitted</em> to call is a separate declaration — a capability
@@ -344,7 +344,7 @@ function CapabilityGrants() {
             <tbody>
               <tr>
                 <td className="small">Let an agent call a tool</td>
-                <td className="mono small">agentfox capability grant AGENT TOOL</td>
+                <td className="mono small">agentfox permit grant AGENT TOOL</td>
               </tr>
               <tr>
                 <td className="small">Cap what the arguments may say</td>
@@ -364,11 +364,11 @@ function CapabilityGrants() {
               </tr>
               <tr>
                 <td className="small">See what an agent currently holds</td>
-                <td className="mono small">agentfox capability list AGENT</td>
+                <td className="mono small">agentfox permit list AGENT</td>
               </tr>
               <tr>
                 <td className="small">Take one back</td>
-                <td className="mono small">agentfox capability revoke CAPABILITY_ID</td>
+                <td className="mono small">agentfox permit revoke CAPABILITY_ID</td>
               </tr>
             </tbody>
           </table>

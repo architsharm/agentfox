@@ -51,7 +51,8 @@ def seed(
     ),
 ) -> None:
     """Load a demonstrable environment: three agents, policies, controls and an
-    eval suite, with traffic already recorded against them."""
+    eval suite. It records no traffic; `agentfox demo` sends sample requests through
+    the seeded agents, which is what fills traces, decisions and findings."""
     from agentfox.core.seed import seed as run_seed
 
     with _session() as session:
@@ -85,8 +86,10 @@ def seed(
 
     _print_next_steps(
         [
-            ("agentfox demo", "the end-to-end walkthrough against what was just seeded"),
-            ("agentfox findings", "what the seeded traffic already raised"),
+            (
+                "agentfox demo",
+                "send sample requests through the seeded agents: traces, decisions, findings",
+            ),
             ("agentfox permit list", "what each seeded agent is allowed to do"),
             ("agentfox doctor", "check the runtime configuration"),
         ]
@@ -126,6 +129,13 @@ def serve(
     console.print(f"  [dim]inline:  POST http://{host}:{port}/v1/chat/completions[/]")
     console.print(f"  [dim]api:     http://{host}:{port}/api/agents[/]")
     console.print(f"  [dim]docs:    http://{host}:{port}/docs[/]")
+    from agentfox.gateway.auth import auth_posture
+
+    posture = auth_posture()
+    if posture.startswith("DEVELOPMENT"):
+        console.print(f"  [yellow]auth:    {posture}[/]")
+    else:
+        console.print(f"  [dim]auth:    {posture}[/]")
     uvicorn.run("agentfox.gateway.app:app", host=host, port=port, reload=reload)
 
 
@@ -150,18 +160,33 @@ def analyse_action(
     else:
         analysis = analyse_sql(statement, dialect=dialect)
 
+    from rich.markup import escape
+
     summary = summarise([analysis], environment)
     colour = SEVERITY_COLOUR.get(analysis.severity, "green")
+    # A statement that was never analysed (no sqlglot, or it did not parse) has no
+    # known reversibility; printing "reversible" for it was a guess in the safe-looking
+    # direction.
+    if kind == "sql" and not analysis.parsed:
+        reversibility = "reversibility unknown (not analysed)"
+    else:
+        reversibility = "reversible" if analysis.reversible else "IRREVERSIBLE"
+    targets = ", ".join(analysis.targets) or "—"
     console.print(
-        f"[bold]{analysis.operation}[/] · blast radius [{colour}]{analysis.blast_radius}[/] · "
-        f"{'reversible' if analysis.reversible else 'IRREVERSIBLE'} · "
-        f"{len(analysis.targets)} target(s): {', '.join(analysis.targets) or '—'}"
+        f"[bold]{escape(analysis.operation)}[/] · blast radius "
+        f"[{colour}]{escape(analysis.blast_radius)}[/] · {reversibility} · "
+        f"{len(analysis.targets)} target(s): {escape(targets)}"
     )
     if not summary.get("risks"):
         console.print("  [green]no risks identified[/]")
     for risk in summary.get("risks", []):
         risk_colour = SEVERITY_COLOUR.get(risk["severity"], "dim")
-        console.print(f"  [{risk_colour}]{risk['severity']}[/] {risk['code']} — {risk['detail']}")
+        # Escaped: risk text quotes statements and install hints ("agentfox[sql]")
+        # that Rich would otherwise read as markup and silently drop.
+        console.print(
+            f"  [{risk_colour}]{risk['severity']}[/] {escape(risk['code'])} — "
+            f"{escape(str(risk['detail']))}"
+        )
     if summary.get("critical"):
         raise typer.Exit(1)
 

@@ -386,12 +386,22 @@ class ScanReport:
         and most readers will not.
         """
         if self.trifectas and not self.inconclusive:
-            return (
+            first = (
                 f"{len(self.trifectas)} place(s) in this repository can be steered by an "
                 "instruction hidden in content they read into sending private data out. "
-                "Contain those first — each lethal-trifecta finding names the command. "
-                "Then add `import agentfox; agentfox.auto()` to your entry point to see "
-                "every model and tool call as it happens."
+                "Contain those first — each lethal-trifecta finding names the command."
+            )
+            if self.ungoverned or not self.governable:
+                return (
+                    f"{first} Then add `import agentfox; agentfox.auto()` to your entry "
+                    "point to see every model and tool call as it happens."
+                )
+            # Everything is already wrapped: suggesting auto() again reads as though
+            # it would fix the trifecta, and it does not — the tools still reach the
+            # same things.
+            return (
+                f"{first} Every model call here is already governed, and that does not "
+                "remove a trifecta: what the tools can reach does."
             )
         if self.inconclusive:
             # Never reachable by the "no model calls found" branch below: a scan that

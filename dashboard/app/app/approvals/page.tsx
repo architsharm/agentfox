@@ -17,7 +17,7 @@ export const metadata: Metadata = appPageMetadata(
 
 export const dynamic = "force-dynamic";
 
-const STATUSES = ["pending", "approved", "denied", "expired"];
+const STATUSES = ["pending", "approved", "denied", "expired", "used"];
 const TABS: { key: string; label: string }[] = [
   { key: "approvals", label: "Approvals" },
   { key: "escalation", label: "Escalation" },
@@ -129,7 +129,7 @@ async function ApprovalsTab({ status: rawStatus }: { status?: string }) {
   STATUSES.filter((x) => x !== status).forEach((x, i) => {
     counts[x] = others[i]?.approvals?.length || 0;
   });
-  const answered = counts.approved + counts.denied + counts.expired;
+  const answered = counts.approved + counts.denied + counts.expired + counts.used;
 
   const agentSlug: Record<string, string> = {};
   for (const a of agents.agents || []) agentSlug[a.id] = a.slug;
@@ -366,7 +366,7 @@ async function EscalationTab({ agent }: { agent?: string }) {
                       <div>
                         <span
                           className="tag"
-                          title="Created by `agentfox seed` for demo purposes — not a real conversation."
+                          title="Created by `agentfox admin seed` for demo purposes — not a real conversation."
                         >
                           sample data
                         </span>

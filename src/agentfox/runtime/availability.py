@@ -403,7 +403,7 @@ class AdmissionController:
 #: The process-wide admission gate. Lazily built from settings, unlike
 #: `reliability.BREAKER`'s fixed-default construction at import time — these limits
 #: are exactly the ones an operator is expected to size to their own deployment
-#: (`NOMETRIA_ADMISSION_*`), and building it at import time would freeze in
+#: (`AGENTFOX_ADMISSION_*`), and building it at import time would freeze in
 #: whatever settings happened to be current then, which is wrong for anything that
 #: overrides them afterwards (every test in this suite included).
 _ADMISSION: AdmissionController | None = None
@@ -473,7 +473,7 @@ SERVICES = (DETECTOR_PIPELINE, POLICY_ENGINE, DATABASE, MODEL_PROVIDER)
 
 
 def service_policy(service: str, *, fail_mode: str | None = None) -> FailPolicy:
-    """The `FailPolicy` for one service, from `NOMETRIA_FAIL_MODE`.
+    """The `FailPolicy` for one service, from `AGENTFOX_FAIL_MODE`.
 
     The open/closed decision is the operator's declared `fail_mode` and nothing else —
     but it is run through `FailPolicy`'s constructor rather than applied directly, so

@@ -19,11 +19,22 @@
 #   4. set AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES to "1".
 # Without the token the build skips that tier and everything else still builds.
 #
+#   export AGENTFOX_SERVICE_AUTH_SECRET="$(openssl rand -hex 32)"
+#   export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"   # keep a copy
 #   docker compose -f deploy/docker-compose.yml up
 #
+# (Or put both in deploy/.env.) The gateway runs in production and refuses to start on
+# a missing or published secret: the service secret authenticates the call that mints
+# an owner token, and the signing key is what makes the audit chain tamper-evident.
+#
+# First operator — no demo data is loaded (the image no longer seeds on boot):
+#   docker compose -f deploy/docker-compose.yml exec gateway \
+#     agentfox admin users create you@example.com --role owner --token
+# then open http://localhost:3000/login → "Self-hosted? Sign in with an API token" and
+# paste the token. For demo data instead: `... exec gateway agentfox admin seed`.
+#
 # Settings are read as AGENTFOX_*. The pre-rename NOMETRIA_* names still work as a
-# fallback, so an existing deployment's environment does not need to change. The
-# dashboard service is the exception: it reads only the NOMETRIA_* names below.
+# fallback, so an existing deployment's environment does not need to change.
 #
 #   control plane   http://localhost:3000
 #   API + gateway   http://localhost:8080
@@ -99,9 +110,13 @@ services:
       # >700M-MAU clause) and the code refuses to load it unless this is "1". Turning
       # it on is a legal decision, not a technical one, so it ships off.
       AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES: "0"
-      # CHANGE THIS. The checkpoint signing key should live outside the application
-      # database and be held by the customer (NFR-7, Appendix E.2.2).
-      AGENTFOX_AUDIT_SIGNING_KEY: change-me-before-any-real-deployment
+      # The checkpoint signing key should live outside the application database and be
+      # held by the customer (NFR-7, Appendix E.2.2). Required: see the top of this file.
+      AGENTFOX_AUDIT_SIGNING_KEY: ${AGENTFOX_AUDIT_SIGNING_KEY:?set AGENTFOX_AUDIT_SIGNING_KEY to a random value (openssl rand -hex 32)}
+      # Authenticates the dashboard's GitHub sign-in to the gateway. Required even if
+      # you never enable GitHub sign-in: the published default would let anyone mint
+      # an owner token. The dashboard below is given the same value.
+      AGENTFOX_SERVICE_AUTH_SECRET: ${AGENTFOX_SERVICE_AUTH_SECRET:?set AGENTFOX_SERVICE_AUTH_SECRET to a random value (openssl rand -hex 32)}
       AGENTFOX_EVIDENCE_DIR: /var/agentfox/evidence
       # The public playground page (dashboard/app/playground) calls this origin
       # directly from the visitor's browser, unauthenticated — additive to the
@@ -129,12 +144,21 @@ services:
       context: ../dashboard
       dockerfile: ../deploy/Dockerfile.dashboard
     environment:
-      # The dashboard reads these under the NOMETRIA_ names only (dashboard/lib/api.ts),
-      # so they keep the old prefix until the dashboard reads AGENTFOX_ too.
       # Read at request time, not baked at build time — so one image can be pointed
       # at any control plane.
-      NOMETRIA_API_URL: http://gateway:8080
-      NOMETRIA_USER: admin@example.com
+      AGENTFOX_API_URL: http://gateway:8080
+      # Sign-in. The gateway above runs in production, so the development identity
+      # header is refused there and every page needs a real operator token. Two ways
+      # to get one into the browser:
+      #   * an API token, pasted on /login (see "First operator" at the top) — works
+      #     with nothing else configured;
+      #   * GitHub OAuth: create an OAuth app whose callback is
+      #     http://localhost:3000/api/auth/github/callback and export
+      #     GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET before `up`. Without them the
+      #     GitHub button answers 503 and the token sign-in still works.
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      AGENTFOX_SERVICE_AUTH_SECRET: ${AGENTFOX_SERVICE_AUTH_SECRET:?set AGENTFOX_SERVICE_AUTH_SECRET}
       # The one deliberate exception to "server-to-server only": the public
       # playground page is a Client Component, so it fetches from the *visitor's
       # browser*, not from this container — it needs an address the browser can

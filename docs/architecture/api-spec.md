@@ -48,7 +48,10 @@ Response adds:
 | `X-Nometria-Latency-Ms` | Added enforcement latency (NFR-1 observability). |
 
 **On block** → `HTTP 403` with `{"error": {"type": "agentfox_policy_violation", "message", "verdict", "trace_id", "decision_id", "policy_version", "rules_fired", "entities", "explanation", "suppressed"}}` (X-4: never block without an auditable reason).
-**On escalate** → `HTTP 202` with `approval_id`; poll `GET /api/approvals/{id}` (P2-3).
+**On escalate** → `HTTP 428` with `error.type = "agentfox_approval_required"` and `approval_id`
+(an error status, so provider SDKs raise rather than parse a completion); poll
+`GET /api/approvals/{id}` (an agent key may read its own agent's), and once it is `approved` send
+the same request with `X-Nometria-Approval: <id>` — it runs once (P2-3).
 **On overload** → `HTTP 429` with `Retry-After` from the admission gate; `X-Nometria-Priority` raises a request's priority.
 
 ### `POST /v1/guard/input` · `POST /v1/guard/output` · `POST /v1/guard/tool_call` · `POST /v1/guard/memory_write` · `POST /v1/guard/agent_message` · `POST /v1/mcp/call`
@@ -101,18 +104,18 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-182 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+207 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/v1/chat/completions` | OpenAI-compatible inline proxy |
-| `POST` | `/v1/guard/agent_message` | Authorise an inter-agent message (P17, NOM-IAM-08) |
+| `POST` | `/v1/guard/agent_message` | Authorise an inter-agent message |
 | `POST` | `/v1/guard/input` | Enforce on content without proxying. |
-| `POST` | `/v1/guard/memory_write` | Authorise a memory write (P14, NOM-RTG-13) |
+| `POST` | `/v1/guard/memory_write` | Authorise a memory write |
 | `POST` | `/v1/guard/output` | Enforce on content without proxying. |
-| `POST` | `/v1/guard/tool_call` | Authorise a tool call (P3-4, P2-2) |
+| `POST` | `/v1/guard/tool_call` | Authorise a tool call |
 | `POST` | `/v1/mcp/call` | Govern one MCP call for callers that are not in-process Python. |
 | `POST` | `/v1/messages` | Anthropic-compatible inline proxy |
 | `POST` | `/v1/traces` | OTLP/HTTP trace ingest |
@@ -131,7 +134,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
 | `GET` | `/api/providers` | X-2 — the neutrality surface, made inspectable. |
 | `GET` | `/api/reliability` | P15 — circuit-breaker state and live budget consumption. |
-| `GET` | `/api/version` | Every version that participates in a decision (X-4 determinism). |
+| `GET` | `/api/version` | Every version that participates in a decision, so a verdict can be reproduced. |
 | `GET` | `/metrics` | I-7 — Prometheus exposition. |
 
 ### Registry, discovery and findings (Pillar 1)
@@ -155,7 +158,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/findings/{finding_id}` | Get Finding |
 | `PATCH` | `/api/findings/{finding_id}` | Patch Finding |
 | `GET` | `/api/mcp-servers` | List Mcp |
-| `POST` | `/api/mcp-servers` | Create Mcp |
+| `POST` | `/api/mcp-servers` | Register an MCP server, and start monitoring it for tool drift. |
 | `POST` | `/api/mcp-servers/{name}/scan` | Scan Mcp |
 | `POST` | `/api/mcp-servers/{name}/tools` | I-2 — snapshot a listing *and* register each tool in the registry. |
 | `GET` | `/api/tools` | List Tools |
@@ -166,7 +169,7 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/approvals` | List Approvals |
-| `GET` | `/api/approvals/{approval_id}` | Get Approval |
+| `GET` | `/api/approvals/{approval_id}` | One approval. An operator may read any; an agent key only its own agent's. |
 | `POST` | `/api/approvals/{approval_id}/approve` | Approve |
 | `POST` | `/api/approvals/{approval_id}/deny` | Deny |
 | `POST` | `/api/credentials/{credential_id}/revoke` | Revoke |
@@ -194,7 +197,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/policies/{key}/canary/advance` | Check the candidate cohort's health and advance, hold, or auto-roll-back. |
 | `POST` | `/api/policies/{key}/canary/rollback` | Rollback Policy Canary |
 | `POST` | `/api/policies/{key}/canary/start` | Start Policy Canary |
-| `POST` | `/api/policies/{key}/mode` | Change Mode |
+| `POST` | `/api/policies/{key}/mode` | Promote or demote a policy, optionally making a saved version live. |
 | `GET` | `/api/policies/{key}/rego` | Get Rego |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |
@@ -232,6 +235,15 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/eval/suites/{key}` | Get Suite |
 | `POST` | `/api/eval/suites/{key}/cases` | Add Case |
 | `POST` | `/api/eval/suites/{key}/cases/from-trace` | P4-6 — promote a production failure into a regression test. |
+| `GET` | `/api/probes/targets` | List Targets |
+| `POST` | `/api/probes/targets` | Register a target. It is created disabled; nothing is sent until opt-in. |
+| `GET` | `/api/probes/targets/{target_id}` | Get Target |
+| `PATCH` | `/api/probes/targets/{target_id}` | Update Target |
+| `GET` | `/api/probes/targets/{target_id}/campaigns` | Campaigns |
+| `POST` | `/api/probes/targets/{target_id}/opt-in` | Opt In |
+| `POST` | `/api/probes/targets/{target_id}/opt-out` | Opt Out |
+| `POST` | `/api/probes/targets/{target_id}/run` | Probe the target now. Same consent and caps as a scheduled run, and refused |
+| `GET` | `/api/probes/warning` | What a person must read before enabling probes, plus the probe library, the |
 | `GET` | `/api/redteam/campaigns` | List Campaigns |
 | `POST` | `/api/redteam/campaigns` | Enqueues through jobs_db (PL-5) and processes within this same request |
 | `GET` | `/api/redteam/probes` | List Probes |
@@ -310,23 +322,38 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agents/{slug}/signing-key` | Key Status |
 | `POST` | `/api/agents/{slug}/signing-key` | Mint (or rotate) an agent's HMAC signing key. Shown once — like an API |
 
-### Jobs and integrations
+### Jobs, monitors and integrations
 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/agents/{agent_id}/approve` | Approve Agent |
 | `POST` | `/api/agents/{agent_id}/reject` | Reject Agent |
+| `DELETE` | `/api/alerts/slack` | Stop sending this tenant's alerts to its own Slack channel. |
+| `GET` | `/api/alerts/slack` | Whether this tenant has its own Slack channel, and whether alerts can leave at all. |
+| `PUT` | `/api/alerts/slack` | Send this tenant's monitor alerts to its own Slack incoming webhook. |
+| `POST` | `/api/alerts/slack/test` | Send a test message to every channel this tenant's alerts go to, now. |
 | `POST` | `/api/auth/github/provision` | Find-or-create the user behind a GitHub identity, and mint them a token. |
+| `POST` | `/api/auth/logout` | Revoke the bearer token this request presents — the dashboard's Sign Out. |
 | `POST` | `/api/integrations/github/connect` | Connect |
 | `GET` | `/api/integrations/github/repos` | List Repos |
 | `POST` | `/api/integrations/github/scan` | Trigger Scan |
 | `GET` | `/api/integrations/github/scans/{scan_id}` | Get Scan |
+| `POST` | `/api/integrations/github/webhook` | GitHub push webhook: a signed push to a monitored repository queues a rescan. |
+| `POST` | `/api/integrations/github/webhook-secret` | Create or replace the GitHub connection's push-webhook secret (shown once). |
 | `POST` | `/api/integrations/hosted-api/scan` | Scan Hosted Api |
 | `GET` | `/api/internal/jobs/run` | The cron entry point. GET because that is what Vercel Cron sends; POST for |
 | `POST` | `/api/internal/jobs/run` | The cron entry point. GET because that is what Vercel Cron sends; POST for |
 | `GET` | `/api/jobs` | Includes dead-lettered jobs by default — that's the point (jobs.py's |
 | `GET` | `/api/jobs/{job_id}` | Get Job |
 | `POST` | `/api/jobs/{job_id}/retry` | Retry Job |
+| `GET` | `/api/monitors` | Every monitor in the tenant, with its last result and when it next runs. |
+| `POST` | `/api/monitors` | Watch a source by hand. The first run stores a baseline; later runs report changes. |
+| `DELETE` | `/api/monitors/{monitor_id}` | Stop watching a source. Its findings are kept. |
+| `GET` | `/api/monitors/{monitor_id}` | One monitor, with the findings it raised that are still open. |
+| `PATCH` | `/api/monitors/{monitor_id}` | Rename, retune the interval, change config, or pause/resume (``enabled``). |
+| `POST` | `/api/monitors/{monitor_id}/pause` | Stop scheduled runs. Open findings stay open; nothing is closed while paused. |
+| `POST` | `/api/monitors/{monitor_id}/resume` | Resume scheduled runs from the monitor's next due time. |
+| `POST` | `/api/monitors/{monitor_id}/run` | Run one monitor now, through the job queue, and return its result. |
 
 ### Playground (unauthenticated, rate-limited)
 
@@ -337,6 +364,12 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/playground/sessions/{session_id}/enforce` | Flip the baseline policy observe -> enforce (or back) for this sandbox only. |
 | `GET` | `/api/playground/sessions/{session_id}/state` | Everything the live sidebar needs: recent traces (decisions + detector runs |
 | `POST` | `/api/playground/sessions/{session_id}/tool-call` | Try a tool call directly, with no model in the loop. |
+
+### Public showcase (unauthenticated, cached, rate-limited)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/public/showcase` | AgentFox probing its own demo agent: recent runs, attacks attempted, contained |
 
 ### Other
 

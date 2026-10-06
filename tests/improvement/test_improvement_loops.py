@@ -58,7 +58,8 @@ def test_clean_split_files_one_loosening_proposal_on_the_covering_rule(session):
     assert proposal.diff_json["from"] == 0.3
     assert proposal.diff_json["to"] == 0.46
     assert proposal.direction == contract.LOOSENS
-    assert proposal.status == contract.PROPOSED
+    # Filed with a passing replay proof, so a person can approve it (#27).
+    assert proposal.status == contract.PROVEN
     assert proposal.proposed_by  # attributed to automation, not blank
     reasons = {s.get("rule_id"): s["reason"] for s in report.skipped}
     assert reasons["anything.escalate"] == "rule matches every detection"
@@ -118,3 +119,169 @@ def test_no_covering_rule_is_reported_not_dropped(session):
     report = propose_threshold_changes(session)
     assert report.filed == []
     assert any("no live rule covers" in s["reason"] for s in report.skipped)
+
+
+# ---------------------------------------------------------------------------
+# #27 a proof is attached, so a person can approve; #28 scope and staleness
+# ---------------------------------------------------------------------------
+
+
+def _agent(session, slug):
+    from agentfox.core.models import Agent
+
+    agent = Agent(slug=slug, name=slug)
+    session.add(agent)
+    session.flush()
+    return agent
+
+
+def test_a_filed_proposal_carries_a_replay_proof_and_can_be_approved(session):
+    """#27: from-labels proposals had no proof, so `decide` refused every one of them
+    with "has not been proven yet"."""
+    save_policy(session, PolicyDocument.from_yaml(POLICY), bind_mode="enforce")
+    _clean_split(session)
+    [pid] = propose_threshold_changes(session).filed
+    proposal = session.get(ChangeProposal, pid)
+    proof = proposal.proof_json
+    assert proof["passed"] is True
+    assert proof["false_positives"] == 5 and proof["false_positives_no_longer_firing"] == 5
+    assert proof["true_positives_lost"] == 0
+
+    decide(session, proposal, approve=True, actor="sec@example.com", note="labels look right")
+    decide(session, proposal, approve=True, actor="grc@example.com", note="agreed")
+    assert proposal.status == contract.APPROVED
+
+
+def test_a_cut_off_that_would_lose_a_true_positive_is_filed_unproven(session):
+    save_policy(session, PolicyDocument.from_yaml(POLICY), bind_mode="enforce")
+    # Max FP 0.45 -> suggested 0.46; a TP at 0.455 sits between them.
+    _clean_split(session, tps=(0.455, 0.9))
+    [pid] = propose_threshold_changes(session).filed
+    proposal = session.get(ChangeProposal, pid)
+    assert proposal.proof_json["passed"] is False
+    assert proposal.proof_json["true_positives_lost"] == 1
+    assert proposal.status == contract.PROPOSED
+
+
+def test_labels_from_one_agent_scope_the_change_to_that_agent(session):
+    """#28: labels from one agent filed an org-wide loosening for every agent."""
+    from agentfox.improvement.proposals import apply_proposal
+    from agentfox.policy.engine import NativePolicyEngine
+    from agentfox.policy.model import PolicyInput
+
+    save_policy(session, PolicyDocument.from_yaml(POLICY), bind_mode="enforce")
+    noisy = _agent(session, "noisy-bot")
+    _agent(session, "other-bot")
+    for score in (0.30, 0.35, 0.40, 0.42, 0.45):
+        session.add(
+            GuardrailFeedback(
+                detector_key="pii.native",
+                entity_type="PII_SSN",
+                label="false_positive",
+                score=score,
+                agent_id=noisy.id,
+            )
+        )
+    for score in (0.80, 0.90):
+        session.add(
+            GuardrailFeedback(
+                detector_key="pii.native",
+                entity_type="PII_SSN",
+                label="true_positive",
+                score=score,
+                agent_id=noisy.id,
+            )
+        )
+    session.flush()
+
+    [pid] = propose_threshold_changes(session).filed
+    proposal = session.get(ChangeProposal, pid)
+    assert (proposal.scope_level, proposal.scope_id) == ("agent", "noisy-bot")
+    assert proposal.diff_json["agents"] == ["noisy-bot"]
+    assert proposal.evidence_json["agents_the_rule_governs"] == ["noisy-bot", "other-bot"]
+
+    # An agent-scoped loosening needs one approver, not two.
+    decide(session, proposal, approve=True, actor="sec@example.com", note="noisy-bot only")
+    assert proposal.status == contract.APPROVED
+    apply_proposal(session, proposal, actor="sec@example.com", automated=False)
+
+    from agentfox.core.models import Policy, PolicyVersion
+    from agentfox.improvement.appliers import _document
+
+    # Staged as a canary: the candidate version is the newest one.
+    policy = session.scalars(select(Policy).where(Policy.key == "loop-test")).one()
+    version = session.scalars(
+        select(PolicyVersion)
+        .where(PolicyVersion.policy_id == policy.id)
+        .order_by(PolicyVersion.version.desc())
+    ).first()
+    doc = _document(version)
+    assert [r.id for r in doc.rules][:2] == ["ssn.block", "ssn.block.for.noisy-bot"]
+    engine = NativePolicyEngine()
+    detection = [{"entity_type": "PII_SSN", "score": 0.40}]
+
+    def fired(slug):
+        decision = engine.evaluate(
+            doc, PolicyInput(agent_slug=slug, surface="input", detections=detection)
+        )
+        return {r.rule_id for r in decision.rules_fired}
+
+    assert not any(r.startswith("ssn.block") for r in fired("noisy-bot"))
+    assert "ssn.block" in fired("other-bot")
+    high = [{"entity_type": "PII_SSN", "score": 0.95}]
+    still = engine.evaluate(
+        doc, PolicyInput(agent_slug="noisy-bot", surface="input", detections=high)
+    )
+    assert any(r.rule_id.startswith("ssn.block") for r in still.rules_fired)
+
+
+def test_only_rules_that_fired_on_the_labelled_decisions_are_proposed(session):
+    """#28: every rule covering the entity got a proposal, including rules that never
+    fired on the labelled traffic."""
+    from agentfox.core.models import Decision
+
+    two_rules = (
+        POLICY
+        + """  - id: ssn.escalate
+    when: {detection: {entity: PII_SSN, min_score: 0.25}}
+    effect: escalate
+"""
+    )
+    save_policy(session, PolicyDocument.from_yaml(two_rules), bind_mode="enforce")
+    decision = Decision(
+        surface="input", verdict="block", rules_fired_json=[{"rule_id": "ssn.block"}]
+    )
+    session.add(decision)
+    session.flush()
+    for label, score in [("false_positive", s) for s in (0.30, 0.35, 0.40, 0.42, 0.45)] + [
+        ("true_positive", 0.8),
+        ("true_positive", 0.9),
+    ]:
+        session.add(
+            GuardrailFeedback(
+                detector_key="pii.native",
+                entity_type="PII_SSN",
+                label=label,
+                score=score,
+                decision_id=decision.id,
+            )
+        )
+    session.flush()
+    report = propose_threshold_changes(session)
+    assert [session.get(ChangeProposal, p).diff_json["rule_id"] for p in report.filed] == [
+        "ssn.block"
+    ]
+    reasons = {s.get("rule_id"): s["reason"] for s in report.skipped}
+    assert reasons["ssn.escalate"] == "rule did not fire on any labelled decision"
+
+
+def test_a_proposal_the_labels_no_longer_support_is_superseded(session):
+    """#28: when the recommendation went away the stale proposal stayed open."""
+    save_policy(session, PolicyDocument.from_yaml(POLICY), bind_mode="enforce")
+    _clean_split(session)
+    [old_id] = propose_threshold_changes(session).filed
+    _label(session, "true_positive", 0.31)  # no clean separation any more
+    report = propose_threshold_changes(session)
+    assert report.filed == []
+    assert old_id in report.superseded
+    assert session.get(ChangeProposal, old_id).status == contract.SUPERSEDED

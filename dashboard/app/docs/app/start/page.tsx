@@ -130,6 +130,12 @@ export default function Page() {
         <strong>reconnect</strong> link re-runs the GitHub grant.
       </p>
       <p>
+        A scanned repository is then monitored: it is scanned again every six hours (and on
+        every push once the GitHub webhook is registered), and what changed becomes a
+        finding. The scan response&apos;s summary carries the <code>monitor_id</code>. See{" "}
+        <Link href="/docs/guides/monitoring">Monitor connected sources</Link>.
+      </p>
+      <p>
         The scope GitHub is asked for is <code>repo</code>, which includes private
         repositories. That is what lets the scan download one.
       </p>
@@ -143,18 +149,21 @@ export default function Page() {
         the spec document, never the API itself, turns each operation into a tool, and
         proposes one draft agent named after the host and one observe-mode policy. With no
         spec URL, the endpoint is still registered as a draft agent with no known operations.
+        With one, the spec is then fetched again every six hours and new operations, new
+        destructive ones above all, become findings (the summary&apos;s{" "}
+        <code>monitor_id</code>).
       </p>
       <p>
         The spec URL must be <code>http</code> or <code>https</code> and resolve to a public
         address; every redirect is checked the same way. Loopback and private-network
         addresses are refused unless the gateway runs with{" "}
-        <code>AGENTFOX_SPEC_FETCH_ALLOW_PRIVATE_HOSTS=true</code>, for a self-hosted
+        <code>AGENTFOX_OUTBOUND_ALLOW_PRIVATE_HOSTS=true</code>, for a self-hosted
         deployment whose spec lives on its own network. Link-local addresses, including the
         cloud metadata address <code>169.254.169.254</code>, are always refused.
       </p>
       <p>
         The same call over HTTP, against a local gateway&apos;s own OpenAPI document (started
-        with <code>AGENTFOX_SPEC_FETCH_ALLOW_PRIVATE_HOSTS=true</code>, since the spec is on
+        with <code>AGENTFOX_OUTBOUND_ALLOW_PRIVATE_HOSTS=true</code>, since the spec is on
         loopback):
       </p>
       <Code>{`curl -s -X POST http://127.0.0.1:8080/api/integrations/hosted-api/scan \\

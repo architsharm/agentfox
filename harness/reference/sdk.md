@@ -54,13 +54,15 @@ with nom.session(intent="refund a duplicate charge") as s:
     try:
         transfer(amount=250, currency="USD", to=doc.account)
     except ApprovalRequired as e:                 # tainted arg → human approval
-        notify_approver(e.approval_id)
+        if nom.wait_for_approval(e.approval_id, timeout=600) == "approved":
+            s.guard_tool("payments.transfer", args, approval_id=e.approval_id)   # runs once
     except PolicyViolation as e:
         log.warning("blocked: %s", e.rules_fired)
 ```
 
 Other `AgentSession` methods: `tool_result(text, tool=)`, `subagent_output(text)`,
-`guard_tool(tool, arguments, provenance=)`. One-off checks: `nom.check(text, surface="input")`,
+`guard_tool(tool, arguments, provenance=, approval_id=)`, `wait_for_approval(id, timeout)`.
+A decision on a held call: `agentfox permit approvals list|show|approve|deny`. One-off checks: `nom.check(text, surface="input")`,
 `@nom.guard(surface="output")`.
 
 ## 3. LangGraph
@@ -75,7 +77,9 @@ builder.add_node("pay",      guard.tool_node(transfer, tool="payments.transfer")
 ```
 
 Governance state lives under the `"__nometria__"` state key, so it survives checkpointing.
-Escalation calls LangGraph's `interrupt()`; blocks raise `PolicyViolation`.
+`tool_node` authorises the model's latest call to that tool in `state["messages"]` (or
+`arguments=`), with taint from earlier retrieval nodes. Escalation calls LangGraph's `interrupt()`;
+blocks raise `agentfox.PolicyViolation` (all refusals are `agentfox.AgentFoxError`).
 
 ## 4. FastAPI
 
@@ -106,6 +110,9 @@ from openai import OpenAI
 client = OpenAI(base_url="http://localhost:8080/v1", api_key="nom_agt_…",
                 default_headers={"X-Nometria-Agent": "support-triage"})
 ```
+
+A call held for a person raises `openai.APIStatusError` (HTTP 428, `exc.body["approval_id"]`).
+Once approved, resend with `extra_headers={"X-Nometria-Approval": approval_id}`.
 
 ## Rollout rule (the product's own safety stance)
 

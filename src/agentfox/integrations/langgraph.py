@@ -17,7 +17,14 @@ Design decisions:
   right primitive for "stop and ask a human", and inventing a second one would mean
   the graph has two ways to pause.
 * **Enforcement failures are loud.** A blocked node raises; it does not return a
-  sentinel the graph might ignore.
+  sentinel the graph might ignore. It raises `agentfox.PolicyViolation` /
+  `agentfox.ApprovalRequired` — the same classes the SDK raises (#46).
+* **A tool node authorises the call the model asked for.** In a real graph a node
+  receives the state and nothing else, so the arguments come from the latest tool
+  call for that tool in ``state["messages"]`` (or from ``arguments=``), not from the
+  node's keyword arguments, which are empty there (#45/#78).
+* **Provenance crosses nodes.** What a retrieval node read is kept in the governance
+  state, so an argument a later tool node copies out of it is tainted ``retrieved``.
 
 Usage::
 
@@ -35,38 +42,30 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-from collections.abc import Callable
+import json
+import logging
+from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from agentfox.core.db import session_scope
+from agentfox.core.db import init_db, session_scope
+from agentfox.detection import TaintTracker
+
+# The SDK's classes, not look-alikes: `except agentfox.PolicyViolation` must catch
+# what a guarded node raises (#46). Re-exported here so existing imports work.
+from agentfox.errors import AgentFoxError, ApprovalRequired, PolicyViolation
 from agentfox.integrations.correlation import links_for
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
+
+log = logging.getLogger(__name__)
 
 #: Key under which we stash governance state inside the graph's state dict.
 STATE_KEY = "__nometria__"
 
-
-class PolicyViolation(Exception):
-    """Raised inside a graph when enforcement blocks a node."""
-
-    def __init__(self, result: EnforcementResult) -> None:
-        super().__init__(result.reason or "blocked by policy")
-        self.result = result
-        self.trace_id = result.trace_id
-        self.decision_id = result.decision_id
-        self.rules_fired = result.rules_fired
-        self.entities = result.entities
-
-
-class ApprovalRequired(Exception):
-    """Raised when a node escalates and `interrupt()` is unavailable."""
-
-    def __init__(self, result: EnforcementResult) -> None:
-        super().__init__(result.reason or "human approval required")
-        self.result = result
-        self.approval_id = result.approval_id
-        self.trace_id = result.trace_id
+#: How much of each retrieval the governance state keeps for taint inference, and how
+#: many retrievals. Graph state is checkpointed, so it is bounded.
+_RETRIEVED_CHARS = 20_000
+_RETRIEVED_KEEP = 20
 
 
 def _langgraph_interrupt():
@@ -109,6 +108,12 @@ class AgentFoxGuard:
         self.intent = intent
         self._session = session
         self.raise_on_escalate = raise_on_escalate
+        self._schema_ready = session is not None
+        # The detectors run in this process: warm the opted-in model ones now, in
+        # the background, rather than inside the graph's first node (#48).
+        from agentfox.detection.warmup import warm_in_background
+
+        warm_in_background()
 
     # -- session plumbing -------------------------------------------------
     @contextmanager
@@ -116,6 +121,13 @@ class AgentFoxGuard:
         if self._session is not None:
             yield self._session
         else:
+            if not self._schema_ready:
+                # Like `auto()`: a graph run against a fresh state directory must
+                # not fail with "no such table: agents" (#79). Idempotent, and done
+                # on first use rather than at construction, because a guard is
+                # usually built at import time when no database need be reachable.
+                init_db()
+                self._schema_ready = True
             with session_scope() as owned:
                 yield owned
 
@@ -131,6 +143,16 @@ class AgentFoxGuard:
     def _merge(governance: dict[str, Any]) -> dict[str, Any]:
         """A node return value that merges our sub-state without touching the rest."""
         return {STATE_KEY: governance}
+
+    def _carry(self, state: Any, **changes: Any) -> dict[str, Any]:
+        """The incoming governance state with ``changes`` applied, as a node update.
+
+        Carried whole rather than written as a delta: a state schema without a
+        merging reducer on ``__nometria__`` replaces the value on every write, and a
+        tool node writing only ``tools_called`` would erase the trace id and what
+        was retrieved.
+        """
+        return self._merge({**self.state_of(state), **changes})
 
     def trace_id(self, state: Any) -> str | None:
         return self.state_of(state).get("trace_id")
@@ -164,6 +186,7 @@ class AgentFoxGuard:
                         session_id=self.state_of(state).get("session_id"),
                     )
                     governance = {
+                        **self.state_of(state),
                         "trace_id": pre.trace.id if pre.trace else None,
                         "last_verdict": pre.result.verdict,
                     }
@@ -221,7 +244,7 @@ class AgentFoxGuard:
             @functools.wraps(inner)
             def wrapper(state: Any, *args: Any, **kwargs: Any) -> Any:
                 result = inner(state, *args, **kwargs)
-                text = _stringify(result)
+                text = _stringify(_without_governance(result))
                 if not text.strip():
                     return result
                 with self._db() as session:
@@ -233,7 +256,16 @@ class AgentFoxGuard:
                     )
                 if outcome.get("verdict") == "block":
                     self._stop(_result_from(outcome))
-                return result
+                # Kept so a later tool node can tell that an argument was copied out
+                # of this (#78): taint that stops at the node boundary is no taint.
+                prior = list(self.state_of(state).get("retrieved") or [])
+                entry = {
+                    "path": f"$.retrieved[{len(prior)}]",
+                    "source": source,
+                    "text": text[:_RETRIEVED_CHARS],
+                }
+                retrieved = [*prior, entry][-_RETRIEVED_KEEP:]
+                return _with_governance(result, self._carry(state, retrieved=retrieved))
 
             return wrapper
 
@@ -245,44 +277,94 @@ class AgentFoxGuard:
         *,
         tool: str,
         provenance: dict[str, str] | None = None,
+        arguments: Callable[[Any], dict[str, Any]] | Sequence[str] | None = None,
+        messages_key: str = "messages",
     ) -> Callable:
         """Guard a node that performs a tool call.
 
         Authorises on the full execution path — tool, arguments, argument provenance —
         before the function body runs. A denied call never executes.
+
+        Which arguments are authorised, first that applies:
+
+        * ``arguments=`` — a function of the state returning the arguments, or a list
+          of state keys to take them from;
+        * keyword arguments the node was called with (a node called directly);
+        * the latest tool call for ``tool`` in ``state[messages_key]`` — what the
+          model asked for, which is the call this node is about to make.
+
+        A graph node receives only the state, so authorising its keyword arguments
+        alone authorised ``{}`` in every real graph: an argument limit refused every
+        call and provenance had nothing to check (#45/#78).
         """
 
         def decorator(inner: Callable) -> Callable:
             @functools.wraps(inner)
             def wrapper(state: Any, *args: Any, **kwargs: Any) -> Any:
-                arguments = dict(kwargs)
-                prior_steps = self.state_of(state).get("steps", [])
+                call_arguments = self._arguments_for(state, tool, arguments, kwargs, messages_key)
+                governance = self.state_of(state)
+                prior_steps = governance.get("steps", [])
                 with self._db() as session:
+                    from agentfox.core.models import Trace
+
+                    trace_id = governance.get("trace_id")
+                    trace = session.get(Trace, trace_id) if trace_id else None
                     enforcer = Enforcer(session)
                     result = enforcer.guard_tool_call(
                         agent_slug=self.agent,
                         tool_key=tool,
-                        arguments=arguments,
+                        arguments=call_arguments,
                         provenance=provenance,
                         intent=self.intent,
-                        prior_tools=self.state_of(state).get("tools_called", []),
+                        trace=trace,
+                        tracker=_tracker_from(governance, trace_id),
+                        prior_tools=governance.get("tools_called", []),
                         prior_steps=prior_steps,
                     )
                 if result.blocked or result.escalated:
                     self._stop(result)
 
                 out = inner(state, *args, **kwargs)
-                called = [*self.state_of(state).get("tools_called", []), tool]
+                called = [*governance.get("tools_called", []), tool]
                 # PL-4 fast-follow: the same step-history shape McpGovernor already
                 # threads through guard_tool_call, so LoopGovernor sees an alternating
                 # A/B/A/B cycle or a stalled no-new-observation run here too, not just
                 # a per-tool repeat count.
-                steps = [*prior_steps, {"tool": tool, "arguments": arguments, "observation": out}]
-                return _with_governance(out, self._merge({"tools_called": called, "steps": steps}))
+                steps = [
+                    *prior_steps,
+                    {"tool": tool, "arguments": call_arguments, "observation": out},
+                ]
+                return _with_governance(out, self._carry(state, tools_called=called, steps=steps))
 
             return wrapper
 
         return decorator(fn) if fn else decorator
+
+    @staticmethod
+    def _arguments_for(
+        state: Any,
+        tool: str,
+        source: Callable[[Any], dict[str, Any]] | Sequence[str] | None,
+        kwargs: dict[str, Any],
+        messages_key: str,
+    ) -> dict[str, Any]:
+        if callable(source):
+            return dict(source(state) or {})
+        if source is not None:
+            return {key: _read(state, key) for key in source}
+        if kwargs:
+            return dict(kwargs)
+        found = _tool_call_arguments(_read(state, messages_key), tool)
+        if found is not None:
+            return found
+        log.warning(
+            "agentfox: tool node '%s' found no tool call for it in state['%s'] and was "
+            "given no arguments; authorising it with none. Pass arguments= to say "
+            "where its arguments are.",
+            tool,
+            messages_key,
+        )
+        return {}
 
     # -- escalation -------------------------------------------------------
     def _denial(self, answer: Any) -> str | None:
@@ -328,15 +410,24 @@ class AgentFoxGuard:
                 # answer, so it decides whether the node continues: only an explicit
                 # approval does. Ignoring it — as this did — ran the tool after a
                 # `{"approved": False}` resume.
-                answer = interrupt(
-                    {
-                        "agentfox": "approval_required",
-                        "approval_id": result.approval_id,
-                        "reason": result.reason,
-                        "trace_id": result.trace_id,
-                        "rules_fired": result.rules_fired,
-                    }
-                )
+                try:
+                    answer = interrupt(
+                        {
+                            "agentfox": "approval_required",
+                            "approval_id": result.approval_id,
+                            "reason": result.reason,
+                            "trace_id": result.trace_id,
+                            "rules_fired": result.rules_fired,
+                        }
+                    )
+                except RuntimeError as exc:
+                    # A wrapped node called outside a running graph (a unit test, a
+                    # direct call) has nothing to pause: hold it the way the guard
+                    # does without LangGraph, rather than crash with LangGraph's
+                    # "outside of a runnable context".
+                    if "runnable context" not in str(exc):
+                        raise
+                    raise ApprovalRequired(result) from None
                 denial = self._denial(answer)
                 if denial is None:
                     return
@@ -355,6 +446,58 @@ class AgentFoxGuard:
 # ---------------------------------------------------------------------------
 # State helpers — tolerant of dict states, dataclasses and pydantic models
 # ---------------------------------------------------------------------------
+
+
+def _tool_call_arguments(messages: Any, tool: str) -> dict[str, Any] | None:
+    """The arguments of the latest call to ``tool`` the model made, or None.
+
+    Reads LangChain messages (``AIMessage.tool_calls``: ``name`` and ``args``) and
+    OpenAI-shaped dicts (``tool_calls[].function``: ``name`` and JSON ``arguments``).
+    Only the latest message that carries tool calls is read: an older call to the
+    same tool is not the one this node is about to make.
+    """
+    for message in reversed(list(messages or [])):
+        if isinstance(message, dict):
+            calls = message.get("tool_calls")
+        else:
+            calls = getattr(message, "tool_calls", None)
+        if not calls:
+            continue
+        for call in calls:
+            if not isinstance(call, dict):
+                call = {"name": getattr(call, "name", None), "args": getattr(call, "args", {})}
+            function = call.get("function") or {}
+            name = call.get("name") or function.get("name")
+            if name != tool:
+                continue
+            raw = call["args"] if "args" in call else function.get("arguments")
+            if isinstance(raw, str):
+                try:
+                    raw = json.loads(raw or "{}")
+                except ValueError:
+                    raw = {"_raw": raw}
+            return dict(raw or {})
+        return None
+    return None
+
+
+def _tracker_from(governance: dict[str, Any], trace_id: str | None) -> TaintTracker:
+    """A taint tracker that knows what earlier retrieval nodes read."""
+    tracker = TaintTracker(trace_id=trace_id)
+    for entry in governance.get("retrieved") or []:
+        if isinstance(entry, dict) and entry.get("text"):
+            tracker.mark(
+                str(entry.get("path") or "$.retrieved"),
+                str(entry.get("source") or "retrieved"),
+                str(entry["text"]),
+            )
+    return tracker
+
+
+def _without_governance(result: Any) -> Any:
+    if isinstance(result, dict) and STATE_KEY in result:
+        return {k: v for k, v in result.items() if k != STATE_KEY}
+    return result
 
 
 def _read(state: Any, key: str) -> Any:
@@ -432,6 +575,7 @@ def _result_from(payload: dict[str, Any]) -> EnforcementResult:
 
 __all__ = [
     "STATE_KEY",
+    "AgentFoxError",
     "ApprovalRequired",
     "AgentFoxGuard",
     "PolicyViolation",
