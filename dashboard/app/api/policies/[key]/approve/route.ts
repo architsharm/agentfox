@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyReviewAction } from "@/lib/proxy";
+import { proxyReviewAction } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 

@@ -2092,7 +2092,7 @@
 }
 
 /* --- /coverage -------------------------------------------------------
-   The numbers on this page come from `lib/coverage.json`, so the layout
+   The numbers on this page come from `lib/generated/coverage.json`, so the layout
    has to survive them changing: a layer added to the taxonomy, a gap
    list that grows or empties. Everything below sizes to its content. */
 
@@ -3780,7 +3780,7 @@
 
 
 /* ------------------------------------------------------------------------
-   Blog (app/blog, components/blog).
+   Blog (app/blog, components/marketing/blog).
 
    Posts render inside `.docs-doc`, so body text, headings, tables and code
    are the docs' own and a reader clicking through from a post to a guide

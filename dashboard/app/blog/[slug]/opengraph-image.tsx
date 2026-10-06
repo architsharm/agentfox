@@ -4,7 +4,7 @@
  */
 
 import { articleOgImage, OG_CONTENT_TYPE, OG_SIZE } from "@/app/og";
-import { getPost, SLUGS } from "@/lib/blog";
+import { getPost, SLUGS } from "@/lib/marketing/blog";
 
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;

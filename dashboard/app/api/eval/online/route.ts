@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/proxy";
+import { proxyRedirectWithHandler } from "@/lib/product/proxy";
 
 /**
  * Scores already-recorded production traces for an agent with the same scorers an

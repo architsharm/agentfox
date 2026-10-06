@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { FLAT, PRODUCT, RESOURCES, SECONDARY } from "@/lib/nav";
+import { FLAT, PRODUCT, RESOURCES, SECONDARY } from "@/lib/marketing/nav";
 import { BrandLockup } from "@/components/marketing/brand";
 
 /**
@@ -13,8 +13,8 @@ import { BrandLockup } from "@/components/marketing/brand";
  *
  * Every figure here is copied from a file in this repository rather than written for
  * the page: README.md for the containment and detection results and the MVP status
- * line, app/benchmark/page.tsx for the AgentDojo denominator and the llm-guard
- * comparison, app/page.tsx and app/how-it-works/page.tsx for the behavioural claims
+ * line, app/(marketing)/benchmark/page.tsx for the AgentDojo denominator and the llm-guard
+ * comparison, app/page.tsx and app/(marketing)/how-it-works/page.tsx for the behavioural claims
  * (observe by default, the tool-containment exception, the fail-open contract, the two
  * scanner guarantees). Nothing is rounded, and the numbers that make the product look
  * worse are on the page next to the ones that do not, because leading with those is the
@@ -501,7 +501,7 @@ export function CTA() {
  */
 type FootLink = { label: string; href: string; out?: boolean };
 
-/* Derived from lib/nav.ts, like the header, the sitemap and llms.txt. The
+/* Derived from lib/marketing/nav.ts, like the header, the sitemap and llms.txt. The
    footer is where a reader goes when the header did not have what they
    wanted, so it carries everything the menus carry rather than a curated
    subset that drifts from them. */

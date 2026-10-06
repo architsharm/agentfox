@@ -10,9 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/api";
+import { SESSION_COOKIE } from "@/lib/product/api";
 
-// /playground is the public, unauthenticated demo (dashboard/app/playground) — it
+// /playground is the public, unauthenticated demo (dashboard/app/(marketing)/playground) — it
 // talks directly to the gateway's own unauthenticated `/api/playground/*` routes
 // from the browser, never through this app's cookie-authenticated `api()` helper,
 // so it needs no session here either.

@@ -9,10 +9,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PostCard } from "@/components/blog/card";
+import { PostCard } from "@/components/marketing/blog/card";
 import { MarketingNav } from "@/components/marketing/nav";
 import { CTA, Footer } from "@/components/marketing/sections";
-import { BLOG_POSTS, blogPath, postsByDate } from "@/lib/blog";
+import { BLOG_POSTS, blogPath, postsByDate } from "@/lib/marketing/blog";
 import { absolute, publicPageMetadata, SITE_NAME } from "@/lib/site";
 
 const TITLE = "AI agent security blog";

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyFormPatch } from "@/lib/proxy";
+import { proxyFormPatch } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 

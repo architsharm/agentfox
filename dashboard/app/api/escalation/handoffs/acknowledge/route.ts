@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { proxyReviewAction } from "@/lib/proxy";
+import { proxyReviewAction } from "@/lib/product/proxy";
 
 /**
  * "Someone has to act on it" only means something if there is a way to say "I've

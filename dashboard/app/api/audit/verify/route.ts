@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/proxy";
+import { proxyRedirectWithHandler } from "@/lib/product/proxy";
 
 /**
  * A full independent re-derivation of the audit-chain hash, on demand — the

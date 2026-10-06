@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/proxy";
+import { proxyRedirectWithHandler } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 

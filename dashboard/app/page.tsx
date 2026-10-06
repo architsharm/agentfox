@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CATEGORY_CAP } from "./how-it-works/_public";
+import { CATEGORY_CAP } from "./(marketing)/how-it-works/_public";
 import { SITE_URL, SUPPORT_EMAIL, publicPageMetadata, HOME_TITLE, HOME_DESCRIPTION } from "@/lib/site";
 import { MarketingNav, REPO } from "@/components/marketing/nav";
 import { CTA, Footer } from "@/components/marketing/sections";
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
  *   - `license` / "Apache-2.0" ............ LICENSE at the repository root
  *   - `codeRepository` / `url` ............ components/marketing/nav.tsx REPO
  *   - `email` ............................. components/marketing/editions.tsx
- *   - `description` ....................... app/how-it-works/_public.tsx CATEGORY
+ *   - `description` ....................... app/(marketing)/how-it-works/_public.tsx CATEGORY
  *   - `offers` price 0 .................... it is Apache-2.0 source; the free
  *                                           edition is what this page describes
  *   - `applicationCategory` / `os` ........ "runs offline with no API key",
@@ -124,7 +124,7 @@ function LandingJsonLd() {
  * signed-in app can each look right without either one constraining the other. The
  * design language is the one this team already ships on dayotter.com.
  *
- * Every figure in those sections is copied from README.md or app/benchmark/page.tsx,
+ * Every figure in those sections is copied from README.md or app/(marketing)/benchmark/page.tsx,
  * both of which name the results file each number comes from. Nothing is restated
  * from memory, and anything needing a new number links to /benchmark instead.
  */

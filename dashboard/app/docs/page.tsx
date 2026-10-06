@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Callout, Code, NextSteps, TaskTable } from "@/components/docs/blocks";
-import { DOC_PAGES } from "@/lib/docs";
+import { DOC_PAGES } from "@/lib/docs/pages";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({

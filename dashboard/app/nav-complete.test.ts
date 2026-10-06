@@ -1,7 +1,7 @@
 /**
  * Every public page is in the information architecture.
  *
- * Deriving the nav, footer, sitemap and llms.txt from `lib/nav.ts` removed one
+ * Deriving the nav, footer, sitemap and llms.txt from `lib/marketing/nav.ts` removed one
  * class of bug — those four can no longer disagree — and introduced a
  * different one: a page can now exist on disk, be routable, be public, and
  * appear in none of them, because nothing forces a new `app/x/page.tsx` to be
@@ -18,7 +18,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ALL_PAGES, ALL_PATHS } from "@/lib/nav";
+import { ALL_PAGES, ALL_PATHS } from "@/lib/marketing/nav";
 
 const APP = join(process.cwd(), "app");
 
@@ -41,14 +41,25 @@ function isRouteDir(name: string): boolean {
   return !name.startsWith("_") && !name.startsWith(".") && !name.startsWith("(");
 }
 
-function publicPageRoutes(): string[] {
+/** `(marketing)`, `(product)`: organise files without adding a URL segment. */
+function isRouteGroup(name: string): boolean {
+  return name.startsWith("(") && name.endsWith(")");
+}
+
+function publicPageRoutes(dir: string = APP): string[] {
   const found: string[] = [];
-  for (const entry of readdirSync(APP)) {
-    const dir = join(APP, entry);
-    if (!isRouteDir(entry) || !statSync(dir).isDirectory()) continue;
+  for (const entry of readdirSync(dir)) {
+    const sub = join(dir, entry);
+    if (!statSync(sub).isDirectory()) continue;
+    // A route group is transparent: its top-level pages are top-level URLs.
+    if (isRouteGroup(entry)) {
+      found.push(...publicPageRoutes(sub));
+      continue;
+    }
+    if (!isRouteDir(entry)) continue;
     // Only top-level pages. A nested route is reached from its parent, which
     // is the page that has to be in the nav.
-    const hasPage = readdirSync(dir).some((f) => f === "page.tsx" || f === "page.ts");
+    const hasPage = readdirSync(sub).some((f) => f === "page.tsx" || f === "page.ts");
     if (hasPage) found.push(`/${entry}`);
   }
   return found.sort();
@@ -60,7 +71,7 @@ describe("the information architecture", () => {
     const missing = publicPageRoutes().filter((r) => !known.has(r) && !NOT_IN_NAV.has(r));
     expect(
       missing,
-      `these pages exist and are in no menu, sitemap or llms.txt — add them to lib/nav.ts ` +
+      `these pages exist and are in no menu, sitemap or llms.txt — add them to lib/marketing/nav.ts ` +
         `(or to NOT_IN_NAV with a reason): ${missing.join(", ")}`,
     ).toEqual([]);
   });
@@ -68,7 +79,7 @@ describe("the information architecture", () => {
   it("does not name a page that does not exist", () => {
     const onDisk = new Set([...publicPageRoutes(), "/"]);
     const phantom = ALL_PATHS.filter((p) => !onDisk.has(p));
-    expect(phantom, `lib/nav.ts links to pages with no route: ${phantom.join(", ")}`).toEqual(
+    expect(phantom, `lib/marketing/nav.ts links to pages with no route: ${phantom.join(", ")}`).toEqual(
       [],
     );
   });

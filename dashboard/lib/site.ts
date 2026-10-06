@@ -42,13 +42,13 @@ export const SITE_DESCRIPTION =
 
 /**
  * The repository. Also spelled out in components/marketing/nav.tsx and
- * app/how-it-works/_public.tsx; those are rendered links and this is structured
+ * app/(marketing)/how-it-works/_public.tsx; those are rendered links and this is structured
  * data, and they are all the same string. Verified against LICENSE at the repo
  * root, which is the Apache License 2.0.
  */
 export const REPO_URL = "https://github.com/architsharm/agentfox";
 
-/** Verified in components/marketing/editions.tsx and components/Playground.tsx. */
+/** Verified in components/marketing/editions.tsx and components/marketing/Playground.tsx. */
 export const SUPPORT_EMAIL = "support@nometria.com";
 
 /** Absolute URL for a path, for canonicals and structured data. */

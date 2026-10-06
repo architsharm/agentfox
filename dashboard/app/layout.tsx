@@ -186,7 +186,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           on /app with the marketing wrapper still in place and no sidebar; a
           reload fixed it, because a reload renders the layout again.
 
-          The shell moved to app/app/layout.tsx, which the router mounts only for
+          The shell moved to app/(product)/app/layout.tsx, which the router mounts only for
           the routes it belongs to. The wrapper that used to sit here was
           `.login-main { display: block; width: 100% }` — a div that did nothing —
           and every public page renders its own <main>, so it is simply gone. */}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 const ACTIONS = new Set(["quarantine", "kill", "resume"]);
 const PAST: Record<string, string> = { quarantine: "quarantined", kill: "killed", resume: "resumed" };
