@@ -129,7 +129,7 @@ class EchoProvider:
 
     def judge(self, output: str, rubric: str, model: str = "default") -> dict[str, Any]:
         """Rubric-keyword coverage. Deterministic, and honest about being shallow."""
-        from agentfox.capabilities.evaluation.scorers import content_tokens
+        from agentfox.core.text import content_tokens
 
         criteria = content_tokens(rubric)
         if not criteria:

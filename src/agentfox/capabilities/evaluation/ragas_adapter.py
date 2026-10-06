@@ -23,10 +23,10 @@ from agentfox.capabilities.evaluation.scorers import (
     BaseScorer,
     ScoreContext,
     ScoreResult,
-    content_tokens,
     register_scorer,
     sentences,
 )
+from agentfox.core.text import content_tokens
 
 log = logging.getLogger(__name__)
 
