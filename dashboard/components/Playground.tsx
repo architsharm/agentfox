@@ -39,7 +39,7 @@ import { Verdict } from "./ui";
 
 /**
  * The offline `echo` provider tags its deterministic replies with
- * `[echo:<digest>] ` (src/agentfox/providers/echo.py). That is a test-substrate
+ * `[echo:<digest>] ` (src/agentfox/platform/providers/echo.py). That is a test-substrate
  * detail, not something a visitor should read past.
  */
 const ECHO_TAG = /^\[echo:[0-9a-f]+\]\s*/;

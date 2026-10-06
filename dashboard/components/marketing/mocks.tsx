@@ -30,7 +30,7 @@ import type { CSSProperties, ReactNode } from "react";
  *                                     the payload shape enforcement.py writes, so
  *                                     they chain correctly rather than being filler
  *   - observe / enforce verdicts .... Playground.tsx turn rendering + agentReply()
- *   - the scripted reply ............ src/agentfox/providers/echo.py _synthesise()
+ *   - the scripted reply ............ src/agentfox/platform/providers/echo.py _synthesise()
  *   - injection.direct reason ....... src/agentfox/policies_data/baseline.yaml
  *
  * Only marketing.css classes and its tokens are used. No colour is hardcoded, so

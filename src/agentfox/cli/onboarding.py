@@ -448,7 +448,7 @@ def doctor(
         Trace,
     )
     from agentfox.detection import available_detectors
-    from agentfox.providers import available_providers
+    from agentfox.platform.providers import available_providers
 
     settings = get_settings()
     checks: list[tuple[str, str, str]] = []

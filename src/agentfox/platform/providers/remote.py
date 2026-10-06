@@ -18,7 +18,7 @@ from typing import Any
 import httpx
 
 from agentfox.core.config import get_settings
-from agentfox.providers.base import (
+from agentfox.platform.providers.base import (
     CompletionRequest,
     CompletionResponse,
     StreamChunk,
@@ -76,7 +76,7 @@ class _HttpProvider:
     def judge(self, output: str, rubric: str, model: str = "default") -> dict[str, Any]:
         """LLM-as-judge. The model is pinned by the caller and recorded."""
         if not self.available():
-            from agentfox.providers.echo import EchoProvider
+            from agentfox.platform.providers.echo import EchoProvider
 
             return EchoProvider().judge(output, rubric, model)
         prompt = (

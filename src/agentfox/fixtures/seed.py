@@ -40,6 +40,7 @@ from agentfox.grounding.entitlement import upsert_principal
 from agentfox.grounding.provenance import APPROVED, SYSTEM_OF_RECORD, register_source
 from agentfox.platform.identity import ensure_identity, grant_capability, issue_credential
 from agentfox.platform.policy import load_available, save_policy
+from agentfox.platform.providers import script
 from agentfox.platform.registry.service import (
     register_agent,
     scan_mcp_server,
@@ -48,7 +49,6 @@ from agentfox.platform.registry.service import (
 )
 from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
 from agentfox.prove.compliance.risk import assess
-from agentfox.providers import script
 
 # ---------------------------------------------------------------------------
 # Tools — `impact` is the axis every containment rule reasons over

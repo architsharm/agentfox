@@ -301,7 +301,7 @@ class LlmJudgeScorer(BaseScorer):
         self.judge_model = judge_model
 
     def score(self, output: str, ctx: ScoreContext) -> ScoreResult:
-        from agentfox.providers import get_provider
+        from agentfox.platform.providers import get_provider
 
         provider_key, _, model = self.judge_model.partition(":")
         provider = get_provider(provider_key)

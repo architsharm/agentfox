@@ -37,7 +37,7 @@ from typing import Any
 
 from agentfox.detection.judgment.capability import Tier
 from agentfox.detection.judgment.jev import JevAnswer, JevResult, JevUnavailable
-from agentfox.providers.base import is_local_endpoint
+from agentfox.platform.providers.base import is_local_endpoint
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class LlmJudge:
 
     def available(self) -> bool:
         try:
-            from agentfox.providers import get_provider
+            from agentfox.platform.providers import get_provider
 
             provider = get_provider(self.provider_key())
         except Exception:  # noqa: BLE001 - unknown key, import failure
@@ -98,8 +98,8 @@ class LlmJudge:
     def ask(self, state: Any, questions: dict[str, dict[str, Any]]) -> JevResult:
         if not questions:
             return JevResult()
-        from agentfox.providers import get_provider
-        from agentfox.providers.base import CompletionRequest
+        from agentfox.platform.providers import get_provider
+        from agentfox.platform.providers.base import CompletionRequest
 
         provider = get_provider(self.provider_key())
         if not provider.available():

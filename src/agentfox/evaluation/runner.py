@@ -27,7 +27,7 @@ from agentfox.core.config import get_settings
 from agentfox.core.models import EvalCase, EvalResult, EvalRun, EvalSuite, Trace, utcnow
 from agentfox.evaluation.scorers import ScoreContext, get_scorer
 from agentfox.evaluation.silent_failure import Envelope
-from agentfox.providers import CompletionRequest, get_provider
+from agentfox.platform.providers import CompletionRequest, get_provider
 
 DEFAULT_SCORERS = ("fuzzy_match", "groundedness", "task_completion", "silent_failure")
 

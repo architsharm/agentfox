@@ -47,8 +47,8 @@ from agentfox.gateway.routes import (
     tuning,
     waitlist,
 )
+from agentfox.platform.providers import all_providers, available_providers
 from agentfox.prove.compliance.catalog import load_catalog
-from agentfox.providers import all_providers, available_providers
 from agentfox.runtime.availability import (
     check_services,
     get_admission_controller,

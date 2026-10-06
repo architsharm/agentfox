@@ -17,7 +17,7 @@ from agentfox.evaluation.silent_failure import (
     groundedness,
     self_consistency,
 )
-from agentfox.providers import register_provider
+from agentfox.platform.providers import register_provider
 from tests.conftest import as_user
 
 CONTEXT = (

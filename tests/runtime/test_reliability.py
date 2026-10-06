@@ -12,7 +12,7 @@ import time
 import pytest
 
 from agentfox.core.models import Budget, Finding
-from agentfox.providers import CompletionRequest, CompletionResponse, register_provider
+from agentfox.platform.providers import CompletionRequest, CompletionResponse, register_provider
 from agentfox.runtime.enforcement import ProviderUnavailable
 from agentfox.runtime.reliability import (
     BREAKER,

@@ -14,7 +14,11 @@ from agentfox.core.config import get_settings
 from agentfox.detection.judgment import JevUnavailable, LlmJudge, judges_for
 from agentfox.detection.judgment.capability import DecisionKind, Tier
 from agentfox.detection.judgment.llm import _parse
-from agentfox.providers.base import CompletionRequest, CompletionResponse, register_provider
+from agentfox.platform.providers.base import (
+    CompletionRequest,
+    CompletionResponse,
+    register_provider,
+)
 
 QUESTIONS = {
     "settles": {"type": "noul", "instructions": "settled?", "criteria": {"what": "x"}},

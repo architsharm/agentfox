@@ -18,7 +18,7 @@ from agentfox.core.models import EvalRun, EvalSuite
 from agentfox.evaluation import gate, set_baseline
 from agentfox.evaluation.gating import INFORMATION_URI, to_junit, to_sarif
 from agentfox.evaluation.runner import NativeEvalRunner
-from agentfox.providers import register_provider
+from agentfox.platform.providers import register_provider
 
 runner = CliRunner()
 

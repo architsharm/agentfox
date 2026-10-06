@@ -580,7 +580,7 @@ def _probe_database() -> str:
 
 def _probe_model_provider() -> str:
     from agentfox.core.config import get_settings
-    from agentfox.providers import available_providers
+    from agentfox.platform.providers import available_providers
 
     configured = get_settings().default_provider
     if configured not in available_providers():

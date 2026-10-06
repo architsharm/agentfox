@@ -28,7 +28,7 @@ from agentfox.integrations.fastapi import (
     install,
 )
 from agentfox.integrations.prometheus import render_metrics
-from agentfox.providers import all_providers, available_providers, get_provider
+from agentfox.platform.providers import all_providers, available_providers, get_provider
 from tests.conftest import PII_TEXT
 
 # ---------------------------------------------------------------------------
@@ -70,7 +70,7 @@ def test_the_azure_url_carries_the_deployment_and_api_version(monkeypatch):
 def test_azure_inherits_the_openai_wire_format():
     """The inheritance is the point: a bug fixed in the OpenAI path is fixed here too,
     which is not true of a copy-pasted adapter."""
-    from agentfox.providers.remote import OpenAIProvider
+    from agentfox.platform.providers.remote import OpenAIProvider
 
     assert isinstance(get_provider("azure-openai"), OpenAIProvider)
     assert isinstance(get_provider("litellm"), OpenAIProvider)
@@ -85,7 +85,7 @@ def test_bedrock_refuses_rather_than_improvising_sigv4(monkeypatch):
     if provider.available():  # boto3 present in this environment
         pytest.skip("boto3 installed; the unavailable path cannot be exercised here")
     with pytest.raises(RuntimeError, match="boto3"):
-        from agentfox.providers import CompletionRequest
+        from agentfox.platform.providers import CompletionRequest
 
         provider.complete(CompletionRequest(messages=[{"role": "user", "content": "hi"}]))
 
@@ -106,7 +106,7 @@ def test_litellm_does_not_require_a_key(monkeypatch):
 
 
 def test_system_prompts_are_lifted_out_for_bedrock_and_vertex():
-    from agentfox.providers.enterprise import _split_system
+    from agentfox.platform.providers.enterprise import _split_system
 
     rest, system = _split_system(
         [

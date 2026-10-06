@@ -34,14 +34,19 @@ from typing import Any
 
 import httpx
 
-from agentfox.providers.base import (
+from agentfox.platform.providers.base import (
     CompletionRequest,
     CompletionResponse,
     StreamChunk,
     is_local_endpoint,
     register_provider,
 )
-from agentfox.providers.remote import OpenAIProvider, _HttpProvider, _sse_lines, estimate_cost
+from agentfox.platform.providers.remote import (
+    OpenAIProvider,
+    _HttpProvider,
+    _sse_lines,
+    estimate_cost,
+)
 
 log = logging.getLogger(__name__)
 

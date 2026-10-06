@@ -24,7 +24,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 
-from agentfox.providers.base import (
+from agentfox.platform.providers.base import (
     CompletionRequest,
     CompletionResponse,
     StreamChunk,

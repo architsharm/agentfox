@@ -6,8 +6,8 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
+from agentfox.platform.providers import CompletionRequest
 from agentfox.prove.audit.trace import end_trace
-from agentfox.providers import CompletionRequest
 from agentfox.runtime.enforcement.result import StreamEvent
 
 
@@ -132,7 +132,7 @@ class _StreamingMixin:
                 pending.append(event)
 
         provider_ms = (time.perf_counter() - started) * 1000
-        from agentfox.providers import CompletionResponse
+        from agentfox.platform.providers import CompletionResponse
 
         response = CompletionResponse(
             text="".join(accumulated),

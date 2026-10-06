@@ -146,7 +146,7 @@ export default function Privacy() {
                 attack have no backend behind them.
               </p>
               <Ref>
-                src/agentfox/gateway/routes/playground.py:5-8, 127; src/agentfox/providers/echo.py:1-6
+                src/agentfox/gateway/routes/playground.py:5-8, 127; src/agentfox/platform/providers/echo.py:1-6
               </Ref>
             </div>
           </div>
@@ -443,7 +443,7 @@ export default function Privacy() {
                 </p>
                 <Ref>
                   src/agentfox/core/config.py:117-119, 360-363; agentfox.toml:13-14;
-                  src/agentfox/core/webhooks.py:97; src/agentfox/providers/echo.py:1-6
+                  src/agentfox/core/webhooks.py:97; src/agentfox/platform/providers/echo.py:1-6
                 </Ref>
                 <p className="mk-body" style={{ marginTop: 14 }}>
                   This is unusual enough to be worth checking rather than believing. The{" "}

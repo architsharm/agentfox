@@ -30,7 +30,7 @@ from typing import Any
 
 from agentfox.evaluation.scorers import BaseScorer, ScoreContext, ScoreResult, register_scorer
 from agentfox.evaluation.silent_failure import groundedness
-from agentfox.providers import get_provider
+from agentfox.platform.providers import get_provider
 
 log = logging.getLogger(__name__)
 

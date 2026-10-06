@@ -4,7 +4,7 @@ Every provider is an adapter. `echo` is the offline default; hosted providers ar
 gated on `AGENTFOX_ALLOW_EGRESS` so nothing leaves a regulated boundary by accident.
 """
 
-from agentfox.providers.base import (
+from agentfox.platform.providers.base import (
     CompletionRequest,
     CompletionResponse,
     ModelProvider,
@@ -13,14 +13,14 @@ from agentfox.providers.base import (
     get_provider,
     register_provider,
 )
-from agentfox.providers.echo import EchoProvider, clear_scripts, script
-from agentfox.providers.enterprise import (
+from agentfox.platform.providers.echo import EchoProvider, clear_scripts, script
+from agentfox.platform.providers.enterprise import (
     AzureOpenAIProvider,
     BedrockProvider,
     LiteLLMProvider,
     VertexProvider,
 )
-from agentfox.providers.remote import AnthropicProvider, OpenAIProvider, estimate_cost
+from agentfox.platform.providers.remote import AnthropicProvider, OpenAIProvider, estimate_cost
 
 __all__ = [
     "AnthropicProvider",
