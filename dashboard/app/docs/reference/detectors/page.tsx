@@ -302,7 +302,7 @@ input       block    SAFETY.ILLICIT`}</Output>
           <tr><td><code>enforcement_budget_ms</code></td><td>300</td><td>The whole detector pipeline for one check.</td></tr>
           <tr><td><code>detector_timeout_ms</code></td><td>40</td><td>Per detector, unless the detector declares its own (the classifier 250, similarity 150, judgment 2000).</td></tr>
           <tr><td><code>request_budget_ms</code></td><td>350</td><td>Every check one governed call makes, together.</td></tr>
-          <tr><td><code>fail_mode</code></td><td><code>open</code></td><td>What a degraded check does: <code>open</code> lets it through and records the gap; <code>closed</code> blocks it as <code>pipeline.fail_closed</code> when the decision is enforcing.</td></tr>
+          <tr><td><code>fail_mode</code></td><td><code>open</code></td><td>What a degraded check does: <code>open</code> lets it through and records the gap; <code>closed</code> blocks it as <code>pipeline.fail_closed</code> when the decision is enforcing. A pack&apos;s own <code>fail_mode: closed</code> also applies (below).</td></tr>
         </tbody>
       </table>
       <p>
@@ -320,9 +320,13 @@ AGENTFOX_DETECTOR_TIMEOUT_MS=0 AGENTFOX_ENFORCEMENT_BUDGET_MS=0 AGENTFOX_FAIL_MO
       <Output>{`allow allow degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 'safety.lexicon'] []
 block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 'safety.lexicon'] ['pipeline.fail_closed']`}</Output>
       <p>
-        <code>fail_mode</code> is a deployment setting. The <code>fail_mode</code> field
-        in a policy pack is stored but not read. <code>agentfox doctor</code> reports
-        which one is in effect.
+        <code>fail_mode</code> is a deployment setting, and a policy pack can declare its
+        own. The stricter applies: a pack that is enforcing, says{" "}
+        <code>fail_mode: closed</code> and has a detection rule on the surface being
+        checked blocks a degraded call even when the deployment says <code>open</code>{" "}
+        (<code>tool-containment</code> does this on tool arguments). The example above
+        is an <code>input</code> check, where no enforcing pack has a detection rule.{" "}
+        <code>agentfox doctor</code> reports the deployment setting.
       </p>
 
       <h2 id="findings">Findings</h2>

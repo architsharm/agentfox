@@ -60,6 +60,16 @@ from agentfox.runtime.enforcement.surfaces import _SurfacesMixin
 from agentfox.runtime.enforcement.tool_calls import _ToolCallMixin
 
 
+def _relies_on_detections(doc: Any, surface: str) -> bool:
+    """Does this pack have an enabled detection rule that applies on ``surface``?"""
+    return any(
+        rule.enabled
+        and rule.when.detection is not None
+        and (not rule.when.surface or surface in rule.when.surface)
+        for rule in doc.rules
+    )
+
+
 class Enforcer(
     _SurfacesMixin,
     _ToolCallMixin,
@@ -581,14 +591,37 @@ class Enforcer(
 
         # P3-7: a degraded pipeline means reduced coverage. Fail-closed converts that
         # into a block; fail-open accepts it and records the gap.
-        if pipeline_result.degraded and self.settings.fail_mode == "closed" and mode == "enforce":
+        #
+        # Two sources, the stricter wins (#42): the deployment-wide `fail_mode`, for
+        # an enforcing decision, and each pack's own `fail_mode` — which used to be
+        # stored and never read. A pack fails closed only where its coverage
+        # actually depended on the detectors: it is enforcing, says `closed`, and
+        # has an enabled detection rule for this surface.
+        closed_packs = (
+            [
+                doc.key
+                for doc, _version, _decision in evaluated
+                if doc.mode == "enforce"
+                and doc.fail_mode == "closed"
+                and _relies_on_detections(doc, surface)
+            ]
+            if pipeline_result.degraded
+            else []
+        )
+        deployment_closed = self.settings.fail_mode == "closed" and mode == "enforce"
+        if pipeline_result.degraded and (deployment_closed or closed_packs):
             verdict = "block"
             effective = "block"
+            source = (
+                f"policy {', '.join(closed_packs)} declares fail_mode=closed"
+                if closed_packs and not deployment_closed
+                else "fail_mode=closed"
+            )
             rules_fired.append(
                 _fired_rule(
                     "pipeline.fail_closed",
                     "block",
-                    f"detectors degraded ({pipeline_result.degraded}) and fail_mode=closed",
+                    f"detectors degraded ({pipeline_result.degraded}) and {source}",
                     severity="medium",
                     controls=["NOM-RTG-06"],
                 )

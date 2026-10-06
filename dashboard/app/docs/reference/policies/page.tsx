@@ -132,7 +132,7 @@ export default function Page() {
           <tr><td><code>version</code></td><td>integer</td><td><code>1</code></td><td>The first stored version number. Saving a changed body stores a new immutable version; decisions record the version in force.</td></tr>
           <tr><td><code>mode</code></td><td><code>observe</code> | <code>enforce</code></td><td><code>observe</code></td><td>The mode the pack is bound in when first loaded. Afterwards the binding decides (<code>agentfox policy enforce</code> / <code>observe</code>).</td></tr>
           <tr><td><code>default_effect</code></td><td>an effect</td><td><code>allow</code></td><td>The verdict when no rule fires.</td></tr>
-          <tr><td><code>fail_mode</code></td><td><code>open</code> | <code>closed</code></td><td><code>open</code></td><td>Accepted and stored, but not read at runtime: see <a href="#fail-mode">fail_mode</a>.</td></tr>
+          <tr><td><code>fail_mode</code></td><td><code>open</code> | <code>closed</code></td><td><code>open</code></td><td>What a detector timeout or error does to this pack&apos;s checks: see <a href="#fail-mode">fail_mode</a>.</td></tr>
           <tr><td><code>scope</code></td><td><code>{"{agents: [globs], environments: [names]}"}</code></td><td><code>{"{}"}</code></td><td>Which agents and environments the pack applies to at runtime. Empty means all.</td></tr>
           <tr><td><code>rules</code></td><td>list</td><td><code>[]</code></td><td>The rules.</td></tr>
         </tbody>
@@ -553,13 +553,17 @@ LINT FAIL — critical/high findings block the build`}</Output>
 
       <h2 id="fail-mode">fail_mode and the enforcement budget</h2>
       <p>
-        What happens when a detector times out or errors is decided by the
-        deployment-wide setting <code>fail_mode</code> (<code>AGENTFOX_FAIL_MODE</code>,
-        or <code>fail_mode</code> in <code>agentfox.toml</code>), not by the{" "}
-        <code>fail_mode</code> field of a pack, which is stored but not read. With{" "}
-        <code>open</code> (the default) the call proceeds and the gap is recorded; with{" "}
-        <code>closed</code> a degraded call is blocked as{" "}
-        <code>pipeline.fail_closed</code> when the decision is enforcing. Details and an
+        What happens when a detector times out or errors is decided by two settings,
+        and the stricter wins: the deployment-wide <code>fail_mode</code> (
+        <code>AGENTFOX_FAIL_MODE</code>, or <code>fail_mode</code> in{" "}
+        <code>agentfox.toml</code>) and each pack&apos;s own <code>fail_mode</code>. With{" "}
+        <code>open</code> (the default) the call proceeds and the gap is recorded. A
+        degraded call is blocked as <code>pipeline.fail_closed</code> when the
+        deployment says <code>closed</code> and the decision is enforcing, or when a pack
+        that is bound in enforce says <code>closed</code> and has an enabled detection
+        rule on the surface being checked (its coverage depended on the detectors that
+        did not finish). <code>tool-containment</code> and{" "}
+        <code>eu-ai-act-high-risk</code> ship with <code>closed</code>. Details and an
         example are in <Link href="/docs/reference/detectors#budget">Detectors: budget and failure</Link>.
       </p>
 
@@ -694,7 +698,6 @@ fired contains out if {
       <ul>
         <li>Rules see what the detectors and the registry give them. A wrong impact declaration or a missed detection is not fixed by a better rule.</li>
         <li>The runtime does not know the end user, so <code>user</code> layers scoped to one user never apply at runtime (above).</li>
-        <li>A pack&apos;s <code>fail_mode</code> field has no runtime effect.</li>
         <li>The <code>completion</code> surface needs the caller to report facts; over HTTP there is no field for them, so <code>completion_requires</code> rules always see them as unmet there.</li>
       </ul>
 
