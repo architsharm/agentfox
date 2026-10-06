@@ -113,11 +113,28 @@ def hooks_install(
     agent: str = typer.Option(..., "--agent", help="Agent slug these calls are governed as."),
     path: Path = typer.Option(Path("."), "--path", help="Project to install into."),
     write: bool = typer.Option(False, "--write", help="Actually write the settings file."),
+    environment: str | None = typer.Option(
+        None,
+        "--env",
+        help="Environment the agent runs in. Default: development for a new agent; an "
+        "agent already registered keeps its own.",
+    ),
+    grant: bool = typer.Option(
+        True,
+        "--grant/--no-grant",
+        help="Grant the harness's built-in tools to the agent (the default), so ordinary "
+        "work is not refused by default-deny.",
+    ),
 ) -> None:
     """Show, or write, the hook configuration for a harness.
 
     Dry by default. This edits a file that decides whether the operator's agent
     runs at all, so it prints what it would do and waits to be told twice.
+
+    With --write it also sets up a working baseline: the agent is registered
+    (development unless --env says otherwise), the harness's built-in tools are
+    declared with their real impact and granted to it, and the coding-agent pack is
+    bound to it in observe. Destructive commands are still refused.
     """
     import json as _json
 
@@ -176,12 +193,40 @@ def hooks_install(
             "\n  [yellow]The daemon is not running[/] — every call will report "
             "unchecked until `agentfox admin hooks daemon` is up."
         )
-    # Declare the harness's own tools first. Without them every call trips
-    # `tool.not_declared` and the agent reads "the registry has never seen
-    # this tool" instead of the control it actually broke.
-    declared = _declare_harness_tools(harness)
-    if declared:
-        console.print(f"  [green]declared[/] {declared} {harness} tool(s) in the registry")
+    # The working baseline. Without it the hook refused everything: the agent was
+    # a production shadow with no grants, so `ls` hit capability default-deny and
+    # every shell command `action.production_irreversible`.
+    from agentfox.hooks.baseline import install_baseline
+
+    with _session() as session:
+        baseline = install_baseline(
+            session, harness=harness, agent_slug=agent, environment=environment, grant=grant
+        )
+    if baseline.registered:
+        console.print(
+            f"  [green]registered[/] {baseline.agent} [dim](environment {baseline.environment})[/]"
+        )
+    elif baseline.environment_changed:
+        console.print(f"  [green]environment[/] {baseline.agent} → {baseline.environment}")
+    if baseline.tools_declared:
+        console.print(
+            f"  [green]declared[/] {len(baseline.tools_declared)} {harness} tool(s) in the registry"
+        )
+    if baseline.tools_granted:
+        console.print(
+            f"  [green]granted[/] {', '.join(baseline.tools_granted)} to {baseline.agent} "
+            "[dim](review with `agentfox permit list`; revoke with `agentfox permit revoke`)[/]"
+        )
+    elif not grant:
+        console.print(
+            "  [yellow]no grants[/] — capability default-deny refuses every tool until you "
+            f"grant them (`agentfox permit grant {baseline.agent} <tool>`)"
+        )
+    console.print(
+        "  [dim]Other tools (MCP servers, anything the harness adds) have no grant: "
+        f"`agentfox policy proposals from-traffic --agent {baseline.agent}` proposes them "
+        "from what the agent was seen to call.[/]"
+    )
 
     settings.parent.mkdir(parents=True, exist_ok=True)
     existing = {}
@@ -233,31 +278,6 @@ def _hook_events(harness: str) -> list[str]:
     order = {"UserPromptSubmit": 0, "PreToolUse": 1, "PostToolUse": 2}
     events = [event for (h, event) in EVENT_SURFACE if h == harness]
     return sorted(events, key=lambda e: (order.get(e, 99), e))
-
-
-def _declare_harness_tools(harness: str) -> int:
-    """Register the harness's built-in tools, with the impact each really has."""
-    from sqlalchemy import select
-
-    from agentfox.core.models import Tool
-    from agentfox.hooks.harness import HARNESS_TOOLS
-
-    wanted = HARNESS_TOOLS.get(harness, {})
-    added = 0
-    with _session() as session:
-        for key, impact in wanted.items():
-            if session.scalar(select(Tool).where(Tool.key == key)) is not None:
-                continue
-            session.add(
-                Tool(
-                    key=key,
-                    name=f"{harness}:{key}",
-                    impact=impact,
-                    description=f"{harness} built-in tool",
-                )
-            )
-            added += 1
-    return added
 
 
 def client_daemon_running() -> bool:
