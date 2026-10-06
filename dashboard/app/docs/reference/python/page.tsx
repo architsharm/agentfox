@@ -593,7 +593,7 @@ PolicyViolation: capability.denied`}</Output>
             <td><code>result</code>, <code>approval_id</code>, <code>trace_id</code></td>
           </tr>
           <tr>
-            <td><code>agentfox.integrations.McpCallBlocked</code> (a <code>RuntimeError</code>)</td>
+            <td><code>agentfox.integrations.McpCallBlocked</code> (also a <code>RuntimeError</code>)</td>
             <td><code>McpGovernor.call(..., raise_on_block=True)</code></td>
             <td><code>result</code></td>
           </tr>
@@ -605,10 +605,10 @@ PolicyViolation: capability.denied`}</Output>
         </tbody>
       </table>
       <p>
-        <code>Blocked</code>, <code>PolicyViolation</code> and <code>ApprovalRequired</code>{" "}
-        all derive from <code>agentfox.AgentFoxError</code> (defined in{" "}
-        <code>agentfox.errors</code>), so <code>except agentfox.AgentFoxError</code> catches
-        any refusal. The LangGraph integration raises the SDK&apos;s classes; before October
+        <code>Blocked</code>, <code>PolicyViolation</code>, <code>ApprovalRequired</code> and{" "}
+        <code>McpCallBlocked</code> all derive from <code>agentfox.AgentFoxError</code> (defined
+        in <code>agentfox.errors</code>), so <code>except agentfox.AgentFoxError</code> catches
+        any in-process refusal. The LangGraph integration raises the SDK&apos;s classes; before October
         2026 it had look-alikes of its own that <code>except agentfox.PolicyViolation</code>{" "}
         did not catch.
       </p>

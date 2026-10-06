@@ -18,7 +18,8 @@ Everything lives in subpackages. The package root holds only `__init__.py` (the 
 
 | Subpackage | Key modules | Responsibility |
 |---|---|---|
-| **`core/`** | `config.py`, `db.py`, `tenancy.py`, `models/`, `outbound.py`, `webhooks.py`, `crypto.py`, `seed.py`, `ids.py`, `finding.py` | Settings (`AGENTFOX_*`, `agentfox.toml`) and the startup secret check; engine and session factory; session-level tenant isolation; the ORM (§5); vetted outbound HTTP (`guarded_get`/`guarded_post`); the signed finding webhook; at-rest encryption; demo seed data. |
+| **`core/`** | `config.py`, `db.py`, `tenancy.py`, `models/`, `vocab.py`, `outbound.py`, `webhooks.py`, `crypto.py`, `ids.py`, `finding.py` | Settings (`AGENTFOX_*`, `agentfox.toml`) and the startup secret check; engine and session factory; session-level tenant isolation; the ORM (§5); the shared vocabulary (`SURFACES`, `TAINT_ORDER`/`taint_rank`, `EFFECT_RANK`, `COMPARATORS`, `AUTOMATION_ACTOR_TYPE`); vetted outbound HTTP (`guarded_get`/`guarded_post`); the signed finding webhook; at-rest encryption. Imports nothing outside `core`. |
+| **`fixtures/`** | `seed.py` | The deterministic demo world `agentfox demo`, the playground and the tests seed. |
 | **`jobs/`** | `queue.py`, `store.py`, `scheduler.py`, `handlers.py` | Work outside the request: the in-process reference queue, the persisted `jobs` store with retries and a dead letter, per-tenant `JobSchedule` rows, and the handler table (`monitors.run`, `probes.run`, `escalation.scan`, `canary.advance`, `drift.check`, …). |
 | **`discovery/`** | `repo.py`, `exposure.py`, `threats.py`, `openapi.py`, `sessions.py` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, lethal-trifecta exposure, threat coverage. |
 | **`registry/`** | `service.py`, `control.py`, `skills.py` | The agent registry (`observe_agent`, `register_agent`), observed lineage, kill switch and quarantine, MCP tool-poisoning and skill scanning. |
@@ -108,7 +109,8 @@ approval id and the poll path.
 One hierarchy for everything AgentFox raises into a caller's code: `AgentFoxError`, with
 `PolicyViolation` (a decision blocked the call) and `ApprovalRequired` (held; carries
 `approval_id`). The SDK and the LangGraph guard raise the same classes; `auto()` raises
-`agentfox.Blocked`.
+`agentfox.Blocked` and the MCP governor `McpCallBlocked`, both also `RuntimeError`s. The
+FastAPI middleware refuses with an HTTP 403 instead of raising.
 
 ---
 
@@ -119,7 +121,7 @@ per surface (`input`, `output`, `retrieved`, `tool_result`, `tool_args`, `memory
 `agent_message`, `reasoning`, …) under a per-request `LatencyLedger` budget. Key pieces:
 
 - **`base.py`** — `Detector` / `BaseDetector` (`key`, `version`, `surfaces`, `_detect`),
-  `Detection`, `TAINT_ORDER`.
+  `Detection`. The surface list and `TAINT_ORDER` they use live in `core/vocab.py`.
 - **`detectors/`** — native, dependency-free detectors: `injection.py` (lexical, structural and
   contextual signals; runs on `tool_args` too), `pii.py`, `secrets.py`, `safety.py`,
   `schema.py`, and `judgment.py` (the optional judgment tiers as a detector).
