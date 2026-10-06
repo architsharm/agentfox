@@ -150,8 +150,28 @@ def app(isolated_db):
 def test_one_line_install_adds_a_health_probe(app):
     body = app.get("/agentfox/health").json()
     assert body["status"] == "ok"
-    assert body["mode"] == "observe", "global middleware must never enforce"
+    assert body["middleware"] == "observe", "global middleware must never enforce"
     assert body["service"] == "test-agent"
+
+
+def test_the_health_probe_reports_the_mode_the_policies_are_in(app):
+    """#51a: it said "observe" whatever the policies were doing."""
+    from agentfox.core.db import session_scope
+    from agentfox.policy.store import set_mode
+
+    with session_scope() as s:
+        for key in ("baseline", "eu-ai-act-high-risk", "tool-containment"):
+            set_mode(s, key, "observe")
+    body = app.get("/agentfox/health").json()
+    assert body["mode"] == "observe"
+    assert body["policies"]["baseline"] == "observe"
+
+    with session_scope() as s:
+        set_mode(s, "baseline", "enforce")
+    body = app.get("/agentfox/health").json()
+    assert body["mode"] == "enforce"
+    assert body["policies"]["baseline"] == "enforce"
+    assert body["middleware"] == "observe"
 
 
 def test_the_middleware_stamps_every_response(app):
