@@ -347,14 +347,15 @@ undeclared agent is refused before anybody writes a rule about it.
 The `/v1/guard/*` endpoints above read no credential. The control-plane API under `/api` does:
 
 ```bash
+agentfox admin users create you@example.com --role owner   # once, on a fresh database
 agentfox admin auth issue you@example.com --name "ci"
 curl -H "Authorization: Bearer nom_api_..." http://localhost:8080/api/findings
 ```
 
-One honest caveat: `auth issue` mints a token for an operator that already exists, and a database
-created by `agentfox init` alone has no operators in it. Today the first operator account comes
-from `agentfox admin seed` (which creates `admin@example.com` and four other roles) or from signing in to
-the dashboard with GitHub. Token values are shown once, hashed at rest with argon2id, and carry an
+`auth issue` mints a token for an operator that already exists, and a database created by
+`agentfox init` alone has none: `admin users create` makes the first one without loading any demo
+data (`agentfox admin seed` also creates operators, but writes demo agents and traffic too). Token
+values are shown once, hashed at rest with argon2id, and carry an
 expiry. `agentfox admin auth status` tells you whether this deployment is actually requiring them: in a
 development environment it accepts an `X-Nometria-User` header instead, which is fine locally and
 unacceptable anywhere else.

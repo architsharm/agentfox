@@ -80,8 +80,9 @@ export default function Page() {
           <tr>
             <td><code>AGENTFOX_AUDIT_SIGNING_KEY</code></td>
             <td>
-              Signs the audit chain&apos;s checkpoints. The default is a published string. Keep
-              it outside the application database; rotating it ends verification of
+              Signs the audit chain&apos;s checkpoints. The default is a published string, so
+              the gateway refuses to start outside development without this. Keep it
+              outside the application database; rotating it ends verification of
               checkpoints signed before.
             </td>
           </tr>
@@ -92,8 +93,9 @@ export default function Page() {
           <tr>
             <td><code>AGENTFOX_SERVICE_AUTH_SECRET</code></td>
             <td>
-              Only if you use GitHub sign-in. Identical on the gateway and the dashboard; the
-              default is published.
+              Required outside development, even without GitHub sign-in: the default is
+              published, and it authenticates the call that mints an owner token, so the
+              gateway refuses to start on it. Identical on the gateway and the dashboard.
             </td>
           </tr>
           <tr>
@@ -119,7 +121,8 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
           <Code>{`pip install "agentfox[postgres]"
 export AGENTFOX_DATABASE_URL="postgresql+psycopg://agentfox:PASSWORD@db.internal:5432/agentfox"
 export AGENTFOX_ENVIRONMENT=production
-export AGENTFOX_AUDIT_SIGNING_KEY="…your generated value…"`}</Code>
+export AGENTFOX_AUDIT_SIGNING_KEY="…your generated value…"
+export AGENTFOX_SERVICE_AUTH_SECRET="…another generated value…"`}</Code>
         </Step>
         <Step title="Create the schema and load the catalog">
           <Code>{`agentfox init`}</Code>
@@ -146,21 +149,16 @@ export AGENTFOX_AUDIT_SIGNING_KEY="…your generated value…"`}</Code>
           <p>
             The API under <code>/api</code> requires a token in production. A token is minted
             for an operator that already exists, and a database created by{" "}
-            <code>init</code> has none:
+            <code>init</code> has none. Create the first one; no demo data is loaded:
           </p>
+          <Code>{`agentfox admin users create ops@example.com --role owner`}</Code>
+          <Output>{`created ops@example.com · owner · org org_default
+  Next: agentfox admin auth issue ops@example.com`}</Output>
           <Code>{`agentfox admin auth issue ops@example.com --name dashboard`}</Code>
-          <Output>{`…
-unknown user 'ops@example.com'`}</Output>
-          <p>
-            Today the first operator comes from signing in to the dashboard with GitHub, or
-            from <code>agentfox admin seed</code>, which creates <code>admin@example.com</code>{" "}
-            and four other roles <em>and also loads demo agents and traffic</em>. Then:
-          </p>
-          <Code>{`agentfox admin auth issue admin@example.com --name dashboard`}</Code>
           <Output>{`╭─ Token issued — copy it now ─────────────────────────────────────────────────────────────────────╮
 │ nom_api_…                                                                                        │
 │                                                                                                  │
-│ dashboard · admin@example.com · owner · org org_default                                          │
+│ dashboard · ops@example.com · owner · org org_default                                            │
 │ expires 2027-10-05T15:06:06.434557+00:00                                                         │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
   Only a hash is stored. There is no way to show this value again — issue a new token if it is lost.
@@ -178,8 +176,13 @@ curl -s -o /dev/null -w "%{http_code}\\n" -H "Authorization: Bearer $AGENTFOX_TO
 │ The development identity header is refused.                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯`}</Output>
           <p>
+            Sign in to the dashboard with the same token: on <code>/login</code>, open
+            &quot;Self-hosted? Sign in with an API token&quot;. Signing out revokes it.
+          </p>
+          <p>
             The <code>/v1/guard/*</code> routes and the model proxy read no operator
-            credential; they identify the agent. Keep the gateway on a private network.
+            credential; they identify the agent, and an agent key that does not verify is a
+            401. Keep the gateway on a private network.
           </p>
         </Step>
       </Steps>
@@ -191,7 +194,13 @@ curl -s -o /dev/null -w "%{http_code}\\n" -H "Authorization: Bearer $AGENTFOX_TO
 
       <h2 id="compose">Docker Compose</h2>
       <Code>{`git clone https://github.com/architsharm/agentfox.git && cd agentfox
+export AGENTFOX_SERVICE_AUTH_SECRET="$(openssl rand -hex 32)"
+export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"   # keep a copy
 docker compose -f deploy/docker-compose.yml up -d`}</Code>
+      <p>
+        Both secrets are required: compose stops with an error naming the missing one, and
+        the gateway would refuse to start on a published value anyway.
+      </p>
       <p>
         Four services: <code>db</code> (Postgres 16), <code>gateway</code> on port 8080,{" "}
         <code>dashboard</code> on port 3000, and <code>opa</code> on 8181, which is optional
@@ -216,22 +225,23 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
           <tr><td><code>AGENTFOX_ALLOW_EGRESS</code></td><td><code>&quot;false&quot;</code></td><td>Set true, plus a key, to use a hosted model.</td></tr>
           <tr><td><code>AGENTFOX_ENABLED_DETECTORS</code></td><td>the five defaults plus <code>injection.classifier</code>, <code>safety.granite</code>, <code>injection.similarity</code></td><td>The image carries their weights.</td></tr>
           <tr><td><code>AGENTFOX_ENFORCEMENT_BUDGET_MS</code></td><td><code>&quot;100&quot;</code></td><td>Lower than the 300 default; with the classifiers on, long inputs can exceed it and fail open.</td></tr>
-          <tr><td><code>AGENTFOX_AUDIT_SIGNING_KEY</code></td><td><code>change-me-before-any-real-deployment</code></td><td>Change it.</td></tr>
+          <tr><td><code>AGENTFOX_AUDIT_SIGNING_KEY</code></td><td>from your shell (required)</td><td>Keep a copy outside the database.</td></tr>
+          <tr><td><code>AGENTFOX_SERVICE_AUTH_SECRET</code></td><td>from your shell (required)</td><td>Also given to the dashboard.</td></tr>
           <tr><td><code>AGENTFOX_EVIDENCE_DIR</code></td><td><code>/var/agentfox/evidence</code></td><td>On the <code>evidence</code> volume.</td></tr>
         </tbody>
       </table>
       <p>
-        On first boot the gateway runs <code>agentfox admin seed</code> (demo agents, and the{" "}
-        <code>admin@example.com</code> operator) before serving. Because the gateway runs as{" "}
-        <code>production</code>, the dashboard&apos;s default development header is refused.
-        Mint a token and give it to the dashboard:
+        The gateway loads no demo data. Create the first operator and a token in the
+        running container, then sign in on <code>http://localhost:3000/login</code> under
+        &quot;Self-hosted? Sign in with an API token&quot;:
       </p>
-      <Code>{`docker compose -f deploy/docker-compose.yml exec gateway agentfox admin auth issue admin@example.com --name dashboard`}</Code>
+      <Code>{`docker compose -f deploy/docker-compose.yml exec gateway agentfox admin users create you@example.com --role owner --token`}</Code>
       <p>
-        Then set <code>AGENTFOX_API_TOKEN</code> (or <code>NOMETRIA_API_TOKEN</code>) on the{" "}
-        <code>dashboard</code> service to that value and recreate it. The dashboard reads both
-        prefixes, although the compose file&apos;s comments say it reads only{" "}
-        <code>NOMETRIA_*</code>.
+        GitHub sign-in is optional: create an OAuth app with the callback{" "}
+        <code>http://localhost:3000/api/auth/github/callback</code> and export{" "}
+        <code>GITHUB_CLIENT_ID</code> and <code>GITHUB_CLIENT_SECRET</code> before{" "}
+        <code>up</code>. Demo data only if you want it:{" "}
+        <code>docker compose -f deploy/docker-compose.yml exec gateway agentfox admin seed</code>.
       </p>
       <Callout kind="warning" title="Not run for this page">
         The compose stack pulls images and was not run while writing this page; the steps
@@ -269,13 +279,13 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
         and <code>GITHUB_CLIENT_SECRET</code>. (<code>deploy/render.yaml</code> is a different
         file that deploys only a dashboard against a hosted API; it is not a self-host.)
       </p>
-      <Callout kind="warning" title="Two things to fix after the first deploy">
+      <Callout kind="warning" title="After the first deploy">
         <ul>
           <li>
-            The blueprint generates <code>NOMETRIA_SERVICE_AUTH_SECRET</code> on the dashboard
-            only. The gateway keeps the published default, so the two differ and GitHub
-            sign-in fails at the provisioning step. Copy the dashboard&apos;s generated value
-            to the gateway as <code>AGENTFOX_SERVICE_AUTH_SECRET</code>.
+            The blueprint generates <code>NOMETRIA_SERVICE_AUTH_SECRET</code> on the gateway
+            and copies it to the dashboard. A deployment created from an older blueprint has
+            it on the dashboard only, and its gateway now refuses to start on the default:
+            sync the blueprint, or copy the dashboard&apos;s value to the gateway.
           </li>
           <li>
             Set <code>AGENTFOX_TOKEN_ENCRYPTION_KEY</code> on the gateway if users will connect
@@ -334,11 +344,11 @@ agentfox report verify`}</Code>
           </tr>
           <tr>
             <td><code>unknown user</code> when issuing a token</td>
-            <td>No operator exists yet. Sign in with GitHub once, or run <code>agentfox admin seed</code> (which also loads demo data).</td>
+            <td>No operator exists yet. <code>agentfox admin users create EMAIL --role owner</code>, then issue the token.</td>
           </tr>
           <tr>
             <td>GitHub sign-in returns 503 or fails at provisioning</td>
-            <td><code>GITHUB_CLIENT_*</code> unset, or <code>service_auth_secret</code> differs between gateway and dashboard.</td>
+            <td><code>GITHUB_CLIENT_*</code> unset, or <code>service_auth_secret</code> differs between gateway and dashboard. Token sign-in on <code>/login</code> works without either.</td>
           </tr>
           <tr>
             <td>The playground shows &quot;Failed to fetch&quot;</td>

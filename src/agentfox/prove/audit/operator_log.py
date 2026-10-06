@@ -93,6 +93,12 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "mints an identity that can act through the gateway",
     ),
     PrivilegedAction(
+        "agentfox.gateway.auth.create_operator",
+        "operator.user.created",
+        "creates a person who can be issued credentials — for the first operator of a "
+        "self-hosted deployment, the root of every later grant",
+    ),
+    PrivilegedAction(
         "agentfox.gateway.auth.revoke_token",
         "operator.credential.revoked",
         "ends an identity; the gap between issue and revoke is the exposure window",
