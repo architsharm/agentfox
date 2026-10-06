@@ -435,6 +435,7 @@ TOOLS: dict[str, Tool] = {
                 "scope": _string("Only this scope level.", enum=list(SCOPE_LEVELS)),
             },
             argv=lambda a, s: [
+                "policy",
                 "proposals",
                 "list",
                 "--json",
@@ -451,7 +452,7 @@ TOOLS: dict[str, Tool] = {
             "needs a person, whatever the evidence says.",
             {"proposal_id": _slug("Proposal id, e.g. chp_… (from agentfox_proposals_list).")},
             ("proposal_id",),
-            argv=lambda a, s: ["proposals", "show", "--json", "--", a["proposal_id"]],
+            argv=lambda a, s: ["policy", "proposals", "show", "--json", "--", a["proposal_id"]],
             json_output=True,
         ),
         Tool(
@@ -465,7 +466,8 @@ TOOLS: dict[str, Tool] = {
                 "limit": _integer("Findings to include (default 15).", 1, 200),
             },
             argv=lambda a, s: [
-                "check",
+                "scan",
+                "repo",
                 "--json",
                 "--no-submit",
                 *_opts(a, limit="--limit"),
@@ -494,7 +496,8 @@ TOOLS: dict[str, Tool] = {
             },
             ("statement",),
             argv=lambda a, s: [
-                "analyse-action",
+                "test",
+                "action",
                 *_opts(
                     a,
                     kind="--kind",
@@ -516,7 +519,7 @@ TOOLS: dict[str, Tool] = {
                 "start": _integer("First sequence number.", 0, 2**53),
                 "end": _integer("Last sequence number.", 0, 2**53),
             },
-            argv=lambda a, s: ["audit", "verify", *_opts(a, start="--start", end="--end")],
+            argv=lambda a, s: ["report", "verify", *_opts(a, start="--start", end="--end")],
             exit_meanings={1: "audit chain verification FAILED; the chain is broken"},
         ),
         Tool(
@@ -529,7 +532,7 @@ TOOLS: dict[str, Tool] = {
                 "verbose": {"type": "boolean", "description": "List every control."},
             },
             argv=lambda a, s: [
-                "compliance",
+                "report",
                 "status",
                 *_opts(a, framework="--framework", verbose="--verbose"),
             ],
@@ -538,14 +541,14 @@ TOOLS: dict[str, Tool] = {
             "agentfox_compliance_frameworks",
             "Compliance frameworks",
             "Lists supported frameworks with mapped-control coverage and review status.",
-            argv=lambda a, s: ["compliance", "frameworks"],
+            argv=lambda a, s: ["report", "frameworks"],
         ),
         Tool(
             "agentfox_redteam_probes",
             "Red-team probe suite",
             "Lists the built-in adversarial probes (category, surface, severity, OWASP/ATLAS ids) "
             "and which wrapped runners are installed. It does not run a campaign.",
-            argv=lambda a, s: ["redteam", "probes"],
+            argv=lambda a, s: ["test", "probes"],
         ),
         Tool(
             "agentfox_guardrails_catalogue",
@@ -553,7 +556,13 @@ TOOLS: dict[str, Tool] = {
             "Returns every kind of guardrail the product can enforce as JSON, optionally filtered "
             "by intent. Use this to answer 'can we express this policy?'.",
             {"intent": _slug("Intent id, e.g. prevent_disclosure.")},
-            argv=lambda a, s: ["guardrails", "catalogue", "--json", *_opts(a, intent="--intent")],
+            argv=lambda a, s: [
+                "policy",
+                "rules",
+                "catalogue",
+                "--json",
+                *_opts(a, intent="--intent"),
+            ],
             json_output=True,
         ),
         Tool(
@@ -567,7 +576,7 @@ TOOLS: dict[str, Tool] = {
                 )
             },
             ("instruction",),
-            argv=lambda a, s: ["guardrails", "suggest", "--", a["instruction"]],
+            argv=lambda a, s: ["policy", "rules", "suggest", "--", a["instruction"]],
         ),
         Tool(
             "agentfox_guardrails_explain",
@@ -576,7 +585,7 @@ TOOLS: dict[str, Tool] = {
             "ids from agentfox_guardrails_catalogue.",
             {"kind_id": _slug("Guardrail kind id, e.g. pii_detection.")},
             ("kind_id",),
-            argv=lambda a, s: ["guardrails", "explain", "--", a["kind_id"]],
+            argv=lambda a, s: ["policy", "rules", "explain", "--", a["kind_id"]],
         ),
         Tool(
             "agentfox_guardrails_test",
@@ -594,14 +603,14 @@ TOOLS: dict[str, Tool] = {
                 },
             },
             ("key", "values"),
-            argv=lambda a, s: ["guardrails", "test", "--", a["key"], ",".join(a["values"])],
+            argv=lambda a, s: ["policy", "rules", "test", "--", a["key"], ",".join(a["values"])],
         ),
         Tool(
             "agentfox_guardrails_check",
             "Rule conflicts",
             "Finds business rules where two teams' thresholds disagree, as JSON. exit_code 1 "
             "means conflicts were found.",
-            argv=lambda a, s: ["guardrails", "check", "--json"],
+            argv=lambda a, s: ["policy", "rules", "check", "--json"],
             json_output=True,
             exit_meanings={1: "conflicting rules found"},
         ),
@@ -615,14 +624,14 @@ TOOLS: dict[str, Tool] = {
                 "question": _string("A question to test.", minLength=1, maxLength=4000),
             },
             ("agent", "question"),
-            argv=lambda a, s: ["boundary", "check", "--", a["agent"], a["question"]],
+            argv=lambda a, s: ["test", "boundary", "--", a["agent"], a["question"]],
         ),
         Tool(
             "agentfox_sources_list",
             "Registered sources",
             "Returns every registered knowledge source with its authority tier and freshness as "
             "JSON, worst tier first.",
-            argv=lambda a, s: ["sources", "list", "--json"],
+            argv=lambda a, s: ["declare", "list", "sources", "--json"],
             json_output=True,
         ),
         Tool(
@@ -630,7 +639,7 @@ TOOLS: dict[str, Tool] = {
             "Versions",
             "Shows every version that takes part in a decision: product, control catalogue, "
             "policy engine, default mode, fail mode, latency budget.",
-            argv=lambda a, s: ["version"],
+            argv=lambda a, s: ["admin", "version"],
         ),
         Tool(
             "agentfox_guard_text",
