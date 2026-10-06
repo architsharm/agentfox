@@ -28,7 +28,7 @@ import pytest
 
 from agentfox.capabilities.discovery.repo import SUPPORTED_LANGUAGES, ScanReport, scan
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 
 
 def _sites(report: ScanReport, kind: str) -> list[str]:
