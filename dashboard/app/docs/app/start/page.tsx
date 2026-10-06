@@ -157,13 +157,13 @@ export default function Page() {
         The spec URL must be <code>http</code> or <code>https</code> and resolve to a public
         address; every redirect is checked the same way. Loopback and private-network
         addresses are refused unless the gateway runs with{" "}
-        <code>AGENTFOX_SPEC_FETCH_ALLOW_PRIVATE_HOSTS=true</code>, for a self-hosted
+        <code>AGENTFOX_OUTBOUND_ALLOW_PRIVATE_HOSTS=true</code>, for a self-hosted
         deployment whose spec lives on its own network. Link-local addresses, including the
         cloud metadata address <code>169.254.169.254</code>, are always refused.
       </p>
       <p>
         The same call over HTTP, against a local gateway&apos;s own OpenAPI document (started
-        with <code>AGENTFOX_SPEC_FETCH_ALLOW_PRIVATE_HOSTS=true</code>, since the spec is on
+        with <code>AGENTFOX_OUTBOUND_ALLOW_PRIVATE_HOSTS=true</code>, since the spec is on
         loopback):
       </p>
       <Code>{`curl -s -X POST http://127.0.0.1:8080/api/integrations/hosted-api/scan \\
