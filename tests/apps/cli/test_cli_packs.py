@@ -71,3 +71,27 @@ def test_findings_types_lists_the_registry():
     assert result.exit_code == 0, result.output
     rows = {row["type"]: row for row in json.loads(result.output)}
     assert rows["containment"]["owner"] == "containment"
+
+
+def test_new_scaffolds_a_pack_that_validates(tmp_path):
+    into = tmp_path / "packs"
+    result = runner.invoke(
+        app, ["policy", "packs", "new", "payments/chargebacks", "--into", str(into)]
+    )
+    assert result.exit_code == 0, result.output
+    target = into / "payments" / "chargebacks"
+    assert (target / "policies" / "chargebacks.yaml").is_file()
+    assert "__" not in (target / "pack.yaml").read_text()
+    checked = runner.invoke(app, ["policy", "packs", "validate", str(target)])
+    assert checked.exit_code == 0, checked.output
+    again = runner.invoke(
+        app, ["policy", "packs", "new", "payments/chargebacks", "--into", str(into)]
+    )
+    assert again.exit_code == 1
+
+
+def test_new_refuses_a_bad_id(tmp_path):
+    result = runner.invoke(
+        app, ["policy", "packs", "new", "Payments Stuff", "--into", str(tmp_path)]
+    )
+    assert result.exit_code == 2
