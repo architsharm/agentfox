@@ -623,6 +623,24 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_JOB_BACKOFF_BASE_SECONDS",
         "def": "60",
         "what": "Base of the exponential retry delay."
+      },
+      {
+        "key": "live_probes_enabled",
+        "env": "AGENTFOX_LIVE_PROBES_ENABLED",
+        "def": "true",
+        "what": "Kill switch for scheduled probes against deployed agents. Each target also needs its own recorded opt-in."
+      },
+      {
+        "key": "showcase_enabled",
+        "env": "AGENTFOX_SHOWCASE_ENABLED",
+        "def": "false",
+        "what": "Probe the demo support agent in its own tenant every hour and publish the counts at GET /api/public/showcase."
+      },
+      {
+        "key": "showcase_org_id",
+        "env": "AGENTFOX_SHOWCASE_ORG_ID",
+        "def": "org_showcase",
+        "what": "The tenant the showcase lives in. The public endpoint reads nothing else."
       }
     ]
   },
