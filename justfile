@@ -9,6 +9,9 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 # Pinned to the version in ci.yml: `ruff format` output changes between releases.
 ruff := "uvx ruff@0.15.7"
 
+# The import contracts in pyproject's [tool.importlinter], at ci.yml's pinned version.
+imports := "PYTHONPATH=src uvx --from import-linter==2.15 lint-imports"
+
 # Exactly CI's extras. Not --all-extras: it pulls transitive versions that break tests.
 extras := "--extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev"
 
@@ -30,10 +33,11 @@ test *args:
 test-fast *args:
     uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo {{args}}
 
-# Ruff rules and formatting, at CI's pinned version.
+# Ruff rules, formatting and the import contracts (layers), at CI's pinned versions.
 lint:
     {{ruff}} check .
     {{ruff}} format --check .
+    {{imports}}
 
 # Apply ruff's fixes and formatting.
 fmt:

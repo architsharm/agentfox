@@ -65,6 +65,11 @@ jobs:
         run: uvx ruff@0.15.7 check .
       - name: Ruff — formatting, unchanged
         run: uvx ruff@0.15.7 format --check .
+      # The layer rule and the "core imports nothing outside core" rule, from the
+      # [tool.importlinter] contracts in pyproject. Static analysis only: the package
+      # is found on PYTHONPATH and nothing is installed or imported.
+      - name: Import contracts — layers hold
+        run: PYTHONPATH=src uvx --from import-linter==2.15 lint-imports
 
   docker-smoke:
     runs-on: ubuntu-latest
