@@ -172,8 +172,8 @@ def tool_call(
     `effective_verdict`/`would_be_verdict` is what the bound policy says should
     happen, which in observe mode is the one that did not take effect.
     """
+    from agentfox.platform.registry.service import slugify
     from agentfox.prove.audit.trace import start_trace
-    from agentfox.registry.service import slugify
     from agentfox.runtime.enforcement import Enforcer
 
     with record.session_scope() as session:

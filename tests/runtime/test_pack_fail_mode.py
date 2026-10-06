@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from agentfox.detection import DetectorPipeline
 from agentfox.platform.policy import PolicyDocument, save_policy
-from agentfox.registry.service import register_agent
+from agentfox.platform.registry.service import register_agent
 from agentfox.runtime.enforcement import Enforcer
 
 PACK = """

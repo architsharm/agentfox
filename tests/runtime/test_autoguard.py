@@ -904,7 +904,7 @@ def test_observe_mode_never_raises_even_under_an_enforced_policy(init_db_only, f
 
 def test_observe_mode_ignores_the_kill_switch_but_policy_mode_honours_it(init_db_only, fake_openai):
     from agentfox.core.db import session_scope
-    from agentfox.registry.control import kill
+    from agentfox.platform.registry.control import kill
 
     client, calls = fake_openai
     auto(agent="support-triage", mode="observe", quiet=True)

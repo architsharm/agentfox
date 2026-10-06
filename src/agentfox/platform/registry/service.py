@@ -689,7 +689,9 @@ def _resolve_absent(session: Session, finding_type: str, *, keep: set[str], note
     ):
         if finding.id in keep or finding.fingerprint is None:
             continue
-        resolve_finding(session, finding, actor="agentfox.registry", note=note, automated=True)
+        resolve_finding(
+            session, finding, actor="agentfox.registry", note=note, automated=True
+        )
 
 
 # ---------------------------------------------------------------------------

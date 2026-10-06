@@ -20,8 +20,8 @@ from agentfox.detection.taint import TaintTracker
 from agentfox.identity import ensure_identity, grant_capability
 from agentfox.platform.policy import load_from_dir, save_policy
 from agentfox.platform.policy.taint_view import grant_ceiling, policy_taint
+from agentfox.platform.registry.service import register_agent, upsert_tool
 from agentfox.prove.audit.trace import start_trace
-from agentfox.registry.service import register_agent, upsert_tool
 from agentfox.runtime.enforcement import Enforcer
 
 AGENT = "support-bot"

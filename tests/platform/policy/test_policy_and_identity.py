@@ -27,7 +27,7 @@ from agentfox.platform.policy import (
     save_policy,
     set_mode,
 )
-from agentfox.registry.service import register_agent
+from agentfox.platform.registry.service import register_agent
 
 POLICY = """
 key: test
@@ -198,7 +198,7 @@ def test_combine_takes_strongest_across_policies():
 
 def test_rego_compilation_produces_a_module(doc):
     rego = compile_to_rego(doc)
-    assert "package agentfox.platform.policy.test" in rego
+    assert "package agentfox.policy.test" in rego
     assert "import rego.v1" in rego
     assert '"rule_id": "injection.block"' in rego
     assert "decision :=" in rego

@@ -59,7 +59,7 @@ class PlainState(TypedDict, total=False):
 def granted(seeded):
     """`lg-bot` may refund up to 500, with arguments a person typed."""
     from agentfox.identity import ensure_identity, grant_capability
-    from agentfox.registry.service import register_agent, upsert_tool
+    from agentfox.platform.registry.service import register_agent, upsert_tool
 
     agent = register_agent(seeded, "lg-bot")
     upsert_tool(seeded, "payments.refund", impact="write", impact_source="declared")

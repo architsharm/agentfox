@@ -18,7 +18,7 @@ from agentfox.integrations.mcp import (
     tool_digest,
     tool_key,
 )
-from agentfox.registry.service import scan_mcp_server
+from agentfox.platform.registry.service import scan_mcp_server
 from tests.conftest import INDIRECT_INJECTION, as_user
 
 SERVER = "docs-server"

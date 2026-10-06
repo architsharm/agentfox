@@ -28,7 +28,7 @@ def agents_list(
     from sqlalchemy import select
 
     from agentfox.core.models import Agent
-    from agentfox.registry.service import inventory
+    from agentfox.platform.registry.service import inventory
 
     with _session() as session:
         agents = list(session.scalars(select(Agent).order_by(Agent.slug)))
@@ -92,8 +92,8 @@ def agents_register(
     from sqlalchemy import select
 
     from agentfox.core.models import Agent
+    from agentfox.platform.registry.service import register_agent
     from agentfox.prove.audit import chain
-    from agentfox.registry.service import register_agent
 
     tiers = ("minimal", "limited", "high", "prohibited")
     if risk_tier is not None and risk_tier not in tiers:
@@ -275,7 +275,7 @@ def agents_discover() -> None:
     """Sweep for shadow agents, unowned agents, registry drift, identity posture and
     delegation cycles/depth."""
     from agentfox.identity import assess_posture
-    from agentfox.registry.service import (
+    from agentfox.platform.registry.service import (
         assess_delegation,
         attest_registry,
         derive_lineage,
@@ -306,7 +306,7 @@ def agents_discover() -> None:
 @agents_app.command("lineage")
 def agents_lineage(slug: str, depth: int = 2) -> None:
     """Show what an agent reaches — the blast radius."""
-    from agentfox.registry.service import derive_lineage, lineage
+    from agentfox.platform.registry.service import derive_lineage, lineage
 
     with _session() as session:
         derive_lineage(session, slug)
@@ -340,7 +340,7 @@ def agents_resume(slug: str, reason: str = typer.Option("", "--reason", "-r")) -
 @agents_app.command("controls")
 def agents_controls() -> None:
     """Show every agent that is not in the active state."""
-    from agentfox.registry.control import all_controls
+    from agentfox.platform.registry.control import all_controls
 
     with _session() as session:
         rows = all_controls(session)
@@ -363,7 +363,7 @@ def agents_controls() -> None:
 
 
 def _agent_state(slug: str, state: str, reason: str) -> None:
-    from agentfox.registry.control import UnknownAgent, set_state
+    from agentfox.platform.registry.control import UnknownAgent, set_state
 
     with _session() as session:
         try:

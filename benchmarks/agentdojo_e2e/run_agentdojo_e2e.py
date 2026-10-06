@@ -58,7 +58,7 @@ from agentfox.core import db  # noqa: E402
 from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402
 from agentfox.identity.service import ensure_identity, grant_capability  # noqa: E402
 from agentfox.platform.policy import load_from_dir, save_policy  # noqa: E402
-from agentfox.registry.service import register_agent, upsert_tool  # noqa: E402
+from agentfox.platform.registry.service import register_agent, upsert_tool  # noqa: E402
 from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 
 DATA = Path(__file__).parent.parent / "action_safety" / "data" / "agentdojo_calls.json"

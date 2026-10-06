@@ -357,7 +357,7 @@ def test_a_rerun_red_team_campaign_counts_then_closes_once_retested_clean(seeded
 
 
 def test_resuming_an_agent_closes_its_stop_finding_and_a_new_stop_reopens_it(seeded):
-    from agentfox.registry.control import quarantine, resume
+    from agentfox.platform.registry.control import quarantine, resume
 
     quarantine(seeded, "support-triage", reason="odd tool use", actor="marcus@example.com")
     finding = _rows(seeded, "agent_stopped")[0]

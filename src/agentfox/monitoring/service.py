@@ -665,7 +665,7 @@ def tools_digest(tools: list[dict[str, Any]]) -> str:
 
 def _run_mcp_server(session: Session, monitor: Monitor, ctx: RunContext) -> RunOutcome:
     from agentfox.monitoring import mcp_live
-    from agentfox.registry.service import scan_mcp_server
+    from agentfox.platform.registry.service import scan_mcp_server
 
     config = monitor.config_json or {}
     server = None

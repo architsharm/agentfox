@@ -93,6 +93,7 @@ from agentfox.detection.taint import TaintTracker
 from agentfox.detection.warmup import warm_in_background
 from agentfox.errors import AgentFoxError
 from agentfox.identity import ensure_identity
+from agentfox.platform.registry.service import register_agent
 from agentfox.prove.audit.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
@@ -101,7 +102,6 @@ from agentfox.prove.audit.trace import (
     ATTR_VERDICT,
     add_span,
 )
-from agentfox.registry.service import register_agent
 from agentfox.runtime.autoguard.environment import (
     _FRAMEWORK_ROUTES,
     _framework_routes,
@@ -672,7 +672,11 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     from agentfox.core.models import Tool
     from agentfox.improvement.traffic import infer_declared_impact
     from agentfox.integrations.mcp import infer_impact
-    from agentfox.registry.service import DECLARED_TOOL_IMPACTS, impact_source_of, upsert_tool
+    from agentfox.platform.registry.service import (
+        DECLARED_TOOL_IMPACTS,
+        impact_source_of,
+        upsert_tool,
+    )
 
     declared = DECLARED_TOOL_IMPACTS.get(name)
     existing = session.scalar(select(Tool).where(Tool.key == name))

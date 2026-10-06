@@ -502,7 +502,7 @@ def probe_shell() -> Result:
 
 def probe_mcp_drift() -> Result:
     from agentfox.integrations.mcp import McpGovernor
-    from agentfox.registry.service import scan_mcp_server
+    from agentfox.platform.registry.service import scan_mcp_server
 
     tools = [{"name": "search", "description": "Search.", "inputSchema": {"type": "object"}}]
     with _seeded_session() as s:
@@ -848,7 +848,7 @@ def probe_eval_gate() -> Result:
 
 def probe_shadow_agent() -> Result:
     from agentfox.core.models import Agent
-    from agentfox.registry.service import detect_shadow_agents, observe_agent
+    from agentfox.platform.registry.service import detect_shadow_agents, observe_agent
 
     with _seeded_session() as s:
         observe_agent(s, "never-registered-probe", environment="production")

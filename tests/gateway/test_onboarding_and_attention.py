@@ -51,7 +51,7 @@ def test_enforce_step_is_done_once_baseline_enforces(client):
 
 def test_a_scan_proposed_draft_is_not_an_unregistered_agent(client):
     from agentfox.core.db import session_scope
-    from agentfox.registry.service import register_agent
+    from agentfox.platform.registry.service import register_agent
 
     with session_scope() as session:
         register_agent(session, slug="scan-found-bot", draft=True)

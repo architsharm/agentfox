@@ -115,7 +115,7 @@ def test_the_set_is_deterministic() -> None:
 
 
 def test_the_high_risk_agent_picks_up_a_rule_the_ordinary_one_does_not(session) -> None:
-    from agentfox.registry.service import register_agent
+    from agentfox.platform.registry.service import register_agent
 
     ordinary = register_agent(session, "ordinary-bot", name="o", environment="production")
     high = register_agent(

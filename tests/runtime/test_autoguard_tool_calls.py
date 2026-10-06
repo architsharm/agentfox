@@ -25,7 +25,7 @@ import types
 import pytest
 
 from agentfox.core.models import Decision, Span, TaintTag, Tool
-from agentfox.registry.service import impact_source_of
+from agentfox.platform.registry.service import impact_source_of
 from agentfox.runtime.autoguard import Blocked, _messages_from, _tool_calls_of, auto, off
 
 CUSTOMER_RECORD = (
@@ -148,7 +148,7 @@ def fake_anthropic():
 @pytest.fixture(autouse=True)
 def _reset(monkeypatch):
     # Code-level declarations are process-global; a test must not inherit another's.
-    from agentfox.registry import service
+    from agentfox.platform.registry import service
 
     monkeypatch.setattr(service, "DECLARED_TOOL_IMPACTS", {})
     yield
@@ -211,7 +211,7 @@ def _db():
 
 def _grant(agent_slug: str, tool_key: str) -> None:
     from agentfox.identity.service import ensure_identity, grant_capability
-    from agentfox.registry.service import register_agent
+    from agentfox.platform.registry.service import register_agent
 
     with _db() as session:
         agent = register_agent(session, agent_slug, name=agent_slug)
@@ -344,7 +344,7 @@ def test_a_tool_seen_for_the_first_time_is_registered_with_an_inferred_impact(fa
         assert tools["read_customer_record"].schema_json["properties"]["customer_id"]
 
     # Confirming the guess is an ordinary declaration, and clears the marker.
-    from agentfox.registry.service import tool_input_schema, upsert_tool
+    from agentfox.platform.registry.service import tool_input_schema, upsert_tool
 
     with _db() as session:
         tool = upsert_tool(session, "issue_refund", impact="irreversible")
@@ -353,7 +353,7 @@ def test_a_tool_seen_for_the_first_time_is_registered_with_an_inferred_impact(fa
 
 
 def test_an_existing_tool_row_is_not_overwritten_by_a_guess(fake_openai):
-    from agentfox.registry.service import upsert_tool
+    from agentfox.platform.registry.service import upsert_tool
 
     with _db() as session:
         upsert_tool(session, "fetch_url", impact="write")  # an operator's declaration
@@ -510,7 +510,7 @@ def test_after_init_an_untainted_call_from_an_ungranted_agent_still_runs(fake_op
 
 
 def test_the_kill_switch_stops_tool_calls_in_policy_mode(fake_openai):
-    from agentfox.registry.control import kill
+    from agentfox.platform.registry.control import kill
 
     client, script, _calls = fake_openai
     auto(agent="support-bot", quiet=True)
@@ -633,7 +633,7 @@ def test_the_sdk_decorator_writes_its_impact_to_the_registry():
 def test_a_code_declaration_beats_the_inferred_impact(fake_openai, monkeypatch):
     """Declared before the database existed (so only held in-process), then the
     model calls the tool: the declaration is what gets registered."""
-    from agentfox.registry import service
+    from agentfox.platform.registry import service
 
     monkeypatch.setitem(service.DECLARED_TOOL_IMPACTS, "lookup_order", "high_impact")
     client, script, _calls = fake_openai
@@ -647,7 +647,7 @@ def test_a_code_declaration_beats_the_inferred_impact(fake_openai, monkeypatch):
 
 
 def test_a_declaration_confirms_an_inferred_row(fake_openai, monkeypatch):
-    from agentfox.registry import service
+    from agentfox.platform.registry import service
 
     with _db() as session:
         service.upsert_tool(session, "lookup_order", impact="read", impact_source="inferred")

@@ -44,7 +44,7 @@ def tools_declare(
     it is deliberately the first thing `agentfox init` points at.
     """
     from agentfox.core.models import OUTPUT_TRUST_LEVELS
-    from agentfox.registry.service import upsert_tool
+    from agentfox.platform.registry.service import upsert_tool
 
     valid = ("read", "write", "high_impact", "irreversible")
     if impact not in valid:
@@ -89,7 +89,7 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
     from sqlalchemy import select
 
     from agentfox.core.models import Tool
-    from agentfox.registry.service import impact_source_of
+    from agentfox.platform.registry.service import impact_source_of
 
     with _session() as session:
         tools = list(session.scalars(select(Tool).order_by(Tool.key)))

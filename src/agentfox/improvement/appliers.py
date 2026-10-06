@@ -765,7 +765,7 @@ def _declare_direction(session: Session, proposal: ChangeProposal) -> str:
 
 def _declare_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
     from agentfox.core.models import Tool
-    from agentfox.registry.service import upsert_tool
+    from agentfox.platform.registry.service import upsert_tool
 
     diff = _declare_diff(proposal)
     key = str(diff["tool_key"])

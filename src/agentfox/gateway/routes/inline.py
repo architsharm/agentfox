@@ -39,8 +39,8 @@ from sqlalchemy.orm import Session
 from agentfox.core.config import get_settings
 from agentfox.gateway.deps import agent_credential, db, ingest_credential
 from agentfox.gateway.verdicts import verdict_headers, with_verdict_aliases
+from agentfox.platform.registry.service import detect_shadow_agents
 from agentfox.prove.audit.otel import ingest_otlp
-from agentfox.registry.service import detect_shadow_agents
 from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
@@ -912,8 +912,8 @@ def guard_content(
     """
     from agentfox.core.config import get_settings
     from agentfox.core.models import Trace
+    from agentfox.platform.registry.service import slugify
     from agentfox.prove.audit.trace import end_trace, start_trace
-    from agentfox.registry.service import slugify
 
     surface = "output" if request.url.path.endswith("/output") else payload.surface
 
@@ -992,8 +992,8 @@ def guard_tool_call(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
+    from agentfox.platform.registry.service import slugify
     from agentfox.prove.audit.trace import start_trace
-    from agentfox.registry.service import slugify
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.agent, credential)
@@ -1036,8 +1036,8 @@ def guard_memory_write(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
+    from agentfox.platform.registry.service import slugify
     from agentfox.prove.audit.trace import start_trace
-    from agentfox.registry.service import slugify
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.agent, credential)
@@ -1077,8 +1077,8 @@ def guard_agent_message(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
+    from agentfox.platform.registry.service import slugify
     from agentfox.prove.audit.trace import start_trace
-    from agentfox.registry.service import slugify
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.sender, credential)
@@ -1137,7 +1137,7 @@ async def ingest_traces(
 
     # Passive observation is enough to populate the registry and raise shadow-agent
     # findings — a team gets Pillars 1 and 5 without changing a line of code.
-    from agentfox.registry.service import observe_agent
+    from agentfox.platform.registry.service import observe_agent
 
     for slug in summary.get("agents_seen", []):
         observe_agent(

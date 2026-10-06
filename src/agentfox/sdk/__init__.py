@@ -486,7 +486,7 @@ class AgentFox:
         consults) and the write is retried on the tool's first call. Remote mode
         writes nothing locally — the gateway's registry is that deployment's record.
         """
-        from agentfox.registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
+        from agentfox.platform.registry.service import DECLARED_TOOL_IMPACTS, upsert_tool
 
         DECLARED_TOOL_IMPACTS[key] = impact
         if self.remote:
@@ -588,8 +588,8 @@ class AgentFox:
                 reason=payload.get("reason", ""),
             )
         with self._db() as session:
+            from agentfox.platform.registry.service import slugify
             from agentfox.prove.audit.trace import start_trace
-            from agentfox.registry.service import slugify
 
             enforcer = Enforcer(session)
             agent, _identity, _shadow = enforcer.resolve(kwargs["agent"])

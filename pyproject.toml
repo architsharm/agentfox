@@ -129,7 +129,7 @@ ignore = ["B008"]  # FastAPI Depends() in defaults is the framework idiom
 # what makes YAML read `IMPORTANT:` as a nested key and raise, which is the
 # behaviour the test exists to pin. Wrapping it would make the YAML parse and
 # the test would quietly stop testing anything.
-"tests/registry/test_skill_scanning.py" = ["E501"]
+"tests/platform/registry/test_skill_scanning.py" = ["E501"]
 # E501 only, and only here. The long lines in these trees are *data* — attack
 # payloads, model prompts, embedded HTML — where the width carries no
 # maintenance cost and rewrapping risks silently altering a string a benchmark

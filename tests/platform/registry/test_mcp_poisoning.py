@@ -13,7 +13,11 @@ import pytest
 from typer.testing import CliRunner
 
 from agentfox.cli.main import app
-from agentfox.registry.service import normalise_tool_list, scan_mcp_server, upsert_mcp_server
+from agentfox.platform.registry.service import (
+    normalise_tool_list,
+    scan_mcp_server,
+    upsert_mcp_server,
+)
 
 runner = CliRunner()
 

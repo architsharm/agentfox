@@ -318,8 +318,8 @@ def _human_facing(agent: Agent) -> bool:
 
 
 def board_view(session: Session) -> dict[str, Any]:
+    from agentfox.platform.registry.service import inventory
     from agentfox.prove.compliance.status import ensure_compliance_computed, posture
-    from agentfox.registry.service import inventory
 
     # Computed here rather than left to a separate `compliance compute`: without
     # it a fresh deployment's board read "0% of 43 controls".

@@ -29,7 +29,7 @@ from agentfox.jobs import scheduler
 from agentfox.jobs import store as jobs_db
 from agentfox.monitoring import service as monitoring
 from agentfox.monitoring import snapshots as snap
-from agentfox.registry.service import scan_mcp_server, upsert_mcp_server
+from agentfox.platform.registry.service import scan_mcp_server, upsert_mcp_server
 from tests.monitoring.conftest import T0
 
 GOVERNED = """

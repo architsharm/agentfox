@@ -11,7 +11,7 @@ from typer.testing import CliRunner
 
 from agentfox.cli.main import app
 from agentfox.platform.policy import PolicyDocument, save_policy, simulate
-from agentfox.registry.service import register_agent
+from agentfox.platform.registry.service import register_agent
 from agentfox.runtime.enforcement import Enforcer
 
 PACK_A = """

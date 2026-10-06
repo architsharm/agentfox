@@ -22,7 +22,7 @@ from agentfox.core.models import AccessScopeRule, Agent, TaintTag, Tool, Trace
 from agentfox.core.vocab import taint_rank
 from agentfox.detection import TaintTracker
 from agentfox.detection.actions import find_sql_argument
-from agentfox.registry.service import record_edge
+from agentfox.platform.registry.service import record_edge
 from agentfox.runtime.enforcement.result import EnforcementResult
 from agentfox.runtime.enforcement.rules import _fired_rule
 

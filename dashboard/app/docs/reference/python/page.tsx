@@ -773,7 +773,7 @@ with session_scope() as db:
         accepted with <code>register_tools</code>:
       </p>
       <Code lang="python" title="mcp_drift.py">{`from agentfox.core.db import session_scope
-from agentfox.registry.service import scan_mcp_server
+from agentfox.platform.registry.service import scan_mcp_server
 from agentfox.integrations import McpGovernor, McpCallBlocked
 
 V1 = [{"name": "search_tickets", "description": "Search support tickets by keyword.",

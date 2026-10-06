@@ -20,8 +20,8 @@ from agentfox.integrations.langgraph import (
     PolicyViolation,
 )
 from agentfox.platform.policy import set_mode
+from agentfox.platform.registry.control import UnknownAgent, kill, quarantine, resume, state_of
 from agentfox.providers import CompletionRequest, get_provider, script
-from agentfox.registry.control import UnknownAgent, kill, quarantine, resume, state_of
 from agentfox.runtime.enforcement import Enforcer
 from tests.conftest import INDIRECT_INJECTION, SECRET_TEXT, as_user, promote
 

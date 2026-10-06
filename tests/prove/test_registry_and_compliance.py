@@ -3,18 +3,7 @@
 from __future__ import annotations
 
 from agentfox.core.models import Agent, AuditEntry, Finding, FrameworkMapping
-from agentfox.prove.compliance import (
-    classify,
-    compute_all,
-    framework_coverage,
-    latest_statuses,
-    obligation_calendar,
-    posture,
-    register,
-    sync_catalog,
-)
-from agentfox.prove.compliance.catalog import review_mapping
-from agentfox.registry.service import (
+from agentfox.platform.registry.service import (
     assess_delegation,
     attest_registry,
     derive_lineage,
@@ -29,6 +18,17 @@ from agentfox.registry.service import (
     unowned_agents,
     upsert_mcp_server,
 )
+from agentfox.prove.compliance import (
+    classify,
+    compute_all,
+    framework_coverage,
+    latest_statuses,
+    obligation_calendar,
+    posture,
+    register,
+    sync_catalog,
+)
+from agentfox.prove.compliance.catalog import review_mapping
 
 # ---------------------------------------------------------------------------
 # Discovery (P1-1, P1-2, P1-4)
@@ -325,7 +325,7 @@ def test_classification_is_advisory_only(seeded):
 
 def test_ungated_irreversible_tool_raises_the_proposal(session):
     from agentfox.identity import ensure_identity, grant_capability
-    from agentfox.registry.service import upsert_tool
+    from agentfox.platform.registry.service import upsert_tool
 
     upsert_tool(session, "payments.transfer", impact="irreversible")
     agent = register_agent(

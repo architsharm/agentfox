@@ -40,7 +40,7 @@ import {
  *   - static-only scanning, TS/JS pass ....... src/agentfox/discovery/repo.py
  *   - OpenAPI onboarding ..................... src/agentfox/discovery/openapi.py
  *   - local session scanning ................. src/agentfox/discovery/sessions.py
- *   - MCP hygiene finding types .............. src/agentfox/registry/service.py
+ *   - MCP hygiene finding types .............. src/agentfox/platform/registry/service.py
  *   - scorer keys ............................ src/agentfox/evaluation/scorers.py
  *   - adaptive campaign scope ................ src/agentfox/evaluation/adaptive.py
  *   - chain digests and verify() ............. src/agentfox/prove/audit/chain.py
@@ -347,7 +347,7 @@ const DISCOVERY_ITEMS: Item[] = [
     body: "Shadow agents, drift and identity posture. Unregistered traffic raises a shadow_agent finding.",
   },
   {
-    // src/agentfox/registry/service.py raises these types.
+    // src/agentfox/platform/registry/service.py raises these types.
     label: "Tool servers",
     body: "MCP tool hygiene: tool_poisoning in a tool description, an unpinned_server, schema_drift since the last scan.",
   },

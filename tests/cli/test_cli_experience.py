@@ -217,7 +217,7 @@ def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigure
     named a command and this one named none, because none existed."""
     from agentfox.core.db import session_scope
     from agentfox.core.models import Capability
-    from agentfox.registry.service import upsert_tool
+    from agentfox.platform.registry.service import upsert_tool
 
     with session_scope() as session:
         upsert_tool(session, "payments.transfer", impact="irreversible")

@@ -25,16 +25,16 @@ from agentfox.evaluation.runner import NativeEvalRunner
 from agentfox.fixtures.seed import POISONED_DOCUMENT
 from agentfox.identity import assess_posture
 from agentfox.platform.policy import set_mode
-from agentfox.prove.audit import chain, evidence
-from agentfox.prove.audit.trace import full_trace
-from agentfox.prove.compliance import compute_all, posture
-from agentfox.registry.service import (
+from agentfox.platform.registry.service import (
     attest_registry,
     derive_lineage,
     detect_shadow_agents,
     lineage,
     unowned_agents,
 )
+from agentfox.prove.audit import chain, evidence
+from agentfox.prove.audit.trace import full_trace
+from agentfox.prove.compliance import compute_all, posture
 from agentfox.runtime.enforcement import Enforcer
 
 console = Console()

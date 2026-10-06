@@ -692,7 +692,7 @@ const SCAN: ScanRow[] = [
 /*
  * The registered agents and what each one reaches. Slugs and capability keys are from
  * src/agentfox/fixtures/seed.py:118-183; the relation names are the three this product records,
- * `calls_tool`, `connects_mcp` and `delegates_to` (src/agentfox/registry/service.py).
+ * `calls_tool`, `connects_mcp` and `delegates_to` (src/agentfox/platform/registry/service.py).
  * `hr-screening` carries `owner_email: None` in that same seed (seed.py:148), which is
  * what makes it the unowned one.
  */

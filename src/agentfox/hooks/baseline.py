@@ -56,8 +56,8 @@ def install_baseline(
 ) -> Baseline:
     """Register the hook agent, declare the harness's tools and grant them. Idempotent."""
     from agentfox.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.registry.service import register_agent, slugify
     from agentfox.prove.audit import chain
-    from agentfox.registry.service import register_agent, slugify
 
     slug = slugify(agent_slug)
     agent = session.scalar(select(Agent).where(Agent.slug == slug))
