@@ -112,7 +112,7 @@ def build_cli() -> dict[str, Any]:
     import click
     import typer.main
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     root = typer.main.get_command(app)
     tree = _command(root, [], click.Context)

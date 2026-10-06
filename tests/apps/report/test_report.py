@@ -14,6 +14,7 @@ import zipfile
 import pytest
 from typer.testing import CliRunner
 
+from agentfox.apps.cli.main import app
 from agentfox.apps.report import evidence
 from agentfox.apps.report.summary import (
     DRAFT_LABEL,
@@ -24,7 +25,6 @@ from agentfox.apps.report.summary import (
     render_markdown,
 )
 from agentfox.capabilities.detection.taint import TaintTracker
-from agentfox.cli.main import app
 from agentfox.core.models import ControlStatus, GuardrailFeedback
 
 runner = CliRunner()

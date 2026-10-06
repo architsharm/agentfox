@@ -78,7 +78,7 @@ def test_policy_list_shows_the_live_mode_during_and_after_a_canary(client):
 def test_cli_policy_list_shows_the_live_mode_after_a_rollback(session):
     from typer.testing import CliRunner
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     save_policy(session, PolicyDocument.from_yaml(V1), bind_mode="enforce")
     save_policy(session, PolicyDocument.from_yaml(V2), bind_mode="enforce")

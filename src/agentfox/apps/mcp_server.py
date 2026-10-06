@@ -687,7 +687,7 @@ def _clean(raw: bytes) -> str:
 
 
 def run_cli(argv: list[str]) -> CliOutcome:
-    command = [sys.executable, "-m", "agentfox.cli.main", *argv]
+    command = [sys.executable, "-m", "agentfox.apps.cli.main", *argv]
     try:
         proc = subprocess.run(  # noqa: S603 — argv built from validated arguments only
             command,

@@ -15,7 +15,7 @@ import sys
 
 # An agentfox invocation at *command position* only — so a commit message or a filename
 # that merely mentions "policy enforce" is not mistaken for running it.
-#   agentfox …  |  uv run [--project X] agentfox …  |  python -m agentfox.cli.main …
+#   agentfox …  |  uv run [--project X] agentfox …  |  python -m agentfox.apps.cli.main …
 #   …/scripts/agentfox.sh …   (optionally preceded by VAR=value assignments)
 # `nometria` is still matched as well: the console script keeps it as a compatibility
 # alias, so a blocking command must prompt whichever of the two names an agent types.
@@ -23,12 +23,12 @@ _PREFIX = (
     r"^(?:\w+=\S*\s+)*"
     r"(?:(?:uv\s+run(?:\s+--\S+(?:\s+(?!agentfox\b|nometria\b)\S+)?)*\s+)"
     r"|(?:\S*python[\d.]*\s+-m\s+))?"
-    r"(?:\S*/)?(?:agentfox|nometria)(?:\.cli\.main|\.sh)?\s+"
+    r"(?:\S*/)?(?:agentfox|nometria)(?:(?:\.apps)?\.cli\.main|\.sh)?\s+"
 )
 _END = r"(?=\s|$)"
 
 # Each rule matches the current name and the pre-consolidation one (`proposals apply`
-# and `policy proposals apply` are the same command — see src/agentfox/cli/layout.py).
+# and `policy proposals apply` are the same command — see src/agentfox/apps/cli/layout.py).
 CLI_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         r"policy\s+enforce" + _END,

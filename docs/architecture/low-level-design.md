@@ -338,7 +338,7 @@ GitHub sign-in retires all but the newest `MAX_LOGIN_SESSIONS` (5) login tokens.
 
 ---
 
-## 11. CLI command tree — `src/agentfox/cli/`
+## 11. CLI command tree — `src/agentfox/apps/cli/`
 
 `main.py` registers every command; `layout.py:apply_layout` re-registers them under the
 visible verbs, grouped into panels (`agentfox --help`): **Start** `init`, `demo` · **See**

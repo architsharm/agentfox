@@ -126,7 +126,7 @@ def test_system_history_reads_newest_first(isolated_db):
 def test_listing_tokens_via_the_cli_records_to_the_system_chain(isolated_db):
     """The one real call site this module is wired into: `agentfox auth tokens` is a
     read across every tenant, with no single tenant to attribute it to."""
-    from agentfox.cli.auth_cli import tokens as cli_tokens
+    from agentfox.apps.cli.auth_cli import tokens as cli_tokens
 
     with tenant(ACME), session_scope() as session:
         session.add(User(email="a@acme.example", name="A", role="admin", active=True))
@@ -149,7 +149,7 @@ def test_issuing_a_token_for_a_non_default_org_lands_in_that_orgs_own_chain(isol
     here), and its `seq` was computed from a query `system_scope` had left
     unfiltered across every tenant. Binding the session as soon as the recipient is
     known fixes both."""
-    from agentfox.cli.auth_cli import issue as cli_issue
+    from agentfox.apps.cli.auth_cli import issue as cli_issue
 
     with tenant("org_other"), session_scope() as session:
         session.add(User(email="ops@other.example", name="Ops", role="admin", active=True))
@@ -166,8 +166,8 @@ def test_issuing_a_token_for_a_non_default_org_lands_in_that_orgs_own_chain(isol
 
 
 def test_revoking_a_token_records_into_its_own_orgs_chain(isolated_db):
-    from agentfox.cli.auth_cli import issue as cli_issue
-    from agentfox.cli.auth_cli import revoke as cli_revoke
+    from agentfox.apps.cli.auth_cli import issue as cli_issue
+    from agentfox.apps.cli.auth_cli import revoke as cli_revoke
     from agentfox.core.models import ApiToken
 
     with tenant("org_other"), session_scope() as session:

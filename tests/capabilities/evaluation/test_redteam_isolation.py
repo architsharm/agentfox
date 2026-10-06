@@ -14,8 +14,8 @@ from types import SimpleNamespace
 from sqlalchemy import func, select
 from typer.testing import CliRunner
 
+from agentfox.apps.cli.main import app
 from agentfox.capabilities.evaluation import run_campaign
-from agentfox.cli.main import app
 from agentfox.core.models import Decision, Finding
 
 runner = CliRunner()

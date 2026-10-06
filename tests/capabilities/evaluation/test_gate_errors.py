@@ -13,10 +13,10 @@ import xml.etree.ElementTree as ET
 
 from typer.testing import CliRunner
 
+from agentfox.apps.cli.main import app
 from agentfox.capabilities.evaluation import gate, set_baseline
 from agentfox.capabilities.evaluation.gating import INFORMATION_URI, to_junit, to_sarif
 from agentfox.capabilities.evaluation.runner import NativeEvalRunner
-from agentfox.cli.main import app
 from agentfox.core.models import EvalRun, EvalSuite
 from agentfox.platform.providers import register_provider
 

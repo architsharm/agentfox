@@ -220,7 +220,7 @@ def test_composition_is_not_overruled_by_a_grant(session, bot):
 
 
 def test_capability_grant_says_composition_still_applies(session):
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     register_agent(
         session,
@@ -292,7 +292,7 @@ def test_upsert_leaves_a_declared_trust_alone(session, bot):
 
 
 def test_tools_declare_output_trust_from_the_cli():
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     runner = CliRunner()
     out = runner.invoke(

@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from agentfox.apps.cli.main import app
 from agentfox.capabilities.discovery.exposure import (
     EXFIL,
     PRIVATE,
@@ -26,7 +27,6 @@ from agentfox.capabilities.discovery.exposure import (
     server_hygiene,
 )
 from agentfox.capabilities.discovery.repo import scan
-from agentfox.cli.main import app
 
 runner = CliRunner()
 

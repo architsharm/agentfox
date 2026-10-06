@@ -12,7 +12,7 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from agentfox.cli.main import app
+from agentfox.apps.cli.main import app
 from agentfox.platform.registry.service import (
     normalise_tool_list,
     scan_mcp_server,

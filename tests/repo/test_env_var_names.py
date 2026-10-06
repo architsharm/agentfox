@@ -57,6 +57,6 @@ def test_no_user_facing_string_names_a_nometria_variable():
 
 
 def test_generated_config_names_the_current_prefix():
-    from agentfox.cli.onboarding import _CONFIG_TEMPLATE
+    from agentfox.apps.cli.onboarding import _CONFIG_TEMPLATE
 
     assert "AGENTFOX_*" in _CONFIG_TEMPLATE

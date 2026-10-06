@@ -26,7 +26,7 @@ try:
     import click
     import typer.main
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 except Exception as exc:  # pragma: no cover - environment problem, not drift
     print(
         f"cannot import the agentfox CLI ({exc}). "

@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
+from agentfox.apps.cli.main import app
 from agentfox.capabilities.business import (
     Ladder,
     VerifySpec,
@@ -30,7 +31,6 @@ from agentfox.capabilities.business import (
 )
 from agentfox.capabilities.business.catalogue import BY_ID, CATALOGUE, INTENTS, inert_kinds, suggest
 from agentfox.capabilities.business.ladder import parse_amount
-from agentfox.cli.main import app
 from agentfox.core.db import session_scope
 
 runner = CliRunner()

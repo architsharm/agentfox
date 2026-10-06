@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
-from agentfox.cli.main import app
+from agentfox.apps.cli.main import app
 from agentfox.hooks.daemon import HookDaemon
 from agentfox.hooks.protocol import PROTOCOL_VERSION
 

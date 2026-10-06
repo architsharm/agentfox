@@ -141,7 +141,7 @@ def test_other_tables_ignored_and_missing_table_is_harmless(workdir):
 def test_the_file_nometria_init_writes_is_read(workdir, isolated_db):
     from typer.testing import CliRunner
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     result = CliRunner().invoke(app, ["init", "--path", str(workdir)])
     assert result.exit_code == 0, result.output

@@ -272,7 +272,7 @@ def test_unknown_proposal_is_a_genuine_failure():
 
 
 def test_no_proposal_tool_can_decide_apply_or_roll_back():
-    from agentfox.cli.main import proposals_app
+    from agentfox.apps.cli.main import proposals_app
 
     exposed = {
         tool.argv({"proposal_id": "chp_1"}, Path("/tmp"))[:3][2]

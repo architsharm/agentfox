@@ -380,7 +380,7 @@ def test_doctor_reports_the_authentication_posture(ready, monkeypatch):
     """The check most likely to be wrong, and most costly when it is."""
     from typer.testing import CliRunner
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
     from agentfox.core.config import get_settings
 
     flat = lambda text: " ".join(text.split())  # noqa: E731 - test readability

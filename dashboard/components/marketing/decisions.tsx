@@ -13,7 +13,7 @@ import type { CSSProperties } from "react";
  *
  * Every visible string is something the product emits, and each one carries the file
  * and line it came from. Three of the four cards are the same three calls
- * `agentfox demo` makes at step 03 (src/agentfox/cli/demo.py lines 276-303): one
+ * `agentfox demo` makes at step 03 (src/agentfox/apps/cli/demo.py lines 276-303): one
  * agent, one tool, and an argument that changes the outcome each time. The fourth is
  * what the audit chain did with the third.
  *

@@ -688,7 +688,7 @@ def test_cli_proposals_group(client):
     """`client` only for its seeded database; the CLI shares it."""
     from typer.testing import CliRunner
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     runner = CliRunner()
     pid = _api_proposal(to=0.95, scope_level="org")

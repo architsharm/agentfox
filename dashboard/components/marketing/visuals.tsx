@@ -646,7 +646,7 @@ type ScanRow = {
 /*
  * ILLUSTRATIVE: the file counts, the site counts and the coverage percentage are a
  * chosen example repository, since no scan result is committed to this repo. Everything
- * else is real: the line wording (src/agentfox/cli/onboarding.py:248-265), the site kinds
+ * else is real: the line wording (src/agentfox/apps/cli/onboarding.py:248-265), the site kinds
  * (discovery.py:164), the severities and the detail formats (discovery.py:437, :478,
  * :761), the framework labels (discovery.py:100-121), the supported-language sentence
  * (discovery.py:81) and the next step (discovery.py:364-368).

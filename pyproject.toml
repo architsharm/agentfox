@@ -80,11 +80,11 @@ all = ["agentfox[pii,classifiers,rails,validators,redteam,otel,postgres,langgrap
 restricted-classifiers = ["transformers>=4.44", "torch>=2.4"]
 
 [project.scripts]
-agentfox = "agentfox.cli.main:main"
+agentfox = "agentfox.apps.cli.main:main"
 # Kept so an existing install does not lose its command on upgrade. The docs, the
 # harness and the product's own output all say `agentfox`; this is compatibility,
 # not a second name we advertise.
-nometria = "agentfox.cli.main:main"
+nometria = "agentfox.apps.cli.main:main"
 
 [build-system]
 requires = ["hatchling"]

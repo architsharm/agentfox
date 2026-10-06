@@ -14,6 +14,7 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
+from agentfox.apps.cli.main import app
 from agentfox.capabilities.grounding.entitlement import (
     DEFAULT_K_ANONYMITY,
     NativeAclEngine,
@@ -26,7 +27,6 @@ from agentfox.capabilities.grounding.entitlement import (
     record_disclosure,
     upsert_principal,
 )
-from agentfox.cli.main import app
 from agentfox.core.db import session_scope
 from agentfox.core.models import DisclosureEvent
 from tests.conftest import as_user

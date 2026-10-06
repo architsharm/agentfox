@@ -21,7 +21,7 @@ import { REPO } from "@/components/marketing/nav";
  * The claim in the bold line is checkable: README.md "See it work right now" —
  * `pip install`, then `agentfox init && agentfox demo`, about a second and about five
  * more, offline, no API key. The evidence package is step 12 of that demo
- * (src/agentfox/cli/demo.py:599-635) and ships with a stdlib-only verifier.
+ * (src/agentfox/apps/cli/demo.py:599-635) and ships with a stdlib-only verifier.
  */
 export function Hero() {
   return (

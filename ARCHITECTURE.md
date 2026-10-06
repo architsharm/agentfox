@@ -23,7 +23,7 @@ recipient came out of a retrieved document is refused because of where the value
 from, even when no detector recognised the payload.
 
 The product is organised as four steps, which are also the CLI's panels (`agentfox --help`,
-built in [`src/agentfox/cli/layout.py`](src/agentfox/cli/layout.py)) and the website's docs
+built in [`src/agentfox/apps/cli/layout.py`](src/agentfox/apps/cli/layout.py)) and the website's docs
 order:
 
 | Step | Question | Where it lives |
@@ -278,7 +278,7 @@ website's `dashboard/app/docs/reference/policies/page.tsx`. Tests in `tests/plat
 or the relevant `*_cli.py`) and make sure it is registered in `cli/main.py`. Then place it in
 the visible tree in `cli/layout.py:apply_layout`: commands are found by CLI name and
 re-registered under one of the thirteen visible verbs (`VISIBLE`); a working name that is not
-re-homed there is not reachable. `tests/cli/test_cli_layout.py` enforces the ceiling, the
+re-homed there is not reachable. `tests/apps/cli/test_cli_layout.py` enforces the ceiling, the
 removed names, and the two protocol endpoints kept at their old paths (`hooks run`,
 `mcp serve`). Add a row to `harness/reference/cli.md` (mark it **BLK** if it changes
 whether traffic is blocked, and add a pattern to `harness/scripts/guard_blocking_commands.py`),

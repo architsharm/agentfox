@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from agentfox.cli.main import app
+from agentfox.apps.cli.main import app
 from agentfox.platform.policy import PolicyDocument, save_policy, simulate
 from agentfox.platform.registry.service import register_agent
 from agentfox.runtime.enforcement import Enforcer

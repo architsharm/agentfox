@@ -116,7 +116,7 @@ def test_a_wildcard_binding_a_person_made_is_left_alone(seeded):
 
 
 def test_init_skips_the_pack_without_hooks_and_scopes_it_with_them(tmp_path, monkeypatch):
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     monkeypatch.chdir(tmp_path)
     runner = CliRunner()

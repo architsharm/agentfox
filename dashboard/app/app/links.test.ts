@@ -175,7 +175,7 @@ describe("command names", () => {
   };
   const current = new Set(cli.root.commands.map((c) => c.name));
   // Top-level names the CLI removed when it consolidated to thirteen verbs (see
-  // tests/cli/test_cli_layout.py), each mapped to where its commands live now.
+  // tests/apps/cli/test_cli_layout.py), each mapped to where its commands live now.
   const removed: Record<string, string> = {
     check: "agentfox scan",
     quickscan: "agentfox scan --sessions",

@@ -18,7 +18,7 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from agentfox.cli.main import app
+from agentfox.apps.cli.main import app
 from tests.conftest import as_user
 
 runner = CliRunner()

@@ -525,7 +525,7 @@ def test_an_unapproved_escalation_does_not_raise_the_ceiling(session, packs):
 
 
 def test_from_traffic_on_the_command_line(session, packs):
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     _trust_crm(session)
     _traffic(session)
