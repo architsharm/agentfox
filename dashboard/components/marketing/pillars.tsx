@@ -33,7 +33,7 @@ import {
  *   - SECRET.* entity types .................. src/agentfox/capabilities/detection/detectors/secrets.py
  *   - normalisation views .................... src/agentfox/capabilities/detection/normalize.py
  *   - per-detector budget, degrade-not-skip .. src/agentfox/capabilities/detection/pipeline.py
- *   - baseline / tool-containment rule ids ... src/agentfox/packs/*/policies/*.yaml
+ *   - baseline / tool-containment rule ids ... src/agentfox/packs/<pack>/policies/*.yaml
  *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement/
  *   - the provenance ladder .................. src/agentfox/capabilities/detection/taint.py, README "Commands"
  *   - impact tiers ........................... dashboard/app/glossary/page.tsx
