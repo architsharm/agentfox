@@ -3,9 +3,10 @@
 Every functional requirement in the [PRD](PRD.md), the module that implements it, the
 control it evidences, and the test that proves it.
 
-**Status:** ✅ built · ◐ partial in MVP v0.1 · ✗ specified, not built.
-The MVP scope statement is [PRD §6.2](PRD.md#62-in-scope-for-mvp-v01); the exclusions
-are [§6.3](PRD.md#63-out-of-scope-for-mvp-v01).
+**Status:** ✅ built · ◐ partial · ✗ specified, not built. Live, probe-computed status is in
+[../status.md](../status.md). Older rows name tests by file and function; rows added
+2026-10-06 give the path under `tests/`. Some module paths in the older rows predate the
+package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 
 ---
 
@@ -20,6 +21,7 @@ are [§6.3](PRD.md#63-out-of-scope-for-mvp-v01).
 | **P1-5** MCP inventory & hygiene | ◐ native checks; `mcp-scan` optional tool | `registry/service.py::scan_mcp_server, upsert_mcp_server` | NOM-DSC-05 | `::test_tool_poisoning_detected`, `::test_schema_drift_detected_between_snapshots`, `::test_unpinned_server_flagged` |
 | **P1-6** Framework auto-discovery | ✅ | `audit/otel.py::detect_framework` | NOM-DSC-01 | `test_enforcement_and_api.py::test_otlp_ingest_populates_the_registry` |
 | **P1-7** Registry drift & attestation | ◐ detected on demand; no scheduled job | `registry/service.py::attest_registry` | NOM-DSC-01/04 | `::test_registry_drift_detected` |
+| **P1-9** Continuous monitoring of connected sources | ✅ GitHub, hosted-API specs, remote MCP servers, deployed agents; Slack and webhook alerts | `monitoring/service.py::run_monitor, run_due, request_run`, `monitoring/snapshots.py::diff_repo, diff_api`, `monitoring/alerts.py`, `gateway/routes/monitors.py`, `cli/commands/monitors.py` (`agentfox scan monitors`) | NOM-DSC-05 | `tests/monitoring/test_monitor_runs.py`, `tests/monitoring/test_monitor_routes.py`, `tests/monitoring/test_snapshots.py`, `tests/monitoring/test_monitor_schema.py`, `tests/cli/test_monitor_cli.py` |
 
 ## Pillar 2 — Identity, Access & Authorization
 
@@ -27,11 +29,11 @@ are [§6.3](PRD.md#63-out-of-scope-for-mvp-v01).
 |---|---|---|---|---|
 | **P2-1** Non-human identity | ✅ | `identity/service.py::ensure_identity, issue_credential, rotate_credential, revoke_credential, assess_posture` | NOM-IAM-01 | `test_policy_and_identity.py::test_credential_roundtrip`, `::test_rotation_keeps_old_key_alive_during_overlap` |
 | **P2-2** Tool-scoped least privilege | ✅ | `identity/service.py::grant_capability, check_capability` + `policy/engine.py` | NOM-IAM-02 | `::test_default_deny`, `::test_argument_constraints_enforced`, `::test_most_specific_grant_wins` |
-| **P2-3** Human-in-the-loop approvals | ✅ webhook-only notification | `identity/service.py::request_approval, resolve_approval, expire_stale_approvals` | NOM-IAM-03 | `::test_approval_lifecycle`, `::test_unanswered_approval_fails_closed` |
-| **P2-4** SSO / SCIM / RBAC | ◐ RBAC + tokens complete; IdP seam unwired | `gateway/deps.py::current_user, require`, `models.py::User` | NOM-IAM-04 | `test_enforcement_and_api.py::test_auditor_cannot_mutate_anything`, `::test_developer_cannot_enforce_a_policy` |
+| **P2-3** Human-in-the-loop approvals | ✅ webhook-only notification; an approved retry is redeemed once; none granted while the agent is stopped | `identity/service.py::request_approval, resolve_approval, redeem_approval, expire_stale_approvals`; `sdk.AgentFox.wait_for_approval`; `agentfox permit approvals` | NOM-IAM-03 | `::test_approval_lifecycle`, `::test_unanswered_approval_fails_closed`; `tests/identity/test_approval_redemption.py`, `tests/cli/test_approvals_cli.py`, `tests/runtime/test_kill_switch_every_surface.py` |
+| **P2-4** SSO / SCIM / RBAC | ◐ RBAC + tokens complete; IdP seam unwired | `gateway/deps.py::current_user, require`, `models.py::User`; `core/config.py::assert_production_secrets`; `POST /api/auth/logout`; `agentfox admin users create` | NOM-IAM-04 | `test_enforcement_and_api.py::test_auditor_cannot_mutate_anything`, `::test_developer_cannot_enforce_a_policy`; `tests/gateway/test_auth_hardening.py`, `tests/cli/test_first_operator.py` |
 | **P2-5** Delegation & sub-agent identity | ◐ narrowing enforced; no cross-process propagation | `identity/service.py::delegate, _covers` | NOM-IAM-05 | `::test_delegation_widening_rejected_at_write_time`, `::test_child_cannot_broaden_a_glob`, `::test_child_cannot_drop_an_approval_requirement` |
 | **P2-6** Credential brokerage | ✗ | — | NOM-IAM-01 | — |
-| **P2-7** Policy simulation | ✅ | `policy/simulate.py::simulate, record_simulation` | NOM-IAM-06 | `test_enforcement_and_api.py::test_policy_simulation_reports_a_diff` |
+| **P2-7** Policy simulation | ✅ replays the candidate in context; promotion to enforce over HTTP needs a recorded simulation | `policy/simulate.py::simulate, record_simulation` | NOM-IAM-06 | `test_enforcement_and_api.py::test_policy_simulation_reports_a_diff`; `tests/policy/test_simulate_in_context.py`, `tests/gateway/test_policy_save_and_promote.py` |
 
 ## Pillar 3 — Runtime Guardrails & Security
 
@@ -53,14 +55,27 @@ are [§6.3](PRD.md#63-out-of-scope-for-mvp-v01).
 
 | FR | Status | Implementation | Control | Test |
 |---|---|---|---|---|
-| **P4-1** Offline eval + CI gating | ✅ | `evaluation/runner.py`, `evaluation/gating.py::gate, to_junit, to_sarif` | NOM-EVL-01 | `test_evaluation.py::test_gate_passes_against_itself`, `::test_gate_respects_scorer_direction`, `::test_gate_reports_are_wellformed` |
+| **P4-1** Offline eval + CI gating | ✅ an errored case fails the gate | `evaluation/runner.py`, `evaluation/gating.py::gate, to_junit, to_sarif` | NOM-EVL-01 | `test_evaluation.py::test_gate_passes_against_itself`, `::test_gate_respects_scorer_direction`, `::test_gate_reports_are_wellformed`; `tests/evaluation/test_gate_errors.py` |
 | **P4-2** Online eval + drift | ✅ | `evaluation/runner.py::sample_production`, `evaluation/drift.py::compute` | NOM-EVL-02 | `::test_psi_rises_on_shift`, `::test_ks_statistic` |
 | **P4-3** Silent-failure detection | ✅ | `evaluation/silent_failure.py` — all six signal families | NOM-EVL-03 | `::test_ensemble_flags_confident_and_wrong`, `::test_refusal_is_not_a_silent_failure`, `::test_groundedness_alone_can_trip_the_ensemble` |
-| **P4-4** Automated red-teaming | ✅ probe suite, adapters, adaptive search; weekly posture schedule per tenant (opt-in) | `evaluation/redteam.py`, `job_handlers.py::redteam_posture` | NOM-EVL-04 | `::test_campaign_produces_posture`, `::test_campaign_blocks_injection_probes_when_enforcing` |
+| **P4-4** Automated red-teaming | ✅ probe suite, adapters, adaptive search; weekly posture schedule per tenant (opt-in); probe calls leave nothing in the production tables; `test redteam` exits 1 on an escape | `evaluation/redteam.py`, `jobs/handlers.py::redteam_posture` | NOM-EVL-04 | `::test_campaign_produces_posture`, `::test_campaign_blocks_injection_probes_when_enforcing`; `tests/evaluation/test_redteam_isolation.py` |
 | **P4-5** Scorer library & custom scorers | ✅ | `evaluation/scorers.py` | NOM-EVL-01 | `::test_task_completion_does_not_punish_correct_answers` |
 | **P4-6** Datasets & golden sets | ✅ | `models.py::EvalSuite/EvalCase`, `gateway/routes/evaluation.py::promote_trace` | NOM-EVL-01 | `::test_runner_scores_every_case` |
 | **P4-7** Reliability SLOs | ✅ | `evaluation/drift.py::evaluate_slos` | NOM-EVL-05 | surfaced via `/api/agents/{slug}/posture` |
 | **P4-8** Cross-model comparison | ✅ | `evaluation/runner.py` target dispatch, `providers/` | NOM-EVL-06 | `test_enforcement_and_api.py::test_control_plane_reads` |
+| **P4-13** Live probing of deployed agents | ✅ opt-in per host, fixed probe set | `evaluation/live_probes.py::register_target, opt_in, run_target, run_due`; `gateway/routes/probes.py`; the `deployed_agent` monitor kind | NOM-EVL-04 | `tests/evaluation/test_live_probes.py`, `tests/gateway/test_probes_and_showcase.py`, `tests/monitoring/test_deployed_agent_monitor.py` |
+| **P4-14** Public showcase | ✅ off unless `AGENTFOX_SHOWCASE_ENABLED` | `evaluation/showcase.py::ensure_showcase, public_summary`; `GET /api/public/showcase`; `dashboard/app/live` | NOM-EVL-04 | `tests/gateway/test_probes_and_showcase.py` (`::test_the_showcase_is_off_unless_enabled`, `::test_the_showcase_reads_only_its_own_tenant`) |
+
+## Pillar 12 — Policy Composition & Lifecycle
+
+| FR | Status | Implementation | Control | Test |
+|---|---|---|---|---|
+| **P12-1/2** Hierarchy and override semantics, enforced at runtime | ✅ | `policy/hierarchy.py::resolve_effective`, `policy/store.py::policies_in_force`, `runtime/enforcement/enforcer.py` | NOM-GOV-01 | `tests/policy/test_hierarchy_runtime.py`, `tests/business/test_ladder_mode.py` |
+| **P12-3** Effective policy with provenance | ✅ each layer's mode shown | `policy/store.py::effective_for`; `agentfox policy effective` | NOM-GOV-01 | `tests/cli/test_policy_effective_modes.py` |
+| **P12-4** Policy lint | ✅ run by `policy validate` | `policy/hierarchy.py::lint_policy`; `agentfox policy validate` | NOM-GOV-01 | `tests/cli/test_policy_validate_lint.py` |
+| **P12-6** Canary rollout | ✅ cohorts, two-way gate, saving never changes what is in force | `policy/canary.py::start_canary, evaluate_gate, canary_rollout` | NOM-GOV-01 | `tests/policy/test_canary_cohorts.py`, `tests/policy/test_mode_after_canary.py`, `tests/gateway/test_policy_save_and_promote.py` |
+| **P12-7** Non-developer rule authoring | ✗ | — | — | — |
+| Stored versions load through one loader; an unloadable bound version follows the fail mode (`policy.unloadable`) | ✅ | `policy/store.py::load_version_document` | NOM-RTG-06 | `tests/policy/test_stored_version_loading.py`, `tests/runtime/test_pack_fail_mode.py` |
 
 ## Pillar 5 — Audit, Observability & Traceability
 
@@ -121,7 +136,7 @@ are [§6.3](PRD.md#63-out-of-scope-for-mvp-v01).
 |---|---|---|---|---|
 | **PL-1** | Streaming (SSE) with inline enforcement | ✅ | `providers/base.py::StreamChunk`, `providers/echo.py::stream`, `providers/remote.py` (OpenAI + Anthropic SSE), `enforcement.py::run_completion_stream`, `gateway/routes/inline.py::_stream_openai/_stream_anthropic` | `test_tranche0.py` — 11 tests incl. `test_buffered_mode_never_forwards_blocked_output`, `test_streaming_and_non_streaming_agree_on_verdict`, `test_gateway_stream_block_emits_error_then_done` |
 | **PL-2** | Database migrations | ✅ | `alembic.ini`, `migrations/env.py` (URL from Settings, `render_as_batch` for SQLite), baseline revision, `db.py::upgrade_db/downgrade_db/current_revision`, `agentfox db upgrade` | `test_migrations_round_trip`, `test_app_runs_on_a_migrated_schema` |
-| **PL-3** | Kill switch & quarantine | ✅ | `models.py::AgentControl`, `registry/control.py`, `enforcement.py::_control_verdict` (checked before taint/detectors/policy), API `/agents/{slug}/kill|quarantine|resume`, `GET /api/controls`, `agentfox agents kill/quarantine/resume/controls` | 9 tests incl. `test_control_check_precedes_policy`, `test_kill_blocks_the_streaming_path_too`, `test_both_edges_are_audited` |
+| **PL-3** | Kill switch & quarantine | ✅ every guard surface | `models.py::AgentControl`, `registry/control.py`, `enforcement.py::_control_verdict` (checked before taint/detectors/policy), API `/agents/{slug}/kill|quarantine|resume`, `GET /api/controls`, `agentfox agents kill/quarantine/resume/controls` | 9 tests incl. `test_control_check_precedes_policy`, `test_kill_blocks_the_streaming_path_too`, `test_both_edges_are_audited`; `tests/runtime/test_kill_switch_every_surface.py` |
 | **I-1** | LangGraph-native SDK | ✅ | `integrations/langgraph.py::AgentFoxGuard` — `model_node`, `retrieval_node`, `tool_node`; trace id in graph state (survives checkpointing); escalation via LangGraph `interrupt()` when available | 8 tests incl. `test_tool_node_denies_before_the_body_runs`, `test_integration_imports_without_langgraph` |
 
 **Design notes recorded during the build:**
@@ -138,14 +153,14 @@ are [§6.3](PRD.md#63-out-of-scope-for-mvp-v01).
 - **`init_db()` stamps Alembic head on a fresh database**, so a create_all-built dev
   database does not later collide with `alembic upgrade`.
 
-## Known gaps carried from PRD §6.3
+## Known gaps
 
-Multi-tenancy enforcement · live IdP (OIDC/SAML) integration · managed cloud, billing
-· cross-org benchmarking · partner marketplace ·
-non-text modalities · credential brokerage (P2-6) · automated retention deletion ·
-framework-mapping diff engine (P6-8) · load testing (NFR-3).
+Live IdP (OIDC/SAML) integration · managed cloud, billing · cross-org benchmarking ·
+partner marketplace · non-text modalities · credential brokerage (P2-6) · automated
+retention deletion · framework-mapping diff engine (P6-8) · non-developer rule authoring
+(P12-7) · load testing (NFR-3).
 
-**All 257 framework mappings are `review_status: draft`** and ship in evidence packages
+**All 317 framework mappings are `review_status: draft`** and ship in evidence packages
 chip-labeled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a qualified reviewer completes
 the gate in [Appendix B §B.6](control-catalog.md#b6-mapping-review-gate) — see
 `audit/evidence.py` for the chip-labeling logic (corrected 2026-09-04).

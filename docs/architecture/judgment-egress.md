@@ -7,15 +7,16 @@ logs. The same is true less obviously everywhere else: asking a hosted model
 whether a support reply leaks a customer's address puts the address in the
 question.
 
-The PII benchmark in `jev-repo-benchmarks.md` sent 7,221 texts of synthetic
+An internal PII benchmark of the hosted judgment model sent 7,221 texts of synthetic
 personal data to `api.typesafe.ai`. That was fine for synthetic benchmark data
 and would be a serious defect in the product.
 
 ## What was actually wrong
 
-`JevClient` never checked `allow_egress`. Every other outbound caller in this
-codebase does — `providers/remote.py`, `providers/enterprise.py`,
-`webhooks.py` — and `adapters/presidio.py` already carries a docstring about
+`JevClient` (`detection/judgment/jev.py`) never checked `allow_egress`. Every other
+outbound caller in this codebase does — `providers/remote.py`,
+`providers/enterprise.py`, `core/webhooks.py`, `monitoring/alerts.py` — and
+`detection/adapters/presidio.py` already carries a docstring about
 this exact failure, from the time a dependency downloaded a 400MB model from
 inside a guarded request:
 
@@ -111,7 +112,7 @@ is not something `NativePiiDetector` will mask.
 
 ## Tests
 
-`tests/test_judgment_egress.py`, 11 cases: default sends nothing, remote is
+`tests/detection/judgment/test_judgment_egress.py`: default sends nothing, remote is
 refused with egress off, PII and secret fields are masked, nested structures
 are walked, a missing redactor fails closed, a *faulting* redactor fails closed,
 `inspect()` reports without sending, and the client refuses on its own when the

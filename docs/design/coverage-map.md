@@ -46,7 +46,7 @@ once in anger.
 | L1.2 | Indirect injection via retrieved content | ✅ covered | P3-1 + taint provenance weighting | INJECTION.INSTRUCTION_OVERRIDE, INJECTION.ROLE_DELIMITER |
 | L1.3 | Injection obfuscated to evade filters | ✅ covered | normalisation feeding every detector | 6/6 techniques caught |
 | L1.4 | Non-English injection | ✅ covered | multilingual patterns | 4/4 languages caught |
-| L1.5 | Jailbreak via persona replacement | ✅ covered | P3-1 persona-override patterns | INJECTION.INSTRUCTION_PERSONA |
+| L1.5 | Jailbreak via persona replacement | ✅ covered | P3-1 persona-override patterns | INJECTION.INSTRUCTION_PERSONA, INJECTION.PERSONA_OVERRIDE |
 | L1.6 | Gradual multi-turn manipulation (crescendo) | ✅ covered | F9.4 trajectory drift (trajectory.py), via check_conversation_window | slope 0.15 fired on the crescendo, 0.06 quiet on the ordinary conversation |
 | L1.7 | Secrets pasted into a prompt | ✅ covered | P3 secrets detector | SECRET.OPENAI_KEY |
 | L1.8 | PII in a prompt | ✅ covered | P3 PII detector + redaction | redacted to: Contact [REDACTED:PII.EMAIL], SSN [REDACTED:PII.US_SSN]. |
@@ -158,4 +158,4 @@ once in anger.
 | L9.5 | The audit log becomes a PII liability | ✅ covered | P5-5 redaction at capture | stored as 'sk-p************************************' |
 | L9.6 | Right to erasure conflicts with the chain | ◐ partial | retention + legal hold | Retention policy and legal hold exist. Erasure against an append-only chain has no designed answer — a real an |
 | L9.7 | Nobody can prove what the policy was at decision time | ✅ covered | immutable policy versions recorded per decision | 3 policy version(s) recorded on the decision |
-| L9.8 | Operator action goes unrecorded | ✅ covered | operator actions recorded in the same hash-chained log as the decisions | 9 privileged operations declared, 0 unaudited; promoting a rule to enforce recorded with actor and reason (['p |
+| L9.8 | Operator action goes unrecorded | ✅ covered | operator actions recorded in the same hash-chained log as the decisions | 11 privileged operations declared, 0 unaudited; promoting a rule to enforce recorded with actor and reason ([' |

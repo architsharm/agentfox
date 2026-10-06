@@ -9,13 +9,13 @@ there. Probes are shallow by design: they prove a capability is *wired*, not tha
 
 | | |
 |---|---|
-| **Capabilities** | 41 tracked |
-| **Built** | 25 ✅ |
+| **Capabilities** | 43 tracked |
+| **Built** | 27 ✅ |
 | **Partial** | 16 ◐ |
 | **Absent** | 0 ✗ |
-| **Weighted coverage** | **80%** *(partial counts half)* |
-| **Tests** | 2428 |
-| **Lines** | 103,079 (src + tests) |
+| **Weighted coverage** | **81%** *(partial counts half)* |
+| **Tests** | 3234 |
+| **Lines** | 129,169 (src + tests) |
 | **Failure modes covered** | **96%** — 54 of 57 outright, 2 partial |
 | **Injection recall, regression corpus** | **100%** — 33/33 adversarial, 0 false positive(s) on 18 benign. Our own test strings, so a regression check, not a recall estimate; held-out and external numbers are in benchmarks/REPORT.md |
 
@@ -24,45 +24,47 @@ in [design/traceability.md](design/traceability.md).
 
 | ID | Pillar | Capability | Status | Tests | Note |
 |---|---|---|---|---|---|
-| `P1` | 1 Registry | Registry, shadow discovery, observed lineage | ◐ partial | 8 | connector-based estate discovery (P1-8) absent |
-| `P12` | 12 Policy Composition | Hierarchical policy, override semantics, lint | ✅ built | 44 | non-developer authoring (P12-7) absent |
-| `P2` | 2 Identity | NHI, least privilege, delegation narrowing, approvals | ◐ partial | 29 | no live IdP; Entra/Okta integration (P2-8) absent |
-| `P3` | 3 Guardrails | Runtime detectors across nine surfaces + taint | ✅ built | 82 | model-based detectors wired but need an opt-in weights download |
-| `P9` | 9 Action Assurance | Action semantics, blast radius, verified-state preconditions | ◐ partial | 65 | cascade analysis is exactly as good as the trigger declarations it is given — an undeclared webhook stays invisible, and shell analysis remains a deny-list rather than a parser |
-| `P10` | 10 Entitlement | End-user principal, retrieval entitlement filtering | ◐ partial | 24 | OpenFGA adapter is a declared seam, not an implementation |
-| `P7` | 7 Answerability | Knowledge boundary, forced abstention | ✅ built | 106 |  |
-| `P8` | 8 Provenance | Source tiers, freshness, citation binding | ◐ partial | 85 | catalog ingestion (P8-9: DataHub/OpenMetadata/Unity) absent |
+| `P1` | 1 Registry | Registry, shadow discovery, observed lineage | ◐ partial | 13 | connector-based estate discovery (P1-8) absent |
+| `P1-9` | 1 Registry | Continuous monitoring of connected sources | ✅ built | 47 | re-checks connected GitHub repositories (on a schedule and on a signed push webhook), hosted-API specs and remote MCP servers, raises findings from the difference between runs and closes them when they clear, and alerts to Slack and the finding webhook. GitHub is the only code host; there is no PagerDuty or email channel; each job runs a bounded batch of due monitors |
+| `P12` | 12 Policy Composition | Hierarchical policy, override semantics, lint | ✅ built | 56 | non-developer authoring (P12-7) absent |
+| `P2` | 2 Identity | NHI, least privilege, delegation narrowing, approvals | ◐ partial | 44 | an approved retry is redeemed once, for the same agent, tool and arguments. No live IdP: Entra/Okta integration (P2-8) absent |
+| `P3` | 3 Guardrails | Runtime detectors across nine surfaces + taint | ✅ built | 100 | model-based detectors wired but need an opt-in weights download |
+| `P9` | 9 Action Assurance | Action semantics, blast radius, verified-state preconditions | ◐ partial | 79 | cascade analysis is exactly as good as the trigger declarations it is given — an undeclared webhook stays invisible, and shell analysis remains a deny-list rather than a parser |
+| `P10` | 10 Entitlement | End-user principal, retrieval entitlement filtering | ◐ partial | 26 | OpenFGA adapter is a declared seam, not an implementation |
+| `P7` | 7 Answerability | Knowledge boundary, forced abstention | ✅ built | 141 |  |
+| `P8` | 8 Provenance | Source tiers, freshness, citation binding | ◐ partial | 96 | catalog ingestion (P8-9: DataHub/OpenMetadata/Unity) absent |
 | `P14` | 14 Context Integrity | Ingestion and retrieval quality gates | ◐ partial | 27 | gates the ingestion and assembly path. Semantic chunk-boundary repair and automatic re-extraction of a corrupt document are not built — a finding is reported and the decision to drop the document belongs to the operator |
-| `P4` | 4 Evaluation | Eval runner, CI gating, drift, silent failure, red team | ◐ partial | 75 | the 'no Ragas adapter' half of this note was stale: score_sample/score_dataset (I-8) were already registered as selectable scorers and callable from the runner, not a disconnected integration — the note just never said so. Model-based groundedness is now real too (model_groundedness.py, via ModelProvider.judge(), the same mechanism LlmJudgeScorer already used), alongside the lexical scorer rather than replacing it. An annotation queue for human review of borderline eval results is still not built |
+| `P4` | 4 Evaluation | Eval runner, CI gating, drift, silent failure, red team | ◐ partial | 85 | Ragas scorers (I-8) and model-based groundedness (via ModelProvider.judge()) run from the runner alongside the lexical scorer, and a gate fails on an errored case rather than skipping it. Red-team probe calls leave no decisions or findings in the production tables. An annotation queue for human review of borderline eval results is not built |
+| `P4-13` | 4 Evaluation | Live probing of deployed agents (P4-13) and the public showcase (P4-14) | ✅ built | 35 | sends a fixed probe library to an agent's own endpoint only after a recorded opt-in, scores it on observed behaviour (a reversed canary, forbidden tools, leak markers) and opens a finding when a contained attack escapes. The probe set is fixed rather than adaptive, and an http target must speak the small JSON contract the adapter sends. The public showcase is off unless AGENTFOX_SHOWCASE_ENABLED is set |
 | `P13` | 13 Failure Attribution | Failure attribution across handoffs | ◐ partial | 26 | attributes a failure to the step that originated the value and measures what each handoff dropped. Both work on constraints that were written down — an expectation the human held and never typed is invisible here, and no trace analysis recovers it |
-| `P11` | 11 Escalation | Escalation policy and missed-escalation detection | ✅ built | 24 |  |
-| `P5` | 5 Audit | Traces, hash chain, evidence packages, SIEM | ✅ built | 71 |  |
-| `P6` | 6 Compliance | Control catalog, computed status, risk, obligations | ◐ partial | 50 | dynamic risk scoring and workflow engine absent (Gartner criteria) |
-| `P15` | 15 Cost & Reliability | Circuit breaker, fallback, caps, backpressure | ✅ built | 36 | AdmissionController (P15-6) was fully built and tested but had zero callers on the live request path; a gateway middleware now gates every /v1/* request through it before routing, shedding by priority under saturation and leaving the /api/* control plane out of scope for the same budget. Caps elsewhere (budgets, breaker thresholds) remain hard stops, not queued backpressure |
-| `PL-1` | Platform | Streaming with inline enforcement | ✅ built | 23 |  |
-| `PL-2` | Platform | Database migrations | ✅ built | 7 |  |
-| `PL-3` | Platform | Kill switch and quarantine | ✅ built | 29 |  |
+| `P11` | 11 Escalation | Escalation policy and missed-escalation detection | ✅ built | 29 |  |
+| `P5` | 5 Audit | Traces, hash chain, evidence packages, SIEM | ✅ built | 78 |  |
+| `P6` | 6 Compliance | Control catalog, computed status, risk, obligations | ◐ partial | 54 | dynamic risk scoring and workflow engine absent (Gartner criteria) |
+| `P15` | 15 Cost & Reliability | Circuit breaker, fallback, caps, backpressure | ✅ built | 45 | AdmissionController (P15-6) was fully built and tested but had zero callers on the live request path; a gateway middleware now gates every /v1/* request through it before routing, shedding by priority under saturation and leaving the /api/* control plane out of scope for the same budget. Caps elsewhere (budgets, breaker thresholds) remain hard stops, not queued backpressure |
+| `PL-1` | Platform | Streaming with inline enforcement | ✅ built | 24 |  |
+| `PL-2` | Platform | Database migrations | ✅ built | 9 |  |
+| `PL-3` | Platform | Kill switch and quarantine | ✅ built | 33 |  |
 | `PL-4` | Platform | Agent loop governance | ◐ partial | 29 | governs the run rather than the step: identical re-issued calls, alternating cycles, and steps producing no new observation. All three are visible without understanding the task, which is what keeps it deterministic — an agent that is wrong but varied still looks like an agent working |
-| `PL-5` | Platform | Async workers | ◐ partial | — | in-process with retries and a dead letter that is public state rather than a log line. The interface is the deliverable; a Redis or SQS implementation belongs behind it, and building that before anyone runs this at that scale would be committing to infrastructure early |
+| `PL-5` | Platform | Async workers | ◐ partial | 25 | a database-backed queue with retries, backoff, stuck-job recovery and a dead letter that is public state rather than a log line, filled by per-tenant schedules and drained by a cron call (Vercel cron, a 30-minute GitHub Actions runner, or `agentfox admin jobs run-due`). Each drain runs in the calling process; a Redis or SQS worker belongs behind the same interface and is not built |
 | `PL-6` | Platform | HA-ready persistence | ◐ partial | — | pooling and pre-ping ship, and SQLite is refused at startup for a multi-worker deployment rather than surfacing as intermittent latency. Actual scale-out under load is still untested |
 | `PL-7` | Platform | Service-level fail-open | ◐ partial | 25 | fail-open is legitimate and must be visible, bounded and impossible for some controls. Admission control sheds work rather than governance. What is not built: distributed state, so the fail-open budget and the rate limit are per-process and a multi-worker deployment gets N times the declared budget |
-| `PL-9` | Platform | Authentication and operator tokens | ◐ partial | 62 | OIDC/SCIM absent; tokens and the dev-mode gate ship |
+| `PL-9` | Platform | Authentication and operator tokens | ◐ partial | 82 | API tokens, the dev-mode gate, a refusal to start outside development on published secrets, sign-out that revokes the token and a first operator created from the CLI ship. OIDC/SCIM absent |
 | `P18` | 18 Tool Contract | Semantic contract: data access, result fidelity, register, source arbitration | ◐ partial | 62 | governs the gap between the request, the rows a tool touched and the answer. Data-access scoping is exactly as good as the ScopeRule declarations it is given — an undeclared table is reported, never assumed safe. Register checks are lexical and licensed per domain; they judge standing, not content, and a licensed operator turns them off deliberately |
 | `PL-10` | Platform | Operator actions recorded in the decision chain | ✅ built | 22 | the registry of privileged operations is declared and the check is structural, so a new operator surface without an audit call fails the suite. system_scope's cross-tenant operations now land somewhere real: resolving a token's own org before recording (system_log.py, chain.append's org_id) fixed a live misattribution — issuing/revoking a token used to record into whichever tenant the session defaulted to, with its seq computed from a query system_scope had left unfiltered — and the one operation with no tenant to attribute to at all (listing tokens across every org) now writes to a dedicated system-level chain. The registry that makes operator actions structural has no equivalent yet for which system_scope call sites must write to that chain — this one is wired by hand, not enforced by an import-time check |
-| `PL-8` | Platform | Tenant isolation enforced at the session | ✅ built | 29 |  |
-| `X-1` | Adoption | One-line auto-instrumentation | ✅ built | 30 |  |
-| `X-2` | Adoption | Static repo discovery and zero-effort CLI | ✅ built | 40 |  |
-| `P16` | 16 Business rules | Business-process guardrails and the guardrail catalogue | ◐ partial | 36 | policy compilation is deterministic: 86% of a tuned document and 64% of a held-out one compile with no question. Prose with no parseable structure ("be courteous") is reported as inexpressible rather than guessed at; a model-assisted path for those sentences is not built |
-| `X-4` | Adoption | Protective controls reachable without writing code | ✅ built | 13 |  |
-| `X-3` | Adoption | Control-plane onboarding and attention-first home | ✅ built | 8 |  |
-| `I-1` | Integration | LangGraph-native SDK | ✅ built | 13 |  |
-| `I-2` | Integration | MCP inline governance | ✅ built | 32 |  |
+| `PL-8` | Platform | Tenant isolation enforced at the session | ✅ built | 31 |  |
+| `X-1` | Adoption | One-line auto-instrumentation | ✅ built | 34 |  |
+| `X-2` | Adoption | Static repo discovery and zero-effort CLI | ✅ built | 68 |  |
+| `P16` | 16 Business rules | Business-process guardrails and the guardrail catalogue | ◐ partial | 40 | policy compilation is deterministic: 86% of a tuned document and 64% of a held-out one compile with no question. Prose with no parseable structure ("be courteous") is reported as inexpressible rather than guessed at; a model-assisted path for those sentences is not built |
+| `X-4` | Adoption | Protective controls reachable without writing code | ✅ built | 14 |  |
+| `X-3` | Adoption | Control-plane onboarding and attention-first home | ✅ built | 10 |  |
+| `I-1` | Integration | LangGraph-native SDK | ✅ built | 15 |  |
+| `I-2` | Integration | MCP inline governance | ✅ built | 51 |  |
 | `I-3` | Integration | FastAPI middleware and dependency | ✅ built | 7 |  |
 | `I-4` | Integration | LangSmith correlation | ✅ built | 7 |  |
-| `I-5` | Integration | OpenTelemetry | ✅ built | 1 |  |
+| `I-5` | Integration | OpenTelemetry | ✅ built | 7 |  |
 | `I-6` | Integration | Langfuse correlation | ✅ built | 7 |  |
 | `I-7` | Integration | Prometheus export | ✅ built | 6 |  |
-| `I-8` | Integration | Ragas scorer adapter | ✅ built | 4 |  |
+| `I-8` | Integration | Ragas scorer adapter | ✅ built | 5 |  |
 | `I-10` | Integration | LiteLLM routing | ✅ built | 8 |  |
 | `I-11` | Integration | Azure / Bedrock / Vertex providers | ✅ built | 7 |  |
 

@@ -1,8 +1,8 @@
 # Appendix D — Data Model
 
-Companion to [the PRD](../design/PRD.md). Implemented in `src/agentfox/core/models/` (SQLAlchemy 2.0), with schema changes as Alembic revisions in `migrations/versions/`. SQLite by default (zero-infra, offline — NFR-9); Postgres via `NOMETRIA_DATABASE_URL`.
+Companion to [the PRD](../design/PRD.md). Implemented in `src/agentfox/core/models/` (SQLAlchemy 2.0), with schema changes as Alembic revisions in `migrations/versions/`. SQLite by default (zero-infra, offline — NFR-9); Postgres via `AGENTFOX_DATABASE_URL` (`NOMETRIA_DATABASE_URL` still works).
 
-All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, and `org_id` — multi-tenancy is now enforced structurally at the session level, not just schema-present; see [../design/gap-analysis.md](../design/gap-analysis.md) Tier 1 §1.2.
+All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, and `org_id` — multi-tenancy is enforced structurally at the session level (`core/tenancy.py`), not just schema-present; see [../design/gap-analysis.md](../design/gap-analysis.md) Tier 1 §1.2. This appendix lists the key tables and columns; the models are the complete list.
 
 ---
 
@@ -19,7 +19,7 @@ All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, an
 
 **`lineage_edges`** — `src_type`/`src_id` → `dst_type`/`dst_id`, `relation` (`uses_model|calls_tool|reads_data|delegates_to|connects_mcp`), `observed_count`, `first_observed_at`, `last_observed_at`, `declared` (bool). **Derived from spans, not from config** (P1-3 design note).
 
-**`findings`** — the cross-pillar queue. `type` (`shadow_agent|tool_poisoning|schema_drift|unowned_agent|stale_credential|over_privileged|budget_breach|loop_detected|drift|silent_failure|redteam|chain_break|control_failing`), `severity`, `status` (`open|triaged|suppressed|resolved`), `subject_type`/`subject_id`, `evidence_json`, `suppression_reason`, `suppressed_by`.
+**`findings`** — the cross-pillar queue. `type` (`shadow_agent|tool_poisoning|schema_drift|unowned_agent|stale_credential|over_privileged|budget_breach|loop_detected|drift|silent_failure|redteam|chain_break|control_failing`, the `monitor_*` types of §D.7, `live_probe_escape`, …), `severity`, `status` (`open|triaged|suppressed|resolved`), `subject_type`/`subject_id`, `evidence_json`, `suppression_reason`, `suppressed_by`.
 
 ---
 
@@ -29,8 +29,9 @@ All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, an
 **`credentials`** — `identity_id`, `key_prefix`, `key_hash` (argon2id), `issued_at`, `expires_at`, `rotated_from_id?`, `revoked_at?`, `last_used_at`. Plaintext exists only in the issuance response.
 **`capabilities`** — `identity_id`, `tool_key` (glob allowed), `actions[]`, `constraints_json` (argument-level, e.g. `{"amount": {"lt": 1000}}`), `requires_approval` (bool), `max_taint` (`none|user|tool_result|retrieved`), `granted_by`, `expires_at?`.
 **`delegation_edges`** — `parent_identity_id`, `child_identity_id`, `capability_diff_json`, `trace_id`. **Write-time invariant: child capabilities ⊆ parent capabilities.** Widening is rejected, not audited after the fact (P2-5).
-**`approval_requests`** — `decision_id`, `trace_id`, `agent_id`, `tool_key`, `arguments_json`, `reason`, `requested_at`, `expires_at`, `status` (`pending|approved|denied|expired`), `resolver_user_id?`, `resolution_rationale?`, `timeout_action` (`deny|allow`, default `deny`).
-**`users`**, **`roles`**, **`api_tokens`** — control-plane RBAC (§C.4).
+**`approval_requests`** — `decision_id`, `trace_id`, `agent_id`, `tool_key`, `arguments_json`, `reason`, `requested_at`, `expires_at`, `status` (`pending|approved|denied|expired|used`), `resolver_user_id?`, `resolution_rationale?`, `timeout_action` (`deny|allow`, default `deny`). `tool_key` is `message:<surface>` for a held message, whose `arguments_json` carries a masked excerpt and `content_sha256`. On approval `expires_at` restarts as the redemption window. **`used` is final:** a retry presenting the approval for the same agent, tool and arguments flips `approved → used` in a conditional update, so an approval lets exactly one call through (P2-3).
+**`users`**, **`api_tokens`** — control-plane RBAC (§C.4); the role is `users.role`. `api_tokens`: `user_id`, `name`, `key_prefix`, `key_hash` (argon2id), `expires_at?`, `revoked_at?`. Signing out sets `revoked_at` on that session's token.
+**`github_connections`** — `github_user_id`, `github_login`, `access_token_encrypted`, `connected_by_user_id`, `webhook_secret_encrypted?` (the secret GitHub signs push deliveries with, encrypted; null means only the deployment-wide `github_webhook_secret` can verify this connection's deliveries).
 
 ---
 
@@ -57,7 +58,8 @@ All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, an
 **`baselines`** — `suite_id`, `run_id`, `label`, `thresholds_json` (per-scorer regression tolerance — the gate semantics of P4-1).
 **`drift_windows`** — `agent_id`, `scorer_key`, `window_start`/`end`, `n`, `mean`, `p50`, `p95`, `psi`, `ks`, `baseline_window_id?`, `drifted` (bool).
 **`slos`** — `agent_id`, `scorer_key`, `objective`, `window`, `target`, `current`, `error_budget_remaining`.
-**`redteam_campaigns`** / **`redteam_findings`** — `runner` (`native|garak|pyrit|giskard`), `probes[]`, `target_json`, `status`, and per-finding `probe`, `severity`, `succeeded`, `owasp_id`, `atlas_id`, `evidence_json`.
+**`redteam_campaigns`** / **`redteam_findings`** — `runner` (`native|garak|pyrit|giskard|live`), `probes[]`, `target_json`, `status`, `summary_json`, `finished_at`, and per-finding `probe`, `severity`, `succeeded`, `owasp_id`, `atlas_id`, `evidence_json`. A live-probe campaign has `runner="live"` and `target_json.source="live_probe"`.
+**`probe_targets`** — a deployed agent's endpoint that live probes may be sent to. `agent_slug`, `name`, `adapter` (`http|in_process`), `url?`, `registered_host?` (the one host the opt-in covers), `model?`, `auth_header_ciphertext?` (encrypted `Authorization` value), `config_json` (`forbidden_tools`, `leak_markers`, `probes`), `enabled` (default **false**), `opted_in_by?`, `opted_in_at?`, `opt_in_acknowledgement?` (the warning text agreed to), `interval_seconds`, `max_probes_per_run`, `rate_limit_per_minute`, `timeout_seconds` (each clamped to hard caps at run time), `next_due_at?`, `last_run_at?`, `last_campaign_id?`, `created_by`. Changing `url` clears the opt-in.
 
 ---
 
@@ -103,7 +105,19 @@ digest         = SHA-256(f"{seq}|{occurred_at_iso}|{action}|{payload_digest}|{pr
 
 ---
 
-## D.7 Key relationships
+## D.7 Continuous monitoring & scheduled work
+
+**`monitors`** — something connected that AgentFox re-checks on a schedule. `kind` (`github_repo|hosted_api|mcp_server|deployed_agent`), `target` (`owner/repo`, a spec URL, an MCP server name, or a `probe_targets.id`), `name`, `config_json` (branch or ref, connection id, …), `interval_seconds` (default 6 h; clamped to 5 min – 30 days), `enabled`, `status` (`pending|baseline|ok|changed|failed|inconclusive`), `last_run_at?`, `next_run_at?`, `last_result_json`, `baseline_json` (the snapshot the next run diffs against; replaced only by a successful run), `last_error`, `consecutive_failures`, `created_by`. Unique on `(org_id, kind, target)`; indexed on `(enabled, next_run_at)`.
+Findings a monitor raises have `subject_type="monitor"` and types `monitor_lethal_trifecta`, `monitor_ungoverned_model_call`, `monitor_governance_removed`, `monitor_new_tool`, `monitor_new_mcp_server`, `monitor_api_destructive_endpoint`, `monitor_api_new_endpoint`, and `monitor_failing` (raised after `monitor_failure_threshold` consecutive failures).
+
+**`alert_channels`** — where a tenant's monitor alerts go, beyond the deployment-wide webhook. One row per tenant per `kind` (only `slack` today). `url_encrypted` (the incoming-webhook URL, a bearer credential; must be `https://hooks.slack.com/…`), `min_severity` (default `medium`), `enabled`, `created_by`.
+
+**`jobs`** — deferred work with retries and a dead letter. `kind` (`monitors.run`, `probes.run`, `escalation.scan`, `canary.advance`, …), `payload_json`, `status`, `attempts`/`max_attempts`, `last_error`, `result_json`, `requested_by`, `enqueued_at`, `available_at?` (backoff), `started_at?` (stuck-job recovery), `finished_at?`, `schedule_id?`.
+**`job_schedules`** — recurring per-tenant work that fills the queue. `kind`, `payload_json`, `interval_seconds`, `enabled`, `last_enqueued_at?`, `next_due_at?`, `created_by`. A schedule enqueues at most once per interval and never while its previous job is pending or running.
+
+---
+
+## D.8 Key relationships
 
 ```
 Agent 1──n Identity 1──n Credential
@@ -120,12 +134,16 @@ Agent 1──n Identity 1──n Credential
   ├──n DriftWindow / SLO
   └──n EvalRun ──n EvalResult ──1 EvalCase ──1 EvalSuite
 
+Monitor ──n Finding (subject_type=monitor)
+Monitor[deployed_agent] ──1 ProbeTarget ──n RedTeamCampaign[runner=live]
+GithubConnection ──n Monitor[github_repo]                 (via config_json.connection_id)
+
 AuditEntry[seq] ──prev_digest──▶ AuditEntry[seq-1]        (hash chain)
 AuditCheckpoint ──▶ AuditEntry[seq]                        (signed anchor)
 EvidencePackage ──▶ {Traces, Decisions, AuditEntries, EvalRuns, ControlStatuses}
 Control ──n FrameworkMapping ; Control ──n ControlStatus
 ```
 
-## D.8 Indices that matter
+## D.9 Indices that matter
 
-`traces(agent_id, started_at)` · `spans(trace_id, started_at)` · `decisions(agent_id, verdict, created_at)` · `decisions(trace_id)` · `audit_entries(seq)` unique · `detection_findings(entity_type, created_at)` · `lineage_edges(src_id, dst_id, relation)` unique · `findings(status, severity, created_at)` · `eval_results(run_id, case_id, scorer_key)` unique · `control_statuses(control_key, computed_at)`.
+`traces(agent_id, started_at)` · `spans(trace_id, started_at)` · `decisions(agent_id, verdict, created_at)` · `decisions(trace_id)` · `audit_entries(seq)` unique · `detection_findings(entity_type, created_at)` · `lineage_edges(src_id, dst_id, relation)` unique · `findings(status, severity, created_at)` · `eval_results(run_id, case_id, scorer_key)` unique · `control_statuses(control_key, computed_at)` · `monitors(org_id, kind, target)` unique · `monitors(enabled, next_run_at)` · `jobs(status, enqueued_at)`.

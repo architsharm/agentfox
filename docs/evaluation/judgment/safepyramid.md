@@ -140,6 +140,10 @@ untested by this corpus.
 
 ## Reproducing
 
+These scripts are kept outside this repository; the commands are recorded so the method is
+clear. The judgment-tier figures this repository publishes are re-run with
+`benchmarks/judgment/run_judgment_benchmark.py`.
+
 ```bash
 python scripts/sp_corpus.py --download
 JEV_API_KEY=...       python scripts/sp_run.py jev    --sample 600

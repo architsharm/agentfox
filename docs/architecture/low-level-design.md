@@ -1,182 +1,183 @@
 # Low-Level Design (LLD)
 
 **Companion to [docs/architecture/high-level-design.md](high-level-design.md).** Where the HLD explains the shape of the system, this
-document explains the pieces: module inventory, key classes and methods, the data model, the
-API surface, and the internals of the four subsystems most worth understanding in depth
-(the enforcer, the detector pipeline, the policy engine, the audit chain). All line counts
-and file paths verified against the repository on 2026-09-04; treat any that drift as a cue to
-re-run the same `wc -l` / `grep` pass rather than trust this document blindly.
+document explains the pieces: the package layout, key classes and methods, the data model, the
+API surface, and the internals of the subsystems most worth understanding in depth (the
+enforcer, approvals, the detector pipeline, the policy engine, the audit chain, monitoring).
+[ARCHITECTURE.md](../../ARCHITECTURE.md) is the shorter map and traces one tool call through the
+code; read it first. This document names modules and functions rather than line numbers or line
+counts, because those drift; current test and line counts are generated into
+[`docs/status.md`](../status.md). If this document and the code disagree, the code is right.
 
 ---
 
-## 1. Module inventory — `src/agentfox/`
+## 1. Package layout — `src/agentfox/`
 
-The package is 14,895 lines split between ~40 flat root modules and 14 subpackages. It is
-*not* organized with everything nested under subpackages — several of the largest, most
-central modules live at the package root.
+Everything lives in subpackages. The package root holds only `__init__.py` (the lazy
+`auto`/`off`/`state`/`Blocked` re-exports) and `errors.py` (the exception hierarchy, §3.2).
 
-### 1.1 Root modules (selected, by size)
-
-| Module | Lines | Responsibility |
+| Subpackage | Key modules | Responsibility |
 |---|---|---|
-| `enforcement.py` | 2440 | The `Enforcer` class — every governed surface (gateway, SDK, LangGraph guard) calls into this. See §3. |
-| `models.py` | 1490 | SQLAlchemy 2.0 ORM — every persisted entity in the system. See §5. |
-| `escalation.py` | 821 | Human hand-off: approval requests, timeout policy, owner/SLA routing (Pillar 11). |
-| `autoguard.py` | 793 | `agentfox.auto()` monkey-patch machinery. See §7. |
-| `seed.py` | 648 | Demo/offline seed data — agents, policies, controls, obligations, scripted provider replies. |
-| `context_integrity.py` | 609 | Pillar 14 — chunk-boundary and retrieval-corruption detection. Wired into `finding.py` and `gateway/routes/provenance.py`. |
-| `answerability.py` | 603 | Pillar 7 — knowledge-boundary declaration and pre-generation abstention gate. |
-| `provenance.py` | 560 | Pillar 8 — source-authority binding for retrieved content. |
-| `attribution.py` | 538 | Pillar 13 — failure attribution across a multi-step/multi-agent execution. |
-| `discovery.py` | 524 | Pillar 1 — repo/config-based agent and tool discovery (`agentfox check`). |
-| `commitments.py` | 496 | Pillar F6 — commitment/advice/liability-language detection. |
-| `entitlement.py` | 464 | Pillar 10 — end-user principal → visible-resource resolution. |
-| `effects.py` | 461 | Side-effect / irreversibility classification for tool calls. |
-| `integrity.py` / `availability.py` | 427 / 427 | Numeric/temporal/entity integrity checks; admission control + rate limiting (Pillar 15). |
-| `data_access.py` | 384 | Data-access scope declarations (Pillar 10 companion). |
-| `reliability.py` | 340 | Circuit breaker / fallback around provider calls. |
-| `arbitration.py` | 309 | Multi-source conflict resolution (which of several retrieved facts wins). |
-| `register.py` | 281 | Compliance risk register (`agentfox compliance risk` — distinct from `commitments.py`'s commitment register; don't conflate the two when reading call sites). |
-| `tenancy.py` | 270 | Multi-tenant isolation — session-level `with_loader_criteria` enforcement, not per-query filtering. |
-| `tool_contract.py` | 264 | Pillar 18 — semantic tool-contract governance (data access, result fidelity, source arbitration). |
-| `config.py` / `db.py` | 259 / 225 | Settings (env-var driven) and engine/session setup. |
-| `agent_loop.py` | 222 | Pillar 15 (PL-4) — `LoopGovernor`: alternating-cycle and stalled-run detection across a multi-turn tool-calling loop. Called from `enforcement.py:2367`. As of 2026-09-04, actively being extended (uncommitted diff) to accept a full step-history (`prior_steps`) from callers, not just a per-tool repeat count. |
-| `jobs.py` | 178 | Async job-queue interface. **Zero callers outside itself and tests as of 2026-09-04** — a genuinely stub-only module (built, tested, not wired to anything on a live path). |
-| `system_log.py` / `operator_log.py` | 132 / 218 | Structured operator-action logging (distinct from the audit chain — these are operational logs, not the tamper-evident record). |
-| `session_scan.py` | 124 | `agentfox quickscan`'s local AI-tool-session transcript scan. |
-| `ids.py` / `crypto.py` / `finding.py` | 55 / 45 / 40 | ID generation, crypto helpers, the shared `Finding` type used across pillars. |
-
-### 1.2 Subpackages
-
-| Subpackage | Lines | Key files | Responsibility |
-|---|---|---|---|
-| **`audit/`** | 1728 | `chain.py` 399, `evidence.py` 560, `trace.py` 329, `otel.py` 160, `siem.py` 233 | Pillar 5 — hash chain, evidence packages, OTel-based tracing. See §6. |
-| **`business/`** | 2505 | `compile.py` 1010, `catalogue.py` 583, `ladder.py` 396, `graph.py` 314, `store.py` 159 | Turns written business rules ("refunds under $10 auto-approve") into executable guardrails; merges conflicting rules from multiple authors. |
-| **`cli/`** | 3665 | `main.py` 1304, `controls_cli.py` 508, `demo.py` 504, `onboarding.py` 421, `business_cli.py` 388, `auth_cli.py` 216, `quickscan.py` 187, `submit.py` 115 | The `agentfox` binary. See §11. |
-| **`compliance/`** | 1189 | `status.py` 516, `risk.py` 380, `catalog.py` 250 | Pillar 6 — control catalog, framework mapping, computed status, risk register. |
-| **`evaluation/`** | 3166 | `redteam.py` 780, `silent_failure.py` 438, `runner.py` 366, `scorers.py` 350, `gating.py` 309, `drift.py` 288, `ragas_adapter.py` 241, `adapters.py` 189, `model_groundedness.py` 127 | Pillar 4 — native eval runner, promptfoo/Ragas adapters, CI regression gate, drift detection, red-team. |
-| **`gateway/`** | 7171 | `app.py` 402, `auth.py` 276, `deps.py` 122, `playground_sessions.py` 196, `routes/` (17 files, 6170 lines) | The FastAPI app — inline proxy + control-plane API. See §10. |
-| **`guardrails/`** | 4944 | `pipeline.py`, `base.py`, `actions.py`, `composition.py`, `normalize.py`, `taint.py`, `tuning.py`, `detectors/` (1139), `adapters/` (751) | Pillar 3 — the detector pipeline. See §4. |
-| **`identity/`** | 571 | `service.py` 532 | Pillar 2 — non-human identity, delegation, approvals. |
-| **`integrations/`** | 1692 | `mcp.py` 439, `langgraph.py` 393, `correlation.py` 360, `fastapi.py` 235, `prometheus.py` 226 | Framework/observability integrations. See §8. |
-| **`policy/`** | 1999 | `hierarchy.py` 354, `canary.py` 294, `engine.py` 291, `store.py` 287, `opa.py` 231, `model.py` 256, `simulate.py` 185 | Pillar 6/12 — policy authoring, evaluation, versioning, canary rollout. See §9. |
-| **`providers/`** | 1046 | `enterprise.py` 366, `remote.py` 299, `base.py` 192, `echo.py` 146 | The `ModelProvider` seam. |
-| **`registry/`** | 961 | `service.py` 779, `control.py` 139 | Pillar 1 — agent registry, observed lineage, kill switch/quarantine. |
-| **`sdk/`** | 481 | `__init__.py` 481 | The `AgentFox` client class (local + remote modes). |
-| `compliance_data/`, `policies_data/` | — | `controls.yaml`, `obligations.yaml`, `baseline.yaml`, `eu-ai-act-high-risk.yaml`, `tool-containment.yaml` | Static data, not code — read by `compliance/catalog.py` and `policy/store.py` respectively. |
+| **`core/`** | `config.py`, `db.py`, `tenancy.py`, `models/`, `outbound.py`, `webhooks.py`, `crypto.py`, `seed.py`, `ids.py`, `finding.py` | Settings (`AGENTFOX_*`, `agentfox.toml`) and the startup secret check; engine and session factory; session-level tenant isolation; the ORM (§5); vetted outbound HTTP (`guarded_get`/`guarded_post`); the signed finding webhook; at-rest encryption; demo seed data. |
+| **`jobs/`** | `queue.py`, `store.py`, `scheduler.py`, `handlers.py` | Work outside the request: the in-process reference queue, the persisted `jobs` store with retries and a dead letter, per-tenant `JobSchedule` rows, and the handler table (`monitors.run`, `probes.run`, `escalation.scan`, `canary.advance`, `drift.check`, …). |
+| **`discovery/`** | `repo.py`, `exposure.py`, `threats.py`, `openapi.py`, `sessions.py` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, lethal-trifecta exposure, threat coverage. |
+| **`registry/`** | `service.py`, `control.py`, `skills.py` | The agent registry (`observe_agent`, `register_agent`), observed lineage, kill switch and quarantine, MCP tool-poisoning and skill scanning. |
+| **`runtime/`** | `enforcement/` (§3), `autoguard/` (§7), `availability.py`, `reliability.py`, `agent_loop.py` | The request path: the `Enforcer`, `auto()`, fail modes and admission control, the provider circuit breaker and fallback, loop governance. |
+| **`containment/`** | `escalation.py`, `effects.py`, `data_access.py`, `control_flow.py`, `agent_messaging.py`, `findings.py` | What an agent may do beyond the grant: escalation governance and hand-offs, effects that outlive a call, data-access scoping, control-flow integrity, inter-agent message signing, containment findings. |
+| **`grounding/`** | `answerability.py`, `provenance.py`, `entitlement.py`, `commitments.py`, `integrity.py`, `context_integrity.py`, `arbitration.py`, `register.py`, `tool_contract.py`, `sycophancy.py` | What an answer may say: knowledge boundaries and abstention, source authority, entitlement filtering, commitment and disclosure language, numeric/temporal/entity integrity, context integrity, source arbitration, tool contracts, sycophancy. |
+| **`detection/`** | `base.py`, `pipeline.py`, `detectors/`, `adapters/`, `taint.py`, `normalize.py`, `prefilter.py`, `actions.py`, `composition.py`, `trajectory.py`, `files.py`, `tuning.py`, `warmup.py`, `judgment/` | The detector pipeline and everything it reads (§4). `judgment/` holds the optional model tiers and the routing table that limits what each may decide ([judgment-tiers.md](judgment-tiers.md)). |
+| **`policy/`** | `model.py`, `engine.py`, `opa.py`, `store.py`, `hierarchy.py`, `simulate.py`, `canary.py`, `taint_view.py`, `coding.py` | Policy documents, the native engine and the OPA adapter, storage, binding and the stored-version loader, hierarchy and lint, simulation, canaries (§9). |
+| **`business/`** | `compile.py`, `catalogue.py`, `ladder.py`, `graph.py`, `store.py` | Business rules as guardrails: threshold ladders (each with its own mode), compiling written policy into rules, merging rules from many authors. |
+| **`identity/`** | `service.py` | Non-human identities, credentials, capability grants and constraints, delegation, approvals and their redemption (§3.1). |
+| **`prove/`** | `audit/` (`chain.py`, `evidence.py`, `trace.py`, `otel.py`, `siem.py`, `operator_log.py`, `system_log.py`), `compliance/` (`catalog.py`, `status.py`, `risk.py`), `findings.py`, `report.py`, `attribution.py` | The audit chain (§6), traces, evidence packages, SIEM/OTLP, operator logs, the control catalog and computed status, findings, the one-page report, failure attribution. |
+| **`evaluation/`** | `runner.py`, `scorers.py`, `gating.py`, `drift.py`, `silent_failure.py`, `redteam.py`, `adaptive.py`, `live_probes.py`, `showcase.py`, `ragas_adapter.py`, `adapters.py`, `model_groundedness.py` | Eval runner, CI gating (errored cases fail the gate), drift, silent-failure sampling, offline red team (dry-run, isolated), adaptive campaigns, live probes of deployed agents and the public showcase (§15). |
+| **`improvement/`** | `contract.py`, `proposals.py`, `loops.py`, `appliers.py`, `traffic.py` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. |
+| **`monitoring/`** | `service.py`, `snapshots.py`, `alerts.py`, `github.py`, `mcp_live.py` | Continuous monitoring of connected sources: scheduling, diffing runs into findings, Slack alerts, GitHub archive download and push-signature checks, remote MCP tool listings (§15). |
+| **`gateway/`** | `app.py`, `auth.py`, `deps.py`, `verdicts.py`, `playground_sessions.py`, `routes/` | The FastAPI app: inline `/v1/*` and the `/api/*` control plane (§10). One router per file in `routes/`. |
+| **`cli/`** | `main.py`, `layout.py`, `commands/`, `*_cli.py` | The `agentfox` binary (§11). |
+| **`hooks/`** | `daemon.py`, `client.py`, `harness.py`, `protocol.py`, `capability.py`, `baseline.py` | Coding-agent hooks: a thin per-call client, a warm daemon on a Unix socket that calls the `Enforcer`, and the baseline `hooks install` sets up (registers the agent, grants the built-in tools). |
+| **`integrations/`** | `langgraph.py`, `mcp.py`, `mcp_server.py`, `fastapi.py`, `correlation.py`, `prometheus.py` | LangGraph guard (§8), MCP governor and the read-only MCP server, FastAPI middleware, LangSmith/Langfuse correlation, Prometheus. |
+| **`sdk/`** | `__init__.py` | The explicit SDK: `AgentFox`, `AgentSession`, `@fox.tool(impact=…)` (joins the session's trace), `wait_for_approval`; local or remote mode. |
+| **`providers/`** | `base.py`, `echo.py`, `remote.py`, `enterprise.py` | The `ModelProvider` seam: `echo` (offline default), OpenAI, Anthropic, Azure, Bedrock, Vertex, LiteLLM. |
+| `policies_data/`, `compliance_data/` | `baseline.yaml`, `eu-ai-act-high-risk.yaml`, `tool-containment.yaml`, `coding-agent.yaml`; `controls.yaml`, `obligations.yaml`, `threats.yaml` | Shipped YAML, read by `policy/store.py` and `prove/compliance/catalog.py`. |
 
 ---
 
-## 2. Test coverage map
+## 2. Tests
 
-46 `test_*.py` files, 16,214 lines, under `tests/` — one file per subsystem, tracking the
-module inventory above almost 1:1: `test_enforcement_and_api.py`, `test_autoguard.py`,
-`test_guardrails.py`, `test_evasion.py`, `test_policy_and_identity.py`,
-`test_policy_compiler.py`, `test_policy_canary.py`, `test_hierarchy.py`,
-`test_audit_and_evidence.py`, `test_registry_and_compliance.py`, `test_entitlement.py`,
-`test_escalation.py`, `test_evaluation.py`, `test_mcp_governance.py`,
-`test_memory_and_agent_messaging.py`, `test_business_guardrails.py`, `test_composition.py`,
-`test_context_integrity.py`, `test_correlation.py`, `test_data_access.py`,
-`test_action_assurance.py`, `test_answerability.py`, `test_arbitration.py`,
-`test_attribution.py`, `test_availability.py`, `test_commitments.py`,
-`test_discovery_submission.py`, `test_effects.py`, `test_hosted_api_integration.py`,
-`test_integrations.py`, `test_onboarding.py`, `test_operator_log.py`,
-`test_platform_runtime.py`, `test_playground.py`, `test_provenance_integrity.py`,
-`test_quickscan.py`, `test_reachability.py`, `test_register.py`, `test_reliability.py`,
-`test_session_scan.py`, `test_system_log.py`, `test_tenancy.py`, `test_tool_contract.py`,
-`test_tranche0.py`, `test_tuning.py`, `test_auth.py`, plus `tests/corpus/injection.py` (a
-fixture corpus, not a test file). **No frontend (`dashboard/`) test files exist anywhere in
-the repo** — this is a real gap.
-
-Current test and line counts are in [`docs/status.md`](../status.md), which `scripts/coverage.py --write` regenerates from the source tree; they are not restated here because they go stale.
+`tests/` mirrors the package one directory per subpackage (`tests/runtime/`, `tests/policy/`,
+`tests/monitoring/`, …). Three directories are cross-cutting: `tests/e2e/` runs the request
+path end to end across packages, `tests/repo/` checks the repository itself (claims registry,
+docs site, harness, vendored wheels, install layout), and `tests/corpus/` holds fixture
+corpora rather than tests. The dashboard has its own vitest suite (`npm test` in
+`dashboard/`). Counts are in [`docs/status.md`](../status.md), regenerated by
+`scripts/coverage.py --write`.
 
 ---
 
-## 3. The `Enforcer` class — `src/agentfox/runtime/enforcement/` (2440 lines)
+## 3. The `Enforcer` — `src/agentfox/runtime/enforcement/`
 
-This is the single code path every integration surface converges on (HLD §5). Class and
-method signatures, by call order:
+The single code path every integration surface converges on (HLD §5). `Enforcer` is one class
+assembled from mixins, one module per stage (the package docstring lists them):
 
-| Method | Line | Role |
+| Module | Methods | Role |
 |---|---|---|
-| `Enforcer.__init__(session)` | — | Binds to a SQLAlchemy session; stateless otherwise |
-| `resolve(...)` | — | Resolves agent/identity/environment from request context |
-| `preflight(...)` | 1591 | **The orchestrator.** Runs steps 2–6 of the request path (HLD §6) — control verdict, budget gate, answerability gate, taint tagging, per-message `evaluate()` — shared by both buffered and streaming call paths |
-| `_control_verdict(...)` | — | Kill-switch / quarantine check (`registry/control.py`) |
-| `_budget_gate(...)` | 1744 | Hard budget-cap enforcement — rejects before any provider spend |
-| `_answerability_gate(...)` | — | Pillar 7 pre-generation abstention check |
-| `evaluate(...)` | 324 | Runs the detector pipeline (Pillar 3) on one message, tracks the worst verdict across the conversation |
-| `check_content(...)` | 826 | Standalone content check outside the full preflight (used by `retrieval_node` for indirect-injection scanning) |
-| `guard_tool_call(...)` | 854 | Pre-execution tool-call gate — capability/argument/taint checks, loop-governance (`agent_loop.govern_loop`, line ~2367), returns before the wrapped tool body runs |
-| `check_conversation_window(...)` | 949 | Multi-turn window analysis (payload-splitting detection) |
-| `guard_memory_write(...)` | 1042 | Pillar 16 — memory-write governance (OWASP ASI06) |
-| `guard_agent_message(...)` | 1115 | Pillar 17 — inter-agent message security (OWASP ASI07) |
-| `call_provider(...)` | 1781 | Invokes the resolved `ModelProvider`, wrapped in the circuit breaker/fallback from `reliability.py` |
-| `_finish_completion(...)` | 1892 | Post-flight: output-surface detector pass, provenance binding |
-| `run_completion(...)` | 1960 | Buffered (non-streaming) full call |
-| `run_completion_stream(...)` | 2038 | SSE streaming variant — the same gate sequence, chunked |
-| `_charge_budget(...)` | 2429 | Final budget debit after a completed call |
+| `enforcer.py` | `Enforcer.__init__(session, pipeline=None)`, `resolve(...)`, `evaluate(...)` | Identity resolution, and **`evaluate()`, where every decision is made and recorded**. It checks the kill switch first, then runs the detector pipeline, suppressions, `check_capability`, the content checks, business ladders and action analysis, resolves the policy hierarchy (`policies_in_force`), combines verdicts, redeems a presented approval (§3.1), and persists the `Decision`, findings, any `ApprovalRequest`, a guardrail span and the audit entry. |
+| `completion.py` | `preflight(...)`, `call_provider(...)`, `run_completion(...)`, `_answerability_gate`, `_finish_completion` | **The completion orchestrator.** `preflight` runs kill switch, budget, answerability, taint marking and per-message `evaluate()`, shared by the buffered and streaming paths; `call_provider` wraps the provider in the breaker from `runtime/reliability.py`. |
+| `streaming.py` | `run_completion_stream(...)` | The SSE variant: the same gates, chunked. |
+| `tool_calls.py` | `guard_tool_call(...)` | The pre-execution tool-call gate: kill switch, argument provenance (`TaintTracker.taint_arguments`), `TaintTag` rows and a lineage edge, loop governance, then `evaluate(surface="tool_args")`. |
+| `surfaces.py` | `check_content`, `check_conversation_window`, `guard_memory_write`, `guard_completion`, `guard_reasoning`, `guard_file`, `guard_agent_message` | The other surfaces: retrieved content, multi-turn windows, memory writes, a completion handed in by the caller, model reasoning, files, inter-agent messages. |
+| `checks.py` | `_evidence_checks`, `_disclosure_checks`, `_control_flow_checks`, `_sycophancy_checks`, `_commitment_checks`, `_trajectory_checks`, `_context_checks` | The grounding and containment checks `evaluate()` folds into one record. |
+| `limits.py` | `_control_verdict`, `_budget_gate`, `_charge_budget` | Kill switch / quarantine, and hard spend budgets. |
+| `findings.py` | `_raise_detection_finding`, `_record_degradation`, `_persist_detectors` | Detector-run rows, degradation records, detection findings. |
+| `approvals.py` | `held_call(...)` | What an escalation is filed under: the tool and its arguments, or for a held message `message:<surface>` with a masked excerpt and the content's SHA-256. |
+| `rules.py`, `result.py` | `_fallback_policies`; `EnforcementResult`, `PreflightOutcome`, `StreamEvent` | The in-memory `baseline` fallback when no pack is bound; result types. |
 
-**Design note worth carrying into any future refactor**: `preflight` is explicitly shared
-between the buffered and streaming code paths specifically to avoid the class of bug
-`autoguard.py`'s own comments describe having fixed once already (a partial
-reimplementation of the same logic that drifted from the gateway's — `autoguard.py:350-352`).
-Any new call surface should call `preflight`/`evaluate` directly rather than reimplementing
-gate logic locally.
+**The kill switch is checked inside `evaluate()`, before anything else**, so a killed or
+quarantined agent is refused on every surface that reaches a decision (the guard endpoints,
+memory writes and agent messages included), not only on completions and tool calls.
+
+**Design note worth carrying into any future refactor**: new surfaces call `preflight`,
+`evaluate` or one of the `guard_*` methods; they never reimplement gate logic. `auto()` once
+carried a partial copy that drifted from the gateway's, which is why `preflight` is shared.
+
+### 3.1 Approvals and redemption — `identity/service.py`
+
+An escalation files an `ApprovalRequest` (`request_approval`) bound to the agent and to what
+`held_call` returned. `resolve_approval` approves or denies it:
+
+- Approving is refused with `AgentStopped` while the agent is killed or quarantined; denying is
+  always allowed.
+- An approval restarts its clock on approval: it stays redeemable for `REDEEM_WINDOW_MINUTES`
+  (30). Unanswered approvals expire (`expire_stale_approvals`) and expiry denies.
+
+A retry presents the approval: `X-Nometria-Approval` on the proxy routes, `approval_id` in the
+`/v1/guard/*` body, or the SDK's `wait_for_approval`, which polls `GET /api/approvals/{id}` with
+the agent's own key (an agent may read only its own approvals). Inside `evaluate()`, only when
+the call would otherwise escalate, `redeem_approval` checks that the approval is `approved`,
+unexpired, for the same agent, tool and canonicalised arguments (or the same content digest
+for a held message), then flips it to `used` with a conditional `UPDATE … WHERE status =
+'approved'`, so two racing retries cannot both spend it. A redeemed call is allowed with the
+`approval.redeemed` rule fired; anything else escalates again and the decision's reason says why
+the approval was not used. An approval can therefore never make a call more permitted than a
+person said, and lets exactly one call through. A held proxy request answers **428** with the
+approval id and the poll path.
+
+### 3.2 Exceptions — `agentfox/errors.py`
+
+One hierarchy for everything AgentFox raises into a caller's code: `AgentFoxError`, with
+`PolicyViolation` (a decision blocked the call) and `ApprovalRequired` (held; carries
+`approval_id`). The SDK and the LangGraph guard raise the same classes; `auto()` raises
+`agentfox.Blocked`.
 
 ---
 
 ## 4. Detector pipeline — `src/agentfox/detection/`
 
-`pipeline.py` composes a list of `Detector` implementations (the seam from HLD §2) and runs
-them per surface (`input`, `output`, `retrieved`, `tool_result`). Key pieces:
+`pipeline.py` (`DetectorPipeline`) runs the enabled `Detector` implementations concurrently
+per surface (`input`, `output`, `retrieved`, `tool_result`, `tool_args`, `memory_write`,
+`agent_message`, `reasoning`, …) under a per-request `LatencyLedger` budget. Key pieces:
 
-- **`base.py`** — the `Detector` protocol (`detect(content, context) -> Findings`) every
-  implementation satisfies.
-- **`detectors/`** (1139 lines) — native, dependency-free detectors: `injection.py` (608 —
-  the largest single detector, includes the PIGuard+backstop ensemble tuning path),
-  `pii.py` (162), `schema.py` (145), `secrets.py` (128), `safety.py` (96).
-- **`adapters/`** (751 lines) — wraps optional OSS: `classifiers.py` (361, Granite Guardian /
-  restricted-model gate), `embeddings.py` (150), `presidio.py` (121), `rails.py` (119, NeMo/
-  Guardrails AI).
-- **`taint.py`** — `TaintTracker`: tags every message by `source`
-  (`user | retrieved | tool_result | subagent | memory`) and `trust`
-  (`trusted | untrusted`). This is the mechanism behind the project's most defensible claim
-  (argument-provenance taint tracking, HLD §8) — a tainted value can reach a low-impact tool
-  freely but is blocked from an irreversible one regardless of whether any individual detector
-  fired on it.
-- **`composition.py`** — merges findings across surfaces/detectors into one verdict.
-- **`actions.py`** — maps a verdict to an enforcement action (block / redact / escalate / allow).
-- **`tuning.py`** — threshold tuning against labeled corpora (this is what the benchmark
-  scripts in `benchmarks/` exercise).
-- **`normalize.py`** — text normalization defeating common evasion (homoglyphs, zero-width
-  characters, encoding tricks) before detection runs.
+- **`base.py`** — `Detector` / `BaseDetector` (`key`, `version`, `surfaces`, `_detect`),
+  `Detection`, `TAINT_ORDER`.
+- **`detectors/`** — native, dependency-free detectors: `injection.py` (lexical, structural and
+  contextual signals; runs on `tool_args` too), `pii.py`, `secrets.py`, `safety.py`,
+  `schema.py`, and `judgment.py` (the optional judgment tiers as a detector).
+- **`adapters/`** — wrappers of optional OSS, each with an `available()` that is false when
+  its extra is missing: `classifiers.py` (PIGuard ensemble, Granite Guardian), `embeddings.py`,
+  `presidio.py`, `rails.py` (NeMo Guardrails / Guardrails AI), `hub.py` (Guardrails AI Hub
+  validators, one detector each).
+- **`normalize.py`** — normalisation that defeats evasion before matching: homoglyphs,
+  zero-width characters, encodings, letter-spaced words (`despaced`) and text inside markup a
+  reader would not see (`hidden_markup`), each scanned as its own view.
+- **`prefilter.py`** — a sound pre-check that lets a regex be skipped on text it cannot match.
+  `opening_literals(pattern)` derives the lower-cased literals every match must start with;
+  `LoweredText.may_match` checks them with `str.__contains__` on a once-lowered copy. It only
+  ever skips: a pattern whose opening is not reducible to literals always runs, and non-ASCII
+  text always runs every pattern (case folding differs from `str.lower` there). The injection
+  detector uses it so a large benign document does not pay one regex pass per pattern.
+- **`taint.py`** — `TaintTracker` and `TaintMark`: tags every message and argument by source
+  (`none < user < retrieved < tool_result < subagent < memory`). This is the mechanism behind
+  the most defensible claim (HLD §9): a tainted value can reach a low-impact tool but is
+  refused at an irreversible one whether or not any detector fired.
+- **`composition.py`** — composed privilege escalation: one tool's output feeding a
+  higher-impact tool's argument.
+- **`actions.py`** — action analysis of generated SQL, shell and API calls (operation class,
+  blast radius, reversibility).
+- **`trajectory.py`** — conversation-level crescendo scoring.
+- **`files.py`** — files split into the layers a model reads, each checked with provenance.
+- **`tuning.py`** — thresholds and suppressions against labelled corpora.
+- **`warmup.py`** — loads opted-in model detectors once per process: the gateway and the hooks
+  daemon call `warm_all()` at startup, and `auto()`, the SDK's local mode and `AgentFoxGuard`
+  call `warm_in_background()`, so the first real request does not pay the load.
 
-Every `detector_runs` row records its own `status` (`ok | timeout | skipped_budget`) — a
-detector that silently fails to run is a recorded, queryable event, not an invisible gap
-(this is what backs the "computed, not attested" claim in HLD §2 for Pillar 3 specifically).
+Every `detector_runs` row records its own `status` (`ok | timeout | error | skipped_budget`):
+a detector that fails to run is a recorded, queryable event, and a degraded pipeline is handled
+under the fail mode (HLD principle #4).
 
 ---
 
 ## 5. Data model — key entities
 
-Full detail: [Appendix D](data-model.md). SQLAlchemy 2.0, `src/agentfox/core/models/`
-(1490 lines). Every table carries `id`, `created_at`, `updated_at`, `org_id` — multi-tenancy
-is enforced structurally at the session level via `with_loader_criteria` (`tenancy.py`), not
-by remembering to filter every query by `org_id`.
+Full detail: [Appendix D](data-model.md). SQLAlchemy 2.0 under `src/agentfox/core/models/`
+(one module per area: `registry`, `identity`, `guardrails`, `evaluation`, `audit`, `policy`,
+`improvement`, `public`). Every tenant table carries `org_id`; isolation is applied at the
+session by `core/tenancy.py` (a loader criterion on every ORM statement), not by filtering each
+query.
 
 | Group | Key tables | Notable invariants |
 |---|---|---|
-| **Registry** (Pillar 1) | `agents`, `tools`, `mcp_servers`/`mcp_tool_snapshots`, `lineage_edges`, `findings` | `lineage_edges` are derived from spans, not hand-configured; `tools.impact` axis is `read \| write \| high_impact \| irreversible` |
-| **Identity** (Pillar 2) | `identities`, `credentials`, `capabilities`, `delegation_edges`, `approval_requests` | `credentials` store argon2id hashes only, plaintext appears once in the issuance response; `delegation_edges` enforce child-capability ⊆ parent-capability at write time; `approval_requests.timeout_action` defaults to `deny` |
-| **Guardrails** (Pillar 3) | `detector_runs`, `detection_findings`, `taint_tags`, `budgets` | `detector_runs.status` records degradation (§4); `detection_findings` are redacted at capture, never store raw sensitive spans |
-| **Evaluation** (Pillar 4) | `eval_suites/cases/scorers/runs/results`, `baselines`, `drift_windows`, `slos`, `redteam_campaigns/findings` | `baselines` hold a per-scorer regression tolerance; `drift_windows` use PSI/KS statistics; red-team findings map to `owasp_id`/`atlas_id` |
-| **Audit** (Pillar 5) | `traces`/`spans`, `audit_entries`, `audit_checkpoints`, `evidence_packages`, `retention_policies`, `legal_holds` | See §6 for the hash-chain invariants |
-| **Compliance** (Pillar 6) | `policies`/`policy_versions`/`policy_bindings`, `decisions`, `simulation_runs`, `controls`, `framework_mappings`, `control_statuses`, `risk_assessments`, `obligations` | `policy_versions` are immutable; `decisions` always bind the exact policy version in force at decision time; `framework_mappings.review_status` is `draft \| reviewed` — **as of the last audit, all mappings remain `draft`**, with a documented inconsistency about whether draft mappings are excluded from or chip-labeled-and-included in evidence packages |
+| **Registry** | `agents`, `agent_controls`, `tools`, `mcp_servers`/`mcp_tool_snapshots`, `lineage_edges`, `findings` | `lineage_edges` are derived from spans; `tools.impact` is `read \| write \| high_impact \| irreversible` |
+| **Identity** | `identities`, `credentials`, `capabilities`, `delegation_edges`, `approval_requests`, `users`, `api_tokens`, `github_connections` | Keys and tokens stored as argon2id hashes, shown once; child capability ⊆ parent at write time; an approval is `pending → approved → used` (or `denied`/`expired`), and `used` is final |
+| **Guardrails** | `detector_runs`, `detection_findings`, `taint_tags`, `budgets` | `detector_runs.status` records degradation; detection samples are redacted at capture |
+| **Evaluation** | `eval_suites/cases/runs/results`, `baselines`, `drift_windows`, `slos`, `redteam_campaigns/findings`, `probe_targets` | Live probe campaigns are `redteam_campaigns` rows with `runner="live"`; a probe target is created disabled |
+| **Audit & jobs** | `traces`/`spans`, `audit_entries`, `audit_checkpoints`, `evidence_packages`, `jobs`, `job_schedules` | §6 for the hash chain; a schedule never enqueues while its previous job is pending or running |
+| **Policy & compliance** | `policies`/`policy_versions`/`policy_bindings`, `policy_canaries`, `decisions`, `simulation_runs`, `controls`, `framework_mappings`, `control_statuses` | Versions are immutable; saving a version never changes the binding in force; `decisions.policy_version_ids` records every version in force |
+| **Monitoring** | `monitors`, `alert_channels` | One monitor per `(org, kind, target)`; `baseline_json` is replaced only by a successful run |
 
 ---
 
-## 6. Audit chain internals — `src/agentfox/prove/audit/chain.py` (399 lines)
+## 6. Audit chain internals — `src/agentfox/prove/audit/chain.py`
 
 The tamper-evident hash chain, the mechanism behind the "prove what happened" claim:
 
@@ -187,251 +188,295 @@ digest          = SHA-256(seq | occurred_at_iso | action | payload_digest | prev
 
 Invariants enforced in code, not just convention:
 
-- **Append-only** — there is no update or delete path for `audit_entries` anywhere in the
-  ORM or the API (`api-spec.md` §C confirms: "no `PUT`/`PATCH`/`DELETE` exists").
+- **Append-only** — `chain.append` is the only write path for `audit_entries`; there is no
+  update or delete path in the ORM or the API.
 - **Gapless `seq`** — a missing sequence number is itself detectable evidence of tampering.
 - **Chain linkage** — each entry's digest incorporates the previous entry's digest, so
   altering, deleting, inserting, or reordering any entry breaks every digest after it.
-- **Checkpoint signing** — `audit_checkpoints` periodically sign the chain state; the signing
-  key is deliberately kept **outside the application database** (customer-held in a self-host
-  deployment), so a full DB compromise alone cannot forge a checkpoint.
-- **Independent, stdlib-only verification** — the verifier (exercised by `agentfox audit
-  verify` and, per the gap-analysis audit, tested standalone outside the repo) recomputes the
-  chain from raw entries with no dependency on the application's own trust — this is what
-  makes the tamper-evident claim demonstrable in under a minute rather than merely asserted.
+- **Checkpoint signing** — `audit_checkpoints` sign the chain state with a key kept **outside
+  the application database** (customer-held in a self-host deployment). Outside development
+  the process refuses to start while that key still has a published value (§10).
+- **Independent, stdlib-only verification** — evidence packages ship a `verify_chain.py` that
+  recomputes the chain from raw entries with no dependency on the application
+  (`agentfox report verify` verifies the stored chain in place).
 
-`audit/evidence.py` (560 lines) builds auditor-ready export packages: a manifest with a
-per-file SHA-256, plus chain-of-custody metadata. `audit/trace.py` (329 lines) is the
-separate OpenTelemetry-based execution tracer (`start_trace`/`add_span`/`end_trace`) —
-traces and the audit chain are related but distinct: traces answer "what happened, in what
-order, with what latency"; the audit chain answers "can I prove this record hasn't been
-altered."
+`audit/evidence.py` builds auditor-ready export packages (a manifest with a per-file SHA-256,
+chain-of-custody metadata), optionally scoped to one agent. `audit/trace.py` is the execution
+tracer (`start_trace`/`add_span`/`end_trace`); `audit/otel.py` ingests OTLP (JSON or protobuf,
+optionally gzipped). Traces answer "what happened, in what order"; the chain answers "can I
+prove this record hasn't been altered."
 
 ---
 
 ## 7. `agentfox.auto()` — monkey-patch mechanism
 
-`src/agentfox/__init__.py` (45 lines) lazily re-exports `auto`, `off`, `state`, `Blocked`
-from `agentfox.runtime.autoguard` via module `__getattr__`, so a bare `import agentfox` touches no
-DB and makes no client calls — side-effect-free until `auto()` is actually called.
+`src/agentfox/__init__.py` lazily re-exports `auto`, `off`, `state`, `Blocked` from
+`agentfox.runtime.autoguard` via module `__getattr__`, so a bare `import agentfox` touches no
+DB and makes no client calls.
 
-`autoguard.py` (793 lines), `auto(agent=None, *, mode="observe", environment=None,
-session_id=None, register=True, quiet=False)` at line 674:
+`runtime/autoguard/__init__.py`, `auto(agent=None, *, mode="policy", environment=None,
+session_id=None, intent=None, register=True, quiet=False, …)`:
 
-1. Detects installed frameworks from `sys.modules` against `_FRAMEWORK_MODULES` (langgraph,
-   langchain, llama_index, crewai, autogen, fastapi, flask, django, mcp, ragas, litellm).
+1. Detects installed frameworks from `sys.modules` (`autoguard/environment.py`,
+   `_FRAMEWORK_MODULES`: langgraph, langchain, llama_index, crewai, autogen, fastapi, …).
 2. Guesses an agent slug (`default_agent_slug`): env var → entrypoint script name →
-   `"default-agent"` fallback.
-3. Calls `init_db()` + `register_agent()` (unless `register=False`).
-4. Runs the patcher tuple `_PATCHERS = (_patch_openai, _patch_anthropic, _patch_litellm,
-   _patch_langchain)` at line 666 — each monkey-patches its target call site
-   (`openai.resources.chat.completions.Completions.create`,
-   `anthropic.resources.messages.Messages.create`, `litellm.completion`,
-   `langchain_core....BaseChatModel.invoke`), wrapping the original in `_govern()` (line 326),
-   which calls the **same** `Enforcer.preflight()` the gateway uses (§3) — not a parallel
-   reimplementation.
-5. A `contextvars.ContextVar` `_IN_AGENTFOX` (line 54) prevents the platform's own internal
-   LLM calls (e.g. an LLM-judge scorer inside the eval subsystem) from recursively governing
-   themselves — without this, an eval run would try to enforce policy on its own scoring
-   calls.
-6. Post-flight reads the tool calls out of the response (`_tool_calls_of`: OpenAI/LiteLLM
-   `tool_calls`, Anthropic `tool_use`, LangChain `AIMessage.tool_calls`; `_chunk_tool_calls`
-   reassembles streamed ones) and runs each through `Enforcer.guard_tool_call` on the call's
-   trace (`_govern_tool_calls`). Provenance comes from a `TaintTracker` rebuilt from the
-   request's conversation (`_provenance_of`); unseen tools are upserted with
-   `infer_impact` and `impact_source="inferred"` (`_register_tool`). A refused call raises
-   `Blocked` in place of the response. In `policy` mode a refusal that is only capability
-   default-deny is not raised for an agent with no grants at all.
+   `"default-agent"`.
+3. Registers the agent (unless `register=False`) and warms opted-in detectors in the background.
+4. Runs `_PATCHERS = (_patch_openai, _patch_anthropic, _patch_litellm, _patch_langchain)`, each
+   replacing its target call site with a wrapper that calls `_govern` (sync) or `_agovern`
+   (async), which call the **same** `Enforcer.preflight()` the gateway uses.
+5. A `contextvars.ContextVar` `_IN_AGENTFOX` stops AgentFox's own model calls (an LLM-judge
+   scorer, say) from being governed recursively.
+6. Post-flight reads tool calls out of the response (`autoguard/tool_calls.py:_tool_calls_of`,
+   with `_chunk_tool_calls` for streams) and runs each through `Enforcer.guard_tool_call` with a
+   `TaintTracker` rebuilt from the conversation (`_provenance_of`); unseen tools are upserted
+   with an inferred impact (`_register_tool`). A refused call raises `Blocked` in place of the
+   response.
 
 The default mode is `policy`: `Blocked` is raised only when an enforce-mode policy, the kill
-switch or a budget cap stops the call, and the shipped `baseline` observes. `mode="observe"`
-never raises; `mode="enforce"` raises on anything a policy would block. This is the concrete
-mechanism behind HLD principle #1. `off()` (line 752)
-reverses every patch (used primarily by the test suite).
+switch or a budget cap stops the call, and an agent holding no grants at all is not refused
+for a missing grant until its first grant. `mode="observe"` never raises; `mode="enforce"`
+raises on anything a policy would block. `off()` reverses every patch.
 
 ---
 
-## 8. LangGraph integration — `src/agentfox/integrations/langgraph.py` (393 lines)
+## 8. LangGraph integration — `src/agentfox/integrations/langgraph.py`
 
-Module docstring states the design commitments directly: LangGraph is an optional import
-(the module loads without it installed); trace identity lives **in graph state**
-(`STATE_KEY = "__nometria__"`) so it survives checkpointing, resumption, and time-travel;
-escalation maps to LangGraph's own `interrupt()` primitive where available rather than
-inventing a second pause mechanism; enforcement failures always raise, never return a
-silently-ignorable sentinel.
+LangGraph is an optional import; trace identity lives **in graph state**
+(`STATE_KEY = "__nometria__"`) so it survives checkpointing, resumption and time-travel;
+escalation maps to LangGraph's own `interrupt()`; enforcement failures always raise.
 
-`class AgentFoxGuard` (line 89) — constructed with `agent`, `environment`, `intent`, an
-optional shared `session`, `raise_on_escalate`:
+`class AgentFoxGuard`, constructed with `agent`, `environment`, `intent`, an optional shared
+`session`, `raise_on_escalate`:
 
-| Method | Line | Behaviour |
-|---|---|---|
-| `state_of(state)` / `trace_id(state)` | — | Reads governance sub-state out of dict- or object-shaped graph state |
-| `model_node(fn=None, *, messages_key="messages", schema=None)` | 138 | Decorator — runs `Enforcer.preflight()` on inbound messages before the node executes; writes `trace_id`/`last_verdict`/`observability` back into graph state; stops on block/escalate; otherwise runs the node and evaluates its output on the `"output"` surface, substituting redacted content back into the result if needed |
-| `retrieval_node(fn=None, *, source="retrieved")` | 211 | Runs the node, then scans its output on the `"retrieved"` surface via `Enforcer.check_content()` — the indirect-prompt-injection path, described in the docstring as "the highest-severity realistic attack on an agent and the one a model-era input filter never sees" |
-| `tool_node(fn=None, *, tool, provenance=None)` | 241 | Calls `Enforcer.guard_tool_call()` **before** the wrapped function body runs — a denied call never executes. Threads `prior_tools`/`prior_steps` state for loop detection (`agent_loop.LoopGovernor`, §1.1). **As of 2026-09-04, this method is being actively extended** (uncommitted) to pass a full step history (`{tool, arguments, observation}` per step) instead of just a tool-name list, so the loop governor can detect alternating A/B/A/B cycles and stalled (no-new-observation) runs, not only per-tool repeat counts — matching a parallel change in `gateway/routes/inline.py`'s `GuardToolCallRequest` |
-| `_stop(result)` | 287 | If `result.escalated` and `raise_on_escalate`: calls LangGraph's `interrupt()` if importable, else raises `ApprovalRequired`. If `result.blocked`: raises `PolicyViolation` |
+| Method | Behaviour |
+|---|---|
+| `state_of(state)` / `trace_id(state)` | Reads governance sub-state out of dict- or object-shaped graph state |
+| `model_node(fn=None, *, messages_key="messages", schema=None)` | Runs `Enforcer.preflight()` on inbound messages before the node; writes `trace_id`/`last_verdict` back into state; stops on block/escalate; evaluates the node's output on the `output` surface, substituting redacted content |
+| `retrieval_node(fn=None, *, source="retrieved")` | Runs the node, then scans its output on the `retrieved` surface via `Enforcer.check_content()`: the indirect-injection path |
+| `tool_node(fn=None, *, tool, provenance=None)` | Calls `Enforcer.guard_tool_call()` **before** the wrapped body runs, threading `prior_steps` (tool, arguments, observation) so the loop governor sees alternating cycles and stalled runs |
+| `_stop(result)` | On escalate with `raise_on_escalate`: calls `interrupt()` inside a running graph, and on resume only an explicit approval lets the node continue (a denial raises `PolicyViolation`); outside a graph raises `ApprovalRequired`. On block raises `PolicyViolation` |
 
-Both `PolicyViolation` (line 49) and `ApprovalRequired` (line 61) are also re-exported from
-`agentfox.sdk`, not from this module — worth checking for a single canonical import path if
-this is ever cleaned up.
-
-State-shape helper functions (`_read`, `_normalise`, `_stringify`, `_extract_text`,
-`_replace_text`, `_with_governance`, `_result_from`) make the guard tolerant of dict,
-dataclass, or Pydantic-model graph state, and of LangChain message objects vs. plain dicts.
+Both exceptions come from `agentfox.errors` (§3.2). `tests/integrations/test_langgraph_real_graph.py`
+runs the guard inside a compiled graph with a checkpointer.
 
 ---
 
 ## 9. Policy engine — `src/agentfox/policy/`
 
-| File | Lines | Role |
-|---|---|---|
-| `engine.py` | 291 | Native deterministic policy evaluator — the default `PolicyEngine` implementation |
-| `opa.py` | 231 | OPA/Rego adapter — falls back to the native engine if the OPA sidecar is unreachable |
-| `hierarchy.py` | 354 | Hierarchical policy composition/resolution — multiple policy layers (org → team → agent) resolve to one decision |
-| `store.py` | 287 | Immutable policy versioning — every edit creates a new `policy_versions` row, never mutates one in place |
-| `canary.py` | 294 | Canary rollout: a new policy version can be bound to a fraction of traffic with health gates and automatic rollback on regression |
-| `model.py` | 256 | Pydantic models for policy documents |
-| `simulate.py` | 185 | `POST /api/policies/simulate` — runs a candidate policy against recent traffic and returns `{newly_blocked, newly_allowed, newly_escalated, unchanged}` without actually enforcing it |
+| Module | Role |
+|---|---|
+| `model.py` | Pydantic models: `PolicyDocument`, `Rule`, `Condition`, `PolicyInput`; a pack may declare its own `fail_mode` |
+| `engine.py` | `NativePolicyEngine` (the default) and `combine` |
+| `opa.py` | OPA/Rego adapter; falls back to the native engine if the sidecar is unreachable |
+| `store.py` | Loading shipped and project packs, `save_policy`, bindings (`set_mode`, `current_binding`), `policies_in_force`, `active_policies`, `effective_for`, and **the stored-version loader** |
+| `hierarchy.py` | `org → team → agent → user` composition (`extend` / `restrict` / `override`), `resolve_effective`, and the lint (`lint_policy`, unreachable rules, unknown values) |
+| `simulate.py` | Replays recorded decisions against a candidate (`simulate`), records the run (`record_simulation`), and finds the simulation that covers a version (`simulation_for`, matched by rules fingerprint) |
+| `canary.py` | Canary rollout: cohorts pick the stable or candidate version per subject, a two-way health gate, minimum dwell per step, automatic rollback |
+| `taint_view.py` | The provenance a rule reasons over, shared by the live path and replay |
+| `coding.py` | Which agents the `coding-agent` pack applies to |
 
-Policy documents themselves are static YAML under `src/agentfox/policies_data/`
-(`baseline.yaml`, `eu-ai-act-high-risk.yaml`, `tool-containment.yaml`), loaded by
-`policy/store.py` and turned into versioned, bindable `Policy`/`PolicyVersion` rows.
+**Stored versions load through one function.** `load_version_document(version)` is the only way a
+stored `policy_versions` row (`compiled_json` or `body`) becomes a `PolicyDocument`; the store,
+the `Enforcer`, canary, simulation, the improvement appliers and the API all call it. It makes
+one repair: a version of a pack listed in `PROTECTED_RULES` that lacks a protected rule gets
+that rule back from the shipped pack, with a warning logged once per version. Anything else that
+fails validation raises `UnloadablePolicyVersion`, which carries the pack key, version, binding
+mode and the fail mode the stored document declared. The validator for documents being *saved*
+is unchanged, so a new version without a protected rule is refused.
+
+At runtime `policies_in_force(..., skipped=[...])` collects unloadable versions instead of
+raising, so the other packs are still evaluated. `Enforcer.evaluate()` then records a
+`policy.unloadable` rule for each: a pack bound in `observe` never blocks; a pack bound in
+`enforce` blocks if the deployment's `fail_mode` or the pack's own declared `fail_mode` is
+`closed`, and otherwise the call is allowed with the gap named in the decision. Read-only views
+skip the layer and list it.
+
+**Saving and promoting are separate.** Saving appends an immutable version and leaves what is in
+force unchanged (`save_policy(..., rebind=False)`). Promotion (`POST /api/policies/{key}/mode`,
+`agentfox policy enforce`) is the only way to change it, and promoting to `enforce` over HTTP
+requires a recorded simulation of exactly that version's rules; demoting to `observe` never
+does. The hierarchy is enforced at runtime: `evaluate()` resolves the same layers
+`agentfox policy effective` prints.
 
 ---
 
 ## 10. Gateway composition — `src/agentfox/gateway/`
 
-`app.py` (402 lines), `create_app()`:
+`app.py`, `create_app()`:
 
-- Builds **one** FastAPI app serving both `/v1/*` (inline proxy) and `/api/*`
-  (control-plane) — a deployment choice the module docstring states explicitly: "keeps the
-  self-host story to a single container ... the gateway is stateless so it scales out
-  horizontally."
-- Middleware: CORS (localhost:3000 + optional configured playground origin) and an
-  `admission_gate` middleware scoped only to `/v1/*` — load-shedding via
-  `availability.get_admission_controller()`, returns HTTP 429 before routing when saturated.
-- Routers included: `inline`, `registry`, `policy`, `evaluation`, `governance`, `tuning`,
-  `escalation`, `answerability`, `onboarding`, `provenance`, `entitlement`, `integrations`,
-  `discovery`, `memory`, `messaging`, `playground` (the **only** router without a
-  `current_user` dependency — unauthenticated by design, per HLD §4's client-side exception).
-- App-level routes defined directly (not in a router module): `/api/health`, `/api/version`,
-  `/api/detectors`, `/api/reliability`, `/metrics` (Prometheus, unauthenticated), `/api/providers`.
-  A one-off `/api/_migrate_policy_canaries` raw-DDL stopgap (HLD §9) used to live here; it was
-  removed once later migrations superseded it (re-running it would have rewound
-  `alembic_version` to `a1b2c3d4e5f6`).
-- `routes/` holds 17 files, 6170 lines total — one module roughly per router listed above.
-  `routes/inline.py` is the request-path entry point: `chat_completions` (line 273, `/v1/chat/
-  completions`) and `messages` (line 356, `/v1/messages`) both build an `Enforcer(session)`
-  and call `preflight(...)` (§3, §6 of the HLD).
+- **Refuses to start on published secrets.** The first call is
+  `core.config.assert_production_secrets()`: outside a development environment
+  (`development`, `dev`, `test`, `testing`, `local`; any other name counts as production), an
+  unset or published `AGENTFOX_SERVICE_AUTH_SECRET` or `AGENTFOX_AUDIT_SIGNING_KEY` raises
+  `InsecureConfigurationError` before the app is built. It runs in `create_app`, not the
+  lifespan, because a serverless host may never run the lifespan.
+- Builds **one** FastAPI app serving `/v1/*` (inline) and `/api/*` (control plane), stateless
+  so it scales out for throughput.
+- Middleware: CORS (localhost:3000 plus an optional playground origin); for `/v1/*` only,
+  `degradation_gate` (applies the fail mode, returns 503 or stamps `X-Nometria-Degraded`) and
+  `admission_gate` (load shedding, 429 with `Retry-After`).
+- The lifespan warms detectors (`warm_all`).
+- Routers, one per file in `routes/`: `inline`, `registry`, `policy`, `evaluation`,
+  `governance`, `tuning`, `escalation`, `answerability`, `onboarding`, `provenance`,
+  `entitlement`, `integrations`, `jobs`, `monitors`, `discovery`, `memory`, `messaging`,
+  `proposals`, `posture`, `coverage`, `probes`. Unauthenticated by design: `playground`,
+  `waitlist`, and `probes.public_router` (`GET /api/public/showcase`).
+- App-level routes: `/`, `/health`, `/api/health`, `/api/version`, `/api/detectors`,
+  `/api/reliability`, `/metrics` (Prometheus, unauthenticated), `/api/providers`.
 
-`auth.py` (276 lines) — agent-key (`nom_agt_…`, argon2id) and API-token (`nom_api_…`)
-resolution; `deps.py` (122 lines) — the `current_user` FastAPI dependency most routers
-require; `playground_sessions.py` (196 lines) — rate-limited (`RateLimiter(limit=8,
-window_seconds=3600)` for session creation, `limit=40, window_seconds=60` for actions)
-unauthenticated demo sessions.
+`deps.py`: `db` (a session committed with the response), `current_user`, `require(family)`
+(role check per write family), `agent_credential` (binds the tenant from an agent key; **a
+presented `nom_agt_` key that does not verify is a 401**, while no credential at all is served
+as shadow traffic in the default tenant), and `operator_or_agent` (for the few reads an agent
+makes about itself). `auth.py`: agent keys and operator tokens (`nom_api_…`, argon2id,
+`revoke_token`). Signing out (`POST /api/auth/logout`) revokes that session's own token, and a
+GitHub sign-in retires all but the newest `MAX_LOGIN_SESSIONS` (5) login tokens.
+`playground_sessions.py`: sandbox tenants and the in-process `RateLimiter`.
 
 ---
 
-## 11. CLI command tree — `src/agentfox/cli/main.py` (1304 lines)
+## 11. CLI command tree — `src/agentfox/cli/`
 
-`app = typer.Typer(name="agentfox", ...)`. Top-level verbs (`main.py:93-173`): `version`,
-`seed`, `demo`, `serve` (runs `uvicorn.run("agentfox.gateway.app:app", ...)` — **the exact
-same app object `api/index.py` re-exports**, HLD §9).
+`main.py` registers every command; `layout.py:apply_layout` re-registers them under the
+visible verbs, grouped into panels (`agentfox --help`): **Start** `init`, `demo` · **See**
+`scan`, `agents` · **Watch** `serve`, `findings` · **Contain** `permit`, `declare`, `policy` ·
+**Prove** `test`, `report` · **Operate** `doctor`, `admin`. Old names stay hidden but
+working, and `RENAMED` prints a hint.
 
-Subcommand groups (`app.add_typer`, plus `_register_*` calls from their own modules,
-`main.py:63-74`):
-
-| Group | Representative subcommands |
+| Verb | Representative subcommands |
 |---|---|
-| `agents` | `list`, `discover`, `lineage`, `quarantine`, `kill`, `resume`, `controls` |
-| `policy` | `list`, `lint`, `effective`, `simulate`, `enforce`, `observe`, `validate` |
-| `eval` | `run`, `gate`, `baseline`, `drift`, `online` |
-| `audit` | `verify`, `checkpoint` |
-| `evidence` | `export` |
-| `compliance` | `sync`, `compute`, `status`, `frameworks`, `risk`, `obligations`, `board` |
-| `redteam` | `run`, `probes` |
-| `scan` | `mcp` |
-| `tools` | `set-triggers` |
-| `access` | `declare-scope`, `declare-reference` |
-| `db` | `upgrade`, `downgrade`, `current` |
-| (registered separately) | onboarding, quickscan, auth, controls, business command sets |
+| `scan` | `repo`, `mcp` (exits 1 on a critical finding), `skills`, `runtime`, `monitors` (`list`, `add`, `pause`, `resume`, `remove`, `run`) |
+| `agents` | `list`, `register`, `budget`, `lineage`, `quarantine`, `kill`, `resume` |
+| `permit` | `grant`, `list`, `revoke`, `user`, `approvals` (`list`, `show`, `approve`, `deny`) |
+| `declare` | `tool`, `triggers`, `scope`, `reference`, `boundary`, `source`, `escalation`, `principal` |
+| `policy` | `packs`, `list`, `lint`, `validate` (runs the lint), `effective` (each layer's mode), `simulate`, `enforce`, `observe`, `compile`, `proposals` |
+| `test` | `run`, `gate`, `baseline`, `suites`, `online`, `redteam` (exits 1 on an escape), `probes`, `action`, `boundary`, `rule` |
+| `report` | `summary`, `status`, `evidence`, `verify`, `risk`, `obligations`, `frameworks`, `board`, `signoff`, `drift` |
+| `admin` | `users` (`create`, `list`), `auth`, `db`, `jobs run-due`, `catalog`, `hooks`, `checkpoint`, `seed`, `mcp`, `version` |
+
+`agentfox serve` runs `uvicorn` on `agentfox.gateway.app:app`, the same app object
+`api/index.py` re-exports.
 
 ---
 
 ## 12. Database migrations — `migrations/versions/`
 
-26 Alembic revisions (dated 2026-08-18 through 2026-09-04; head `b3f8e29a71c4`, the deferred job queue, i.e. spanning this project's own
-build timeline). Rough evolution order: baseline schema → tracing/observability links →
-policy hierarchy/agent controls → guardrail feedback/suppressions → per-tenant audit chain →
-escalation policy handoffs → source records → business rules → knowledge boundary →
-entitlement principals/grants → **a cluster of four "org-scoped uniqueness was global"
-hardening migrations** (control-key, more-tenant-scoped-uniqueness, cascade/access-scoping,
-lineage-edge-uniqueness — direct evidence of the multi-tenancy hardening effort) → GitHub integration →
-hosted-API integration → source-content validation/connections → seed-data flag →
-inter-agent-message security → memory-write governance → policy canary rollout → eval
-annotation queue.
+Alembic revisions, also shipped inside the wheel as `agentfox/_migrations`. Rough evolution
+order: baseline schema → tracing links → policy hierarchy and agent controls → guardrail
+feedback and suppressions → per-tenant audit chain → escalation hand-offs → source records →
+business rules → knowledge boundaries → entitlement principals and grants → a cluster of
+"org-scoped uniqueness was global" hardening migrations → GitHub and hosted-API integrations →
+inter-agent messages → memory writes → policy canaries → eval annotations → the job queue →
+the improvement loop → playground sandboxes → the hosted waitlist → judgment posture → tool
+output trust → **source monitors** (`monitors`,
+`alert_channels`, `github_connections.webhook_secret_encrypted`) → **probe targets**.
 
-Notably, revision `a1b2c3d4e5f6` (policy canary) is the exact revision ID hardcoded into
-`gateway/app.py`'s since-removed `/api/_migrate_policy_canaries` stopgap (§10) — direct
-confirmation that endpoint existed because that specific migration couldn't be applied to a
-deployed environment through normal means.
+The Vercel deployment cannot run `alembic upgrade head` through normal channels (HLD §10);
+`deploy/neon-catchup-*.sql` are the hand-applied catch-up scripts for that database.
 
 ---
 
 ## 13. API surface
 
-Full detail: [Appendix C](api-spec.md). Base `http://localhost:8080` self-hosted;
-`/api` = control plane, `/v1` = inline enforcement (OpenAI/Anthropic wire-compatible). Three
-credential types: agent key, API token, session cookie. Six roles (`owner`, `admin`,
-`security`, `compliance`, `developer`, `auditor`) — `auditor` can read and verify but never
-mutate anything.
+Full detail: [Appendix C](api-spec.md), whose route tables are generated by
+`scripts/api_routes.py --write`. Base `http://localhost:8080` self-hosted; `/api` = control
+plane, `/v1` = inline enforcement (OpenAI/Anthropic wire-compatible). Credentials: agent key,
+operator token, session cookie, plus the service secret (dashboard provisioning only) and the
+cron secret (`/api/internal/jobs/run` only). Six roles (`owner`, `admin`, `security`,
+`compliance`, `developer`, `auditor`); `auditor` can read and verify but never mutate.
 
 | Surface | Representative endpoints |
 |---|---|
-| Inline (`/v1`) | `POST /v1/chat/completions`, `POST /v1/messages`, `POST /v1/guard/input\|output\|tool_call`, `POST /v1/traces` (OTLP/HTTP ingest) |
-| Registry (`/api`) | `/api/agents`, `/agents/{id}/lineage\|posture`, `/api/tools`, `/api/mcp-servers`, `/mcp-servers/{id}/scan`, `/api/findings` |
-| Identity | `/api/identities`, `/{id}/credentials\|rotate\|revoke\|capabilities`, `/api/approvals`, `/api/users`, `/api/roles` |
-| Policy | `/api/policies`, `/{id}/versions\|bind`, `/api/policies/simulate`, `/api/policies/validate` |
-| Evaluation | `/api/eval/suites\|cases`, `/cases/from-trace`, `/api/eval/runs`, `/api/eval/gate` (CI entry point), `/api/eval/drift\|slos\|compare`, `/api/redteam/campaigns` |
-| Audit & evidence | `/api/traces`, `/{id}/replay`, `/api/audit/entries` (append-only, no mutation verb exists), `/api/audit/verify`, `/api/audit/checkpoints`, `/api/evidence`, `/api/export/siem`, `/api/retention`, `/api/legal-holds` |
-| Compliance | `/api/controls`, `/api/frameworks`, `/api/compliance/status`, `/api/risk/assessments`, `/api/obligations`, `/api/board`, `/api/compliance/packs/{key}/import` |
-| Platform | `/api/health`, `/api/version`, `/api/detectors`, `/api/providers` |
+| Inline (`/v1`) | `POST /v1/chat/completions`, `POST /v1/messages` (428 when held), `POST /v1/guard/input\|output\|tool_call\|memory_write\|agent_message`, `POST /v1/mcp/call`, `POST /v1/traces` (OTLP/HTTP) |
+| Registry | `/api/agents`, `/api/tools`, `/api/mcp-servers`, `/api/findings`, `/api/approvals` (`/{id}` readable by the agent's own key, `/{id}/approve\|deny`) |
+| Policy | `/api/policies`, `/api/policies/{key}/mode` (enforce needs a recorded simulation), `/api/policies/simulate`, `/api/policies/validate`, `/api/judgment/posture` |
+| Evaluation | `/api/eval/*`, `/api/redteam/*`, `/api/probes/targets` (+ `/opt-in`, `/opt-out`, `/run`, `/campaigns`), `/api/probes/warning` |
+| Monitoring & jobs | `/api/monitors` (+ `/pause`, `/resume`, `/run`), `/api/alerts/slack` (+ `/test`), `/api/jobs`, `/api/internal/jobs/run` (cron), `/api/integrations/github/webhook` (signed push), `/api/integrations/github/webhook-secret` |
+| Audit & evidence | `/api/traces`, `/api/audit/*`, `/api/evidence`, `/api/export/siem` |
+| Public | `/api/public/showcase` (rate-limited, read-only), `/api/playground/*`, `/api/waitlist` |
+| Platform | `/api/health`, `/api/version`, `/api/detectors`, `/api/providers`, `/metrics` |
 
-Conventions: RFC 7807 `problem+json` errors; cursor pagination (max 500 per page);
-`Idempotency-Key` honoured; per-token rate limiting (`429` + `Retry-After`); **every
-mutating call writes an `AuditEntry`, including evidence-package reads** — "who looked at
-the evidence is itself audit-relevant."
+Conventions: errors are FastAPI `{"detail": …}` bodies; `/v1/*` returns 429 with
+`Retry-After` when admission control sheds load and 503 when degraded under `fail_mode=closed`;
+privileged operator actions are recorded on the audit chain (`prove/audit/operator_log.py`
+declares them), including evidence downloads.
 
 ---
 
 ## 14. Deployment artifacts — `deploy/`
 
-Three files only, no Kubernetes manifests anywhere in the repo.
-
 - **`docker-compose.yml`** — `db` (postgres:16-alpine), `opa` (openpolicyagent/opa:0.70.0,
-  optional), `gateway` (port 8080), `dashboard` (port 3000). Env defaults:
-  `NOMETRIA_ALLOW_EGRESS=false`, `NOMETRIA_DEFAULT_PROVIDER=echo`,
-  `NOMETRIA_DEFAULT_POLICY_MODE=observe`, `NOMETRIA_FAIL_MODE=open`, and a hardcoded
-  `NOMETRIA_AUDIT_SIGNING_KEY: change-me-before-any-real-deployment` with an explicit
-  change-this comment.
-- **`Dockerfile`** (gateway) — `python:3.12-slim`, installs
-  `agentfox[postgres,otel,classifiers]`, bakes in ML detector weights at build time
-  (Granite Guardian, PIGuard, protectai deberta injection classifier, sentence-transformers
-  MiniLM) plus an optional gated tier (Llama Guard 3-8B, requires an `HF_TOKEN` build secret,
-  runtime-gated behind `NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1`). **Contains two `COPY`
-  instructions that reference paths not present in the repository**: `COPY compliance
-  ./compliance` and `COPY policies ./policies` — verified directly against the filesystem
-  on 2026-09-04, neither `compliance/` nor `policies/` exists at the repo root; the actual
-  YAML data already ships via the preceding `COPY src ./src` at
-  `src/agentfox/compliance_data/` and `src/agentfox/policies_data/`. As written, this build
-  step targets a path that doesn't exist in the current tree.
-- **`Dockerfile.dashboard`** — `node:22-alpine`, standard Next.js standalone-output
-  multi-stage build, runs `node server.js`.
+  optional), `gateway` (port 8080), `dashboard` (port 3000). The gateway runs with
+  `AGENTFOX_ENVIRONMENT=production`, `AGENTFOX_ALLOW_EGRESS=false`,
+  `AGENTFOX_DEFAULT_POLICY_MODE=observe` and `AGENTFOX_FAIL_MODE=open`, and compose refuses to
+  start until `AGENTFOX_SERVICE_AUTH_SECRET` and `AGENTFOX_AUDIT_SIGNING_KEY` are set
+  (`${VAR:?…}`).
+- **`Dockerfile`** (gateway) — `python:3.12-slim`; copies `migrations/` and `src/`; can bake in
+  ML detector weights at build time. Its `CMD` serves the app and nothing else: it no longer
+  seeds demo data on boot (`docker compose exec gateway agentfox admin seed` does, on demand),
+  and the first operator is created with `agentfox admin users create`.
+- **`Dockerfile.dashboard`** — `node:22-alpine`, Next.js standalone build.
+- `render.yaml`, `fly.dashboard.toml`, `README-dashboard.md` — the hosted dashboard; the hosted
+  gateway is `api/` on Vercel (HLD §10).
 
 ---
 
-## 15. See also
+## 15. Monitoring and live probes — `src/agentfox/monitoring/`, `evaluation/live_probes.py`
 
+**Monitors.** A `Monitor` row watches one source: `github_repo` (`owner/repo`), `hosted_api`
+(an OpenAPI URL), `mcp_server` (a registered server's name) or `deployed_agent` (a
+`ProbeTarget` id). Monitors are created when a source is connected and scanned, or by hand
+(`POST /api/monitors`, `agentfox scan monitors add`). `monitoring/service.py:run_monitor` runs
+one in three steps, the same for every kind:
+
+1. **Observe** — the kind's runner (`register_kind`) re-reads the source: downloads and rescans
+   the repository archive (`github.py`), refetches the spec (`discovery/openapi.py`, through
+   `guarded_get`), or reads a remote MCP server's tool listing (`mcp_live.py`, through
+   `guarded_post`).
+2. **Diff** — `snapshots.diff_repo` / `diff_api` compare the snapshot with `baseline_json`. The
+   first run only stores a baseline.
+3. **Reconcile** — each new condition (`monitor_lethal_trifecta`, `monitor_new_tool`,
+   `monitor_governance_removed`, `monitor_api_destructive_endpoint`, …) is raised through
+   `prove.findings.raise_finding` keyed by the condition, so a recurrence reopens the same
+   finding; an open finding whose condition cleared is resolved as automated.
+
+A run that fails never closes a finding and never replaces the baseline. After
+`monitor_failure_threshold` (default 3) failures in a row it raises one `monitor_failing`
+finding, closed by the next successful run. A run that could not decide (a disabled probe
+target, live probes off) is `inconclusive`.
+
+**Scheduling.** The `monitors.run` job runs a tenant's due monitors; each monitor keeps its own
+interval (clamped between 5 minutes and 30 days). `jobs/scheduler.py` fills the queue from
+per-tenant `JobSchedule` rows; nothing runs unless something triggers the runner:
+`/api/internal/jobs/run` (Vercel cron, and `.github/workflows/monitors.yml` every 30 minutes)
+or `agentfox admin jobs run-due` on a self-hosted scheduler. A signed GitHub push to the watched
+branch queues an immediate rescan of that commit.
+
+**Alerts.** Findings a run opens, reopens or closes go to the deployment's finding webhook
+(`core/webhooks.py`) and, when configured, to Slack (`monitoring/alerts.py`): the deployment's
+`AGENTFOX_SLACK_WEBHOOK_URL` and a tenant's own `AlertChannel` (encrypted, `https://hooks.slack.com/`
+only). Messages are queued on the session and sent after commit by one daemon worker with a
+bounded queue; with `allow_egress` off nothing is sent.
+
+**Live probes.** `evaluation/live_probes.py` sends a fixed library of adversarial messages to a
+deployed agent and scores what comes back (a reversed canary code, forbidden tool calls, leak
+markers). A `ProbeTarget` is created disabled; `opt_in` records who agreed, when, and the
+warning text, and creates the target's `deployed_agent` monitor. The `http` adapter posts only
+to the host registered at opt-in, through `guarded_post` (no redirects); changing the URL clears
+the opt-in. Per-target limits are clamped to hard caps (probes per run, rate, minimum interval,
+timeout; plus targets and wall-clock per job), and `AGENTFOX_LIVE_PROBES_ENABLED=false` turns
+every target off. Each run is a `redteam_campaigns` row (`runner="live"`); an escape opens a
+`live_probe_escape` finding, a later contained run closes it, and an endpoint error is recorded
+as `error`, which does neither. `evaluation/showcase.py` runs the same thing against the demo
+agent in a dedicated tenant for the public `/live` page, only when
+`AGENTFOX_SHOWCASE_ENABLED` is set.
+
+---
+
+## 16. See also
+
+- [ARCHITECTURE.md](../../ARCHITECTURE.md) — the code map and one tool call traced through it
 - [docs/architecture/high-level-design.md](high-level-design.md) — architecture shape, principles, integration surfaces
 - [docs/design/oss-register.md](../design/oss-register.md) — full OSS licence/health register
 - [docs/design/control-catalog.md](../design/control-catalog.md) — 43 controls × 7 frameworks
