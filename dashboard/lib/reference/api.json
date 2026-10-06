@@ -4907,7 +4907,7 @@
    "section": "mcp-servers",
    "audience": "operator",
    "summary": "snapshot a listing *and* register each tool in the registry.",
-   "description": "snapshot a listing *and* register each tool in the registry.\n\nDistinct from ``/scan``, which only reports hygiene. Registration is what gives\nthe tool a policy identity and a digest to compare against at call time; without\nit the rug-pull check has no baseline.\n\nA changed listing for an already-registered tool is held (reported in ``held``,\nnot registered) unless ``accept_changes`` is true.",
+   "description": "snapshot a listing *and* register each tool in the registry.\n\nDistinct from ``/scan``, which only reports hygiene. Registration is what gives\nthe tool a policy identity and a digest to compare against at call time; without\nit the rug-pull check has no baseline.\n\nA changed listing for an already-registered tool is held (reported in ``held``,\nnot registered) and filed as a change proposal (``proposals``). With\n``accept_changes`` the signed-in person approves those proposals, which takes the\nsame role as approving any proposal (``policy_production``); a held tool is\nre-recorded once two different people have approved it.",
    "params": [
     {
      "name": "name",
@@ -4940,6 +4940,12 @@
      {
       "name": "accept_changes",
       "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
       "required": false,
       "description": ""
      }
