@@ -215,7 +215,7 @@ export default async function Coverage({
 
       <p className="small muted">
         Threat lists are versioned content, not code — see{" "}
-        <span className="mono">compliance_data/threats.yaml</span>. The same controls are
+        <span className="mono">packs/compliance/catalog/controls/threats.yaml</span>. The same controls are
         mapped to SOC 2, ISO 42001, the EU AI Act and NIST AI RMF on{" "}
         <Link href="/app/compliance">Compliance</Link>, which answers the attestation
         question rather than this one.

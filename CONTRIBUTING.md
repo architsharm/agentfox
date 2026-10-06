@@ -42,6 +42,7 @@ rule. If it passes locally, the pull request will pass, except for the Docker bu
 | `just dashboard` | `npm ci`, `npm test` and `tsc --noEmit` in `dashboard/` |
 | `just wheels` | rebuilds `api/vendor/` and `demo/redteam-live-lang/vendor/` |
 | `just serve` / `just demo` | the gateway on :8080; the offline walkthrough on a throwaway database |
+| `just new-pack <id>` / `just test-pack [<id>]` | scaffold a built-in capability pack; validate packs and run their golden cases |
 
 Without `just`, each recipe is a plain command in the [`justfile`](justfile); copy it from
 there. Everything Python runs through `uv run`, so there is no virtualenv to activate.
@@ -67,6 +68,7 @@ needs to import:
 | A setting, a table, a constant several layers share | `core/` | nothing else in `agentfox` |
 | Something every capability records or reads: the audit chain, findings, policy, the registry, identities and grants, model providers, the job store | `platform/<package>/` | `core` |
 | A check, a scan, an analysis: a detector, a grounding or containment check, an eval, a monitor | `capabilities/<capability>/` | `core`, `platform`, other capabilities |
+| A business use case or framework: its policies, controls, ladders, probes, cases, vocabulary | `packs/<domain>/<name>/` (see below) | data; its optional `checks/*.py` may import `core`, `platform`, `capabilities` |
 | Part of how a call is decided | `runtime/` | everything below |
 | A way in from an application framework (an SDK, a middleware, a governor) | `frameworks/` | everything below |
 | A coding agent AgentFox governs through its hooks | `harnesses/<name>/` (see below) | everything below; nothing else imports it |
@@ -99,6 +101,34 @@ one folder, `src/agentfox/harnesses/<name>/`, and touches nothing else in `src/`
 5. **Run `pytest tests/harnesses`.** The conformance suite finds the adapter in the registry
    and checks parsing, rendering, the capability matrix against `render`, and install
    idempotence and merging.
+
+### Add a pack
+
+A capability pack is one business use case or framework as one directory, and adding one
+touches nothing else in `src/`:
+
+```bash
+just new-pack payments/chargebacks     # copies src/agentfox/packs/_template/
+just test-pack payments/chargebacks    # validates it and runs its golden cases
+```
+
+1. **`pack.yaml`**: id, version, `maturity` (start `incubating`), owners, tags,
+   compliance mappings, `vocabulary`, the `finding_types` its checks raise.
+   `agentfox policy packs validate --schema` prints the schema.
+2. **Content**: `policies/*.yaml` in the policy format; optionally `controls/`,
+   `ladders/` (templates), `probes/`, `checks/*.py` registered with `@check`, `fixtures/`.
+   A new check emits risk codes that a policy matches with `action_risk`; no new policy
+   field is needed.
+3. **`cases/*.yaml`**: golden allow/deny events with the verdict the pack promises.
+   Every pack needs them; `tests/capabilities/evaluation/test_packs.py` runs every
+   built-in pack's.
+4. **`README.md`**: the risk, what the pack ships, the remediation. Classified once for
+   all packs in `plugins/shared/reference/docs-map.md`.
+
+A pack becomes `stable`, and loads by default, when it has cases, a README and an owner
+who will answer for it. Outside this repository, the same directory works in a
+project's `.agentfox/packs/` or in an `agentfox-pack-*` package registered under the
+`agentfox.packs` entry point. ARCHITECTURE.md's "Add a pack" has the details.
 
 ## Tests
 

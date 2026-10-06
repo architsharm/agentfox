@@ -223,7 +223,7 @@ export function HowItWorks() {
           {/* This heading said "Nothing is blocked until you say so", and then
               "Nothing gets blocked until you say so", and both were contradicted by
               the second paragraph under them. Three shipped packs, two modes.
-              src/agentfox/policies_data/: baseline is `mode: observe`,
+              src/agentfox/packs/*/policies/: baseline is `mode: observe`,
               eu-ai-act-high-risk is `mode: observe`, tool-containment is
               `mode: enforce`. So an agent is held to its grants from the first
               request and the detector rules watch until you promote them, which is
