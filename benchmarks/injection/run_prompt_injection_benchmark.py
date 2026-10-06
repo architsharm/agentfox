@@ -1,6 +1,6 @@
 """Reproducible prompt-injection detection benchmark.
 
-    uv run python benchmarks/run_prompt_injection_benchmark.py
+    uv run python -m benchmarks.injection.run_prompt_injection_benchmark
 
 Scores AgentFox's real, shipping detectors against `deepset/prompt-injections`
 (Hugging Face, apache-2.0, 662 labeled examples, license/source in

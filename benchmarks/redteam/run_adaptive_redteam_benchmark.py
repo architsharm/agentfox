@@ -1,6 +1,6 @@
 """Scores the **adaptive** red-team campaign engine (`evaluation/adaptive.py`).
 
-    uv run python benchmarks/redteam/run_adaptive_redteam_benchmark.py
+    uv run python -m benchmarks.redteam.run_adaptive_redteam_benchmark
 
 `run_redteam_benchmark.py` next door asks whether the runner's *wiring* is real —
 does a probe reach every enforcement layer it claims to. This one asks the

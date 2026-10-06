@@ -1,10 +1,10 @@
 """Fetches TrustAIRLab/in-the-wild-jailbreak-prompts's HF-hosted parquet exports
-and writes a fixed, reproducible sample to `data_generalization/trustairlab.json`.
+and writes a fixed, reproducible sample to `data/trustairlab.json`.
 Already run once — the output is committed so `run_generalization_benchmark.py`
 works offline — but this is here so the fetch itself is reproducible too, not
 just the scoring.
 
-    uv run --with pyarrow python benchmarks/fetch_trustairlab.py
+    uv run --with pyarrow python -m benchmarks.generalization.fetch_trustairlab
 
 Uses the dataset's auto-converted parquet files directly (one HTTP GET per
 config, via the `refs/convert/parquet` ref HF publishes for every dataset)
@@ -30,7 +30,7 @@ import random
 import subprocess
 from pathlib import Path
 
-DATA_DIR = Path(__file__).parent / "data_generalization"
+DATA_DIR = Path(__file__).parent / "data"
 BASE_URL = (
     "https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts"
     "/resolve/refs%2Fconvert%2Fparquet"

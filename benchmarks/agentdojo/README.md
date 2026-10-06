@@ -34,11 +34,11 @@ Brackets are Wilson 95% intervals. The read-only exemption was designed after se
 
 ```bash
 uv venv /tmp/agentdojo_venv && uv pip install --python /tmp/agentdojo_venv/bin/python agentdojo==0.1.35
-/tmp/agentdojo_venv/bin/python benchmarks/agentdojo_e2e/inferred/gen_traces.py v1.2.2 > /tmp/traces_v1.2.2.json
-uv run python benchmarks/agentdojo_e2e/inferred/replay.py /tmp/traces_v1.2.2.json /tmp/out.json
-GRANT_MODE=tiered uv run python benchmarks/agentdojo_e2e/inferred/replay.py \
+/tmp/agentdojo_venv/bin/python -m benchmarks.agentdojo.inferred.gen_traces v1.2.2 > /tmp/traces_v1.2.2.json
+uv run python -m benchmarks.agentdojo.inferred.replay /tmp/traces_v1.2.2.json /tmp/out.json
+GRANT_MODE=tiered uv run python -m benchmarks.agentdojo.inferred.replay \
     /tmp/traces_v1.2.2.json /tmp/out_tiered.json inferred,inferred_arg
-python benchmarks/agentdojo_e2e/inferred/summarise.py /tmp/out.json /tmp/out_tiered.json /tmp/traces_v1.2.2.json
+python -m benchmarks.agentdojo.inferred.summarise /tmp/out.json /tmp/out_tiered.json /tmp/traces_v1.2.2.json
 ```
 
 AgentDojo v1 gives the same numbers on the evaluable pairs, because every injection task added in v1.2 has an empty ground truth.
@@ -46,7 +46,7 @@ AgentDojo v1 gives the same numbers on the evaluable pairs, because every inject
 ## Superseded: provenance taken from the labels (kept for the record)
 
 ```bash
-uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py
+uv run python -m benchmarks.agentdojo.run_agentdojo_e2e
 ```
 
 **Withdrawn as a headline.** This earlier run reported 42/42 attacker calls that act contained and 552/552 legitimate calls allowed. Two things make those numbers a measurement of the policy given perfect provenance rather than of the product. Every user-task argument was declared `user` and every injection argument `tool_result`, so provenance came from the benchmark's own labels; intent was also declared only for user-task calls. And the extraction counted each task once per registered AgentDojo version, so the 552 benign calls are 339 unique ones and the 65 injection calls are 45. The section below is the original write-up, unchanged.

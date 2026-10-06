@@ -2,7 +2,7 @@
 
 Run with an isolated agentdojo install (it has its own dependency tree):
     uv venv /tmp/agentdojo_venv && uv pip install --python /tmp/agentdojo_venv/bin/python agentdojo==0.1.35
-    /tmp/agentdojo_venv/bin/python benchmarks/agentdojo_e2e/inferred/gen_traces.py v1.2.2 > traces_v1.2.2.json
+    /tmp/agentdojo_venv/bin/python -m benchmarks.agentdojo.inferred.gen_traces v1.2.2 > traces_v1.2.2.json
 
 For every user task we record two kinds of trace:
 

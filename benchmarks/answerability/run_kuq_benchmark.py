@@ -1,7 +1,7 @@
 """Scores `src/agentfox/capabilities/grounding/answerability.py` against KUQ (`data/kuq.json`, 4,782
 rows, MIT).
 
-    uv run python benchmarks/answerability/run_kuq_benchmark.py
+    uv run python -m benchmarks.answerability.run_kuq_benchmark
 
 `answerability.py` is a **declared-boundary** system, not a generic unanswerable-
 question classifier — `classify_answerability(text, boundary)` only refuses a

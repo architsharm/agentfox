@@ -1,7 +1,7 @@
 """Scores `src/agentfox/capabilities/grounding/answerability.py`'s over-refusal rate against CoCoNot's
 `contrast` split (`data/coconot_contrast.json`, 379 rows, MIT).
 
-    uv run python benchmarks/answerability/run_coconot_benchmark.py
+    uv run python -m benchmarks.answerability.run_coconot_benchmark
 
 Same boundary as `run_kuq_benchmark.py` — the system's own out-of-the-box
 default (`answerable_types=["fact","aggregate","procedure"]`, no coverage/

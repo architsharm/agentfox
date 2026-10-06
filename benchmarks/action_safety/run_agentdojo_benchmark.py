@@ -3,7 +3,7 @@
 generic wildcard/SQLi-fragment/path-traversal scope backstop on every other string
 argument) against `data/agentdojo_calls.json`.
 
-    uv run python benchmarks/action_safety/run_agentdojo_benchmark.py
+    uv run python -m benchmarks.action_safety.run_agentdojo_benchmark
 
 Not a precision/recall benchmark against a binary label — see README.md for why.
 AgentDojo's injection tasks are an *entitlement/taint* attack (a legitimate-shaped

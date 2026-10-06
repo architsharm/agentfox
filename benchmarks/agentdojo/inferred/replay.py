@@ -1,7 +1,7 @@
 """Replay executed AgentDojo traces through AgentFox's real enforcement path.
 
-    uv run python benchmarks/agentdojo_e2e/inferred/replay.py traces_v1.2.2.json out.json
-    GRANT_MODE=tiered uv run python benchmarks/agentdojo_e2e/inferred/replay.py \
+    uv run python -m benchmarks.agentdojo.inferred.replay traces_v1.2.2.json out.json
+    GRANT_MODE=tiered uv run python -m benchmarks.agentdojo.inferred.replay \
         traces_v1.2.2.json out_tiered.json inferred,inferred_arg
 
 Conditions (crossed with detectors on/off):
@@ -42,7 +42,7 @@ from agentfox.platform.registry.service import register_agent, upsert_tool  # no
 from agentfox.runtime.enforcement import Enforcer  # noqa: E402
 
 CONTAINED = {"block", "escalate"}
-# Identical to benchmarks/agentdojo_e2e/run_agentdojo_e2e.py so results are comparable.
+# Identical to benchmarks/agentdojo/run_agentdojo_e2e.py so results are comparable.
 IRREVERSIBLE = re.compile(
     r"^(send_money|schedule_transaction|update_scheduled_transaction|update_password|"
     r"send_email|send_direct_message|post_webpage|delete_\w+|remove_\w+|reserve_\w+)$"

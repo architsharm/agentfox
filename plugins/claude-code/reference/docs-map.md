@@ -65,7 +65,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | Files | Task |
 |---|---|
 | `benchmarks/REPORT.md`, `benchmarks/*/README.md` (one per benchmark area) | running or changing that benchmark |
-| `benchmarks/data/README.md`, `benchmarks/data_generalization/README.md`, `docs/evaluation/dataset-sourcing.md` | dataset provenance and licensing |
+| `benchmarks/injection/data/README.md`, `benchmarks/generalization/data/README.md`, `docs/evaluation/dataset-sourcing.md` | dataset provenance and licensing |
 | `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md` | running or deploying the live demos |
 | `CONTRIBUTING.md` | setting up to work on the code: `just setup`/`just ci` (the `justfile` mirrors CI), test layout, generated files and their checks, the vendored-wheel rule, branch and docstring conventions |
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |

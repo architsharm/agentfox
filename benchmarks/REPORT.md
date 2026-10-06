@@ -20,8 +20,8 @@ anyone deciding whether to trust this — can independently verify the number in
 of taking our word for it.
 
 ```bash
-uv run python benchmarks/run_prompt_injection_benchmark.py
-uv run python benchmarks/run_generalization_benchmark.py
+uv run python -m benchmarks.injection.run_prompt_injection_benchmark
+uv run python -m benchmarks.generalization.run_generalization_benchmark
 ```
 
 The first reproduces the `heuristic` config fully offline; the classifier/similarity
@@ -29,10 +29,10 @@ configs additionally need `pip install agentfox[classifiers]` and one-time model
 downloads (~350MB `leolee99/PIGuard`, ~350MB `protectai/deberta-v3-base-prompt-injection-v2`
 for the round-4 ensemble backstop, ~90MB `sentence-transformers/all-MiniLM-L6-v2`).
 Both scripts detect what's available and skip configs they can't run. The primary
-dataset is committed in this repo (`data/train.json`, `data/test.json` —
-`data/README.md` has source/license); the second script's four independent
+dataset is committed in this repo (`injection/data/train.json`, `injection/data/test.json` —
+`injection/data/README.md` has source/license); the second script's four independent
 datasets (three through round 5, a fourth added in round 6) are under
-`data_generalization/` (`data_generalization/README.md`).
+`generalization/data/` (`generalization/data/README.md`).
 
 ## The question that started this
 
@@ -239,7 +239,7 @@ spirit as `NotInject` — ordinary requests that happen to contain
 injection-sounding vocabulary ("Is it safe to ignore this npm audit warning?")
 — but independently written, not copied from any dataset this project
 benchmarks against (`_meta.purpose` in the corpus file says so explicitly, and
-points at `data_generalization/` by name as the boundary not to cross).
+points at `generalization/data/` by name as the boundary not to cross).
 
 Measured in isolation (`injection.similarity`'s `_detect()` called directly, no
 classifier, no pipeline) to get a clean read on the corpus's effect specifically:
@@ -298,9 +298,9 @@ flags `deepset/prompt-injections` itself as noisy ("use with caution... focuses
 heavily on politically biased speech") — reason enough to check against other
 sources before trusting one number.
 
-`benchmarks/run_generalization_benchmark.py` scores the same shipping code against
+`benchmarks/generalization/run_generalization_benchmark.py` scores the same shipping code against
 four independent, apache-2.0/MIT-licensed public datasets, none of which informed
-either detector (full sourcing in `data_generalization/README.md`):
+either detector (full sourcing in `generalization/data/README.md`):
 
 - **`spml`** — [SPML Chatbot Prompt Injection](https://huggingface.co/datasets/reshabhs/SPML_Chatbot_Prompt_Injection)
   (MIT, arXiv:2402.11755), 500-row stratified sample (250/250). A structurally
@@ -320,7 +320,7 @@ either detector (full sourcing in `data_generalization/README.md`):
   real Discord/Reddit/etc. communities plus a matched 1,405-row sample of
   same-community prompts not flagged as one. The least controlled of the four —
   real organic text, not authored for a benchmark — and, per
-  `data_generalization/README.md`, its negative label means "not flagged by the
+  `generalization/data/README.md`, its negative label means "not flagged by the
   source community," not "verified benign," so treat its precision number as a
   lower bound. It's also, by a wide margin, the longest-prompt dataset here
   (mean 2,156 characters vs. the others' short prompts) — which turned out to
@@ -373,7 +373,7 @@ already-running straggler thread (Python can't pre-empt one — the same reason 
 single slow call can outlive its own timeout; see the pipeline-budget section
 below). Enough concurrent stragglers from `trustairlab`'s longer, slower forward
 passes piled up that every subsequent detector call, on every dataset, kept
-missing its window. Fixed in `run_generalization_benchmark.py` by shutting each
+missing its window. Fixed in `generalization/run_generalization_benchmark.py` by shutting each
 config's pipeline down before starting the next.
 
 That fix stopped the cascade, but a second, narrower effect remained even with a
@@ -659,7 +659,7 @@ cluster into two groups:
 **Genuinely missed attacks**: flattery-then-pivot social engineering ("You've
 outdone yourself! Now, one more thing..."), typo-evasion (see above) — named and
 tracked, not fixed yet. See
-`results/heuristic_classifier_similarity_held_out_predictions.json` for the full
+`injection/results/heuristic_classifier_similarity_held_out_predictions.json` for the full
 list.
 
 **Deliberately out of scope**: a large share of this dataset's positive-labeled
@@ -707,26 +707,26 @@ doesn't get taken at face value just because it's favorable.
 
 ## Files
 
-- `fetch_dataset.py` — how `data/*.json` was obtained (re-runnable).
-- `fetch_trustairlab.py` — how `data_generalization/trustairlab.json` was
+- `injection/fetch_dataset.py` — how `injection/data/*.json` was obtained (re-runnable).
+- `generalization/fetch_trustairlab.py` — how `generalization/data/trustairlab.json` was
   obtained (re-runnable; uses the dataset's HF-hosted parquet export directly,
   not the paginated `/rows` API, which rate-limits well before finishing a
   13,735-row config).
-- `data/README.md` — primary dataset source, license, schema.
-- `data_generalization/README.md` — the four generalization datasets' sources,
+- `injection/data/README.md` — primary dataset source, license, schema.
+- `generalization/data/README.md` — the four generalization datasets' sources,
   licenses, and why each was picked.
-- `run_prompt_injection_benchmark.py` — primary benchmark, all four configs ×
+- `injection/run_prompt_injection_benchmark.py` — primary benchmark, all four configs ×
   three splits, with degradation tracking.
-- `run_generalization_benchmark.py` — generalization benchmark, three configs ×
+- `generalization/run_generalization_benchmark.py` — generalization benchmark, three configs ×
   four datasets, with degradation tracking and a per-config pipeline shutdown
   (round 6 — see "A latency-ceiling finding").
-- `results/prompt_injection_summary.json` — every primary config × split
+- `injection/results/prompt_injection_summary.json` — every primary config × split
   aggregate.
-- `results/prompt_injection_{config}_{split}_predictions.json` — every primary
+- `injection/results/prompt_injection_{config}_{split}_predictions.json` — every primary
   example scored individually, including which detector (if any) degraded on it.
-- `results_generalization/summary.json` — every generalization config × dataset
+- `generalization/results/summary.json` — every generalization config × dataset
   aggregate.
-- `results_generalization/{config}_{dataset}_predictions.json` — every
+- `generalization/results/{config}_{dataset}_predictions.json` — every
   generalization example scored individually.
 - `../src/agentfox/capabilities/detection/data/injection_corpus.json` — the synthetic anchor
   corpus `injection.similarity` matches against. Growing this file (and

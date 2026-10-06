@@ -6,11 +6,11 @@ One entry per capability area. Each links to a self-contained directory with its
 
 | Area | Directory | Status | Headline |
 |---|---|---|---|
-| Prompt injection detection | [`REPORT.md`](REPORT.md) | Benchmarked, 4 generalization datasets | Held-out recall 66.7% @ 100% precision (ensemble); see report for the latency-ceiling correction |
+| Prompt injection detection | [`injection/`](injection/run_prompt_injection_benchmark.py), [`generalization/`](generalization/data/README.md); write-up in [`REPORT.md`](REPORT.md) | Benchmarked, 4 generalization datasets | Held-out recall 66.7% @ 100% precision (ensemble); see report for the latency-ceiling correction |
 | **Containment under detector bypass** | [`containment/`](containment/README.md) | Benchmarked, detectors disabled | **8/8 attacks contained with zero detector signal**, 4/4 legitimate controls still allowed — what survives when detection fails completely |
 | **Adaptive (search-based) attack vs. our own detectors** | [`adaptive/`](adaptive/README.md) | Benchmarked, attacker gets feedback, **3 detector bugs found and fixed** | **73% attack success at 50 attempts** on the attacks we do catch (readable-only mutations, indirect/retrieved) — down from 75.0% pre-fix, against a detected-seed set that grew from 40 to 48 seeds with the fixes, with benign false positives on the NotInject over-defense set cut **8.6% → 0.3%** — and **38/38** of those bypasses still contained at the action |
 | Agent-runtime security (4 tiers vs LLM Guard) | [`agent_security/`](agent_security/README.md) | Benchmarked vs a real installed competitor | Four tiers (multi-turn, indirect injection, tool-param anomaly, excessive agency) LLM Guard structurally can't cover |
-| **AgentDojo end to end** | [`agentdojo_e2e/`](agentdojo_e2e/README.md) | Benchmarked, 97 user tasks and 949 attack pairs, executed ground truth, provenance inferred | Session-level taint: **588/588 attack pairs contained**, **24/97 benign tasks run without escalation**. Argument-level taint: 527/588 contained, 37/97 benign tasks. With provenance taken from the benchmark's labels the same replay gives 97/97 and 588/588, which is an upper bound. Detectors off throughout |
+| **AgentDojo end to end** | [`agentdojo/`](agentdojo/README.md) | Benchmarked, 97 user tasks and 949 attack pairs, executed ground truth, provenance inferred | Session-level taint: **588/588 attack pairs contained**, **24/97 benign tasks run without escalation**. Argument-level taint: 527/588 contained, 37/97 benign tasks. With provenance taken from the benchmark's labels the same replay gives 97/97 and 588/588, which is an upper bound. Detectors off throughout |
 | F3 — destructive actions & blast radius | [`action_safety/`](action_safety/README.md) | Benchmarked, 4 datasets, fixed to 100% | gretelai SQL: 100% precision and recall on the held-out split, which has 8 natural DML and 12 natural DDL positives; AgentDojo arguments: none of the 45 unique attacker calls or 339 unique benign calls flagged, as expected for well-formed calls (the results file counts each task once per registered AgentDojo version, so it reports flagged 0/65 attacker and 0/552 benign calls); payload-box 36.1%→89.3% recall after 2 fix rounds, measured on the data the fixes were made against |
 | PII detection | [`pii/`](pii/README.md) | Benchmarked, 3 datasets, 2 fix rounds | Default-policy precision 15.2%→51.9% (worst dataset); `US_SSN` 14.4%→87.3% via a score-gate |
 | **Cross-lingual parity (F9.3 / L0.10)** | [`multilingual/`](multilingual/README.md) | Benchmarked, gap found **and closed** | **6/19 → 19/19 matched pairs** now reach the same verdict when content is localised (12 silent misses and 1 false positive on *correct* arithmetic, fixed), plus a date-format check that did not exist — at an English false-positive rate of **0.097%** across 4,138 texts. Injection *recall* parity holds; benign non-English is still flagged more often, and the abstention path is still English-only |
@@ -22,6 +22,18 @@ One entry per capability area. Each links to a self-contained directory with its
 | F3.8 — composed privilege escalation | [`composed_privilege_escalation/`](composed_privilege_escalation/README.md) | **Built** | New `guardrails/composition.py` (P9-11) detects a read tool's output flowing into a write tool's argument, using the taint tracker's existing provenance. 11 tests (unit + end-to-end), no labeled dataset exists to score precision/recall against |
 | **Judgment tiers (opt-in: Jev / LLM / local LLM)** | [`judgment/`](judgment/README.md) | Benchmarked, off by default | **160/165 injection payloads that defeated our pattern detectors**, caught once a tier is on, at **94.7% precision against NotInject**. **SQL blast radius unchanged**, verified live with every tier enabled |
 | P4-4 — automated red-teaming (static + **adaptive**) | [`redteam/`](redteam/README.md) | Benchmarked, adaptive engine added | Static: recall 100% / precision 100% (95% on payments-ops — a real Art. 14 interaction, not a bug). Adaptive: **every escape was found only by mutation** (static reports none), but only **3/39 (8%) with payloads a model can simply read** — the 74% figure is all `requires_decode`. The capability/taint layer held: `provenance` 0/31, `tool_scope` 0/29, and `structural` **0/105 after** the nested-argument fix this benchmark found (10/101 before). Headline is a posture delta, never a pass rate |
+
+## Layout
+
+- One folder per claim family, named as the claim ids in [`claims.yaml`](claims.yaml) are prefixed
+  (`containment/` holds the `containment.*` claims, `agentdojo/` the `agentdojo.*` ones, and so on).
+  `judgment/` holds both `judgment.*` (the judgment-tier benchmark) and `jev.*` (the study of Jev,
+  the model behind the default judgment tier); they are one capability, so they share a folder.
+- [`_common/`](_common/__init__.py) holds the helpers more than one script used to copy: the
+  throwaway-database reset, the dataset download, and the PII span arithmetic. Each script still owns
+  its ground truth, scoring rules and result format.
+- Every script runs as a module from the repository root, so `benchmarks._common` imports without
+  any `sys.path` edits: `uv run python -m benchmarks.containment.run_containment_benchmark`.
 
 ## Reading this table honestly
 

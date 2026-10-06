@@ -115,14 +115,14 @@ with **every detector switched off**.
 | Evidence | Result |
 |---|---|
 | [Containment under total detector bypass](benchmarks/containment/README.md) | **8/8 attacks contained with zero detector signal**; 4/4 legitimate calls still allowed |
-| [AgentDojo, replayed end to end](benchmarks/agentdojo_e2e/README.md): 97 user tasks and 949 attack pairs, with argument provenance inferred from the real tool outputs | **588/588 attack pairs contained** with session-level taint, but only **24/97 benign tasks (24.7% [17.2, 34.2]) run without escalating to a human**. Per-argument taint: 37/97 benign tasks, 527/588 attack pairs contained. Taking provenance from the benchmark's own labels gives 97/97 and 588/588; that is an upper bound, not a measurement |
+| [AgentDojo, replayed end to end](benchmarks/agentdojo/README.md): 97 user tasks and 949 attack pairs, with argument provenance inferred from the real tool outputs | **588/588 attack pairs contained** with session-level taint, but only **24/97 benign tasks (24.7% [17.2, 34.2]) run without escalating to a human**. Per-argument taint: 37/97 benign tasks, 527/588 attack pairs contained. Taking provenance from the benchmark's own labels gives 97/97 and 588/588; that is an upper bound, not a measurement |
 
 The cost is benign utility: when provenance is inferred, a legitimate action that copies a
 value out of a tool output looks the same as an attack, and it is escalated.
 
 **Optionally, detection gets better.** The judgment tiers are off by default; with them on,
 agentfox catches 160/165 of the injection payloads that defeated our own pattern detectors, at
-94.7% precision against the [NotInject](benchmarks/data_generalization/README.md) over-defense
+94.7% precision against the [NotInject](benchmarks/generalization/data/README.md) over-defense
 set. [What each tier is worth, and what it costs](benchmarks/judgment/README.md).
 
 ## Where we are still improving

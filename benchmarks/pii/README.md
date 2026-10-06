@@ -10,14 +10,14 @@
 3. [Text Anonymization Benchmark (TAB)](https://github.com/NorskRegnesentral/text-anonymization-benchmark) (MIT) — 127 real (not synthetic) ECHR court judgments, multi-annotator labeled. The one dataset in this suite that tests NER on natural prose — and the one where full-policy Presidio performs best of all three.
 
 ```bash
-uv run python benchmarks/pii/fetch_presidio_research.py
-uv run python benchmarks/pii/run_presidio_research_benchmark.py
+uv run python -m benchmarks.pii.fetch_presidio_research
+uv run python -m benchmarks.pii.run_presidio_research_benchmark
 
-uv run --with pyarrow python benchmarks/pii/fetch_gretel_multilingual.py
-uv run python benchmarks/pii/run_gretel_multilingual_benchmark.py
+uv run --with pyarrow python -m benchmarks.pii.fetch_gretel_multilingual
+uv run python -m benchmarks.pii.run_gretel_multilingual_benchmark
 
-uv run python benchmarks/pii/fetch_tab.py
-uv run python benchmarks/pii/run_tab_benchmark.py
+uv run python -m benchmarks.pii.fetch_tab
+uv run python -m benchmarks.pii.run_tab_benchmark
 ```
 
 ## Fixes applied

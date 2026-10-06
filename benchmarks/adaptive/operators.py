@@ -46,7 +46,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-DATA_GENERALIZATION = Path(__file__).parent.parent / "data_generalization"
+DATA_GENERALIZATION = Path(__file__).parent.parent / "generalization" / "data"
 
 
 @dataclass(frozen=True)
@@ -410,7 +410,7 @@ _corpus_phrases: list[str] | None = None
 
 
 def _multilingual_corpus_phrases() -> list[str]:
-    """Real multilingual injection phrasings from `data_generalization/yanismiraoui.json`.
+    """Real multilingual injection phrasings from `generalization/data/yanismiraoui.json`.
 
     Loaded once, filtered to non-ASCII label-1 rows so the operator uses phrasings a
     third party wrote rather than ones this benchmark invented, and sorted so the

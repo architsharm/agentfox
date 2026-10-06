@@ -1,7 +1,7 @@
 """Crescendo — gradual multi-turn manipulation, where no single turn is the attack.
 
-    PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
-      python benchmarks/crescendo/run_crescendo_benchmark.py
+    PYTHONPATH=src NOMETRIA_CONFIG=none \
+      python -m benchmarks.crescendo.run_crescendo_benchmark
 
 **The gap.** `docs/design/coverage-map.md` row L1.6 was `✗ absent`: "Detection is per-message.
 Nothing scores a conversation's trajectory, and this is a published, effective
@@ -49,11 +49,8 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "agent_security"))
 
 RESULTS_DIR = Path(__file__).parent / "results"
 DB_PATH = Path("/tmp/agentfox_crescendo_benchmark.db")
@@ -630,12 +627,11 @@ def measure_trajectory_latency(repeats: int = 40) -> dict[str, Any]:
 
 
 def main() -> None:
-    from _util import wipe_db
-
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache
     from agentfox.fixtures.seed import seed
     from agentfox.runtime.enforcement import Enforcer
+    from benchmarks._common import wipe_db
 
     # `NOMETRIA_DATABASE_URL` is the setting that actually exists. An earlier version
     # of this script set `NOMETRIA_DB_PATH`, which is not a setting at all — Settings

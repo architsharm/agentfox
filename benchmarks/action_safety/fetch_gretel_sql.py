@@ -5,7 +5,7 @@ labels independently of the detector under test, constructs adversarial variants
 the two failure modes the natural data can't supply on its own, and writes a fixed,
 reproducible sample to `data/action_safety.json`.
 
-    uv run --with pyarrow python benchmarks/action_safety/fetch_gretel_sql.py
+    uv run --with pyarrow python -m benchmarks.action_safety.fetch_gretel_sql
 
 Same reasoning as `fetch_trustairlab.py`: parquet via the `refs/convert/parquet` ref
 HF publishes for every dataset, not the paginated `/rows` API.

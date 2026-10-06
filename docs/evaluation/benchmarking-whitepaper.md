@@ -57,7 +57,7 @@ condition every adversarial-robustness paper says to expect.
 [`benchmarks/containment/`](../../benchmarks/containment/README.md) runs eight structurally different attack
 scenarios with `AGENTFOX_ENABLED_DETECTORS=[]` — a total bypass, verified per scenario by re-probing the
 payload and recording zero entities: **8/8 contained, 4/4 legitimate controls still allowed**.
-[`benchmarks/agentdojo_e2e/`](../../benchmarks/agentdojo_e2e/README.md) executes
+[`benchmarks/agentdojo/`](../../benchmarks/agentdojo/README.md) executes
 [AgentDojo](https://github.com/ethz-spylab/agentdojo)'s ground truth for all 97 user tasks and 949
 attack pairs (v1.2.2), records the real tool outputs, and replays every call through the real
 `guard_tool_call` path with provenance **inferred** by the shipped tracker. Over the 588 attack pairs
@@ -240,7 +240,7 @@ A capability counts as "benchmarked" in this document only if: it's scored again
 
 - [`benchmarks/REPORT.md`](../../benchmarks/REPORT.md) — full prompt-injection benchmark methodology, all six rounds.
 - [`benchmarks/agent_security/README.md`](../../benchmarks/agent_security/README.md) — the four-tier agent-runtime-security suite, full methodology.
-- [`benchmarks/data_generalization/README.md`](../../benchmarks/data_generalization/README.md) — the four generalization datasets: sources, licenses, and datasets considered and rejected.
+- [`benchmarks/generalization/data/README.md`](../../benchmarks/generalization/data/README.md) — the four generalization datasets: sources, licenses, and datasets considered and rejected.
 - [`benchmarks/pii/README.md`](../../benchmarks/pii/README.md) — PII detection, all three datasets, both fix rounds, unfiltered numbers.
 - [`benchmarks/action_safety/README.md`](../../benchmarks/action_safety/README.md) — destructive-action/blast-radius, all four datasets.
 - [`benchmarks/entitlement/README.md`](../../benchmarks/entitlement/README.md) — the purpose-limitation scenario benchmark and its caveats.

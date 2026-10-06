@@ -10,10 +10,10 @@ independently-installed `llm-guard` (not an asserted number — see
 `llm_guard_bridge.py`), rather than taking it on faith.
 
 ```bash
-uv run python benchmarks/agent_security/tier_d_excessive_agency.py
-uv run python benchmarks/agent_security/tier_b_indirect_injection.py
-uv run python benchmarks/agent_security/tier_c_tool_params.py
-uv run python benchmarks/agent_security/tier_a_multiturn.py
+uv run python -m benchmarks.agent_security.tier_d_excessive_agency
+uv run python -m benchmarks.agent_security.tier_b_indirect_injection
+uv run python -m benchmarks.agent_security.tier_c_tool_params
+uv run python -m benchmarks.agent_security.tier_a_multiturn
 ```
 
 Each script is self-contained (own throwaway SQLite DB, cleaned up after). The

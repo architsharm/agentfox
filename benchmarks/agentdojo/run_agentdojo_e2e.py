@@ -1,6 +1,6 @@
 """AgentDojo end to end — benign utility and attack containment on the real enforcement path.
 
-    uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py
+    uv run python -m benchmarks.agentdojo.run_agentdojo_e2e
 
 `benchmarks/action_safety/` already scores `analyse_arguments()` against AgentDojo's
 argument values, and says plainly what it does NOT do:
@@ -35,13 +35,10 @@ from __future__ import annotations
 import json
 import os
 import re
-import sys
 import tempfile
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "agent_security"))
 
 # Bind the throwaway database BEFORE importing anything that reads settings. Without this
 # the benchmark inherits whatever `NOMETRIA_DATABASE_URL` happens to be set — in practice
@@ -52,14 +49,13 @@ DB_PATH = Path(tempfile.gettempdir()) / "nometria_agentdojo_e2e.db"
 os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
 os.environ.setdefault("NOMETRIA_CONFIG", "none")
 
-from _util import wipe_db  # noqa: E402
-
 from agentfox.core import db  # noqa: E402
 from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402
 from agentfox.platform.identity.service import ensure_identity, grant_capability  # noqa: E402
 from agentfox.platform.policy import load_from_dir, save_policy  # noqa: E402
 from agentfox.platform.registry.service import register_agent, upsert_tool  # noqa: E402
 from agentfox.runtime.enforcement import Enforcer  # noqa: E402
+from benchmarks._common import wipe_db  # noqa: E402
 
 DATA = Path(__file__).parent.parent / "action_safety" / "data" / "agentdojo_calls.json"
 RESULTS_DIR = Path(__file__).parent / "results"

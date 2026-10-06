@@ -1,9 +1,9 @@
 """Out-of-distribution check: does detection generalize past the one dataset it
 was tuned against, or does it just know `deepset/prompt-injections` by heart?
 
-    uv run python benchmarks/run_generalization_benchmark.py
+    uv run python -m benchmarks.generalization.run_generalization_benchmark
 
-Four independent public datasets (`data_generalization/README.md` has sources,
+Four independent public datasets (`data/README.md` has sources,
 licenses, and why each was picked), none of which `injection.heuristic`'s
 patterns or `injection.similarity`'s corpus were ever tuned against:
 
@@ -26,7 +26,7 @@ patterns or `injection.similarity`'s corpus were ever tuned against:
                     by the source community" is not the same claim as "verified
                     benign" (NotInject's) — expect more label noise here than
                     the other three, and read the precision number with that in
-                    mind (see `data_generalization/README.md`).
+                    mind (see `data/README.md`).
 
 Same three configs as the primary benchmark (heuristic / +classifier /
 +classifier+similarity), scored with the exact same shipping code.
@@ -45,8 +45,8 @@ from agentfox.capabilities.detection import (
     warm_all,
 )
 
-DATA_DIR = Path(__file__).parent / "data_generalization"
-RESULTS_DIR = Path(__file__).parent / "results_generalization"
+DATA_DIR = Path(__file__).parent / "data"
+RESULTS_DIR = Path(__file__).parent / "results"
 
 
 def load(name: str) -> list[dict]:

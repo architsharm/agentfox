@@ -2,7 +2,7 @@
 check (F4.6, GDPR Art. 5(1)(b)) against scenarios built from PrivacyLens's real
 vignette content (`data/privacylens.json`, 493 rows, MIT).
 
-    uv run python benchmarks/entitlement/run_privacylens_benchmark.py
+    uv run python -m benchmarks.entitlement.run_privacylens_benchmark
 
 **This benchmark is a different kind from every other one in this repo, and
 that difference is the point of this docstring.** Every prior benchmark

@@ -3,8 +3,8 @@
 **Read this before the numbers below**: this is not the same kind of benchmark as `benchmarks/pii/`, `benchmarks/action_safety/`, or `benchmarks/answerability/`. Those score existing code against a public dataset's *own* independently-authored ground truth. No public dataset supplies labels in the shape `src/agentfox/capabilities/grounding/entitlement.py` needs — confirmed directly by investigating AgentLeak and PrivacyLens for `docs/evaluation/dataset-sourcing.md`, and independently re-confirmed for the adjacent F2 capability in `benchmarks/source_authority/README.md`. What follows instead uses [PrivacyLens](https://github.com/SALT-NLP/PrivacyLens) (MIT) for its real, varied, human-authored *scenario content* — but the actual test (what's granted, what's requested, what's correct) is constructed here, not sourced from PrivacyLens's own labels. See the full methodology in `run_privacylens_benchmark.py`'s docstring.
 
 ```bash
-uv run python benchmarks/entitlement/fetch_privacylens.py
-uv run python benchmarks/entitlement/run_privacylens_benchmark.py
+uv run python -m benchmarks.entitlement.fetch_privacylens
+uv run python -m benchmarks.entitlement.run_privacylens_benchmark
 ```
 
 ## What this tests: purpose limitation (F4.6, GDPR Art. 5(1)(b))

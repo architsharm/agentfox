@@ -3,7 +3,7 @@
 **The question every other benchmark in this repo avoids: when detection fails, does the attack still work?**
 
 ```bash
-uv run python benchmarks/containment/run_containment_benchmark.py
+uv run python -m benchmarks.containment.run_containment_benchmark
 ```
 
 ## Why this benchmark exists

@@ -2,7 +2,7 @@
 (`test` split only — see below), filters `pii_spans` down to well-formed rows, and
 writes a flat JSON file to `data/gretel_multilingual_pii.json`.
 
-    uv run --with pyarrow python benchmarks/pii/fetch_gretel_multilingual.py
+    uv run --with pyarrow python -m benchmarks.pii.fetch_gretel_multilingual
 
 License: Apache-2.0, per the dataset's HF card (`cardData.license`) — verified via
 `https://huggingface.co/api/datasets/gretelai/synthetic_pii_finance_multilingual`.
@@ -45,7 +45,7 @@ PARQUET_URL = (
 def main() -> None:
     if pq is None:
         raise SystemExit(
-            "Run with: uv run --with pyarrow python benchmarks/pii/fetch_gretel_multilingual.py"
+            "Run with: uv run --with pyarrow python -m benchmarks.pii.fetch_gretel_multilingual"
         )
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)

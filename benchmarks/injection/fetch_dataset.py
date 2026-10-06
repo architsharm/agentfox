@@ -3,7 +3,7 @@ and writes it to `data/train.json` / `data/test.json`. Already run once — the 
 is committed so `run_prompt_injection_benchmark.py` works offline — but this is here
 so the fetch itself is reproducible too, not just the scoring.
 
-    python benchmarks/fetch_dataset.py
+    python -m benchmarks.injection.fetch_dataset
 """
 
 from __future__ import annotations

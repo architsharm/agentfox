@@ -1,4 +1,4 @@
-"""Shared helper for the agent-security benchmark scripts."""
+"""The throwaway SQLite database each benchmark run starts from."""
 
 from __future__ import annotations
 

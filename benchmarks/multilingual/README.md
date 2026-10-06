@@ -3,8 +3,8 @@
 **Everything in this repo is benchmarked in English. This one asks what happens in the other six.**
 
 ```bash
-PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
-  python benchmarks/multilingual/run_multilingual_parity.py
+PYTHONPATH=src NOMETRIA_CONFIG=none \
+  python -m benchmarks.multilingual.run_multilingual_parity
 ```
 
 ## Why this benchmark exists
@@ -48,7 +48,7 @@ Section 2 is the real finding. Sections 1 and 3 are included because they are wh
 
 These particular numbers move by a few hundredths of a point between runs — a handful of rows exceed the shipped 40 ms per-detector budget and which ones varies with machine load. At this magnitude that is noise on noise; the finding is the order of magnitude, not the digits.
 
-This is not a cross-lingual finding and is not presented as one. It matches this repo's own committed figure for the heuristic alone on this same file — **0.48% recall**, in [`../results_generalization/summary.json`](../results_generalization/summary.json). **Flat near-zero recall is an absence of detection, not parity.** A benchmark that stopped here could have reported "no cross-lingual divergence detected" and been technically true and completely worthless.
+This is not a cross-lingual finding and is not presented as one. It matches this repo's own committed figure for the heuristic alone on this same file — **0.48% recall**, in [`../generalization/results/summary.json`](../generalization/results/summary.json). **Flat near-zero recall is an absence of detection, not parity.** A benchmark that stopped here could have reported "no cross-lingual divergence detected" and been technically true and completely worthless.
 
 ### With the opt-in classifier, recall parity genuinely holds
 
@@ -68,8 +68,8 @@ The same file scored through `injection.heuristic + injection.classifier` (leole
 
 Two disclosures that belong next to that table, not beneath it:
 
-- **This is not the shipped configuration and not the live path.** `injection.classifier` is opt-in, and on the machine this ran on its forward pass costs ~113 ms against a shipped `detector_timeout_ms` of **40 ms** — so under shipped settings it was dropped on every call *in this run*. **Correction (2026-09-16):** that reproduces only on a cold process. Warm, the classifier costs about 43ms per short prompt and completed on 21 of 21 calls through the real `Enforcer` path with shipped settings; the gateway warms detectors at startup (`gateway/app.py:98`). Long prompts still time out. This config raises that timeout to 400 ms and scores `DetectorPipeline` directly rather than `Enforcer.check_content`, because with the timeout raised the Enforcer's 8-worker pool accumulates straggler threads holding model tensors and segfaults mid-run — the same accumulation [`../run_generalization_benchmark.py`](../run_generalization_benchmark.py) documents and mitigates with `max_workers=2`. **A 100% recall that cannot run inside the product's own latency budget is a finding about the budget, not a product claim.**
-- **Romanian is effectively absent from the dataset.** [`../data_generalization/README.md`](../data_generalization/README.md) advertises seven languages including Romanian; the file contains 13 rows with Romanian orthography. Romanian is reported with its support count and excluded from every headline.
+- **This is not the shipped configuration and not the live path.** `injection.classifier` is opt-in, and on the machine this ran on its forward pass costs ~113 ms against a shipped `detector_timeout_ms` of **40 ms** — so under shipped settings it was dropped on every call *in this run*. **Correction (2026-09-16):** that reproduces only on a cold process. Warm, the classifier costs about 43ms per short prompt and completed on 21 of 21 calls through the real `Enforcer` path with shipped settings; the gateway warms detectors at startup (`gateway/app.py:98`). Long prompts still time out. This config raises that timeout to 400 ms and scores `DetectorPipeline` directly rather than `Enforcer.check_content`, because with the timeout raised the Enforcer's 8-worker pool accumulates straggler threads holding model tensors and segfaults mid-run — the same accumulation [`../generalization/run_generalization_benchmark.py`](../generalization/run_generalization_benchmark.py) documents and mitigates with `max_workers=2`. **A 100% recall that cannot run inside the product's own latency budget is a finding about the budget, not a product claim.**
+- **Romanian is effectively absent from the dataset.** [`../generalization/data/README.md`](../generalization/data/README.md) advertises seven languages including Romanian; the file contains 13 rows with Romanian orthography. Romanian is reported with its support count and excluded from every headline.
 
 ### Precision is where parity actually fails
 

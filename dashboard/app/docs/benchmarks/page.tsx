@@ -66,7 +66,7 @@ export default function Page() {
         Containment is cheap to make complete and expensive to make useful. When provenance
         has to be inferred, a legitimate call that copies a value out of a tool output looks
         exactly like an attack, and it is escalated to a person. The whole trade, from{" "}
-        <code>benchmarks/agentdojo_e2e/README.md</code>:
+        <code>benchmarks/agentdojo/README.md</code>:
       </p>
       <table>
         <thead>

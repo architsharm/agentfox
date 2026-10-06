@@ -7,7 +7,7 @@ and scores exactly what it scored before.
 
 ```bash
 JEV_API_KEY=... ANTHROPIC_API_KEY=... \
-  uv run python benchmarks/judgment/run_judgment_benchmark.py
+  uv run python -m benchmarks.judgment.run_judgment_benchmark
 ```
 
 Results: [`results/judgment_results.json`](results/judgment_results.json).

@@ -2,7 +2,7 @@
 actual LICENSE file, fetched directly) and writes it unmodified to
 `data/privacylens.json`.
 
-    uv run python benchmarks/entitlement/fetch_privacylens.py
+    uv run python -m benchmarks.entitlement.fetch_privacylens
 
 Source: https://github.com/SALT-NLP/PrivacyLens
 File:   data/main_data.json (493 rows)
@@ -21,31 +21,25 @@ datasets used elsewhere in this project, and disclosed as such.
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
+
+from benchmarks._common import fetch
 
 DATA_DIR = Path(__file__).parent / "data"
 URL = "https://raw.githubusercontent.com/SALT-NLP/PrivacyLens/main/data/main_data.json"
 LICENSE_URL = "https://raw.githubusercontent.com/SALT-NLP/PrivacyLens/main/LICENSE"
 
 
-def _fetch(url: str) -> str:
-    result = subprocess.run(
-        ["curl", "-sL", "--fail", url], capture_output=True, text=True, check=True
-    )
-    return result.stdout
-
-
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    license_text = _fetch(LICENSE_URL)
+    license_text = fetch(LICENSE_URL)
     if "MIT License" not in license_text:
         raise SystemExit(
             "PrivacyLens LICENSE no longer reads as MIT — re-verify before using this data."
         )
 
-    raw = _fetch(URL)
+    raw = fetch(URL)
     rows = json.loads(raw)
     print(f"Fetched {len(rows)} rows from PrivacyLens main_data.json")
 

@@ -46,7 +46,7 @@ function GitHubMark() {
  * same figures, because a visitor who followed a link from there and is now
  * deciding whether to hand over a GitHub identity should meet the claim they
  * already read rather than a second, different one. The source is
- * benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json; the two
+ * benchmarks/agentdojo/results/inferred_provenance_summary.json; the two
  * ratios here are bound to it in benchmarks/claims.yaml and checked by
  * scripts/check/claims.py, which also fails if a retired AgentDojo figure reappears.
  */

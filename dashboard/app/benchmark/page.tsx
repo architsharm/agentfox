@@ -26,7 +26,7 @@ import {
  * memory and not rounded. The source file is named under each table:
  *
  *   benchmarks/containment/README.md
- *   benchmarks/agentdojo_e2e/README.md
+ *   benchmarks/agentdojo/README.md
  *   benchmarks/agent_security/README.md
  *   benchmarks/REPORT.md
  *   benchmarks/adaptive/README.md
@@ -487,10 +487,10 @@ export default function BenchmarkPage() {
         </table>
       </div>
       <Source>
-        <code className="mono">benchmarks/agentdojo_e2e/README.md</code>,
+        <code className="mono">benchmarks/agentdojo/README.md</code>,
         current results table, which is{" "}
         <code className="mono">
-          benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+          benchmarks/agentdojo/results/inferred_provenance_summary.json
         </code>
         . AgentDojo v1.2.2. Brackets are Wilson 95% intervals. Attack results are
         over the 588 pairs whose injection ground truth issues at least one
@@ -1131,7 +1131,7 @@ export default function BenchmarkPage() {
         <code className="mono">reproducibility</code>,{" "}
         <code className="mono">bypass_verification</code>),{" "}
         <code className="mono">
-          benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+          benchmarks/agentdojo/results/inferred_provenance_summary.json
         </code>
         ,{" "}
         <code className="mono">
@@ -1149,12 +1149,12 @@ export default function BenchmarkPage() {
         database, and each writes a results file that is checked in beside it.
       </p>
       <pre className="hero-code">
-        uv run python benchmarks/containment/run_containment_benchmark.py{"\n"}
-        /tmp/agentdojo_venv/bin/python benchmarks/agentdojo_e2e/inferred/gen_traces.py v1.2.2 &gt; /tmp/traces.json{"\n"}
-        uv run python benchmarks/agentdojo_e2e/inferred/replay.py /tmp/traces.json /tmp/out.json{"\n"}
-        uv run python benchmarks/agent_security/tier_b_indirect_injection.py{"\n"}
-        uv run python benchmarks/run_prompt_injection_benchmark.py{"\n"}
-        uv run python benchmarks/adaptive/run_adaptive_benchmark.py
+        uv run python -m benchmarks.containment.run_containment_benchmark{"\n"}
+        /tmp/agentdojo_venv/bin/python -m benchmarks.agentdojo.inferred.gen_traces v1.2.2 &gt; /tmp/traces.json{"\n"}
+        uv run python -m benchmarks.agentdojo.inferred.replay /tmp/traces.json /tmp/out.json{"\n"}
+        uv run python -m benchmarks.agent_security.tier_b_indirect_injection{"\n"}
+        uv run python -m benchmarks.injection.run_prompt_injection_benchmark{"\n"}
+        uv run python -m benchmarks.adaptive.run_adaptive_benchmark
       </pre>
       <p>
         The <code className="mono">llm-guard</code> comparisons need{" "}
@@ -1172,7 +1172,7 @@ export default function BenchmarkPage() {
         The AgentDojo replay and the adaptive run need no model and no API key.
         The AgentDojo traces are generated with AgentDojo itself, installed in a
         separate environment because it has its own dependency tree;{" "}
-        <code className="mono">benchmarks/agentdojo_e2e/README.md</code> has
+        <code className="mono">benchmarks/agentdojo/README.md</code> has
         the full sequence, including the read-only-exempt run and the summary
         step. Every one of them writes the results file
         named above, so a number that does not match is a bug report rather than

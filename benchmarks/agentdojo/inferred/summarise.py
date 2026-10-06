@@ -1,6 +1,6 @@
 """Summarise the inferred-provenance AgentDojo replay into the published result file.
 
-    python benchmarks/agentdojo_e2e/inferred/summarise.py out.json out_tiered.json traces_v1.2.2.json
+    python -m benchmarks.agentdojo.inferred.summarise out.json out_tiered.json traces_v1.2.2.json
 
 Writes ../results/inferred_provenance_summary.json. Every figure uses the verdict the system
 enforces (not the all-packs-enforced counterfactual), with content detectors off.

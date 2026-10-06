@@ -1,7 +1,7 @@
 """Fetches allenai/coconot's `contrast` config test split (MIT — verified via the
 HF API's `cardData.license`) and writes it to `data/coconot_contrast.json`.
 
-    uv run --with pyarrow python benchmarks/answerability/fetch_coconot.py
+    uv run --with pyarrow python -m benchmarks.answerability.fetch_coconot
 
 Source: https://huggingface.co/datasets/allenai/coconot
 Config: contrast, split test — 379 rows, `{id, category, subcategory, prompt,
@@ -42,7 +42,7 @@ URL = (
 def main() -> None:
     if pq is None:
         raise SystemExit(
-            "Run with: uv run --with pyarrow python benchmarks/answerability/fetch_coconot.py"
+            "Run with: uv run --with pyarrow python -m benchmarks.answerability.fetch_coconot"
         )
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)

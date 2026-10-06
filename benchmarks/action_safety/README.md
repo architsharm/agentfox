@@ -8,8 +8,8 @@
 4. [payload-box/sql-injection-payload-list](https://github.com/payload-box/sql-injection-payload-list) (MIT) — scores `analyse_arguments()`'s generic scope backstop against raw SQLi fragments; recall 36.1% → 89.3%, false-positive rate 17.6% → 0.0% after two rounds of directed fixes.
 
 ```bash
-uv run --with pyarrow python benchmarks/action_safety/fetch_gretel_sql.py
-uv run python benchmarks/action_safety/run_action_safety_benchmark.py
+uv run --with pyarrow python -m benchmarks.action_safety.fetch_gretel_sql
+uv run python -m benchmarks.action_safety.run_action_safety_benchmark
 ```
 
 ## Dataset 1 — gretelai/synthetic_text_to_sql
@@ -62,8 +62,8 @@ Scores `analyse_arguments()` (the actual public dispatcher `enforcement.py` call
 ```bash
 uv venv /path/to/scratch/.venv
 uv pip install --python /path/to/scratch/.venv/bin/python agentdojo
-AGENTDOJO_VENV_PYTHON=/path/to/scratch/.venv/bin/python uv run python benchmarks/action_safety/fetch_agentdojo.py
-uv run python benchmarks/action_safety/run_agentdojo_benchmark.py
+AGENTDOJO_VENV_PYTHON=/path/to/scratch/.venv/bin/python uv run python -m benchmarks.action_safety.fetch_agentdojo
+uv run python -m benchmarks.action_safety.run_agentdojo_benchmark
 ```
 
 ### What this is testing, and what it isn't
@@ -250,8 +250,8 @@ surfaced six genuine gaps, four of which are now closed above.
 Scores `analyse_arguments()` (the same public dispatcher Dataset 2 scores — `enforcement.py`'s actual entry point) against [payload-box/sql-injection-payload-list](https://github.com/payload-box/sql-injection-payload-list) (MIT — LICENSE fetched and checked directly by `fetch_payloadbox.py` before use, not assumed).
 
 ```bash
-uv run python benchmarks/action_safety/fetch_payloadbox.py
-uv run python benchmarks/action_safety/run_payloadbox_benchmark.py
+uv run python -m benchmarks.action_safety.fetch_payloadbox
+uv run python -m benchmarks.action_safety.run_payloadbox_benchmark
 ```
 
 ### What this is testing, and what it isn't
