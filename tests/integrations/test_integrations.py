@@ -128,7 +128,7 @@ def app(isolated_db):
     # Seeded and closed rather than holding an open session: the `guard` dependency
     # opens its own, and SQLite will not have two writers.
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as s:
         seed(s)

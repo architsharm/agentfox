@@ -16,7 +16,7 @@ call MCP/SDK/gateway integrations make before a tool executes — not the text-o
 `evaluation.redteam` probe runner, which never reaches capability/taint logic at
 all (confirmed by reading it: it only calls `Enforcer.check_content`).
 
-Scenarios use the actual shipped seed data (`agentfox.core.seed.seed`) — real agents
+Scenarios use the actual shipped seed data (`agentfox.fixtures.seed.seed`) — real agents
 (`support-triage`, `payments-ops`), real capability grants, real shipped policies
 (`policies_data/tool-containment.yaml`, `mode: enforce`) — not synthetic fixtures
 invented for this benchmark. `support-triage` is granted `kb.search`, `crm.lookup`,
@@ -33,7 +33,7 @@ from _util import wipe_db
 
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
-from agentfox.core.seed import seed
+from agentfox.fixtures.seed import seed
 from agentfox.registry.control import quarantine
 from agentfox.runtime.enforcement import Enforcer
 

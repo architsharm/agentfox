@@ -69,7 +69,7 @@ def _session():
 def _seeded_session():
     from agentfox.core.db import init_db, session_scope
     from agentfox.core.models import Agent
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     init_db()
     with session_scope() as s:

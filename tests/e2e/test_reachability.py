@@ -29,7 +29,7 @@ def ready(isolated_db):
     """Seeded and committed — the CLI opens its own session, so an uncommitted fixture
     would leave it looking at an empty database."""
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -302,7 +302,7 @@ def test_the_one_liner_captures_conversation_turns(isolated_db, fake_openai):
     from agentfox.containment.escalation import detect_missed_escalation
     from agentfox.core.db import session_scope
     from agentfox.core.models import ConversationTurn
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.runtime.autoguard import auto
 
     with session_scope() as session:
@@ -328,7 +328,7 @@ def test_turns_group_into_one_conversation(isolated_db, fake_openai):
     conversation, and turn-depth conditions can never fire."""
     from agentfox.core.db import session_scope
     from agentfox.core.models import ConversationTurn
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.runtime.autoguard import auto
 
     with session_scope() as session:
@@ -350,7 +350,7 @@ def test_turn_capture_never_breaks_the_call(isolated_db, fake_openai, monkeypatc
     """Observability must not be able to fail the path it is describing."""
     import agentfox.runtime.autoguard as autoguard
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.runtime.autoguard import auto
 
     with session_scope() as session:

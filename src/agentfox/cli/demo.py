@@ -20,9 +20,9 @@ from rich.table import Table
 from agentfox.cli._style import SEVERITY_COLOUR
 from agentfox.core.db import session_scope
 from agentfox.core.models import AuditEntry, EvalSuite, Finding
-from agentfox.core.seed import POISONED_DOCUMENT
 from agentfox.evaluation import gate, run_campaign, set_baseline
 from agentfox.evaluation.runner import NativeEvalRunner
+from agentfox.fixtures.seed import POISONED_DOCUMENT
 from agentfox.identity import assess_posture
 from agentfox.policy import set_mode
 from agentfox.prove.audit import chain, evidence

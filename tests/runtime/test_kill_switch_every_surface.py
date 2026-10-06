@@ -22,7 +22,7 @@ AGENT = "support-triage"
 
 @pytest.fixture
 def client():
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as s:
         seed(s)

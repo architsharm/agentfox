@@ -53,7 +53,7 @@ def seed(
     """Load a demonstrable environment: three agents, policies, controls and an
     eval suite. It records no traffic; `agentfox demo` sends sample requests through
     the seeded agents, which is what fills traces, decisions and findings."""
-    from agentfox.core.seed import seed as run_seed
+    from agentfox.fixtures.seed import seed as run_seed
 
     with _session() as session:
         summary = run_seed(session)
@@ -100,8 +100,8 @@ def demo() -> None:
     """Run the end-to-end walkthrough (offline)."""
     from agentfox.core.db import init_db, session_scope
     from agentfox.core.models import Agent
-    from agentfox.core.seed import register_scripts
-    from agentfox.core.seed import seed as run_seed
+    from agentfox.fixtures.seed import register_scripts
+    from agentfox.fixtures.seed import seed as run_seed
 
     init_db()
     with session_scope() as session:

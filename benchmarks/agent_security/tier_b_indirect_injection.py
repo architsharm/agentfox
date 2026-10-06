@@ -27,7 +27,7 @@ Two things are measured, not one:
 20 cases in `data/tier_b_cases.json`: 10 real, documented indirect-injection
 shapes (HTML comments, fake "system notes", hidden divs, one of them the seeded
 `internal.export_report` poisoned MCP tool description shipped in
-`agentfox.core.seed`) and 10 deliberately benign documents using the same trigger
+`agentfox.fixtures.seed`) and 10 deliberately benign documents using the same trigger
 vocabulary ("ignore", "override", "disregard") with no injection intent — the
 same over-defense discipline as `benchmarks/data_generalization/notinject.json`,
 so a detector that just pattern-matches loaded words doesn't get credit it
@@ -44,8 +44,8 @@ from _util import wipe_db
 
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
-from agentfox.core.seed import seed
 from agentfox.detection import warm_all
+from agentfox.fixtures.seed import seed
 from agentfox.integrations.mcp import McpGovernor
 from agentfox.runtime.enforcement import Enforcer
 
@@ -84,7 +84,7 @@ def score_nometria(cases: list[dict]) -> list[dict]:
             session=session, agent_slug="support-triage", server_name="benchmark-tier-b"
         )
         # `kb.search` is one of support-triage's real granted capabilities (see
-        # agentfox.core.seed.CAPABILITIES) — using a tool_key the agent was never
+        # agentfox.fixtures.seed.CAPABILITIES) — using a tool_key the agent was never
         # granted would make `evaluate()`'s capability check (enforcement.py:349,
         # `if tool_key: decision = check_capability(...)`) fire `capability.denied`
         # on every case regardless of content, masking the actual content-detection

@@ -38,7 +38,7 @@ def _json(output: str):
 
 def _seed() -> dict:
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -227,7 +227,7 @@ def test_scan_mcp_seed_fixture_must_be_asked_for():
 
 
 def test_scan_mcp_scans_the_given_file(tmp_path):
-    from agentfox.core.seed import MCP_TOOLS
+    from agentfox.fixtures.seed import MCP_TOOLS
 
     _seed()
     path = tmp_path / "tools.json"

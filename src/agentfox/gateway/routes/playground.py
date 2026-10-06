@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from agentfox.core.models import Agent
-from agentfox.core.seed import AGENTS, CAPABILITIES, POISONED_DOCUMENT, TOOLS
+from agentfox.fixtures.seed import AGENTS, CAPABILITIES, POISONED_DOCUMENT, TOOLS
 from agentfox.gateway.playground_sessions import (
     SESSION_TTL_SECONDS,
     PlaygroundSession,

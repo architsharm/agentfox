@@ -28,7 +28,7 @@ def flat(output: str) -> str:
 
 def _seed() -> None:
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)

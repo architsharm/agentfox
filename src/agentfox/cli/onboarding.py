@@ -258,7 +258,7 @@ def init(
         console.print(f"  [green]✓[/] wrote {config_path.name}")
 
     if demo:
-        from agentfox.core.seed import seed
+        from agentfox.fixtures.seed import seed
 
         with session_scope() as session:
             seed(session)

@@ -38,7 +38,7 @@ from _util import wipe_db
 
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
-from agentfox.core.seed import seed
+from agentfox.fixtures.seed import seed
 from agentfox.runtime.enforcement import Enforcer
 
 DATA_PATH = Path(__file__).parent / "data" / "tier_c_cases.json"

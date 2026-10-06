@@ -31,7 +31,7 @@ SECRET = "test-service-secret"  # what tests/conftest.py sets
 
 @pytest.fixture
 def ready(isolated_db):
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)

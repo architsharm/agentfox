@@ -28,7 +28,7 @@ def _json(output: str):
 
 def _seed() -> dict:
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -452,7 +452,7 @@ def test_check_still_promises_exactly_what_it_did_before(tmp_path):
 @pytest.fixture
 def walkthrough_output(capsys):
     from agentfox.cli import demo
-    from agentfox.core.seed import register_scripts
+    from agentfox.fixtures.seed import register_scripts
 
     _seed()
     register_scripts()

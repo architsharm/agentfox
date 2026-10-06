@@ -21,7 +21,7 @@ import importlib
 import pytest
 from sqlalchemy import select
 
-from agentfox.core.seed import POISONED_DOCUMENT
+from agentfox.fixtures.seed import POISONED_DOCUMENT
 
 
 @pytest.fixture(autouse=True)
@@ -335,7 +335,7 @@ def test_expiry_does_not_touch_the_deployments_own_data():
     pins the boundary rather than trusting the query."""
     from agentfox.core.db import session_scope
     from agentfox.core.models import Agent
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.gateway.playground_sessions import PlaygroundStore
 
     with session_scope() as session:

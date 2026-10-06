@@ -72,7 +72,7 @@ def _load_demo_fixtures() -> None:
 
         from agentfox.core.db import session_scope
         from agentfox.core.models import EvalSuite
-        from agentfox.core.seed import register_scripts
+        from agentfox.fixtures.seed import register_scripts
 
         with session_scope() as session:
             if session.scalar(select(EvalSuite).where(EvalSuite.key == "support-quality")):

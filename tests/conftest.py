@@ -76,7 +76,7 @@ def session() -> Iterator[Session]:
 @pytest.fixture
 def seeded(session) -> Session:
     """A seeded environment: agents, identities, capabilities, policies, controls."""
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     seed(session)
     return session
@@ -95,7 +95,7 @@ def client(tmp_path):
     from fastapi.testclient import TestClient
 
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.gateway.app import create_app
 
     with session_scope() as s:

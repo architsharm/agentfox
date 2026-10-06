@@ -49,8 +49,8 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.db import get_sessionmaker
 from agentfox.core.models import Base, PlaygroundSandbox, TenantScoped, as_aware, utcnow
-from agentfox.core.seed import seed as seed_world
 from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.fixtures.seed import seed as seed_world
 
 log = logging.getLogger(__name__)
 

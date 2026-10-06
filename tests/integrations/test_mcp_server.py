@@ -337,7 +337,7 @@ def test_unknown_finding_is_a_genuine_failure():
 
 def test_guard_text_blocks_injection():
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)
