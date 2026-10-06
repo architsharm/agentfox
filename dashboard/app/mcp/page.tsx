@@ -25,7 +25,7 @@ const RISKS = [
     what: "A server passes review, an agent is authorised against it, and the tool's schema or description changes afterwards.",
     us: "Checked at call time",
     covered: true,
-    how: "The digest from when the agent was authorised is compared with the digest at the call.",
+    how: "The tool's reviewed definition, kept once for the whole org, is compared with what the server lists at the call.",
   },
   {
     risk: "Tool poisoning",
@@ -99,7 +99,7 @@ export default function Page() {
       steps={[
         {
           title: "A Monday scan says nothing about Thursday",
-          body: <p>The comparison happens when the tool is called, against the digest from when the agent was authorised.</p>,
+          body: <p>The comparison happens when the tool is called, against the definition someone reviewed. There is one per tool for the whole org, not a copy per grant.</p>,
         },
         {
           title: "The client does not matter",
