@@ -1,6 +1,6 @@
 # Code structure proposal: harnesses, capability packs, and a layout newcomers can follow
 
-Status: decided 2026-10-06 (section 9); phases 0-2 are done. The fix branches this waited on
+Status: decided 2026-10-06 (section 9); phases 0-2 and 5 are done. The fix branches this waited on
 (security, policy, approvals, gates-detection, grounding, webapp, monitor-sources,
 monitor-probes, contributor-guide) have merged. Section 10 records what is already done and
 what remains per phase.
@@ -351,6 +351,37 @@ proves the business-pack story.
     `harness/scripts/check_harness.py`) writes with `--write` and fails on in CI. The docs
     page moved to `/docs/plugin`, with a permanent redirect from `/docs/harness`. The
     evaluation code no longer calls its runner a harness.
+- Phase 5 (repository outside `src/`), with no URL changed:
+  - **Benchmarks.** One folder per claim family: `agentdojo_e2e/` is `agentdojo/`; the loose
+    prompt-injection files are `injection/` and the generalization files `generalization/`
+    (each with `data/` and `results/`). `judgment/` keeps both `judgment.*` and `jev.*`, because
+    Jev is the judgment tier's model; `claims.yaml` says so. `benchmarks/` is a package and
+    `benchmarks/_common` holds `wipe_db`, `fetch` and the PII span arithmetic; every
+    `sys.path.insert` is gone and scripts run as `python -m benchmarks.<family>.<script>`. Only
+    code that was copied verbatim moved: the per-dataset loaders, `score` and `run_config`
+    differ in what they score, so they stayed. `jev_data.py` and `final_numbers.json` were never
+    in the repository (they are ignored local research files, moved out on purpose earlier), so
+    there was nothing to move.
+  - **Demo.** `demo/kit/` holds the one support-tools agent, seed and verification. The CrewAI
+    demo imports it; the LangGraph demo deploys on Vercel with `demo/redteam-live-lang` as its
+    root directory, so it carries a committed copy in `kit/` that `scripts/check/demo_kit.py`
+    keeps identical (CI, `just check`, `tests/repo/test_demo_kit.py`). The folders keep their
+    names because the Vercel root directory cannot follow a rename from the repository.
+  - **Scripts.** `scripts/gen/` (api_routes, docs_reference, coverage, new_harness),
+    `scripts/check/` (claims, plugins, demo_kit, the vendored-wheel hook), `scripts/ops/`
+    (deploy_smoke). `scripts/probe/` stays because `src` names it, and `scripts/quickscan.sh`
+    stays because the README publishes its raw URL.
+  - **Dashboard.** `app/(marketing)/`, `app/(product)/app/` and `/login`, `app/docs/`,
+    `app/api/`; `components/{product,marketing,docs,ui}/`;
+    `lib/{product,marketing,docs,generated}/`. The home page and `app/blog/` stay at the app root:
+    inside a group Next hashes their Open Graph image URLs. The build's route manifest has the
+    same 166 URLs, redirects and prerendered routes before and after.
+  - **Deploy.** Already in shape: `deploy/` has the Dockerfiles, compose, the dashboard Render and
+    Fly configs. `render.yaml` stays at the root (the Render button reads only there) and `api/`
+    stays (Vercel's root directory for the gateway). The `neon-catchup-*.sql` files stay: no doc
+    records them as applied.
+  - **Docs and commands.** `docs/adr/` with ADR 0001; `just new-harness <name>` scaffolds an
+    adapter from `scripts/templates/harness/`.
 
 **Remaining, per phase:**
 
@@ -361,7 +392,7 @@ proves the business-pack story.
 | 2. Harness SPI | Done. `agentfox hooks capture` and the `just new-harness` scaffolder (section 7) are not built; a PostToolUse fixture should be re-captured verbatim at the next probe |
 | 3. Second harness | Deferred (section 9) |
 | 4. Packs | All of it |
-| 5. Repo outside src | All of it except the `justfile` itself (the scaffolder recipes remain); wheels deferred (section 9) |
+| 5. Repo outside src | Done, except: building wheels at deploy time (deferred, section 9); `just new-pack` (phase 4); `docs/getting-started.md` and `docs/product-tour.md` are user docs still in `docs/` (fold into the website docs, then delete); three comments and one data string in `src/` still cite pre-phase-5 paths (`scripts/api_routes.py` in `apps/gateway/app.py` and `routes/inline.py`, `benchmarks/agentdojo_e2e/` in `discovery/exposure.py`, `benchmarks/data_generalization/` in `detection/data/injection_corpus.json`), left so this phase needed no wheel rebuild |
 | 6. Capability-owned models and routers | All of it (optional) |
 
 ## Sources (from the research pass)
