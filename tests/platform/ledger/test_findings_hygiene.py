@@ -280,7 +280,7 @@ def test_drift_is_one_finding_per_scorer_and_closes_when_the_window_is_clean(ses
 
 
 def test_a_false_resolution_rescan_does_not_refile(seeded):
-    from agentfox.containment.escalation import detect_false_resolution, record_turn
+    from agentfox.capabilities.containment.escalation import detect_false_resolution, record_turn
 
     agent = seeded.scalar(select(Agent).where(Agent.slug == "support-triage"))
     record_turn(

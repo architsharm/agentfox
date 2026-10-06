@@ -298,7 +298,7 @@ def score_turn(
     stays out of it, which also stops a single blatant turn from manufacturing
     a trajectory out of nothing.
     """
-    from agentfox.containment.escalation import claims_resolution
+    from agentfox.capabilities.containment.escalation import claims_resolution
 
     # Truncated once, here, and every component below reads the truncated body —
     # including `claims_resolution`, whose lexicon would otherwise be run over the

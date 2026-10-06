@@ -7,6 +7,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from agentfox.capabilities.containment.control_flow import Plan
+from agentfox.capabilities.containment.control_flow import check_selection as check_tool_selection
 from agentfox.capabilities.detection import DetectionContext
 from agentfox.capabilities.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
 from agentfox.capabilities.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
@@ -34,8 +36,6 @@ from agentfox.capabilities.grounding.integrity import assess_integrity
 from agentfox.capabilities.grounding.provenance import assess_provenance
 from agentfox.capabilities.grounding.register import check_register
 from agentfox.capabilities.grounding.sycophancy import check_premises
-from agentfox.containment.control_flow import Plan
-from agentfox.containment.control_flow import check_selection as check_tool_selection
 from agentfox.core.models import Agent
 
 log = logging.getLogger("agentfox.runtime.enforcement")

@@ -344,7 +344,7 @@ def escalation_set(
     """Declare when this agent must hand off to a human."""
     from sqlalchemy import select
 
-    from agentfox.containment.escalation import set_policy
+    from agentfox.capabilities.containment.escalation import set_policy
     from agentfox.core.models import Agent
 
     conditions: dict[str, Any] = {}
@@ -396,7 +396,7 @@ def escalation_scan(
     conversation where the agent kept going instead of handing off looks entirely
     ordinary in the telemetry.
     """
-    from agentfox.containment.escalation import detect_missed_escalation, run_scan
+    from agentfox.capabilities.containment.escalation import detect_missed_escalation, run_scan
 
     with _session() as session:
         if apply:

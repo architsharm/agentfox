@@ -23,7 +23,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agentfox.containment.escalation import escalation_report
+from agentfox.capabilities.containment.escalation import escalation_report
 from agentfox.core.models import (
     Decision,
     DetectorRun,

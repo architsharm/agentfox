@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.capabilities.compliance.status import ensure_compliance_computed
-from agentfox.containment.findings import (
+from agentfox.capabilities.containment.findings import (
     CAUSES,
     cause_of,
     decision_scope,

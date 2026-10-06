@@ -97,7 +97,7 @@ def chat(
     payload: PlaygroundChatRequest,
     record: PlaygroundSession = Depends(playground_session),
 ) -> dict[str, Any]:
-    from agentfox.containment.escalation import record_turn
+    from agentfox.capabilities.containment.escalation import record_turn
     from agentfox.runtime.enforcement import Enforcer
 
     if not payload.message.strip():

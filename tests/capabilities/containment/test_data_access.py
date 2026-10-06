@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.containment.data_access import (
+from agentfox.capabilities.containment.data_access import (
     ReferenceTable,
     ScopeRule,
     analyse_access,

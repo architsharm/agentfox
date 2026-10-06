@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.containment.escalation import (
+from agentfox.capabilities.containment.escalation import (
     DEFAULT_CONDITIONS,
     assess,
     detect_missed_escalation,

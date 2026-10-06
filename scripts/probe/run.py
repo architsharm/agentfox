@@ -676,7 +676,7 @@ def probe_subagent_taint() -> Result:
 
 
 def probe_missed_escalation() -> Result:
-    from agentfox.containment.escalation import detect_missed_escalation, record_turn
+    from agentfox.capabilities.containment.escalation import detect_missed_escalation, record_turn
 
     with _session() as s:
         record_turn(
@@ -690,14 +690,14 @@ def probe_missed_escalation() -> Result:
 
 
 def probe_handoff_context() -> Result:
-    from agentfox.containment.escalation import handoff_completeness
+    from agentfox.capabilities.containment.escalation import handoff_completeness
 
     poor = handoff_completeness({"user_request": "refund"})
     return not poor["complete"], f"missing {poor['missing']}"
 
 
 def probe_loop_no_handoff() -> Result:
-    from agentfox.containment.escalation import _loop_without_handoff, record_turn
+    from agentfox.capabilities.containment.escalation import _loop_without_handoff, record_turn
 
     with _session() as s:
         for _ in range(3):
@@ -712,7 +712,7 @@ def probe_loop_no_handoff() -> Result:
 
 
 def probe_false_resolution() -> Result:
-    from agentfox.containment.escalation import detect_false_resolution, record_turn
+    from agentfox.capabilities.containment.escalation import detect_false_resolution, record_turn
 
     with _session() as s:
         record_turn(
@@ -731,7 +731,7 @@ def probe_false_resolution() -> Result:
 def probe_sla_breach() -> Result:
     import datetime as dt
 
-    from agentfox.containment.escalation import breached_handoffs, raise_handoff
+    from agentfox.capabilities.containment.escalation import breached_handoffs, raise_handoff
     from agentfox.core.models import utcnow
 
     with _session() as s:
@@ -745,7 +745,7 @@ def probe_sla_breach() -> Result:
 
 
 def probe_distress() -> Result:
-    from agentfox.containment.escalation import sentiment_signal
+    from agentfox.capabilities.containment.escalation import sentiment_signal
 
     harm = sentiment_signal("I want to hurt myself")
     legal = sentiment_signal("I am calling my lawyer")
@@ -1378,7 +1378,7 @@ def probe_agent_message_security() -> Result:
 
     from cryptography.fernet import Fernet
 
-    from agentfox.containment.agent_messaging import mint_signing_key, sign_message
+    from agentfox.capabilities.containment.agent_messaging import mint_signing_key, sign_message
     from agentfox.core.config import reset_settings_cache
     from agentfox.core.models import Agent
     from agentfox.runtime.enforcement import Enforcer
@@ -1494,7 +1494,7 @@ def probe_fairness() -> Result:
 
 
 def probe_duplicate_execution() -> Result:
-    from agentfox.containment.effects import EffectLedger
+    from agentfox.capabilities.containment.effects import EffectLedger
 
     ledger = EffectLedger()
     args = {"order": "A-1", "amount": 50, "request_id": "r1", "timestamp": "2026-01-01"}
@@ -1517,7 +1517,7 @@ def probe_duplicate_execution() -> Result:
 
 
 def probe_compensation() -> Result:
-    from agentfox.containment.effects import Step, compensation_plan
+    from agentfox.capabilities.containment.effects import Step, compensation_plan
 
     sequence = [
         Step("email.send", irreversible=True),
@@ -1547,7 +1547,7 @@ def probe_compensation() -> Result:
 
 
 def probe_cascade() -> Result:
-    from agentfox.containment.effects import cascade_risk
+    from agentfox.capabilities.containment.effects import cascade_risk
 
     triggers = {
         "orders.update": ["events.publish"],
@@ -1617,7 +1617,7 @@ _RULES = None
 
 
 def _access_fixtures():
-    from agentfox.containment.data_access import ReferenceTable, ScopeRule
+    from agentfox.capabilities.containment.data_access import ReferenceTable, ScopeRule
 
     return (
         [
@@ -1632,7 +1632,7 @@ def _access_fixtures():
 
 
 def probe_unscoped_read() -> Result:
-    from agentfox.containment.data_access import analyse_access
+    from agentfox.capabilities.containment.data_access import analyse_access
 
     rules, reference, me = _access_fixtures()
     unscoped = analyse_access(
@@ -1657,7 +1657,7 @@ def probe_unscoped_read() -> Result:
 
 
 def probe_scope_bound_to_literal() -> Result:
-    from agentfox.containment.data_access import analyse_access
+    from agentfox.capabilities.containment.data_access import analyse_access
 
     rules, reference, me = _access_fixtures()
     escalation = analyse_access(

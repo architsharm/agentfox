@@ -337,7 +337,7 @@ def _record_turn(
         )
         if not user_text:
             return
-        from agentfox.containment.escalation import record_turn
+        from agentfox.capabilities.containment.escalation import record_turn
         from agentfox.core.db import session_scope
         from agentfox.core.models import Agent
 

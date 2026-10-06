@@ -15,6 +15,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.business.graph import combine as combine_business
+from agentfox.capabilities.containment.findings import (
+    detector_verdict,
+    is_detector_rule,
+    matches_detector_rule,
+    raise_containment_findings,
+)
 from agentfox.capabilities.detection import (
     DetectionContext,
     DetectorPipeline,
@@ -31,12 +37,6 @@ from agentfox.capabilities.detection.tuning import (
     filter_suppressed,
 )
 from agentfox.capabilities.grounding.context_integrity import assemble_context
-from agentfox.containment.findings import (
-    detector_verdict,
-    is_detector_rule,
-    matches_detector_rule,
-    raise_containment_findings,
-)
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Decision, Identity, Tool, Trace, as_aware, utcnow
 from agentfox.platform.identity import (

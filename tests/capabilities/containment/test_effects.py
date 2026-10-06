@@ -13,7 +13,7 @@ import datetime as dt
 
 import pytest
 
-from agentfox.containment.effects import (
+from agentfox.capabilities.containment.effects import (
     EffectLedger,
     Step,
     assess_effects,

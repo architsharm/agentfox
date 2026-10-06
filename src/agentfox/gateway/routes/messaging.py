@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.containment.agent_messaging import mint_signing_key
+from agentfox.capabilities.containment.agent_messaging import mint_signing_key
 from agentfox.core.models import AgentMessageLog, AgentSigningKey, User
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 

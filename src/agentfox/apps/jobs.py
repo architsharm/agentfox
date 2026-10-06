@@ -303,7 +303,7 @@ def propose_from_traffic(session: Session, payload: dict[str, Any]) -> dict[str,
 
 def scan_escalations(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     """Missed escalations, false resolutions and SLA breaches, on a schedule."""
-    from agentfox.containment.escalation import scheduled_scan
+    from agentfox.capabilities.containment.escalation import scheduled_scan
 
     return scheduled_scan(session, since_hours=int(payload.get("since_hours", 24)))
 

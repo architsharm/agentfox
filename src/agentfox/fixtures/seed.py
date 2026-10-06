@@ -19,11 +19,11 @@ from sqlalchemy.orm import Session
 
 from agentfox.capabilities.compliance.catalog import sync_catalog, sync_obligations
 from agentfox.capabilities.compliance.risk import assess
+from agentfox.capabilities.containment.escalation import Trigger, raise_handoff, record_turn
 from agentfox.capabilities.grounding.answerability import FACT, PROCEDURE, declare_boundary
 from agentfox.capabilities.grounding.entitlement import grant as grant_resource
 from agentfox.capabilities.grounding.entitlement import upsert_principal
 from agentfox.capabilities.grounding.provenance import APPROVED, SYSTEM_OF_RECORD, register_source
-from agentfox.containment.escalation import Trigger, raise_handoff, record_turn
 from agentfox.core.models import (
     SLO,
     AccessScopeRule,

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.containment.agent_messaging import mint_signing_key, sign_message
+from agentfox.capabilities.containment.agent_messaging import mint_signing_key, sign_message
 from agentfox.core.models import Agent, AgentMessageLog, MemoryEntry
 from agentfox.platform.policy import set_mode
 from tests.conftest import INDIRECT_INJECTION, SECRET_TEXT, as_user

@@ -13,7 +13,7 @@ import datetime as dt
 
 import pytest
 
-from agentfox.containment.escalation import (
+from agentfox.capabilities.containment.escalation import (
     DEFAULT_CONDITIONS,
     REQUIRED_CONTEXT,
     _loop_without_handoff,
@@ -571,7 +571,7 @@ def test_an_observing_policy_queues_nothing_live(seeded, agent_id):
 
 
 def test_the_scheduled_scan_records_observe_and_hands_off_enforce(seeded, agent_id):
-    from agentfox.containment.escalation import scheduled_scan
+    from agentfox.capabilities.containment.escalation import scheduled_scan
 
     other = seeded.query(Agent).filter(Agent.id != agent_id).first()
     set_policy(seeded, agent_id=agent_id, mode="observe")

@@ -21,7 +21,7 @@ import type { CSSProperties, ReactNode } from "react";
  *   - grant record layout ........... src/agentfox/cli/capability_cli.py grant()
  *   - finding types and titles ...... src/agentfox/evaluation/redteam.py,
  *                                     src/agentfox/capabilities/grounding/provenance.py,
- *                                     src/agentfox/containment/escalation.py,
+ *                                     src/agentfox/capabilities/containment/escalation.py,
  *                                     src/agentfox/capabilities/grounding/answerability.py
  *   - chain wording ................. Playground.tsx audit panel
  *   - chain break reasons ........... src/agentfox/platform/ledger/chain.py verify()

@@ -8,14 +8,14 @@ PII.EMAIL" and nothing else.
 
 from __future__ import annotations
 
-from agentfox.capabilities.detection.taint import TaintTracker
-from agentfox.containment.findings import (
+from agentfox.capabilities.containment.findings import (
     cause_of,
     detector_verdict,
     raise_containment_findings,
     story,
     untrusted_source,
 )
+from agentfox.capabilities.detection.taint import TaintTracker
 from agentfox.core.models import Finding
 from agentfox.platform.policy import set_mode
 
@@ -186,7 +186,7 @@ def test_nothing_raised_without_a_containing_rule(seeded):
 def test_a_finding_says_contained_only_when_the_call_was_stopped(seeded):
     """auto(mode="observe") lets a refused tool call run; its finding must not say
     "contained" — the attacker email that went out was reported as contained."""
-    from agentfox.containment.findings import raise_containment_findings
+    from agentfox.capabilities.containment.findings import raise_containment_findings
 
     rule = {"rule_id": "taint.irreversible_tool", "effect": "escalate", "mode": "enforce"}
     for scope, expected in (

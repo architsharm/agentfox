@@ -15,11 +15,11 @@ from agentfox.business.graph import BUSINESS_RANK
 from agentfox.business.ladder import LadderDecision
 from agentfox.business.ladder import evaluate as evaluate_ladder
 from agentfox.business.store import load_ladders
+from agentfox.capabilities.containment.data_access import ReferenceTable, ScopeRule
+from agentfox.capabilities.containment.data_access import analyse_access as analyse_data_access
+from agentfox.capabilities.containment.effects import cascade_risk
 from agentfox.capabilities.detection import TaintTracker
 from agentfox.capabilities.detection.actions import find_sql_argument
-from agentfox.containment.data_access import ReferenceTable, ScopeRule
-from agentfox.containment.data_access import analyse_access as analyse_data_access
-from agentfox.containment.effects import cascade_risk
 from agentfox.core.models import AccessScopeRule, Agent, TaintTag, Tool, Trace
 from agentfox.core.vocab import taint_rank
 from agentfox.platform.registry.service import record_edge

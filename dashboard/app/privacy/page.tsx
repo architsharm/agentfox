@@ -89,7 +89,7 @@ export default function Privacy() {
                 it is stored. Paste accordingly.
               </p>
               <Ref>
-                src/agentfox/gateway/routes/playground.py:87-143; src/agentfox/containment/escalation.py:204-247
+                src/agentfox/gateway/routes/playground.py:87-143; src/agentfox/capabilities/containment/escalation.py:204-247
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 Every one of those rows is written under an{" "}

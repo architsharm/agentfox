@@ -12,8 +12,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from agentfox.capabilities.containment.agent_messaging import verify_message
 from agentfox.capabilities.detection import TaintTracker
-from agentfox.containment.agent_messaging import verify_message
 from agentfox.core.crypto import DecryptionFailed, decrypt_secret
 from agentfox.core.models import (
     Agent,

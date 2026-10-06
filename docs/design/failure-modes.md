@@ -146,7 +146,7 @@ The largest category by real-world share, and the one that saw the most build-ou
 | F5.6 | **Dropped hand-off** | Escalation raised, nobody owns it, no SLA | ✅ |
 | F5.7 | **Sentiment/urgency blindness** | Misses a distressed or legally-charged user | ✅ |
 
-**Built and live:** `src/agentfox/containment/escalation.py`, wired via `autoguard.py`'s per-turn recording (retrospective by design — missed-escalation detection can only be judged over a conversation, not a single message) — a per-agent escalation policy (conditions that must trigger hand-off: low confidence, repeated failure, user frustration, out-of-scope, regulated topic), counterfactual detection ("this should have escalated, and didn't"), context-complete hand-off packages, and owner + SLA tracking on the queue. The dashboard's hand-off queue reads from this directly.
+**Built and live:** `src/agentfox/capabilities/containment/escalation.py`, wired via `autoguard.py`'s per-turn recording (retrospective by design — missed-escalation detection can only be judged over a conversation, not a single message) — a per-agent escalation policy (conditions that must trigger hand-off: low confidence, repeated failure, user frustration, out-of-scope, regulated topic), counterfactual detection ("this should have escalated, and didn't"), context-complete hand-off packages, and owner + SLA tracking on the queue. The dashboard's hand-off queue reads from this directly.
 
 **F5.4 stays ◐:** what's measured is a turn-depth-correlated abstention-rate proxy, not an actual quality-trend measurement against ground truth — a real signal, but not the same claim as "we detect the conversation getting worse."
 
