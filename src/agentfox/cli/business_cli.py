@@ -69,7 +69,23 @@ def rules_apply(
         raise typer.Exit(1) from exc
 
     with _session() as session:
-        save_ladder(session, ladder, agent_slug=agent)
+        try:
+            save_ladder(session, ladder, agent_slug=agent)
+        except ValueError as exc:
+            # An unknown --agent used to surface as a raw ValueError traceback.
+            from sqlalchemy import select
+
+            from agentfox.core.models import Agent
+
+            console.print(f"[red]{exc}[/] — nothing was saved.")
+            if agent:
+                known = sorted(session.scalars(select(Agent.slug)))
+                console.print(
+                    f"  known agents: {', '.join(known)}"
+                    if known
+                    else "  no agents are registered yet — `agentfox agents register SLUG`."
+                )
+            raise typer.Exit(1) from None
 
     console.print(
         f"[green]✓[/] [bold]{ladder.key}[/] — {len(ladder.bands)} bands on "

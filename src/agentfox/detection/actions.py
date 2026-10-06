@@ -218,8 +218,8 @@ def analyse_sql(statement: str, *, dialect: str = "postgres") -> ActionAnalysis:
                 code="analysis.unavailable",
                 severity="critical",
                 detail="sqlglot is not installed, so this statement cannot be analysed. "
-                "Install agentfox[sql] or the action is refused — an unanalysable "
-                "statement is not a safe statement.",
+                "Run `pip install 'agentfox[sql]'`, or the action is refused — an "
+                "unanalysable statement is not a safe statement.",
             )
         )
         return analysis

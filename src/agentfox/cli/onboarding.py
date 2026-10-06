@@ -125,6 +125,28 @@ def _print_next_steps(steps: list[tuple[str, str]]) -> None:
     console.print(Panel(table, title="[bold]Next[/]", title_align="left", border_style="dim"))
 
 
+def database_error_hint(exc: BaseException, url: str = "") -> str:
+    """One readable sentence for a database that will not open, instead of a traceback.
+
+    The case that motivated it: a Postgres database created with ``SQL_ASCII``
+    encoding returns its server version as bytes, and the driver fails with "cannot
+    use a string pattern on a bytes-like object", which says nothing about encoding.
+    """
+    text = f"{type(exc).__name__}: {exc}"
+    lowered = text.lower()
+    if "sql_ascii" in lowered or "bytes-like object" in lowered or "bytes pattern" in lowered:
+        return (
+            "the Postgres database is not UTF8-encoded (SQL_ASCII). AgentFox needs a UTF8 "
+            "database: create it with `CREATE DATABASE agentfox ENCODING 'UTF8' "
+            "TEMPLATE template0;` and point AGENTFOX_DATABASE_URL at it."
+        )
+    if "could not connect" in lowered or "connection refused" in lowered:
+        return f"could not connect to the database at {url or 'AGENTFOX_DATABASE_URL'} ({exc})"
+    if "no module named" in lowered and "psycopg" in lowered:
+        return "the Postgres driver is not installed: `pip install 'agentfox[postgres]'`."
+    return text
+
+
 def init(
     path: Path = typer.Option(
         Path("."), "--path", "-p", help="Where to write agentfox.toml. Default: here."
@@ -158,10 +180,28 @@ def init(
     from agentfox.policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
     from agentfox.prove.compliance import load_catalog, sync_catalog
 
+    from rich.markup import escape
+
+    if not Path(path).is_dir():
+        # Checked first, so a typo does not leave a half-initialised database behind
+        # and then fail on the write with a FileNotFoundError traceback.
+        console.print(
+            f"[red]--path {escape(str(path))} is not a directory[/] — create it first, "
+            "or point --path at an existing one."
+        )
+        raise typer.Exit(2)
+
     settings = get_settings()
     console.print("[bold]Setting up AgentFox[/]")
 
-    init_db()
+    try:
+        init_db()
+    except Exception as exc:
+        console.print(
+            "[red]database could not be set up:[/] "
+            + escape(database_error_hint(exc, settings.database_url))
+        )
+        raise typer.Exit(1) from None
     console.print(f"  [green]✓[/] database ready  [dim]{settings.database_url}[/]")
 
     with session_scope() as session:
@@ -430,7 +470,7 @@ def doctor(
             )
         add("ok", "database", f"reachable — {agents} agent(s), {traces} trace(s)")
     except Exception as exc:
-        add("bad", "database", f"unreachable: {exc}")
+        add("bad", "database", f"unreachable: {database_error_hint(exc, settings.database_url)}")
         agents = traces = decisions = findings = boundaries = enforcing = 0
         tools_declared = tools_acting = grants = scoped_tables = 0
 
@@ -518,20 +558,42 @@ def doctor(
         "as ordinary. Declare with `agentfox declare scope <table> --column ...`.",
     )
 
-    detectors = available_detectors()
-    add(
-        "ok" if detectors else "bad",
-        "detectors",
-        f"{len(detectors)} available: {', '.join(sorted(detectors))}",
-    )
+    # What runs is enabled ∩ available (see DetectorPipeline.select). Listing every
+    # *available* detector showed ones nobody enabled (pii.presidio) and hid the
+    # enabled ones that cannot run (a classifier without its model), which is the
+    # one thing this line exists to say.
+    from agentfox.detection import all_detectors
+
+    live = available_detectors()
+    enabled = list(dict.fromkeys(settings.enabled_detectors))
+    running = sorted(k for k in enabled if k in live)
+    missing = [k for k in enabled if k not in live]
+    known = all_detectors()
+
+    def _why(key: str) -> str:
+        detector = known.get(key)
+        if detector is None:
+            return "no such detector"
+        reason = getattr(detector, "unavailable_reason", None)
+        reason = reason() if callable(reason) else reason
+        return str(reason or "its dependency is not installed")
+
+    detail = f"{len(running)} running: {', '.join(running) or 'none'}"
+    if missing:
+        detail += "; enabled but unavailable: " + ", ".join(
+            f"{key} ({_why(key)})" for key in missing
+        )
+    add("bad" if not running else "warn" if missing else "ok", "detectors", detail)
 
     providers = available_providers()
-    if providers == {"echo"}:
+    # available_providers() returns a dict; comparing it to a set was always False,
+    # so the offline-only message never showed.
+    if set(providers) == {"echo"}:
         add(
             "ok",
             "providers",
             "offline only (echo). No model call can leave this machine — set "
-            "NOMETRIA_ALLOW_EGRESS=1 and a key to change that.",
+            "AGENTFOX_ALLOW_EGRESS=1 and a key to change that.",
         )
     else:
         add("ok", "providers", f"{', '.join(sorted(providers))}")
