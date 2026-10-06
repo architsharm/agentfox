@@ -1,0 +1,54 @@
+# The support desk of the demo world (`fixtures/seed.py`): its tools, the triage agent
+# and that agent's grants. `impact` is the axis every containment rule reasons over.
+tools:
+- key: kb.search
+  name: Knowledge base search
+  impact: read
+  description: Search the internal support knowledge base.
+- key: crm.lookup
+  name: CRM customer lookup
+  impact: read
+  description: Look up a customer record by id or email.
+- key: tickets.create
+  name: Create support ticket
+  impact: write
+  description: Open a support ticket on behalf of a customer.
+- key: tickets.update
+  name: Update support ticket
+  impact: write
+  description: Update an existing ticket.
+  # A status change fires the helpdesk's own notification webhook, which sends mail
+  # nobody asked this call to send. Looks like a plain write; the declared trigger is
+  # what lets cascade_risk() see the irreversible tail.
+  triggers:
+  - email.send
+- key: email.send
+  name: Send email
+  impact: irreversible
+  description: Send an email to an external recipient. Cannot be recalled.
+agents:
+- slug: support-triage
+  name: Support Triage Agent
+  purpose: Chat assistant that triages inbound customer support conversations, searches the
+    knowledge base and opens tickets.
+  owner_email: priya@example.com
+  owner_team: Platform Engineering
+  risk_tier: limited
+  framework: langgraph
+  declared_models:
+  - echo-1
+  declared_tools:
+  - kb.search
+  - crm.lookup
+  - tickets.create
+  - tickets.update
+  data_classes:
+  - pii
+capabilities:
+  support-triage:
+  - tool_key: kb.search
+    max_taint: retrieved
+  - tool_key: crm.lookup
+    max_taint: user
+  - tool_key: tickets.*
+    max_taint: user

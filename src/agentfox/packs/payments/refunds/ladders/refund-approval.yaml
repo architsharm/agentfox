@@ -1,0 +1,15 @@
+# "Refunds under $10 auto-approve; $10–100 run a validation check; over $100 needs a
+# human." A template: it governs nothing until you apply it
+# (`agentfox policy rules apply <this file>`), in observe unless you say otherwise.
+key: refund-approval
+tool: payments.refund
+field: arguments.amount
+unit: USD
+bands:
+  - upto: 10
+    outcome: allow
+  - upto: 100
+    outcome: verify
+    verify: {check: risk.refund_check, on_fail: escalate}
+  - outcome: escalate
+    approver_role: finance

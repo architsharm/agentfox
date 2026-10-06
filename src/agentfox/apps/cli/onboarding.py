@@ -673,6 +673,31 @@ def doctor(
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
+def _finding_types(as_json: bool) -> None:
+    """The finding-type registry (`platform/ledger/finding_types.py`), packs' types included."""
+    from rich.table import Table
+
+    from agentfox.platform.ledger.finding_types import all_types
+
+    entries = all_types()
+    if as_json:
+        console.print_json(json.dumps([entry.to_json() for entry in entries]))
+        return
+    table = Table(box=None, pad_edge=False)
+    for column in ("type", "severity", "owner", "title"):
+        table.add_column(column, style="bold" if column == "type" else None)
+    for entry in entries:
+        colour = SEVERITY_COLOUR.get(entry.severity, "dim")
+        table.add_row(
+            entry.type,
+            f"[{colour}]{entry.severity}[/]",
+            f"[dim]{entry.owner}[/]",
+            entry.title,
+        )
+    console.print(table)
+    console.print("\n[dim]`agentfox findings --types --json` adds what each one means.[/]")
+
+
 def findings_cmd(
     severity: str | None = typer.Option(
         None,
@@ -686,16 +711,25 @@ def findings_cmd(
         "--json",
         help="Full records for scripts: whole ids, fingerprints, subjects and timestamps.",
     ),
+    types: bool = typer.Option(
+        False,
+        "--types",
+        help="List every finding type instead: what each means, its usual severity, who raises it.",
+    ),
 ) -> None:
     """What the platform found. The list `agentfox.auto()` tells you to read.
 
     Ordered worst first, then most recently seen. A finding that keeps happening is
     one row with a count, not one row per occurrence, so the length of this list is
-    the number of distinct problems.
+    the number of distinct problems. `--types` lists the kinds of finding there are.
     """
     from sqlalchemy import case, func, select
 
     from agentfox.core.models import Finding
+
+    if types:
+        _finding_types(as_json)
+        return
 
     if severity and severity not in SEVERITY_RANK:
         console.print(

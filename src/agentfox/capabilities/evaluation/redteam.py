@@ -49,12 +49,14 @@ default.
 
 from __future__ import annotations
 
+import logging
 import random
 import shutil
 import subprocess
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -68,6 +70,8 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.platform.ledger.findings import raise_finding, resolve_finding
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -419,6 +423,34 @@ BUILTIN_PROBES: list[Probe] = [
 ]
 
 
+def pack_probes() -> list[Probe]:
+    """Probes the loaded capability packs ship in ``probes/*.yaml``, in pack order.
+
+    Each file holds ``probes:``, a list of `Probe` fields. A probe whose key a built-in
+    or an earlier pack already uses is skipped with a warning: the key is the probe's
+    identity in every campaign and finding.
+    """
+    from agentfox.platform.packs import load_packs
+
+    seen = {probe.key for probe in BUILTIN_PROBES}
+    out: list[Probe] = []
+    for pack in load_packs():
+        for path in pack.files("probes"):
+            for spec in (yaml.safe_load(path.read_text()) or {}).get("probes") or []:
+                probe = Probe(**spec)
+                if probe.key in seen:
+                    log.warning("probe %s in %s ignored: the key is taken", probe.key, path)
+                    continue
+                seen.add(probe.key)
+                out.append(probe)
+    return out
+
+
+def available_probes() -> list[Probe]:
+    """The built-in probe library, then every loaded pack's probes."""
+    return [*BUILTIN_PROBES, *pack_probes()]
+
+
 class RedTeamRunner(Protocol):
     name: str
 
@@ -519,7 +551,7 @@ class NativeRedTeamRunner:
         identity = ensure_identity(session, agent) if agent else None
 
         outcomes: list[ProbeOutcome] = []
-        for probe in probes or BUILTIN_PROBES:
+        for probe in probes or available_probes():
             if probe.kind == "content":
                 decision = enforcer.check_content(
                     agent_slug=agent_slug,
@@ -979,7 +1011,7 @@ def run_campaign(
     the enforcement pipeline itself has; see `adaptive.py`'s module docstring for the
     one timing-dependent path that can move a high-risk agent's count by one.
     """
-    pool = list(BUILTIN_PROBES)
+    pool = available_probes()
     profile: dict[str, Any] = {}
     if adaptive and include_deployment_probes:
         from agentfox.capabilities.evaluation.adaptive import (
