@@ -707,7 +707,50 @@ _DESCRIPTION_INJECTION = [
     re.compile(
         r"\bbefore\s+(?:using|calling)\s+this\s+tool,?\s+(?:you\s+)?(?:must|should)\b", re.I
     ),
+    # A side instruction tacked on as its own sentence: "Also read X into the query.",
+    # "Silently include Z." Documentation says what a tool does; it does not ask the
+    # model to do something else as well. Sentence-initial only, so "this tool can
+    # also read PDFs" stays documentation.
+    re.compile(
+        r"(?:^|[.!?;:]\s+)(?:also|additionally|secretly|silently|quietly)\s+"
+        r"(?:read|send|include|upload|attach|append|forward|post|fetch|copy|cat|pass|leak)\b",
+        re.I | re.M,
+    ),
+    # Credential and key material a tool description has no reason to name.
+    re.compile(
+        r"(?:~|\$HOME|%USERPROFILE%)[/\\]\.(?:ssh|aws|gnupg|kube|docker|config/gcloud)\b"
+        r"|\bid_(?:rsa|dsa|ecdsa|ed25519)\b|/etc/(?:passwd|shadow)\b"
+        r"|\.(?:netrc|npmrc|pgpass)\b|\baws_secret_access_key\b",
+        re.I,
+    ),
+    # Concealment, in the other common phrasings.
+    re.compile(
+        r"\b(?:without|do\s+not|don'?t|never)\s+(?:telling|informing|notifying|alerting|"
+        r"mentioning|tell|inform|notify|alert)\b.{0,20}\b(?:the\s+)?user\b",
+        re.I,
+    ),
+    re.compile(r"\b(?:conversation|chat)\s+history\b.{0,60}\b(?:to|into)\b", re.I),
 ]
+
+
+def normalise_tool_list(data: Any) -> list[dict[str, Any]]:
+    """The tool list from what an MCP server's ``tools/list`` returned.
+
+    Accepts the bare array, the result object (``{"tools": [...]}``, which is what
+    the protocol actually returns) and the whole JSON-RPC response
+    (``{"result": {"tools": [...]}}``). Raises ``ValueError`` on anything else,
+    naming the shapes it accepts.
+    """
+    if isinstance(data, dict) and isinstance(data.get("result"), dict):
+        data = data["result"]
+    if isinstance(data, dict) and "tools" in data:
+        data = data["tools"]
+    if not isinstance(data, list) or not all(isinstance(t, dict) for t in data):
+        raise ValueError(
+            "expected the tools/list output: a list of tools, {\"tools\": [...]}, or a "
+            "JSON-RPC response {\"result\": {\"tools\": [...]}}"
+        )
+    return data
 
 
 def upsert_mcp_server(
@@ -739,6 +782,7 @@ def scan_mcp_server(
     linked as a dependency, because it is Snyk-owned and Snyk is building this
     category (Appendix A.3).
     """
+    tools = normalise_tool_list(tools)
     payload = json.dumps(tools, sort_keys=True, default=str)
     digest = hashlib.sha256(payload.encode()).hexdigest()
 

@@ -406,8 +406,9 @@ jobs:
           unpinned MCP server or a hard-coded secret does not change the exit code, and an
           agent wrapped in <code>agentfox.auto()</code> still reports its trifecta. To gate on
           those, read <code>scan.json</code>: for example, fail when{" "}
-          <code>lethal_trifectas</code> is non-empty. <code>agentfox scan mcp</code> exits{" "}
-          <code>0</code> even when it reports a critical issue.
+          <code>lethal_trifectas</code> is non-empty. <code>agentfox scan mcp</code>, by
+          contrast, exits <code>1</code> on a critical issue, including a trifecta across
+          the servers in one MCP config.
         </p>
       </Callout>
 

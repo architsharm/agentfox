@@ -352,7 +352,8 @@ def test_scan_mcp_registers_the_declared_servers(support_bot, monkeypatch):
     from agentfox.core.models import McpServer
 
     monkeypatch.chdir(support_bot)
-    assert runner.invoke(app, ["scan", "mcp"]).exit_code == 0
+    # The fixture's servers form a lethal trifecta, which is critical: exit 1.
+    assert runner.invoke(app, ["scan", "mcp"]).exit_code == 1
     with session_scope() as session:
         names = {s.name for s in session.scalars(select(McpServer))}
     assert {"filesystem", "fetch"} <= names
@@ -361,9 +362,10 @@ def test_scan_mcp_registers_the_declared_servers(support_bot, monkeypatch):
 def test_scan_mcp_without_a_name_reports_the_config_trifecta(support_bot, monkeypatch):
     monkeypatch.chdir(support_bot)
     result = runner.invoke(app, ["scan", "mcp", "--json"])
-    assert result.exit_code == 0, result.output
+    assert result.exit_code == 1, result.output  # a lethal trifecta is critical
     payload = _json(result.output)
     assert payload["lethal_trifecta"]
+    assert payload["critical"] is True
     assert {s["server"] for s in payload["servers"]} == {"filesystem", "fetch"}
 
 
@@ -416,7 +418,8 @@ def test_scan_mcp_never_starts_a_server(support_bot, monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", refuse)
     monkeypatch.setattr(subprocess, "run", refuse)
     monkeypatch.chdir(support_bot)
-    assert runner.invoke(app, ["scan", "mcp"]).exit_code == 0
+    # The fixture's servers form a lethal trifecta, which is critical: exit 1.
+    assert runner.invoke(app, ["scan", "mcp"]).exit_code == 1
 
 
 def test_config_hygiene_without_a_tool_list():
