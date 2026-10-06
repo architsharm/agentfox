@@ -1,0 +1,19 @@
+# Golden events this pack promises an outcome for. `verdict` is the effective verdict:
+# what the pack's policies would do enforcing. Kinds: policy (default), ladder, compile,
+# fallback, control.
+cases:
+  - name: an irreversible call with a retrieved argument is held
+    event:
+      surface: tool_args
+      tool_key: example.irreversible
+      tool_impact: irreversible
+      taint: {max_source: user, arguments: {to: retrieved}}
+    expect: {verdict: escalate, rules: [__NAME__.example]}
+
+  - name: the same call with the user's own arguments passes
+    event:
+      surface: tool_args
+      tool_key: example.irreversible
+      tool_impact: irreversible
+      taint: {max_source: user, arguments: {to: user}}
+    expect: {verdict: allow}

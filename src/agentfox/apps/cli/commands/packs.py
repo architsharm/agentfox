@@ -230,3 +230,56 @@ def packs_validate(
             _print_cases([c for c in report.cases if not c.passed])
     if not all(r.ok for r in reports):
         raise typer.Exit(1)
+
+
+@packs_app.command("new")
+def packs_new(
+    pack_id: str = typer.Argument(..., help="The new pack's id, e.g. payments/chargebacks."),
+    into: Path = typer.Option(
+        Path(".agentfox/packs"),
+        "--into",
+        help="Where to create it. The default is this project's packs directory.",
+    ),
+    builtin: bool = typer.Option(
+        False, "--builtin", help="Create it among the built-in packs (contributors)."
+    ),
+) -> None:
+    """Scaffold a pack from the template: pack.yaml, a policy, golden cases, a check."""
+    import re
+
+    from agentfox.platform.packs import BUILTIN_ROOT, PackManifest
+
+    try:
+        PackManifest.model_validate({"id": pack_id, "version": "0.1.0", "owners": ["x"]})
+    except ValueError as exc:
+        console.print(f"[red]{pack_id!r} is not a pack id[/]: lower-case words, '/'-separated")
+        raise typer.Exit(2) from exc
+    root = BUILTIN_ROOT if builtin else into
+    target = root / pack_id
+    if target.exists():
+        console.print(f"[red]{target} already exists[/]")
+        raise typer.Exit(1)
+    name = re.sub(r"[^a-z0-9]+", "_", pack_id.rsplit("/", 1)[-1])
+    replacements = {
+        "__ID__": pack_id,
+        "__TITLE__": pack_id.replace("/", " — ").replace("-", " ").capitalize(),
+        "__NAME__": name,
+        "__POLICY_KEY__": pack_id.replace("/", "-"),
+        "__EXAMPLE_MARKER__": f"{name.upper()}-EXAMPLE",
+    }
+    template = BUILTIN_ROOT / "_template"
+    for source in sorted(template.rglob("*")):
+        if source.is_dir() or "__pycache__" in source.parts:
+            continue
+        relative = str(source.relative_to(template))
+        text = source.read_text()
+        for placeholder, value in replacements.items():
+            relative = relative.replace(placeholder, value)
+            text = text.replace(placeholder, value)
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(text)
+        console.print(f"  [green]+[/] {destination}")
+    console.print(
+        f"\nNext: edit {target / 'pack.yaml'}, then `agentfox policy packs validate {target}`."
+    )
