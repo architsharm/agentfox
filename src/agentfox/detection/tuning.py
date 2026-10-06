@@ -45,8 +45,8 @@ from agentfox.core.models import (
     Trace,
 )
 from agentfox.detection.base import Detection
-from agentfox.prove.audit import chain
-from agentfox.prove.audit.operator_log import record
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.operator_log import record
 
 LABELS = ("false_positive", "true_positive", "false_negative")
 SUPPRESSION_SCOPES = ("agent", "global")

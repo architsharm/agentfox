@@ -22,8 +22,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.models import Agent, AgentControl, utcnow
-from agentfox.prove.audit import chain
-from agentfox.prove.findings import open_finding, raise_finding, resolve_finding
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.findings import open_finding, raise_finding, resolve_finding
 
 STATES = ("active", "quarantined", "killed")
 

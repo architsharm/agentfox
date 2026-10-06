@@ -37,10 +37,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
+from agentfox.exporters.otel import ingest_otlp
 from agentfox.gateway.deps import agent_credential, db, ingest_credential
 from agentfox.gateway.verdicts import verdict_headers, with_verdict_aliases
 from agentfox.platform.registry.service import detect_shadow_agents
-from agentfox.prove.audit.otel import ingest_otlp
 from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
@@ -366,8 +366,8 @@ def _record_loop_stop(
     trace_id = None
     try:
         from agentfox.core.models import Agent
-        from agentfox.prove.audit.trace import start_trace
-        from agentfox.prove.findings import raise_finding
+        from agentfox.platform.ledger.findings import raise_finding
+        from agentfox.platform.ledger.trace import start_trace
 
         agent = (
             session.scalar(select(Agent).where(Agent.slug == agent_slug)) if agent_slug else None
@@ -912,8 +912,8 @@ def guard_content(
     """
     from agentfox.core.config import get_settings
     from agentfox.core.models import Trace
+    from agentfox.platform.ledger.trace import end_trace, start_trace
     from agentfox.platform.registry.service import slugify
-    from agentfox.prove.audit.trace import end_trace, start_trace
 
     surface = "output" if request.url.path.endswith("/output") else payload.surface
 
@@ -992,8 +992,8 @@ def guard_tool_call(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
+    from agentfox.platform.ledger.trace import start_trace
     from agentfox.platform.registry.service import slugify
-    from agentfox.prove.audit.trace import start_trace
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.agent, credential)
@@ -1036,8 +1036,8 @@ def guard_memory_write(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
+    from agentfox.platform.ledger.trace import start_trace
     from agentfox.platform.registry.service import slugify
-    from agentfox.prove.audit.trace import start_trace
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.agent, credential)
@@ -1077,8 +1077,8 @@ def guard_agent_message(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
+    from agentfox.platform.ledger.trace import start_trace
     from agentfox.platform.registry.service import slugify
-    from agentfox.prove.audit.trace import start_trace
 
     enforcer = Enforcer(session)
     agent, _identity, _shadow = enforcer.resolve(payload.sender, credential)
@@ -1118,7 +1118,7 @@ async def ingest_traces(
     protobuf `ExportTraceServiceResponse` the OTLP spec asks for; a JSON request gets
     the ingest summary.
     """
-    from agentfox.prove.audit.otel import (
+    from agentfox.exporters.otel import (
         PROTOBUF_CONTENT_TYPE,
         OtlpDecodeError,
         decode_otlp_body,

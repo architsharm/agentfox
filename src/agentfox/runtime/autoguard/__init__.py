@@ -93,8 +93,7 @@ from agentfox.detection.taint import TaintTracker
 from agentfox.detection.warmup import warm_in_background
 from agentfox.errors import AgentFoxError
 from agentfox.platform.identity import ensure_identity
-from agentfox.platform.registry.service import register_agent
-from agentfox.prove.audit.trace import (
+from agentfox.platform.ledger.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
     ATTR_TOOL_IMPACT,
@@ -102,6 +101,7 @@ from agentfox.prove.audit.trace import (
     ATTR_VERDICT,
     add_span,
 )
+from agentfox.platform.registry.service import register_agent
 from agentfox.runtime.autoguard.environment import (
     _FRAMEWORK_ROUTES,
     _framework_routes,

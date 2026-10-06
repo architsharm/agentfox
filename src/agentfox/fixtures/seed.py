@@ -17,6 +17,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.compliance.catalog import sync_catalog, sync_obligations
+from agentfox.capabilities.compliance.risk import assess
 from agentfox.containment.escalation import Trigger, raise_handoff, record_turn
 from agentfox.core.models import (
     SLO,
@@ -47,8 +49,6 @@ from agentfox.platform.registry.service import (
     upsert_mcp_server,
     upsert_tool,
 )
-from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
-from agentfox.prove.compliance.risk import assess
 
 # ---------------------------------------------------------------------------
 # Tools — `impact` is the axis every containment rule reasons over

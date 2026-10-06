@@ -28,7 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.models import Budget, Finding, utcnow
-from agentfox.prove.findings import auto_resolve, raise_finding
+from agentfox.platform.ledger.findings import auto_resolve, raise_finding
 
 # ---------------------------------------------------------------------------
 # Circuit breaker

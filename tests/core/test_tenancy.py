@@ -30,7 +30,7 @@ from agentfox.core.tenancy import (
     system_scope,
     tenant,
 )
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 
 ACME, GLOBEX = "org_acme", "org_globex"
 
@@ -432,8 +432,8 @@ def test_shared_reference_catalog_syncs_independently_per_org(isolated_db):
     catalog that silently refused to load, not a modeling bug; this proves two
     tenants can each hold their own synced copy of the same catalog content.
     """
+    from agentfox.capabilities.compliance.catalog import sync_catalog
     from agentfox.core.models import Control
-    from agentfox.prove.compliance.catalog import sync_catalog
 
     for org in (ACME, GLOBEX):
         with tenant(org), session_scope() as session:

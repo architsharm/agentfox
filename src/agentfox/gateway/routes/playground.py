@@ -172,8 +172,8 @@ def tool_call(
     `effective_verdict`/`would_be_verdict` is what the bound policy says should
     happen, which in observe mode is the one that did not take effect.
     """
+    from agentfox.platform.ledger.trace import start_trace
     from agentfox.platform.registry.service import slugify
-    from agentfox.prove.audit.trace import start_trace
     from agentfox.runtime.enforcement import Enforcer
 
     with record.session_scope() as session:
@@ -233,9 +233,9 @@ def state(
     + findings), the tamper-evident audit chain's own self-check, and compliance
     posture — all real, already-existing functions, just called and serialized.
     """
-    from agentfox.prove.audit import chain
-    from agentfox.prove.audit.trace import full_trace
-    from agentfox.prove.compliance.status import compute_all, posture
+    from agentfox.capabilities.compliance.status import compute_all, posture
+    from agentfox.platform.ledger import chain
+    from agentfox.platform.ledger.trace import full_trace
 
     with record.session_scope() as session:
         compute_all(session)

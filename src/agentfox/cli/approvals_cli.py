@@ -185,7 +185,7 @@ def approvals_show(
 
 def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None) -> None:
     from agentfox.platform.identity import resolve_approval
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     who = actor or "cli"
     with _session() as session:

@@ -357,14 +357,14 @@ export default function Privacy() {
                 <span className="mk-mono">&lt;redacted&gt;</span>, and long strings are
                 truncated. The chain stores structure and decisions, not content.
               </p>
-              <Ref>src/agentfox/prove/audit/chain.py:67-107</Ref>
+              <Ref>src/agentfox/platform/ledger/chain.py:67-107</Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 The cost of that design, stated rather than hidden: there is no update or
                 delete path for an audit entry anywhere in the codebase. That is what makes
                 the chain worth verifying, and it is also why erasing an account is a
                 manual operation rather than a button. See below.
               </p>
-              <Ref>src/agentfox/prove/audit/chain.py:12-19</Ref>
+              <Ref>src/agentfox/platform/ledger/chain.py:12-19</Ref>
             </div>
           </div>
         </section>

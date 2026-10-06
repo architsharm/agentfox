@@ -719,7 +719,7 @@ def _audit(
     *,
     actor_type: str = "user",
 ) -> None:
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     chain.append(
         session,
@@ -824,7 +824,7 @@ def _finding_fingerprint_parts(target: ProbeTarget, probe_key: str) -> tuple[str
 
 def _open_finding(session: Session, target: ProbeTarget, probe_key: str) -> Finding | None:
     from agentfox.core.tenancy import session_org
-    from agentfox.prove.findings import fingerprint
+    from agentfox.platform.ledger.findings import fingerprint
 
     fp = fingerprint(
         session_org(session),
@@ -845,7 +845,7 @@ def _reconcile_findings(
     outcomes: list[LiveOutcome],
     previous: RedTeamCampaign | None,
 ) -> dict[str, list[str]]:
-    from agentfox.prove.findings import raise_finding, resolve_finding
+    from agentfox.platform.ledger.findings import raise_finding, resolve_finding
 
     before = ((previous.summary_json or {}).get("results") or {}) if previous else {}
     opened: list[str] = []

@@ -206,8 +206,8 @@ export default function Security() {
                 or delete path for an audit entry anywhere in the codebase.
               </p>
               <Ref>
-                <a href={`${SRC}/src/agentfox/prove/audit/chain.py`} target="_blank" rel="noreferrer">
-                  src/agentfox/prove/audit/chain.py
+                <a href={`${SRC}/src/agentfox/platform/ledger/chain.py`} target="_blank" rel="noreferrer">
+                  src/agentfox/platform/ledger/chain.py
                 </a>
                 :1-20, 56-64, 298-312
               </Ref>

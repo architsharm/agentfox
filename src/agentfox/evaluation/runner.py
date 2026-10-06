@@ -263,7 +263,7 @@ def sample_production(
     session.add(run)
     session.flush()
 
-    from agentfox.prove.audit.trace import full_trace
+    from agentfox.platform.ledger.trace import full_trace
 
     envelope = fit_envelope(session, agent_slug)
     outcomes: list[CaseOutcome] = []

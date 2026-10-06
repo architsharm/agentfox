@@ -35,6 +35,16 @@ from agentfox.platform.identity import (
     request_approval,
     verify_credential,
 )
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.findings import raise_finding
+from agentfox.platform.ledger.trace import (
+    ATTR_AGENT,
+    ATTR_TAINT,
+    ATTR_TOOL_IMPACT,
+    ATTR_TOOL_NAME,
+    ATTR_VERDICT,
+    add_span,
+)
 from agentfox.platform.policy import (
     PolicyInput,
     UnloadablePolicyVersion,
@@ -44,16 +54,6 @@ from agentfox.platform.policy import (
 )
 from agentfox.platform.policy.taint_view import policy_taint
 from agentfox.platform.registry.service import observe_agent
-from agentfox.prove.audit import chain
-from agentfox.prove.audit.trace import (
-    ATTR_AGENT,
-    ATTR_TAINT,
-    ATTR_TOOL_IMPACT,
-    ATTR_TOOL_NAME,
-    ATTR_VERDICT,
-    add_span,
-)
-from agentfox.prove.findings import raise_finding
 from agentfox.runtime.enforcement.approvals import held_call
 from agentfox.runtime.enforcement.checks import _ChecksMixin
 from agentfox.runtime.enforcement.completion import _CompletionMixin

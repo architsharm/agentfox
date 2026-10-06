@@ -213,7 +213,7 @@ def test_a_posture_change_is_in_the_audit_chain_with_before_and_after(session):
 
 def test_a_change_without_a_reason_is_refused(session):
     """`record()` refuses it, which is what makes the reason a field and not a hope."""
-    from agentfox.prove.audit.operator_log import ReasonRequired
+    from agentfox.platform.ledger.operator_log import ReasonRequired
 
     with pytest.raises(ReasonRequired):
         P.save(session, P.Posture(), actor="admin@example.com", reason="   ")
@@ -221,7 +221,7 @@ def test_a_change_without_a_reason_is_refused(session):
 
 def test_the_registry_knows_this_surface_must_record():
     """The structural check, not a runtime one — see operator_log's docstring."""
-    from agentfox.prove.audit.operator_log import PRIVILEGED, unaudited
+    from agentfox.platform.ledger.operator_log import PRIVILEGED, unaudited
 
     assert any(a.target == "agentfox.detection.judgment.posture.save" for a in PRIVILEGED)
     assert unaudited() == []

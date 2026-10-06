@@ -160,7 +160,7 @@ def _find_capability(session, typed: str):
 
 
 def _audit(session, kind: str, capability, payload: dict[str, Any]) -> None:
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     chain.append(
         session,

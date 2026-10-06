@@ -177,6 +177,7 @@ def init(
     """
     from rich.markup import escape
 
+    from agentfox.capabilities.compliance import load_catalog, sync_catalog
     from agentfox.core.config import get_settings
     from agentfox.core.db import init_db, session_scope
     from agentfox.platform.policy import load_available, save_policy
@@ -185,7 +186,6 @@ def init(
         retire_tool_wildcard,
         scope_coding_pack,
     )
-    from agentfox.prove.compliance import load_catalog, sync_catalog
 
     if not Path(path).is_dir():
         # Checked first, so a typo does not leave a half-initialised database behind

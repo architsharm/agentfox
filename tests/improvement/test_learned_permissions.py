@@ -44,9 +44,9 @@ from agentfox.improvement.traffic import (
     suggest_limits,
 )
 from agentfox.platform.identity import resolve_approval
+from agentfox.platform.ledger.trace import start_trace
 from agentfox.platform.policy import load_from_dir, save_policy
 from agentfox.platform.registry.service import upsert_tool
-from agentfox.prove.audit.trace import start_trace
 from agentfox.runtime.enforcement import Enforcer
 
 AGENT = "support-bot"

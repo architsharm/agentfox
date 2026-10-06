@@ -24,7 +24,7 @@ import type { CSSProperties, ReactNode } from "react";
  *                                     src/agentfox/containment/escalation.py,
  *                                     src/agentfox/grounding/answerability.py
  *   - chain wording ................. Playground.tsx audit panel
- *   - chain break reasons ........... src/agentfox/prove/audit/chain.py verify()
+ *   - chain break reasons ........... src/agentfox/platform/ledger/chain.py verify()
  *   - the digests in ChainMock ...... computed with chain.py's own
  *                                     compute_digest / compute_payload_digest over
  *                                     the payload shape enforcement.py writes, so
@@ -364,7 +364,7 @@ type ChainRow = {
 };
 
 /*
- * Real digests. Each was produced by src/agentfox/prove/audit/chain.py's own functions
+ * Real digests. Each was produced by src/agentfox/platform/ledger/chain.py's own functions
  *
  *   payload_digest = SHA-256(canonical_json(payload))
  *   digest         = SHA-256(seq | occurred_at | action | payload_digest | prev_digest)

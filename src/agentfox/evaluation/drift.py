@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
 from agentfox.core.models import SLO, DriftWindow, EvalResult, EvalRun, utcnow
-from agentfox.prove.findings import auto_resolve, raise_finding
+from agentfox.platform.ledger.findings import auto_resolve, raise_finding
 
 PSI_BANDS = ((0.1, "stable"), (0.25, "moderate"), (float("inf"), "significant"))
 

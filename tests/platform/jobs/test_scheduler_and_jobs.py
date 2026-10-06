@@ -279,7 +279,7 @@ def test_eval_run_with_an_unknown_suite_fails_the_job_not_the_process(session):
 
 
 def test_compliance_recompute_enqueues_and_runs(seeded):
-    from agentfox.prove.compliance.catalog import sync_catalog
+    from agentfox.capabilities.compliance.catalog import sync_catalog
 
     sync_catalog(seeded)
     job = jobs_db.enqueue(seeded, "compliance.recompute", {"window_days": 7}, org_id="org_default")

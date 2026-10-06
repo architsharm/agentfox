@@ -38,6 +38,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.models import McpToolSnapshot, Tool, Trace
 from agentfox.detection import TaintTracker
 from agentfox.errors import AgentFoxError
+from agentfox.platform.ledger.findings import raise_finding
 from agentfox.platform.registry.service import (
     record_edge,
     scan_mcp_server,
@@ -45,7 +46,6 @@ from agentfox.platform.registry.service import (
     upsert_mcp_server,
     upsert_tool,
 )
-from agentfox.prove.findings import raise_finding
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)

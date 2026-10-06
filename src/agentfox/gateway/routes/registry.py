@@ -43,6 +43,8 @@ from agentfox.platform.identity import (
     revoke_credential,
     rotate_credential,
 )
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.findings import STATUSES as FINDING_STATUSES
 from agentfox.platform.registry.control import UnknownAgent, all_controls, set_state
 from agentfox.platform.registry.service import (
     assess_delegation,
@@ -58,8 +60,6 @@ from agentfox.platform.registry.service import (
     upsert_mcp_server,
     upsert_tool,
 )
-from agentfox.prove.audit import chain
-from agentfox.prove.findings import STATUSES as FINDING_STATUSES
 
 router = APIRouter(prefix="/api", tags=["registry", "identity"])
 

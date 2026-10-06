@@ -154,7 +154,7 @@ def test_the_cron_builds_the_showcase_and_probes_it(client, showcase_on):
 
 
 def test_the_showcase_reads_only_its_own_tenant(client, showcase_on, session):
-    from agentfox.prove.findings import raise_finding
+    from agentfox.platform.ledger.findings import raise_finding
 
     client.post(CRON, headers={"Authorization": "Bearer cron-test"})
     # A live-probe finding and campaign in a *customer* tenant must never show up.

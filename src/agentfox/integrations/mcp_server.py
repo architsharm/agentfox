@@ -33,8 +33,8 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from agentfox import __version__
+from agentfox.capabilities.compliance.catalog import FRAMEWORK_TITLES
 from agentfox.improvement.contract import SCOPE_LEVELS, STATUSES
-from agentfox.prove.compliance.catalog import FRAMEWORK_TITLES
 
 log = logging.getLogger("agentfox.mcp")
 

@@ -588,8 +588,8 @@ class AgentFox:
                 reason=payload.get("reason", ""),
             )
         with self._db() as session:
+            from agentfox.platform.ledger.trace import start_trace
             from agentfox.platform.registry.service import slugify
-            from agentfox.prove.audit.trace import start_trace
 
             enforcer = Enforcer(session)
             agent, _identity, _shadow = enforcer.resolve(kwargs["agent"])

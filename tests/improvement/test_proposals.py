@@ -42,8 +42,8 @@ from agentfox.improvement.proposals import (
     rollback_rate,
     verify_proposal,
 )
+from agentfox.platform.ledger.operator_log import PRIVILEGED, unaudited
 from agentfox.platform.policy import PolicyDocument, save_policy
-from agentfox.prove.audit.operator_log import PRIVILEGED, unaudited
 from tests.conftest import PII_TEXT, as_user
 
 POLICY = """

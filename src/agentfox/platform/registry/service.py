@@ -39,8 +39,8 @@ from agentfox.core.models import (
     as_aware,
     utcnow,
 )
+from agentfox.platform.ledger.findings import auto_resolve, raise_finding, resolve_finding
 from agentfox.platform.policy import PolicyDocument, save_policy
-from agentfox.prove.findings import auto_resolve, raise_finding, resolve_finding
 
 _SLUG = re.compile(r"[^a-z0-9-]+")
 
@@ -626,7 +626,7 @@ def assess_delegation(session: Session) -> list[Finding]:
     only visible in the shape of the delegation graph itself, built here from the
     "delegates_to" edges derive_lineage already records from subagent spans.
     """
-    from agentfox.prove.attribution import delegation_graph
+    from agentfox.platform.registry.attribution import delegation_graph
 
     edges = [
         (str(e.src_id), str(e.dst_id))

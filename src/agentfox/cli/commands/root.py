@@ -12,8 +12,8 @@ from agentfox.cli.commands._shared import _session, console
 
 def version() -> None:
     """Show the version of everything that takes part in a decision."""
+    from agentfox.capabilities.compliance.catalog import load_catalog
     from agentfox.core.config import get_settings
-    from agentfox.prove.compliance.catalog import load_catalog
 
     settings = get_settings()
     catalog = load_catalog()

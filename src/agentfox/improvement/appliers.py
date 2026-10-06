@@ -557,7 +557,7 @@ def _domain_audit(
     session: Session, action: str, subject_id: str, actor: str, payload: dict
 ) -> None:
     from agentfox.core.config import get_settings
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     chain.append(
         session,

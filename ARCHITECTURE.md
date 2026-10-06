@@ -208,7 +208,7 @@ resolve to the deployment's default org, never to every org.
 **The audit chain is append-only.** `prove/audit/chain.py:append` is the only write path for
 `AuditEntry`; there is no update or delete anywhere. Every decision appends. Every
 privileged operator action must be recorded: `prove/audit/operator_log.py:PRIVILEGED`
-declares them, and `tests/prove/test_operator_log.py` fails if a new operator surface has
+declares them, and `tests/platform/ledger/test_operator_log.py` fails if a new operator surface has
 no recording call.
 
 **Observe versus enforce.** Packs ship in observe except `tool-containment`, which ships in

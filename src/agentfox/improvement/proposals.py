@@ -30,7 +30,7 @@ from agentfox.core.models import AuditEntry, ChangeProposal, utcnow
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import APPLY_ACTION, ApplierError, get_applier, has_applier
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 
 SUBJECT_TYPE = "change_proposal"
 

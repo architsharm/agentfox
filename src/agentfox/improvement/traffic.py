@@ -70,7 +70,7 @@ from agentfox.improvement.proposals import (
     verify_proposal,
 )
 from agentfox.platform.identity.service import _constraint_ok
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 
 SOURCE = "traffic.observed"
 GRANT_KIND = "capability.grant"

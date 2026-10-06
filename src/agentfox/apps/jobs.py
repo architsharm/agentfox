@@ -58,7 +58,7 @@ from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, EvalSuite, Policy, PolicyCanary, utcnow
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.platform.jobs import store as jobs_db
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 
 
 def _actor(payload: dict[str, Any]) -> tuple[str, str]:
@@ -122,7 +122,7 @@ def run_eval(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def recompute_compliance(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    from agentfox.prove.compliance import compute_all, posture
+    from agentfox.capabilities.compliance import compute_all, posture
 
     window_days = int(payload.get("window_days") or 30)
     statuses = compute_all(session, window_days)

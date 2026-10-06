@@ -89,7 +89,7 @@ def tokens(as_json: bool = typer.Option(False, "--json")) -> None:
 
     from agentfox.core.models import ApiToken, User, utcnow
     from agentfox.core.tenancy import system_scope
-    from agentfox.prove.audit import system_log
+    from agentfox.platform.ledger import system_log
 
     now = utcnow()
     rows: list[dict[str, Any]] = []

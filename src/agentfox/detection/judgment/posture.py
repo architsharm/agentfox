@@ -304,7 +304,7 @@ def save(
     when, why, and what it was before.
     """
     from agentfox.core.models import JudgmentPosture
-    from agentfox.prove.audit.operator_log import record
+    from agentfox.platform.ledger.operator_log import record
 
     ceiling = Ceiling.from_settings()
     refusals = ceiling.refusals(posture)

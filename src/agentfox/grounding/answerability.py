@@ -43,7 +43,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.models import Agent, Finding, KnowledgeBoundary, utcnow
-from agentfox.prove.findings import raise_finding as _raise_finding
+from agentfox.platform.ledger.findings import raise_finding as _raise_finding
 
 log = logging.getLogger(__name__)
 

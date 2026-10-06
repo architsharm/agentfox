@@ -41,7 +41,7 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.core.vocab import COMPARATORS, taint_rank
-from agentfox.prove.findings import auto_resolve, raise_finding
+from agentfox.platform.ledger.findings import auto_resolve, raise_finding
 
 _hasher = PasswordHasher()
 

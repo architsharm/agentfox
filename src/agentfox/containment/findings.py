@@ -309,7 +309,7 @@ def raise_containment_findings(
     scope: tuple[str, frozenset[str]] = ("enforced", frozenset()),
 ) -> int:
     """One finding per (agent, tool, rule) that stopped or held this call. Returns count."""
-    from agentfox.prove.findings import raise_finding
+    from agentfox.platform.ledger.findings import raise_finding
 
     rules = containment_rules(rules_fired)
     if not rules:

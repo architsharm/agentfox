@@ -6,8 +6,8 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
+from agentfox.platform.ledger.trace import end_trace
 from agentfox.platform.providers import CompletionRequest
-from agentfox.prove.audit.trace import end_trace
 from agentfox.runtime.enforcement.result import StreamEvent
 
 

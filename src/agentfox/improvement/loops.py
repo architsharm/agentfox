@@ -56,7 +56,7 @@ from agentfox.improvement.appliers import (
     rule_agent_restriction,
 )
 from agentfox.improvement.proposals import SUBJECT_TYPE, attach_proof, file_proposal
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 
 KIND = "policy.rule_min_score"
 SOURCE = "tuning.threshold"

@@ -23,9 +23,9 @@ from agentfox.integrations.correlation import (
     refs_from_env,
     refs_from_headers,
 )
-from agentfox.platform.providers import CompletionRequest, get_provider
-from agentfox.prove.audit import chain
-from agentfox.prove.audit.trace import (
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.findings import raise_finding
+from agentfox.platform.ledger.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
     ATTR_SYSTEM,
@@ -33,7 +33,7 @@ from agentfox.prove.audit.trace import (
     end_trace,
     start_trace,
 )
-from agentfox.prove.findings import raise_finding
+from agentfox.platform.providers import CompletionRequest, get_provider
 from agentfox.runtime.enforcement.result import (
     EnforcementResult,
     PreflightOutcome,

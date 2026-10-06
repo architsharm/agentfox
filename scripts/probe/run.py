@@ -990,7 +990,7 @@ def probe_purpose() -> Result:
 
 def probe_audit_chain() -> Result:
     from agentfox.core.models import AuditEntry
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     with _session() as s:
         for i in range(3):
@@ -1270,7 +1270,7 @@ _TRACE = [
 
 
 def probe_handoff_fidelity() -> Result:
-    from agentfox.prove.attribution import handoff_fidelity
+    from agentfox.platform.registry.attribution import handoff_fidelity
 
     lossy = handoff_fidelity(_BRIEF, "Process this refund.")
     faithful = handoff_fidelity(_BRIEF, _BRIEF)
@@ -1281,7 +1281,7 @@ def probe_handoff_fidelity() -> Result:
 
 
 def probe_handoff_semantics() -> Result:
-    from agentfox.prove.attribution import handoff_fidelity
+    from agentfox.platform.registry.attribution import handoff_fidelity
 
     reworded = handoff_fidelity("Refund under £500", "Keep it under 500 pounds")
     invented = handoff_fidelity("Refund the order.", "Refund the order, under $50.")
@@ -1292,7 +1292,7 @@ def probe_handoff_semantics() -> Result:
 
 
 def probe_goal_drift() -> Result:
-    from agentfox.prove.attribution import goal_drift
+    from agentfox.platform.registry.attribution import goal_drift
 
     wandered = goal_drift(
         "Refund under £500 urgently, and do not contact the customer.",
@@ -1310,7 +1310,7 @@ def probe_goal_drift() -> Result:
 
 
 def probe_compounding_error() -> Result:
-    from agentfox.prove.attribution import attribute
+    from agentfox.platform.registry.attribution import attribute
 
     result = attribute(_TRACE, value="4500", failed_step="8")
     return result.origin_step == "3" and result.origin_step != result.failed_step, (
@@ -1319,7 +1319,7 @@ def probe_compounding_error() -> Result:
 
 
 def probe_blame_attribution() -> Result:
-    from agentfox.prove.attribution import attribute
+    from agentfox.platform.registry.attribution import attribute
 
     named = attribute(_TRACE, value="4500", failed_step="8")
     external = attribute(
@@ -1338,7 +1338,7 @@ def probe_blame_attribution() -> Result:
 
 
 def probe_delegation_cycle() -> Result:
-    from agentfox.prove.attribution import delegation_graph
+    from agentfox.platform.registry.attribution import delegation_graph
 
     cyclic = delegation_graph([("A", "B"), ("B", "C"), ("C", "A")])
     deep = delegation_graph([(f"a{i}", f"a{i + 1}") for i in range(8)], depth_limit=5)
@@ -1553,7 +1553,7 @@ def probe_operator_log() -> Result:
     from agentfox.business.ladder import Ladder
     from agentfox.business.store import save_ladder, set_mode
     from agentfox.core.db import session_scope
-    from agentfox.prove.audit.operator_log import PRIVILEGED, operator_history, unaudited
+    from agentfox.platform.ledger.operator_log import PRIVILEGED, operator_history, unaudited
 
     gaps = unaudited()
     ladder = {

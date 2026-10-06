@@ -20,7 +20,7 @@ compliance_app = typer.Typer(
 @compliance_app.command("sync")
 def compliance_sync() -> None:
     """Load the control catalog and obligation calendar from YAML."""
-    from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
+    from agentfox.capabilities.compliance.catalog import sync_catalog, sync_obligations
 
     with _session() as session:
         catalog = sync_catalog(session)
@@ -38,7 +38,7 @@ def compliance_sync() -> None:
 @compliance_app.command("compute")
 def compliance_compute(window_days: int = 30) -> None:
     """Recompute control status from telemetry."""
-    from agentfox.prove.compliance import compute_all, posture
+    from agentfox.capabilities.compliance import compute_all, posture
 
     with _session() as session:
         statuses = compute_all(session, window_days)
@@ -58,13 +58,13 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
     """Show control posture, optionally for one framework."""
     from sqlalchemy import select
 
-    from agentfox.core.models import Control
-    from agentfox.prove.compliance import (
+    from agentfox.capabilities.compliance import (
         controls_for_framework,
         framework_coverage,
         latest_statuses,
         posture,
     )
+    from agentfox.core.models import Control
 
     with _session() as session:
         overall = posture(session, framework)
@@ -129,8 +129,8 @@ def compliance_validate() -> None:
     """
     import yaml
 
-    from agentfox.prove.compliance.catalog import catalog_path, obligations_path
-    from agentfox.prove.compliance.status import RULE_KINDS
+    from agentfox.capabilities.compliance.catalog import catalog_path, obligations_path
+    from agentfox.capabilities.compliance.status import RULE_KINDS
 
     problems: list[str] = []
 
@@ -257,8 +257,8 @@ def compliance_review_packet(
     """
     from sqlalchemy import select
 
+    from agentfox.capabilities.compliance import load_catalog
     from agentfox.core.models import FrameworkMapping
-    from agentfox.prove.compliance import load_catalog
 
     catalog = load_catalog()
     known = {f.get("key") if isinstance(f, dict) else f for f in catalog.get("frameworks", [])}
@@ -343,7 +343,7 @@ def compliance_review(
     moves a mapping from `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` to reviewed, and it should
     be run by whoever is actually accountable for the claim — not by whoever runs the CLI.
     """
-    from agentfox.prove.compliance.catalog import sign_off_mapping
+    from agentfox.capabilities.compliance.catalog import sign_off_mapping
 
     with _session() as session:
         count = sign_off_mapping(session, control, framework, reviewer, reference)
@@ -361,7 +361,7 @@ def compliance_review(
 @compliance_app.command("frameworks")
 def compliance_frameworks() -> None:
     """List frameworks, coverage and review status."""
-    from agentfox.prove.compliance import all_frameworks
+    from agentfox.capabilities.compliance import all_frameworks
 
     with _session() as session:
         rows = all_frameworks(session)
@@ -387,7 +387,7 @@ def compliance_frameworks() -> None:
 @compliance_app.command("risk")
 def compliance_risk() -> None:
     """Show the agent risk register."""
-    from agentfox.prove.compliance import register
+    from agentfox.capabilities.compliance import register
 
     with _session() as session:
         rows = register(session)
@@ -409,7 +409,7 @@ def compliance_risk() -> None:
 @compliance_app.command("obligations")
 def compliance_obligations() -> None:
     """Regulatory obligation calendar against the agent inventory."""
-    from agentfox.prove.compliance import obligation_calendar
+    from agentfox.capabilities.compliance import obligation_calendar
 
     with _session() as session:
         rows = obligation_calendar(session)
@@ -432,7 +432,7 @@ def compliance_obligations() -> None:
 @compliance_app.command("board")
 def compliance_board() -> None:
     """Executive risk view."""
-    from agentfox.prove.compliance import board_view
+    from agentfox.capabilities.compliance import board_view
 
     with _session() as session:
         view = board_view(session)

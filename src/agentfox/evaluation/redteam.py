@@ -67,7 +67,7 @@ from agentfox.core.models import (
     Tool,
     utcnow,
 )
-from agentfox.prove.findings import raise_finding, resolve_finding
+from agentfox.platform.ledger.findings import raise_finding, resolve_finding
 
 
 @dataclass

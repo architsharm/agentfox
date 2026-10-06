@@ -16,12 +16,12 @@ the argument for having it. One was a typo-class drift in `_FALLBACK_FOR_TIER`
 
 from __future__ import annotations
 
+from agentfox.capabilities.compliance.risk import EU_CLASSES
 from agentfox.core.config import get_settings
 from agentfox.core.vocab import SURFACES
 from agentfox.platform.policy.hierarchy import PolicyLayer, lint_policy
 from agentfox.platform.policy.model import Condition, PolicyDocument, Rule
 from agentfox.platform.policy.store import load_from_dir
-from agentfox.prove.compliance.risk import EU_CLASSES
 from agentfox.runtime.enforcement import _fallback_policies
 
 

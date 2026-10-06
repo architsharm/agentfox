@@ -43,8 +43,8 @@ import {
  *   - MCP hygiene finding types .............. src/agentfox/platform/registry/service.py
  *   - scorer keys ............................ src/agentfox/evaluation/scorers.py
  *   - adaptive campaign scope ................ src/agentfox/evaluation/adaptive.py
- *   - chain digests and verify() ............. src/agentfox/prove/audit/chain.py
- *   - computed compliance status ............. src/agentfox/prove/compliance/status.py
+ *   - chain digests and verify() ............. src/agentfox/platform/ledger/chain.py
+ *   - computed compliance status ............. src/agentfox/capabilities/compliance/status.py
  *   - control count and framework keys ....... src/agentfox/compliance_data/controls.yaml
  *   - every CLI command shown ................ README.md "Commands"
  *

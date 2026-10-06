@@ -32,8 +32,8 @@ def scan_skills(
     OWASP published an Agentic Skills Top 10 in 2026 and we scanned servers but
     not skills.
     """
+    from agentfox.platform.ledger.findings import raise_finding
     from agentfox.platform.registry.skills import scan_skills_dir
-    from agentfox.prove.findings import raise_finding
 
     results = scan_skills_dir(path)
     if not results:

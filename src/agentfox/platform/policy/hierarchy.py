@@ -33,9 +33,9 @@ import fnmatch
 from dataclasses import dataclass, field
 from typing import Any
 
+from agentfox.capabilities.compliance.risk import EU_CLASSES
 from agentfox.core.vocab import EFFECT_RANK, SURFACES
 from agentfox.platform.policy.model import PolicyDocument, Rule
-from agentfox.prove.compliance.risk import EU_CLASSES
 
 #: Broadest to narrowest. Order is load-bearing: later levels win ties.
 LEVELS = ("org", "team", "agent", "user")

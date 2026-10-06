@@ -63,9 +63,9 @@ from agentfox.gateway.deps import current_user, db, require
 from agentfox.monitoring import github as gh
 from agentfox.monitoring.service import request_run, safe_ensure_monitor
 from agentfox.monitoring.snapshots import api_snapshot, repo_snapshot
+from agentfox.platform.ledger import chain
 from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.platform.registry.service import propose_from_scan, register_agent, slugify
-from agentfox.prove.audit import chain
 
 log = logging.getLogger(__name__)
 
@@ -206,7 +206,7 @@ def provision(payload: ProvisionIn, session: Session = Depends(db)) -> dict[str,
         # class (assert_tenant_safe), so the shared reference catalog has to be
         # synced into each new org rather than assumed to exist — otherwise
         # Compliance shows 0 controls until someone finds the manual sync action.
-        from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
+        from agentfox.capabilities.compliance.catalog import sync_catalog, sync_obligations
 
         sync_catalog(session)
         sync_obligations(session)

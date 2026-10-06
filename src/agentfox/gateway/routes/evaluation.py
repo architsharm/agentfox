@@ -45,7 +45,7 @@ from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 from agentfox.evaluation.scorers import get_scorer
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 from agentfox.platform.jobs import store as jobs_db
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 
 router = APIRouter(prefix="/api", tags=["evaluation"])
 
@@ -161,7 +161,7 @@ def promote_trace(
     The shortest path from "this went wrong in production" to "this can never ship
     again" is the feature that makes an eval suite grow instead of rot.
     """
-    from agentfox.prove.audit.trace import full_trace
+    from agentfox.platform.ledger.trace import full_trace
 
     suite = _suite(session, key)
     trace = session.get(Trace, trace_id)

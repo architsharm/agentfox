@@ -21,23 +21,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import (
-    AuditEntry,
-    Control,
-    EvidencePackage,
-    FrameworkMapping,
-    LegalHold,
-    RetentionPolicy,
-    Trace,
-    User,
-)
-from agentfox.core.tenancy import session_org
-from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
-from agentfox.integrations.correlation import links_for, resolve_external
-from agentfox.platform.jobs import store as jobs_db
-from agentfox.prove.audit import chain, evidence, siem
-from agentfox.prove.audit.trace import full_trace, search_traces
-from agentfox.prove.compliance import (
+from agentfox.apps.report import evidence
+from agentfox.capabilities.compliance import (
     all_frameworks,
     board_view,
     classify,
@@ -49,10 +34,27 @@ from agentfox.prove.compliance import (
     posture,
     sign_off_mapping,
 )
-from agentfox.prove.compliance import (
+from agentfox.capabilities.compliance import (
     register as risk_register,
 )
-from agentfox.prove.compliance.risk import assess
+from agentfox.capabilities.compliance.risk import assess
+from agentfox.core.models import (
+    AuditEntry,
+    Control,
+    EvidencePackage,
+    FrameworkMapping,
+    LegalHold,
+    RetentionPolicy,
+    Trace,
+    User,
+)
+from agentfox.core.tenancy import session_org
+from agentfox.exporters import siem
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
+from agentfox.integrations.correlation import links_for, resolve_external
+from agentfox.platform.jobs import store as jobs_db
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.trace import full_trace, search_traces
 
 router = APIRouter(prefix="/api", tags=["audit", "compliance"])
 
@@ -474,7 +476,7 @@ def sync_controls(
     upsert, reachable without shell access to the deployment, so a freshly provisioned
     org isn't stuck at "0 controls, mapped to seven frameworks" with no way to fix it
     from the product itself."""
-    from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
+    from agentfox.capabilities.compliance.catalog import sync_catalog, sync_obligations
 
     catalog = sync_catalog(session)
     obligations = sync_obligations(session)

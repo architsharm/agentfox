@@ -64,8 +64,8 @@ from agentfox.core.tenancy import session_org
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.monitoring import alerts
 from agentfox.monitoring import snapshots as snap
-from agentfox.prove import findings as findings_mod
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger import findings as findings_mod
 
 log = logging.getLogger(__name__)
 

@@ -23,7 +23,7 @@ from agentfox.gateway.deps import current_user, db, require
 from agentfox.monitoring import alerts
 from agentfox.monitoring import service as monitoring
 from agentfox.platform.jobs import store as jobs_db
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 
 router = APIRouter(prefix="/api", tags=["monitors"])
 

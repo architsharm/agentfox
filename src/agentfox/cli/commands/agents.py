@@ -92,8 +92,8 @@ def agents_register(
     from sqlalchemy import select
 
     from agentfox.core.models import Agent
+    from agentfox.platform.ledger import chain
     from agentfox.platform.registry.service import register_agent
-    from agentfox.prove.audit import chain
 
     tiers = ("minimal", "limited", "high", "prohibited")
     if risk_tier is not None and risk_tier not in tiers:
@@ -169,7 +169,7 @@ def agents_budget(
     from sqlalchemy import select
 
     from agentfox.core.models import Agent, Budget
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
     from agentfox.runtime.reliability import WINDOWS
 
     if window is not None and window not in WINDOWS:

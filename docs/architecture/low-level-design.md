@@ -179,7 +179,7 @@ query.
 
 ---
 
-## 6. Audit chain internals — `src/agentfox/prove/audit/chain.py`
+## 6. Audit chain internals — `src/agentfox/platform/ledger/chain.py`
 
 The tamper-evident hash chain, the mechanism behind the "prove what happened" claim:
 

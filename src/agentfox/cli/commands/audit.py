@@ -23,7 +23,7 @@ evidence_app = typer.Typer(
 @audit_app.command("verify")
 def audit_verify(start: int | None = None, end: int | None = None) -> None:
     """Verify the tamper-evident audit chain. Exits 1 if broken."""
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     with _session() as session:
         stats = chain.chain_stats(session)
@@ -50,7 +50,7 @@ def audit_verify(start: int | None = None, end: int | None = None) -> None:
 @audit_app.command("checkpoint")
 def audit_checkpoint() -> None:
     """Write a signed checkpoint over the current chain head."""
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     with _session() as session:
         record = chain.checkpoint_now(session)
@@ -109,7 +109,7 @@ def evidence_export(
     requested_by: str = "cli",
 ) -> None:
     """Build an auditor-ready evidence package."""
-    from agentfox.prove.audit import evidence
+    from agentfox.apps.report import evidence
 
     period_from, period_to = _evidence_period(from_, to, since_days)
     with _session() as session:

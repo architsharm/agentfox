@@ -98,7 +98,7 @@ def test_capability_grant_is_recorded_in_the_audit_chain():
 
     from agentfox.core.db import session_scope
     from agentfox.core.models import AuditEntry
-    from agentfox.prove.audit import chain
+    from agentfox.platform.ledger import chain
 
     _seed()
     runner.invoke(app, ["permit", "grant", "support-triage", "reports.export", "--yes"])
@@ -236,7 +236,7 @@ def test_doctor_names_the_capability_command_when_least_privilege_is_unconfigure
 
 def _raise_findings() -> None:
     from agentfox.core.db import session_scope
-    from agentfox.prove.findings import raise_finding
+    from agentfox.platform.ledger.findings import raise_finding
 
     with session_scope() as session:
         raise_finding(
@@ -289,7 +289,7 @@ def test_findings_ranks_before_it_limits():
     """Sorting a page the database happened to return would show the worst of twenty
     rows rather than the worst twenty rows."""
     from agentfox.core.db import session_scope
-    from agentfox.prove.findings import raise_finding
+    from agentfox.platform.ledger.findings import raise_finding
 
     with session_scope() as session:
         for index in range(12):
@@ -330,7 +330,7 @@ def test_findings_shows_an_id_a_count_and_no_truncated_type():
 def test_findings_surfaces_the_recurrence_count():
     """One problem seen forty times is not forty problems."""
     from agentfox.core.db import session_scope
-    from agentfox.prove.findings import raise_finding
+    from agentfox.platform.ledger.findings import raise_finding
 
     with session_scope() as session:
         for _ in range(3):

@@ -40,7 +40,7 @@ from agentfox.core.models import (
     Handoff,
     utcnow,
 )
-from agentfox.prove.findings import raise_finding
+from agentfox.platform.ledger.findings import raise_finding
 
 log = logging.getLogger(__name__)
 

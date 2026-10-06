@@ -312,8 +312,8 @@ def _set_mode(key: str, mode: str) -> None:
     from sqlalchemy import select
 
     from agentfox.core.models import Policy
+    from agentfox.platform.ledger import chain
     from agentfox.platform.policy import set_mode
-    from agentfox.prove.audit import chain
 
     with _session() as session:
         binding = set_mode(session, key, mode)

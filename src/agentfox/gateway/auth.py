@@ -40,7 +40,7 @@ from agentfox.core.config import DEV_ENVIRONMENTS as _DEV_ENVIRONMENTS
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, ApiToken, Identity, User, utcnow
 from agentfox.core.tenancy import bind_session, system_scope
-from agentfox.prove.audit.operator_log import record
+from agentfox.platform.ledger.operator_log import record
 
 log = logging.getLogger(__name__)
 

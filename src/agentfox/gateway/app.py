@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox import __version__
+from agentfox.capabilities.compliance.catalog import load_catalog
 from agentfox.core.config import assert_production_secrets, get_settings
 from agentfox.core.db import init_db
 from agentfox.detection import all_detectors, available_detectors
@@ -48,7 +49,6 @@ from agentfox.gateway.routes import (
     waitlist,
 )
 from agentfox.platform.providers import all_providers, available_providers
-from agentfox.prove.compliance.catalog import load_catalog
 from agentfox.runtime.availability import (
     check_services,
     get_admission_controller,

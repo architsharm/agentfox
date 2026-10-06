@@ -288,7 +288,7 @@ def test_no_proposal_tool_can_decide_apply_or_roll_back():
 
 def test_finding_occurrences_ranks_recurring_problems():
     from agentfox.core.db import session_scope
-    from agentfox.prove.findings import raise_finding
+    from agentfox.platform.ledger.findings import raise_finding
 
     with session_scope() as session:
         for _ in range(3):
