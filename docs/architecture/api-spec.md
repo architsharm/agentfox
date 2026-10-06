@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-207 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+208 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -155,6 +155,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/discovery/shadow` | Shadow Agents |
 | `POST` | `/api/discovery/submit` | Submit a redacted local scan for review |
 | `GET` | `/api/findings` | List Findings |
+| `GET` | `/api/findings/types` | Every finding type: its title, default severity, what it means and who raises it. |
 | `GET` | `/api/findings/{finding_id}` | Get Finding |
 | `PATCH` | `/api/findings/{finding_id}` | Patch Finding |
 | `GET` | `/api/mcp-servers` | List Mcp |
