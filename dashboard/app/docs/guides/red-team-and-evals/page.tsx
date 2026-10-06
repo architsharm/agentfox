@@ -122,14 +122,13 @@ benign.order_status_question  low       —      allow    allowed`}</Output>
         </Link>
         .
       </p>
-      <Callout kind="warning" title="Probes leave traces in your data">
+      <Callout kind="note" title="What a campaign stores">
         Tool-call probes run against synthetic tools named <code>redteam.sim.*</code>. Their
-        decisions are stored like any other, so after a campaign{" "}
-        <code>agentfox findings</code> also lists <code>containment</code> findings such as
-        &quot;support-triage tried a destructive or over-broad redteam.sim.list_records
-        call&quot;, and <code>agentfox policy simulate</code> replays those decisions as
-        recorded traffic. Run campaigns against a separate database (
-        <code>AGENTFOX_DATABASE_URL</code>) if you do not want them mixed with production.
+        verdicts are computed on the real enforcement path but not written as decisions,
+        so they never appear as <code>containment</code> findings and{" "}
+        <code>agentfox policy simulate</code> never replays them. What is stored is the
+        campaign, one red-team record per probe, the campaign-level findings above, and
+        the synthetic <code>redteam.sim.*</code> tools and grants the probes run against.
       </Callout>
 
       <h2 id="posture">Adaptive mode and the posture delta</h2>
@@ -140,7 +139,9 @@ benign.order_status_question  low       —      allow    allowed`}</Output>
         mutation chosen from why the previous attempt was blocked, up to{" "}
         <code>--budget</code> attempts per probe (default 3). Adaptive mode also generates
         probes from this deployment&apos;s own grants, tool impact tiers and bound
-        policies; <code>--no-deployment-probes</code> turns that off.{" "}
+        policies; <code>--no-deployment-probes</code> turns that off. The static suite
+        never runs deployment probes, and <code>--deployment-probes</code> without{" "}
+        <code>--adaptive</code> says so instead of silently doing nothing.{" "}
         <code>--seed</code> (default 1337) fixes the mutation program, so the same campaign
         against the same configuration mutates the same probes the same way.
       </p>
@@ -151,9 +152,7 @@ benign.order_status_question  low       —      allow    allowed`}</Output>
 
   No previous adaptive campaign for 'support-triage': this run is the baseline. 7 attack class(es) escape it
 today. Posture change is only meaningful from the second campaign onward.
-  escapes by payload kind: readable {'attempts': 13, 'escapes': 1, 'escape_rate': 0.0769}  requires_decode
-{'attempts': 7, 'escapes': 6, 'escape_rate': 0.8571}  structural {'attempts': 22, 'escapes': 0, 'escape_rate':
-0.0}
+  escapes by payload kind: readable 1/13 (8%)  requires_decode 6/7 (86%)  structural 0/22
   note — baseline, eu-ai-act-high-risk bound in observe mode; probes score the counterfactual verdict, so this
 campaign cannot see that.
 probe                                                severity  OWASP  verdict   result
@@ -204,11 +203,11 @@ today. Posture change is only meaningful from the second campaign onward.`}</Out
         <code>redteam_mutation_class</code> finding naming it. Policies bound in observe
         mode are scored on what they would have done, and the note line says so.
       </p>
-      <Callout kind="note" title="test redteam exits 0">
-        <code>agentfox test redteam</code> exits 0 even when attacks get through, so it
-        does not fail a CI job on its own. Use it in CI for the record (campaigns and
-        findings are stored), and gate on <code>agentfox test gate</code>, or on the
-        findings it raises.
+      <Callout kind="note" title="test redteam exits 1 when an attack gets through">
+        <code>agentfox test redteam</code> exits 1 when any attack got through (a wrongly
+        blocked benign control does not change the exit code), so it can fail a CI job on
+        its own. Pass <code>--allow-escapes</code> to record the campaign and its findings
+        without failing.
       </Callout>
       <InTheApp path="/app/evals#redteam">Evaluation → Red team: run a campaign against an agent</InTheApp>
 

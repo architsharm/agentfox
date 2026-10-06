@@ -70,8 +70,15 @@ class _ToolCallMixin:
         prior_steps: list[dict[str, Any]] | None = None,
         verified_state: dict[str, Any] | None = None,
         dry_run: bool = False,
+        persist: bool = True,
     ) -> EnforcementResult:
-        """Authorise a tool call on the full execution path (P3-4, P2-2, P9)."""
+        """Authorise a tool call on the full execution path (P3-4, P2-2, P9).
+
+        ``persist=False`` computes the verdict without writing a Decision, its
+        findings, taint tags or a lineage edge. The red-team runner uses it: a
+        simulated attack is not production traffic, and persisting it put
+        ``redteam.sim.*`` calls into findings and into what ``simulate`` replays.
+        """
         agent, identity, _ = self.resolve(agent_slug, credential)
 
         # PL-3: a killed or quarantined agent must not execute tools either, not
@@ -103,7 +110,7 @@ class _ToolCallMixin:
             path: mark.propagated_from for path, mark in marks.items() if mark.propagated_from
         }
 
-        if trace:
+        if trace and persist:
             for path, mark in marks.items():
                 self.session.add(
                     TaintTag(
@@ -116,7 +123,7 @@ class _ToolCallMixin:
                 )
         # Lineage is a property of the agent-to-tool relationship, not of whether a
         # trace object happened to be passed in — so it is recorded either way.
-        if agent is not None:
+        if agent is not None and persist:
             record_edge(self.session, "agent", agent.slug, "tool", tool_key, "calls_tool")
 
         worst_source = max(argument_taint.values(), key=taint_rank) if argument_taint else "none"
@@ -135,6 +142,7 @@ class _ToolCallMixin:
             prior_tools=prior_tools,
             prior_steps=prior_steps,
             tracker=tracker,
+            persist=persist,
         )
 
         # P9-7: an irreversible act on a record the agent has not read back from the

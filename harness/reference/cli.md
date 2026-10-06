@@ -159,12 +159,12 @@ or superseded. A change that loosens a control is never applied automatically.
 | Command | Effect | Notes |
 |---|---|---|
 | `test suites` | R\* | Registered eval suites. |
-| `test run SUITE [--provider echo] [--model echo-1] [--agent] [--scorers CSV]` | W | |
-| `test gate SUITE [--provider echo] [--model echo-1] [--baseline RUN_ID] [--min-pass-rate F] [--junit PATH] [--sarif PATH]` | W, F | **Exit 1 on regression.** No `--agent`. |
+| `test run SUITE [--provider echo] [--model echo-1] [--agent] [--scorers CSV]` | W | An unknown scorer key exits 1. |
+| `test gate SUITE [--provider echo] [--model echo-1] [--baseline RUN_ID] [--min-pass-rate F] [--agent] [--scorers CSV] [--junit PATH] [--sarif PATH]` | W, F | **Exit 1 on regression or on any errored case.** Scorers and agent default to the baseline run's. |
 | `test baseline RUN_ID [--label main]` | W | |
-| `test online AGENT [--since-days 7] [--rate F]` | W | Scores sampled production traces. |
+| `test online AGENT [--since-days 7] [--rate F]` | W | Scores sampled production traces; reports sampled traces with no recorded output as not scored. |
 | `test probes` | R, offline | 22 built-in probes + wrapped runners. |
-| `test redteam AGENT [--probes CSV] [--adaptive] [--budget N] [--seed N] [--no-deployment-probes]` | W | Probes the agent's real grants and policy bindings. `--adaptive` mutates a blocked probe and retries, and reports a posture delta against the last comparable campaign rather than a pass rate. Never a robustness certificate. Exit 0 always. |
+| `test redteam AGENT [--probes CSV] [--adaptive] [--budget N] [--seed N] [--no-deployment-probes] [--allow-escapes]` | W | Probes the agent's real grants and policy bindings. `--adaptive` mutates a blocked probe and retries, and reports a posture delta against the last comparable campaign rather than a pass rate; deployment probes run only with `--adaptive`. Probe tool calls are not stored as decisions. Never a robustness certificate. Exit 1 when an attack got through, unless `--allow-escapes`. |
 | `test action STATEMENT [--kind sql\|shell\|http] [--method GET] [--dialect postgres] [--environment production]` | R, offline | Exit 1 if critical. Blast radius / reversibility of a SQL/shell/HTTP artefact. |
 | `test boundary AGENT "QUESTION"` | R | Would it abstain, and what would it say? |
 | `test rule KEY "V1,V2,..."` | R | Try values against a business rule. |
