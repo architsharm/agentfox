@@ -433,11 +433,13 @@ def test_reregistering_a_changed_listing_keeps_the_call_refused(seeded, mcp_gove
     assert outcome.pre_decision.rules_fired[0]["rule_id"] == "mcp.schema_drift"
 
 
-def test_a_person_accepting_the_new_listing_lifts_the_block(seeded, mcp_governor):
+def test_two_people_accepting_the_new_listing_lifts_the_block(seeded, mcp_governor):
     mcp_governor.register_tools(V2)
     assert not mcp_governor.call("search_docs", {}, transport=lambda t, a: "ok").allowed
 
-    report = mcp_governor.register_tools(V2, accept_changes=True)
+    report = mcp_governor.register_tools(V2, accept_changes=True, actor="marcus@example.com")
+    assert report["held"] == ["search_docs"], "one person cannot accept an org-wide loosening"
+    report = mcp_governor.register_tools(V2, accept_changes=True, actor="admin@example.com")
     assert report["held"] == []
     assert mcp_governor.call("search_docs", {"q": "x"}, transport=lambda t, a: "ok").allowed
 
@@ -463,11 +465,13 @@ def test_the_registry_route_holds_changes_unless_accepted(seeded_app):
     )
     assert changed.status_code == 200
     assert changed.json()["held"] == ["search_docs"]
-    accepted = seeded_app.post(
-        f"/api/mcp-servers/{MCP_SERVER}/tools",
-        json={"tools": V2, "accept_changes": True},
-        headers=admin,
-    )
+    for approver in ("marcus@example.com", "admin@example.com"):
+        accepted = seeded_app.post(
+            f"/api/mcp-servers/{MCP_SERVER}/tools",
+            json={"tools": V2, "accept_changes": True, "note": "reviewed"},
+            headers={"X-Nometria-User": approver},
+        )
+        assert accepted.status_code == 200, accepted.text
     assert accepted.json()["held"] == []
 
 

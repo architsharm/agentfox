@@ -260,8 +260,8 @@ What it will and will not learn from is the part to understand:
   intent was declared. Those say nothing about the call, only about your configuration.
 - **Held:** calls stopped for where their arguments came from (`taint.*`, `composition.escalation`),
   or carrying untrusted content into a tool whose impact nobody had declared yet. An injected call
-  looks exactly like this, so held calls shape the argument limits but never the provenance
-  ceiling. Once the grant exists, calls like them are escalated to the approval queue. Approve the
+  looks exactly like this, so held calls shape neither the argument limits nor the provenance
+  ceiling; both are read off benign calls only. Once the grant exists, calls like them are escalated to the approval queue. Approve the
   ones that are fine there, and the next `from-traffic` proposes raising that grant's ceiling.
 - **Never learned from:** a call a detector matched (an injection, a credential; personal data in
   an email address is not an attack), a call over an existing grant's limit, or one a person denied.

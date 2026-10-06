@@ -399,8 +399,10 @@ def upsert_tool(
     mcp_server_id: str | None = None,
     impact_source: str = "declared",
     output_trust: str | None = None,
+    annotations: dict[str, Any] | None = None,
 ) -> Tool:
-    """Create or update a tool. ``output_trust=None`` leaves the declared trust as it is."""
+    """Create or update a tool. ``output_trust=None`` and ``annotations=None`` leave
+    what is recorded as it is."""
     tool = _get_or_create(session, Tool, key=key)
     tool.name = name or tool.name or key
     tool.kind = kind
@@ -419,6 +421,8 @@ def upsert_tool(
         tool.output_trust = output_trust
     elif not tool.output_trust:
         tool.output_trust = "untrusted"
+    if annotations is not None:
+        tool.annotations_json = dict(annotations)
     session.flush()
     return tool
 
