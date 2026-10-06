@@ -43,7 +43,7 @@ const SURFACES: Row[] = [
 ];
 
 const DEFAULTS: Row[] = [
-  ["injection.heuristic", "Patterns for instruction override, persona and jailbreak, system-prompt extraction, covert instructions, exfiltration, fake role delimiters and system blocks, hidden characters, encoded payloads. Paraphrases and several languages. Re-scans de-obfuscated views.", "input, output, retrieved, tool_result, memory_write, agent_message, reasoning"],
+  ["injection.heuristic", "Patterns for instruction override, persona and jailbreak, system-prompt extraction, covert instructions, exfiltration, fake role delimiters and system blocks, hidden characters, encoded payloads. Paraphrases and several languages. Re-scans de-obfuscated views.", "input, output, retrieved, tool_result, memory_write, agent_message, reasoning, tool_args"],
   ["pii.native", "Regex packs: global (email, IP, card with Luhn, IBAN, date of birth) plus US, UK and EU by default; an India pack exists.", "all nine"],
   ["secrets.native", "API keys (OpenAI, Anthropic, AWS, GitHub, Slack, Google, Stripe, AgentFox), private keys, JWTs, connection strings, high-entropy generic secrets.", "all nine"],
   ["safety.lexicon", "A small lexicon: harm, self-harm, illicit, harassment, extremism.", "input, output, retrieved, tool_result, completion"],
@@ -157,7 +157,7 @@ allow block ['INJECTION.INSTRUCTION_OVERRIDE'] ['injection.adopted_in_reasoning'
 completion:
 escalate escalate [] ['completion.unverified_claim']
 tool_args:
-block block ['PII.EMAIL'] ['capability.denied', 'tool.not_declared']`}</Output>
+block block ['INJECTION.INSTRUCTION_OVERRIDE', 'PII.EMAIL'] ['capability.denied', 'injection.in_tool_arguments']`}</Output>
       <p>Two things in that output are worth knowing:</p>
       <ul>
         <li>
@@ -166,9 +166,9 @@ block block ['PII.EMAIL'] ['capability.denied', 'tool.not_declared']`}</Output>
           Use <code>Enforcer.guard_completion(completion={"{...}"})</code> in Python.
         </li>
         <li>
-          No shipped injection detector runs on <code>tool_args</code>: the injection
-          text in the email body was not detected. The call was stopped by default deny
-          and the undeclared-tool rule, not by detection.
+          <code>injection.heuristic</code> runs on <code>tool_args</code> too, so the
+          injection text in the email body fires <code>injection.in_tool_arguments</code>{" "}
+          alongside default deny.
         </li>
       </ul>
 

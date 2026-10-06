@@ -482,6 +482,11 @@ class InjectionHeuristicDetector(BaseDetector):
         # The model's own reasoning: a detection here means the payload
         # was adopted, not merely present.
         "reasoning",
+        # Tool-call arguments. Without it no shipped injection detector ran on
+        # this surface and `injection.in_tool_arguments` (tool-containment) could
+        # never fire: an instruction smuggled into an argument was seen only as
+        # whatever PII it happened to contain.
+        "tool_args",
     )
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
