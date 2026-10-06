@@ -388,3 +388,32 @@ def test_the_job_runs_only_opted_in_due_targets_and_moves_next_due(seeded, agent
     later = NOW + dt.timedelta(seconds=target.interval_seconds + 1)
     assert len(live_probes.run_due(seeded, {}, now=later)["campaigns"]) == 1
     assert len(list(seeded.scalars(select(RedTeamCampaign)))) == 2
+
+
+def test_one_failing_target_does_not_stop_the_others(seeded, agent, monkeypatch):
+    broken = _opted_in(seeded, max_probes_per_run=1)
+    healthy = _opted_in(seeded, max_probes_per_run=1, name="healthy")
+    real = live_probes.run_target
+
+    def flaky(session, target, **kw):
+        if target.id == broken.id:
+            raise RuntimeError("boom")
+        return real(session, target, **kw)
+
+    monkeypatch.setattr(live_probes, "run_target", flaky)
+    result = live_probes.run_due(seeded, {}, now=NOW)
+    by_id = {c["target_id"]: c for c in result["campaigns"]}
+    assert "boom" in by_id[broken.id]["error"]
+    assert by_id[healthy.id]["campaign_id"]
+    assert broken.next_due_at is not None  # retried next interval, not every cron call
+
+
+def test_an_unreadable_stored_credential_sends_nothing(seeded, agent, monkeypatch):
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setattr(get_settings(), "token_encryption_key", Fernet.generate_key().decode())
+    target = _opted_in(seeded, auth_header="Bearer x", max_probes_per_run=1)
+    monkeypatch.setattr(get_settings(), "token_encryption_key", Fernet.generate_key().decode())
+    campaign = _run(seeded, target)
+    assert agent.requests == []
+    assert campaign.summary_json["errors"] == 1

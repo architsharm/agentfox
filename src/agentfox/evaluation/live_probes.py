@@ -72,6 +72,7 @@ from __future__ import annotations
 import base64
 import datetime as dt
 import json
+import logging
 import secrets
 import time
 from collections.abc import Callable
@@ -92,6 +93,8 @@ from agentfox.core.models import (
     as_aware,
     utcnow,
 )
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Caps. A row may ask for less; it never gets more.
@@ -344,14 +347,22 @@ class HttpAdapter:
         self.campaign_id = campaign_id
         self.timeout = min(float(target.timeout_seconds or 20.0), MAX_TIMEOUT_SECONDS)
         self._auth: str | None = None
+        self._setup_error: str | None = None
         if target.auth_header_ciphertext:
             from agentfox.core.crypto import decrypt_secret
 
-            self._auth = decrypt_secret(target.auth_header_ciphertext)
+            try:
+                self._auth = decrypt_secret(target.auth_header_ciphertext)
+            except Exception as exc:  # noqa: BLE001 - recorded as every probe's error
+                # Never send without the credential the target was registered with.
+                self._setup_error = f"the stored Authorization header could not be read: {exc}"
 
     def send(self, probe: LiveProbe, message: str) -> ProbeResponse:
         from agentfox import __version__
         from agentfox.core.outbound import OutboundRefused, guarded_post
+
+        if self._setup_error:
+            return ProbeResponse(error=self._setup_error)
 
         headers = {
             "Content-Type": "application/json",
@@ -1043,14 +1054,23 @@ def run_due(
         targets = [t for t in targets if t.id in only]
     out = []
     for target in targets:
-        campaign = run_target(
-            session,
-            target,
-            now=now,
-            sleep=sleep,
-            actor_type=str(payload.get("actor_type") or "automation"),
-            actor_id=str(payload.get("requested_by") or ""),
-        )
+        try:
+            with session.begin_nested():
+                campaign = run_target(
+                    session,
+                    target,
+                    now=now,
+                    sleep=sleep,
+                    actor_type=str(payload.get("actor_type") or "automation"),
+                    actor_id=str(payload.get("requested_by") or ""),
+                )
+        except Exception as exc:  # noqa: BLE001 - one target must not starve the others
+            log.warning("live probes for target %s failed: %s", target.id, exc, exc_info=True)
+            target.next_due_at = now + dt.timedelta(
+                seconds=max(MIN_INTERVAL_SECONDS, int(target.interval_seconds or 0))
+            )
+            out.append({"target_id": target.id, "error": f"{type(exc).__name__}: {exc}"})
+            continue
         summary = campaign.summary_json or {}
         out.append(
             {
