@@ -57,7 +57,7 @@ What is deliberately *not* done here:
   chunk and evaluated once it is exhausted; a block raises `Blocked` at the end of
   iteration, but chunks already yielded to the caller cannot be taken back. Windowed
   enforcement that can cut a stream mid-flight is the gateway's job
-  (``NOMETRIA_STREAMING_MODE=windowed``), not something a patched SDK can offer.
+  (``AGENTFOX_STREAMING_MODE=windowed``), not something a patched SDK can offer.
 
 Frameworks (LangGraph, CrewAI, LlamaIndex, AutoGen, ...) are detected, not patched:
 they reach the model through one of the client libraries above, and the summary says

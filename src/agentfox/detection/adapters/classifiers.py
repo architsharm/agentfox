@@ -11,7 +11,7 @@ Two tiers, and the split is a **licence** decision, not a quality one:
   registered adapter). The Llama Community licence is **not OSI-approved**: it
   adds an acceptable-use policy and a >700M-MAU clause. Appendix A.4 requires
   this to be opt-in, so the adapter refuses to load unless
-  ``NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1`` — and, unlike every classifier
+  ``AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`` — and, unlike every classifier
   above, it is not actually a classification model (see that class's docstring
   for why it cannot share `_TransformersClassifier`'s inference path).
 
@@ -377,6 +377,6 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         return (
             f"{self.model_id} is distributed under a non-OSI licence with usage "
             "restrictions (acceptable-use policy; Llama adds a >700M-MAU clause). "
-            "Enabled only because NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1. "
+            "Enabled only because AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1. "
             "Legal review required before commercial deployment — see Appendix A.4."
         )

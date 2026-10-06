@@ -205,18 +205,15 @@ agentfox init`}</Code>
       <h2 id="init">agentfox init and agentfox.toml</h2>
       <Code>{`agentfox init`}</Code>
       <Output>{`Setting up AgentFox
-INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
-INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
-INFO  [alembic.runtime.migration] Running stamp_revision  -> b8d3f6a2c915
   ✓ database ready
-sqlite:////…/agentfox.core.db
+sqlite:////…/agentfox.db
   ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
   ✓ 3 policy pack(s) loaded
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
       tool-containment         enforce  violations are blocked now
-      coding-agent not enabled — no coding-agent hooks in this repo. \`agentfox hooks install --agent
-<slug> --write\` turns it on for that agent.
+      coding-agent not enabled — no coding-agent hooks in this repo. \`agentfox admin hooks install
+--agent <slug> --write\` turns it on for that agent.
       tool-containment blocks from the start — demote with \`agentfox policy observe <key>\`.
   ✓ wrote agentfox.toml
 …`}</Output>
@@ -224,15 +221,15 @@ sqlite:////…/agentfox.core.db
         It creates and migrates the database, loads 43 controls and the policy packs, and
         writes <code>agentfox.toml</code> in the current directory (or <code>--path</code>).
         Run it again and it changes nothing it does not need to:{" "}
-        <code>· agentfox.toml already exists, left alone</code>. The hint about hooks uses an
-        older command name; the current one is <code>agentfox admin hooks install</code> (
-        <Link href="/docs/guides/coding-agents">Coding agents</Link>).
+        <code>· agentfox.toml already exists, left alone</code>. Three packs load in a plain
+        repository; the fourth, <code>coding-agent</code>, applies only once a coding agent
+        has hooks installed (<Link href="/docs/guides/coding-agents">Coding agents</Link>).
       </p>
       <p>The generated file, exactly:</p>
       <Code lang="toml" title="agentfox.toml">{`# AgentFox configuration.
 # Everything here has a safe default; this file exists so the defaults are visible
 # rather than implicit. The [agentfox] table is read from the working directory;
-# environment variables (NOMETRIA_*) override it.
+# environment variables (AGENTFOX_*, or the older NOMETRIA_*) override it.
 
 [agentfox]
 environment = "development"
@@ -256,8 +253,8 @@ taint_scope = "session"`}</Code>
       <p>How settings are read, highest precedence first:</p>
       <ol>
         <li>
-          <code>AGENTFOX_*</code> environment variables (the comment in the file still says{" "}
-          <code>NOMETRIA_*</code>, which are read too, below the new names);
+          <code>AGENTFOX_*</code> environment variables (the older <code>NOMETRIA_*</code>{" "}
+          names are still read, below the new ones);
         </li>
         <li>the pre-rename <code>NOMETRIA_*</code> environment variables;</li>
         <li>

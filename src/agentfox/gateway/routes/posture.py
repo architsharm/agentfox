@@ -80,7 +80,7 @@ def _tier_catalogue(ceiling: _posture.Ceiling, active: _posture.Posture) -> list
                 # removing it leaves some kinds with nobody to decide them.
                 "selectable": tier is not Tier.DETERMINISTIC and not blocked,
                 "blocked_reason": (
-                    "this deployment has egress switched off (NOMETRIA_ALLOW_EGRESS); "
+                    "this deployment has egress switched off (AGENTFOX_ALLOW_EGRESS); "
                     "that is set by whoever runs the process, not from here"
                     if blocked
                     else (

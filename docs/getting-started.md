@@ -16,7 +16,7 @@ enforcement path demonstrable with nothing installed.
 - **Agent**: a program that calls a model and can take actions. AgentFox identifies each one by a
   slug such as `support-triage`.
 - **Tool**: something an agent can call that is not the model: a function, an API, an MCP server
-  method. Each tool is declared with an **impact** of `none`, `read`, `write` or `irreversible`.
+  method. Each tool is declared with an **impact** of `read`, `write`, `high_impact` or `irreversible`.
 - **Capability grant**: permission for one agent to call one tool, with argument limits. Default
   is deny: an agent with no grant cannot call the tool at all.
 - **Provenance** (also called taint): where an argument's value came from. `user` means a person
@@ -36,7 +36,7 @@ pip install agentfox
 agentfox --help
 ```
 
-AgentFox is not on PyPI yet, so install from git. The core install is deliberately light: it pulls
+AgentFox is on PyPI (from 0.3.1). The core install is deliberately light: it pulls
 no model weights and no detector frameworks. Optional extras (`[pii]`, `[classifiers]`, `[redteam]`,
 `[langgraph]`, `[sql]`, `[otel]`, `[postgres]`, or `[all]` for everything permissive) add wrapped
 third-party engines later, as configuration rather than as a prerequisite.

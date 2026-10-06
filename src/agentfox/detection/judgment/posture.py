@@ -3,7 +3,7 @@
 Two things in this package have been called "configuration", and keeping them apart is
 the entire job of this module.
 
-**Deployment settings** — ``NOMETRIA_ALLOW_EGRESS``, API keys, base URLs — are chosen
+**Deployment settings** — ``AGENTFOX_ALLOW_EGRESS``, API keys, base URLs — are chosen
 by whoever runs the process. They are read once into a cached
 :class:`~agentfox.core.config.Settings`, they are process-global, and no HTTP request can
 change them. **Posture** is the governance choice an admin makes inside the product:
@@ -151,13 +151,13 @@ class Ceiling:
             names = ", ".join(sorted(str(t) for t in posture.egress_tiers))
             out.append(
                 f"tier(s) {names} send the payload to a third party, and this "
-                "deployment has egress switched off (NOMETRIA_ALLOW_EGRESS). "
+                "deployment has egress switched off (AGENTFOX_ALLOW_EGRESS). "
                 "That is set by whoever runs the process, not from here."
             )
         if not self.allow_egress and posture.backend in _REMOTE_BACKENDS:
             out.append(
                 f"backend '{posture.backend}' reaches a remote service, and this "
-                "deployment has egress switched off (NOMETRIA_ALLOW_EGRESS)."
+                "deployment has egress switched off (AGENTFOX_ALLOW_EGRESS)."
             )
         if _PII_RANK[posture.pii_egress] < _PII_RANK[self.pii_egress]:
             out.append(
@@ -168,7 +168,7 @@ class Ceiling:
         if self.fail_closed and not posture.fail_closed:
             out.append(
                 "this deployment requires judgment to fail closed "
-                "(NOMETRIA_JUDGMENT_FAIL_CLOSED), so posture may not make an outage "
+                "(AGENTFOX_JUDGMENT_FAIL_CLOSED), so posture may not make an outage "
                 "silently permissive."
             )
         return out

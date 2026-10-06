@@ -170,7 +170,7 @@ def create_app() -> FastAPI:
     # localhost; nothing here opens the control plane to the internet by itself.
     # The public playground page is the one deliberate exception — it is designed
     # to be called cross-origin, unauthenticated, from wherever it's hosted, so its
-    # origin is additive here via NOMETRIA_PLAYGROUND_CORS_ORIGIN rather than
+    # origin is additive here via AGENTFOX_PLAYGROUND_CORS_ORIGIN rather than
     # widening this list's intent for every other route.
     cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
     cors_origins.extend(get_settings().playground_cors_origins)
@@ -383,7 +383,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/version", tags=["platform"])
     def version() -> dict[str, Any]:
-        """Every version that participates in a decision (X-4 determinism)."""
+        """Every version that participates in a decision, so a verdict can be reproduced."""
         settings = get_settings()
         catalog = load_catalog()
         return {
@@ -446,7 +446,7 @@ def create_app() -> FastAPI:
             "safety.restricted": (
                 "Meta Llama Guard / Google ShieldGemma — capable, but their licences "
                 "aren't OSI-approved (usage restrictions, a MAU clause), so this stays "
-                "opt-in only via NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1, "
+                "opt-in only via AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1, "
                 "regardless of deployment."
             ),
         }
@@ -534,7 +534,7 @@ def create_app() -> FastAPI:
                 for key in sorted(all_providers())
             ],
             "note": (
-                "Hosted providers report unavailable unless NOMETRIA_ALLOW_EGRESS=1 and "
+                "Hosted providers report unavailable unless AGENTFOX_ALLOW_EGRESS=1 and "
                 "a key is configured. Zero egress is the default (NFR-4)."
             ),
         }

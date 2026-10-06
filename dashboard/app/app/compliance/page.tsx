@@ -448,7 +448,7 @@ export default async function Compliance({
             recipient confirm nothing has been altered since.
             <InfoTip text="The script does not trust this platform or call its API, so the recipient does not have to take this product's word for it. A package does not show anything that was never recorded, it does not establish that the controls in scope were the right controls, and a draft framework mapping inside it is a starting point for a reviewer, not a legal conclusion." />{" "}
             The same package can be built without the dashboard:{" "}
-            <code className="mono">agentfox evidence export --since-days 30</code>, or{" "}
+            <code className="mono">agentfox report evidence --since-days 30</code>, or{" "}
             <span className="mono">POST /api/evidence</span>.
           </p>
 
@@ -624,12 +624,12 @@ async function BoardTab() {
     <>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", marginTop: 16 }}>
         <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
-          For day-to-day monitoring use <Link href="/">Overview</Link>: this snapshot
+          For day-to-day monitoring use <Link href="/app">Overview</Link>: this snapshot
           does not update itself. Generated {v.generated_at?.slice(0, 19)}.
           {v.seed_agents > 0 && (
             <>
               {" "}<span className="tag" style={{ marginLeft: 4 }}>
-                {v.seed_agents} of {inv.agents} agent(s) below {v.seed_agents === 1 ? "is" : "are"} sample data from `agentfox seed`
+                {v.seed_agents} of {inv.agents} agent(s) below {v.seed_agents === 1 ? "is" : "are"} sample data from `agentfox admin seed`
               </span>
             </>
           )}

@@ -9,7 +9,7 @@ const AREAS: {
 }[] = [
   {
     name: "Overview",
-    href: "/",
+    href: "/app",
     answers: "What needs a person right now, most severe first.",
     doThere:
       "Start a working session here. Every row links through to the finding, approval or conversation it is about.",
@@ -114,7 +114,7 @@ const AREAS: {
 const OFF_SCREEN: { name: string; where: string; body: React.ReactNode }[] = [
   {
     name: "Change proposals",
-    where: "agentfox proposals · /api/proposals",
+    where: "agentfox policy proposals · /api/proposals",
     body: (
       <>
         Governance changes are filed as proposals, not applied.{" "}
@@ -125,7 +125,7 @@ const OFF_SCREEN: { name: string; where: string; body: React.ReactNode }[] = [
   },
   {
     name: "Capability grants",
-    where: "agentfox capability grant · /api/identities/{id}/capabilities",
+    where: "agentfox permit grant · /api/identities/{id}/capabilities",
     body: (
       <>
         What an agent is allowed to do, decided from the action, not the prompt.{" "}
@@ -136,7 +136,7 @@ const OFF_SCREEN: { name: string; where: string; body: React.ReactNode }[] = [
   },
   {
     name: "Evaluation gate for CI",
-    where: "agentfox eval gate · POST /api/eval/gate",
+    where: "agentfox test gate · POST /api/eval/gate",
     body: (
       <>
         Runs a suite against a baseline run; exits non-zero on a regression.{" "}

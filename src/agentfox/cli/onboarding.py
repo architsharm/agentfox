@@ -31,7 +31,7 @@ console = Console()
 _CONFIG_TEMPLATE = """# AgentFox configuration.
 # Everything here has a safe default; this file exists so the defaults are visible
 # rather than implicit. The [agentfox] table is read from the working directory;
-# environment variables (NOMETRIA_*) override it.
+# environment variables (AGENTFOX_*, or the older NOMETRIA_*) override it.
 
 [agentfox]
 environment = "{environment}"

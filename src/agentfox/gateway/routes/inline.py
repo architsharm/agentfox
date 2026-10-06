@@ -344,7 +344,7 @@ def _tool_steps(messages: list[dict[str, Any]]) -> list[Step]:
 
 
 def _loop_budget() -> LoopBudget:
-    """The deployment's declared `NOMETRIA_LOOP_*` budgets — the same ones
+    """The deployment's declared `AGENTFOX_LOOP_*` budgets — the same ones
     `enforcement.py::_budget_state` reads, so the proxy and the direct guard endpoint
     cannot disagree about what a runaway loop is."""
     settings = get_settings()
@@ -816,7 +816,7 @@ class McpCallRequest(BaseModel):
     result: Any = None
 
 
-@router.post("/v1/mcp/call", summary="Govern an MCP tool call (I-2)")
+@router.post("/v1/mcp/call", summary="Govern an MCP tool call")
 def mcp_call(
     payload: McpCallRequest,
     session: Session = Depends(db),
@@ -987,7 +987,7 @@ def guard_content(
     return with_verdict_aliases(result)
 
 
-@router.post("/v1/guard/tool_call", summary="Authorise a tool call (P3-4, P2-2)")
+@router.post("/v1/guard/tool_call", summary="Authorise a tool call")
 def guard_tool_call(
     payload: GuardToolCallRequest,
     session: Session = Depends(db),
@@ -1031,7 +1031,7 @@ class GuardMemoryWriteRequest(BaseModel):
     session_id: str | None = None
 
 
-@router.post("/v1/guard/memory_write", summary="Authorise a memory write (P14, NOM-RTG-13)")
+@router.post("/v1/guard/memory_write", summary="Authorise a memory write")
 def guard_memory_write(
     payload: GuardMemoryWriteRequest,
     session: Session = Depends(db),
@@ -1072,9 +1072,7 @@ class GuardAgentMessageRequest(BaseModel):
     session_id: str | None = None
 
 
-@router.post(
-    "/v1/guard/agent_message", summary="Authorise an inter-agent message (P17, NOM-IAM-08)"
-)
+@router.post("/v1/guard/agent_message", summary="Authorise an inter-agent message")
 def guard_agent_message(
     payload: GuardAgentMessageRequest,
     session: Session = Depends(db),

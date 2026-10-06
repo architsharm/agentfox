@@ -469,7 +469,7 @@ export function ApiDown({ error, status }: { error: string; status?: number }) {
           <>
             {" "}
             Start it with <code className="mono">agentfox serve</code>, then reload. Set{" "}
-            <code className="mono">NOMETRIA_API_URL</code> if it is not on{" "}
+            <code className="mono">AGENTFOX_API_URL</code> if it is not on{" "}
             <code className="mono">http://127.0.0.1:8080</code>.
           </>
         )}

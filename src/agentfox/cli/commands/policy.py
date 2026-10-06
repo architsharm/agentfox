@@ -179,7 +179,7 @@ def policy_effective(
         None,
         "--environment",
         help="Environment to resolve for. Defaults to the configured environment "
-        "(NOMETRIA_ENVIRONMENT), which is what the runtime itself uses.",
+        "(AGENTFOX_ENVIRONMENT), which is what the runtime itself uses.",
     ),
 ) -> None:
     """Show the policy actually in force for a subject, and where each rule came from.

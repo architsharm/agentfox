@@ -22,7 +22,7 @@ const TABS: { key: string; label: string }[] = [
 ];
 
 /**
- * The four tiers a tool can be declared at (`agentfox tools declare --impact`).
+ * The four tiers a tool can be declared at (`agentfox declare tool --impact`).
  * high_impact was missing here, so a tool at that tier rendered as an untoned
  * tag — visually identical to a read-only one, which is the opposite of what it
  * means. Every containment rule reasons over this axis, so it has to be complete.
@@ -96,7 +96,7 @@ export default async function AgentDetail({
           <span
             className="tag"
             style={{ marginLeft: 10, verticalAlign: "middle" }}
-            title="Created by `agentfox seed` for demo purposes — not a real registration."
+            title="Created by `agentfox admin seed` for demo purposes — not a real registration."
           >
             sample data
           </span>

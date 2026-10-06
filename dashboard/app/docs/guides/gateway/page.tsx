@@ -700,7 +700,7 @@ x-nometria-explain: http://localhost:3000/app/traces/trc_01m469v2qa96vbdry0`}</O
 │ Anyone who can reach this port is any user they name. That is fine for local │
 │ work and unacceptable anywhere else.                                         │
 │                                                                              │
-│ Set NOMETRIA_ENVIRONMENT=production, or NOMETRIA_AUTH_MODE=token, to require │
+│ Set AGENTFOX_ENVIRONMENT=production, or AGENTFOX_AUTH_MODE=token, to require │
 │ API tokens.                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────╯`}</Output>
       <p>

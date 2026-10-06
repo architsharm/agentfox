@@ -33,6 +33,7 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.gateway.deps import current_user, db
+from agentfox.policy.store import active_layers
 
 router = APIRouter(prefix="/api", tags=["platform"])
 
@@ -73,6 +74,13 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
     enforcing = (
         session.scalar(select(func.count()).select_from(Decision).where(Decision.mode == "enforce"))
         or 0
+    )
+    # The "Turn enforcement on" step is about baseline — the content policies. Tool
+    # containment enforces from the first call, so "any decision was made in enforce
+    # mode" ticked this step on day one while baseline was still only observing.
+    baseline_enforcing = any(
+        layer.document.key == "baseline" and layer.document.mode == "enforce"
+        for layer in active_layers(session)
     )
     boundaries = session.scalar(select(func.count()).select_from(KnowledgeBoundary)) or 0
     sources = session.scalar(select(func.count()).select_from(SourceRecord)) or 0
@@ -156,7 +164,7 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
         {
             "id": "enforce",
             "title": "Turn enforcement on",
-            "done": enforcing > 0,
+            "done": baseline_enforcing,
             "command": "agentfox policy enforce baseline",
             "detail": (
                 "Promotes prompt injection, PII and safety from observe to enforce. Do it "
@@ -245,7 +253,16 @@ def attention(
             }
         )
 
-    shadow = list(session.scalars(select(Agent).where(Agent.registered.is_(False))))
+    # Same definition as registry.service.detect_shadow_agents: a scan-proposed draft
+    # (and a draft somebody rejected) is unregistered but never ran, so it is waiting
+    # for review on the agents page, not "running and never registered".
+    shadow = list(
+        session.scalars(
+            select(Agent).where(
+                Agent.registered.is_(False), Agent.status.notin_(("draft", "rejected"))
+            )
+        )
+    )
     for agent in shadow:
         items.append(
             {

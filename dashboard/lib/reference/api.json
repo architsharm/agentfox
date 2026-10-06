@@ -6936,8 +6936,8 @@
    "path": "/api/version",
    "section": "version",
    "audience": "operator",
-   "summary": "Every version that participates in a decision (X-4 determinism).",
-   "description": "Every version that participates in a decision (X-4 determinism).",
+   "summary": "Every version that participates in a decision, so a verdict can be reproduced.",
+   "description": "Every version that participates in a decision, so a verdict can be reproduced.",
    "params": [],
    "body": null
   },

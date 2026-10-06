@@ -2059,7 +2059,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": "Environment to resolve for. Defaults to the configured environment (NOMETRIA_ENVIRONMENT), which is what the runtime itself uses."
+        "help": "Environment to resolve for. Defaults to the configured environment (AGENTFOX_ENVIRONMENT), which is what the runtime itself uses."
        }
       ],
       "default_subcommand": null,

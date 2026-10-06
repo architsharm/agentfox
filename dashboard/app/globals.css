@@ -2513,7 +2513,7 @@ td .mono { overflow-wrap: anywhere; }
 /* Inside the dialog: prose at the reading measure, and the tables allowed their
    own full width, since a command is not prose and must not wrap. */
 /* Wider than the 520px form modal. An Explainer's whole job is to hold a table
-   of commands, and at 520px "agentfox capability grant AGENT TOOL" wrapped onto
+   of commands, and at 520px "agentfox permit grant AGENT TOOL" wrapped onto
    two lines — a wrapped command is a command someone has to reassemble before
    they can copy it. :has() rather than a size prop on Modal, so the dialog is
    sized by what it contains. */

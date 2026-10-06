@@ -315,7 +315,7 @@ def test_the_api_refuses_a_ceiling_breach_with_409_and_says_who_to_ask(client):
     )
     assert response.status_code == 409
     detail = response.json()["detail"]
-    assert "NOMETRIA_ALLOW_EGRESS" in detail
+    assert "AGENTFOX_ALLOW_EGRESS" in detail
     assert "not from here" in detail
 
 
@@ -333,7 +333,7 @@ def test_the_read_says_what_cannot_be_chosen_and_why(client):
     assert body["ceiling"]["allow_egress"] is False
     jev = next(t for t in body["tiers"] if t["tier"] == "jev")
     assert jev["selectable"] is False
-    assert "NOMETRIA_ALLOW_EGRESS" in jev["blocked_reason"]
+    assert "AGENTFOX_ALLOW_EGRESS" in jev["blocked_reason"]
     deterministic = next(t for t in body["tiers"] if t["tier"] == "deterministic")
     assert deterministic["enabled"] is True
     assert deterministic["selectable"] is False

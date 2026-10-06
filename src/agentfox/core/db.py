@@ -1,7 +1,7 @@
 """Database session management.
 
 SQLite by default so the whole control plane runs with no infrastructure at all
-(NFR-9); Postgres via ``NOMETRIA_DATABASE_URL`` for anything real.
+(NFR-9); Postgres via ``AGENTFOX_DATABASE_URL`` for anything real.
 """
 
 from __future__ import annotations
