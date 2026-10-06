@@ -64,7 +64,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | **P4-7** Reliability SLOs | ✅ | `capabilities/evaluation/drift.py::evaluate_slos` | NOM-EVL-05 | surfaced via `/api/agents/{slug}/posture` |
 | **P4-8** Cross-model comparison | ✅ | `capabilities/evaluation/runner.py` target dispatch, `platform/providers/` | NOM-EVL-06 | `test_enforcement_and_api.py::test_control_plane_reads` |
 | **P4-13** Live probing of deployed agents | ✅ opt-in per host, fixed probe set | `capabilities/evaluation/live_probes.py::register_target, opt_in, run_target, run_due`; `apps/gateway/routes/probes.py`; the `deployed_agent` monitor kind | NOM-EVL-04 | `tests/capabilities/evaluation/test_live_probes.py`, `tests/apps/gateway/test_probes_and_showcase.py`, `tests/capabilities/monitoring/test_deployed_agent_monitor.py` |
-| **P4-14** Public showcase | ✅ off unless `AGENTFOX_SHOWCASE_ENABLED` | `apps/showcase.py::ensure_showcase, public_summary`; `GET /api/public/showcase`; `dashboard/app/live` | NOM-EVL-04 | `tests/apps/gateway/test_probes_and_showcase.py` (`::test_the_showcase_is_off_unless_enabled`, `::test_the_showcase_reads_only_its_own_tenant`) |
+| **P4-14** Public showcase | ✅ off unless `AGENTFOX_SHOWCASE_ENABLED` | `apps/showcase.py::ensure_showcase, public_summary`; `GET /api/public/showcase`; `dashboard/app/(marketing)/live` | NOM-EVL-04 | `tests/apps/gateway/test_probes_and_showcase.py` (`::test_the_showcase_is_off_unless_enabled`, `::test_the_showcase_reads_only_its_own_tenant`) |
 
 ## Pillar 12 — Policy Composition & Lifecycle
 
@@ -112,7 +112,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | **X-2** Provider & framework neutrality | ✅ | `platform/providers/` adapter layer, `audit/otel.py::detect_framework` | `::test_control_plane_reads` (`/api/providers`) |
 | **X-3** Offline-first | ✅ | `platform/providers/echo.py`, every adapter's `available()` | whole suite runs with no key and no weights |
 | **X-4** Deterministic decisions | ✅ | `platform/policy/engine.py`, `Decision.policy_version_ids` | `test_policy_and_identity.py::test_determinism`; `test_enforcement_and_api.py::test_decision_records_every_policy_version_in_force` |
-| **X-5** Everything through the API | ✅ | `dashboard/lib/api.ts` — no DB access from the UI process | dashboard renders solely from `/api` |
+| **X-5** Everything through the API | ✅ | `dashboard/lib/product/api.ts` — no DB access from the UI process | dashboard renders solely from `/api` |
 | **X-6** Agent-native operation (plugin + MCP) | ✅ | `plugins/` (skills, commands, subagents, safety hook), `mcp_server.py` + `apps/cli/mcp_cli.py` (`agentfox mcp serve`, 24 read-only tools, stdlib JSON-RPC) | `test_mcp_server.py`; `test_plugins.py` (plugin ↔ live CLI drift, shared copies, hook decisions) |
 
 ## Non-functional

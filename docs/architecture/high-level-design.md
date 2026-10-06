@@ -140,8 +140,8 @@ Four deployable units, one shared Python package:
 │                │  │  deployment choice, │  │  Enforcer.preflight│  │  proxy mutations to │
 │                │  │  not an             │  │  as the gateway    │  │  the gateway with   │
 │                │  │  architectural one  │  │  (no reimplement-  │  │  session-cookie auth│
-│                │  │  (stateless,        │  │  ation drift)      │  │  (lib/proxy.ts)     │
-│                │  │  scales out         │  │                    │  │                     │
+│                │  │  (stateless,        │  │  ation drift)      │  │  (lib/product/      │
+│                │  │  scales out         │  │                    │  │  proxy.ts)          │
 │                │  │  horizontally)      │  │                    │  │                     │
 └───────────────┘  └────────┬───────────┘  └────────────────────┘  └──────────┬──────────┘
                              │                                                  │ HTTP, server-

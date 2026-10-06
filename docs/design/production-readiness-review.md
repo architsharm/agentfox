@@ -133,7 +133,7 @@ produced one false positive already for the same question. Effort: S.
 
 ### 1.7 ✅ (was 🟡) No frontend test coverage anywhere in the repo
 
-> **Resolved in `c512ee3`** — vitest was added with tests for `lib/proxy.ts` and the legacy redirects; the suite has grown since (the auth routes among others), and CI runs `npm test`.
+> **Resolved in `c512ee3`** — vitest was added with tests for `lib/product/proxy.ts` and the legacy redirects; the suite has grown since (the auth routes among others), and CI runs `npm test`.
 
 The LLD's module/test inventory pass (§2) found 46 backend test files and zero anywhere
 exercising `dashboard/`. Given the dashboard is a genuine client of the API with real
@@ -144,7 +144,7 @@ researched terminology, fix bugs found in review`) shows the dashboard has under
 structural refactor recently, shipping that kind of change with zero automated regression
 coverage is a real risk, distinct from (and not mentioned in) gap-analysis.md's existing
 gap register, which is scoped to the Python package. **Action: at minimum, add coverage for
-`dashboard/lib/proxy.ts` (the auth/mutation boundary) and the board→compliance-tab redirect
+`dashboard/lib/product/proxy.ts` (the auth/mutation boundary) and the board→compliance-tab redirect
 logic, since both are exactly the kind of "worked when I looked, broke when someone touched
 something two files away" surface unit tests exist for.** Effort: M.
 

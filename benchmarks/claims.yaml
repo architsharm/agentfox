@@ -34,8 +34,8 @@ claims:
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} attack scenarios were still contained"}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} attacks contained with zero detector signal"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} attacks contained with zero detector signal'}
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="attack scenarios contained with every detector off"'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} attacks contained with zero detector signal'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="attack scenarios contained with every detector off"'}
 
   - id: containment.legitimate_calls_allowed_with_detectors_off
     source: benchmarks/containment/results/containment_results.json
@@ -47,8 +47,8 @@ claims:
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} legitimate calls were still allowed"}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} legitimate calls still allowed"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} legitimate calls still allowed'}
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="legitimate calls still allowed in the same run"'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} legitimate calls still allowed'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="legitimate calls still allowed in the same run"'}
 
   # AgentDojo: provenance inferred from executed tool outputs (v1.2.2, detectors off). The earlier
   # label-assigned run is retired below.
@@ -64,12 +64,12 @@ claims:
       - {file: docs/design/PRD.md, text: "{n} of {d} attack pairs are contained at session-level taint"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} attack pairs were contained at session-level taint"}
       # The website. Not markdown, but the same normalised substring check applies.
-      - {file: dashboard/app/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
+      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "Session-level taint (the default): {n} of {d} attack pairs contained"}
-      - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
+      - {file: dashboard/app/(product)/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} attack pairs contained with session-level taint"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'session-level taint contained {n} of {d} attack pairs'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'session-level taint contained {n} of {d} attack pairs'}
 
   - id: agentdojo.session_taint.benign_tasks_allowed
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -88,13 +88,13 @@ claims:
       - {file: docs/design/PRD.md, text: "a cost of {n} of {d} benign tasks running without escalation"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} benign tasks ran without escalation"}
       - {file: benchmarks/agentdojo_e2e/README.md, text: "Session-level taint (shipped default) | {n}/{d} ({pct}% {ci}) | 588/588 | 702/702"}
-      - {file: dashboard/app/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
-      - {file: dashboard/app/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
+      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
+      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "only {n} of {d} benign tasks ({pct}% {ci}) ran without escalating to a human"}
-      - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "benign tasks ran without escalating to a human"]'}
+      - {file: dashboard/app/(product)/login/page.tsx, text: '["{n} of {d}", "benign tasks ran without escalating to a human"]'}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} benign tasks ({pct}% {ci}) run without escalating to a human"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'only {n} of {d} benign tasks ran without escalating to a human'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'only {n} of {d} benign tasks ran without escalating to a human'}
 
   - id: agentdojo.argument_taint
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -159,7 +159,7 @@ claims:
       - {file: benchmarks/agentdojo_e2e/README.md, text: "contain {ck} of {cn} attacker write calls"}
       - {file: docs/design/architecture-differentiation.md, text: "None (grants and impact tiers only): {b} benign, {a} attack pairs contained"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'contain {ck} of {cn} attacker write calls'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'contain {ck} of {cn} attacker write calls'}
 
   - id: agentdojo.legitimate_actions_escalated
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -186,7 +186,7 @@ claims:
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{pct}% at 50 attempts"}
       - {file: docs/design/architecture-differentiation.md, text: "{pct}% attack success at 50 attempts"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{pct}% of the attacks we catch through within 50 attempts'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{pct}% of the attacks we catch through within 50 attempts'}
 
   - id: adaptive.bypasses_contained_at_the_action
     source: benchmarks/adaptive/results/adaptive_summary.json
@@ -197,8 +197,8 @@ claims:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "{n}/{d} were still contained at the action"}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} of those bypasses still contained at the action"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} of those bypasses still contained at the action'}
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="adaptive bypasses of the detector, still contained at the action"'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} of those bypasses still contained at the action'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="adaptive bypasses of the detector, still contained at the action"'}
 
   - id: crescendo.trajectory_detection
     source: benchmarks/crescendo/results/crescendo_results.json
@@ -412,8 +412,8 @@ claims:
       - {file: docs/design/architecture-differentiation.md, text: "held-out injection recall is {pct}% at 100% precision"}
       - {file: docs/design/architecture-differentiation.md, text: "{ms} ms per example for the heuristic"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
-      - {file: dashboard/components/blog/posts/hidden-indirect-prompt-injection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
+      - {file: dashboard/components/marketing/blog/posts/hidden-indirect-prompt-injection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
 
   - id: crescendo.trajectory_latency
     source: benchmarks/crescendo/results/crescendo_results.json

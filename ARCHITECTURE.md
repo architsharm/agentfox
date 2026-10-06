@@ -218,7 +218,7 @@ Outside the package:
 | Path | What it is |
 |---|---|
 | `tests/` | Mirrors the package (`tests/runtime/`, `tests/platform/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, plugins, vendored wheels, install layout); `tests/harnesses/conformance.py` runs every registered harness adapter against its captured fixtures. |
-| `dashboard/` | The Next.js 15 app: the signed-in product (`app/app/`), the marketing site, and the website docs (`app/docs/`, sidebar in `lib/docs.ts`). It is a client of the gateway API with no back channel. Tests with vitest. |
+| `dashboard/` | The Next.js 15 app, three sites in one tree organised by route groups that do not change a URL: the signed-in product (`app/(product)/app/`, plus `/login`), the marketing site (`app/(marketing)/`; the home page and `app/blog/` sit at the app root so their Open Graph image URLs stay unhashed), and the website docs (`app/docs/`, sidebar in `lib/docs/pages.ts`). `components/` and `lib/` split the same way into `product/`, `marketing/` and `docs/`; `components/ui/` holds primitives used by more than one site, and `lib/generated/` holds the JSON the generators write. It is a client of the gateway API with no back channel. Tests with vitest. |
 | `benchmarks/` | Every published number: one directory per area with its runner, results and README; `claims.yaml` binds quoted numbers to result files. |
 | `plugins/` | AgentFox packaged for an operator's coding agent (to *use* AgentFox, as opposed to `src/agentfox/harnesses/`, which *governs* one). `shared/` holds the runtime-neutral AGENTS.md, skills and reference files checked against the live CLI; `claude-code/` is the Claude Code plugin (manifest, slash commands, subagents, safety hook, MCP config) with committed copies of `shared/`. Contract in `plugins/STRUCTURE.md`. |
 | `docs/` | Design and contributor docs; index in [docs/README.md](docs/README.md). User docs are on the website. |
@@ -302,7 +302,7 @@ Change a number by re-running the benchmark, never by editing prose.
 
 **Generated files are regenerated, not edited.** `docs/status.md` (`scripts/gen/coverage.py
 --write`), the route tables in `docs/architecture/api-spec.md` (`scripts/gen/api_routes.py
---write`), `dashboard/lib/reference/*.json` (`scripts/gen/docs_reference.py --write`, which also
+--write`), `dashboard/lib/generated/reference/*.json` (`scripts/gen/docs_reference.py --write`, which also
 checks every `agentfox …` command shown on a docs page), `docs/design/coverage-map.md`
 (`scripts/probe/run.py`). `scripts/check/plugins.py` checks the plugins against the live CLI,
 that the Claude Code plugin's copies of `plugins/shared/` match their originals (`--write`
@@ -348,7 +348,7 @@ A new router must be included in `apps/gateway/app.py:create_app`. Regenerate
 
 **Add a website docs page.** Create `dashboard/app/docs/<section>/<slug>/page.tsx` using the
 blocks in `dashboard/components/docs/blocks.tsx` (copy a sibling page), and add it to
-`DOC_NAV` in `dashboard/lib/docs.ts`, the one list the sidebar reads. Every `agentfox …`
+`DOC_NAV` in `dashboard/lib/docs/pages.ts`, the one list the sidebar reads. Every `agentfox …`
 command on the page is checked by `scripts/gen/docs_reference.py --check`; a figure on it must be
 bound in `benchmarks/claims.yaml`. Run `npm test` in `dashboard/`.
 
