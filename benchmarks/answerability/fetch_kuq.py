@@ -13,7 +13,7 @@ File:   knowns_unknowns.jsonl (6,884 rows) — a Turk-curated set of questions e
         larger file is noted as available for a bigger future run.
 
 Three categories kept, all others dropped — see run_kuq_benchmark.py's docstring
-for why only these three are in scope for `src/agentfox/grounding/answerability.py`:
+for why only these three are in scope for `src/agentfox/capabilities/grounding/answerability.py`:
 
   - `future_unknown` (`category == "future unknown"`, `unknown == True`) — tests
     whether `question_type()` correctly classifies future-tense questions as

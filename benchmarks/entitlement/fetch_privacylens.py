@@ -13,7 +13,7 @@ channel/purpose) — e.g. a lawyer's confidential case notes (retrieved for
 internal case work) about to be posted publicly to Facebook. See
 `run_privacylens_benchmark.py`'s docstring for how this real, human-authored
 scenario content is turned into a concrete test of
-`src/agentfox/grounding/entitlement.py::filter_retrieval`'s purpose-limitation check — a
+`src/agentfox/capabilities/grounding/entitlement.py::filter_retrieval`'s purpose-limitation check — a
 different, self-constructed kind of benchmark than the off-the-shelf-labeled
 datasets used elsewhere in this project, and disclosed as such.
 """

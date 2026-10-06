@@ -1,10 +1,11 @@
 """F6 and F8, on the live enforcement path.
 
 `docs/failure-modes.md` recorded eleven modes as `◐-unwired`: real, individually
-unit-tested detectors that nothing in the request path ever called. `tests/grounding/
-test_commitments.py` and `tests/grounding/test_context_integrity.py` already prove the detectors
-work — and proved exactly nothing about production, because they call the functions
-directly. That is the gap this file exists to close, so every test here goes through
+unit-tested detectors that nothing in the request path ever called.
+`tests/capabilities/grounding/test_commitments.py` and
+`tests/capabilities/grounding/test_context_integrity.py` already prove the detectors work —
+and proved exactly nothing about production, because they call the functions directly.
+That is the gap this file exists to close, so every test here goes through
 `Enforcer.evaluate()` or `guard_memory_write()` and asserts on what a real request
 produced: a persisted `Finding`, an entry in `result.taint`, a verdict.
 

@@ -20,9 +20,9 @@ import type { CSSProperties, ReactNode } from "react";
  *   - synthetic rule ids ............ src/agentfox/runtime/enforcement/ (~line 650)
  *   - grant record layout ........... src/agentfox/cli/capability_cli.py grant()
  *   - finding types and titles ...... src/agentfox/evaluation/redteam.py,
- *                                     src/agentfox/grounding/provenance.py,
+ *                                     src/agentfox/capabilities/grounding/provenance.py,
  *                                     src/agentfox/containment/escalation.py,
- *                                     src/agentfox/grounding/answerability.py
+ *                                     src/agentfox/capabilities/grounding/answerability.py
  *   - chain wording ................. Playground.tsx audit panel
  *   - chain break reasons ........... src/agentfox/platform/ledger/chain.py verify()
  *   - the digests in ChainMock ...... computed with chain.py's own

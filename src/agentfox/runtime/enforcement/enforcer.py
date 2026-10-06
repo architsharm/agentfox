@@ -30,6 +30,7 @@ from agentfox.capabilities.detection.tuning import (
     explain,
     filter_suppressed,
 )
+from agentfox.capabilities.grounding.context_integrity import assemble_context
 from agentfox.containment.findings import (
     detector_verdict,
     is_detector_rule,
@@ -38,7 +39,6 @@ from agentfox.containment.findings import (
 )
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Decision, Identity, Tool, Trace, as_aware, utcnow
-from agentfox.grounding.context_integrity import assemble_context
 from agentfox.platform.identity import (
     check_capability,
     redeem_approval,

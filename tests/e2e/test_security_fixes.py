@@ -480,7 +480,11 @@ def test_validating_a_source_url_never_reaches_cloud_metadata(seeded_app, monkey
     """A source key or a knowledge-base `base_url` is operator input, fetched by the
     server: the same guard as the spec fetch applies, so it cannot read the
     instance metadata endpoint or this deployment's own network."""
-    from agentfox.grounding.provenance import UNREACHABLE, register_source, validate_source
+    from agentfox.capabilities.grounding.provenance import (
+        UNREACHABLE,
+        register_source,
+        validate_source,
+    )
 
     def _no_network(request):
         raise AssertionError(f"connected to {request.url}")
@@ -499,7 +503,7 @@ def test_validating_a_source_url_never_reaches_cloud_metadata(seeded_app, monkey
 
 
 def test_a_large_source_is_hashed_on_its_first_bytes_not_refused(seeded_app, monkeypatch):
-    from agentfox.grounding import provenance
+    from agentfox.capabilities.grounding import provenance
 
     monkeypatch.setattr(outbound, "_getaddrinfo", _fake_dns({"docs.example": ["93.184.216.34"]}))
     big = b"x" * (provenance.VALIDATE_MAX_BYTES + 10_000)

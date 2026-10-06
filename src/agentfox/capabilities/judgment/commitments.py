@@ -41,7 +41,7 @@ from agentfox.capabilities.judgment.egress import JudgmentGateway
 from agentfox.capabilities.judgment.jev import JevUnavailable
 
 if TYPE_CHECKING:  # pragma: no cover
-    from agentfox.grounding.commitments import Commitment
+    from agentfox.capabilities.grounding.commitments import Commitment
 
 log = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ def augment(
     Returns `found` unchanged when the tier is off, the agent was authorised,
     or the judgment cannot be made — so a caller can apply it unconditionally.
     """
-    from agentfox.grounding.commitments import Commitment
+    from agentfox.capabilities.grounding.commitments import Commitment
 
     if authorised or not text.strip() or not enabled(gateway):
         return found

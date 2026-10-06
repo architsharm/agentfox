@@ -14,10 +14,7 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
-from agentfox.cli.main import app
-from agentfox.core.db import session_scope
-from agentfox.core.models import DisclosureEvent
-from agentfox.grounding.entitlement import (
+from agentfox.capabilities.grounding.entitlement import (
     DEFAULT_K_ANONYMITY,
     NativeAclEngine,
     aggregation_risk,
@@ -29,6 +26,9 @@ from agentfox.grounding.entitlement import (
     record_disclosure,
     upsert_principal,
 )
+from agentfox.cli.main import app
+from agentfox.core.db import session_scope
+from agentfox.core.models import DisclosureEvent
 from tests.conftest import as_user
 
 runner = CliRunner()
@@ -211,7 +211,7 @@ def test_nothing_is_recorded_when_there_was_nothing_to_check(estate):
 def test_the_openfga_hint_names_the_current_variable():
     import inspect
 
-    from agentfox.grounding.entitlement import OpenFgaEngine
+    from agentfox.capabilities.grounding.entitlement import OpenFgaEngine
 
     source = inspect.getsource(OpenFgaEngine.visible)
     assert "AGENTFOX_ENTITLEMENT_ENGINE" in source

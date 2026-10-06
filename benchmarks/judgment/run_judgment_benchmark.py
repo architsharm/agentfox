@@ -77,13 +77,18 @@ def main() -> int:
         PiiJudgmentDetector,
     )
     from agentfox.capabilities.detection.detectors.pii import NativePiiDetector
+    from agentfox.capabilities.grounding.answerability import (
+        AGGREGATE,
+        FACT,
+        PROCEDURE,
+        classify_answerability,
+    )
+    from agentfox.capabilities.grounding.commitments import detect_commitments
     from agentfox.capabilities.judgment.answerability import augment as augment_answerability
     from agentfox.capabilities.judgment.capability import DecisionKind, Tier
     from agentfox.capabilities.judgment.commitments import augment as augment_commitments
     from agentfox.core.config import get_settings
     from agentfox.core.models import KnowledgeBoundary
-    from agentfox.grounding.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability
-    from agentfox.grounding.commitments import detect_commitments
 
     s = get_settings()
     s.allow_egress = True

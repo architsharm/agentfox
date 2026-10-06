@@ -24,8 +24,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from agentfox.capabilities.grounding.integrity import numbers_in
 from agentfox.core.finding import RiskFinding
-from agentfox.grounding.integrity import numbers_in
 
 #: Phrases that mark a premise smuggled in as shared knowledge. Their presence is what
 #: makes an assertion worth checking; their absence means the user asked rather than told.

@@ -84,7 +84,7 @@ def _seeded_session():
 
 
 def probe_ungrounded_claim() -> Result:
-    from agentfox.grounding.provenance import uncited_claims
+    from agentfox.capabilities.grounding.provenance import uncited_claims
 
     claims = uncited_claims(
         "The refund window is 90 days and covers shipping.",
@@ -94,14 +94,14 @@ def probe_ungrounded_claim() -> Result:
 
 
 def probe_arithmetic() -> Result:
-    from agentfox.grounding.integrity import check_arithmetic
+    from agentfox.capabilities.grounding.integrity import check_arithmetic
 
     issues = check_arithmetic("Revenue rose: 5 + 3 = 9 in total.")
     return bool(issues), issues[0]["reason"] if issues else "nothing"
 
 
 def probe_aggregation_sum() -> Result:
-    from agentfox.grounding.integrity import check_arithmetic
+    from agentfox.capabilities.grounding.integrity import check_arithmetic
 
     issues = check_arithmetic("The total is 120", components=[50.0, 55.0])
     return bool(issues), issues[0]["reason"] if issues else "nothing"
@@ -123,7 +123,7 @@ def probe_schema_violation() -> Result:
 def probe_coverage_window() -> Result:
     import datetime as dt
 
-    from agentfox.grounding.answerability import classify_answerability
+    from agentfox.capabilities.grounding.answerability import classify_answerability
 
     class B:
         systems_of_record = ["CRM"]
@@ -217,7 +217,7 @@ def probe_multilingual_injection() -> Result:
 
 def probe_sycophancy_premise() -> Result:
     """L0.7 — a false premise the user asserted, adopted rather than corrected."""
-    from agentfox.grounding.sycophancy import check_premises
+    from agentfox.capabilities.grounding.sycophancy import check_premises
 
     findings = check_premises(
         "As you know, the balance is 900 — can I withdraw 500?",
@@ -264,7 +264,7 @@ def probe_crescendo_trajectory() -> Result:
 
 def probe_localised_number_parity() -> Result:
     """L0.10 — the same wrong sum, in a locale that writes numbers differently."""
-    from agentfox.grounding.integrity import check_arithmetic
+    from agentfox.capabilities.grounding.integrity import check_arithmetic
 
     english = check_arithmetic("The total is 1,234.56 + 1,000.00 = 3,500.00")
     german = check_arithmetic("Die Gesamtsumme ist 1.234,56 + 1.000,00 = 3.500,00", locale="de")
@@ -302,7 +302,11 @@ def probe_pii_redaction() -> Result:
 
 
 def probe_source_tier() -> Result:
-    from agentfox.grounding.provenance import UNVERIFIED, assess_provenance, register_source
+    from agentfox.capabilities.grounding.provenance import (
+        UNVERIFIED,
+        assess_provenance,
+        register_source,
+    )
 
     with _session() as s:
         register_source(s, "price-book", tier="system_of_record")
@@ -318,8 +322,8 @@ def probe_source_tier() -> Result:
 def probe_stale_source() -> Result:
     import datetime as dt
 
+    from agentfox.capabilities.grounding.provenance import freshness_breach, register_source
     from agentfox.core.models import utcnow
-    from agentfox.grounding.provenance import freshness_breach, register_source
 
     with _session() as s:
         record = register_source(
@@ -333,7 +337,7 @@ def probe_stale_source() -> Result:
 
 
 def probe_deprecated_source() -> Result:
-    from agentfox.grounding.provenance import assess_provenance, register_source
+    from agentfox.capabilities.grounding.provenance import assess_provenance, register_source
 
     with _session() as s:
         register_source(s, "wiki-2019", tier="approved", deprecated=True)
@@ -347,7 +351,7 @@ def probe_deprecated_source() -> Result:
 
 
 def probe_fabricated_citation() -> Result:
-    from agentfox.grounding.provenance import detect_fabricated_citations
+    from agentfox.capabilities.grounding.provenance import detect_fabricated_citations
 
     found = detect_fabricated_citations(
         "The limit is 900 [policy-v3].", [{"source": "policy-v3", "text": "the limit is 500"}]
@@ -356,7 +360,7 @@ def probe_fabricated_citation() -> Result:
 
 
 def probe_source_conflict() -> Result:
-    from agentfox.grounding.provenance import detect_source_conflict
+    from agentfox.capabilities.grounding.provenance import detect_source_conflict
 
     found = detect_source_conflict(
         [
@@ -368,7 +372,7 @@ def probe_source_conflict() -> Result:
 
 
 def probe_completeness() -> Result:
-    from agentfox.grounding.answerability import completeness_signal
+    from agentfox.capabilities.grounding.answerability import completeness_signal
 
     signal = completeness_signal("Here are the results.", retrieved=3, available=50)
     return bool(signal.get("misleading")), signal.get("suggested_caveat", "")
@@ -545,7 +549,11 @@ def probe_encoded_secret() -> Result:
 
 
 def probe_entitlement() -> Result:
-    from agentfox.grounding.entitlement import filter_retrieval, grant, upsert_principal
+    from agentfox.capabilities.grounding.entitlement import (
+        filter_retrieval,
+        grant,
+        upsert_principal,
+    )
 
     with _session() as s:
         grant(s, "kb/*", principal="all-staff")
@@ -562,21 +570,21 @@ def probe_entitlement() -> Result:
 
 
 def probe_k_anonymity() -> Result:
-    from agentfox.grounding.entitlement import aggregation_risk
+    from agentfox.capabilities.grounding.entitlement import aggregation_risk
 
     risk = aggregation_risk("Average salary is 180k", contributors=2)
     return risk is not None, risk["reason"] if risk else "nothing"
 
 
 def probe_inference() -> Result:
-    from agentfox.grounding.entitlement import inference_risk
+    from agentfox.capabilities.grounding.entitlement import inference_risk
 
     risk = inference_risk("She is likely pregnant based on leave patterns.", "leave records")
     return risk is not None, str(risk["attributes"]) if risk else "nothing"
 
 
 def probe_unknowable() -> Result:
-    from agentfox.grounding.answerability import classify_answerability
+    from agentfox.capabilities.grounding.answerability import classify_answerability
 
     class B:
         systems_of_record = ["CRM"]
@@ -592,7 +600,7 @@ def probe_unknowable() -> Result:
 
 
 def probe_entity_confusion() -> Result:
-    from agentfox.grounding.integrity import detect_entity_confusion
+    from agentfox.capabilities.grounding.integrity import detect_entity_confusion
 
     found = detect_entity_confusion(
         "how is Acme Corp doing?",
@@ -603,28 +611,28 @@ def probe_entity_confusion() -> Result:
 
 
 def probe_period() -> Result:
-    from agentfox.grounding.integrity import detect_period_mismatch
+    from agentfox.capabilities.grounding.integrity import detect_period_mismatch
 
     found = detect_period_mismatch("what was FY2024 revenue?", "In calendar year 2024, £4m.")
     return bool(found), found[0]["kind"] if found else "nothing"
 
 
 def probe_units() -> Result:
-    from agentfox.grounding.integrity import detect_unit_mismatch
+    from agentfox.capabilities.grounding.integrity import detect_unit_mismatch
 
     found = detect_unit_mismatch("Revenue was $4m", "Revenue was €4m")
     return bool(found), found[0]["kind"] if found else "nothing"
 
 
 def probe_hallucinated_record() -> Result:
-    from agentfox.grounding.integrity import detect_unmatched_records
+    from agentfox.capabilities.grounding.integrity import detect_unmatched_records
 
     found = detect_unmatched_records("Matched to ORD-99999.", [{"id": "ORD-11111"}])
     return bool(found), found[0]["identifier"] if found else "nothing"
 
 
 def probe_timezone() -> Result:
-    from agentfox.grounding.integrity import detect_timezone_ambiguity
+    from agentfox.capabilities.grounding.integrity import detect_timezone_ambiguity
 
     found = detect_timezone_ambiguity("Your appeal is due by 5:00 pm")
     clean = detect_timezone_ambiguity("Your appeal is due by 5:00 pm UTC")
@@ -747,7 +755,10 @@ def probe_distress() -> Result:
 
 
 def probe_over_refusal() -> Result:
-    from agentfox.grounding.answerability import classify_answerability, detect_over_refusal
+    from agentfox.capabilities.grounding.answerability import (
+        classify_answerability,
+        detect_over_refusal,
+    )
 
     class B:
         systems_of_record = ["CRM"]
@@ -959,7 +970,11 @@ def probe_cross_tenant() -> Result:
 
 
 def probe_residency() -> Result:
-    from agentfox.grounding.entitlement import filter_retrieval, grant, upsert_principal
+    from agentfox.capabilities.grounding.entitlement import (
+        filter_retrieval,
+        grant,
+        upsert_principal,
+    )
 
     with _session() as s:
         grant(s, "eu/*", principal="staff-res", residency="eu")
@@ -977,7 +992,11 @@ def probe_residency() -> Result:
 
 
 def probe_purpose() -> Result:
-    from agentfox.grounding.entitlement import filter_retrieval, grant, upsert_principal
+    from agentfox.capabilities.grounding.entitlement import (
+        filter_retrieval,
+        grant,
+        upsert_principal,
+    )
 
     with _session() as s:
         grant(s, "tickets/*", principal="staff-purpose", purposes=["support"])
@@ -1044,7 +1063,7 @@ def probe_policy_version_recorded() -> Result:
 
 
 def probe_corrupt_document() -> Result:
-    from agentfox.grounding.context_integrity import document_quality
+    from agentfox.capabilities.grounding.context_integrity import document_quality
 
     corrupt = document_quality("The vendorâ€™s cafÃ© charge was Â£5.00 on the third.")
     clean = document_quality(
@@ -1058,7 +1077,7 @@ def probe_corrupt_document() -> Result:
 
 
 def probe_encoding_damage() -> Result:
-    from agentfox.grounding.context_integrity import document_quality
+    from agentfox.capabilities.grounding.context_integrity import document_quality
 
     damaged = document_quality("The customer name is ��� and the total is [UNK].")
     languages = {
@@ -1074,7 +1093,7 @@ def probe_encoding_damage() -> Result:
 
 
 def probe_chunk_coherence() -> Result:
-    from agentfox.grounding.context_integrity import chunk_quality
+    from agentfox.capabilities.grounding.context_integrity import chunk_quality
 
     split = chunk_quality(
         [
@@ -1095,7 +1114,7 @@ def probe_chunk_coherence() -> Result:
 
 
 def probe_truncated_evidence() -> Result:
-    from agentfox.grounding.context_integrity import assemble_context
+    from agentfox.capabilities.grounding.context_integrity import assemble_context
 
     chunks = [{"text": "x" * 400} for _ in range(8)]
     starved = assemble_context(chunks, budget_tokens=50, required=[7])
@@ -1108,7 +1127,7 @@ def probe_truncated_evidence() -> Result:
 
 
 def probe_lost_in_middle() -> Result:
-    from agentfox.grounding.context_integrity import assemble_context
+    from agentfox.capabilities.grounding.context_integrity import assemble_context
 
     chunks = [{"text": f"passage {i}. " * 5} for i in range(6)]
     result = assemble_context(chunks, budget_tokens=10_000)
@@ -1120,7 +1139,10 @@ def probe_lost_in_middle() -> Result:
 
 
 def probe_retrieval_drift() -> Result:
-    from agentfox.grounding.context_integrity import evaluate_retrieval, retrieval_drift
+    from agentfox.capabilities.grounding.context_integrity import (
+        evaluate_retrieval,
+        retrieval_drift,
+    )
 
     baseline = evaluate_retrieval([(["t", "a", "b"], {"t"}), (["t", "c", "d"], {"t"})])
     regressed = evaluate_retrieval([(["a", "b", "t"], {"t"}), (["c", "d", "t"], {"t"})])
@@ -1133,7 +1155,7 @@ def probe_retrieval_drift() -> Result:
 
 
 def probe_memory_binding() -> Result:
-    from agentfox.grounding.context_integrity import memory_binding_breach
+    from agentfox.capabilities.grounding.context_integrity import memory_binding_breach
 
     leaked = memory_binding_breach([{"key": "pref", "subject": "bob"}], principal="alice")
     unbound = memory_binding_breach([{"key": "note"}], principal="alice")
@@ -1404,7 +1426,7 @@ def probe_agent_message_security() -> Result:
 
 
 def probe_binding_commitment() -> Result:
-    from agentfox.grounding.commitments import detect_commitments
+    from agentfox.capabilities.grounding.commitments import detect_commitments
 
     binding = detect_commitments("Your refund has been approved and we'll credit you today.")
     hedged = detect_commitments("Refunds are usually approved within two days.")
@@ -1418,7 +1440,7 @@ def probe_binding_commitment() -> Result:
 
 
 def probe_ai_disclosure() -> Result:
-    from agentfox.grounding.commitments import check_disclosure, disclosure_required
+    from agentfox.capabilities.grounding.commitments import check_disclosure, disclosure_required
 
     silent = check_disclosure("Hi! How can I help?", channel="chat")
     stated = check_disclosure("Hi, I'm an AI assistant — how can I help?", channel="chat")
@@ -1430,7 +1452,7 @@ def probe_ai_disclosure() -> Result:
 
 
 def probe_adverse_action() -> Result:
-    from agentfox.grounding.commitments import adverse_action_risk
+    from agentfox.capabilities.grounding.commitments import adverse_action_risk
 
     silent = adverse_action_risk("declined", reasons=[], domain="lending")
     boilerplate = adverse_action_risk(
@@ -1450,7 +1472,7 @@ def probe_adverse_action() -> Result:
 
 
 def probe_fairness() -> Result:
-    from agentfox.grounding.commitments import fairness_probe
+    from agentfox.capabilities.grounding.commitments import fairness_probe
 
     disparate = fairness_probe({"a": (80, 100), "b": (40, 100)})
     comparable = fairness_probe({"a": (80, 100), "b": (75, 100)})
@@ -1670,7 +1692,7 @@ def probe_scope_bound_to_literal() -> Result:
 
 
 def probe_subject_mismatch() -> Result:
-    from agentfox.grounding.tool_contract import answers_request
+    from agentfox.capabilities.grounding.tool_contract import answers_request
 
     wrong = answers_request(
         "What is the status of order A-1182?", {"order": "A-1183", "status": "shipped"}
@@ -1686,7 +1708,7 @@ def probe_subject_mismatch() -> Result:
 
 
 def probe_silent_tool_failure() -> Result:
-    from agentfox.grounding.tool_contract import answers_request
+    from agentfox.capabilities.grounding.tool_contract import answers_request
 
     errored = answers_request(
         "What is the balance for order A-1182?", {"order": "A-1182", "error": "upstream timeout"}
@@ -1704,7 +1726,7 @@ def probe_silent_tool_failure() -> Result:
 
 
 def probe_answer_register() -> Result:
-    from agentfox.grounding.register import check_register
+    from agentfox.capabilities.grounding.register import check_register
 
     dose = check_register(
         "Take 400mg every six hours with food.", request="What dose of ibuprofen should I take?"
@@ -1739,7 +1761,7 @@ def probe_answer_register() -> Result:
 
 
 def probe_source_bypassed() -> Result:
-    from agentfox.grounding.arbitration import Reading, SourceAuthority, arbitrate
+    from agentfox.capabilities.grounding.arbitration import Reading, SourceAuthority, arbitrate
 
     sources = [
         SourceAuthority("ledger", "system_of_record", ("balance",), max_age_seconds=60),
@@ -1757,7 +1779,7 @@ def probe_source_bypassed() -> Result:
 
 
 def probe_source_disagreement() -> Result:
-    from agentfox.grounding.arbitration import Reading, SourceAuthority, arbitrate
+    from agentfox.capabilities.grounding.arbitration import Reading, SourceAuthority, arbitrate
 
     sources = [
         SourceAuthority("ledger", "system_of_record", ("balance",)),

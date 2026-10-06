@@ -10,13 +10,13 @@ from typing import Any
 
 from agentfox.capabilities.detection import TaintTracker
 from agentfox.capabilities.detection.taint import _flatten
-from agentfox.core.models import Agent, TaintTag, Trace
-from agentfox.grounding.answerability import (
+from agentfox.capabilities.grounding.answerability import (
     classify_answerability,
     detect_over_refusal,
     get_boundary,
     verify_boundary,
 )
+from agentfox.core.models import Agent, TaintTag, Trace
 from agentfox.integrations.correlation import (
     link_trace,
     push_verdict,

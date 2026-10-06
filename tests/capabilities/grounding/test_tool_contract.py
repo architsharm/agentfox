@@ -10,7 +10,11 @@ an ungrounded one.
 
 from __future__ import annotations
 
-from agentfox.grounding.tool_contract import answers_request, identifiers, requested_fields
+from agentfox.capabilities.grounding.tool_contract import (
+    answers_request,
+    identifiers,
+    requested_fields,
+)
 
 
 def codes(check) -> set[str]:

@@ -12,11 +12,15 @@ import pytest
 
 from agentfox.capabilities.detection.base import DetectionContext
 from agentfox.capabilities.detection.detectors.judgment import PiiJudgmentDetector
+from agentfox.capabilities.grounding.answerability import (
+    UNKNOWABLE,
+    UNSUPPORTED_TYPE,
+    AnswerabilityVerdict,
+)
 from agentfox.capabilities.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
 from agentfox.capabilities.judgment.answerability import augment
 from agentfox.capabilities.judgment.egress import EgressRefused
 from agentfox.core.config import get_settings
-from agentfox.grounding.answerability import UNKNOWABLE, UNSUPPORTED_TYPE, AnswerabilityVerdict
 
 
 class FakeGateway(JudgmentGateway):
@@ -131,7 +135,7 @@ def _commit_gateway(**scores):
 
 def test_the_widened_regexes_catch_active_voice() -> None:
     """Found by benchmarking: the closed set only matched the passive form."""
-    from agentfox.grounding.commitments import detect_commitments
+    from agentfox.capabilities.grounding.commitments import detect_commitments
 
     assert detect_commitments("I've approved your refund of 50 USD.")
     assert detect_commitments("Your refund has already been approved.")
@@ -139,7 +143,7 @@ def test_the_widened_regexes_catch_active_voice() -> None:
 
 
 def test_the_widened_regexes_still_leave_the_hedges_alone() -> None:
-    from agentfox.grounding.commitments import detect_commitments
+    from agentfox.capabilities.grounding.commitments import detect_commitments
 
     assert not detect_commitments("Refunds are usually approved within two days.")
     assert not detect_commitments("Your refund may be approved once a reviewer checks it.")
@@ -149,7 +153,7 @@ def test_judgment_adds_a_commitment_with_no_binding_word(judgment_on) -> None:
     from agentfox.capabilities.judgment.commitments import augment
 
     text = "That's sorted — the 50 USD is on its way back to you."
-    from agentfox.grounding.commitments import detect_commitments
+    from agentfox.capabilities.grounding.commitments import detect_commitments
 
     assert detect_commitments(text) == []  # no binding word; the regexes cannot see it
     out = augment([], text, gateway=_commit_gateway(settles_outcome=0.9))
@@ -160,8 +164,8 @@ def test_judgment_adds_a_commitment_with_no_binding_word(judgment_on) -> None:
 
 def test_judgment_never_drops_a_deterministic_finding(judgment_on) -> None:
     """Those are the findings that survive a hearing."""
+    from agentfox.capabilities.grounding.commitments import Commitment
     from agentfox.capabilities.judgment.commitments import augment
-    from agentfox.grounding.commitments import Commitment
 
     existing = [Commitment("promise", "I guarantee", "binds the company")]
     out = augment(existing, "I guarantee a refund.", gateway=_commit_gateway(settles_outcome=0.0))

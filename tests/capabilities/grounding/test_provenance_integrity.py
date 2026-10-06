@@ -18,8 +18,7 @@ import hashlib
 import pytest
 from sqlalchemy import select
 
-from agentfox.core.models import Agent, Finding, SourceRecord, utcnow
-from agentfox.grounding.integrity import (
+from agentfox.capabilities.grounding.integrity import (
     assess_integrity,
     check_arithmetic,
     detect_date_mismatch,
@@ -30,7 +29,7 @@ from agentfox.grounding.integrity import (
     detect_unmatched_records,
     number_readings,
 )
-from agentfox.grounding.provenance import (
+from agentfox.capabilities.grounding.provenance import (
     APPROVED,
     CHANGED,
     EXTERNAL,
@@ -51,6 +50,7 @@ from agentfox.grounding.provenance import (
     uncited_claims,
     validate_source,
 )
+from agentfox.core.models import Agent, Finding, SourceRecord, utcnow
 
 # ---------------------------------------------------------------------------
 # F2.1 — source tier

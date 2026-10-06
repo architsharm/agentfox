@@ -432,9 +432,9 @@ def test_compliance_validate_reports_unparseable_yaml(compliance_dir):
 
 
 def test_declare_boundary_mode_only_keeps_the_rest_of_the_boundary():
+    from agentfox.capabilities.grounding.answerability import get_boundary
     from agentfox.core.db import session_scope
     from agentfox.core.models import Agent
-    from agentfox.grounding.answerability import get_boundary
 
     _seed()
     first = runner.invoke(

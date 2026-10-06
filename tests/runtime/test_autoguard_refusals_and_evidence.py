@@ -71,8 +71,8 @@ def openai_reply():
 def test_chunks_without_a_principal_are_checked_for_source_authority(openai_reply):
     """#5: `agentfox_chunks` with no `agentfox_principal` skipped every evidence
     check. An answer built on a deprecated source is a finding either way."""
+    from agentfox.capabilities.grounding.provenance import register_source
     from agentfox.core.models import Finding
-    from agentfox.grounding.provenance import register_source
 
     with _db() as session:
         register_source(session, "wiki-2019", tier="approved", deprecated=True)
@@ -92,8 +92,8 @@ def test_chunks_without_a_principal_are_checked_for_source_authority(openai_repl
 def test_an_unregistered_principal_is_recorded_not_ignored(openai_reply):
     """#5: a subject nobody registered resolved to no principal, and the entitlement
     check then recorded nothing. It is evaluated as itself, with no groups."""
+    from agentfox.capabilities.grounding.entitlement import grant
     from agentfox.core.models import DisclosureEvent, EndUserPrincipal
-    from agentfox.grounding.entitlement import grant
 
     with _db() as session:
         grant(session, "kb/*", principal="all-staff")  # a group grant: not this subject's

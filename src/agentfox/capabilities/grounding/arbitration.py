@@ -48,7 +48,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.grounding.provenance import TIER_RANK, UNVERIFIED
+from agentfox.capabilities.grounding.provenance import TIER_RANK, UNVERIFIED
 
 # --- Declaration -----------------------------------------------------------
 

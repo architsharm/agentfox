@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.capabilities.grounding.commitments import claims_human
 from agentfox.core.models import Agent
-from agentfox.grounding.commitments import claims_human
 
 
 @pytest.mark.parametrize(

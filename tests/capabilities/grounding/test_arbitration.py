@@ -10,7 +10,7 @@ sources answer, the values differ, and the system picks one. Picking is the mist
 
 from __future__ import annotations
 
-from agentfox.grounding.arbitration import (
+from agentfox.capabilities.grounding.arbitration import (
     Reading,
     SourceAuthority,
     arbitrate,

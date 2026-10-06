@@ -39,7 +39,7 @@ from agentfox.capabilities.judgment.egress import JudgmentGateway
 from agentfox.capabilities.judgment.jev import JevUnavailable
 
 if TYPE_CHECKING:  # pragma: no cover
-    from agentfox.grounding.answerability import AnswerabilityVerdict
+    from agentfox.capabilities.grounding.answerability import AnswerabilityVerdict
 
 log = logging.getLogger(__name__)
 

@@ -300,9 +300,9 @@ def test_reserved_evidence_kwargs_record_disclosure_and_never_reach_the_provider
     gateway HTTP path had: `enforcer.evidence` was never populated by real traffic, so
     entitlement checking could never fire for anyone using the one-liner. They must
     also never leak into the real provider call as unrecognised kwargs."""
+    from agentfox.capabilities.grounding.entitlement import grant, upsert_principal
     from agentfox.core.db import session_scope
     from agentfox.core.models import DisclosureEvent
-    from agentfox.grounding.entitlement import grant, upsert_principal
 
     with session_scope() as session:
         grant(session, "kb/*", principal="all-staff")
@@ -332,8 +332,8 @@ def test_reserved_evidence_kwargs_record_disclosure_and_never_reach_the_provider
 def test_strict_mode_refuses_an_answer_quoting_a_withheld_chunk(app_db):
     """#4: auto(mode="enforce") with a principal and chunks used to hand back an answer
     quoting a chunk the principal may not see, recording only a critical finding."""
+    from agentfox.capabilities.grounding.entitlement import grant, upsert_principal
     from agentfox.core.db import session_scope
-    from agentfox.grounding.entitlement import grant, upsert_principal
     from agentfox.runtime.autoguard import Blocked
 
     with session_scope() as session:

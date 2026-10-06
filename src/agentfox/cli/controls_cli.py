@@ -75,8 +75,8 @@ def boundary_set(
     """
     from sqlalchemy import select
 
+    from agentfox.capabilities.grounding.answerability import QUESTION_TYPES, declare_boundary
     from agentfox.core.models import Agent
-    from agentfox.grounding.answerability import QUESTION_TYPES, declare_boundary
 
     def _split(value: str | None) -> list[str] | None:
         if value is None:
@@ -138,8 +138,8 @@ def boundary_check(
     """
     from sqlalchemy import select
 
+    from agentfox.capabilities.grounding.answerability import classify_answerability, get_boundary
     from agentfox.core.models import Agent
-    from agentfox.grounding.answerability import classify_answerability, get_boundary
 
     with _session() as session:
         record = session.scalar(select(Agent).where(Agent.slug == agent))
@@ -186,8 +186,8 @@ def sources_add(
     title: str = typer.Option("", "--title"),
 ) -> None:
     """Register a source and its authority tier."""
+    from agentfox.capabilities.grounding.provenance import TIERS, register_source
     from agentfox.core.models import utcnow
-    from agentfox.grounding.provenance import TIERS, register_source
 
     if tier not in TIERS:
         console.print(f"[red]tier must be one of: {', '.join(TIERS)}[/]")
@@ -237,7 +237,7 @@ def sources_import(
     Tiering a corpus is inherently a bulk act. Nobody classifies four hundred sources
     one command at a time, and making them try is how the tiering never happens.
     """
-    from agentfox.grounding.provenance import TIERS, register_source
+    from agentfox.capabilities.grounding.provenance import TIERS, register_source
 
     try:
         payload = json.loads(file.read_text())
@@ -271,8 +271,8 @@ def sources_list(as_json: bool = typer.Option(False, "--json")) -> None:
     """Every registered source, worst tier first."""
     from sqlalchemy import select
 
+    from agentfox.capabilities.grounding.provenance import TIER_RANK, freshness_breach
     from agentfox.core.models import SourceRecord
-    from agentfox.grounding.provenance import TIER_RANK, freshness_breach
 
     with _session() as session:
         rows = [
@@ -447,7 +447,7 @@ def principal_set(
     the agent runs under its own identity, inherits everything that identity can reach,
     and every permission check passes.
     """
-    from agentfox.grounding.entitlement import upsert_principal
+    from agentfox.capabilities.grounding.entitlement import upsert_principal
 
     with _session() as session:
         upsert_principal(
@@ -473,7 +473,7 @@ def grant_add(
     purposes: str = typer.Option("", "--purposes", help="GDPR Art. 5(1)(b) purposes."),
 ) -> None:
     """Grant access to a resource pattern."""
-    from agentfox.grounding.entitlement import grant
+    from agentfox.capabilities.grounding.entitlement import grant
 
     with _session() as session:
         grant(
@@ -495,7 +495,7 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
     Worth running before any entitlement model exists — a ratio of 1.0 with no grants
     configured is exactly the point.
     """
-    from agentfox.grounding.entitlement import over_permission_report
+    from agentfox.capabilities.grounding.entitlement import over_permission_report
 
     with _session() as session:
         report = over_permission_report(session, days=days)

@@ -15,9 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Agent, EndUserPrincipal, ResourceGrant, User
-from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
-from agentfox.grounding.entitlement import (
+from agentfox.capabilities.grounding.entitlement import (
     RESTRICTED_CLASSES,
     filter_retrieval,
     get_engine,
@@ -26,6 +24,8 @@ from agentfox.grounding.entitlement import (
     record_disclosure,
     upsert_principal,
 )
+from agentfox.core.models import Agent, EndUserPrincipal, ResourceGrant, User
+from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 
 router = APIRouter(prefix="/api/entitlement", tags=["entitlement"])
 
