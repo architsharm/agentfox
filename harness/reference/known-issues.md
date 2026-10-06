@@ -39,7 +39,8 @@ environment default, and Ctrl-C handling.
 3. **Recording guardrail feedback needs a named person.** `record_feedback` refuses a blank
    actor, and auditors get a 403 from the feedback route.
 4. **Threshold proposals are never applied by the loop.** Raising a rule's `min_score` loosens it,
-   so `proposals from-labels` only files proposals. A person approves and applies each one.
+   so `proposals from-labels` only files proposals, each with a replay proof and scoped to the
+   agents the labels came from. A person approves and applies each one.
 5. **Undoing a tightening needs a person.** `proposals rollback --automated` is refused for a
    change that tightened a control, because reverting it would loosen one.
 
