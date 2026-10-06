@@ -255,27 +255,51 @@ def _exfil_phrase(tset: set[str]) -> tuple[str, str]:
 # MCP servers, from config
 # ---------------------------------------------------------------------------
 
-#: Config files an MCP client reads. Every one is a file the scanner can open without
+
+@dataclass(frozen=True)
+class McpConfigFile:
+    """One place an MCP client keeps its server list, relative to a project root."""
+
+    #: Relative path, ``/``-separated. A file found anywhere under a scanned tree
+    #: matches when its path ends with this one.
+    path: str
+    #: The client that reads it (``""`` for the cross-client ``.mcp.json`` convention).
+    client: str
+
+    def matches(self, path: Path) -> bool:
+        parts = tuple(self.path.split("/"))
+        return path.parts[-len(parts) :] == parts
+
+
+#: Every MCP client config file discovery knows how to read, in the order
+#: `agentfox scan mcp` lists them. Each one is a file the scanner can open without
 #: starting anything.
-MCP_CONFIG_NAMES = (
-    ".mcp.json",
-    "mcp.json",
-    "claude_desktop_config.json",
-    "mcp_settings.json",
-    ".claude.json",
+#:
+#: Owned here, not by the harness adapters: finding which MCP servers a repository
+#: declares is discovery, not harness governance, and a connected repository is scanned
+#: by `capabilities/monitoring`, which sits below the adapters. An adapter reports its
+#: own rows with `config_files_for(<client>)`.
+KNOWN_MCP_CONFIGS: tuple[McpConfigFile, ...] = (
+    McpConfigFile(".mcp.json", ""),
+    McpConfigFile("mcp.json", ""),
+    McpConfigFile(".cursor/mcp.json", "cursor"),
+    McpConfigFile(".claude/settings.json", "claude-code"),
+    McpConfigFile(".claude/settings.local.json", "claude-code"),
+    McpConfigFile(".claude.json", "claude-code"),
+    McpConfigFile("claude_desktop_config.json", "claude-desktop"),
+    McpConfigFile("mcp_settings.json", "cline"),
 )
 
-#: Where `agentfox scan mcp` looks when no `--config` is given, relative to the repo.
-MCP_CONFIG_CANDIDATES = (
-    ".mcp.json",
-    "mcp.json",
-    ".cursor/mcp.json",
-    ".claude/settings.json",
-    ".claude/settings.local.json",
-    ".claude.json",
-    "claude_desktop_config.json",
-    "mcp_settings.json",
-)
+
+def config_files_for(client: str) -> tuple[McpConfigFile, ...]:
+    """The rows of :data:`KNOWN_MCP_CONFIGS` one client reads."""
+    return tuple(row for row in KNOWN_MCP_CONFIGS if row.client == client)
+
+
+def is_mcp_config(path: Path) -> bool:
+    """True when ``path`` is one of :data:`KNOWN_MCP_CONFIGS`, wherever it sits."""
+    return any(row.matches(path) for row in KNOWN_MCP_CONFIGS)
+
 
 #: Known servers, matched against the server's name and how it is launched (package
 #: name, image, URL). The order matters: the first match wins, so the specific names
@@ -481,7 +505,7 @@ def parse_mcp_config(path: Path, *, root: Path | None = None) -> list[McpServerD
     for key in ("mcpServers", "servers"):
         if isinstance(data.get(key), dict):
             blocks.append(data[key])
-    # ~/.claude.json keeps per-project servers under projects.<path>.mcpServers.
+    # A user-level config may keep per-project servers under projects.<path>.mcpServers.
     projects = data.get("projects")
     if isinstance(projects, dict):
         for project in projects.values():
@@ -517,9 +541,9 @@ def parse_mcp_config(path: Path, *, root: Path | None = None) -> list[McpServerD
 
 
 def find_mcp_configs(root: Path) -> list[Path]:
-    """The MCP client configs at a repository's root, in :data:`MCP_CONFIG_CANDIDATES`
+    """The MCP client configs at a repository's root, in :data:`KNOWN_MCP_CONFIGS`
     order. Only files that exist; nothing is walked below these fixed locations."""
-    return [root / rel for rel in MCP_CONFIG_CANDIDATES if (root / rel).is_file()]
+    return [root / row.path for row in KNOWN_MCP_CONFIGS if (root / row.path).is_file()]
 
 
 def _haystack(decl: McpServerDecl) -> set[str]:

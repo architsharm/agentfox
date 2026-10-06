@@ -79,10 +79,10 @@ def quickscan(
     from agentfox.apps.cli._scan_view import print_trifectas, surface_line
     from agentfox.apps.cli.submit import maybe_submit_report
     from agentfox.capabilities.discovery.repo import scan as discovery_scan
-    from agentfox.capabilities.discovery.sessions import scan_all
+    from agentfox.harnesses import transcripts
 
     repo_report = discovery_scan(path)
-    session_reports = [] if skip_sessions else scan_all()
+    session_reports = [] if skip_sessions else transcripts()
     caught, total, demo_ms = _run_live_demo()
 
     if as_json:

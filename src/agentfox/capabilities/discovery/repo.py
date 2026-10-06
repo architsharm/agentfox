@@ -1077,27 +1077,22 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
 def _detect_mcp(root: Path, report: ScanReport) -> None:
     """MCP servers are declared in config, not code, so they need their own pass.
 
-    Reads every MCP client config under the root (`.mcp.json`, `.cursor/mcp.json`,
-    `claude_desktop_config.json`, `.claude.json`, `.claude/settings*.json`) and never
-    starts a server: what a server can do is classified from how it is declared.
+    Reads every MCP client config under the root (`exposure.KNOWN_MCP_CONFIGS`) and
+    never starts a server: what a server can do is classified from how it is declared.
     """
     from agentfox.capabilities.discovery.exposure import (
         FLAG_LABEL,
-        MCP_CONFIG_NAMES,
         classify_mcp_server,
+        is_mcp_config,
         parse_mcp_config,
     )
 
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for filename in filenames:
-            claude_settings = Path(dirpath).name == ".claude" and filename in (
-                "settings.json",
-                "settings.local.json",
-            )
-            if filename not in MCP_CONFIG_NAMES and not claude_settings:
-                continue
             path = Path(dirpath) / filename
+            if not is_mcp_config(path):
+                continue
             for decl in parse_mcp_config(path, root=root):
                 caps = classify_mcp_server(decl)
                 flags = caps.ordered()

@@ -50,7 +50,7 @@ _RUBRIC_TEMPLATE = (
 
 
 def _context_text(ctx: ScoreContext) -> str:
-    """Retrieved context for grounding, from wherever the harness put it — the same
+    """Retrieved context for grounding, from wherever the eval runner put it — the same
     keys `silent_failure.py`'s lexical scorer reads, reimplemented locally rather
     than importing that module's private helper (the same choice
     `ragas_adapter.py::_context_list` already made for the identical question)."""

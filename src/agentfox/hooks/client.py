@@ -134,9 +134,13 @@ def report_unavailable(exc: Exception) -> None:
     which stops reporting is worse than one that was never installed, so the
     one thing this must never do is nothing.
     """
-    print(
+    print(unavailable_message(exc), file=sys.stderr)
+
+
+def unavailable_message(exc: Exception) -> str:
+    """What `report_unavailable` prints."""
+    return (
         f"agentfox: hook could not reach the daemon — {exc}\n"
         "agentfox: this tool call was NOT checked. Nothing was blocked and nothing "
-        "was recorded.",
-        file=sys.stderr,
+        "was recorded."
     )

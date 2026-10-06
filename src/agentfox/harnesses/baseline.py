@@ -11,7 +11,7 @@ What install does, in one place so the CLI and tests share it:
 * registers the agent — ``development`` unless the operator names an environment,
   and an existing registered agent keeps its own;
 * declares the harness's built-in tools with the impact each really has
-  (`harness.HARNESS_TOOLS`);
+  (the adapter's `tool_impacts`);
 * grants those built-in tools to the agent, attributed to ``hooks install``, so the
   ordinary work of a coding agent goes through. What still stops a call is what
   should: a destructive command (``shell.destructive``), a protected path, the
@@ -29,8 +29,8 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox import harnesses
 from agentfox.core.models import Agent, Capability, Tool
-from agentfox.hooks.harness import HARNESS_TOOLS
 from agentfox.platform.registry.impact import infer_impact
 
 GRANTED_BY = "hooks install"
@@ -83,7 +83,7 @@ def install_baseline(
         out.environment_changed = True
     out.environment = agent.environment
 
-    tools = HARNESS_TOOLS.get(harness, {})
+    tools = harnesses.tool_impacts(harness)
     for key in tools:
         impact = infer_impact(key, declared=tools)
         if session.scalar(select(Tool).where(Tool.key == key)) is None:
@@ -105,7 +105,7 @@ def install_baseline(
                 select(Capability.tool_key).where(Capability.identity_id == identity.id)
             )
         )
-        for key in HARNESS_TOOLS.get(harness, {}):
+        for key in tools:
             if key in held:
                 continue
             capability = grant_capability(session, identity, key, granted_by=GRANTED_BY)

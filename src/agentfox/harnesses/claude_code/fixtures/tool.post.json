@@ -1,0 +1,1 @@
+{"session_id": "s1", "transcript_path": "/tmp/t.jsonl", "cwd": "/repo", "permission_mode": "auto", "agent_type": "claude", "hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_input": {"command": "gh issue view 7"}, "tool_response": {"stdout": "thanks for the report", "stderr": "", "interrupted": false, "isImage": false}, "tool_use_id": "toolu_1", "duration_ms": 27}

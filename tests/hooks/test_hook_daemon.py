@@ -272,7 +272,7 @@ def test_the_capability_table_never_claims_block_for_an_unprobed_event():
     live, and this test failing when that happened is the table working — the
     assertion has to move to a harness nobody has checked, not be relaxed.
     """
-    from agentfox.hooks import capability_of, describe
+    from agentfox.harnesses.capability import capability_of, describe
 
     assert capability_of("cursor", "PreToolUse") is None
     text = describe("cursor", "PreToolUse")

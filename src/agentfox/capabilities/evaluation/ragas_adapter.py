@@ -186,7 +186,7 @@ def score_dataset(samples: list[RagasSample], *, prefer_ragas: bool = True) -> d
 
 
 def _context_list(ctx: ScoreContext) -> list[str]:
-    """Retrieved context, from wherever the harness put it — same keys the
+    """Retrieved context, from wherever the eval runner put it — same keys the
     groundedness scorer already checks, so a case only has to supply this once."""
     for key in ("retrieved", "context", "documents", "sources"):
         value = ctx.context.get(key)
