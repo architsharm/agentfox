@@ -131,9 +131,6 @@ layers = [
     "agentfox.core",
 ]
 ignore_imports = [
-    # TODO(phase 4): EU_CLASSES moves into the EU AI Act pack, and policy stops
-    # reading the risk classes from compliance.
-    "agentfox.platform.policy.hierarchy -> agentfox.capabilities.compliance.risk",
     # TODO: the in-process red-team runner and the live-probe adapter drive the
     # Enforcer to measure it. Inject the enforcer (or move these runners above the
     # runtime) so evaluation no longer imports it.
