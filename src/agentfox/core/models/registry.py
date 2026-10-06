@@ -135,6 +135,10 @@ class Tool(Base, TimestampMixin):
     #: of record they control — a CRM read — so a customer's email address copied
     #: from it into ``send_email`` is not untrusted input. See guardrails/taint.py.
     output_trust: Mapped[str] = mapped_column(String(16), default="untrusted")
+    #: The MCP impact annotations (`readOnlyHint`, `destructiveHint`, ...) as reviewed
+    #: when the listing was registered or accepted; part of the pinned digest
+    #: (`platform.registry.digest.tool_digest`). NULL: recorded before annotations were kept.
+    annotations_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
 
 #: Values of `Tool.output_trust`.

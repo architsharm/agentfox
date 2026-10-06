@@ -13,9 +13,10 @@ proposal whose applier cannot answer all three:
 * ``revert`` — undo it. A change that cannot be undone is refused at apply time rather
   than discovered at rollback time.
 
-Kinds: ``suppression.revoke`` and ``policy.rule_min_score`` (the threshold loop), and
+Kinds: ``suppression.revoke`` and ``policy.rule_min_score`` (the threshold loop),
 ``capability.grant`` and ``tool.declare`` (the learned-permissions loop in
-:mod:`agentfox.capabilities.improvement.traffic`).
+:mod:`agentfox.capabilities.improvement.traffic`), and ``mcp.tool.accept`` (a changed MCP tool
+definition the MCP governor is holding).
 
 Appliers never touch proposal status or write proposal audit entries; that is the
 service's job. They do call the domain functions (``revoke_suppression``,
@@ -554,7 +555,12 @@ def _live_exact_grant(session: Session, identity_id: str, tool_key: str):
 
 
 def _domain_audit(
-    session: Session, action: str, subject_id: str, actor: str, payload: dict
+    session: Session,
+    action: str,
+    subject_id: str,
+    actor: str,
+    payload: dict,
+    subject_type: str = "capability",
 ) -> None:
     from agentfox.core.config import get_settings
     from agentfox.platform.ledger import chain
@@ -563,7 +569,7 @@ def _domain_audit(
         session,
         action,
         **chain.attribution(automated=actor == get_settings().improvement_actor_id, actor=actor),
-        subject_type="capability",
+        subject_type=subject_type,
         subject_id=subject_id,
         payload=payload,
     )
@@ -820,6 +826,140 @@ register(
         direction=_declare_direction,
         apply=_declare_apply,
         revert=_declare_revert,
+    )
+)
+
+
+# ---------------------------------------------------------------------------
+# mcp.tool.accept — loosens
+# ---------------------------------------------------------------------------
+#
+# The MCP governor refuses calls to a tool whose listed definition differs from the
+# registered (reviewed) one. Accepting the new definition re-records it and lifts that
+# block, so it is a loosening whatever changed. The record is org-wide, so the
+# two-person rule for org-level loosenings applies. The diff carries both digests: the
+# apply refuses a record that moved since filing, the revert one that moved since apply.
+
+
+def _accept_diff(proposal: ChangeProposal) -> dict[str, Any]:
+    diff = dict(proposal.diff_json or {})
+    for field in ("tool_key", "name", "from_digest", "to_digest"):
+        if not diff.get(field):
+            raise ApplierError(f"mcp.tool.accept needs diff.{field}")
+    return diff
+
+
+def _accept_record(session: Session, key: str):
+    from agentfox.core.models import Tool
+
+    return session.scalar(select(Tool).where(Tool.key == key))
+
+
+def _accept_direction(session: Session, proposal: ChangeProposal) -> str:
+    from agentfox.platform.registry.digest import record_digest
+
+    diff = _accept_diff(proposal)
+    tool = _accept_record(session, str(diff["tool_key"]))
+    if tool is not None and record_digest(tool) == diff["to_digest"]:
+        return contract.NEUTRAL  # already recorded as listed; applying changes nothing
+    return contract.LOOSENS
+
+
+def _tool_definition(tool) -> dict[str, Any]:
+    return {
+        "description": tool.description,
+        "schema_json": dict(tool.schema_json or {}),
+        "annotations_json": tool.annotations_json,
+        "impact": tool.impact,
+    }
+
+
+def _set_definition(tool, definition: dict[str, Any]) -> None:
+    tool.description = definition["description"]
+    tool.schema_json = dict(definition["schema_json"])
+    tool.annotations_json = definition["annotations_json"]
+    tool.impact = definition["impact"]
+
+
+def _accept_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
+    from agentfox.platform.registry.digest import record_digest
+    from agentfox.platform.registry.impact import infer_impact
+    from agentfox.platform.registry.service import IMPACT_SOURCE_KEY, impact_source_of
+
+    diff = _accept_diff(proposal)
+    key = str(diff["tool_key"])
+    tool = _accept_record(session, key)
+    if tool is None:
+        raise ApplierError(f"'{key}' is no longer registered")
+    if record_digest(tool) != diff["from_digest"]:
+        raise ApplierError(
+            f"'{key}' was re-recorded after this proposal was filed; it is not the "
+            "definition this change was computed against"
+        )
+    before = _tool_definition(tool)
+    schema = dict(diff.get("inputSchema") or {})
+    if IMPACT_SOURCE_KEY in (tool.schema_json or {}):
+        schema[IMPACT_SOURCE_KEY] = tool.schema_json[IMPACT_SOURCE_KEY]
+    after = {
+        "description": str(diff.get("description") or ""),
+        "schema_json": schema,
+        "annotations_json": dict(diff.get("annotations") or {}),
+        # A declared impact is a person's statement and stays; a guess is re-guessed.
+        "impact": infer_impact(str(diff["name"]), {"description": diff.get("description")})
+        if impact_source_of(tool) == "inferred"
+        else tool.impact,
+    }
+    _set_definition(tool, after)
+    session.flush()
+    _domain_audit(
+        session,
+        "tool.redefined",
+        tool.id,
+        actor,
+        {
+            # "tool", not "tool_key": the chain redacts any field whose name contains "key".
+            "tool": key,
+            "from_digest": diff["from_digest"],
+            "to_digest": diff["to_digest"],
+            "change_proposal": proposal.id,
+        },
+        subject_type="tool",
+    )
+    return {"tool_id": tool.id, "tool_key": key, "to_digest": diff["to_digest"], "before": before}
+
+
+def _accept_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
+    from agentfox.core.models import Tool
+    from agentfox.platform.registry.digest import record_digest
+
+    result = applied_result(session, proposal)
+    tool = session.get(Tool, result.get("tool_id") or "")
+    if tool is None:
+        return {"tool_key": result.get("tool_key"), "already_removed": True}
+    if record_digest(tool) != result.get("to_digest"):
+        raise ApplierError(
+            f"'{tool.key}' was redefined again after this proposal; refusing to overwrite "
+            "a change it did not make"
+        )
+    _set_definition(tool, result["before"])
+    session.flush()
+    _domain_audit(
+        session,
+        "tool.redefined",
+        tool.id,
+        actor,
+        {"tool": tool.key, "change_proposal": proposal.id, "reverted": True},
+        subject_type="tool",
+    )
+    return {"tool_key": tool.key, "restored": True}
+
+
+register(
+    Applier(
+        kind="mcp.tool.accept",
+        direction=_accept_direction,
+        apply=_accept_apply,
+        revert=_accept_revert,
     )
 )
 

@@ -187,6 +187,9 @@ _ADDITIVE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("tools", "output_trust", "VARCHAR(16) NOT NULL DEFAULT 'untrusted'"),
     # c3e9a7d15f42 — a GitHub connection can carry its own push-webhook secret.
     ("github_connections", "webhook_secret_encrypted", "TEXT"),
+    # d4f1b8e6a3c7 — a registered tool keeps its reviewed impact annotations (NULL: none
+    # recorded yet, which the MCP governor reads as "compare without them").
+    ("tools", "annotations_json", "JSON"),
 )
 
 
