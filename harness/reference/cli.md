@@ -206,7 +206,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin checkpoint` | W | Signed checkpoint over the audit chain head. |
 | `admin seed [--show-keys]` | W | Demo agents, policies, controls, eval suite. Agent keys are masked unless `--show-keys`; they're only created on first seed. |
 | `admin version` | R | Versions of every component that participates in a decision. |
-| `admin hooks install --agent SLUG [--harness claude] [--path .] [--write]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. |
+| `admin hooks install --agent SLUG [--harness claude] [--path .] [--write] [--env ENV] [--grant/--no-grant]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. `--write` also registers the agent (development unless `--env`), declares the harness's built-in tools and grants them (`--no-grant` to skip). |
 | `admin hooks status` | R | Is the daemon up, and does a deny on this harness actually stop anything? |
 | `admin hooks daemon [--socket PATH]` · `admin hooks run --harness H [--agent]` | FG · stdio | The warm process and the per-call hook. Installed configs call `agentfox hooks run`, which keeps working. |
 | `admin mcp tools` | R | Lists the MCP server's tools with one-line descriptions. |
