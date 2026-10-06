@@ -90,11 +90,15 @@ rules:
   # --- Art. 50 — transparency -------------------------------------------
   - id: eu.art50.impersonation
     description: >
-      Output claiming to be human undermines the Art. 50 disclosure duty.
-      Detection is weak by nature, so this escalates rather than blocks.
+      Output claiming to be human undermines the Art. 50 disclosure duty. Reads the
+      `disclosure.claims_human` risk the commitment check raises when an answer says
+      it is a person ("I'm a real person", "I am not a bot"). Lexical and narrow, so
+      this escalates rather than blocks. A missing disclosure (as opposed to a false
+      one) is the separate `disclosure.ai_missing` risk, raised only when the caller
+      declares a human counterparty.
     when:
       surface: [output]
-      detection: {entity: "SAFETY.HARASSMENT", min_score: 0.7}
+      action_risk: "disclosure.claims_human"
     effect: escalate
     severity: medium
     reason: "EU AI Act Art. 50 — review required for disclosure obligations."
