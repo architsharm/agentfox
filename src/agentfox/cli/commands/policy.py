@@ -235,6 +235,11 @@ def policy_effective(
                 f"{rejected['scope']} — {rejected['reason'][:88]}"
             )
 
+    if explanation.get("unloadable_policies"):
+        console.print("\n[bold red]bound but unloadable — not in force[/]")
+        for entry in explanation["unloadable_policies"]:
+            console.print(f"  [red]{entry['key']} v{entry['version']}[/] — {entry['error'][:88]}")
+
 
 @policy_app.command("simulate")
 def policy_simulate(
