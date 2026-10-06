@@ -55,7 +55,7 @@ RUN pip install --upgrade pip && pip install ".[postgres,otel,classifiers]"
 # fails the same way an operator's build would if `src ./src` or the extras install
 # ever stopped matching what the app needs to import.
 FROM base AS deps
-RUN python -c "from nometria.gateway.app import create_app; create_app(); print('image smoke: OK')"
+RUN python -c "from agentfox.apps.gateway.app import create_app; create_app(); print('image smoke: OK')"
 
 FROM deps AS weights
 RUN mkdir -p /var/agentfox/hf-cache
@@ -128,4 +128,4 @@ EXPOSE 8080
 # The app refuses to start outside AGENTFOX_ENVIRONMENT=development while
 # AGENTFOX_SERVICE_AUTH_SECRET or AGENTFOX_AUDIT_SIGNING_KEY is unset or a published
 # placeholder: both are in this repository, so neither would be a secret.
-CMD ["uvicorn", "agentfox.gateway.app:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "agentfox.apps.gateway.app:app", "--host", "0.0.0.0", "--port", "8080"]

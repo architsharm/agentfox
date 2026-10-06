@@ -1,4 +1,4 @@
-"""Scores `src/agentfox/grounding/answerability.py`'s over-refusal rate against CoCoNot's
+"""Scores `src/agentfox/capabilities/grounding/answerability.py`'s over-refusal rate against CoCoNot's
 `contrast` split (`data/coconot_contrast.json`, 379 rows, MIT).
 
     uv run python benchmarks/answerability/run_coconot_benchmark.py
@@ -21,14 +21,14 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from agentfox.core.models import KnowledgeBoundary
-from agentfox.grounding.answerability import (
+from agentfox.capabilities.grounding.answerability import (
     AGGREGATE,
     FACT,
     PROCEDURE,
     classify_answerability,
     question_type,
 )
+from agentfox.core.models import KnowledgeBoundary
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"

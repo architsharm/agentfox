@@ -82,7 +82,7 @@ class AuditEntry(Base, TenantScoped):
     """Append-only, hash-chained.
 
     There is intentionally no ``updated_at``, no ORM update path, and no delete
-    endpoint. The chain is verified by :mod:`agentfox.prove.audit.chain`, which is a pure
+    endpoint. The chain is verified by :mod:`agentfox.platform.ledger.chain`, which is a pure
     function over exported rows so a third party can run it without our systems.
     """
 

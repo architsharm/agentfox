@@ -273,8 +273,8 @@ class HookDaemon:
 
 def warm() -> None:
     """Pay the startup costs before the first request rather than during it."""
+    from agentfox.capabilities.detection import warm_all
     from agentfox.core.db import init_db
-    from agentfox.detection import warm_all
 
     init_db()
     warm_all()

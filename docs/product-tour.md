@@ -72,7 +72,7 @@ with `X-Nometria-Approval: <id>` once approved. Full surface:
 ### LangGraph
 
 ```python
-from agentfox.integrations.langgraph import AgentFoxGuard
+from agentfox.frameworks.langgraph import AgentFoxGuard
 
 guard = AgentFoxGuard(agent="support-triage", intent="answer a refund question")
 
@@ -477,7 +477,7 @@ export AGENTFOX_ENVIRONMENT=production
 export AGENTFOX_SERVICE_AUTH_SECRET="$(openssl rand -hex 32)"
 export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"   # keep a copy
 agentfox admin users create you@example.com --role owner --token
-uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080
+uvicorn agentfox.apps.gateway.app:app --host 0.0.0.0 --port 8080
 ```
 
 For a reboot-persistent gateway service, see the [systemd deployment guide](deployment/systemd.md).

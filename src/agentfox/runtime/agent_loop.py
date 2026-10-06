@@ -37,7 +37,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.containment.effects import _canonical
+from agentfox.capabilities.containment.effects import _canonical
 
 CONTINUE = "continue"
 STOP = "stop"

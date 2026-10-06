@@ -23,10 +23,10 @@ SRC = REPO / "src" / "agentfox"
 #: Modules that read the legacy names on purpose and say so.
 LEGACY_READERS = {
     "core/config.py",  # the fallback itself
-    "cli/submit.py",  # AGENTFOX_API_URL, then NOMETRIA_API_URL
-    "prove/audit/evidence.py",  # old audit-key names, for packages signed under them
-    "runtime/autoguard/environment.py",  # env var names auto() inspects
-    "detection/detectors/secrets.py",  # a detector label, not a variable
+    "apps/cli/submit.py",  # AGENTFOX_API_URL, then NOMETRIA_API_URL
+    "apps/report/evidence.py",  # old audit-key names, for packages signed under them
+    "frameworks/autoguard/environment.py",  # env var names auto() inspects
+    "capabilities/detection/detectors/secrets.py",  # a detector label, not a variable
 }
 
 LEGACY = re.compile(r"\bNOMETRIA_[A-Z*]")
@@ -57,6 +57,6 @@ def test_no_user_facing_string_names_a_nometria_variable():
 
 
 def test_generated_config_names_the_current_prefix():
-    from agentfox.cli.onboarding import _CONFIG_TEMPLATE
+    from agentfox.apps.cli.onboarding import _CONFIG_TEMPLATE
 
     assert "AGENTFOX_*" in _CONFIG_TEMPLATE

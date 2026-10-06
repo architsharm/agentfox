@@ -45,7 +45,7 @@ from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
 from agentfox.core.models import ConversationTurn
 from agentfox.fixtures.seed import seed
-from agentfox.policy import set_mode
+from agentfox.platform.policy import set_mode
 from agentfox.runtime.enforcement import Enforcer
 
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -82,8 +82,8 @@ SCENARIOS = [
 
 
 def score_turn_alone(pipeline_text: str) -> bool:
-    from agentfox.detection.base import DetectionContext
-    from agentfox.detection.detectors.injection import InjectionHeuristicDetector
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
 
     result = InjectionHeuristicDetector().detect(pipeline_text, DetectionContext(surface="input"))
     return bool(result.detections)

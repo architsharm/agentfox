@@ -7,36 +7,36 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from agentfox.containment.control_flow import Plan
-from agentfox.containment.control_flow import check_selection as check_tool_selection
-from agentfox.core.models import Agent
-from agentfox.detection import DetectionContext
-from agentfox.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
-from agentfox.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
-from agentfox.detection.trajectory import assess as assess_trajectory
-from agentfox.grounding.commitments import (
+from agentfox.capabilities.containment.control_flow import Plan
+from agentfox.capabilities.containment.control_flow import check_selection as check_tool_selection
+from agentfox.capabilities.detection import DetectionContext
+from agentfox.capabilities.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
+from agentfox.capabilities.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
+from agentfox.capabilities.detection.trajectory import assess as assess_trajectory
+from agentfox.capabilities.grounding.commitments import (
     adverse_action_risk,
     check_disclosure,
     claims_human,
     detect_commitments,
 )
-from agentfox.grounding.context_integrity import (
+from agentfox.capabilities.grounding.context_integrity import (
     chunk_quality,
     document_quality,
     memory_binding_breach,
     retrieval_drift,
 )
-from agentfox.grounding.context_integrity import worst as worst_context_verdict
-from agentfox.grounding.entitlement import (
+from agentfox.capabilities.grounding.context_integrity import worst as worst_context_verdict
+from agentfox.capabilities.grounding.entitlement import (
     aggregation_risk,
     filter_retrieval,
     inference_risk,
     record_disclosure,
 )
-from agentfox.grounding.integrity import assess_integrity
-from agentfox.grounding.provenance import assess_provenance
-from agentfox.grounding.register import check_register
-from agentfox.grounding.sycophancy import check_premises
+from agentfox.capabilities.grounding.integrity import assess_integrity
+from agentfox.capabilities.grounding.provenance import assess_provenance
+from agentfox.capabilities.grounding.register import check_register
+from agentfox.capabilities.grounding.sycophancy import check_premises
+from agentfox.core.models import Agent
 
 log = logging.getLogger("agentfox.runtime.enforcement")
 
@@ -392,7 +392,7 @@ class _ChecksMixin:
         # double negative, an oblique "that's sorted", or Spanish — which a
         # regex cannot express. An enabled judgment tier adds those; it never
         # drops a deterministic finding, and no-ops when no tier is enabled.
-        from agentfox.detection.judgment.commitments import augment as _judge_commitments
+        from agentfox.capabilities.judgment.commitments import augment as _judge_commitments
 
         commitments = _judge_commitments(commitments, text, authorised=authorised)
         if commitments:

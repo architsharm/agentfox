@@ -67,7 +67,7 @@ otel = [
     "opentelemetry-exporter-otlp-proto-http>=1.27",
 ]
 postgres = ["psycopg[binary]>=3.2"]
-dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.7", "mypy>=1.13"]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.7", "mypy>=1.13", "import-linter>=2.1"]
 
 # Everything permissive, in one shot.
 all = ["agentfox[pii,classifiers,rails,validators,redteam,otel,postgres,langgraph,sql]"]
@@ -80,18 +80,17 @@ all = ["agentfox[pii,classifiers,rails,validators,redteam,otel,postgres,langgrap
 restricted-classifiers = ["transformers>=4.44", "torch>=2.4"]
 
 [project.scripts]
-agentfox = "agentfox.cli.main:main"
+agentfox = "agentfox.apps.cli.main:main"
 # Kept so an existing install does not lose its command on upgrade. The docs, the
 # harness and the product's own output all say `agentfox`; this is compatibility,
 # not a second name we advertise.
-nometria = "agentfox.cli.main:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agentfox", "src/nometria"]
+packages = ["src/agentfox"]
 
 # `agentfox admin db upgrade` — which the command's own help calls "how a deployed
 # instance is upgraded" — died with a raw alembic traceback for everyone who
@@ -106,6 +105,52 @@ packages = ["src/agentfox", "src/nometria"]
 
 [tool.hatch.build]
 exclude = ["**/__pycache__", "**/*.pyc"]
+
+# The dependency rule (ARCHITECTURE.md "Layers"): a layer imports only layers below
+# it. `lint-imports` checks it in CI's lint job and in `just lint`. An exception is
+# listed here by name, with the reason and what removes it, never added silently.
+[tool.importlinter]
+root_package = "agentfox"
+# A type-only import has no runtime edge; `if TYPE_CHECKING:` blocks are excluded.
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Layers: apps > frameworks, exporters, hooks, fixtures > runtime > capabilities > platform > core"
+type = "layers"
+layers = [
+    "agentfox.apps",
+    "agentfox.frameworks : agentfox.exporters : agentfox.hooks : agentfox.fixtures",
+    "agentfox.runtime",
+    "agentfox.capabilities",
+    "agentfox.platform",
+    "agentfox.core",
+]
+ignore_imports = [
+    # TODO(phase 4): EU_CLASSES moves into the EU AI Act pack, and policy stops
+    # reading the risk classes from compliance.
+    "agentfox.platform.policy.hierarchy -> agentfox.capabilities.compliance.risk",
+    # TODO: the in-process red-team runner and the live-probe adapter drive the
+    # Enforcer to measure it. Inject the enforcer (or move these runners above the
+    # runtime) so evaluation no longer imports it.
+    "agentfox.capabilities.evaluation.redteam -> agentfox.runtime.enforcement",
+    "agentfox.capabilities.evaluation.live_probes -> agentfox.runtime.enforcement",
+]
+
+[[tool.importlinter.contracts]]
+name = "core imports nothing in agentfox outside core"
+type = "forbidden"
+source_modules = ["agentfox.core"]
+forbidden_modules = [
+    "agentfox.platform",
+    "agentfox.capabilities",
+    "agentfox.runtime",
+    "agentfox.frameworks",
+    "agentfox.exporters",
+    "agentfox.hooks",
+    "agentfox.fixtures",
+    "agentfox.apps",
+    "agentfox.errors",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -129,7 +174,7 @@ ignore = ["B008"]  # FastAPI Depends() in defaults is the framework idiom
 # what makes YAML read `IMPORTANT:` as a nested key and raise, which is the
 # behaviour the test exists to pin. Wrapping it would make the YAML parse and
 # the test would quietly stop testing anything.
-"tests/registry/test_skill_scanning.py" = ["E501"]
+"tests/capabilities/discovery/test_skill_scanning.py" = ["E501"]
 # E501 only, and only here. The long lines in these trees are *data* — attack
 # payloads, model prompts, embedded HTML — where the width carries no
 # maintenance cost and rewrapping risks silently altering a string a benchmark

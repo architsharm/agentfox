@@ -18,7 +18,7 @@ import { publicPageMetadata } from "@/lib/site";
  * /live — AgentFox probing its own demo agent, every hour, in public.
  *
  * The numbers come from the gateway's unauthenticated `GET /api/public/showcase`
- * (agentfox/evaluation/showcase.py), which reads only the showcase tenant. Nothing on
+ * (agentfox/apps/showcase.py), which reads only the showcase tenant. Nothing on
  * this page is typed in by hand: if an attack got through on the last run, the page
  * says so, and the open findings say so too.
  *

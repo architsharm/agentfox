@@ -11,8 +11,8 @@ import pytest
 
 from agentfox.core.db import configure_pool
 from agentfox.core.models import Job
-from agentfox.jobs import store as jobs_db
-from agentfox.jobs.queue import DEFERRABLE, JobQueue
+from agentfox.platform.jobs import store as jobs_db
+from agentfox.platform.jobs.queue import DEFERRABLE, JobQueue
 from agentfox.runtime.agent_loop import CONTINUE, ESCALATE, STOP, LoopBudget, Step, govern_loop
 
 

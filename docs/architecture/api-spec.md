@@ -401,7 +401,7 @@ canary rollout), `POST /api/traces/{id}/replay` (use `POST /api/policies/simulat
 ## C.4 Role → permission matrix
 
 Every authenticated role can read. Writes are gated per route family by `WRITE_ROLES` in
-`src/agentfox/gateway/deps.py`, which this table mirrors:
+`src/agentfox/apps/gateway/deps.py`, which this table mirrors:
 
 | Write family | owner | admin | security | compliance | developer | auditor |
 |---|---|---|---|---|---|---|
@@ -428,7 +428,7 @@ this table that cannot exceed a bound set outside the product: `allow_egress` an
 `judgment_pii_egress` come from the process environment and act as a ceiling, so a
 posture write may narrow them and never widen them. Attempting to widen returns `409`
 with the reason, rather than storing a preference that silently does nothing — see
-`PUT /api/judgment/posture` and `src/agentfox/detection/judgment/posture.py`.
+`PUT /api/judgment/posture` and `src/agentfox/capabilities/judgment/posture.py`.
 
 ---
 

@@ -11,7 +11,7 @@ You need [uv](https://docs.astral.sh/uv/), Node 20 for the dashboard, and option
 ```bash
 git clone https://github.com/architsharm/agentfox.git && cd agentfox
 just setup        # uv sync with exactly the extras CI uses
-just test-fast tests/policy   # the tests for what you changed; `just test` for everything
+just test-fast tests/platform/policy   # the tests for what you changed; `just test` for everything
 ```
 
 Do not install with `--all-extras`: it pulls transitive versions of anthropic, langchain and
@@ -36,7 +36,7 @@ rule. If it passes locally, the pull request will pass, except for the Docker bu
 | `just setup` | `uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev` |
 | `just test` | `uv run pytest -q` |
 | `just test-fast` | `uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo` |
-| `just lint` | `uvx ruff@0.15.7 check .` and `uvx ruff@0.15.7 format --check .` (`just fmt` applies them) |
+| `just lint` | `uvx ruff@0.15.7 check .`, `uvx ruff@0.15.7 format --check .` (`just fmt` applies them) and the import contracts, `PYTHONPATH=src uvx --from import-linter==2.15 lint-imports` |
 | `just check` | `check_harness.py`, `api_routes.py --check`, `docs_reference.py --check`, `claims.py --check` |
 | `just regen` | rewrites the generated files those checks compare against |
 | `just dashboard` | `npm ci`, `npm test` and `tsc --noEmit` in `dashboard/` |
@@ -55,10 +55,33 @@ docs page, a benchmark). [docs/README.md](docs/README.md) indexes the deeper des
 User-facing documentation is the website, [useagentfox.com/docs](https://useagentfox.com/docs),
 and its source is `dashboard/app/docs/`.
 
+## Where code goes
+
+`src/agentfox/` is layered, and a layer imports only the layers below it
+([ARCHITECTURE.md, Layers](ARCHITECTURE.md#layers)). `just lint` runs `lint-imports`,
+which fails on an import that points up. To decide where new code goes, ask what it
+needs to import:
+
+| It is… | It goes in | It may import |
+|---|---|---|
+| A setting, a table, a constant several layers share | `core/` | nothing else in `agentfox` |
+| Something every capability records or reads: the audit chain, findings, policy, the registry, identities and grants, model providers, the job store | `platform/<package>/` | `core` |
+| A check, a scan, an analysis: a detector, a grounding or containment check, an eval, a monitor | `capabilities/<capability>/` | `core`, `platform`, other capabilities |
+| Part of how a call is decided | `runtime/` | everything below |
+| A way in from an application framework (an SDK, a middleware, a governor) | `frameworks/` | everything below |
+| A way out to another system (traces, metrics, a SIEM) | `exporters/` | everything below |
+| A command, a route, a report, a job handler: anything that wires capabilities to a user | `apps/` | everything |
+
+Test files mirror the package: `src/agentfox/capabilities/grounding/entitlement.py` is
+tested in `tests/capabilities/grounding/`. If a new import would point up a layer, the
+code is in the wrong place, or it needs a hook the lower layer calls (see
+`runtime/trace_exporters.py`); adding an `ignore_imports` entry to `pyproject.toml`
+needs a reason and a TODO saying what removes it.
+
 ## Tests
 
-`tests/` mirrors `src/agentfox/`: a change to `src/agentfox/policy/engine.py` is tested in
-`tests/policy/`, so `just test-fast tests/policy` is the inner loop. The whole suite is over
+`tests/` mirrors `src/agentfox/`: a change to `src/agentfox/platform/policy/engine.py` is tested in
+`tests/platform/policy/`, so `just test-fast tests/platform/policy` is the inner loop. The whole suite is over
 3,200 tests and takes most of 20 minutes on a laptop, because every test builds its own
 database; run it (`just test`) before you push. Two directories are different:
 
@@ -135,8 +158,8 @@ Going forward:
   prevents, the trade-off it makes. That is the part a reader cannot recover from the code.
 - **History belongs in git and the CHANGELOG**, not in the source. "This used to…", "found
   by…", dates and incident narratives go in the commit message.
-- **No internal tracking codes in new code.** Identifiers such as `P3-4`, `PL-7`, `F8.3` or
-  `I-2` mean nothing to a new reader. Much existing code carries them (they map to
-  [docs/design/PRD.md](docs/design/PRD.md) and [docs/design/traceability.md](docs/design/traceability.md));
-  do not add more, and drop them when you rewrite a docstring anyway. Control identifiers
-  that appear in the product's output (`NOM-IAM-02`) are data, not tracking codes, and stay.
+- **No internal tracking codes.** Identifiers such as `P3-4`, `PL-7`, `F8.3` or `I-2` mean
+  nothing to a new reader; they belong in [docs/design/PRD.md](docs/design/PRD.md) and
+  [docs/design/traceability.md](docs/design/traceability.md), not in `src`. Control
+  identifiers that appear in the product's output (`NOM-IAM-02`) are data, not tracking
+  codes, and stay.

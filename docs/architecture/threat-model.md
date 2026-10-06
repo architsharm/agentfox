@@ -100,7 +100,7 @@ We can read every prompt and output the customer's agents produce. Controls: RBA
 A loop that learns from labels and traffic, and changes configuration, is an agent with write access to
 our own guardrails. It is governed as one: every change is a `ChangeProposal`, proven before it is staged,
 attributable on the audit chain under `actor_type="automation"`, reversible, and rate-limited. The rules
-below live in `improvement/contract.py` and are tested exhaustively, because their failure would turn a
+below live in `capabilities/improvement/contract.py` and are tested exhaustively, because their failure would turn a
 governance product into one that quietly rewrites itself.
 
 | Threat | Vector | Control | Residual risk |

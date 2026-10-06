@@ -364,7 +364,7 @@ class Settings(BaseSettings):
     webhook_timeout_seconds: float = 3.0
     webhook_min_severity: str = "high"  # critical | high | medium | low
 
-    # --- Monitoring connected sources (agentfox.monitoring) --------------------
+    # --- Monitoring connected sources (agentfox.capabilities.monitoring) --------------------
     # A Slack incoming-webhook URL that receives a short message for every monitor
     # finding opened, reopened or closed at or above `slack_min_severity`. A tenant can
     # also set its own (`PUT /api/alerts/slack`). Like `webhook_url`, gated by

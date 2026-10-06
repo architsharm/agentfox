@@ -225,7 +225,7 @@ curl -s http://localhost:8080/api/approvals/apr_01m46jnb2j2zszsbsm \\
 
       <h2>In Python: ApprovalRequired</h2>
       <p>
-        The SDK (<code>agentfox.sdk.AgentFox</code>) raises <code>ApprovalRequired</code> on
+        The SDK (<code>agentfox.frameworks.sdk.AgentFox</code>) raises <code>ApprovalRequired</code> on
         an escalate verdict and <code>PolicyViolation</code> on a block. The exception
         carries <code>approval_id</code> and <code>trace_id</code>.{" "}
         <code>fox.wait_for_approval(id, timeout)</code> waits for the decision and returns{" "}
@@ -237,7 +237,7 @@ curl -s http://localhost:8080/api/approvals/apr_01m46jnb2j2zszsbsm \\
       </p>
       <Code lang="python" title="export.py">{`import os
 
-from agentfox.sdk import AgentFox, ApprovalRequired, PolicyViolation
+from agentfox.frameworks.sdk import AgentFox, ApprovalRequired, PolicyViolation
 
 fox = AgentFox(
     agent="support-triage",

@@ -8,7 +8,7 @@ Five capability areas researched in parallel, each required to surface at least 
 
 ## F3 — Destructive-action & blast-radius analysis
 
-Detection lives in `src/agentfox/detection/actions.py` (deterministic sqlglot SQL parsing, a shell deny-list, HTTP/scope checkers, environment binding).
+Detection lives in `src/agentfox/capabilities/detection/actions.py` (deterministic sqlglot SQL parsing, a shell deny-list, HTTP/scope checkers, environment binding).
 
 | Dataset | License | Size | Fit |
 |---|---|---|---|
@@ -26,7 +26,7 @@ Detection lives in `src/agentfox/detection/actions.py` (deterministic sqlglot SQ
 
 ## F4 — Entitlement & disclosure control
 
-Detection lives in `src/agentfox/grounding/entitlement.py` (default-deny ACL filtering, restricted-class tiers, purpose limitation, k-anonymity aggregation checks, inference-risk detection) and `src/agentfox/core/tenancy.py` (session-level isolation — not benchmarkable against a public dataset, it's an integration-test target).
+Detection lives in `src/agentfox/capabilities/grounding/entitlement.py` (default-deny ACL filtering, restricted-class tiers, purpose limitation, k-anonymity aggregation checks, inference-risk detection) and `src/agentfox/core/tenancy.py` (session-level isolation — not benchmarkable against a public dataset, it's an integration-test target).
 
 | Dataset | License | Size | Fit |
 |---|---|---|---|
@@ -42,7 +42,7 @@ Detection lives in `src/agentfox/grounding/entitlement.py` (default-deny ACL fil
 
 ## PII & secrets detection
 
-Detection: `src/agentfox/detection/detectors/pii.py` (native regex) + Presidio adapter (`PERSON`/`LOCATION`/`DATE_TIME` excluded by default as "noisy"), and `src/agentfox/detection/detectors/secrets.py` (named formats + entropy-gated generic fallback).
+Detection: `src/agentfox/capabilities/detection/detectors/pii.py` (native regex) + Presidio adapter (`PERSON`/`LOCATION`/`DATE_TIME` excluded by default as "noisy"), and `src/agentfox/capabilities/detection/detectors/secrets.py` (named formats + entropy-gated generic fallback).
 
 | Dataset | Capability | License | Size | Fit |
 |---|---|---|---|---|
@@ -58,7 +58,7 @@ Detection: `src/agentfox/detection/detectors/pii.py` (native regex) + Presidio a
 
 ## F1 — Answerability & abstention
 
-Detection: `src/agentfox/grounding/answerability.py` — a **declared-boundary** system (systems of record, coverage window, entity roster, answerable question types), not a generic unanswerable-question classifier.
+Detection: `src/agentfox/capabilities/grounding/answerability.py` — a **declared-boundary** system (systems of record, coverage window, entity roster, answerable question types), not a generic unanswerable-question classifier.
 
 **Important correction surfaced by this research:** the whitepaper cites AbstentionBench (arXiv:2506.09038) as the field's primary academic benchmark for this area. **AbstentionBench itself is CC-BY-NC-4.0** — verified directly against its HF card and repo LICENSE file — which fails this project's own license bar. It's cited in the whitepaper only as a research finding ("reasoning fine-tuning degrades abstention"), not as something benchmarked against, so no correction is needed there. But it rules the packaged dataset out for actual use. Several of its 20 constituent datasets, however, carry independent, permissive licenses and can be pulled directly from their original sources, bypassing the NC-licensed aggregation:
 
@@ -79,7 +79,7 @@ Detection: `src/agentfox/grounding/answerability.py` — a **declared-boundary**
 
 ## F2 — Source authority & provenance
 
-Detection: `src/agentfox/grounding/provenance.py` — source tiering, freshness SLAs, domain matching, and citation binding (does a claim map to a chunk that actually supports it). Explicitly **not** the same thing as groundedness (answer-vs-context faithfulness), which the project already covers separately.
+Detection: `src/agentfox/capabilities/grounding/provenance.py` — source tiering, freshness SLAs, domain matching, and citation binding (does a claim map to a chunk that actually supports it). Explicitly **not** the same thing as groundedness (answer-vs-context faithfulness), which the project already covers separately.
 
 | Dataset | License | Size | Fit |
 |---|---|---|---|

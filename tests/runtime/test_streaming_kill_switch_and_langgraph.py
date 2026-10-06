@@ -13,15 +13,15 @@ import sys
 import pytest
 
 from agentfox.core.models import AgentControl, AuditEntry, Finding
-from agentfox.integrations.langgraph import (
+from agentfox.frameworks.langgraph import (
     STATE_KEY,
     AgentFoxGuard,
     ApprovalRequired,
     PolicyViolation,
 )
-from agentfox.policy import set_mode
-from agentfox.providers import CompletionRequest, get_provider, script
-from agentfox.registry.control import UnknownAgent, kill, quarantine, resume, state_of
+from agentfox.platform.policy import set_mode
+from agentfox.platform.providers import CompletionRequest, get_provider, script
+from agentfox.platform.registry.control import UnknownAgent, kill, quarantine, resume, state_of
 from agentfox.runtime.enforcement import Enforcer
 from tests.conftest import INDIRECT_INJECTION, SECRET_TEXT, as_user, promote
 
@@ -48,7 +48,7 @@ def test_stream_reassembles_to_the_same_text_as_complete():
 
 
 def test_stream_from_complete_fallback_produces_a_valid_stream():
-    from agentfox.providers.base import StreamChunk, stream_from_complete
+    from agentfox.platform.providers.base import StreamChunk, stream_from_complete
 
     class NoStream:
         key = "nostream"
@@ -57,7 +57,7 @@ def test_stream_from_complete_fallback_produces_a_valid_stream():
             return True
 
         def complete(self, request):
-            from agentfox.providers import CompletionResponse
+            from agentfox.platform.providers import CompletionResponse
 
             return CompletionResponse(text="one shot", usage={"output_tokens": 2})
 
@@ -431,7 +431,7 @@ def test_app_runs_on_a_migrated_schema(tmp_path, monkeypatch):
 
 def test_integration_imports_without_langgraph():
     """`pip install agentfox` must stay light — the module loads regardless."""
-    from agentfox.integrations import langgraph as integration
+    from agentfox.frameworks import langgraph as integration
 
     assert hasattr(integration, "AgentFoxGuard")
 
@@ -578,7 +578,7 @@ def test_tool_node_alternating_cycle_trips_the_real_loop_governor(seeded):
 
 
 def test_langchain_message_objects_are_normalised():
-    from agentfox.integrations.langgraph import _normalise
+    from agentfox.frameworks.langgraph import _normalise
 
     class FakeHumanMessage:
         type = "human"

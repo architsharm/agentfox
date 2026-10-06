@@ -7,9 +7,9 @@ had no effect, though the schema documents it as per-policy.
 
 from __future__ import annotations
 
-from agentfox.detection import DetectorPipeline
-from agentfox.policy import PolicyDocument, save_policy
-from agentfox.registry.service import register_agent
+from agentfox.capabilities.detection import DetectorPipeline
+from agentfox.platform.policy import PolicyDocument, save_policy
+from agentfox.platform.registry.service import register_agent
 from agentfox.runtime.enforcement import Enforcer
 
 PACK = """

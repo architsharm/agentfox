@@ -3,7 +3,7 @@
 /**
  * The public playground. Unauthenticated, talks straight to the gateway's own
  * unauthenticated `/api/playground/*` routes (see
- * `src/agentfox/gateway/routes/playground.py`) — no session cookie, no
+ * `src/agentfox/apps/gateway/routes/playground.py`) — no session cookie, no
  * `lib/api.ts`. Every visitor gets their own throwaway sandbox on mount; nothing
  * here is shared between visitors and nothing here is real (no real money, no
  * real email, no real model call — see the backend module's own docstring).
@@ -39,7 +39,7 @@ import { Verdict } from "./ui";
 
 /**
  * The offline `echo` provider tags its deterministic replies with
- * `[echo:<digest>] ` (src/agentfox/providers/echo.py). That is a test-substrate
+ * `[echo:<digest>] ` (src/agentfox/platform/providers/echo.py). That is a test-substrate
  * detail, not something a visitor should read past.
  */
 const ECHO_TAG = /^\[echo:[0-9a-f]+\]\s*/;

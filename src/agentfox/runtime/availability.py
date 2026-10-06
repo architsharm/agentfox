@@ -527,8 +527,8 @@ def reset_degradation_ledger() -> None:
 def _probe_detector_pipeline() -> str:
     """Not "a detector failed" — that is already handled per-detector. This is the
     pipeline having nothing at all it can run, so every request goes unchecked."""
+    from agentfox.capabilities.detection import available_detectors
     from agentfox.core.config import get_settings
-    from agentfox.detection import available_detectors
 
     enabled = set(get_settings().enabled_detectors)
     if not enabled:
@@ -555,7 +555,7 @@ def _probe_policy_engine() -> str:
     settings = get_settings()
     if settings.policy_engine != "opa":
         return ""
-    from agentfox.policy.opa import OpaPolicyEngine
+    from agentfox.platform.policy.opa import OpaPolicyEngine
 
     if not OpaPolicyEngine().available():
         return (
@@ -580,7 +580,7 @@ def _probe_database() -> str:
 
 def _probe_model_provider() -> str:
     from agentfox.core.config import get_settings
-    from agentfox.providers import available_providers
+    from agentfox.platform.providers import available_providers
 
     configured = get_settings().default_provider
     if configured not in available_providers():

@@ -15,22 +15,22 @@ import type { CSSProperties, ReactNode } from "react";
  *   - the refused transfer .......... dashboard/app/page.tsx Proof(), and
  *                                     Playground.tsx TOOL_PRESETS
  *   - capability.denied reason ...... dashboard/app/page.tsx Proof()
- *   - constraint_violated reason .... src/agentfox/identity/service.py
+ *   - constraint_violated reason .... src/agentfox/platform/identity/service.py
  *                                     check_capability() + _describe_violation()
  *   - synthetic rule ids ............ src/agentfox/runtime/enforcement/ (~line 650)
- *   - grant record layout ........... src/agentfox/cli/capability_cli.py grant()
- *   - finding types and titles ...... src/agentfox/evaluation/redteam.py,
- *                                     src/agentfox/grounding/provenance.py,
- *                                     src/agentfox/containment/escalation.py,
- *                                     src/agentfox/grounding/answerability.py
+ *   - grant record layout ........... src/agentfox/apps/cli/capability_cli.py grant()
+ *   - finding types and titles ...... src/agentfox/capabilities/evaluation/redteam.py,
+ *                                     src/agentfox/capabilities/grounding/provenance.py,
+ *                                     src/agentfox/capabilities/containment/escalation.py,
+ *                                     src/agentfox/capabilities/grounding/answerability.py
  *   - chain wording ................. Playground.tsx audit panel
- *   - chain break reasons ........... src/agentfox/prove/audit/chain.py verify()
+ *   - chain break reasons ........... src/agentfox/platform/ledger/chain.py verify()
  *   - the digests in ChainMock ...... computed with chain.py's own
  *                                     compute_digest / compute_payload_digest over
  *                                     the payload shape enforcement.py writes, so
  *                                     they chain correctly rather than being filler
  *   - observe / enforce verdicts .... Playground.tsx turn rendering + agentReply()
- *   - the scripted reply ............ src/agentfox/providers/echo.py _synthesise()
+ *   - the scripted reply ............ src/agentfox/platform/providers/echo.py _synthesise()
  *   - injection.direct reason ....... src/agentfox/policies_data/baseline.yaml
  *
  * Only marketing.css classes and its tokens are used. No colour is hardcoded, so
@@ -286,7 +286,7 @@ type FindingRow = {
 /**
  * Four findings the product raises against itself and against the agents it watches.
  * Types and titles are the literal ones in the source: `redteam_mutation_class`
- * (evaluation/redteam.py), `fabricated_citation` (enforcement.py, titled with
+ * (capabilities/evaluation/redteam.py), `fabricated_citation` (enforcement.py, titled with
  * provenance.py's own reason), `missed_escalation` (escalation.py) and `over_refusal`
  * (answerability.py). `occurrences` is the recurrence count described in the product
  * glossary: the same problem happening again counts on one row rather than filing a
@@ -364,7 +364,7 @@ type ChainRow = {
 };
 
 /*
- * Real digests. Each was produced by src/agentfox/prove/audit/chain.py's own functions
+ * Real digests. Each was produced by src/agentfox/platform/ledger/chain.py's own functions
  *
  *   payload_digest = SHA-256(canonical_json(payload))
  *   digest         = SHA-256(seq | occurred_at | action | payload_digest | prev_digest)

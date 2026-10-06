@@ -6,8 +6,8 @@ capability-ceiling probes need real tool *output* to propagate taint through, an
 real mutation (an order actually flips to "refunded") to prove a block actually
 stopped something rather than just returning a denial string nobody checked.
 
-Every call goes through `agentfox.integrations.mcp.McpGovernor` — the same governed
-call path `tests/detection/test_composition.py`'s `_governor` fixture exercises, reused as-is
+Every call goes through `agentfox.frameworks.mcp.McpGovernor` — the same governed
+call path `tests/capabilities/detection/test_composition.py`'s `_governor` fixture exercises, reused as-is
 rather than inventing a parallel one. Treating these four Python functions as an
 "MCP server" (`support-tools`) is a convenience, not a protocol claim: `McpGovernor`
 is transport-agnostic by design (see its module docstring) and works with any
@@ -34,8 +34,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from agentfox.integrations.mcp import McpCallOutcome, McpGovernor, tool_key
-from agentfox.prove.audit.trace import start_trace
+from agentfox.frameworks.mcp import McpCallOutcome, McpGovernor, tool_key
+from agentfox.platform.ledger.trace import start_trace
 from agentfox.runtime.enforcement import Enforcer
 
 AGENT_SLUG = "support-crew-live-lang"
@@ -253,7 +253,7 @@ TOOL_DESCRIPTORS: list[dict[str, Any]] = [
 #: Least-privilege grants for the demo agent's identity — mirrors the shape of
 #: `agentfox.fixtures.seed`'s own `payments-ops` agent (refund capped below a ceiling, email
 #: gated behind approval) rather than inventing a new pattern. See
-#: `seed_demo_agent.py` for how these are applied via `agentfox.identity.grant_capability`.
+#: `seed_demo_agent.py` for how these are applied via `agentfox.platform.identity.grant_capability`.
 CAPABILITY_GRANTS: list[dict[str, Any]] = [
     {"tool": "lookup_customer", "max_taint": "user"},
     {"tool": "search_orders", "max_taint": "user"},

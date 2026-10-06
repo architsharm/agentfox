@@ -1,6 +1,6 @@
 """Fetches gretelai/synthetic_text_to_sql's HF-hosted parquet exports (train + test),
 filters to the rows that actually exercise F3 (destructive-action & blast-radius
-analysis — `src/agentfox/detection/actions.py::analyse_sql`), derives ground-truth
+analysis — `src/agentfox/capabilities/detection/actions.py::analyse_sql`), derives ground-truth
 labels independently of the detector under test, constructs adversarial variants for
 the two failure modes the natural data can't supply on its own, and writes a fixed,
 reproducible sample to `data/action_safety.json`.

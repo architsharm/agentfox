@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import select
 
 from agentfox.core.models import Agent, Budget, Trace
-from agentfox.prove.audit import chain
+from agentfox.platform.ledger import chain
 from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
 from agentfox.runtime.enforcement.result import EnforcementResult
 from agentfox.runtime.enforcement.rules import _fired_rule

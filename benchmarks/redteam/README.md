@@ -31,7 +31,7 @@ constraint checks (`identity.check_capability`), the action-assurance/SQLi-scope
 privilege escalation (F3.8, needs a real `guard_tool_call` + shared `TaintTracker`) were
 **structurally unreachable by any red-team probe** — not weak against them, *invisible*
 to them, regardless of how well those layers actually work. `kind="tool_call"` and
-`kind="scenario"` probes (`src/agentfox/evaluation/redteam.py`) close this: they call
+`kind="scenario"` probes (`src/agentfox/capabilities/evaluation/redteam.py`) close this: they call
 `guard_tool_call()` directly, the same path `McpGovernor` and `AgentFoxGuard.tool_node`
 use, against a synthetic `redteam.sim.*` tool the runner provisions itself — so a probe
 still runs against *any* agent slug, the way content probes always could.
@@ -164,7 +164,7 @@ feature claims:
 
 That is **configuration regression testing**, which is a genuinely useful thing to run
 in CI and a genuinely dishonest thing to call adversarial robustness. The distinction is
-not left to this README: `SCOPE_STATEMENT` (`src/agentfox/evaluation/adaptive.py`) is
+not left to this README: `SCOPE_STATEMENT` (`src/agentfox/capabilities/evaluation/adaptive.py`) is
 carried verbatim into every adaptive campaign's stored summary, its
 `what_this_does_not_establish` list travels with it, and the campaign **headline** is the
 posture sentence rather than a pass rate — a red-team pass rate goes *up* the weaker
@@ -182,7 +182,7 @@ as well as text, scored on the full enforcement path, generated from a live depl
 grants and policies, and diffed against the previous campaign. `src/agentfox/` cannot
 import from `benchmarks/` (it is the shipped package; `benchmarks/` is not packaged), so
 the two operator libraries are genuinely separate today. **They should be consolidated**
-— the shared text transforms belong in `src/agentfox/evaluation/adaptive.py` with the
+— the shared text transforms belong in `src/agentfox/capabilities/evaluation/adaptive.py` with the
 benchmark importing them — and until that happens the duplication is stated here rather
 than left for someone to discover. What was taken from it immediately is the thing that
 changes how results must be read: the `readable` / `requires_decode` semantics split,
@@ -333,7 +333,7 @@ Where a *second*, independent mechanism covers the call (a declared cascade trig
 defence-in-depth working as designed. Where action assurance was the only thing looking
 — `tickets.purge_all` — the call goes from `block` to `allow`.
 
-Disclosed rather than fixed here: `src/agentfox/detection/actions.py` is owned by
+Disclosed rather than fixed here: `src/agentfox/capabilities/detection/actions.py` is owned by
 another engineer this round. It is the highest-value item this benchmark produced.
 
 ### 3. A glob capability grant authorises tools nobody granted
@@ -504,7 +504,7 @@ latency problem this module exists to prevent.
 
 The `readable` and `requires_decode` columns are unchanged, which is the honest read: this fix
 closed a structural bypass and did nothing whatever for detection, because it is not a detection
-fix. Regression cases for the nested shapes live in `tests/detection/test_action_assurance.py`.
+fix. Regression cases for the nested shapes live in `tests/capabilities/detection/test_action_assurance.py`.
 
 **Still open from the same run**, and deliberately not fixed here: glob grant overbreadth
 (`tickets.*` authorises `tickets.purge_all`, a key nobody granted — arguably correct behaviour for

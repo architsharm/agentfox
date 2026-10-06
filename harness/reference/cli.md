@@ -2,14 +2,14 @@
 title: agentfox CLI reference
 layer: reference
 audience: agents (and humans who want the dense version)
-source_of_truth: src/agentfox/cli/ — the code wins if this file disagrees
+source_of_truth: src/agentfox/apps/cli/ — the code wins if this file disagrees
 verified_against: branch claude/cli-consolidate, 2026-10-05 (checked by harness/scripts/check_harness.py)
 ---
 
 # `agentfox` CLI reference
 
-Entry point: `agentfox = agentfox.cli.main:app` (Typer). In a source checkout without an
-installed console script, use `uv run agentfox …` or `python -m agentfox.cli.main …`
+Entry point: `agentfox = agentfox.apps.cli.main:app` (Typer). In a source checkout without an
+installed console script, use `uv run agentfox …` or `python -m agentfox.apps.cli.main …`
 (see `harness/scripts/agentfox.sh`, which picks the right one).
 
 ## Side-effect legend
@@ -46,7 +46,7 @@ Everything else prints Rich tables — parse text, or prefer the HTTP API
 
 `scan`, `serve` and `report` run a default subcommand when the next word is not one of
 theirs: `scan [PATH]` is `scan repo`, `serve [--port N]` is `serve api`, bare `report`
-is `report status`. The registration layer is `src/agentfox/cli/layout.py`.
+is `report status`. The registration layer is `src/agentfox/apps/cli/layout.py`.
 
 The pre-consolidation top-level names (`check`, `compliance`, `capability`, …) were
 removed; `CHANGELOG.md` maps each to its new path. Two stay, hidden, because installed

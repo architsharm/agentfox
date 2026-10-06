@@ -60,7 +60,7 @@ either cost.
 ## What's being measured
 
 - **Detector, config `heuristic`**: `InjectionHeuristicDetector` alone — regex and
-  structural signals, `src/agentfox/detection/detectors/injection.py`. Zero extra
+  structural signals, `src/agentfox/capabilities/detection/detectors/injection.py`. Zero extra
   dependencies, sub-millisecond, and what ships **enabled by default**.
 - **Detector, config `heuristic_classifier`**: the same heuristic plus
   `injection.classifier` — as of round 4, an **ensemble of two models**, not one.
@@ -459,7 +459,7 @@ to fix this. Tested the same way (isolated, no contention):
 Better on **both** axes at once on the datasets this project weighs most — more
 than double the recall on the primary benchmark, at less than a third the
 false-positive rate on the purpose-built precision stress test. That's the basis
-for the swap (`src/agentfox/detection/adapters/classifiers.py`,
+for the swap (`src/agentfox/capabilities/detection/adapters/classifiers.py`,
 `PromptInjectionClassifierDetector`; `src/agentfox/core/config.py`,
 `prompt_injection_classifier_model`), alongside the honest generalization-dataset
 cost documented above. PIGuard ships custom modeling code rather than a stock
@@ -597,7 +597,7 @@ reports this fixed state; remaining degradation (1.7–3.3%, concentrated on the
 longest documents) is disclosed rather than hidden, and is a legitimate timeout on
 genuinely long inputs, not the budget-mismatch bug. Regression test:
 `test_detector_own_timeout_ms_is_honored_up_to_the_pipeline_budget` in
-`tests/detection/test_detectors_taint_and_budget.py` reproduces the exact mechanism — a detector's own higher
+`tests/capabilities/detection/test_detectors_taint_and_budget.py` reproduces the exact mechanism — a detector's own higher
 `timeout_ms` is honored when the pipeline budget allows it, and is still correctly
 clipped when the pipeline budget is the tighter constraint, so this remains a
 conscious trade-off going forward rather than a silent one.
@@ -633,7 +633,7 @@ with no declared `timeout_ms` (the fast, always-on ones), one for detectors that
 declare their own (`injection.classifier` and `injection.similarity`). Stragglers
 from the heavy pool can now only ever starve each other, never the fast pool.
 Regression test: `test_a_stuck_heavy_detector_cannot_starve_the_fast_pool` in
-`tests/detection/test_detectors_taint_and_budget.py`.
+`tests/capabilities/detection/test_detectors_taint_and_budget.py`.
 
 ## Two bugs the classifier's own latency exposed early on, and the fix
 
@@ -728,10 +728,10 @@ doesn't get taken at face value just because it's favorable.
   aggregate.
 - `results_generalization/{config}_{dataset}_predictions.json` — every
   generalization example scored individually.
-- `../src/agentfox/detection/data/injection_corpus.json` — the synthetic anchor
+- `../src/agentfox/capabilities/detection/data/injection_corpus.json` — the synthetic anchor
   corpus `injection.similarity` matches against. Growing this file (and
   re-running) is the whole improvement path for that detector — no retraining.
-- `../src/agentfox/detection/adapters/classifiers.py` —
+- `../src/agentfox/capabilities/detection/adapters/classifiers.py` —
   `PromptInjectionClassifierDetector`, including the round-4 ensemble backstop
   and the reasoning for its threshold.
 - `../src/agentfox/core/config.py` — `prompt_injection_classifier_secondary_model`,

@@ -15,7 +15,7 @@ const EXTRAS: { name: string; installs: string; enables: string }[] = [
   { name: "pii", installs: "presidio-analyzer, presidio-anonymizer", enables: "The pii.presidio detector. Also needs a spaCy model (below)." },
   { name: "classifiers", installs: "transformers, torch", enables: "injection.classifier (PIGuard with a backstop model), injection.similarity (embedding match), safety.granite (Granite Guardian). Each needs its weights." },
   { name: "sql", installs: "sqlglot", enables: "SQL blast-radius and data-access analysis. Without it, SQL analysis fails closed rather than passing statements through." },
-  { name: "langgraph", installs: "langgraph", enables: "The AgentFoxGuard node wrappers in agentfox.integrations.langgraph." },
+  { name: "langgraph", installs: "langgraph", enables: "The AgentFoxGuard node wrappers in agentfox.frameworks.langgraph." },
   { name: "postgres", installs: "psycopg[binary]", enables: "A Postgres database_url (postgresql+psycopg://…)." },
   { name: "otel", installs: "opentelemetry-api, -sdk, -exporter-otlp-proto-http", enables: "OpenTelemetry trace export." },
   { name: "rails", installs: "nemoguardrails", enables: "The rails.nemo detector, once nemo_rails_config_path points at a NeMo Guardrails config." },

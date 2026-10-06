@@ -1,4 +1,4 @@
-"""Scores `src/agentfox/evaluation/redteam.py`'s `NativeRedTeamRunner` — the
+"""Scores `src/agentfox/capabilities/evaluation/redteam.py`'s `NativeRedTeamRunner` — the
 red-team campaign runner itself, not the underlying detectors it calls (those
 are separately benchmarked: `benchmarks/REPORT.md`, `benchmarks/pii/`,
 `benchmarks/action_safety/`).
@@ -46,11 +46,11 @@ def main() -> None:
     os.environ["NOMETRIA_AUDIT_SIGNING_KEY"] = "bench-key"
     os.environ["NOMETRIA_ALLOW_EGRESS"] = "false"
 
+    from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, run_campaign
     from agentfox.core import db
     from agentfox.core.config import reset_settings_cache
-    from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
     from agentfox.fixtures.seed import seed as run_seed
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     reset_settings_cache()
     db.reset_engine()

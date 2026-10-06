@@ -26,7 +26,7 @@ try:
     import click
     import typer.main
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 except Exception as exc:  # pragma: no cover - environment problem, not drift
     print(
         f"cannot import the agentfox CLI ({exc}). "
@@ -76,7 +76,7 @@ def known_flags(cmd: click.Command) -> set[str]:
     for p in cmd.params:
         flags.update(getattr(p, "opts", []))
         flags.update(getattr(p, "secondary_opts", []))
-    # A default-command group (`scan`, `serve`, `report` — see cli/layout.py) hands
+    # A default-command group (`scan`, `serve`, `report` — see apps/cli/layout.py) hands
     # unknown words to its default subcommand, and routes some flags to another one
     # (`scan --sessions`), so their flags are the group's too.
     if isinstance(cmd, click.Group) and getattr(cmd, "default_command", None):

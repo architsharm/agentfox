@@ -80,7 +80,7 @@ def test_the_client_imports_nothing_heavy():
     source = (
         "import sys; import agentfox.hooks.client as c; "
         "heavy = [m for m in ('sqlalchemy','torch','transformers','agentfox.runtime.enforcement',"
-        "'agentfox.detection') if m in sys.modules]; "
+        "'agentfox.capabilities.detection') if m in sys.modules]; "
         "print(','.join(heavy))"
     )
     out = subprocess.run([sys.executable, "-c", source], capture_output=True, text=True, check=True)
@@ -215,7 +215,7 @@ def test_a_verdict_comes_back_over_the_socket(seeded, running):
     """The whole point, end to end: a real enforcement decision, over a real
     socket, from a process that did not import anything to serve it."""
     from agentfox.core.models import Agent
-    from agentfox.identity import ensure_identity, grant_capability
+    from agentfox.platform.identity import ensure_identity, grant_capability
 
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     grant_capability(seeded, ensure_identity(seeded, agent), "shell.run", max_taint="tool_result")

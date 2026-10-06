@@ -2,7 +2,7 @@
  * The public showcase feed behind /live.
  *
  * `GET /api/public/showcase` on the gateway is unauthenticated and returns only the
- * showcase tenant's counts (agentfox/evaluation/showcase.py). This module fetches it
+ * showcase tenant's counts (agentfox/apps/showcase.py). This module fetches it
  * server-side, with no cookie and no identity header, so the page is the same for
  * every visitor and can be cached and revalidated.
  *

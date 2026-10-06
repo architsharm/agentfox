@@ -4,8 +4,8 @@ The LangChain sibling of `demo/redteam-live/` (a real CrewAI crew) — same real
 in-memory customer/order data, same real refund and email side effects, same
 `agentfox.auto()` wiring, same three demo scenarios. Nothing here is a mock:
 `issue_refund` really flips an order's status, `send_email` really queues a message,
-and every call goes through the same governed path (`agentfox.integrations.mcp.
-McpGovernor`) the automated test suite (`tests/detection/test_composition.py`) exercises.
+and every call goes through the same governed path (`agentfox.frameworks.mcp.
+McpGovernor`) the automated test suite (`tests/capabilities/detection/test_composition.py`) exercises.
 
 **What's actually different from `demo/redteam-live/`: only the agent framework.**
 CrewAI's `Agent`/`Task`/`Crew` is replaced with a LangChain tool-calling agent
@@ -37,7 +37,7 @@ say).
 **Use a separate virtualenv, not the main repo's `.venv`.** `langchain-anthropic`
 and `langchain-openai` pull in `anthropic` and `openai` as real transitive
 dependencies, and one of the main test suite's tests
-(`tests/runtime/test_autoguard.py::test_missing_litellm_and_langchain_are_reported_not_hidden`)
+(`tests/frameworks/autoguard/test_autoguard.py::test_missing_litellm_and_langchain_are_reported_not_hidden`)
 asserts `langchain_core` (and `litellm`) are *absent*, to prove `agentfox.auto()`
 reports a missing library honestly instead of silently hiding it. Installing this
 demo's requirements into the tracked `.venv` would make that test fail for reasons
@@ -184,7 +184,7 @@ the chain is wrong on its own.**
    under the $500 cap, and `issue_refund` is a tool this agent genuinely holds.
 
 Individually, both calls pass every check. **AgentFox blocks it anyway**, because
-`agentfox.detection.composition.check_composed_escalation` (F3.8) tracks *where
+`agentfox.capabilities.detection.composition.check_composed_escalation` (F3.8) tracks *where
 each argument's value came from* — `TaintTracker`'s `propagated_from` provenance —
 and sees that `order_id` didn't come from the user or from Priya's own account; it
 came from a broad internal search a moment earlier, being reused as if it had been
@@ -206,7 +206,7 @@ message in isolation has no way to know that this specific 8-character string in
 this specific tool call is the same one that came back from a search 30 seconds ago.
 That's not a text property — it requires tracking data lineage across the whole
 tool-call sequence in one conversation, which is what taint tracking is for. This is
-the exact shape `tests/detection/test_composition.py` proves against a synthetic
+the exact shape `tests/capabilities/detection/test_composition.py` proves against a synthetic
 patient-records scenario; here it's the same mechanism against real tools with real
 state, and it works identically regardless of which agent framework is issuing the
 tool calls — the check lives in `McpGovernor`, below the framework entirely.
@@ -387,7 +387,7 @@ needing a live key:
 - **`agentfox.auto()`'s patch report.** Importing `agent.py` prints
   `Patched: openai, anthropic, langchain` — `_patch_langchain` patches
   `langchain_core.language_models.chat_models.BaseChatModel.invoke` directly (see
-  `src/agentfox/runtime/autoguard/`), which every LangChain chat model inherits regardless
+  `src/agentfox/frameworks/autoguard/`), which every LangChain chat model inherits regardless
   of provider. This is a real difference from the CrewAI demo worth calling out:
   CrewAI's `crew.py` had to pass `LLM(..., is_litellm=True)` specifically because
   `agentfox.auto()` only patches `litellm.completion`, not CrewAI's own client
@@ -400,7 +400,7 @@ needing a live key:
   that does *not* double-govern a single model call. `autoguard._govern()`'s
   `_IN_AGENTFOX` re-entrancy guard makes the inner raw-SDK patch a no-op
   pass-through once the outer `BaseChatModel.invoke` patch is already governing the
-  call in progress. Read `src/agentfox/runtime/autoguard/` lines ~299-320 for exactly
+  call in progress. Read `src/agentfox/frameworks/autoguard/` lines ~299-320 for exactly
   where that guard sits.)
 - **`GovernedToolkit`'s governed call path** (shared with the CrewAI demo,
   unmodified in its logic) — via `verify_mechanics.py`, exactly as the CrewAI demo
@@ -483,7 +483,7 @@ file:
   became `langchain>=0.3,<0.4` / `langchain-core>=0.3` / `langchain-anthropic>=0.3` /
   `langchain-openai>=0.3`. The "don't install this in the tracked `.venv`" warning
   carries over with the same reasoning, pointed at a different
-  `tests/runtime/test_autoguard.py` assertion
+  `tests/frameworks/autoguard/test_autoguard.py` assertion
   (`test_missing_litellm_and_langchain_are_reported_not_hidden` instead of the
   crewai-specific ones).
 

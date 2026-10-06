@@ -2,7 +2,7 @@
 
 Registers `support-crew-live-lang` and its identity, capability grants and tool
 registrations, following the exact pattern `agentfox admin seed` and
-`tests/detection/test_composition.py`'s `_governor` fixture already use — `ensure_identity`,
+`tests/capabilities/detection/test_composition.py`'s `_governor` fixture already use — `ensure_identity`,
 `grant_capability`, `register_agent`, `McpGovernor.register_tools` — rather than
 inventing a new one. This is a near-verbatim port of
 `demo/redteam-live/seed_demo_agent.py`: same shape, same grants, same policy packs.
@@ -31,10 +31,10 @@ from support_tools import (
 )
 
 from agentfox.core.db import init_db, session_scope
-from agentfox.identity import ensure_identity, grant_capability
-from agentfox.integrations.mcp import McpGovernor, tool_key
-from agentfox.policy import load_from_dir, save_policy
-from agentfox.registry.service import register_agent, upsert_tool
+from agentfox.frameworks.mcp import McpGovernor, tool_key
+from agentfox.platform.identity import ensure_identity, grant_capability
+from agentfox.platform.policy import load_from_dir, save_policy
+from agentfox.platform.registry.service import register_agent, upsert_tool
 
 
 def main() -> None:
@@ -69,7 +69,7 @@ def main() -> None:
         # reviewed change: accept it rather than holding it as drift.
         governor.register_tools(TOOL_DESCRIPTORS, accept_changes=True)
         # `register_tools` infers each tool's impact from its name/description
-        # (`integrations/mcp.py`'s `infer_impact` — no DB access, just keyword
+        # (`platform/registry/impact.py`'s `infer_impact` — no DB access, just keyword
         # hints). "issue_refund" contains neither a write nor an irreversible hint
         # word, so it is misread as "read" — the one axis every containment and
         # composition rule reasons over, so it has to be right. Set explicitly

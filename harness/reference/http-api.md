@@ -2,7 +2,7 @@
 title: Gateway and control-plane HTTP API
 layer: reference
 audience: agents, integrators
-source_of_truth: src/agentfox/gateway/ (routes/) — live OpenAPI at http://<host>:8080/docs
+source_of_truth: src/agentfox/apps/gateway/ (routes/) — live OpenAPI at http://<host>:8080/docs
 verified_against: commit 6863b8b, 2026-09-15
 note: docs/architecture/api-spec.md has drifted from the code; prefer this file or /docs
 ---

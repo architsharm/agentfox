@@ -61,8 +61,8 @@ never copies them.
    explicit confirm step in every skill that reaches it. All three change together.
 6. **Generated docs are regenerated, never edited.** `docs/status.md` and
    `docs/design/coverage-map.md` have commands in `reference/docs-map.md`.
-7. **Same-commit rule.** A change to `src/agentfox/cli/`, `config.py`, `gateway/routes/`,
-   `policy/model.py` or `policies_data/` updates the matching `reference/` file in the same
+7. **Same-commit rule.** A change to `src/agentfox/apps/cli/`, `config.py`, `apps/gateway/routes/`,
+   `platform/policy/model.py` or `policies_data/` updates the matching `reference/` file in the same
    commit. Fixing a bug in `known-issues.md` deletes its entry in the same commit.
 8. **Every repo `.md` is classified.** A new doc anywhere in the repo gets a row in
    `reference/docs-map.md`.
@@ -85,7 +85,7 @@ place that explains the fallbacks.
 | `agents/*.md` | `name`, `description`, `tools` (least privilege) |
 
 **The MCP server is read-only by construction.** It exposes analysis and inspection tools
-only (`src/agentfox/integrations/mcp_server.py`). Anything that changes enforcement, stops an agent,
+only (`src/agentfox/apps/mcp_server.py`). Anything that changes enforcement, stops an agent,
 decides or applies a change proposal, or sends data goes through the CLI, where the hook
 asks first. Adding a state-changing MCP tool would bypass that gate, so don't. When you add
 or remove a tool, update the count in `README.md`, `reference/cli.md` and this file.

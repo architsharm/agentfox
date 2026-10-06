@@ -132,7 +132,7 @@ export AGENTFOX_SERVICE_AUTH_SECRET="…another generated value…"`}</Code>
           </p>
         </Step>
         <Step title="Start it">
-          <Code>{`uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080`}</Code>
+          <Code>{`uvicorn agentfox.apps.gateway.app:app --host 0.0.0.0 --port 8080`}</Code>
           <p>
             Or <code>agentfox serve --host 0.0.0.0 --port 8080</code>, which runs the same
             app. Check it:

@@ -35,7 +35,7 @@ from recorded_scenarios import (
 )
 
 from agentfox.core.db import init_db, session_scope
-from agentfox.runtime.autoguard import Blocked
+from agentfox.frameworks.autoguard import Blocked
 
 app = FastAPI(title="AgentFox red-team live demo (LangChain)")
 
@@ -143,7 +143,7 @@ def redteam() -> dict:
     _ensure_seeded()
     from support_tools import AGENT_SLUG
 
-    from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
+    from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, run_campaign
 
     init_db()
     with session_scope() as session:

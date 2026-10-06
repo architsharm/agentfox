@@ -57,7 +57,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.types import Command
 
-from agentfox.integrations.langgraph import STATE_KEY, AgentFoxGuard
+from agentfox.frameworks.langgraph import STATE_KEY, AgentFoxGuard
 
 
 def keep_latest(old: dict, new: dict) -> dict:
@@ -240,7 +240,7 @@ resumed: Ticket filed.`}</Output>
         the SDK raises, <code>agentfox.PolicyViolation</code> and{" "}
         <code>agentfox.ApprovalRequired</code>, and both are{" "}
         <code>agentfox.AgentFoxError</code>s (still importable from{" "}
-        <code>agentfox.integrations.langgraph</code>).
+        <code>agentfox.frameworks.langgraph</code>).
       </p>
 
       <h2>The governance key in your state</h2>

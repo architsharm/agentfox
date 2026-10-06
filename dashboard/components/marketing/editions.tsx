@@ -21,7 +21,7 @@ import { WaitlistForm } from "@/components/marketing/waitlist";
  *                                       entitlement (who may see which resource),
  *                                       not payment entitlement.
  *   - runs offline, no API key ........ README.md lines 34-35, and
- *                                       src/agentfox/providers/echo.py
+ *                                       src/agentfox/platform/providers/echo.py
  *   - no telemetry phoning home ....... no AgentFox-owned endpoint appears
  *                                       anywhere in src/agentfox/. The only
  *                                       outbound hosts in config.py are the
@@ -29,11 +29,11 @@ import { WaitlistForm } from "@/components/marketing/waitlist";
  *                                       configures themselves.
  *   - benchmarks reproducible ......... README.md "Benchmarks, reproducible by
  *                                       anyone", nine scripts under benchmarks/
- *   - stdlib-only verifier ............ src/agentfox/prove/audit/evidence.py
+ *   - stdlib-only verifier ............ src/agentfox/apps/report/evidence.py
  *                                       VERIFIER_SCRIPT, written into every
  *                                       package as verify_chain.py
- *   - mappings ship labelled DRAFT .... src/agentfox/prove/compliance/catalog.py:214,
- *                                       src/agentfox/prove/compliance/risk.py:369
+ *   - mappings ship labelled DRAFT .... src/agentfox/capabilities/compliance/catalog.py:214,
+ *                                       src/agentfox/capabilities/compliance/risk.py:369
  *   - cloud does not exist yet ........ README.md line 183: single-org
  *                                       multi-tenancy at the session, "not yet a
  *                                       managed multi-region offering", no live

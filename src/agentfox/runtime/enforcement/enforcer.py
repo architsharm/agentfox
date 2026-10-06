@@ -14,37 +14,40 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.business.graph import combine as combine_business
-from agentfox.containment.findings import (
+from agentfox.capabilities.business.graph import combine as combine_business
+from agentfox.capabilities.containment.findings import (
     detector_verdict,
     is_detector_rule,
     matches_detector_rule,
     raise_containment_findings,
 )
+from agentfox.capabilities.detection import (
+    DetectionContext,
+    DetectorPipeline,
+    TaintTracker,
+    redact_content,
+)
+from agentfox.capabilities.detection.actions import analyse_arguments
+from agentfox.capabilities.detection.actions import summarise as summarise_actions
+from agentfox.capabilities.detection.composition import check_composed_escalation
+from agentfox.capabilities.detection.tuning import (
+    LatencyLedger,
+    active_suppressions,
+    explain,
+    filter_suppressed,
+)
+from agentfox.capabilities.grounding.context_integrity import assemble_context
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Decision, Identity, Tool, Trace, as_aware, utcnow
-from agentfox.detection import DetectionContext, DetectorPipeline, TaintTracker, redact_content
-from agentfox.detection.actions import analyse_arguments
-from agentfox.detection.actions import summarise as summarise_actions
-from agentfox.detection.composition import check_composed_escalation
-from agentfox.detection.tuning import LatencyLedger, active_suppressions, explain, filter_suppressed
-from agentfox.grounding.context_integrity import assemble_context
-from agentfox.identity import (
+from agentfox.platform.identity import (
     check_capability,
     redeem_approval,
     request_approval,
     verify_credential,
 )
-from agentfox.policy import (
-    PolicyInput,
-    UnloadablePolicyVersion,
-    combine,
-    get_engine,
-    policies_in_force,
-)
-from agentfox.policy.taint_view import policy_taint
-from agentfox.prove.audit import chain
-from agentfox.prove.audit.trace import (
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.findings import raise_finding
+from agentfox.platform.ledger.trace import (
     ATTR_AGENT,
     ATTR_TAINT,
     ATTR_TOOL_IMPACT,
@@ -52,8 +55,15 @@ from agentfox.prove.audit.trace import (
     ATTR_VERDICT,
     add_span,
 )
-from agentfox.prove.findings import raise_finding
-from agentfox.registry.service import observe_agent
+from agentfox.platform.policy import (
+    PolicyInput,
+    UnloadablePolicyVersion,
+    combine,
+    get_engine,
+    policies_in_force,
+)
+from agentfox.platform.policy.taint_view import policy_taint
+from agentfox.platform.registry.service import observe_agent
 from agentfox.runtime.enforcement.approvals import held_call
 from agentfox.runtime.enforcement.checks import _ChecksMixin
 from agentfox.runtime.enforcement.completion import _CompletionMixin

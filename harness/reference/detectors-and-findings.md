@@ -2,7 +2,7 @@
 title: Detectors, verdicts and findings
 layer: reference
 audience: agents triaging results
-source_of_truth: src/agentfox/detection/, src/agentfox/runtime/enforcement/, src/agentfox/core/models/ (Finding), src/agentfox/prove/findings.py
+source_of_truth: src/agentfox/capabilities/detection/, src/agentfox/runtime/enforcement/, src/agentfox/core/models/ (Finding), src/agentfox/platform/ledger/findings.py
 verified_against: branch claude/improvement-loop-phase0, 2026-09-20
 ---
 

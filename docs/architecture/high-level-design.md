@@ -74,7 +74,7 @@ These are load-bearing design commitments found consistently enforced in code, n
    either source saying `closed` closes it: this governs a degraded detector pipeline and a
    bound policy version that no longer loads alike (§6.2).
 5. **Computed, not attested.** Compliance-control status (Pillar 6) and failure-mode coverage
-   are computed from telemetry (`prove/compliance/status.py`'s `status_rule` predicates,
+   are computed from telemetry (`capabilities/compliance/status.py`'s `status_rule` predicates,
    `scripts/coverage.py --write`), not hand-maintained claims. `docs/status.md` is
    machine-regenerated for exactly this reason.
 6. **Declared gaps over hidden gaps.** Framework-coverage tables list what a mapping does
@@ -160,14 +160,14 @@ Four deployable units, one shared Python package:
 ```
 
 **A fifth deployment shape exists**: `api/index.py` re-exports the identical
-`agentfox.gateway.app:app` object as a Vercel serverless function, for a hosted demo/trial
+`agentfox.apps.gateway.app:app` object as a Vercel serverless function, for a hosted demo/trial
 path that doesn't require self-hosting Postgres. This is not a separately designed API — see
 §10 for why it is nonetheless a real architectural risk.
 
 **"Stateless, scales out horizontally" needs one scope note.** True for throughput — no
 process holds request-scoped state across calls, so N replicas serve N times the traffic.
 Not yet true for the admission controller and in-process budget/rate limiters
-(`runtime/availability.py`, `gateway/app.py`'s `admission_gate` middleware): that state lives in each
+(`runtime/availability.py`, `apps/gateway/app.py`'s `admission_gate` middleware): that state lives in each
 process's own memory, not a shared store (Postgres or a cache), so a horizontally-scaled
 deployment gets N times the *declared* admission threshold and N times the declared budget —
 each replica enforces its own local view rather than a cluster-wide one. Confirmed
@@ -210,7 +210,7 @@ not designed in from the start).
 
 The sequence a single model call goes through, end to end (`docs/design/PRD.md` §7.3, verified
 against `runtime/enforcement/`'s `preflight`/`evaluate`/`call_provider` methods and
-`gateway/routes/inline.py`'s `chat_completions` handler):
+`apps/gateway/routes/inline.py`'s `chat_completions` handler):
 
 ```
 1. Resolve identity + end-user principal (Pillar 2, 10)
@@ -259,7 +259,7 @@ An unanswered approval expires, and expiry denies.
 |---|---|
 | A detector times out or errors | Recorded on its `detector_runs` row; the decision is taken under the fail mode, and a long-lasting degradation converts to closed (`runtime/availability.py`) |
 | A dependency is down for `/v1/*` | `degradation_gate`: 503 under `fail_mode=closed`, otherwise served and stamped `X-Nometria-Degraded` |
-| A bound policy version no longer validates | Loaded through `policy/store.py:load_version_document`; a missing protected rule is restored from the shipped pack, anything else raises `UnloadablePolicyVersion`. The other packs still run, and a `policy.unloadable` rule is recorded: an observe-bound pack never blocks, an enforce-bound one blocks if the deployment or the pack says `closed` |
+| A bound policy version no longer validates | Loaded through `platform/policy/store.py:load_version_document`; a missing protected rule is restored from the shipped pack, anything else raises `UnloadablePolicyVersion`. The other packs still run, and a `policy.unloadable` rule is recorded: an observe-bound pack never blocks, an enforce-bound one blocks if the deployment or the pack says `closed` |
 | A tenant-isolation, entitlement, data-access or audit-chain check cannot run | Never fails open (`NEVER_OPEN` in `runtime/availability.py`) |
 | The process is started outside development with published secrets | Refuses to start (`InsecureConfigurationError`), see §10 |
 | A monitor run, probe target or alert channel fails | Recorded and retried on schedule; never treated as "nothing there" (§7) |
@@ -286,7 +286,7 @@ runner, so that a change nobody routed through the gateway still surfaces as a f
                                          Slack, if configured      ◄────────────┘
 ```
 
-- **Monitors** (`monitoring/`). A `Monitor` watches one connected source: a GitHub repository,
+- **Monitors** (`capabilities/monitoring/`). A `Monitor` watches one connected source: a GitHub repository,
   a hosted API's OpenAPI spec, a remote MCP server's tool listing, or a deployed agent (live
   probes). Each run re-reads the source, diffs it against the previous run's snapshot, raises
   findings for what appeared (a new tool or MCP server, removed governance, a lethal trifecta, a
@@ -295,7 +295,7 @@ runner, so that a change nobody routed through the gateway still surfaces as a f
   row (`monitor_failure_threshold`) raise one `monitor_failing` finding. Monitors are created
   when a source is connected and scanned, or by hand (`agentfox scan monitors`,
   `/api/monitors`).
-- **Live probes** (`evaluation/live_probes.py`). Opt-in red-team probes against a deployed
+- **Live probes** (`capabilities/evaluation/live_probes.py`). Opt-in red-team probes against a deployed
   agent's endpoint, for the question offline red-teaming cannot answer: does the agent that is
   running now still contain what it contained last week? A target is created disabled; opting
   in records who agreed and the warning they read. Probes go only to the host registered at
@@ -303,7 +303,7 @@ runner, so that a change nobody routed through the gateway still surfaces as a f
   opens a finding; a later contained run closes it. The public `/live` showcase runs the same
   thing against the demo agent in its own tenant, and is off unless `AGENTFOX_SHOWCASE_ENABLED`
   is set.
-- **Scheduled jobs** (`jobs/`). Per-tenant `JobSchedule` rows fill the queue (canary
+- **Scheduled jobs** (`platform/jobs/`). Per-tenant `JobSchedule` rows fill the queue (canary
   advancement, compliance recompute, drift, escalation scan, learned-permission proposals,
   monitors, probes); the runner recovers stuck jobs and drains what is due. Nothing periodic
   runs unless something calls the runner: without a configured cron secret the endpoint
@@ -327,20 +327,20 @@ deployment allows private hosts, bodies read under a size cap.
 |---|---|---|
 | Core package | Python ≥3.11, FastAPI, SQLAlchemy 2.0, Pydantic 2.9, Typer, Alembic | Core deps deliberately minimal — everything that wraps a third-party OSS primitive is an optional extra (`pyproject.toml`), so `pip install agentfox` stays offline-capable |
 | Database | SQLite (default, offline/local) or Postgres 16 (`AGENTFOX_DATABASE_URL`) | Alembic revisions in `migrations/versions/`, also shipped in the wheel |
-| Policy engine | Native deterministic evaluator (default) or OPA/Rego (optional sidecar, falls back to native if unreachable) | `policy/engine.py`, `policy/opa.py` |
-| PII/secrets detection | Native regex/NER, Presidio (Microsoft, MIT) | `detection/adapters/presidio.py` |
+| Policy engine | Native deterministic evaluator (default) or OPA/Rego (optional sidecar, falls back to native if unreachable) | `platform/policy/engine.py`, `platform/policy/opa.py` |
+| PII/secrets detection | Native regex/NER, Presidio (Microsoft, MIT) | `capabilities/detection/adapters/presidio.py` |
 | Safety/injection classifiers | Native lexicon (default, zero-weights), Granite Guardian (IBM, Apache-2.0), a two-model ensemble (`leolee99/PIGuard` + `protectai/deberta` backstop) | Model weights are an opt-in download, not bundled |
-| Rails / structured validation | NeMo Guardrails (NVIDIA), Guardrails AI and its Hub validators — all optional | `detection/adapters/rails.py`, `detection/adapters/hub.py` |
+| Rails / structured validation | NeMo Guardrails (NVIDIA), Guardrails AI and its Hub validators — all optional | `capabilities/detection/adapters/rails.py`, `capabilities/detection/adapters/hub.py` |
 | Evaluation | Native runner (primary), Ragas adapter (optional) | promptfoo demoted to reference-only after its acquisition by OpenAI, Mar 2026 |
-| Red-teaming | 22 native probes (OWASP LLM Top 10 / MITRE ATLAS mapped), Garak (NVIDIA) and PyRIT (Microsoft) as optional wrapped runners | `evaluation/redteam.py` |
-| SQL/action analysis | sqlglot (MIT, zero-dependency) | `detection/actions.py` |
-| Tracing | OpenTelemetry + OpenLLMetry semantic conventions; OTLP ingest as JSON or protobuf, optionally gzipped | `prove/audit/trace.py`, `prove/audit/otel.py` |
+| Red-teaming | 22 native probes (OWASP LLM Top 10 / MITRE ATLAS mapped), Garak (NVIDIA) and PyRIT (Microsoft) as optional wrapped runners | `capabilities/evaluation/redteam.py` |
+| SQL/action analysis | sqlglot (MIT, zero-dependency) | `capabilities/detection/actions.py` |
+| Tracing | OpenTelemetry + OpenLLMetry semantic conventions; OTLP ingest as JSON or protobuf, optionally gzipped | `platform/ledger/trace.py`, `exporters/otel.py` |
 | Auth (credentials) | argon2-cffi (password/credential hashing), `cryptography` (Fernet, at-rest encryption of connected-integration tokens) | Core deps, not optional — same reasoning as each other |
-| Model providers | `echo` (offline default), OpenAI, Anthropic, Azure OpenAI, Bedrock, Vertex, LiteLLM | `providers/` — the `ModelProvider` seam (§2) |
+| Model providers | `echo` (offline default), OpenAI, Anthropic, Azure OpenAI, Bedrock, Vertex, LiteLLM | `platform/providers/` — the `ModelProvider` seam (§2) |
 | Frontend | Next.js 15, React 19, TypeScript 5.7 | No CSS framework, no state-management library |
 | Deployment | Docker Compose (self-host, default), Vercel serverless (`api/`, hosted trial path) | See §10 for the architectural risk in running both |
-| Observability export | Prometheus (`/metrics`, unauthenticated by design), SIEM export (OTLP/JSONL/CEF/LEEF/webhook) | `integrations/prometheus.py`, `prove/audit/siem.py` |
-| Scheduling & alerting | In-process job queue persisted in the database; triggered by a cron call or `agentfox admin jobs run-due`; signed finding webhook and Slack incoming webhooks | `jobs/`, `monitoring/`, `core/webhooks.py` — no external queue backend |
+| Observability export | Prometheus (`/metrics`, unauthenticated by design), SIEM export (OTLP/JSONL/CEF/LEEF/webhook) | `exporters/prometheus.py`, `exporters/siem.py` |
+| Scheduling & alerting | In-process job queue persisted in the database; triggered by a cron call or `agentfox admin jobs run-due`; signed finding webhook and Slack incoming webhooks | `platform/jobs/`, `capabilities/monitoring/`, `core/webhooks.py` — no external queue backend |
 | Outbound fetches | httpx through `core/outbound.py` (address vetting, pinned connection, size caps) | Used by monitors, live probes, hosted-API discovery and provenance fetches |
 
 ---

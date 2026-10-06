@@ -481,7 +481,7 @@ def test_the_injected_ticket_never_sends_email(governed):
 
       <h2>FastAPI</h2>
       <p>
-        If the agent sits behind FastAPI, <code>agentfox.integrations.fastapi</code> adds two
+        If the agent sits behind FastAPI, <code>agentfox.frameworks.fastapi</code> adds two
         things. <code>install(app)</code> mounts an observe-only middleware (correlation
         headers, never refuses a request) and a <code>/agentfox/health</code> route.{" "}
         <code>guard(...)</code> is a per-route dependency that checks one field of the JSON
@@ -490,7 +490,7 @@ def test_the_injected_ticket_never_sends_email(governed):
       <Code lang="python" title="app.py">{`from fastapi import Depends, FastAPI
 
 import agentfox
-from agentfox.integrations.fastapi import guard, install
+from agentfox.frameworks.fastapi import guard, install
 
 agentfox.auto(agent="support-triage", mode="policy", quiet=True)  # governs the model calls
 app = install(FastAPI(), service="support-api")  # observe-only middleware + /agentfox/health

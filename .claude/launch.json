@@ -6,7 +6,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd /Users/architsharma/guardrails && NOMETRIA_DATABASE_URL=sqlite:////tmp/agentfox_pg_verify.db NOMETRIA_PLAYGROUND_CORS_ORIGIN=http://localhost:3000 uv run uvicorn agentfox.gateway.app:app --host 127.0.0.1 --port 8080"
+        "cd /Users/architsharma/guardrails && NOMETRIA_DATABASE_URL=sqlite:////tmp/agentfox_pg_verify.db NOMETRIA_PLAYGROUND_CORS_ORIGIN=http://localhost:3000 uv run uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8080"
       ],
       "port": 8080
     },
@@ -33,7 +33,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd /Users/architsharma/guardrails/.claude/worktrees/gap-analysis-failure-modes-2a3ba9 && AGENTFOX_DATABASE_URL=sqlite:////private/tmp/claude-501/-Users-architsharma-guardrails--claude-worktrees-gap-analysis-failure-modes-2a3ba9/51690438-15cf-42ec-80c2-29ce269bcca9/scratchpad/shots.db AGENTFOX_PLAYGROUND_CORS_ORIGIN=http://localhost:3001 PYTHONPATH=src /Users/architsharma/guardrails/.venv/bin/uvicorn agentfox.gateway.app:app --host 127.0.0.1 --port 8081"
+        "cd /Users/architsharma/guardrails/.claude/worktrees/gap-analysis-failure-modes-2a3ba9 && AGENTFOX_DATABASE_URL=sqlite:////private/tmp/claude-501/-Users-architsharma-guardrails--claude-worktrees-gap-analysis-failure-modes-2a3ba9/51690438-15cf-42ec-80c2-29ce269bcca9/scratchpad/shots.db AGENTFOX_PLAYGROUND_CORS_ORIGIN=http://localhost:3001 PYTHONPATH=src /Users/architsharma/guardrails/.venv/bin/uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8081"
       ],
       "port": 8081
     },

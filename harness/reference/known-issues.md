@@ -67,7 +67,7 @@ it still doesn't do:
 - **Opt-in model detectors load in the background in your own process.** The gateway calls
   `warm_all()` at startup; `agentfox.auto()`, `AgentFox(...)` and `AgentFoxGuard(...)` start the
   same warm-up on a background thread. Calls made in the first seconds, before the weights are
-  loaded, can still time out; call `agentfox.detection.warm_all()` to wait. Warm,
+  loaded, can still time out; call `agentfox.capabilities.detection.warm_all()` to wait. Warm,
   `injection.classifier` costs about 43ms per short prompt; long prompts still time out.
 - **Frameworks are covered through their clients.** CrewAI, LlamaIndex, AutoGen and LangGraph
   are governed only through the clients they call. `agentfox.state().framework_routes()` shows

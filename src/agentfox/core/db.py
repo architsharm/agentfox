@@ -25,7 +25,7 @@ from agentfox.core.models import Base
 #: the order they are installed in.
 SESSION_EXTENSIONS: tuple[tuple[str, str], ...] = (
     ("agentfox.core.webhooks:install", "finding webhooks"),
-    ("agentfox.monitoring.alerts:install", "monitor alerts"),
+    ("agentfox.capabilities.monitoring.alerts:install", "monitor alerts"),
 )
 
 _engine: Engine | None = None

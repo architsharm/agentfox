@@ -8,23 +8,18 @@ import logging
 import time
 from typing import Any
 
-from agentfox.core.models import Agent, TaintTag, Trace
-from agentfox.detection import TaintTracker
-from agentfox.detection.taint import _flatten
-from agentfox.grounding.answerability import (
+from agentfox.capabilities.detection import TaintTracker
+from agentfox.capabilities.detection.taint import _flatten
+from agentfox.capabilities.grounding.answerability import (
     classify_answerability,
     detect_over_refusal,
     get_boundary,
     verify_boundary,
 )
-from agentfox.integrations.correlation import (
-    link_trace,
-    push_verdict,
-    refs_from_env,
-    refs_from_headers,
-)
-from agentfox.prove.audit import chain
-from agentfox.prove.audit.trace import (
+from agentfox.core.models import Agent, TaintTag, Trace
+from agentfox.platform.ledger import chain
+from agentfox.platform.ledger.findings import raise_finding
+from agentfox.platform.ledger.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
     ATTR_SYSTEM,
@@ -32,8 +27,7 @@ from agentfox.prove.audit.trace import (
     end_trace,
     start_trace,
 )
-from agentfox.prove.findings import raise_finding
-from agentfox.providers import CompletionRequest, get_provider
+from agentfox.platform.providers import CompletionRequest, get_provider
 from agentfox.runtime.enforcement.result import (
     EnforcementResult,
     PreflightOutcome,
@@ -42,6 +36,7 @@ from agentfox.runtime.enforcement.result import (
 from agentfox.runtime.enforcement.rules import _RANK, _fired_rule
 from agentfox.runtime.reliability import BREAKER, DegradationRecord, FallbackLadder, ProviderAttempt
 from agentfox.runtime.reliability import Rung as _Rung
+from agentfox.runtime.trace_exporters import trace_exporters
 
 log = logging.getLogger("agentfox.runtime.enforcement")
 
@@ -85,7 +80,7 @@ class _CompletionMixin:
             # add an abstention it found; it can never remove one, so the
             # deterministic verdict above stays authoritative where it fired.
             # No-ops entirely when no judgment tier is enabled.
-            from agentfox.detection.judgment.answerability import augment as _judge_answerability
+            from agentfox.capabilities.judgment.answerability import augment as _judge_answerability
 
             verdict = _judge_answerability(verdict, question)
         if verdict.answerable:
@@ -154,28 +149,22 @@ class _CompletionMixin:
         able to take down the path it is describing.
         """
         try:
-            if isinstance(correlation, dict):
-                refs = refs_from_headers(correlation)
-            elif correlation:
-                refs = list(correlation)
-            else:
-                refs = []
-            refs = refs + refs_from_env()
-            if refs:
-                link_trace(self.session, trace.id, refs)
+            for exporter in trace_exporters():
+                exporter.link(self.session, trace.id, correlation)
         except Exception as exc:  # pragma: no cover - defensive
             log.debug("correlation link skipped: %s", exc)
 
     def _push_correlation(self, trace, result, agent_slug: str | None) -> None:
         try:
-            push_verdict(
-                self.session,
-                trace.id,
-                verdict=result.verdict,
-                effective_verdict=result.effective_verdict,
-                rules=[r.get("rule_id", "") for r in result.rules_fired],
-                agent_slug=agent_slug,
-            )
+            for exporter in trace_exporters():
+                exporter.push(
+                    self.session,
+                    trace.id,
+                    verdict=result.verdict,
+                    effective_verdict=result.effective_verdict,
+                    rules=[r.get("rule_id", "") for r in result.rules_fired],
+                    agent_slug=agent_slug,
+                )
         except Exception as exc:  # pragma: no cover - defensive
             log.debug("correlation push skipped: %s", exc)
 

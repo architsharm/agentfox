@@ -15,7 +15,7 @@ uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sq
 ```
 
 **Never `--all-extras` or `--extra all`.** They pull in `anthropic`, `langchain` and `litellm`
-transitively, and `tests/runtime/test_autoguard.py` asserts those are absent. If a cluster of
+transitively, and `tests/frameworks/autoguard/test_autoguard.py` asserts those are absent. If a cluster of
 "missing library" tests fails, run `uv pip list | grep -E 'anthropic|langchain|litellm'`
 before suspecting a regression. Demo and `llm-guard` dependencies go in separate venvs.
 
@@ -51,7 +51,7 @@ Fixtures live in `tests/conftest.py`: `session`, `seeded`, `enforcer`, `client`,
 
 | You changed | Also update |
 |---|---|
-| a CLI command or flag (`src/agentfox/cli/`) | `harness/reference/cli.md`; BLK commands also `harness/scripts/guard_blocking_commands.py` |
+| a CLI command or flag (`src/agentfox/apps/cli/`) | `harness/reference/cli.md`; BLK commands also `harness/scripts/guard_blocking_commands.py` |
 | a `NOMETRIA_*` setting | `harness/reference/config.md` |
 | a gateway route | `harness/reference/http-api.md` (and ideally Appendix C) |
 | the policy schema or shipped packs | `harness/reference/policy-schema.md` |

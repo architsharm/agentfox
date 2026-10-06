@@ -14,7 +14,7 @@ decision trail. Commands are in
 [reference/cli.md](../../reference/cli.md#proposals--governed-changes-improvement-loop),
 routes in [reference/http-api.md](../../reference/http-api.md), settings in
 [reference/config.md](../../reference/config.md#improvement-loop-and-scheduler), and the
-exact rules in `src/agentfox/improvement/contract.py`.
+exact rules in `src/agentfox/capabilities/improvement/contract.py`.
 
 One rule sits above the rest: **a change that loosens a control is never applied
 automatically.** Direction is computed by the applier from the diff and the live

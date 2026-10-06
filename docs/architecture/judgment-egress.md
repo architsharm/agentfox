@@ -13,10 +13,10 @@ and would be a serious defect in the product.
 
 ## What was actually wrong
 
-`JevClient` (`detection/judgment/jev.py`) never checked `allow_egress`. Every other
-outbound caller in this codebase does — `providers/remote.py`,
-`providers/enterprise.py`, `core/webhooks.py`, `monitoring/alerts.py` — and
-`detection/adapters/presidio.py` already carries a docstring about
+`JevClient` (`capabilities/judgment/jev.py`) never checked `allow_egress`. Every other
+outbound caller in this codebase does — `platform/providers/remote.py`,
+`platform/providers/enterprise.py`, `core/webhooks.py`, `capabilities/monitoring/alerts.py` — and
+`capabilities/detection/adapters/presidio.py` already carries a docstring about
 this exact failure, from the time a dependency downloaded a 400MB model from
 inside a guarded request:
 
@@ -112,7 +112,7 @@ is not something `NativePiiDetector` will mask.
 
 ## Tests
 
-`tests/detection/judgment/test_judgment_egress.py`: default sends nothing, remote is
+`tests/capabilities/judgment/test_judgment_egress.py`: default sends nothing, remote is
 refused with egress off, PII and secret fields are masked, nested structures
 are walked, a missing redactor fails closed, a *faulting* redactor fails closed,
 `inspect()` reports without sending, and the client refuses on its own when the

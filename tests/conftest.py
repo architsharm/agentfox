@@ -94,9 +94,9 @@ def client(tmp_path):
     """FastAPI test client sharing the isolated database."""
     from fastapi.testclient import TestClient
 
+    from agentfox.apps.gateway.app import create_app
     from agentfox.core.db import session_scope
     from agentfox.fixtures.seed import seed
-    from agentfox.gateway.app import create_app
 
     with session_scope() as s:
         seed(s)

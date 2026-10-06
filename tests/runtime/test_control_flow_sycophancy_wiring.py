@@ -1,8 +1,9 @@
 """Both checks, through the real enforcement path — recorded, non-blocking, policy-expressible.
 
-`tests/containment/test_control_flow.py` and `tests/grounding/test_sycophancy.py` cover the
-detection logic. This file covers the thing our own audit keeps catching in this codebase:
-a detector that passes its unit tests and is never called on a live request.
+`tests/capabilities/containment/test_control_flow.py` and
+`tests/capabilities/grounding/test_sycophancy.py` cover the detection logic. This file
+covers the thing our own audit keeps catching in this codebase: a detector that passes
+its unit tests and is never called on a live request.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from agentfox.core.models import Agent, Finding
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.runtime.enforcement import Enforcer
 
 POISONED_DOC = (

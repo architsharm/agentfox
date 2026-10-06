@@ -1,6 +1,6 @@
 # PII detection, benchmarked
 
-**Sequential dataset-sourcing build-out** (see `docs/evaluation/dataset-sourcing.md`) — all three sourced PII datasets built, then a second round of fixes applied against what the numbers actually showed (see "Fixes applied" below). Scores both PII detectors that ship in `src/agentfox/detection/`:
+**Sequential dataset-sourcing build-out** (see `docs/evaluation/dataset-sourcing.md`) — all three sourced PII datasets built, then a second round of fixes applied against what the numbers actually showed (see "Fixes applied" below). Scores both PII detectors that ship in `src/agentfox/capabilities/detection/`:
 
 - `pii.native` (`detectors/pii.py`) — regex-only, jurisdiction packs (US/UK/EU/India), no NER.
 - `pii.presidio` (`adapters/presidio.py`) — wraps Microsoft Presidio; `PERSON`/`LOCATION`/`DATE_TIME`/`US_DRIVER_LICENSE`/`US_PASSPORT` excluded by policy default (`DEFAULT_EXCLUDED`) as "noisy in agent traffic."

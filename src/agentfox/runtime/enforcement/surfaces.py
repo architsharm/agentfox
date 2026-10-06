@@ -12,7 +12,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from agentfox.containment.agent_messaging import verify_message
+from agentfox.capabilities.containment.agent_messaging import verify_message
+from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.crypto import DecryptionFailed, decrypt_secret
 from agentfox.core.models import (
     Agent,
@@ -23,7 +24,6 @@ from agentfox.core.models import (
     Trace,
     utcnow,
 )
-from agentfox.detection import TaintTracker
 from agentfox.runtime.enforcement.result import EnforcementResult
 from agentfox.runtime.enforcement.rules import _VERDICT_RANK, _fired_rule
 
@@ -348,7 +348,7 @@ class _SurfacesMixin:
         which the caller can act on. Returning no findings for a file nobody
         looked inside is the failure this product exists to argue against.
         """
-        from agentfox.detection.files import normalise
+        from agentfox.capabilities.detection.files import normalise
 
         scan = normalise(filename, data)
         agent, identity, _ = self.resolve(agent_slug, credential)

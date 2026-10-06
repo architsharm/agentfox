@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from agentfox.core.models import Agent, DetectionFinding, DetectorRun
-from agentfox.prove.findings import raise_finding, record_detector_health
+from agentfox.platform.ledger.findings import raise_finding, record_detector_health
 
 #: Past tense, spelled out. `f"{verdict.capitalize()}ed"` produced "Escalateed"
 #: and "Tokenizeed", and there is no rule that turns every one of these into a

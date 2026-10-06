@@ -28,23 +28,23 @@ import {
  * guess:
  *
  *   - the six pillars and their questions .... README.md "The six pillars"
- *   - detector registrations ................. src/agentfox/detection/__init__.py
- *   - INJECTION.* entity types ............... src/agentfox/detection/detectors/injection.py
- *   - SECRET.* entity types .................. src/agentfox/detection/detectors/secrets.py
- *   - normalisation views .................... src/agentfox/detection/normalize.py
- *   - per-detector budget, degrade-not-skip .. src/agentfox/detection/pipeline.py
+ *   - detector registrations ................. src/agentfox/capabilities/detection/__init__.py
+ *   - INJECTION.* entity types ............... src/agentfox/capabilities/detection/detectors/injection.py
+ *   - SECRET.* entity types .................. src/agentfox/capabilities/detection/detectors/secrets.py
+ *   - normalisation views .................... src/agentfox/capabilities/detection/normalize.py
+ *   - per-detector budget, degrade-not-skip .. src/agentfox/capabilities/detection/pipeline.py
  *   - baseline / tool-containment rule ids ... src/agentfox/policies_data/*.yaml
  *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement/
- *   - the provenance ladder .................. src/agentfox/detection/taint.py, README "Commands"
+ *   - the provenance ladder .................. src/agentfox/capabilities/detection/taint.py, README "Commands"
  *   - impact tiers ........................... dashboard/app/glossary/page.tsx
- *   - static-only scanning, TS/JS pass ....... src/agentfox/discovery/repo.py
- *   - OpenAPI onboarding ..................... src/agentfox/discovery/openapi.py
- *   - local session scanning ................. src/agentfox/discovery/sessions.py
- *   - MCP hygiene finding types .............. src/agentfox/registry/service.py
- *   - scorer keys ............................ src/agentfox/evaluation/scorers.py
- *   - adaptive campaign scope ................ src/agentfox/evaluation/adaptive.py
- *   - chain digests and verify() ............. src/agentfox/prove/audit/chain.py
- *   - computed compliance status ............. src/agentfox/prove/compliance/status.py
+ *   - static-only scanning, TS/JS pass ....... src/agentfox/capabilities/discovery/repo.py
+ *   - OpenAPI onboarding ..................... src/agentfox/capabilities/discovery/openapi.py
+ *   - local session scanning ................. src/agentfox/capabilities/discovery/sessions.py
+ *   - MCP hygiene finding types .............. src/agentfox/platform/registry/service.py
+ *   - scorer keys ............................ src/agentfox/capabilities/evaluation/scorers.py
+ *   - adaptive campaign scope ................ src/agentfox/capabilities/evaluation/adaptive.py
+ *   - chain digests and verify() ............. src/agentfox/platform/ledger/chain.py
+ *   - computed compliance status ............. src/agentfox/capabilities/compliance/status.py
  *   - control count and framework keys ....... src/agentfox/compliance_data/controls.yaml
  *   - every CLI command shown ................ README.md "Commands"
  *
@@ -338,7 +338,7 @@ export function Containment() {
 
 const DISCOVERY_ITEMS: Item[] = [
   {
-    // README.md "Commands"; behaviour from src/agentfox/discovery/repo.py.
+    // README.md "Commands"; behaviour from src/agentfox/capabilities/discovery/repo.py.
     label: "Committed code",
     body: "Reports what in a repository talks to a model, and which of it is ungoverned.",
   },
@@ -347,12 +347,12 @@ const DISCOVERY_ITEMS: Item[] = [
     body: "Shadow agents, drift and identity posture. Unregistered traffic raises a shadow_agent finding.",
   },
   {
-    // src/agentfox/registry/service.py raises these types.
+    // src/agentfox/platform/registry/service.py raises these types.
     label: "Tool servers",
     body: "MCP tool hygiene: tool_poisoning in a tool description, an unpinned_server, schema_drift since the last scan.",
   },
   {
-    // src/agentfox/discovery/openapi.py and session_scan.py.
+    // src/agentfox/capabilities/discovery/openapi.py and session_scan.py.
     label: "OpenAPI and local sessions",
     body: "Only the OpenAPI spec is fetched. Local sessions give metadata only, never a prompt or a tool call's arguments.",
   },
@@ -396,12 +396,12 @@ export function Discovery() {
 
 const ASSURANCE_ITEMS: Item[] = [
   {
-    // README.md "Test before you trust"; scorer keys in evaluation/scorers.py.
+    // README.md "Test before you trust"; scorer keys in capabilities/evaluation/scorers.py.
     label: "A regression gate",
     body: "Scores a suite against its recorded baseline and exits 1 on a regression. Groundedness, safety and tool_trajectory are registered scorers.",
   },
   {
-    // evaluation/adaptive.py is explicit that this is configuration regression
+    // capabilities/evaluation/adaptive.py is explicit that this is configuration regression
     // testing and a dishonest thing to call adversarial robustness. So is this line.
     label: "A red-team run",
     body: "Probes fired at your own agents' grants, then retried in mutated form. A posture delta, not a robustness certificate.",

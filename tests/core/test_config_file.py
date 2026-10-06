@@ -141,7 +141,7 @@ def test_other_tables_ignored_and_missing_table_is_harmless(workdir):
 def test_the_file_nometria_init_writes_is_read(workdir, isolated_db):
     from typer.testing import CliRunner
 
-    from agentfox.cli.main import app
+    from agentfox.apps.cli.main import app
 
     result = CliRunner().invoke(app, ["init", "--path", str(workdir)])
     assert result.exit_code == 0, result.output
@@ -174,7 +174,7 @@ def test_direct_env_reads_prefer_agentfox_and_keep_the_legacy_name(monkeypatch):
 
 
 def test_auto_agent_name_reads_agentfox_agent_first(monkeypatch):
-    from agentfox.runtime.autoguard import default_agent_slug
+    from agentfox.frameworks.autoguard import default_agent_slug
 
     monkeypatch.setenv("NOMETRIA_AGENT", "old-name")
     assert default_agent_slug() == "old-name"

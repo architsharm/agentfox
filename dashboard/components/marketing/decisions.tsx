@@ -13,7 +13,7 @@ import type { CSSProperties } from "react";
  *
  * Every visible string is something the product emits, and each one carries the file
  * and line it came from. Three of the four cards are the same three calls
- * `agentfox demo` makes at step 03 (src/agentfox/cli/demo.py lines 276-303): one
+ * `agentfox demo` makes at step 03 (src/agentfox/apps/cli/demo.py lines 276-303): one
  * agent, one tool, and an argument that changes the outcome each time. The fourth is
  * what the audit chain did with the third.
  *
@@ -137,9 +137,9 @@ const BLOCK: Decision = {
     { label: "Rule", value: "capability.constraint_violated", mono: true }, // tool-containment.yaml:75
     {
       label: "Reason",
-      // Generated, not written in the policy file: identity/service.py:355-360 builds
+      // Generated, not written in the policy file: platform/identity/service.py:355-360 builds
       // this sentence from the grant and the value that failed it, via
-      // _describe_violation() at identity/service.py:274-287.
+      // _describe_violation() at platform/identity/service.py:274-287.
       value:
         "agent:payments-ops holds a grant for 'payments.transfer', so this is not a missing permission. The grant allows amount below 1000, but this call passed 25000.",
     },
@@ -186,7 +186,7 @@ const HERO_ALLOW: Decision = {
  *           withheld_sources: ["hr/salaries-2026"]`. Note what this is NOT: the
  *           filter is an endpoint your retrieval code calls, not something that
  *           happens on its own. The in-path half of entitlement runs after the
- *           answer exists and files a finding — tests/grounding/test_provenance_integrity.py
+ *           answer exists and files a finding — tests/capabilities/grounding/test_provenance_integrity.py
  *           :601 asserts it does not block. Saying "we filter your retrieval"
  *           would be claiming an integration nobody has written.
  *   ANSWER  /api/answerability/check returns `answerable: false` and the sentence
@@ -265,7 +265,7 @@ const RECORD: Decision = {
     {
       label: "Verifier",
       // audit/chain.py:306-311 lists what verify() detects; the command is
-      // cli/main.py:860, and demo.py:519-548 runs it and then edits a record to
+      // apps/cli/main.py:860, and demo.py:519-548 runs it and then edits a record to
       // show the check failing.
       value:
         "Re-hashing the export reports a changed record, a gap in the sequence, an insertion or a reordering.",

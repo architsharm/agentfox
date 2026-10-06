@@ -7,11 +7,11 @@
 # Do NOT `uv sync --all-extras` or `pip install langchain` into the main repo's
 # tracked `.venv` — langchain-anthropic and langchain-openai pull in `anthropic` and
 # `openai` as real transitive dependencies, and several agentfox tests
-# (tests/runtime/test_autoguard.py, specifically
+# (tests/frameworks/autoguard/test_autoguard.py, specifically
 # test_missing_litellm_and_langchain_are_reported_not_hidden) assert `langchain_core`
 # (and `litellm`) are *absent* in the tracked venv, to prove auto() reports a missing
 # library honestly rather than hiding it. Use a separate virtualenv for this demo —
-# confirmed empirically while building it: `uv run pytest tests/runtime/test_autoguard.py -q`
+# confirmed empirically while building it: `uv run pytest tests/frameworks/autoguard/test_autoguard.py -q`
 # still passes 40/40 in the tracked `.venv` with this demo's dependencies installed
 # only into a scratch venv, never the tracked one. See README.md.
 

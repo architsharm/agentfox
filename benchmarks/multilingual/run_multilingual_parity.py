@@ -20,11 +20,11 @@ Three sections, in ascending order of how badly the product does:
    over 1,034 known injection phrasings, plus benign pools so that "flag everything
    that isn't English" cannot score as success.
 2. **Deterministic-checker parity** — the F7 integrity checkers in
-   `src/agentfox/grounding/integrity.py`, which are the checks that actually run on live output.
+   `src/agentfox/capabilities/grounding/integrity.py`, which are the checks that actually run on live output.
    Matched pairs: identical logical content, one English-formatted, one localised,
    where the checker *must* reach the same verdict. This is the real finding and it is
    not flattering.
-3. **Answerability/abstention parity** — `src/agentfox/grounding/answerability.py`, reachable
+3. **Answerability/abstention parity** — `src/agentfox/capabilities/grounding/answerability.py`, reachable
    with no model at all, scored on matched questions across seven languages.
 
 Everything here is deterministic and offline. No network, no model download, no judge.
@@ -870,7 +870,7 @@ INTEGRITY_PAIRS_EXTENSION: list[dict[str, Any]] = [
 
 
 def _run_checker(pair: dict[str, Any], side: str) -> list[str]:
-    from agentfox.grounding.integrity import (
+    from agentfox.capabilities.grounding.integrity import (
         check_arithmetic,
         detect_date_mismatch,
         detect_entity_confusion,
@@ -988,7 +988,7 @@ def run_integrity_parity(pairs: list[dict[str, Any]] | None = None) -> dict[str,
 # (currency_mismatch, scale_mismatch, quarter/year mismatch), which need an answer
 # that differs from its source. Those arms are covered instead by the English side of
 # every pair in section 2 and by the English assertions in
-# `tests/grounding/test_provenance_integrity.py`, both of which must keep their verdicts.
+# `tests/capabilities/grounding/test_provenance_integrity.py`, both of which must keep their verdicts.
 #
 # Corpora are the committed English text already in this repo, biggest first:
 #
@@ -1044,7 +1044,7 @@ def _english_fp_units() -> list[dict[str, Any]]:
 
 def run_english_false_positives() -> dict[str, Any]:
     """Every issue reported here is a false positive by construction."""
-    from agentfox.grounding.integrity import assess_integrity
+    from agentfox.capabilities.grounding.integrity import assess_integrity
 
     units = _english_fp_units()
     by_corpus: dict[str, dict[str, Any]] = {}
@@ -1162,8 +1162,8 @@ ANSWERABILITY_CASES: list[dict[str, Any]] = [
 
 
 def run_answerability_parity() -> dict[str, Any]:
+    from agentfox.capabilities.grounding.answerability import classify_answerability, question_type
     from agentfox.core.models import KnowledgeBoundary
-    from agentfox.grounding.answerability import classify_answerability, question_type
 
     # The out-of-the-box boundary `declare_boundary()` falls back to, in enforce mode
     # so that `should_abstain` is actually exercised. Same boundary for every language
@@ -1460,7 +1460,7 @@ def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dic
                         }
                     )
     else:
-        from agentfox.detection import (
+        from agentfox.capabilities.detection import (
             DetectionContext,
             DetectorPipeline,
             get_detector,
@@ -1762,7 +1762,7 @@ def main(argv: list[str] | None = None) -> None:
             "Enforcer.check_content path over 1,034 known injection phrasings, plus "
             "benign pools so that flagging all non-English text cannot score as "
             "success. (2) Matched localisation pairs through the F7 integrity checkers "
-            "in src/agentfox/grounding/integrity.py — identical logical content, one "
+            "in src/agentfox/capabilities/grounding/integrity.py — identical logical content, one "
             "English-formatted and one localised, where the checker must reach the same "
             "verdict. (3) Matched questions in seven languages through the model-free "
             "answerability/abstention path. No LLM judge, no network, no subjective "
