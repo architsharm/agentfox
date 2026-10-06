@@ -77,7 +77,8 @@ def policy_list() -> None:
     """List policies and their enforcement mode."""
     from sqlalchemy import select
 
-    from agentfox.core.models import Policy, PolicyBinding, PolicyVersion
+    from agentfox.core.models import Policy, PolicyVersion
+    from agentfox.policy import current_binding
 
     with _session() as session:
         table = Table(box=None, pad_edge=False)
@@ -91,18 +92,19 @@ def policy_list() -> None:
             ).first()
             if latest is None:
                 continue
-            binding = session.scalars(
-                select(PolicyBinding).where(
-                    PolicyBinding.policy_version_id == latest.id,
-                    PolicyBinding.effective_to.is_(None),
-                )
-            ).first()
+            # The live binding, whichever version it points at — mid-canary or after
+            # a rollback that is not the newest version (#65).
+            binding, bound = current_binding(session, policy.id)
             mode = binding.mode if binding else "unbound"
+            shown = bound or latest
+            version = f"v{shown.version}"
+            if bound is not None and bound.id != latest.id:
+                version += f" [dim](v{latest.version} saved, not live)[/]"
             table.add_row(
                 policy.key,
-                f"v{latest.version}",
+                version,
                 f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
-                str(len((latest.compiled_json or {}).get("rules", []))),
+                str(len((shown.compiled_json or {}).get("rules", []))),
             )
         console.print(table)
 

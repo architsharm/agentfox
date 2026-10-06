@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Policy, PolicyBinding, PolicyCanary, PolicyVersion, User
+from agentfox.core.models import Policy, PolicyCanary, PolicyVersion, User
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.policy import (
     LEVELS,
@@ -24,13 +24,14 @@ from agentfox.policy import (
     CanaryError,
     PolicyDocument,
     active_canary,
-    active_policies,
     canary_health,
     canary_rollout,
     compile_to_rego,
+    current_binding,
     effective_for,
     history,
     lint_all,
+    policies_in_force,
     record_simulation,
     rollback_canary,
     save_policy,
@@ -51,14 +52,15 @@ def list_policies(
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
     # A policy's real scope lives in its declared `scope.agents` glob (checked by
-    # `matches_scope`, honouring the binding's own scope override) — not a simple
-    # FK, since one policy commonly governs many agents by pattern. Reusing
-    # `active_policies` here means the filter agrees with what actually gets
-    # enforced at request time, rather than a second, looser notion of "applies to".
+    # `matches_scope`, honouring the binding's own scope override) and its place in
+    # the hierarchy — not a simple FK, since one policy commonly governs many agents
+    # by pattern. Reusing `policies_in_force` here means the filter agrees with what
+    # actually gets enforced at request time, rather than a second, looser notion
+    # of "applies to".
     scoped_policy_ids = (
         {
             version.policy_id
-            for _doc, version, _binding in active_policies(session, agent_slug=agent)
+            for _doc, version, _binding in policies_in_force(session, agent_slug=agent)
         }
         if agent
         else None
@@ -75,16 +77,9 @@ def list_policies(
             )
         )
         latest = versions[0] if versions else None
-        binding = (
-            session.scalars(
-                select(PolicyBinding).where(
-                    PolicyBinding.policy_version_id == latest.id,
-                    PolicyBinding.effective_to.is_(None),
-                )
-            ).first()
-            if latest
-            else None
-        )
+        # The live binding, whichever version it points at: mid-canary or after a
+        # rollback it is an earlier version than the newest one (#65).
+        binding, bound = current_binding(session, policy.id)
         out.append(
             {
                 "id": policy.id,
@@ -93,8 +88,12 @@ def list_policies(
                 "description": policy.description,
                 "versions": len(versions),
                 "latest_version": latest.version if latest else None,
+                "bound_version": bound.version if bound else None,
                 "mode": binding.mode if binding else None,
-                "rules": len((latest.compiled_json or {}).get("rules", [])) if latest else 0,
+                # The rules of the version in force; the newest version's when unbound.
+                "rules": len(((bound or latest).compiled_json or {}).get("rules", []))
+                if (bound or latest)
+                else 0,
                 # A repo-scan proposal (routes/integrations.py) awaiting human review —
                 # already created in `observe` mode (never blocks), just not
                 # acknowledged yet.
@@ -143,16 +142,7 @@ def get_policy(
         .where(PolicyVersion.policy_id == policy.id)
         .order_by(PolicyVersion.version.desc())
     ).first()
-    binding = (
-        session.scalars(
-            select(PolicyBinding).where(
-                PolicyBinding.policy_version_id == latest.id,
-                PolicyBinding.effective_to.is_(None),
-            )
-        ).first()
-        if latest
-        else None
-    )
+    binding, bound = current_binding(session, policy.id)
     return {
         "key": policy.key,
         "name": policy.name,
@@ -160,6 +150,9 @@ def get_policy(
         "versions": versions,
         "body": latest.body if latest else "",
         "compiled": latest.compiled_json if latest else {},
+        "latest_version": latest.version if latest else None,
+        "bound_version": bound.version if bound else None,
+        "mode": binding.mode if binding else None,
         "level": binding.level if binding else "org",
         "scope_id": binding.scope_id if binding else "*",
         "compose": binding.compose if binding else "extend",
