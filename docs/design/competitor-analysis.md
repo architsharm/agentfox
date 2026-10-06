@@ -15,6 +15,8 @@ no runtime"), and those claims were explicitly retracted once checked against re
 docs. That discipline is preserved here — every claim below is either evidence-backed or
 flagged as a concession.
 
+For the architecture-level comparison (where each competitor sits, what it can see, and which of our measured results its design can or cannot reach), with corrections to two §4.1/§4.2 claims, see [architecture-differentiation.md](architecture-differentiation.md).
+
 ---
 
 ## 1. Who we actually compete with
@@ -84,7 +86,7 @@ asking "show me a competitor that already does this."
 
 | Claim | Why it's real | Best competitor comparison point |
 |---|---|---|
-| **Argument-provenance taint tracking with containment that holds after detection fails** | A tainted value can reach a low-impact tool freely but is structurally blocked from an irreversible one, independent of whether any individual detector fired — the containment is the backstop, not the detector | Zenity's public claim ("intent-based detection... full execution path including tool calls") is the closest anyone gets, and it's still detection-only language, not a stated containment-after-miss guarantee |
+| **Per-value argument provenance with ceilings on the grant, measured with detectors off** | A tainted value can reach a low-impact tool freely but is structurally blocked from an irreversible one, independent of whether any individual detector fired — the containment is the backstop, not the detector | Corrected 2026-10-06: Zenity's public Boundaries templates already carry deterministic, conversation-scoped taint into later `forbid` rules, so session-level taint alone is *not* unclaimed. What stays ours is per-value provenance checked against a per-grant ceiling, and a published detectors-off number — see [architecture-differentiation.md](architecture-differentiation.md) §5 |
 | **Answerability enforcement against a declared knowledge boundary, forced *before* generation** | The model never generates a plausible-but-ungrounded answer in the first place — "I don't have that" is a gate, not a post-hoc score | Cleanlab/Vectara/Galileo/Patronus all score confidence *after* generation — genuinely different mechanism, not just a better number |
 | **Action semantics — deterministic parsing of generated SQL/artefacts for blast radius** | Statement-level analysis (unbounded DML, tautology WHERE clauses, DDL) against a real SQL parser, not a keyword deny-list | No agent-governance vendor surveyed performs this at the statement level |
 | **Failure attribution across a multi-step, multi-agent handoff** | A practitioner (unprompted) called it "a stack trace for agent systems" — pinpoints which step introduced a bad value, not just that the final output was wrong | Absent from LangSmith, Langfuse, and every eval/observability vendor surveyed — they show the trace, not the causal step |
@@ -97,7 +99,7 @@ asking "show me a competitor that already does this."
 | Entitlement-aware retrieval, done inline and cross-stack | Knostic addresses the same problem (RSA Innovation Sandbox / Launch Pad finalist, funded) — the differentiation is doing it inline across Azure/Bedrock/Vertex/Snowflake/Salesforce simultaneously, not owning a category no one else is in |
 | Control status computed from telemetry, not attested | A claim only an inline platform can make credibly — weakened somewhat now that OpenAI Frontier is also inline |
 | Self-host, zero-egress default | Real and valuable against SaaS-only competitors (Zenity, Credo AI, OneTrust are all SaaS-only) — but it's an architecture choice a competitor could make too, not IP |
-| Tamper-evident audit chain with an independent, stdlib-only verifier | Genuinely nobody else advertises this combination — but no enterprise RFP leads with "do you have a hash-chained log," so it's a closer for the last mile of a regulated deal, not an opener |
+| Self-hosted tamper-evident audit chain with an offline, stdlib-only verifier | Corrected 2026-10-06: not unique — AWS CloudTrail log-file integrity validation gives Bedrock guardrail events signed, hash-linked logs, and ServiceNow's AI Gateway claims tamper-evident logs. Ours is the self-hosted chain an auditor can verify offline without our software; a closer for a regulated deal, not an opener |
 | Approvals that complete the held call | Human-in-the-loop is table stakes. The narrower point: an approval is bound to the agent, tool and arguments it was asked for and redeemed once on retry, and none is granted while the agent is stopped |
 | Continuous re-checking of connected sources, and opt-in probing of deployed agents | Re-scanning on a schedule is ordinary posture-management practice, not IP. Ours is narrow: GitHub repositories, OpenAPI specs and remote MCP servers someone connected, plus a fixed probe set sent only to endpoints that opted in |
 

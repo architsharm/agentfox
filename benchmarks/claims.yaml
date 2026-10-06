@@ -32,6 +32,7 @@ claims:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "{n}/{d} attack scenarios contained with zero detector signal"}
       - {file: docs/design/PRD.md, text: "{n} of {d} attack scenarios are still contained"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} attack scenarios were still contained"}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} attacks contained with zero detector signal"}
 
   - id: containment.legitimate_calls_allowed_with_detectors_off
     source: benchmarks/containment/results/containment_results.json
@@ -41,6 +42,7 @@ claims:
       - {file: README.md, text: "{n}/{d} legitimate calls still allowed"}
       - {file: benchmarks/README.md, text: "{n}/{d} legitimate controls still allowed"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} legitimate calls were still allowed"}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} legitimate calls still allowed"}
 
   # AgentDojo: provenance inferred from executed tool outputs (v1.2.2, detectors off). The earlier
   # label-assigned run is retired below.
@@ -59,6 +61,7 @@ claims:
       - {file: dashboard/app/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "Session-level taint (the default): {n} of {d} attack pairs contained"}
       - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} attack pairs contained with session-level taint"}
 
   - id: agentdojo.session_taint.benign_tasks_allowed
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -81,6 +84,7 @@ claims:
       - {file: dashboard/app/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "only {n} of {d} benign tasks ({pct}% {ci}) ran without escalating to a human"}
       - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "benign tasks ran without escalating to a human"]'}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} benign tasks ({pct}% {ci}) run without escalating to a human"}
 
   - id: agentdojo.argument_taint
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -103,6 +107,7 @@ claims:
       - {file: docs/evaluation/responding-to-the-critique.md, text: "Per-argument taint ran {bk} of {bn} benign tasks and contained {ak} of {an} attack pairs"}
       - {file: benchmarks/agentdojo_e2e/README.md, text: "Argument-level taint | {bk}/{bn} ({bpct}% {bci}) | {ak}/{an} | {ck}/{cn}"}
       - {file: benchmarks/agentdojo_e2e/README.md, text: "Argument-level taint misses {missed} attacker calls"}
+      - {file: docs/design/architecture-differentiation.md, text: "Per-argument taint: {bk}/{bn} benign tasks, {ak}/{an} attack pairs contained"}
 
   - id: agentdojo.argument_taint_tiered
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -142,6 +147,7 @@ claims:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "None (grants and impact tiers only) | {b} | {a}"}
       - {file: benchmarks/agentdojo_e2e/README.md, text: "None: grants and impact tiers only | {b} | {a} | {ck}/{cn}"}
       - {file: benchmarks/agentdojo_e2e/README.md, text: "contain {ck} of {cn} attacker write calls"}
+      - {file: docs/design/architecture-differentiation.md, text: "None (grants and impact tiers only): {b} benign, {a} attack pairs contained"}
 
   - id: agentdojo.legitimate_actions_escalated
     source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
@@ -166,6 +172,7 @@ claims:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "{pct}% at a 50-attempt budget"}
       - {file: docs/design/PRD.md, text: "{pct}% at 50 attempts"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{pct}% at 50 attempts"}
+      - {file: docs/design/architecture-differentiation.md, text: "{pct}% attack success at 50 attempts"}
 
   - id: adaptive.bypasses_contained_at_the_action
     source: benchmarks/adaptive/results/adaptive_summary.json
@@ -174,6 +181,7 @@ claims:
     quoted_in:
       - {file: benchmarks/README.md, text: "{n}/{d} of those bypasses still contained"}
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "{n}/{d} were still contained at the action"}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} of those bypasses still contained at the action"}
 
   - id: crescendo.trajectory_detection
     source: benchmarks/crescendo/results/crescendo_results.json
@@ -182,6 +190,7 @@ claims:
     quoted_in:
       - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "{n}/{d} gradual-escalation conversations detected"}
       - {file: benchmarks/README.md, text: "{n}/{d} detected"}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} gradual-escalation conversations detected"}
 
   - id: crescendo.control_false_positives
     source: benchmarks/crescendo/results/crescendo_results.json
@@ -190,6 +199,7 @@ claims:
     quoted_in:
       - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "with {n}/{d} control conversations flagged"}
       - {file: benchmarks/README.md, text: "control false positives still {n}/{d}"}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} control conversations flagged"}
 
   - id: multilingual.integrity_parity
     source: benchmarks/multilingual/results/multilingual_parity.json
@@ -198,6 +208,7 @@ claims:
     remainder: [integrity_parity, parity_broken]
     quoted_in:
       - {file: benchmarks/README.md, text: "{n}/{d} matched pairs"}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} matched pairs"}
 
   - id: generalization.classifier_spml_recall
     source: benchmarks/results_generalization/summary.json
@@ -208,6 +219,7 @@ claims:
       - {file: dashboard/app/docs/reference/detectors/page.tsx, text: "reaches {pct}% recall on the SPML dataset"}
       - {file: README.md, text: "reaches {pct}% and"}
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "recall of {pct}% and"}
+      - {file: docs/design/architecture-differentiation.md, text: "{pct}% recall on SPML"}
 
   # --- Judgment tiers (opt-in; a default install scores the "off" column) ---
   - id: judgment.escaped_payloads_caught
@@ -219,6 +231,7 @@ claims:
       - {file: README.md, text: "{n}/{d} of the injection payloads that defeated our own pattern detectors"}
       - {file: benchmarks/README.md, text: "{n}/{d} injection payloads that defeated our pattern detectors"}
       - {file: benchmarks/judgment/README.md, text: "**{n} of {d} injection payloads that escaped the shipping detectors are caught**"}
+      - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} injection payloads that defeated our pattern detectors"}
 
   - id: judgment.contested_recall_off
     source: benchmarks/judgment/results/judgment_results.json
@@ -227,6 +240,7 @@ claims:
     quoted_in:
       - {file: README.md, text: "abstains on {n}/{d} contested questions"}
       - {file: benchmarks/judgment/README.md, text: "abstains on **{n}/{d}** contested questions"}
+      - {file: docs/design/architecture-differentiation.md, text: "abstains on {n}/{d} contested questions"}
 
   - id: judgment.contested_recall_on
     source: benchmarks/judgment/results/judgment_results.json
@@ -235,6 +249,7 @@ claims:
     quoted_in:
       - {file: README.md, text: "with a judgment tier that becomes {n}/{d}"}
       - {file: benchmarks/judgment/README.md, text: "with a judgment tier that becomes **{n}/{d}**"}
+      - {file: docs/design/architecture-differentiation.md, text: "with a judgment tier that becomes {n}/{d}"}
 
   - id: judgment.sql_control_unchanged
     source: benchmarks/judgment/results/judgment_results.json
@@ -245,6 +260,7 @@ claims:
     decimals: 1
     quoted_in:
       - {file: benchmarks/judgment/README.md, text: "**F1 {pct}**"}
+      - {file: docs/design/architecture-differentiation.md, text: "SQL blast-radius accuracy stays at {pct}% with every tier enabled"}
 
   - id: answerability.prediction_recall
     source: benchmarks/answerability/results/kuq_summary.json
@@ -281,6 +297,7 @@ claims:
     quoted_in:
       - {file: benchmarks/README.md, text: "`tool_scope` {n}/{d}"}
       - {file: benchmarks/redteam/README.md, text: "`tool_scope` {n}/{d} (was 0/25)"}
+      - {file: docs/design/architecture-differentiation.md, text: "tool-scope mutations {n}/{d}"}
 
   - id: redteam.provenance_escapes
     source: benchmarks/redteam/results/adaptive_redteam_summary.json
@@ -289,6 +306,7 @@ claims:
     denominator: [by_mutation_class, provenance, attempts]
     quoted_in:
       - {file: benchmarks/README.md, text: "`provenance` {n}/{d}"}
+      - {file: docs/design/architecture-differentiation.md, text: "provenance-laundering mutations {n}/{d}"}
 
   - id: redteam.structural_escapes_after_fix
     source: benchmarks/redteam/results/adaptive_redteam_summary.json
@@ -298,6 +316,7 @@ claims:
     quoted_in:
       - {file: benchmarks/README.md, text: "`structural` {n}/{d} after"}
       - {file: benchmarks/redteam/README.md, text: "`structural` {n}/{d}, `readable` 3/39"}
+      - {file: docs/design/architecture-differentiation.md, text: "structural argument-shape mutations {n}/{d}"}
 
   - id: action_safety.agentdojo_attacker_calls_flagged
     source: benchmarks/action_safety/results/agentdojo_summary.json
@@ -351,6 +370,48 @@ claims:
     quoted_in:
       - {file: docs/evaluation/judgment/results.md, text: "R1 whole policy, one judgment 2,160 68.3% {r1}%"}
       - {file: docs/evaluation/judgment/results.md, text: "R3 routed: code owns predicates 2,160 68.3% {r3}%"}
+
+  # --- Head-to-head and cost figures quoted in docs/design/architecture-differentiation.md ---
+  - id: agent_security.tier_b_vs_llm_guard
+    source: benchmarks/agent_security/results/tier_b_results.json
+    render: fields
+    fields:
+      lp: {path: [llm_guard, precision], scale: 100, format: ".1f"}
+      lr: {path: [llm_guard, recall], scale: 100, format: ".1f"}
+      ap: {path: [agentfox, precision], scale: 100, format: ".1f"}
+      ar: {path: [agentfox, recall], scale: 100, format: ".1f"}
+    quoted_in:
+      - {file: README.md, text: "{lp}% against our {ap}%"}
+      - {file: docs/design/architecture-differentiation.md, text: "llm-guard {lp}% precision and {lr}% recall, against AgentFox's {ap}% and {ar}%"}
+
+  - id: injection.heuristic_held_out
+    source: benchmarks/results/prompt_injection_summary.json
+    render: fields
+    fields:
+      pct: {path: [configs, heuristic, held_out, recall], scale: 100, format: ".1f"}
+      ms: [configs, heuristic, held_out, avg_ms_per_example]
+    quoted_in:
+      - {file: README.md, text: "held-out injection recall is {pct}%"}
+      - {file: docs/design/architecture-differentiation.md, text: "held-out injection recall is {pct}% at 100% precision"}
+      - {file: docs/design/architecture-differentiation.md, text: "{ms} ms per example for the heuristic"}
+
+  - id: crescendo.trajectory_latency
+    source: benchmarks/crescendo/results/crescendo_results.json
+    render: fields
+    fields:
+      mean: {path: [headline, trajectory_added_latency_ms, total_mean_ms], format: ".1f"}
+      p95: {path: [headline, trajectory_added_latency_ms, total_p95_ms], format: ".1f"}
+    quoted_in:
+      - {file: docs/design/architecture-differentiation.md, text: "{mean} ms mean and {p95} ms p95 added per turn"}
+
+  - id: judgment.injection_latency
+    source: benchmarks/judgment/results/judgment_results.json
+    render: fields
+    fields:
+      median: [areas, injection, latency_ms_median]
+      p95: [areas, injection, latency_ms_p95]
+    quoted_in:
+      - {file: docs/design/architecture-differentiation.md, text: "{median} ms median and {p95} ms p95 per injection check"}
 
 retired:
   - id: agentdojo.label_assigned_benign_utility
