@@ -333,6 +333,24 @@ class Settings(BaseSettings):
     webhook_timeout_seconds: float = 3.0
     webhook_min_severity: str = "high"  # critical | high | medium | low
 
+    # --- Monitoring connected sources (agentfox.monitoring) --------------------
+    # A Slack incoming-webhook URL that receives a short message for every monitor
+    # finding opened, reopened or closed at or above `slack_min_severity`. A tenant can
+    # also set its own (`PUT /api/alerts/slack`). Like `webhook_url`, gated by
+    # `allow_egress`: the message carries finding titles out of the deployment.
+    slack_webhook_url: str | None = None
+    slack_min_severity: str = "medium"  # critical | high | medium | low
+    # The secret GitHub signs push deliveries to `/api/integrations/github/webhook`
+    # with. A connection may carry its own instead (`POST
+    # /api/integrations/github/webhook-secret`); with neither, the route refuses.
+    github_webhook_secret: str | None = None
+    # How many due monitors one `monitors.run` job runs. Each one downloads and scans
+    # a repository or fetches a document, so this bounds a single serverless call.
+    monitor_batch_limit: int = 5
+    # After this many failed runs in a row a monitor raises a `monitor_failing`
+    # finding (closed by the next successful run).
+    monitor_failure_threshold: int = 3
+
     # --- Detector cut-offs that used to be hard-coded -------------------------
     #: A cut-off nothing can change without a code edit is a cut-off the improvement loop
     #: cannot tune and an operator cannot adjust. Read once when detectors register, like
@@ -376,7 +394,7 @@ class Settings(BaseSettings):
             raise ValueError(f"must be one of {', '.join(TAINT_SCOPES)}")
         return value
 
-    @field_validator("webhook_min_severity")
+    @field_validator("webhook_min_severity", "slack_min_severity")
     @classmethod
     def _check_webhook_min_severity(cls, value: str) -> str:
         value = value.strip().lower()

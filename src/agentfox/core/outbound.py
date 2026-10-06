@@ -118,6 +118,56 @@ def guarded_get(
     only: a redirect is never handed the caller's ``Authorization``. A body over
     ``max_bytes`` is refused, or with ``truncate`` cut at ``max_bytes``.
     """
+    return _guarded(
+        "GET",
+        url_text,
+        what=what,
+        max_bytes=max_bytes,
+        timeout=timeout,
+        headers=headers,
+        truncate=truncate,
+    )
+
+
+def guarded_post(
+    url_text: str,
+    *,
+    what: str,
+    json_body: object,
+    max_bytes: int,
+    timeout: float = 20.0,
+    headers: dict[str, str] | None = None,
+) -> httpx.Response:
+    """POST a JSON body to ``url_text`` under the same address vetting as `guarded_get`.
+
+    A redirect is refused rather than followed: re-sending a body to wherever a
+    server points is how a request ends up somewhere nobody vetted or meant.
+    """
+    return _guarded(
+        "POST",
+        url_text,
+        what=what,
+        max_bytes=max_bytes,
+        timeout=timeout,
+        headers=headers,
+        json_body=json_body,
+    )
+
+
+_NO_BODY = object()
+
+
+def _guarded(
+    method: str,
+    url_text: str,
+    *,
+    what: str,
+    max_bytes: int,
+    timeout: float,
+    headers: dict[str, str] | None,
+    truncate: bool = False,
+    json_body: object = _NO_BODY,
+) -> httpx.Response:
     try:
         url = httpx.URL(url_text)
     except (httpx.InvalidURL, TypeError, ValueError) as exc:
@@ -132,14 +182,17 @@ def guarded_get(
             pinned = url.copy_with(host=ip)
             hop_headers = {**extra, "Host": url.netloc.decode("ascii")}
             extensions = {"sni_hostname": url.host} if url.scheme == "https" else {}
+            body_kwargs = {} if json_body is _NO_BODY else {"json": json_body}
             request = client.build_request(
-                "GET", pinned, headers=hop_headers, extensions=extensions
+                method, pinned, headers=hop_headers, extensions=extensions, **body_kwargs
             )
             try:
                 resp = client.send(request, stream=True)
             except httpx.HTTPError as exc:
                 raise OutboundRefused(f"could not fetch {what}: {exc}") from exc
             try:
+                if resp.is_redirect and method != "GET":
+                    raise OutboundRefused(f"{what} answered with a redirect, which is not followed")
                 if resp.is_redirect:
                     location = resp.headers.get("location", "")
                     if not location:
