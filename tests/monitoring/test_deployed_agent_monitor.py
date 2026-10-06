@@ -14,13 +14,13 @@ import datetime as dt
 import pytest
 from sqlalchemy import select
 
+from agentfox.capabilities.evaluation import live_probes
 from agentfox.core.config import get_settings
 from agentfox.core.models import RedTeamCampaign
-from agentfox.evaluation import live_probes
 from agentfox.monitoring import alerts
 from agentfox.monitoring import service as monitoring
-from tests.evaluation.test_live_probes import NOW, _opted_in, _target
-from tests.evaluation.test_live_probes import agent as agent  # noqa: F401 - fixture
+from tests.capabilities.evaluation.test_live_probes import NOW, _opted_in, _target
+from tests.capabilities.evaluation.test_live_probes import agent as agent  # noqa: F401 - fixture
 
 
 @pytest.fixture

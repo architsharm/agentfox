@@ -13,11 +13,11 @@ import xml.etree.ElementTree as ET
 
 from typer.testing import CliRunner
 
+from agentfox.capabilities.evaluation import gate, set_baseline
+from agentfox.capabilities.evaluation.gating import INFORMATION_URI, to_junit, to_sarif
+from agentfox.capabilities.evaluation.runner import NativeEvalRunner
 from agentfox.cli.main import app
 from agentfox.core.models import EvalRun, EvalSuite
-from agentfox.evaluation import gate, set_baseline
-from agentfox.evaluation.gating import INFORMATION_URI, to_junit, to_sarif
-from agentfox.evaluation.runner import NativeEvalRunner
 from agentfox.platform.providers import register_provider
 
 runner = CliRunner()
@@ -133,8 +133,8 @@ def test_cli_run_refuses_an_unknown_scorer(seeded):
 def test_online_sampling_reports_traces_it_could_not_score(seeded):
     """`test online --rate 1.0` sampled every trace and scored only those with a
     recorded LLM output, saying nothing about the rest."""
+    from agentfox.capabilities.evaluation import sample_production
     from agentfox.core.models import Span, Trace
-    from agentfox.evaluation import sample_production
 
     agent = "online-skip-agent"
     with_output = Trace(agent_slug=agent, intent="refund?")

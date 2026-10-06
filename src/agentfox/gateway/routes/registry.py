@@ -283,8 +283,8 @@ def agent_lineage(
 def agent_posture(
     slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
+    from agentfox.capabilities.evaluation.drift import evaluate_slos
     from agentfox.core.models import Decision, Trace
-    from agentfox.evaluation.drift import evaluate_slos
 
     agent = get_agent_or_404(session, slug)
 

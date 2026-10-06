@@ -259,7 +259,7 @@ def test_budget_exhaustion_counts_then_closes_when_the_window_rolls(seeded, enfo
 
 
 def test_drift_is_one_finding_per_scorer_and_closes_when_the_window_is_clean(session, monkeypatch):
-    from agentfox.evaluation import drift
+    from agentfox.capabilities.evaluation import drift
 
     series = {"current": [0.9, 0.92, 0.95, 0.91], "baseline": [0.1, 0.12, 0.15, 0.11]}
     calls = {"n": 0}
@@ -321,7 +321,7 @@ def test_a_repeatedly_stopped_loop_is_one_finding_per_session(seeded):
 
 
 def test_a_rerun_red_team_campaign_counts_then_closes_once_retested_clean(seeded, monkeypatch):
-    from agentfox.evaluation import redteam
+    from agentfox.capabilities.evaluation import redteam
 
     attacks = [p.key for p in redteam.BUILTIN_PROBES if p.expect_blocked]
     gap = set(attacks[:2])

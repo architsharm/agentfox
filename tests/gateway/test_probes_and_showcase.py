@@ -5,10 +5,11 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from agentfox.apps import showcase
+from agentfox.capabilities.evaluation import live_probes
 from agentfox.core.config import get_settings
 from agentfox.core.models import Finding, ProbeTarget, RedTeamCampaign
 from agentfox.core.tenancy import bind_session
-from agentfox.evaluation import live_probes, showcase
 from agentfox.gateway.routes import probes as probe_routes
 from tests.conftest import as_user
 

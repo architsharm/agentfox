@@ -694,7 +694,7 @@ def run_adaptive_probes(
       budget on repeats — `attempts_used` in the summary is real work done, not a
       budget-shaped constant.
     """
-    from agentfox.evaluation.adaptive import next_mutation
+    from agentfox.capabilities.evaluation.adaptive import next_mutation
 
     runner = NativeRedTeamRunner()
     outcomes: list[ProbeOutcome] = []
@@ -852,7 +852,7 @@ def _adaptive_summary(
     seed: int,
     profile: dict[str, Any],
 ) -> dict[str, Any]:
-    from agentfox.evaluation.adaptive import (
+    from agentfox.capabilities.evaluation.adaptive import (
         NOT_ESTABLISHED,
         SCOPE_STATEMENT,
         mutation_classes,
@@ -982,7 +982,10 @@ def run_campaign(
     pool = list(BUILTIN_PROBES)
     profile: dict[str, Any] = {}
     if adaptive and include_deployment_probes:
-        from agentfox.evaluation.adaptive import deployment_profile, generate_deployment_probes
+        from agentfox.capabilities.evaluation.adaptive import (
+            deployment_profile,
+            generate_deployment_probes,
+        )
 
         profile = deployment_profile(session, agent_slug)
         pool = pool + generate_deployment_probes(session, agent_slug)

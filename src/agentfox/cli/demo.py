@@ -19,11 +19,11 @@ from rich.table import Table
 
 from agentfox.apps.report import evidence
 from agentfox.capabilities.compliance import compute_all, posture
+from agentfox.capabilities.evaluation import gate, run_campaign, set_baseline
+from agentfox.capabilities.evaluation.runner import NativeEvalRunner
 from agentfox.cli._style import SEVERITY_COLOUR
 from agentfox.core.db import session_scope
 from agentfox.core.models import AuditEntry, EvalSuite, Finding
-from agentfox.evaluation import gate, run_campaign, set_baseline
-from agentfox.evaluation.runner import NativeEvalRunner
 from agentfox.fixtures.seed import POISONED_DOCUMENT
 from agentfox.platform.identity import assess_posture
 from agentfox.platform.ledger import chain

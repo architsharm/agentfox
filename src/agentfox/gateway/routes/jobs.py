@@ -27,10 +27,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.apps import jobs as job_handlers
+from agentfox.apps import showcase
 from agentfox.core.config import get_settings
 from agentfox.core.models import Job, User
 from agentfox.core.tenancy import session_org
-from agentfox.evaluation import showcase
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.platform.jobs import scheduler
 from agentfox.platform.jobs import store as jobs_db

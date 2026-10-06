@@ -33,10 +33,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.evaluation import live_probes
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Finding, ProbeTarget, RedTeamCampaign, as_aware, utcnow
 from agentfox.core.tenancy import bind_session
-from agentfox.evaluation import live_probes
 
 SHOWCASE_AGENT = "support-triage"
 SHOWCASE_ACTOR = "agentfox-showcase"

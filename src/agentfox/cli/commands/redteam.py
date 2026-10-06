@@ -52,8 +52,8 @@ def redteam_run(
     """
     from sqlalchemy import select
 
+    from agentfox.capabilities.evaluation import run_campaign
     from agentfox.core.models import RedTeamFinding
-    from agentfox.evaluation import run_campaign
 
     if deployment_probes and not adaptive:
         console.print(
@@ -177,7 +177,7 @@ def _escape_cells(by_class: dict) -> list[str]:
 @redteam_app.command("probes")
 def redteam_probes() -> None:
     """List the built-in probe suite and available wrapped runners."""
-    from agentfox.evaluation.redteam import BUILTIN_PROBES, available_runners
+    from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, available_runners
 
     table = Table(box=None, pad_edge=False)
     for column in ("probe", "category", "surface", "severity", "OWASP", "ATLAS"):

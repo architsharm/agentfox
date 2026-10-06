@@ -175,7 +175,7 @@ class PromptfooRunner:
 
 def get_runner(name: str | None = None):
     """Resolve an :class:`EvalRunner` by name, falling back to native."""
-    from agentfox.evaluation.runner import NativeEvalRunner
+    from agentfox.capabilities.evaluation.runner import NativeEvalRunner
 
     choice = name or get_settings().eval_runner
     if choice == "promptfoo":

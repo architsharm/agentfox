@@ -19,7 +19,7 @@ import type { CSSProperties, ReactNode } from "react";
  *                                     check_capability() + _describe_violation()
  *   - synthetic rule ids ............ src/agentfox/runtime/enforcement/ (~line 650)
  *   - grant record layout ........... src/agentfox/cli/capability_cli.py grant()
- *   - finding types and titles ...... src/agentfox/evaluation/redteam.py,
+ *   - finding types and titles ...... src/agentfox/capabilities/evaluation/redteam.py,
  *                                     src/agentfox/capabilities/grounding/provenance.py,
  *                                     src/agentfox/capabilities/containment/escalation.py,
  *                                     src/agentfox/capabilities/grounding/answerability.py

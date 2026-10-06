@@ -19,8 +19,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.evaluation.scorers import get_scorer
 from agentfox.core.models import Baseline, EvalResult, EvalRun
-from agentfox.evaluation.scorers import get_scorer
 
 #: Default tolerance: a scorer mean may drop this much before it is a regression.
 #: Non-zero on purpose — a zero-tolerance gate on a non-deterministic system fails

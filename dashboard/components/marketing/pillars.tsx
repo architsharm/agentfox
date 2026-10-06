@@ -41,8 +41,8 @@ import {
  *   - OpenAPI onboarding ..................... src/agentfox/capabilities/discovery/openapi.py
  *   - local session scanning ................. src/agentfox/capabilities/discovery/sessions.py
  *   - MCP hygiene finding types .............. src/agentfox/platform/registry/service.py
- *   - scorer keys ............................ src/agentfox/evaluation/scorers.py
- *   - adaptive campaign scope ................ src/agentfox/evaluation/adaptive.py
+ *   - scorer keys ............................ src/agentfox/capabilities/evaluation/scorers.py
+ *   - adaptive campaign scope ................ src/agentfox/capabilities/evaluation/adaptive.py
  *   - chain digests and verify() ............. src/agentfox/platform/ledger/chain.py
  *   - computed compliance status ............. src/agentfox/capabilities/compliance/status.py
  *   - control count and framework keys ....... src/agentfox/compliance_data/controls.yaml

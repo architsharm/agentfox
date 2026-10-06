@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.evaluation.adaptive import (
+from agentfox.capabilities.evaluation.adaptive import (
     NOT_ESTABLISHED,
     OPERATORS,
     SCOPE_STATEMENT,
@@ -33,7 +33,7 @@ from agentfox.evaluation.adaptive import (
     next_mutation,
     rank_classes,
 )
-from agentfox.evaluation.redteam import BUILTIN_PROBES, ProbeOutcome, run_campaign
+from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, ProbeOutcome, run_campaign
 
 
 @pytest.fixture
@@ -463,7 +463,7 @@ def test_an_observe_mode_binding_is_disclosed_next_to_the_counts(enforcing):
     a policy demoted to observe mode moves no number in a campaign even though the
     deployment has stopped blocking anything. Every campaign therefore has to publish
     each bound policy's mode next to its blocked counts."""
-    from agentfox.evaluation.adaptive import NOT_ESTABLISHED
+    from agentfox.capabilities.evaluation.adaptive import NOT_ESTABLISHED
     from agentfox.platform.policy import set_mode
 
     set_mode(enforcing, "baseline", "observe")
@@ -581,7 +581,7 @@ def test_mutation_returns_none_at_an_honest_dead_end():
     say so rather than return the probe unchanged and burn the budget on repeats."""
     import random
 
-    from agentfox.evaluation.redteam import Probe
+    from agentfox.capabilities.evaluation.redteam import Probe
 
     empty = Probe("empty.probe", "prompt_injection", payload="")
     outcome = ProbeOutcome(probe=empty, blocked=True, verdict="block")

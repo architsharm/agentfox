@@ -43,7 +43,7 @@ def _scorer_keys(scorers: str | None) -> list[str] | None:
     produce an empty table and exit 0: a run that measured nothing, reported as a
     success.
     """
-    from agentfox.evaluation.scorers import all_scorers, unknown_scorers
+    from agentfox.capabilities.evaluation.scorers import all_scorers, unknown_scorers
 
     if not scorers:
         return None
@@ -95,8 +95,8 @@ def eval_run(
     """Run an evaluation suite."""
     from sqlalchemy import select
 
+    from agentfox.capabilities.evaluation.runner import NativeEvalRunner, fit_envelope
     from agentfox.core.models import EvalSuite
-    from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 
     keys = _scorer_keys(scorers)
     with _session() as session:
@@ -171,10 +171,10 @@ def eval_gate(
     """Run the suite and fail the build on regression or on any errored case. Exits 1 on failure."""
     from sqlalchemy import select
 
+    from agentfox.capabilities.evaluation import gate, to_junit, to_sarif
+    from agentfox.capabilities.evaluation.gating import resolve_baseline
+    from agentfox.capabilities.evaluation.runner import NativeEvalRunner, fit_envelope
     from agentfox.core.models import EvalRun, EvalSuite
-    from agentfox.evaluation import gate, to_junit, to_sarif
-    from agentfox.evaluation.gating import resolve_baseline
-    from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 
     keys = _scorer_keys(scorers)
     with _session() as session:
@@ -247,8 +247,8 @@ def eval_gate(
 @eval_app.command("baseline")
 def eval_baseline(run_id: str, label: str = "main") -> None:
     """Mark a run as the regression baseline."""
+    from agentfox.capabilities.evaluation import set_baseline
     from agentfox.core.models import EvalRun
-    from agentfox.evaluation import set_baseline
 
     with _session() as session:
         run = session.get(EvalRun, run_id)
@@ -262,7 +262,7 @@ def eval_baseline(run_id: str, label: str = "main") -> None:
 @eval_app.command("drift")
 def eval_drift(agent: str, scorer: str = "groundedness") -> None:
     """Compare recent production scores against the baseline window."""
-    from agentfox.evaluation import compute_drift
+    from agentfox.capabilities.evaluation import compute_drift
 
     with _session() as session:
         report = compute_drift(session, agent, scorer)
@@ -282,7 +282,7 @@ def eval_drift(agent: str, scorer: str = "groundedness") -> None:
 @eval_app.command("online")
 def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> None:
     """Sample production traffic and score it with the offline scorers."""
-    from agentfox.evaluation import sample_production
+    from agentfox.capabilities.evaluation import sample_production
 
     with _session() as session:
         run = sample_production(

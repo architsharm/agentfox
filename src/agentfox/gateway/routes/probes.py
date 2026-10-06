@@ -27,9 +27,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.apps import showcase
+from agentfox.capabilities.evaluation import live_probes
 from agentfox.core.crypto import EncryptionNotConfigured
 from agentfox.core.models import ProbeTarget, RedTeamCampaign, User, as_aware, utcnow
-from agentfox.evaluation import live_probes, showcase
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.gateway.playground_sessions import RateLimiter
 

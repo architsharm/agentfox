@@ -4,19 +4,26 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.core.models import EvalSuite
-from agentfox.evaluation import evaluate_slos, gate, psi, run_campaign, set_baseline, set_slo
-from agentfox.evaluation.drift import ks_statistic
-from agentfox.evaluation.gating import to_junit, to_sarif
-from agentfox.evaluation.model_groundedness import model_groundedness
-from agentfox.evaluation.runner import NativeEvalRunner
-from agentfox.evaluation.scorers import ScoreContext, get_scorer
-from agentfox.evaluation.silent_failure import (
+from agentfox.capabilities.evaluation import (
+    evaluate_slos,
+    gate,
+    psi,
+    run_campaign,
+    set_baseline,
+    set_slo,
+)
+from agentfox.capabilities.evaluation.drift import ks_statistic
+from agentfox.capabilities.evaluation.gating import to_junit, to_sarif
+from agentfox.capabilities.evaluation.model_groundedness import model_groundedness
+from agentfox.capabilities.evaluation.runner import NativeEvalRunner
+from agentfox.capabilities.evaluation.scorers import ScoreContext, get_scorer
+from agentfox.capabilities.evaluation.silent_failure import (
     Envelope,
     SilentFailureScorer,
     groundedness,
     self_consistency,
 )
+from agentfox.core.models import EvalSuite
 from agentfox.platform.providers import register_provider
 from tests.conftest import as_user
 

@@ -16,11 +16,11 @@ import httpx
 import pytest
 from sqlalchemy import select
 
+from agentfox.capabilities.evaluation import live_probes
+from agentfox.capabilities.evaluation.live_probes import OPT_IN_WARNING, ProbeTargetError
 from agentfox.core import outbound
 from agentfox.core.config import get_settings
 from agentfox.core.models import AuditEntry, Finding, ProbeTarget, RedTeamCampaign, Trace
-from agentfox.evaluation import live_probes
-from agentfox.evaluation.live_probes import OPT_IN_WARNING, ProbeTargetError
 
 NOW = dt.datetime(2026, 10, 6, 12, 0, tzinfo=dt.UTC)
 URL = "https://agent.example/probe"

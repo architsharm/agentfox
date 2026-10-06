@@ -12,8 +12,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from agentfox.core.config import get_settings
-from agentfox.evaluation.ragas_adapter import (
+from agentfox.capabilities.evaluation.ragas_adapter import (
     RAGAS_METRICS,
     RagasSample,
     native_scores,
@@ -21,6 +20,7 @@ from agentfox.evaluation.ragas_adapter import (
     score_dataset,
     score_sample,
 )
+from agentfox.core.config import get_settings
 from agentfox.integrations.fastapi import (
     AgentFoxMiddleware,
     context,

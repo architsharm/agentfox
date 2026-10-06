@@ -273,7 +273,7 @@ def evaluate_slos(session: Session, agent_slug: str | None = None) -> list[dict[
             )
             continue
 
-        from agentfox.evaluation.scorers import get_scorer
+        from agentfox.capabilities.evaluation.scorers import get_scorer
 
         scorer = get_scorer(slo.scorer_key)
         higher_is_better = getattr(scorer, "higher_is_better", True)

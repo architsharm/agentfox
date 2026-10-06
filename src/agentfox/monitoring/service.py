@@ -770,7 +770,7 @@ def _run_deployed_agent(session: Session, monitor: Monitor, ctx: RunContext) -> 
     nothing; a manual one is held to `live_probes.MIN_MANUAL_GAP_SECONDS`, as the
     "run now" route is. The monitor's own next run is moved to the target's.
     """
-    from agentfox.evaluation import live_probes
+    from agentfox.capabilities.evaluation import live_probes
 
     target_id = (monitor.config_json or {}).get("probe_target_id") or monitor.target
     target = session.get(ProbeTarget, target_id)

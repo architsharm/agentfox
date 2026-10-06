@@ -14,9 +14,9 @@ from types import SimpleNamespace
 from sqlalchemy import func, select
 from typer.testing import CliRunner
 
+from agentfox.capabilities.evaluation import run_campaign
 from agentfox.cli.main import app
 from agentfox.core.models import Decision, Finding
-from agentfox.evaluation import run_campaign
 
 runner = CliRunner()
 
@@ -64,7 +64,7 @@ def _fake_campaign(succeeded: int, adaptive: dict | None = None):
 
 
 def test_redteam_exits_nonzero_when_an_attack_gets_through(seeded, monkeypatch):
-    import agentfox.evaluation as evaluation
+    import agentfox.capabilities.evaluation as evaluation
 
     seeded.commit()
     monkeypatch.setattr(evaluation, "run_campaign", lambda *a, **k: _fake_campaign(1))
@@ -81,7 +81,7 @@ def test_redteam_exits_nonzero_when_an_attack_gets_through(seeded, monkeypatch):
 
 
 def test_deployment_probes_without_adaptive_says_it_has_no_effect(seeded, monkeypatch):
-    import agentfox.evaluation as evaluation
+    import agentfox.capabilities.evaluation as evaluation
 
     seeded.commit()
     seen = {}
@@ -101,7 +101,7 @@ def test_deployment_probes_without_adaptive_says_it_has_no_effect(seeded, monkey
 
 
 def test_adaptive_output_prints_counts_not_dicts(seeded, monkeypatch):
-    import agentfox.evaluation as evaluation
+    import agentfox.capabilities.evaluation as evaluation
 
     seeded.commit()
     adaptive = {

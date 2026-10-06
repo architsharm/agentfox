@@ -276,8 +276,8 @@ def test_a_langchain_governed_trace_can_be_scored_by_the_online_evaluator(app_db
     `sample_production()` always sampled as 0 usable cases. Runs the real online-eval
     code path end to end against a trace this integration produced, rather than just
     asserting a span exists."""
+    from agentfox.capabilities.evaluation.runner import sample_production
     from agentfox.core.db import session_scope
-    from agentfox.evaluation.runner import sample_production
 
     messages_mod, _calls = fake_langchain
     auto(agent="support-triage", quiet=True)

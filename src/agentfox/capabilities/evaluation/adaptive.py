@@ -63,6 +63,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.evaluation.redteam import Probe, ProbeOutcome
 from agentfox.core.models import (
     Agent,
     Capability,
@@ -72,7 +73,6 @@ from agentfox.core.models import (
     PolicyVersion,
     Tool,
 )
-from agentfox.evaluation.redteam import Probe, ProbeOutcome
 
 #: Carried verbatim into every adaptive campaign summary (`what_this_measures`).
 #: The honest claim, stated where a reader of the JSON cannot miss it.

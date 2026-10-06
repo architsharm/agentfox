@@ -16,6 +16,21 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.evaluation import (
+    all_scorers,
+    compute_drift,
+    evaluate_slos,
+    gate,
+    run_campaign,
+    sample_production,
+    set_slo,
+    to_junit,
+    to_sarif,
+)
+from agentfox.capabilities.evaluation.adapters import available_runners, get_runner
+from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES
+from agentfox.capabilities.evaluation.runner import NativeEvalRunner, fit_envelope
+from agentfox.capabilities.evaluation.scorers import get_scorer
 from agentfox.core.models import (
     EvalAnnotation,
     EvalCase,
@@ -28,21 +43,6 @@ from agentfox.core.models import (
     User,
 )
 from agentfox.core.tenancy import session_org
-from agentfox.evaluation import (
-    all_scorers,
-    compute_drift,
-    evaluate_slos,
-    gate,
-    run_campaign,
-    sample_production,
-    set_slo,
-    to_junit,
-    to_sarif,
-)
-from agentfox.evaluation.adapters import available_runners, get_runner
-from agentfox.evaluation.redteam import BUILTIN_PROBES
-from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
-from agentfox.evaluation.scorers import get_scorer
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 from agentfox.platform.jobs import store as jobs_db
 from agentfox.platform.ledger import chain
@@ -698,7 +698,7 @@ def list_campaigns(
 
 @router.get("/redteam/probes")
 def list_probes(_user: User = Depends(current_user)) -> dict[str, Any]:
-    from agentfox.evaluation.redteam import available_runners as rt_runners
+    from agentfox.capabilities.evaluation.redteam import available_runners as rt_runners
 
     return {
         "probes": [

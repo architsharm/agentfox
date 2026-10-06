@@ -74,8 +74,8 @@ def _actor(payload: dict[str, Any]) -> tuple[str, str]:
 
 
 def run_eval(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    from agentfox.evaluation.adapters import get_runner
-    from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
+    from agentfox.capabilities.evaluation.adapters import get_runner
+    from agentfox.capabilities.evaluation.runner import NativeEvalRunner, fit_envelope
 
     suite_key = payload.get("suite")
     if not suite_key:
@@ -196,7 +196,7 @@ def advance_canaries(session: Session, payload: dict[str, Any]) -> dict[str, Any
 
 
 def check_drift(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    from agentfox.evaluation import compute_drift
+    from agentfox.capabilities.evaluation import compute_drift
 
     scorer = payload.get("scorer") or "groundedness"
     agents = payload.get("agents") or [
@@ -221,7 +221,7 @@ def check_drift(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def redteam_posture(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    from agentfox.evaluation import run_campaign
+    from agentfox.capabilities.evaluation import run_campaign
 
     actor_type, actor_id = _actor(payload)
     agents = payload.get("agents") or [
@@ -265,7 +265,7 @@ def redteam_posture(session: Session, payload: dict[str, Any]) -> dict[str, Any]
 def run_live_probes(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     """Probe every opted-in, due target in the tenant. Consent is per target and
     checked inside `run_target`; a tenant without one does nothing here."""
-    from agentfox.evaluation.live_probes import run_due
+    from agentfox.capabilities.evaluation.live_probes import run_due
 
     return run_due(session, payload)
 

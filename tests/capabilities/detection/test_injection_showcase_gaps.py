@@ -25,7 +25,7 @@ import pytest
 
 from agentfox.capabilities.detection import all_detectors
 from agentfox.capabilities.detection.base import DetectionContext
-from agentfox.evaluation.live_probes import PROBES_BY_KEY
+from agentfox.capabilities.evaluation.live_probes import PROBES_BY_KEY
 
 USER = DetectionContext(surface="input", taint_source="user")
 TOOL = DetectionContext(surface="tool_result", taint_source="tool_result")

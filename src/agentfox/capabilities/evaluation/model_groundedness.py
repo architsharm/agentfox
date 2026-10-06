@@ -28,8 +28,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from agentfox.evaluation.scorers import BaseScorer, ScoreContext, ScoreResult, register_scorer
-from agentfox.evaluation.silent_failure import groundedness
+from agentfox.capabilities.evaluation.scorers import (
+    BaseScorer,
+    ScoreContext,
+    ScoreResult,
+    register_scorer,
+)
+from agentfox.capabilities.evaluation.silent_failure import groundedness
 from agentfox.platform.providers import get_provider
 
 log = logging.getLogger(__name__)

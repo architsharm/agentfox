@@ -139,7 +139,7 @@ def probe_coverage_window() -> Result:
 
 
 def probe_self_consistency() -> Result:
-    from agentfox.evaluation.silent_failure import self_consistency
+    from agentfox.capabilities.evaluation.silent_failure import self_consistency
 
     consistent, _ = self_consistency(
         [
@@ -833,8 +833,8 @@ def probe_eval_gate() -> Result:
     probe builds real ones — a summary alone gates on nothing, which is itself worth
     knowing about the API.
     """
+    from agentfox.capabilities.evaluation.gating import gate
     from agentfox.core.models import EvalResult, EvalRun
-    from agentfox.evaluation.gating import gate
 
     with _seeded_session() as s:
         run = EvalRun(suite_id="probe-suite", status="complete")
