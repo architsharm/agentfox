@@ -225,14 +225,33 @@ class CohortHealth:
 
 
 def _cohort_health(session: Session, canary: PolicyCanary, version_id: str) -> CohortHealth:
+    """Decisions this version of *this* policy was in force for, and how many it
+    would have blocked.
+
+    Membership is read from `Decision.policy_version_ids` — every version in force
+    for the decision — not `policy_version_id`, which names only the pack that
+    governed the outcome and is usually some other policy's version. Blocking is
+    read from the effective verdict (what enforcement would have done), so a policy
+    in observe can be canaried: its applied verdict is always `allow`.
+    """
+    from agentfox.policy.simulate import effective_verdict_of
+
     rows = session.execute(
-        select(Decision.verdict).where(
-            Decision.policy_version_id == version_id,
-            Decision.created_at >= canary.created_at,
-        )
+        select(
+            Decision.policy_version_id,
+            Decision.policy_version_ids,
+            Decision.verdict,
+            Decision.rules_fired_json,
+        ).where(Decision.created_at >= canary.created_at)
     ).all()
-    decisions = len(rows)
-    blocked = sum(1 for (verdict,) in rows if verdict in ("block", "escalate"))
+    decisions = blocked = 0
+    for single_id, version_ids, verdict, rules_fired in rows:
+        in_force = version_ids if version_ids else [single_id]
+        if version_id not in in_force:
+            continue
+        decisions += 1
+        if effective_verdict_of(verdict, rules_fired) in ("block", "escalate"):
+            blocked += 1
     return CohortHealth(version_id=version_id, decisions=decisions, blocked=blocked)
 
 

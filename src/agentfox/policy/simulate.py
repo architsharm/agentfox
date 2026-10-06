@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import Decision, SimulationRun, Trace
 from agentfox.policy.engine import NativePolicyEngine
-from agentfox.policy.model import PolicyDecision, PolicyDocument, PolicyInput
+from agentfox.policy.model import EFFECT_RANK, PolicyDecision, PolicyDocument, PolicyInput
 from agentfox.policy.taint_view import policy_taint
 
 
@@ -151,19 +151,19 @@ def simulate(
 
 def _effective_of(decision: Decision) -> str:
     """The verdict a decision would have had under enforcement."""
-    rank = {
-        "allow": 0,
-        "tokenize": 1,
-        "mask": 2,
-        "redact": 3,
-        "abstain": 4,
-        "escalate": 5,
-        "block": 6,
-    }
-    best = decision.verdict
-    for rule in decision.rules_fired_json or []:
+    return effective_verdict_of(decision.verdict, decision.rules_fired_json)
+
+
+def effective_verdict_of(verdict: str, rules_fired: list[dict[str, Any]] | None) -> str:
+    """The strongest of the applied verdict and every fired rule's effect.
+
+    In observe mode the applied verdict is always "allow"; what enforcement would
+    have done is the strongest effect any rule fired with.
+    """
+    best = verdict
+    for rule in rules_fired or []:
         effect = str(rule.get("effect", "allow"))
-        if rank.get(effect, 0) > rank.get(best, 0):
+        if EFFECT_RANK.get(effect, 0) > EFFECT_RANK.get(best, 0):
             best = effect
     return best
 
