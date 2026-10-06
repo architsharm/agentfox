@@ -109,6 +109,11 @@ class AgentFoxGuard:
         self._session = session
         self.raise_on_escalate = raise_on_escalate
         self._schema_ready = session is not None
+        # The detectors run in this process: warm the opted-in model ones now, in
+        # the background, rather than inside the graph's first node (#48).
+        from agentfox.detection.warmup import warm_in_background
+
+        warm_in_background()
 
     # -- session plumbing -------------------------------------------------
     @contextmanager

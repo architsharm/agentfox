@@ -256,6 +256,13 @@ class AgentFox:
         self._active: ContextVar[AgentSession | None] = ContextVar(
             f"agentfox_session_{id(self)}", default=None
         )
+        if not self.remote:
+            # Local enforcement runs the detectors in this process: warm the
+            # opted-in model detectors now, in the background, not inside the
+            # first governed call (#48). A gateway warms its own.
+            from agentfox.detection.warmup import warm_in_background
+
+            warm_in_background()
 
     @contextmanager
     def _db(self) -> Iterator[Session]:

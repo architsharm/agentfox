@@ -90,6 +90,7 @@ from agentfox.core.config import get_settings
 from agentfox.core.db import init_db, session_scope
 from agentfox.core.models import utcnow
 from agentfox.detection.taint import TaintTracker
+from agentfox.detection.warmup import warm_in_background
 from agentfox.errors import AgentFoxError
 from agentfox.identity import ensure_identity
 from agentfox.prove.audit.trace import (
@@ -1490,6 +1491,11 @@ def auto(
         # not be taken it stays -1, and the banner says nothing rather than
         # claiming an all-clear it did not verify.
         log.warning("agentfox: could not register agent '%s': %s", state.agent, exc)
+
+    # An opted-in model detector loads its weights on first use; in the gateway that
+    # happens at startup, and in-process it must too, or the first governed calls
+    # time out while it loads (#48). Off this thread; a no-op for the default set.
+    warm_in_background()
 
     state.patches = [result for patch in _PATCHERS for result in patch(state)]
     state.started = True
