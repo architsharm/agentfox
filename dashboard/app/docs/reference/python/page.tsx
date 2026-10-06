@@ -726,7 +726,8 @@ PolicyViolation: capability.denied`}</Output>
 McpGovernor(session: Session, agent_slug: str, server_name: str,
             transport: Callable[[str, dict], Any] | None = None, trust_level: str = "untrusted",
             trace=None, tracker=None, intent: str | None = None, credential: str | None = None)
-gov.register_tools(tools: list[dict], *, accept_changes: bool = False) -> dict
+gov.register_tools(tools: list[dict], *, accept_changes: bool = False, actor: str | None = None,
+                   note: str | None = None) -> dict
 gov.call(tool, arguments=None, *, provenance=None, transport=None, raise_on_block=False) -> McpCallOutcome
 tool_key(server, tool) -> str      # "mcp:{server}/{tool}"`}</Code>
       <p>
@@ -740,7 +741,7 @@ tool_key(server, tool) -> str      # "mcp:{server}/{tool}"`}</Code>
       </p>
       <ol>
         <li>registers an unknown tool and raises an <code>undeclared_mcp_tool</code> finding;</li>
-        <li>blocks with <code>mcp.schema_drift</code> when the latest snapshot of the tool&apos;s name, description or schema differs from what the registry recorded;</li>
+        <li>blocks with <code>mcp.schema_drift</code> when the tool&apos;s name, description, input schema or impact annotations in the latest listing differ from the reviewed definition the registry holds for the whole org;</li>
         <li>authorises the call (grants, containment rules, provenance);</li>
         <li>runs the transport, then checks the result on the <code>tool_result</code> surface and marks it untrusted for later calls.</li>
       </ol>
@@ -793,16 +794,18 @@ with session_scope() as db:
     except McpCallBlocked as exc:
         print("McpCallBlocked:", exc, [r["rule_id"] for r in exc.result.rules_fired])`}</Code>
       <Output>{`before: True
-McpCallBlocked: the tool's schema or description changed after this agent was authorised against it ['mcp.schema_drift']`}</Output>
+McpCallBlocked: the tool's description, schema or impact annotations changed since its definition was reviewed ['mcp.schema_drift']`}</Output>
       <Callout kind="note" title="register_tools holds a changed listing">
         <p>
           Calling <code>register_tools</code> with a changed listing for a tool that is
           already registered records the new listing as a snapshot (a{" "}
           <code>schema_drift</code> finding) but keeps the registered tool as it was, so
           calls stay refused with <code>mcp.schema_drift</code>. The held tool names are in
-          the returned <code>held</code> list. Once a person has reviewed the change,{" "}
-          <code>register_tools(tools, accept_changes=True)</code> records it and calls
-          resume. Tools registered for the first time are recorded as listed. See the{" "}
+          the returned <code>held</code> list, and each is filed as an{" "}
+          <code>mcp.tool.accept</code> change proposal. Accepting is a loosening, so it
+          takes two different people: <code>register_tools(tools, accept_changes=True, actor=...)</code>{" "}
+          is one named person&apos;s approval (without <code>actor</code> it raises), and
+          calls resume only once a second person approves. Tools registered for the first time are recorded as listed. See the{" "}
           <Link href="/docs/guides/mcp">MCP guide</Link>.
         </p>
       </Callout>

@@ -259,11 +259,10 @@ agentfox policy proposals from-traffic --agent claude-dev`}</Code>
           If the hook cannot reach the daemon it allows the call and says so on stderr; the
           exit code is <code>0</code>:
         </p>
-        <Output>{`agentfox: hook could not reach the daemon — no AgentFox daemon at …/run/agentfoxd.sock (Connection refused). Start one with \`agentfox daemon\`.
+        <Output>{`agentfox: hook could not reach the daemon — no AgentFox daemon at …/run/agentfoxd.sock (Connection refused). Start one with \`agentfox admin hooks daemon\`.
 agentfox: this tool call was NOT checked. Nothing was blocked and nothing was recorded.`}</Output>
         <p>
-          The command it suggests is <code>agentfox admin hooks daemon</code>. Use{" "}
-          <code>agentfox admin hooks status</code> to check the daemon is up before you rely
+          Use <code>agentfox admin hooks status</code> to check the daemon is up before you rely
           on it.
         </p>
       </Callout>
