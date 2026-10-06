@@ -108,11 +108,11 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/v1/chat/completions` | OpenAI-compatible inline proxy |
-| `POST` | `/v1/guard/agent_message` | Authorise an inter-agent message (P17, NOM-IAM-08) |
+| `POST` | `/v1/guard/agent_message` | Authorise an inter-agent message |
 | `POST` | `/v1/guard/input` | Enforce on content without proxying. |
-| `POST` | `/v1/guard/memory_write` | Authorise a memory write (P14, NOM-RTG-13) |
+| `POST` | `/v1/guard/memory_write` | Authorise a memory write |
 | `POST` | `/v1/guard/output` | Enforce on content without proxying. |
-| `POST` | `/v1/guard/tool_call` | Authorise a tool call (P3-4, P2-2) |
+| `POST` | `/v1/guard/tool_call` | Authorise a tool call |
 | `POST` | `/v1/mcp/call` | Govern one MCP call for callers that are not in-process Python. |
 | `POST` | `/v1/messages` | Anthropic-compatible inline proxy |
 | `POST` | `/v1/traces` | OTLP/HTTP trace ingest |
@@ -131,7 +131,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
 | `GET` | `/api/providers` | X-2 — the neutrality surface, made inspectable. |
 | `GET` | `/api/reliability` | P15 — circuit-breaker state and live budget consumption. |
-| `GET` | `/api/version` | Every version that participates in a decision (X-4 determinism). |
+| `GET` | `/api/version` | Every version that participates in a decision, so a verdict can be reproduced. |
 | `GET` | `/metrics` | I-7 — Prometheus exposition. |
 
 ### Registry, discovery and findings (Pillar 1)

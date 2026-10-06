@@ -373,7 +373,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/version", tags=["platform"])
     def version() -> dict[str, Any]:
-        """Every version that participates in a decision (X-4 determinism)."""
+        """Every version that participates in a decision, so a verdict can be reproduced."""
         settings = get_settings()
         catalog = load_catalog()
         return {

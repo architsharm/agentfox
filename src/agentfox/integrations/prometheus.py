@@ -204,7 +204,7 @@ def render_metrics(session: Session, *, window_hours: int = 24) -> str:
     registry.add(
         "agentfox_knowledge_boundaries",
         "gauge",
-        "Declared knowledge boundaries by enforcement mode (P7).",
+        "Declared knowledge boundaries by enforcement mode.",
         [
             ({"mode": mode}, float(count))
             for mode, count in session.execute(
