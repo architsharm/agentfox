@@ -749,3 +749,17 @@ def test_cli_proposals_group(client):
         ).exit_code
         == 1
     )
+
+
+@pytest.mark.parametrize("level", ["L3", "L4"])
+def test_an_automated_tightening_is_enforced_at_once_unless_staged(seeded, level):
+    """What the autonomy docs promise: L3 and L4 alike apply straight into enforcement —
+    there is no observe stage — and a canary only when the diff asks for one. The docs
+    once said L3 applied "in observe", which no applier did."""
+    _policy(seeded)
+    direct = _file_min_score(seeded, 0.6, autonomy_level=level, scope_level="team")
+    attach_proof(seeded, direct, PROOF, passed=True)
+    apply_proposal(seeded, direct, automated=True)
+    assert direct.status == contract.APPLIED
+    live, _ = _live_min_score(seeded)
+    assert live == 0.6

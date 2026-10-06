@@ -51,6 +51,7 @@ from agentfox.platform.registry.digest import (
 )
 from agentfox.platform.registry.impact import infer_impact
 from agentfox.platform.registry.service import (
+    is_listed,
     normalise_tool_list,
     record_edge,
     scan_mcp_server,
@@ -123,7 +124,9 @@ class McpGovernor:
     agent_slug: str
     server_name: str
     transport: Callable[[str, dict[str, Any]], Any] | None = None
-    trust_level: str = "untrusted"
+    #: ``None`` keeps the server's stored trust (``untrusted`` for a new server). The
+    #: governor never rewrites the server's transport.
+    trust_level: str | None = None
     trace: Trace | None = None
     tracker: TaintTracker | None = None
     intent: str | None = None
@@ -222,6 +225,7 @@ class McpGovernor:
                 description=str(descriptor.get("description", "")),
                 mcp_server_id=self.server.id,
                 annotations=impact_annotations(descriptor),
+                listed=True,
             )
         if held:
             log.warning(
@@ -431,9 +435,11 @@ class McpGovernor:
             kind="mcp",
             impact=infer_impact(tool, descriptor),
             impact_source="inferred",
-            schema=descriptor.get("inputSchema") or {},
+            schema=descriptor.get("inputSchema") or descriptor.get("input_schema") or {},
             description=str(descriptor.get("description", "")),
             mcp_server_id=self.server.id,
+            # Recorded from the latest snapshot's listing, so pinned to it.
+            listed=bool(descriptor),
         )
         raise_finding(
             self.session,
@@ -661,14 +667,16 @@ def _live_digest(descriptor: dict[str, Any], record: Tool) -> str:
 def _registered_digest(tool: Tool) -> str | None:
     """The digest a registered tool is pinned to, or None if nothing pins it.
 
-    A record with neither a description nor an input schema was never registered
-    from a listing — it was declared by key, or observed being called before any
-    listing arrived — so there is no reviewed content for a new listing to differ
-    from, and the first listing is recorded as a first registration.
+    A record written from a listing is marked (`is_listed`) and pinned even when the
+    listing gave no description and no schema — a bare tool is still reviewed content.
+    An unmarked record was declared by key, or observed being called before any
+    listing arrived, so there is nothing for a new listing to differ from and the
+    first listing is recorded as a first registration. Records from before the marker
+    existed fall back to the old test: pinned if they carry a description or schema.
     """
-    if not (tool.description or tool_input_schema(tool)):
-        return None
-    return record_digest(tool)
+    if is_listed(tool) or tool.description or tool_input_schema(tool):
+        return record_digest(tool)
+    return None
 
 
 def _reproject(raw: Any, redacted: str | None) -> Any:

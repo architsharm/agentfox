@@ -55,7 +55,7 @@ RUN pip install --upgrade pip && pip install ".[postgres,otel,classifiers]"
 # fails the same way an operator's build would if `src ./src` or the extras install
 # ever stopped matching what the app needs to import.
 FROM base AS deps
-RUN python -c "from nometria.gateway.app import create_app; create_app(); print('image smoke: OK')"
+RUN python -c "from agentfox.apps.gateway.app import create_app; create_app(); print('image smoke: OK')"
 
 FROM deps AS weights
 RUN mkdir -p /var/agentfox/hf-cache

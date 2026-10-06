@@ -13,6 +13,8 @@ the file it came from.
 
 ### Removed
 
+- The `nometria` Python package shim and the `nometria` console script. Import from `agentfox` (e.g. `agentfox.frameworks.langgraph`) and run `agentfox`. The `NOMETRIA_*` environment variables, `nometria.toml` and `x-nometria-*` headers are still read.
+
 - The hidden pre-consolidation CLI names. `agentfox --help` shows thirteen verbs, and
   the old top-level names had kept running, hidden, with a "now called" hint. They no
   longer resolve. `agentfox hooks run` and `agentfox mcp serve` stay,

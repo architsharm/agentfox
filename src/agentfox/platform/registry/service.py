@@ -369,6 +369,18 @@ def unowned_agents(session: Session) -> list[Finding]:
 #: included. Validators ignore `x-` keywords; `tool_input_schema` strips it.
 IMPACT_SOURCE_KEY = "x-agentfox-impact-source"
 
+#: Marks a tool whose description and schema were recorded from a tool listing, so
+#: they are the reviewed content a later listing is compared against — even when the
+#: listing gave neither. Without it a bare first listing looked like a tool declared by
+#: key, and the next listing (a poisoned description, say) was recorded, not held.
+#: A vendor keyword in `schema_json` for the same reason as `IMPACT_SOURCE_KEY`.
+LISTED_KEY = "x-agentfox-listed"
+
+_MARKER_KEYS = (IMPACT_SOURCE_KEY, LISTED_KEY)
+
+#: Audit action for any change to a registered tool's impact.
+IMPACT_CHANGED_ACTION = "tool.impact_changed"
+
 
 def impact_source_of(tool: Tool) -> str:
     """``inferred`` for a guessed impact awaiting confirmation, else ``declared``."""
@@ -377,8 +389,13 @@ def impact_source_of(tool: Tool) -> str:
 
 
 def tool_input_schema(tool: Tool) -> dict[str, Any]:
-    """The tool's input schema as the tool itself declared it, without our marker."""
-    return {k: v for k, v in (tool.schema_json or {}).items() if k != IMPACT_SOURCE_KEY}
+    """The tool's input schema as the tool itself declared it, without our markers."""
+    return {k: v for k, v in (tool.schema_json or {}).items() if k not in _MARKER_KEYS}
+
+
+def is_listed(tool: Tool) -> bool:
+    """True when the tool's description and schema came from a tool listing."""
+    return bool((tool.schema_json or {}).get(LISTED_KEY))
 
 
 def upsert_tool(
@@ -394,22 +411,54 @@ def upsert_tool(
     impact_source: str = "declared",
     output_trust: str | None = None,
     annotations: dict[str, Any] | None = None,
+    listed: bool = False,
+    actor: str | None = None,
 ) -> Tool:
     """Create or update a tool. ``output_trust=None`` and ``annotations=None`` leave
-    what is recorded as it is."""
-    tool = _get_or_create(session, Tool, key=key)
+    what is recorded as it is.
+
+    ``impact_source="inferred"`` is a guess, and a guess never replaces a declared
+    impact: an MCP listing re-infers on every listing, and before this an unchanged
+    listing put ``read`` back over an operator's ``irreversible``. Every change to an
+    existing tool's impact is appended to the audit chain.
+
+    ``listed=True`` says ``description`` and ``schema`` are a tool listing's, verbatim:
+    empty means empty, so accepting a listing that drops either clears it rather than
+    keeping the old one (which left the drift block on for good). Otherwise an empty
+    value keeps what is stored, as before.
+    """
+    tool = session.scalar(select(Tool).where(Tool.key == key))
+    prior_impact = tool.impact if tool is not None else None
+    keep_declared = (
+        impact_source == "inferred"
+        and tool is not None
+        and bool(prior_impact)
+        and impact_source_of(tool) == "declared"
+    )
+    if tool is None:
+        tool = Tool(key=key)
+        session.add(tool)
+
     tool.name = name or tool.name or key
     tool.kind = kind
-    tool.impact = impact
+    if not keep_declared:
+        tool.impact = impact
     # A fresh dict, so the JSON column registers the change; a declaration clears
     # the inferred marker, which is how `agentfox declare tool` confirms a guess.
-    schema_json = dict(schema or tool.schema_json or {})
-    if impact_source == "inferred":
+    if listed:
+        schema_json = dict(schema or {})
+        schema_json[LISTED_KEY] = True
+    else:
+        stored = tool.schema_json or {}
+        schema_json = dict(schema) if schema else dict(stored)
+        if stored.get(LISTED_KEY) and schema:
+            schema_json[LISTED_KEY] = True
+    if impact_source == "inferred" and not keep_declared:
         schema_json[IMPACT_SOURCE_KEY] = "inferred"
     else:
         schema_json.pop(IMPACT_SOURCE_KEY, None)
     tool.schema_json = schema_json
-    tool.description = description or tool.description
+    tool.description = description if listed else (description or tool.description)
     tool.mcp_server_id = mcp_server_id or tool.mcp_server_id
     if output_trust is not None:
         tool.output_trust = output_trust
@@ -418,6 +467,18 @@ def upsert_tool(
     if annotations is not None:
         tool.annotations_json = dict(annotations)
     session.flush()
+    if prior_impact and prior_impact != tool.impact:
+        from agentfox.platform.ledger import chain
+
+        chain.append(
+            session,
+            IMPACT_CHANGED_ACTION,
+            actor_type="user" if actor else "system",
+            actor_id=actor,
+            subject_type="tool",
+            subject_id=key,
+            payload={"from": prior_impact, "to": tool.impact, "source": impact_source},
+        )
     return tool
 
 
@@ -756,14 +817,21 @@ def upsert_mcp_server(
     name: str,
     *,
     url: str = "",
-    transport: str = "stdio",
-    trust_level: str = "untrusted",
+    transport: str | None = None,
+    trust_level: str | None = None,
     pinned_version: str | None = None,
 ) -> McpServer:
+    """Create or update an MCP server. ``None`` for a field keeps what is stored.
+
+    A new server gets ``stdio`` and ``untrusted``. An existing one keeps its transport
+    and trust unless a value is passed: every `McpGovernor` upserts the server it
+    governs, so a default here used to flip a remote server to stdio (the live monitor
+    then stopped fetching it) and reset the trust an operator had given it.
+    """
     server = _get_or_create(session, McpServer, name=name)
     server.url = url or server.url
-    server.transport = transport
-    server.trust_level = trust_level
+    server.transport = transport or server.transport or "stdio"
+    server.trust_level = trust_level or server.trust_level or "untrusted"
     server.pinned_version = pinned_version or server.pinned_version
     session.flush()
     return server

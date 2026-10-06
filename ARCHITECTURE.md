@@ -210,7 +210,6 @@ job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlint
 | `apps/cli/` | The `agentfox` binary (Typer, `agentfox.apps.cli.main:main`). Command bodies live in `commands/` and the `*_cli.py` modules; `layout.py` decides the visible tree. | `main.py`, `layout.py`, `commands/` |
 | `apps/` (the rest) | `mcp_server.py`, the read-only MCP server for AI clients; `report/`, the one-page summary and evidence packages; `jobs.py`, the job handler table; `showcase.py`, the public showcase run. | `mcp_server.py`, `report/summary.py`, `report/evidence.py` |
 | `policies_data/`, `compliance_data/` | Shipped YAML: the four policy packs; controls, obligations and threats. | — |
-| `src/nometria/` | Deprecated compatibility shim: `import nometria` resolves to the same `agentfox` modules. | — |
 
 Outside the package:
 

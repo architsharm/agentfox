@@ -162,7 +162,7 @@ def test_the_report_ends_with_a_next_action(project):
 
 def test_a_fully_governed_repo_says_so(tmp_path):
     (tmp_path / "m.py").write_text(
-        "import agentfox\nnometria.auto()\nc.messages.create(model='x', messages=[])\n"
+        "import agentfox\nagentfox.auto()\nc.messages.create(model='x', messages=[])\n"
     )
     assert "doctor" in scan(tmp_path).next_step()
 
@@ -233,7 +233,7 @@ def test_check_can_gate_ci(isolated_db, project):
 
 def test_check_passes_ci_when_everything_is_governed(isolated_db, tmp_path):
     (tmp_path / "m.py").write_text(
-        "import agentfox\nnometria.auto()\nc.messages.create(model='x', messages=[])\n"
+        "import agentfox\nagentfox.auto()\nc.messages.create(model='x', messages=[])\n"
     )
     assert runner.invoke(app, ["scan", "repo", str(tmp_path), "--fail"]).exit_code == 0
 

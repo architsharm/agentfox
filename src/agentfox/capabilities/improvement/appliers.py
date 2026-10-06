@@ -884,7 +884,7 @@ def _set_definition(tool, definition: dict[str, Any]) -> None:
 def _accept_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
     from agentfox.platform.registry.digest import record_digest
     from agentfox.platform.registry.impact import infer_impact
-    from agentfox.platform.registry.service import IMPACT_SOURCE_KEY, impact_source_of
+    from agentfox.platform.registry.service import IMPACT_SOURCE_KEY, LISTED_KEY, impact_source_of
 
     diff = _accept_diff(proposal)
     key = str(diff["tool_key"])
@@ -900,6 +900,8 @@ def _accept_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> 
     schema = dict(diff.get("inputSchema") or {})
     if IMPACT_SOURCE_KEY in (tool.schema_json or {}):
         schema[IMPACT_SOURCE_KEY] = tool.schema_json[IMPACT_SOURCE_KEY]
+    # The accepted definition is a listing's, so it is pinned even if it is bare.
+    schema[LISTED_KEY] = True
     after = {
         "description": str(diff.get("description") or ""),
         "schema_json": schema,
@@ -922,6 +924,8 @@ def _accept_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> 
             "from_digest": diff["from_digest"],
             "to_digest": diff["to_digest"],
             "change_proposal": proposal.id,
+            # A re-guessed impact is part of the change, so it is on the chain too.
+            "impact": {"from": before["impact"], "to": tool.impact},
         },
         subject_type="tool",
     )
