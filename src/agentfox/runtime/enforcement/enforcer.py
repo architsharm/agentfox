@@ -284,7 +284,8 @@ class Enforcer(
         # compose by different algebras: rules take the lattice maximum, ladders select
         # exactly one band. Security dominates the combination, so a band that says
         # auto-approve can never loosen a rule that says block.
-        ladder_decision = self._business_ladders(agent, surface, tool_key, arguments)
+        ladder_decisions = self._business_ladders(agent, surface, tool_key, arguments)
+        ladder_decision = ladder_decisions[0] if ladder_decisions else None
 
         # --- P9 action assurance ------------------------------------------
         # Argument-level containment governs *the call*; this governs *the artefact*.
@@ -596,21 +597,28 @@ class Enforcer(
         # The ladder outcome joins here rather than in the rule list, so that its
         # `verify` and `allow` outcomes cannot be swept into the lattice maximum and
         # silently promoted or ignored.
-        if ladder_decision is not None and ladder_decision.outcome != "allow":
-            combined = combine_business(effective, ladder_decision)
-            if combined.verdict != effective:
-                effective = combined.verdict
-                if mode == "enforce":
-                    verdict = combined.verdict
+        #
+        # Each ladder's own `mode` decides whether its outcome is applied (#1). The
+        # policy packs' mode used to decide it, so an observe ladder escalated as soon
+        # as an enforcing pack governed the call, and an enforce ladder was only
+        # recorded when nothing else enforced. Every ladder raises the effective
+        # verdict (what enforcement would do); only enforcing ladders raise the
+        # applied one.
+        for decision in ladder_decisions:
+            if decision.outcome == "allow":
+                continue
+            effective = combine_business(effective, decision).verdict
+            if decision.mode == "enforce":
+                verdict = combine_business(verdict, decision).verdict
             rules_fired.append(
                 _fired_rule(
-                    f"business.{ladder_decision.ladder_key}",
-                    ladder_decision.outcome,
-                    ladder_decision.reason,
+                    f"business.{decision.ladder_key}",
+                    decision.outcome,
+                    decision.reason,
                     severity="medium",
                     controls=["NOM-GOV-07"],
-                    evidence=ladder_decision.to_json(),
-                    mode=mode,
+                    evidence=decision.to_json(),
+                    mode=decision.mode,
                 )
             )
 

@@ -198,7 +198,7 @@ class _ToolCallMixin:
         surface: str,
         tool_key: str | None,
         arguments: dict[str, Any] | None,
-    ) -> LadderDecision | None:
+    ) -> list[LadderDecision]:
         """Evaluate the business ladders that apply to this call.
 
         Only on the tool-argument surface: a ladder bands a number the caller is about
@@ -206,18 +206,22 @@ class _ToolCallMixin:
         apply, the strictest wins and the disagreement is a lint finding rather than a
         silent precedence rule — two authors disagreeing is a fact about the
         organisation, not a merge conflict.
+
+        Every deciding ladder is returned, strictest first, because each carries its
+        own mode: the strictest *enforcing* ladder is what is applied, and an
+        observe ladder stricter than it is only recorded.
         """
         if surface != "tool_args" or not arguments:
-            return None
+            return []
         try:
             ladders = load_ladders(
                 self.session, tool=tool_key, agent_id=agent.id if agent else None
             )
         except Exception as exc:  # pragma: no cover - storage must not break the path
             log.warning("business ladders unavailable: %s", exc)
-            return None
+            return []
         if not ladders:
-            return None
+            return []
 
         request = {"arguments": arguments, "tool": tool_key}
         decisions = [
@@ -226,9 +230,7 @@ class _ToolCallMixin:
             if ladder.tool in (None, tool_key)
         ]
         decisions = [d for d in decisions if d.matched or d.undecidable]
-        if not decisions:
-            return None
-        return max(decisions, key=lambda d: BUSINESS_RANK.get(d.outcome, 0))
+        return sorted(decisions, key=lambda d: BUSINESS_RANK.get(d.outcome, 0), reverse=True)
 
     def _cascade_and_access_risks(
         self, tool_key: str | None, arguments: dict[str, Any] | None
