@@ -26,6 +26,7 @@
  * sections of annotated links.
  */
 
+import { BLOG_POSTS, blogPath } from "@/lib/blog";
 import { FLAT, HOME, PRODUCT as NAV_PRODUCT, RESOURCES, SECONDARY } from "@/lib/nav";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, REPO_URL } from "@/lib/site";
 
@@ -57,6 +58,9 @@ const PRODUCT_LINKS: Link[] = asLinks([
 const RESOURCE_LINKS: Link[] = asLinks(RESOURCES.sections.flatMap((group) => group.items));
 
 const MORE_LINKS: Link[] = asLinks([...FLAT, ...SECONDARY]);
+
+/** Every post, with its meta description: the same sentence a search result shows. */
+const BLOG_LINKS: Link[] = BLOG_POSTS.map((p) => ({ path: blogPath(p.slug), note: `${p.title}. ${p.description}` }));
 
 /**
  * The distinguishing facts, for an assistant deciding whether this is the right
@@ -102,6 +106,8 @@ export function GET(): Response {
     section("Evidence you can check", RESOURCE_LINKS),
     "",
     section("More", MORE_LINKS),
+    "",
+    section("Blog", BLOG_LINKS),
     "",
     "## Source and documentation",
     "",

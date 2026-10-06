@@ -209,6 +209,14 @@ export const RESOURCES: NavGroup = {
       column: 2,
       items: [
         {
+          label: "Blog",
+          href: "/blog",
+          note: "How agent attacks work, in depth",
+          summary:
+            "Long-form posts on MCP tool poisoning, prompt injection, Claude Code hooks, red teaming and audit trails, each tied to the benchmark behind it.",
+          sitemap: { changeFrequency: "weekly", priority: 0.7 },
+        },
+        {
           label: "Security",
           href: "/security",
           note: "What nobody else has checked",
