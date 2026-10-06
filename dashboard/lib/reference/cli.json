@@ -1,5 +1,5 @@
 {
- "generated_by": "scripts/docs_reference.py",
+ "generated_by": "scripts/gen/docs_reference.py",
  "root": {
   "path": "",
   "name": "agentfox",

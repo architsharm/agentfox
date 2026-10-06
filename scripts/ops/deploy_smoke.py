@@ -16,9 +16,9 @@ here signs in), that the database holds the right rows, that detection quality i
 (the playground check uses one known payload, so it catches a dead pipeline, not a
 weak one), or that the dashboard renders anything beyond an HTTP 200.
 
-    python scripts/deploy_smoke.py
-    python scripts/deploy_smoke.py --api-url https://... --dashboard-url https://...
-    python scripts/deploy_smoke.py --json
+    python scripts/ops/deploy_smoke.py
+    python scripts/ops/deploy_smoke.py --api-url https://... --dashboard-url https://...
+    python scripts/ops/deploy_smoke.py --json
 
 Exits 0 when every check passes, 1 when any check fails.
 """

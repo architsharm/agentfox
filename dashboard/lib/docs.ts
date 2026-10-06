@@ -5,7 +5,7 @@
  *
  * The order follows the path a team walks: see what you have, watch it run, contain
  * what it can do, prove it. Guides are scenarios with working code; Reference is
- * generated from the code where it can be (scripts/docs_reference.py).
+ * generated from the code where it can be (scripts/gen/docs_reference.py).
  */
 
 export type DocLink = { href: string; label: string; description?: string };

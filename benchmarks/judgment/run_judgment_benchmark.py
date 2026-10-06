@@ -12,7 +12,7 @@ has failed at its only job.
       uv run python benchmarks/judgment/run_judgment_benchmark.py
 
 Writes results/judgment_results.json. Every number published anywhere about
-these tiers is rendered from that file by scripts/claims.py.
+these tiers is rendered from that file by scripts/check/claims.py.
 """
 
 from __future__ import annotations

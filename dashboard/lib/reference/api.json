@@ -1,5 +1,5 @@
 {
- "generated_by": "scripts/docs_reference.py",
+ "generated_by": "scripts/gen/docs_reference.py",
  "count": 207,
  "routes": [
   {
@@ -156,7 +156,7 @@
    "section": "v1/guard",
    "audience": "public",
    "summary": "Enforce on content without proxying.",
-   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
+   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/gen/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
    "params": [
     {
      "name": "authorization",
@@ -294,7 +294,7 @@
    "section": "v1/guard",
    "audience": "public",
    "summary": "Enforce on content without proxying.",
-   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
+   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/gen/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
    "params": [
     {
      "name": "authorization",

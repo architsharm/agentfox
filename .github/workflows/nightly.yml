@@ -42,7 +42,7 @@ jobs:
       - name: Crescendo trajectory
         run: uv run python benchmarks/crescendo/run_crescendo_benchmark.py
       - name: Published claims still match fresh measurements
-        run: uv run python scripts/claims.py --check
+        run: uv run python scripts/check/claims.py --check
       - name: Coverage map does not overstate the product
         run: uv run python scripts/probe/run.py
       - name: Keep the fresh results for comparison

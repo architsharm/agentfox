@@ -5,9 +5,9 @@ The hand-written route list drifted from the code (phantom routes, missing famil
 the tables between the GENERATED markers are now produced from `create_app().openapi()`.
 Prose around them stays hand-written.
 
-    uv run python scripts/api_routes.py            # print the generated block
-    uv run python scripts/api_routes.py --write    # rewrite the block in Appendix C
-    uv run python scripts/api_routes.py --check    # exit 1 if Appendix C is out of date
+    uv run python scripts/gen/api_routes.py            # print the generated block
+    uv run python scripts/gen/api_routes.py --write    # rewrite the block in Appendix C
+    uv run python scripts/gen/api_routes.py --check    # exit 1 if Appendix C is out of date
 """
 
 from __future__ import annotations
@@ -18,9 +18,9 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 DOC = REPO / "docs" / "architecture" / "api-spec.md"
-BEGIN = "<!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->"
+BEGIN = "<!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->"
 END = "<!-- END GENERATED ROUTES -->"
 
 # Section order and titles, keyed by the first path segment(s) after /api or /v1.
@@ -171,7 +171,7 @@ def main() -> int:
         if current != block:
             print(
                 "docs/architecture/api-spec.md route tables are out of date: "
-                "run scripts/api_routes.py --write"
+                "run scripts/gen/api_routes.py --write"
             )
             return 1
         print("appendix C route tables are current")

@@ -46,16 +46,16 @@ fmt:
 
 # The four drift checks: docs, reference and published numbers against the code.
 check:
-    uv run python scripts/check_plugins.py
-    uv run python scripts/api_routes.py --check
-    uv run python scripts/docs_reference.py --check
-    uv run python scripts/claims.py --check
+    uv run python scripts/check/plugins.py
+    uv run python scripts/gen/api_routes.py --check
+    uv run python scripts/gen/docs_reference.py --check
+    uv run python scripts/check/claims.py --check
 
 # Regenerate every generated file the checks above compare against.
 regen:
-    uv run python scripts/api_routes.py --write
-    uv run python scripts/docs_reference.py --write
-    uv run python scripts/coverage.py --write
+    uv run python scripts/gen/api_routes.py --write
+    uv run python scripts/gen/docs_reference.py --write
+    uv run python scripts/gen/coverage.py --write
 
 # Dashboard: clean install, vitest, and a type check (the type check is not in CI).
 dashboard:

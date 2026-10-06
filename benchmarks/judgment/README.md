@@ -12,7 +12,7 @@ JEV_API_KEY=... ANTHROPIC_API_KEY=... \
 
 Results: [`results/judgment_results.json`](results/judgment_results.json).
 Every number published about these tiers is rendered from that file by
-`scripts/claims.py`.
+`scripts/check/claims.py`.
 
 ## What was measured
 

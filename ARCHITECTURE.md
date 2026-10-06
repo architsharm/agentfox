@@ -297,21 +297,21 @@ Headers still use `X-Nometria-*`. Do not rename either without a compatibility p
 
 **Published numbers are bound.** [`benchmarks/claims.yaml`](benchmarks/claims.yaml) binds each
 quoted figure (in this README, `benchmarks/`, `docs/`, website pages) to the result file it
-came from; `scripts/claims.py --check` fails on drift, and `retired` figures fail if quoted.
+came from; `scripts/check/claims.py --check` fails on drift, and `retired` figures fail if quoted.
 Change a number by re-running the benchmark, never by editing prose.
 
-**Generated files are regenerated, not edited.** `docs/status.md` (`scripts/coverage.py
---write`), the route tables in `docs/architecture/api-spec.md` (`scripts/api_routes.py
---write`), `dashboard/lib/reference/*.json` (`scripts/docs_reference.py --write`, which also
+**Generated files are regenerated, not edited.** `docs/status.md` (`scripts/gen/coverage.py
+--write`), the route tables in `docs/architecture/api-spec.md` (`scripts/gen/api_routes.py
+--write`), `dashboard/lib/reference/*.json` (`scripts/gen/docs_reference.py --write`, which also
 checks every `agentfox …` command shown on a docs page), `docs/design/coverage-map.md`
-(`scripts/probe/run.py`). `scripts/check_plugins.py` checks the plugins against the live CLI,
+(`scripts/probe/run.py`). `scripts/check/plugins.py` checks the plugins against the live CLI,
 that the Claude Code plugin's copies of `plugins/shared/` match their originals (`--write`
 refreshes them), and that every tracked `.md` file is classified in
 `plugins/shared/reference/docs-map.md`.
 
 **Vendored wheels are the deploy.** `api/vendor/` and `demo/redteam-live-lang/vendor/` hold
 built wheels. A change under `src/agentfox/` must rebuild both in the same commit; the
-pre-commit hook (`scripts/rebuild_vendored_wheels.py`) does it, and CI's
+pre-commit hook (`scripts/check/rebuild_vendored_wheels.py`) does it, and CI's
 `vendored-wheel-freshness` job fails a push that skipped it.
 
 ## Where to start for common changes
@@ -337,30 +337,30 @@ re-homed there is not reachable. `tests/apps/cli/test_cli_layout.py` enforces th
 removed names, and the two protocol endpoints kept at their old paths (`hooks run`,
 `mcp serve`). Add a row to `plugins/shared/reference/cli.md` (mark it **BLK** if it changes
 whether traffic is blocked, and add a pattern to `plugins/claude-code/scripts/guard_blocking_commands.py`),
-then run `scripts/docs_reference.py --write` so the website's CLI reference picks it up.
+then run `scripts/gen/docs_reference.py --write` so the website's CLI reference picks it up.
 
 **Add an HTTP route.** Add it to the router for its family in `apps/gateway/routes/` (use
 `deps.db`, and `agent_credential` for `/v1/*` or `current_user`/`require(...)` for `/api/*`).
 A new router must be included in `apps/gateway/app.py:create_app`. Regenerate
-`scripts/api_routes.py --write` and `scripts/docs_reference.py --write`, and update
+`scripts/gen/api_routes.py --write` and `scripts/gen/docs_reference.py --write`, and update
 `plugins/shared/reference/http-api.md`. If the route is a privileged operator action, record it
 (see the audit invariant). Tests in `tests/apps/gateway/` or `tests/e2e/`.
 
 **Add a website docs page.** Create `dashboard/app/docs/<section>/<slug>/page.tsx` using the
 blocks in `dashboard/components/docs/blocks.tsx` (copy a sibling page), and add it to
 `DOC_NAV` in `dashboard/lib/docs.ts`, the one list the sidebar reads. Every `agentfox …`
-command on the page is checked by `scripts/docs_reference.py --check`; a figure on it must be
+command on the page is checked by `scripts/gen/docs_reference.py --check`; a figure on it must be
 bound in `benchmarks/claims.yaml`. Run `npm test` in `dashboard/`.
 
 **Add a benchmark or a published number.** Add `benchmarks/<area>/` with its runner, a
 `results/` file and a README (method, dataset, licence, limits); link it from
 `benchmarks/README.md`. To quote a number anywhere, add a claim to `benchmarks/claims.yaml`
-pointing at the result file and every place that quotes it, and run `scripts/claims.py
+pointing at the result file and every place that quotes it, and run `scripts/check/claims.py
 --check`. Read [docs/evaluation/evidence-standards.md](docs/evaluation/evidence-standards.md)
 before writing the headline.
 
 **Add a markdown doc.** Classify it in `plugins/shared/reference/docs-map.md` and list it in
-[docs/README.md](docs/README.md); `check_plugins.py` fails otherwise.
+[docs/README.md](docs/README.md); `scripts/check/plugins.py` fails otherwise.
 
 **Add a harness** (a coding agent to govern). One folder, `src/agentfox/harnesses/<name>/`,
 beside `claude_code/`:

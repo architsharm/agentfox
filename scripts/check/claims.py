@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Every headline number we publish is bound to the result it came from.
 
-    uv run python scripts/claims.py            # list claims with their current values
-    uv run python scripts/claims.py --check    # exit 1 if any document drifted from its source
+    uv run python scripts/check/claims.py          # list claims with their current values
+    uv run python scripts/check/claims.py --check  # exit 1 if a document drifted from its source
 
 A benchmark number typed into a README is a claim that silently goes stale the next time the
 benchmark changes. This renders each claim in `benchmarks/claims.yaml` from its result file and
@@ -21,7 +21,7 @@ from typing import Any
 
 import yaml
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 MANIFEST = REPO / "benchmarks" / "claims.yaml"
 
 

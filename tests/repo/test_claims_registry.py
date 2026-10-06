@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-_spec = importlib.util.spec_from_file_location("claims", REPO / "scripts" / "claims.py")
+_spec = importlib.util.spec_from_file_location("claims", REPO / "scripts" / "check" / "claims.py")
 claims = importlib.util.module_from_spec(_spec)
 sys.modules["claims"] = claims  # dataclasses resolve their module through sys.modules
 _spec.loader.exec_module(claims)

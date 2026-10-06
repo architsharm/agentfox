@@ -3,7 +3,7 @@ title: agentfox CLI reference
 layer: reference
 audience: agents (and humans who want the dense version)
 source_of_truth: src/agentfox/apps/cli/ — the code wins if this file disagrees
-verified_against: branch claude/cli-consolidate, 2026-10-05 (checked by scripts/check_plugins.py)
+verified_against: branch claude/cli-consolidate, 2026-10-05 (checked by scripts/check/plugins.py)
 ---
 
 # `agentfox` CLI reference

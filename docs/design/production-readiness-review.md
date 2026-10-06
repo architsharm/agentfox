@@ -87,7 +87,7 @@ not a gap: it's uncommitted, and the LLD (§1.1) now documents `agent_loop.py` a
 real caller (`enforcement.py:2367`) — good — but the richer step-history wiring should be
 finished, tested, and committed before it's described anywhere as done, or the next audit
 will have to re-discover the same in-progress state. **Action: finish and commit this
-change, then re-run `scripts/coverage.py --write` so `docs/status.md`'s PL-4 entry reflects
+change, then re-run `scripts/gen/coverage.py --write` so `docs/status.md`'s PL-4 entry reflects
 it.** Effort: S (appears nearly complete already).
 
 ### 1.4 ✅ (was 🟡) `jobs.py` remains genuinely, verifiably stub-only
@@ -185,7 +185,7 @@ it.
 |---|---|---|
 | "Wire the stub-only modules" (top priority) | `agent_loop.py`, `jobs.py`, `availability.py`'s limiter, F6, F8 all stub-only | **Partially closed since the last audit**: `agent_loop.py` has a real caller and active in-flight work (§1.3); `context_integrity.py`/F8 has real callers (§1.5); `jobs.py` remains fully stub-only (§1.4); F6/`commitments.py` status unconfirmed either way by this pass (§1.6); `availability.py`'s admission controller (`get_admission_controller`) is wired into `gateway/app.py`'s middleware — real, not stub — but see §3 for a caveat on its per-process scope |
 | Start the SOC 2/ISO 27001/pentest clock | Unstarted, organisational | **Not verifiable from code** — this is a legal/process track, not something a repository audit can confirm one way or the other. See §4. |
-| Close F7.7 and F8.3 | Named as the only genuinely-absent failure modes remaining (besides F3.8, closed 2026-08-30) | Not independently re-verified this pass — would require re-running the failure-mode coverage computation (`scripts/coverage.py`), which is out of scope for a documentation-focused review. **Recommend running it fresh rather than trusting either document's snapshot.** |
+| Close F7.7 and F8.3 | Named as the only genuinely-absent failure modes remaining (besides F3.8, closed 2026-08-30) | Not independently re-verified this pass — would require re-running the failure-mode coverage computation (`scripts/gen/coverage.py`), which is out of scope for a documentation-focused review. **Recommend running it fresh rather than trusting either document's snapshot.** |
 | Decide Salesforce/ServiceNow/M365 estate connectors | Open, "a real, if large, build" | Unchanged — no evidence of new work in this area found during the HLD/LLD pass (nothing under `src/agentfox/integrations/` references these platforms) |
 
 ---

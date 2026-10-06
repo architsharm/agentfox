@@ -3,10 +3,10 @@
 Three guarantees, each cheap and offline:
   * every `agentfox …` command/flag, repo path and docs-map entry in the plugin markdown
     is real, and the Claude Code plugin's copies of plugins/shared/ match their originals
-    (scripts/check_plugins.py);
+    (scripts/check/plugins.py);
   * the safety hook asks before exactly the commands that change what gets blocked, and
     never on look-alikes (plugins/claude-code/scripts/guard_blocking_commands.py);
-  * Appendix C's generated route tables match the running app (scripts/api_routes.py).
+  * Appendix C's generated route tables match the running app (scripts/gen/api_routes.py).
 """
 
 from __future__ import annotations
@@ -30,12 +30,12 @@ def _run(args: list[str], **kwargs) -> subprocess.CompletedProcess:
 
 
 def test_plugin_markdown_matches_the_live_cli_and_repo():
-    result = _run([sys.executable, str(REPO / "scripts" / "check_plugins.py")])
+    result = _run([sys.executable, str(REPO / "scripts" / "check" / "plugins.py")])
     assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_appendix_c_routes_are_generated_from_the_app():
-    result = _run([sys.executable, str(REPO / "scripts" / "api_routes.py"), "--check"])
+    result = _run([sys.executable, str(REPO / "scripts" / "gen" / "api_routes.py"), "--check"])
     assert result.returncode == 0, result.stdout + result.stderr
 
 

@@ -1,5 +1,5 @@
 /**
- * Renders the reference generated from the code by scripts/docs_reference.py.
+ * Renders the reference generated from the code by scripts/gen/docs_reference.py.
  * Nothing here is typed by hand: regenerate the JSON, and the page follows.
  */
 import api from "@/lib/reference/api.json";

@@ -100,9 +100,9 @@ Outside development the route requires a credential: an agent key (`Bearer nom_a
 
 The route tables below are generated from the running application, so they cannot drift
 from the code. Regenerate after changing any route:
-`uv run python scripts/api_routes.py --write`. CI runs `--check`.
+`uv run python scripts/gen/api_routes.py --write`. CI runs `--check`.
 
-<!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
+<!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
 207 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 

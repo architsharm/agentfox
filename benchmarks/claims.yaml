@@ -1,6 +1,6 @@
 # Every headline number we publish, bound to the result file it came from.
 #
-# `scripts/claims.py --check` renders each claim from its source and fails if any document
+# `scripts/check/claims.py --check` renders each claim from its source and fails if any document
 # quoting it no longer says exactly that. Two published numbers were corrected by hand in a
 # single week (an SPML recall figure and an adaptive attack-success rate) before this existed.
 #

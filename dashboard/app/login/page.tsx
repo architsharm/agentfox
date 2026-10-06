@@ -48,7 +48,7 @@ function GitHubMark() {
  * already read rather than a second, different one. The source is
  * benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json; the two
  * ratios here are bound to it in benchmarks/claims.yaml and checked by
- * scripts/claims.py, which also fails if a retired AgentDojo figure reappears.
+ * scripts/check/claims.py, which also fails if a retired AgentDojo figure reappears.
  */
 const PROOF: [string, string][] = [
   ["588 of 588", "attack pairs contained"],

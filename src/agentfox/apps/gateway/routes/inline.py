@@ -903,7 +903,7 @@ def guard_content(
 ) -> dict[str, Any]:
     """Enforce on content without proxying.
 
-    The route's first line is kept short because `scripts/api_routes.py` uses it as
+    The route's first line is kept short because `scripts/gen/api_routes.py` uses it as
     this operation's label in the API route table.
 
     `verdict`/`applied_verdict` is what happened; `effective_verdict`/

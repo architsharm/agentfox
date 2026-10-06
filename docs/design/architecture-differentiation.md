@@ -7,7 +7,7 @@ be checkable:
 
 - **Our numbers.** Every one comes from a committed results file. Where it is bound in
   [`benchmarks/claims.yaml`](../../benchmarks/claims.yaml), the claim id is given, and
-  `scripts/claims.py --check` fails if this page drifts from the source.
+  `scripts/check/claims.py --check` fails if this page drifts from the source.
 - **Competitor facts.** Each is labelled by where it came from:
   - **[code]**: a permalink into the vendor's open-source repository at a pinned commit.
   - **[docs]**: the vendor's own API or developer documentation.

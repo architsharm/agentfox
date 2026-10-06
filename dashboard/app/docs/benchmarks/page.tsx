@@ -220,7 +220,7 @@ export default function Page() {
 
       <h2>Check the numbers yourself</h2>
       <p>From a clone of the repository:</p>
-      <Code>{`python scripts/claims.py`}</Code>
+      <Code>{`python scripts/check/claims.py`}</Code>
       <Output>{`  containment.attacks_contained_with_detectors_off                 8/8   quoted in 5 place(s)
   containment.legitimate_calls_allowed_with_detectors_off          4/4   quoted in 3 place(s)
   agentdojo.session_taint.attack_pairs_contained               588/588   quoted in 9 place(s)
@@ -228,7 +228,7 @@ export default function Page() {
   agentdojo.argument_taint                                   bk=37, bn=97, bpct=38.1, bci=[29.1, 48.1], ak=527, an=588, ck=641, cn=702, missed=61   quoted in 7 place(s)
 …`}</Output>
       <p>
-        <code>python scripts/claims.py --check</code> is what CI runs. It prints{" "}
+        <code>python scripts/check/claims.py --check</code> is what CI runs. It prints{" "}
         <code>all 30 published claims match their sources</code>, or the quote that drifted.
         Each directory under <code>benchmarks/</code> has its own fetch and run scripts,
         committed data, and a README with the method and its caveats.

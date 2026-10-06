@@ -1,6 +1,6 @@
 """The deployment smoke test has to be right about a deployment it cannot reach here.
 
-`scripts/deploy_smoke.py` only ever runs against a live URL, which means its own logic
+`scripts/ops/deploy_smoke.py` only ever runs against a live URL, which means its own logic
 is the part nobody exercises until a deployment is already broken and the script says
 the wrong thing. These tests run every check against a scripted deployment in-process,
 with no network at all: a healthy one, then one deliberately broken in each of the ways
@@ -22,7 +22,9 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-_spec = importlib.util.spec_from_file_location("deploy_smoke", REPO / "scripts" / "deploy_smoke.py")
+_spec = importlib.util.spec_from_file_location(
+    "deploy_smoke", REPO / "scripts" / "ops" / "deploy_smoke.py"
+)
 deploy_smoke = importlib.util.module_from_spec(_spec)
 sys.modules["deploy_smoke"] = deploy_smoke  # dataclasses resolve through sys.modules
 _spec.loader.exec_module(deploy_smoke)

@@ -1,7 +1,7 @@
 """Generate the docs site's CLI and HTTP reference from the code, and check the docs.
 
-    python scripts/docs_reference.py --write   # regenerate dashboard/lib/reference/*.json
-    python scripts/docs_reference.py --check   # exit 1 if they are stale, or if any
+    python scripts/gen/docs_reference.py --write   # regenerate dashboard/lib/reference/*.json
+    python scripts/gen/docs_reference.py --check   # exit 1 if they are stale, or if any
                                                 # `agentfox ...` printed on a docs page
                                                 # names a command or option that does
                                                 # not exist
@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
 OUT = REPO / "dashboard" / "lib" / "reference"
@@ -117,7 +117,7 @@ def build_cli() -> dict[str, Any]:
     root = typer.main.get_command(app)
     tree = _command(root, [], click.Context)
     return {
-        "generated_by": "scripts/docs_reference.py",
+        "generated_by": "scripts/gen/docs_reference.py",
         "root": tree,
     }
 
@@ -186,7 +186,7 @@ def build_api() -> dict[str, Any]:
     import os
     import tempfile
 
-    # Same as scripts/api_routes.py: a throwaway database, and the app as create_app()
+    # Same as scripts/gen/api_routes.py: a throwaway database, and the app as create_app()
     # builds it, with every router mounted. The OpenAPI document is the source, since
     # included routers are resolved lazily and are not all in `app.routes`.
     os.environ.setdefault("AGENTFOX_DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/ref.db")
@@ -221,7 +221,7 @@ def build_api() -> dict[str, Any]:
                 }
             )
     routes.sort(key=lambda r: (r["audience"] != "public", r["section"], r["path"], r["method"]))
-    return {"generated_by": "scripts/docs_reference.py", "count": len(routes), "routes": routes}
+    return {"generated_by": "scripts/gen/docs_reference.py", "count": len(routes), "routes": routes}
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +251,7 @@ def _fragments(tsx: str) -> list[str]:
 
 def check_pages() -> list[str]:
     spec = importlib.util.spec_from_file_location(
-        "check_plugins", REPO / "scripts" / "check_plugins.py"
+        "check_plugins", REPO / "scripts" / "check" / "plugins.py"
     )
     checker = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -288,7 +288,8 @@ def main() -> int:
     for path, text in outputs.items():
         if not path.exists() or path.read_text() != text:
             problems.append(
-                f"{path.relative_to(REPO)} is stale: run `python scripts/docs_reference.py --write`"
+                f"{path.relative_to(REPO)} is stale: "
+                "run `python scripts/gen/docs_reference.py --write`"
             )
     problems += check_pages()
     if problems:

@@ -18,7 +18,7 @@ export default function Page() {
       <h1>HTTP API reference</h1>
       <p className="docs-lede">
         All {API_COUNT} routes the gateway serves, generated from its OpenAPI document by{" "}
-        <code>scripts/docs_reference.py</code>. A running gateway serves the same document
+        <code>scripts/gen/docs_reference.py</code>. A running gateway serves the same document
         at <code>/openapi.json</code> and an explorer at <code>/docs</code>.
       </p>
 

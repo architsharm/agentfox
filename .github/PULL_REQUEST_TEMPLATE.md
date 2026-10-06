@@ -10,20 +10,20 @@ runs; these are the Python checks, and a red one will not merge:
 ```bash
 uvx ruff@0.15.7 check . && uvx ruff@0.15.7 format --check .
 pytest -q
-python scripts/api_routes.py --check
-python scripts/docs_reference.py --check
-python scripts/claims.py --check
-python scripts/check_plugins.py
+python scripts/gen/api_routes.py --check
+python scripts/gen/docs_reference.py --check
+python scripts/check/claims.py --check
+python scripts/check/plugins.py
 ```
 
 - [ ] `ruff check` and `ruff format --check` pass at CI's pinned version.
 - [ ] `pytest -q` passes.
-- [ ] `scripts/api_routes.py --check` passes, or Appendix C was regenerated with it.
-- [ ] `scripts/docs_reference.py --check` passes, or the docs reference was regenerated with
+- [ ] `scripts/gen/api_routes.py --check` passes, or Appendix C was regenerated with it.
+- [ ] `scripts/gen/docs_reference.py --check` passes, or the docs reference was regenerated with
       `--write`, if the CLI, the API or a docs page changed.
-- [ ] `scripts/claims.py --check` passes. If a published number moved, the benchmark was
+- [ ] `scripts/check/claims.py --check` passes. If a published number moved, the benchmark was
       re-run and its result file is in this PR. Numbers are not edited by hand.
-- [ ] `scripts/check_plugins.py` passes, if `plugins/` or the CLI changed (`--write`
+- [ ] `scripts/check/plugins.py` passes, if `plugins/` or the CLI changed (`--write`
       refreshes the Claude Code plugin's copies of `plugins/shared/`).
 - [ ] If `src/agentfox/` changed, the vendored wheels in `api/vendor/` and
       `demo/redteam-live-lang/vendor/` were rebuilt in the same commit. The pre-commit

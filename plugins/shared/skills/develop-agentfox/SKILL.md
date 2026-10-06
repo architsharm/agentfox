@@ -37,7 +37,7 @@ Fixtures live in `tests/conftest.py`: `session`, `seeded`, `enforcer`, `client`,
    in a `vendor/` directory under `api/` and under `demo/redteam-live-lang/`. Those
    directories are build output and are not in the repository — each carries its own
    `.gitignore` of `*` — so the paths are written here in prose rather than as repo
-   paths, which is also why check_plugins.py cannot resolve them. Install the hook with
+   paths, which is also why scripts/check/plugins.py cannot resolve them. Install the hook with
    `uvx pre-commit install`; it rebuilds them when `src/agentfox/` changes. Without the hook:
    `uv build --wheel --out-dir api/vendor && uv build --wheel --out-dir demo/redteam-live-lang/vendor`.
    CI's `vendored-wheel-freshness` job fails otherwise.
@@ -58,13 +58,13 @@ Fixtures live in `tests/conftest.py`: `session`, `seeded`, `enforcer`, `client`,
 | fixed a known issue | delete its entry in `plugins/shared/reference/known-issues.md` |
 | a requirement's implementation | `docs/design/traceability.md` |
 | added a doc anywhere | `plugins/shared/reference/docs-map.md` |
-| a benchmark number that a doc quotes | `benchmarks/claims.yaml`; `scripts/claims.py --check` fails CI if a quote drifts from its result |
+| a benchmark number that a doc quotes | `benchmarks/claims.yaml`; `scripts/check/claims.py --check` fails CI if a quote drifts from its result |
 
 Then run:
 
 ```bash
-uv run python scripts/check_plugins.py --write
-uv run python scripts/coverage.py --write           # regenerates docs/status.md
+uv run python scripts/check/plugins.py --write
+uv run python scripts/gen/coverage.py --write           # regenerates docs/status.md
 ```
 
 ## 5. Commits

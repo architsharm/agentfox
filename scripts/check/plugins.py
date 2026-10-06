@@ -14,8 +14,8 @@ Fails (exit 1) when:
   * a repo .md file that plugins/shared/reference/docs-map.md does not classify
 
 Run from the repo root inside the project venv:
-  uv run python scripts/check_plugins.py            # check
-  uv run python scripts/check_plugins.py --write    # refresh the copies, then check
+  uv run python scripts/check/plugins.py            # check
+  uv run python scripts/check/plugins.py --write    # refresh the copies, then check
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 PLUGINS = REPO / "plugins"
 SHARED = PLUGINS / "shared"
 #: What `shared/` provides, copied verbatim into every runtime plugin below.
@@ -283,7 +283,7 @@ def check_copies() -> None:
         for part in SHARED_PARTS:
             expected |= _files(SHARED / part)
             actual |= _files(target / part)
-        hint = "edit plugins/shared/ and run `python scripts/check_plugins.py --write`"
+        hint = "edit plugins/shared/ and run `python scripts/check/plugins.py --write`"
         for rel in sorted(expected - actual):
             errors.append(f"plugins/{runtime}/{rel}: missing copy of plugins/shared/{rel} ({hint})")
         for rel in sorted(actual - expected):

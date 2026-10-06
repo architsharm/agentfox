@@ -72,7 +72,7 @@ uv run python benchmarks/containment/run_containment_benchmark.py
 uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py   # superseded label-assigned run
 uv run python benchmarks/adaptive/run_adaptive_benchmark.py
 uv run python benchmarks/run_prompt_injection_benchmark.py
-uv run python scripts/coverage.py --write
+uv run python scripts/gen/coverage.py --write
 uv run python scripts/probe/run.py --md > docs/design/coverage-map.md
 ```
 

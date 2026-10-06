@@ -75,7 +75,7 @@ These are load-bearing design commitments found consistently enforced in code, n
    bound policy version that no longer loads alike (§6.2).
 5. **Computed, not attested.** Compliance-control status (Pillar 6) and failure-mode coverage
    are computed from telemetry (`capabilities/compliance/status.py`'s `status_rule` predicates,
-   `scripts/coverage.py --write`), not hand-maintained claims. `docs/status.md` is
+   `scripts/gen/coverage.py --write`), not hand-maintained claims. `docs/status.md` is
    machine-regenerated for exactly this reason.
 6. **Declared gaps over hidden gaps.** Framework-coverage tables list what a mapping does
    *not* cover (Appendix B §B.4); the threat model lists what it explicitly does not defend
@@ -379,7 +379,7 @@ and committed after every change to `src/agentfox` that the hosted path should r
 It went stale once (dated 2026-08-28 while `enforcement.py`, `autoguard.py` and others
 had changed), and history shows it caused a real incident (`551c220 revert(demo): restore
 last known-good vendored wheel — production DB migration gap`). Since commit `6863b8b` the
-risk is controlled rather than open: a pre-commit hook (`scripts/rebuild_vendored_wheels.py`)
+risk is controlled rather than open: a pre-commit hook (`scripts/check/rebuild_vendored_wheels.py`)
 rebuilds both vendored wheels whenever `src/agentfox/` changes, and CI's
 `vendored-wheel-freshness` job fails any push that changes `src/agentfox/` without them.
 
