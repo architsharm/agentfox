@@ -16,8 +16,8 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from agentfox.capabilities.discovery.threats import coverage, load_threats, threat_id
 from agentfox.core.models import RedTeamFinding
-from agentfox.discovery.threats import coverage, load_threats, threat_id
 from tests.conftest import as_user
 
 

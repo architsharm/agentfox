@@ -183,7 +183,8 @@ class Site:
     #: The tool's or MCP server's own name, when the site is one.
     name: str | None = None
     #: Which of the three trifecta flags this tool or server carries
-    #: (:data:`agentfox.discovery.exposure.FLAGS`), in that order. Empty means none was found,
+    #: (:data:`agentfox.capabilities.discovery.exposure.FLAGS`), in that order. Empty means none was
+    #: found,
     #: which for an unknown MCP server means "could not tell", not "safe".
     capabilities: list[str] = field(default_factory=list)
     #: For a `lethal_trifecta` site: flag -> the tools or servers that supply it.
@@ -268,7 +269,7 @@ class ScanReport:
     @property
     def trifectas(self) -> list[Site]:
         """Groups that can read private data, ingest untrusted content and send data
-        out — see :mod:`agentfox.discovery.exposure`."""
+        out — see :mod:`agentfox.capabilities.discovery.exposure`."""
         return [s for s in self.sites if s.kind == "lethal_trifecta"]
 
     @property
@@ -614,7 +615,7 @@ class _Visitor(ast.NodeVisitor):
         if name in self._tool_names:
             return
         self._tool_names.add(name)
-        from agentfox.discovery.exposure import FLAG_LABEL, classify_tool
+        from agentfox.capabilities.discovery.exposure import FLAG_LABEL, classify_tool
 
         caps = classify_tool(name, description)
         flags = caps.ordered()
@@ -940,7 +941,7 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
                 flags: list[str] = []
                 what = ""
                 if name:
-                    from agentfox.discovery.exposure import FLAG_LABEL, classify_tool
+                    from agentfox.capabilities.discovery.exposure import FLAG_LABEL, classify_tool
 
                     caps = classify_tool(name)
                     flags = caps.ordered()
@@ -1080,7 +1081,7 @@ def _detect_mcp(root: Path, report: ScanReport) -> None:
     `claude_desktop_config.json`, `.claude.json`, `.claude/settings*.json`) and never
     starts a server: what a server can do is classified from how it is declared.
     """
-    from agentfox.discovery.exposure import (
+    from agentfox.capabilities.discovery.exposure import (
         FLAG_LABEL,
         MCP_CONFIG_NAMES,
         classify_mcp_server,
@@ -1145,7 +1146,7 @@ def _detect_trifectas(report: ScanReport) -> None:
       not merged with code tools in the same directory, because an MCP config
       configures an IDE or assistant, not necessarily the application beside it.
     """
-    from agentfox.discovery.exposure import Member, containment_hint, trifecta_sentence
+    from agentfox.capabilities.discovery.exposure import Member, containment_hint, trifecta_sentence
 
     code_groups: dict[str, list[Site]] = {}
     mcp_groups: dict[str, list[Site]] = {}

@@ -37,9 +37,9 @@ import {
  *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement/
  *   - the provenance ladder .................. src/agentfox/capabilities/detection/taint.py, README "Commands"
  *   - impact tiers ........................... dashboard/app/glossary/page.tsx
- *   - static-only scanning, TS/JS pass ....... src/agentfox/discovery/repo.py
- *   - OpenAPI onboarding ..................... src/agentfox/discovery/openapi.py
- *   - local session scanning ................. src/agentfox/discovery/sessions.py
+ *   - static-only scanning, TS/JS pass ....... src/agentfox/capabilities/discovery/repo.py
+ *   - OpenAPI onboarding ..................... src/agentfox/capabilities/discovery/openapi.py
+ *   - local session scanning ................. src/agentfox/capabilities/discovery/sessions.py
  *   - MCP hygiene finding types .............. src/agentfox/platform/registry/service.py
  *   - scorer keys ............................ src/agentfox/evaluation/scorers.py
  *   - adaptive campaign scope ................ src/agentfox/evaluation/adaptive.py
@@ -338,7 +338,7 @@ export function Containment() {
 
 const DISCOVERY_ITEMS: Item[] = [
   {
-    // README.md "Commands"; behaviour from src/agentfox/discovery/repo.py.
+    // README.md "Commands"; behaviour from src/agentfox/capabilities/discovery/repo.py.
     label: "Committed code",
     body: "Reports what in a repository talks to a model, and which of it is ungoverned.",
   },
@@ -352,7 +352,7 @@ const DISCOVERY_ITEMS: Item[] = [
     body: "MCP tool hygiene: tool_poisoning in a tool description, an unpinned_server, schema_drift since the last scan.",
   },
   {
-    // src/agentfox/discovery/openapi.py and session_scan.py.
+    // src/agentfox/capabilities/discovery/openapi.py and session_scan.py.
     label: "OpenAPI and local sessions",
     body: "Only the OpenAPI spec is fetched. Local sessions give metadata only, never a prompt or a tool call's arguments.",
   },

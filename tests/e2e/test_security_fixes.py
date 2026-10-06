@@ -197,7 +197,7 @@ def _fake_dns(mapping: dict[str, list[str]]):
     ],
 )
 def test_spec_fetch_refuses_internal_targets_and_other_schemes(url, monkeypatch):
-    from agentfox.discovery import openapi
+    from agentfox.capabilities.discovery import openapi
 
     def _no_network(*a, **k):  # the refusal must happen before any connection
         raise AssertionError(f"a connection was attempted for {url}")
@@ -208,7 +208,7 @@ def test_spec_fetch_refuses_internal_targets_and_other_schemes(url, monkeypatch)
 
 
 def test_spec_fetch_refuses_a_name_that_resolves_to_a_private_address(monkeypatch):
-    from agentfox.discovery import openapi
+    from agentfox.capabilities.discovery import openapi
 
     # One public and one private answer: every resolved address must be public.
     monkeypatch.setattr(
@@ -223,7 +223,7 @@ def test_spec_fetch_refuses_a_name_that_resolves_to_a_private_address(monkeypatc
 
 def test_spec_fetch_connects_to_the_vetted_address_not_a_second_lookup(monkeypatch):
     """DNS rebinding: the address that was checked is the one connected to."""
-    from agentfox.discovery import openapi
+    from agentfox.capabilities.discovery import openapi
 
     seen: list[httpx.Request] = []
 
@@ -240,7 +240,7 @@ def test_spec_fetch_connects_to_the_vetted_address_not_a_second_lookup(monkeypat
 
 
 def test_spec_fetch_revalidates_every_redirect(monkeypatch):
-    from agentfox.discovery import openapi
+    from agentfox.capabilities.discovery import openapi
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(302, headers={"location": "http://169.254.169.254/latest/"})
@@ -252,7 +252,7 @@ def test_spec_fetch_revalidates_every_redirect(monkeypatch):
 
 
 def test_spec_fetch_follows_a_redirect_to_another_public_host(monkeypatch):
-    from agentfox.discovery import openapi
+    from agentfox.capabilities.discovery import openapi
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.headers["host"] == "api.example":
@@ -271,8 +271,8 @@ def test_spec_fetch_follows_a_redirect_to_another_public_host(monkeypatch):
 def test_spec_fetch_private_hosts_are_an_explicit_opt_in(monkeypatch):
     """A self-hosted deployment scanning a spec on its own network can say so — but
     the metadata address stays refused even then."""
+    from agentfox.capabilities.discovery import openapi
     from agentfox.core.config import get_settings
-    from agentfox.discovery import openapi
 
     monkeypatch.setattr(get_settings(), "outbound_allow_private_hosts", True)
     monkeypatch.setattr(

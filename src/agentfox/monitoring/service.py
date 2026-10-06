@@ -588,8 +588,8 @@ def request_run(
 
 
 def _run_github_repo(session: Session, monitor: Monitor, ctx: RunContext) -> RunOutcome:
+    from agentfox.capabilities.discovery.repo import scan as discovery_scan
     from agentfox.core.crypto import decrypt_secret
-    from agentfox.discovery.repo import scan as discovery_scan
     from agentfox.monitoring import github as gh
 
     config = monitor.config_json or {}
@@ -639,7 +639,7 @@ def _run_github_repo(session: Session, monitor: Monitor, ctx: RunContext) -> Run
 
 
 def _run_hosted_api(session: Session, monitor: Monitor, ctx: RunContext) -> RunOutcome:
-    from agentfox.discovery.openapi import SpecFetchError, fetch_spec
+    from agentfox.capabilities.discovery.openapi import SpecFetchError, fetch_spec
 
     try:
         spec = fetch_spec(monitor.target)

@@ -634,7 +634,7 @@ export function RedactionMock({ className }: { className?: string }) {
 /* --- 4. Discovery -------------------------------------------------------- */
 
 type ScanRow = {
-  /** Site.kind, src/agentfox/discovery/repo.py:164 */
+  /** Site.kind, src/agentfox/capabilities/discovery/repo.py:164 */
   kind: string;
   /** Site.severity, rendered by the CLI as the word itself, cli/onboarding.py:81-87 */
   severity: "critical" | "high" | "medium" | "low" | "info";

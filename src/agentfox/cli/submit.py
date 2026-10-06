@@ -17,7 +17,7 @@ from typing import Any
 import httpx
 from rich.console import Console
 
-from agentfox.discovery.repo import ScanReport
+from agentfox.capabilities.discovery.repo import ScanReport
 
 
 class SubmissionUnavailable(Exception):

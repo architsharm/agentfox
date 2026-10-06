@@ -37,6 +37,9 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
+from agentfox.capabilities.discovery.repo import ScanReport
+from agentfox.capabilities.discovery.repo import scan as discovery_scan
 from agentfox.core import ids
 from agentfox.core.config import (
     PUBLISHED_SECRET_VALUES,
@@ -55,9 +58,6 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.core.tenancy import bind_session, system_scope
-from agentfox.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
-from agentfox.discovery.repo import ScanReport
-from agentfox.discovery.repo import scan as discovery_scan
 from agentfox.gateway.auth import issue_token, resolve_token_record, revoke_token
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.monitoring import github as gh

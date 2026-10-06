@@ -8,8 +8,8 @@
 
 from __future__ import annotations
 
-from agentfox.discovery.exposure import EXFIL, PRIVATE, UNTRUSTED, classify_tool
-from agentfox.discovery.repo import ScanReport, Site
+from agentfox.capabilities.discovery.exposure import EXFIL, PRIVATE, UNTRUSTED, classify_tool
+from agentfox.capabilities.discovery.repo import ScanReport, Site
 
 
 def test_closing_a_ticket_reads_nothing_in():

@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from agentfox.capabilities.discovery.repo import ScanReport, Site
 from agentfox.core import outbound
-from agentfox.discovery.repo import ScanReport, Site
 
 #: A fetched spec document beyond this is refused outright — a resource-exhaustion
 #: guard on server-supplied content, the same shape as the repo-tarball size cap.

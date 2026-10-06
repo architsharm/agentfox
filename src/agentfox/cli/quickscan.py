@@ -76,10 +76,10 @@ def quickscan(
 ) -> None:
     """One shot: what's committed, what's actually running, and proof the detectors
     work — no account, nothing leaves this machine unless you explicitly submit."""
+    from agentfox.capabilities.discovery.repo import scan as discovery_scan
+    from agentfox.capabilities.discovery.sessions import scan_all
     from agentfox.cli._scan_view import print_trifectas, surface_line
     from agentfox.cli.submit import maybe_submit_report
-    from agentfox.discovery.repo import scan as discovery_scan
-    from agentfox.discovery.sessions import scan_all
 
     repo_report = discovery_scan(path)
     session_reports = [] if skip_sessions else scan_all()

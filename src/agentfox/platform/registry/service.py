@@ -143,7 +143,8 @@ def propose_from_scan(
     repo_short = slugify(repo_slug_base)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     # A lethal trifecta (private data + untrusted input + a way out, see
-    # `agentfox.discovery.exposure`) raises the risk tier of the agent in its directory. It
+    # `agentfox.capabilities.discovery.exposure`) raises the risk tier of the agent in its
+    # directory. It
     # does not propose an agent on its own: an `.mcp.json` trifecta describes an
     # IDE's servers, not an application this repo deploys.
     trifecta_dirs: set[str] = set()

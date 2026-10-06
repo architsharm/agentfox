@@ -310,9 +310,9 @@ def check(
     applications. Stays entirely local unless `--submit` (or an interactive "yes")
     opts into sending a redacted summary — see `cli/submit.py`.
     """
+    from agentfox.capabilities.discovery.repo import scan
     from agentfox.cli._scan_view import print_surface, print_trifectas
     from agentfox.cli.submit import maybe_submit_report
-    from agentfox.discovery.repo import scan
 
     report = scan(path)
     if as_json:

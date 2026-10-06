@@ -32,8 +32,8 @@ def scan_skills(
     OWASP published an Agentic Skills Top 10 in 2026 and we scanned servers but
     not skills.
     """
+    from agentfox.capabilities.discovery.skills import scan_skills_dir
     from agentfox.platform.ledger.findings import raise_finding
-    from agentfox.platform.registry.skills import scan_skills_dir
 
     results = scan_skills_dir(path)
     if not results:
@@ -120,8 +120,7 @@ def scan_mcp(
     """
     from sqlalchemy import select
 
-    from agentfox.core.models import McpServer
-    from agentfox.discovery.exposure import (
+    from agentfox.capabilities.discovery.exposure import (
         FLAG_LABEL,
         Member,
         classify_mcp_server,
@@ -131,6 +130,7 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
+    from agentfox.core.models import McpServer
     from agentfox.fixtures.seed import MCP_TOOLS
     from agentfox.monitoring.service import safe_ensure_monitor
     from agentfox.platform.registry.service import (

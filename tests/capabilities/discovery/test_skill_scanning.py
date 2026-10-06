@@ -18,7 +18,7 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-from agentfox.platform.registry.skills import analyse_skill, parse_skill_file, scan_skills_dir
+from agentfox.capabilities.discovery.skills import analyse_skill, parse_skill_file, scan_skills_dir
 
 
 def kinds(result: dict) -> set[str]:

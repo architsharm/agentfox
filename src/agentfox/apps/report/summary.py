@@ -429,7 +429,7 @@ def _feedback(
 
 def _coverage(session: Session) -> dict[str, Any]:
     from agentfox.capabilities.compliance import posture
-    from agentfox.discovery.threats import coverage
+    from agentfox.capabilities.discovery.threats import coverage
 
     data = coverage(session)
     title = (data.get("catalogues") or {}).get("owasp-agentic", {}).get("title", "")

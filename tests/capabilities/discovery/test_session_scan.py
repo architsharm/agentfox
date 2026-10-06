@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentfox.discovery.sessions import scan_claude_code
+from agentfox.capabilities.discovery.sessions import scan_claude_code
 
 SECRET_MARKER = "sk-do-not-leak-this-9f3a7c"
 

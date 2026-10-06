@@ -15,8 +15,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.discovery.threats import coverage as threat_coverage
 from agentfox.core.models import User
-from agentfox.discovery.threats import coverage as threat_coverage
 from agentfox.gateway.deps import current_user, db
 
 router = APIRouter(prefix="/api/coverage", tags=["coverage"])

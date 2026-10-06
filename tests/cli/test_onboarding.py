@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from agentfox.capabilities.discovery.repo import ScanReport, Site, scan, scan_file
 from agentfox.cli.main import app
-from agentfox.discovery.repo import ScanReport, Site, scan, scan_file
 from tests.conftest import as_user
 
 runner = CliRunner()

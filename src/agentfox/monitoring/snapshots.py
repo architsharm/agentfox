@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.discovery.repo import ScanReport
+from agentfox.capabilities.discovery.repo import ScanReport
 
 #: Finding types a monitor raises and closes. `service.reconcile` only ever closes
 #: findings of these types (plus whatever a registered kind declares), so a monitor
