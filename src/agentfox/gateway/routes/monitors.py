@@ -3,7 +3,7 @@
 Monitors are created on their own when a GitHub repository is connected and scanned,
 a hosted API's spec is scanned, or an MCP server is registered. These routes list them,
 add one by hand, pause, resume, retune or remove one, and run one now. The
-`monitors.run` job (`agentfox.monitoring`) is what runs them on schedule.
+`monitors.run` job (`agentfox.capabilities.monitoring`) is what runs them on schedule.
 
 `/api/alerts/slack` sets the tenant's own Slack incoming webhook for monitor alerts.
 """
@@ -18,10 +18,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.monitoring import alerts
+from agentfox.capabilities.monitoring import service as monitoring
 from agentfox.core.models import AlertChannel, McpServer, Monitor, ProbeTarget, User
 from agentfox.gateway.deps import current_user, db, require
-from agentfox.monitoring import alerts
-from agentfox.monitoring import service as monitoring
 from agentfox.platform.jobs import store as jobs_db
 from agentfox.platform.ledger import chain
 

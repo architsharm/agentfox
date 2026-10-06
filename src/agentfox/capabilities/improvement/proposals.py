@@ -1,7 +1,7 @@
 """The proposal lifecycle: filed, proven, approved, applied, verified — or undone.
 
 This is the only path by which the improvement loop changes configuration, and the
-place the rules in :mod:`agentfox.improvement.contract` are enforced rather than
+place the rules in :mod:`agentfox.capabilities.improvement.contract` are enforced rather than
 merely stated:
 
 * every transition is checked against ``contract.transition_allowed``;
@@ -25,11 +25,16 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.improvement import contract
+from agentfox.capabilities.improvement.appliers import (
+    APPLY_ACTION,
+    ApplierError,
+    get_applier,
+    has_applier,
+)
 from agentfox.core.config import get_settings
 from agentfox.core.models import AuditEntry, ChangeProposal, utcnow
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
-from agentfox.improvement import contract
-from agentfox.improvement.appliers import APPLY_ACTION, ApplierError, get_applier, has_applier
 from agentfox.platform.ledger import chain
 
 SUBJECT_TYPE = "change_proposal"

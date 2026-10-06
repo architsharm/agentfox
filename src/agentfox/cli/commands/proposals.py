@@ -19,7 +19,7 @@ proposals_app = typer.Typer(
 
 
 def _load_proposal(session, proposal_id: str):
-    from agentfox.improvement.proposals import get_proposal
+    from agentfox.capabilities.improvement.proposals import get_proposal
 
     proposal = get_proposal(session, proposal_id)
     if proposal is None:
@@ -30,7 +30,7 @@ def _load_proposal(session, proposal_id: str):
 
 def _proposal_step(proposal_id: str, step) -> None:
     """Run one lifecycle step; a refused step exits non-zero and changes nothing."""
-    from agentfox.improvement.proposals import proposal_json
+    from agentfox.capabilities.improvement.proposals import proposal_json
 
     with _session() as session:
         proposal = _load_proposal(session, proposal_id)
@@ -52,7 +52,7 @@ def proposals_list(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """List proposals, newest first."""
-    from agentfox.improvement.proposals import list_proposals, proposal_json
+    from agentfox.capabilities.improvement.proposals import list_proposals, proposal_json
 
     with _session() as session:
         rows = [
@@ -94,7 +94,7 @@ def proposals_list(
 @proposals_app.command("show")
 def proposals_show(proposal_id: str, as_json: bool = typer.Option(False, "--json")) -> None:
     """Show one proposal: its diff, evidence, proof and decisions."""
-    from agentfox.improvement.proposals import proposal_json
+    from agentfox.capabilities.improvement.proposals import proposal_json
 
     with _session() as session:
         body = proposal_json(_load_proposal(session, proposal_id))
@@ -125,7 +125,7 @@ def proposals_approve(
     note: str = typer.Option(..., "--note", help="Why"),
 ) -> None:
     """Approve a proven proposal. An org-level loosening needs two different people."""
-    from agentfox.improvement.proposals import decide
+    from agentfox.capabilities.improvement.proposals import decide
 
     _proposal_step(proposal_id, lambda s, p: decide(s, p, approve=True, actor=actor, note=note))
 
@@ -137,7 +137,7 @@ def proposals_reject(
     note: str = typer.Option(..., "--note", help="Why"),
 ) -> None:
     """Reject a proposal."""
-    from agentfox.improvement.proposals import decide
+    from agentfox.capabilities.improvement.proposals import decide
 
     _proposal_step(proposal_id, lambda s, p: decide(s, p, approve=False, actor=actor, note=note))
 
@@ -153,7 +153,7 @@ def proposals_apply(
     ),
 ) -> None:
     """Apply an approved proposal (or settle one whose canary has finished)."""
-    from agentfox.improvement.proposals import apply_proposal
+    from agentfox.capabilities.improvement.proposals import apply_proposal
 
     if not automated and not actor:
         console.print("[red]--actor is required unless --automated[/]")
@@ -171,7 +171,7 @@ def proposals_rollback(
     reason: str = typer.Option(..., "--reason", help="Why it is being undone"),
 ) -> None:
     """Undo an applied or canaried proposal."""
-    from agentfox.improvement.proposals import rollback_proposal
+    from agentfox.capabilities.improvement.proposals import rollback_proposal
 
     _proposal_step(
         proposal_id,
@@ -193,7 +193,7 @@ def proposals_verify(
     `--failed` rolls the change back. If undoing it would loosen a control, it stays
     applied with the failure recorded, because that rollback is a person's decision.
     """
-    from agentfox.improvement.proposals import verify_proposal
+    from agentfox.capabilities.improvement.proposals import verify_proposal
 
     _proposal_step(
         proposal_id,
@@ -207,7 +207,7 @@ def proposals_from_labels(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """File rule cut-off proposals from labelled false positives. Nothing is applied."""
-    from agentfox.improvement.loops import propose_threshold_changes
+    from agentfox.capabilities.improvement.loops import propose_threshold_changes
 
     with _session() as session:
         report = propose_threshold_changes(session, days=days).to_json()
@@ -240,8 +240,8 @@ def proposals_from_traffic(
     stopped for where its arguments came from and nobody approved, is never learned
     from. Nothing is applied: approve and apply each proposal.
     """
-    from agentfox.improvement.proposals import get_proposal
-    from agentfox.improvement.traffic import parse_since, propose_from_traffic
+    from agentfox.capabilities.improvement.proposals import get_proposal
+    from agentfox.capabilities.improvement.traffic import parse_since, propose_from_traffic
 
     try:
         window = parse_since(since)

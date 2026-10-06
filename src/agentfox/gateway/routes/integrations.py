@@ -40,6 +40,9 @@ from sqlalchemy.orm import Session
 from agentfox.capabilities.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
 from agentfox.capabilities.discovery.repo import ScanReport
 from agentfox.capabilities.discovery.repo import scan as discovery_scan
+from agentfox.capabilities.monitoring import github as gh
+from agentfox.capabilities.monitoring.service import request_run, safe_ensure_monitor
+from agentfox.capabilities.monitoring.snapshots import api_snapshot, repo_snapshot
 from agentfox.core import ids
 from agentfox.core.config import (
     PUBLISHED_SECRET_VALUES,
@@ -60,9 +63,6 @@ from agentfox.core.models import (
 from agentfox.core.tenancy import bind_session, system_scope
 from agentfox.gateway.auth import issue_token, resolve_token_record, revoke_token
 from agentfox.gateway.deps import current_user, db, require
-from agentfox.monitoring import github as gh
-from agentfox.monitoring.service import request_run, safe_ensure_monitor
-from agentfox.monitoring.snapshots import api_snapshot, repo_snapshot
 from agentfox.platform.ledger import chain
 from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.platform.registry.service import propose_from_scan, register_agent, slugify

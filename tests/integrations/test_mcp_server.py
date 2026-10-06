@@ -227,8 +227,8 @@ def test_unknown_agent_is_a_genuine_failure():
 
 
 def _file_a_proposal() -> str:
+    from agentfox.capabilities.improvement.proposals import file_proposal
     from agentfox.core.db import session_scope
-    from agentfox.improvement.proposals import file_proposal
 
     with session_scope() as session:
         proposal = file_proposal(

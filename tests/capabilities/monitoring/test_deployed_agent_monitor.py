@@ -15,10 +15,10 @@ import pytest
 from sqlalchemy import select
 
 from agentfox.capabilities.evaluation import live_probes
+from agentfox.capabilities.monitoring import alerts
+from agentfox.capabilities.monitoring import service as monitoring
 from agentfox.core.config import get_settings
 from agentfox.core.models import RedTeamCampaign
-from agentfox.monitoring import alerts
-from agentfox.monitoring import service as monitoring
 from tests.capabilities.evaluation.test_live_probes import NOW, _opted_in, _target
 from tests.capabilities.evaluation.test_live_probes import agent as agent  # noqa: F401 - fixture
 

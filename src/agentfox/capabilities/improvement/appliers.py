@@ -1,7 +1,7 @@
 """How each kind of proposed change is actually made — and unmade.
 
 A proposal is inert until an applier exists for its kind. Each applier answers three
-questions, and the service in :mod:`agentfox.improvement.proposals` refuses to move a
+questions, and the service in :mod:`agentfox.capabilities.improvement.proposals` refuses to move a
 proposal whose applier cannot answer all three:
 
 * ``direction`` — does this change tighten or loosen, **computed from the diff and the
@@ -15,7 +15,7 @@ proposal whose applier cannot answer all three:
 
 Kinds: ``suppression.revoke`` and ``policy.rule_min_score`` (the threshold loop), and
 ``capability.grant`` and ``tool.declare`` (the learned-permissions loop in
-:mod:`agentfox.improvement.traffic`).
+:mod:`agentfox.capabilities.improvement.traffic`).
 
 Appliers never touch proposal status or write proposal audit entries; that is the
 service's job. They do call the domain functions (``revoke_suppression``,
@@ -33,6 +33,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.improvement import contract
 from agentfox.core.models import (
     AuditEntry,
     ChangeProposal,
@@ -43,7 +44,6 @@ from agentfox.core.models import (
     PolicyVersion,
     Suppression,
 )
-from agentfox.improvement import contract
 
 #: Audit action the service records an apply under. Declared here because a revert
 #: reads back what its own apply recorded — the chain, not a mutable column, is the

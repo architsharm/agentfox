@@ -2,7 +2,7 @@
 
 Pure functions, no database: a snapshot is a JSON-able dict built from a scan, and a
 diff of two snapshots is a list of :class:`Condition` plus the set of conditions that
-still hold. `agentfox.monitoring.service` turns the first into findings and uses the
+still hold. `agentfox.capabilities.monitoring.service` turns the first into findings and uses the
 second to close findings whose condition has cleared.
 
 Keys are what make a diff meaningful. A rescan moves line numbers every time someone

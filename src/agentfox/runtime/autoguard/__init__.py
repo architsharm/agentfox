@@ -669,8 +669,8 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
     from sqlalchemy import select
     from sqlalchemy.exc import IntegrityError
 
+    from agentfox.capabilities.improvement.traffic import infer_declared_impact
     from agentfox.core.models import Tool
-    from agentfox.improvement.traffic import infer_declared_impact
     from agentfox.integrations.mcp import infer_impact
     from agentfox.platform.registry.service import (
         DECLARED_TOOL_IMPACTS,

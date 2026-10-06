@@ -13,10 +13,10 @@ import httpx
 import pytest
 from cryptography.fernet import Fernet
 
+from agentfox.capabilities.monitoring import alerts
+from agentfox.capabilities.monitoring import github as gh
 from agentfox.core import outbound
 from agentfox.core.config import get_settings
-from agentfox.monitoring import alerts
-from agentfox.monitoring import github as gh
 
 T0 = dt.datetime(2026, 10, 6, 9, 0, tzinfo=dt.UTC)
 

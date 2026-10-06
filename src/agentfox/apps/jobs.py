@@ -28,7 +28,7 @@ kind                   what it does
                        default schedule is created disabled.
 ``monitors.run``       Runs every due monitor of connected sources (GitHub repos,
                        hosted-API specs, MCP servers), or one (``monitor_id``,
-                       ``ref``, ``trigger``) — see ``agentfox.monitoring``.
+                       ``ref``, ``trigger``) — see ``agentfox.capabilities.monitoring``.
 ``probes.run``         Sends the live probe library to every *opted-in* probe target
                        in the tenant that is due (``evaluation.live_probes``), records
                        a campaign per target and opens/closes ``live_probe_escape``
@@ -277,7 +277,7 @@ def run_live_probes(session: Session, payload: dict[str, Any]) -> dict[str, Any]
 
 def propose_threshold_changes(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     """Turn labelled false positives into rule cut-off proposals a person decides."""
-    from agentfox.improvement.loops import propose_threshold_changes as run_loop
+    from agentfox.capabilities.improvement.loops import propose_threshold_changes as run_loop
 
     return run_loop(session, days=int(payload.get("days", 30))).to_json()
 
@@ -289,7 +289,7 @@ def propose_threshold_changes(session: Session, payload: dict[str, Any]) -> dict
 
 def propose_from_traffic(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     """Turn observed tool calls into tool-declaration and grant proposals a person decides."""
-    from agentfox.improvement.traffic import propose_from_traffic as run_loop
+    from agentfox.capabilities.improvement.traffic import propose_from_traffic as run_loop
 
     return run_loop(
         session, agent=payload.get("agent"), days=int(payload.get("days", 30))
@@ -315,7 +315,7 @@ def scan_escalations(session: Session, payload: dict[str, Any]) -> dict[str, Any
 
 def run_monitors(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     """Re-check connected sources: every due monitor, or the one ``monitor_id`` names."""
-    from agentfox.monitoring.service import handle_job
+    from agentfox.capabilities.monitoring.service import handle_job
 
     return handle_job(session, payload)
 

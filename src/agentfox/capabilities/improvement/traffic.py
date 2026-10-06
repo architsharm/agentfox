@@ -48,6 +48,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.improvement import contract
+from agentfox.capabilities.improvement.loops import SUPERSEDE_ACTION, LoopReport
+from agentfox.capabilities.improvement.proposals import (
+    SUBJECT_TYPE,
+    attach_proof,
+    file_proposal,
+    verify_proposal,
+)
 from agentfox.core.models import (
     Agent,
     ApprovalRequest,
@@ -61,14 +69,6 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.core.vocab import taint_rank
-from agentfox.improvement import contract
-from agentfox.improvement.loops import SUPERSEDE_ACTION, LoopReport
-from agentfox.improvement.proposals import (
-    SUBJECT_TYPE,
-    attach_proof,
-    file_proposal,
-    verify_proposal,
-)
 from agentfox.platform.identity.service import _constraint_ok
 from agentfox.platform.ledger import chain
 

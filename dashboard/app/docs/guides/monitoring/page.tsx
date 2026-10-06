@@ -190,7 +190,7 @@ github_repo acme/support-bot: baseline`}</Output>
   - high acme/support-bot: governance removed from a model call in support_triage/agent.py  (cleared)
   …`}</Output>
           <p>
-            Closed findings are resolved by <code>agentfox.monitoring</code>, marked automated
+            Closed findings are resolved by <code>agentfox.capabilities.monitoring</code>, marked automated
             on the audit chain, so nobody mistakes them for a person&apos;s decision.
           </p>
         </Step>

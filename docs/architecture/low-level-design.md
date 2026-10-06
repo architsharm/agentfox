@@ -47,7 +47,7 @@ Everything lives in subpackages. The package root holds only `__init__.py` (the 
 ## 2. Tests
 
 `tests/` mirrors the package one directory per subpackage (`tests/runtime/`, `tests/platform/policy/`,
-`tests/monitoring/`, …). Three directories are cross-cutting: `tests/e2e/` runs the request
+`tests/capabilities/monitoring/`, …). Three directories are cross-cutting: `tests/e2e/` runs the request
 path end to end across packages, `tests/repo/` checks the repository itself (claims registry,
 docs site, harness, vendored wheels, install layout), and `tests/corpus/` holds fixture
 corpora rather than tests. The dashboard has its own vitest suite (`npm test` in
@@ -425,7 +425,7 @@ declares them), including evidence downloads.
 
 ---
 
-## 15. Monitoring and live probes — `src/agentfox/monitoring/`, `evaluation/live_probes.py`
+## 15. Monitoring and live probes — `src/agentfox/capabilities/monitoring/`, `evaluation/live_probes.py`
 
 **Monitors.** A `Monitor` row watches one source: `github_repo` (`owner/repo`), `hosted_api`
 (an OpenAPI URL), `mcp_server` (a registered server's name) or `deployed_agent` (a

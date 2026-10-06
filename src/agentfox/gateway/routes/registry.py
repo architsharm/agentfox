@@ -460,7 +460,7 @@ def create_mcp(
 
 
 def _monitor_mcp(session: Session, server: McpServer, user: User | None):
-    from agentfox.monitoring.service import safe_ensure_monitor
+    from agentfox.capabilities.monitoring.service import safe_ensure_monitor
 
     return safe_ensure_monitor(
         session,

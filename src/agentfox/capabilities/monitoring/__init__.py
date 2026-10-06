@@ -18,7 +18,7 @@ Public surface:
 
 from __future__ import annotations
 
-from agentfox.monitoring.service import (
+from agentfox.capabilities.monitoring.service import (
     JOB_KIND,
     MonitorError,
     RunContext,
@@ -33,7 +33,7 @@ from agentfox.monitoring.service import (
     run_due,
     run_monitor,
 )
-from agentfox.monitoring.snapshots import Condition, Diff
+from agentfox.capabilities.monitoring.snapshots import Condition, Diff
 
 __all__ = [
     "JOB_KIND",

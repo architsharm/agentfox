@@ -16,6 +16,23 @@ from sqlalchemy import select
 from typer.testing import CliRunner
 
 from agentfox.capabilities.detection.taint import TaintTracker
+from agentfox.capabilities.improvement import contract
+from agentfox.capabilities.improvement.proposals import (
+    AutomationRefused,
+    ProposalError,
+    apply_proposal,
+    decide,
+    rollback_proposal,
+)
+from agentfox.capabilities.improvement.traffic import (
+    DECLARE_KIND,
+    GRANT_KIND,
+    infer_declared_impact,
+    nice_ceiling,
+    parse_since,
+    propose_from_traffic,
+    suggest_limits,
+)
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     ApprovalRequest,
@@ -25,23 +42,6 @@ from agentfox.core.models import (
     Identity,
     LineageEdge,
     Tool,
-)
-from agentfox.improvement import contract
-from agentfox.improvement.proposals import (
-    AutomationRefused,
-    ProposalError,
-    apply_proposal,
-    decide,
-    rollback_proposal,
-)
-from agentfox.improvement.traffic import (
-    DECLARE_KIND,
-    GRANT_KIND,
-    infer_declared_impact,
-    nice_ceiling,
-    parse_since,
-    propose_from_traffic,
-    suggest_limits,
 )
 from agentfox.platform.identity import resolve_approval
 from agentfox.platform.ledger.trace import start_trace
@@ -299,8 +299,8 @@ def test_a_call_a_detector_matched_is_never_learned_from(session, packs):
 def test_personal_data_in_an_email_is_not_an_attack(session, packs):
     """An address is the point of send_email. PII rules keep firing after the grant;
     they are not evidence the call was injected."""
+    from agentfox.capabilities.improvement.traffic import classify
     from agentfox.core.models import Decision
-    from agentfox.improvement.traffic import classify
 
     decision = Decision(
         surface="tool_args",
@@ -431,7 +431,7 @@ def test_an_applied_grant_lets_the_benign_call_through_and_is_audited(session, p
 
 
 def grant_capability_id(session, proposal):
-    from agentfox.improvement.appliers import applied_result
+    from agentfox.capabilities.improvement.appliers import applied_result
 
     return applied_result(session, proposal)["capability_id"]
 

@@ -8,16 +8,16 @@ import json
 import pytest
 from sqlalchemy import select
 
+from agentfox.capabilities.monitoring import alerts
+from agentfox.capabilities.monitoring import github as gh
+from agentfox.capabilities.monitoring import service as monitoring
+from agentfox.capabilities.monitoring import snapshots as snap
 from agentfox.core.config import get_settings
 from agentfox.core.crypto import decrypt_secret, encrypt_secret
 from agentfox.core.db import session_scope
 from agentfox.core.models import AlertChannel, Finding, GithubConnection, Job, Monitor, User
-from agentfox.monitoring import alerts
-from agentfox.monitoring import github as gh
-from agentfox.monitoring import service as monitoring
-from agentfox.monitoring import snapshots as snap
+from tests.capabilities.monitoring.test_monitor_runs import GOVERNED, SUPPORT_BOT
 from tests.conftest import as_user
-from tests.monitoring.test_monitor_runs import GOVERNED, SUPPORT_BOT
 
 ADMIN = as_user("admin@example.com")
 AUDITOR = as_user("aisha@example.com")

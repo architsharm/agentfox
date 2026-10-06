@@ -37,6 +37,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.capabilities.detection.tuning import threshold_recommendations
+from agentfox.capabilities.improvement import contract
+from agentfox.capabilities.improvement.appliers import (
+    ApplierError,
+    _document,
+    _live_policy,
+    rule_agent_restriction,
+)
+from agentfox.capabilities.improvement.proposals import SUBJECT_TYPE, attach_proof, file_proposal
 from agentfox.core.models import (
     Agent,
     ChangeProposal,
@@ -48,14 +56,6 @@ from agentfox.core.models import (
     Trace,
     utcnow,
 )
-from agentfox.improvement import contract
-from agentfox.improvement.appliers import (
-    ApplierError,
-    _document,
-    _live_policy,
-    rule_agent_restriction,
-)
-from agentfox.improvement.proposals import SUBJECT_TYPE, attach_proof, file_proposal
 from agentfox.platform.ledger import chain
 
 KIND = "policy.rule_min_score"

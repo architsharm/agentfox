@@ -6,7 +6,7 @@ import itertools
 
 import pytest
 
-from agentfox.improvement import contract as c
+from agentfox.capabilities.improvement import contract as c
 
 
 def test_loosening_is_never_automatic_at_any_level():

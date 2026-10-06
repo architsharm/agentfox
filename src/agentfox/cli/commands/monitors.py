@@ -52,8 +52,8 @@ def _find(session: Any, ident: str):
 
 def _flush_alerts() -> None:
     """A CLI process exits right after the command: let queued alerts leave first."""
+    from agentfox.capabilities.monitoring import alerts
     from agentfox.core import webhooks
-    from agentfox.monitoring import alerts
 
     alerts.wait_for_delivery(10)
     webhooks.wait_for_delivery(10)
@@ -75,8 +75,8 @@ def list_monitors(as_json: bool = typer.Option(False, "--json", help="Print JSON
     """Every monitor, its last outcome, and when it runs next."""
     from sqlalchemy import select
 
+    from agentfox.capabilities.monitoring.service import monitor_json
     from agentfox.core.models import Monitor
-    from agentfox.monitoring.service import monitor_json
 
     with _session() as session:
         rows = [
@@ -118,7 +118,7 @@ def add_monitor(
     name: str = typer.Option("", "--name", help="A label for lists and alerts."),
 ) -> None:
     """Start watching a source. Its first run stores a baseline; later runs report changes."""
-    from agentfox.monitoring.service import ensure_monitor, get_monitor
+    from agentfox.capabilities.monitoring.service import ensure_monitor, get_monitor
 
     with _session() as session:
         if get_monitor(session, kind, target) is not None:
@@ -178,9 +178,9 @@ def run_monitors(
     as_json: bool = typer.Option(False, "--json", help="Print JSON."),
 ) -> None:
     """Run one monitor now, or every monitor that is due."""
+    from agentfox.capabilities.monitoring.service import run_due, run_monitor
     from agentfox.cli._style import SEVERITY_COLOUR
     from agentfox.core.models import Finding, Monitor
-    from agentfox.monitoring.service import run_due, run_monitor
 
     lines: list[str] = []
     with _session() as session:

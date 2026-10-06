@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from agentfox.capabilities.discovery.repo import ScanReport, Site
-from agentfox.monitoring import snapshots as snap
+from agentfox.capabilities.monitoring import snapshots as snap
 
 
 def _report(*sites: Site) -> ScanReport:

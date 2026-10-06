@@ -103,19 +103,19 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "ends an identity; the gap between issue and revoke is the exposure window",
     ),
     PrivilegedAction(
-        "agentfox.improvement.proposals.decide",
+        "agentfox.capabilities.improvement.proposals.decide",
         "operator.proposal.decided",
         "approves or rejects a change to the governance configuration; for an org-level "
         "loosening, one of the two named people who let a control be weakened",
     ),
     PrivilegedAction(
-        "agentfox.improvement.proposals.apply_proposal",
+        "agentfox.capabilities.improvement.proposals.apply_proposal",
         "operator.proposal.applied",
         "changes live configuration — possibly with nobody deciding, which is exactly "
         "when the record of who (or what) did it matters most",
     ),
     PrivilegedAction(
-        "agentfox.improvement.proposals.rollback_proposal",
+        "agentfox.capabilities.improvement.proposals.rollback_proposal",
         "operator.proposal.rolled_back",
         "undoes a change; reverting a tightening loosens a control again",
     ),

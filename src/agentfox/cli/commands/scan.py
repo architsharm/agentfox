@@ -130,9 +130,9 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
+    from agentfox.capabilities.monitoring.service import safe_ensure_monitor
     from agentfox.core.models import McpServer
     from agentfox.fixtures.seed import MCP_TOOLS
-    from agentfox.monitoring.service import safe_ensure_monitor
     from agentfox.platform.registry.service import (
         normalise_tool_list,
         scan_mcp_server,

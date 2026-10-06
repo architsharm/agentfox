@@ -14,6 +14,21 @@ import pytest
 from sqlalchemy import select
 
 from agentfox.capabilities.detection.tuning import apply_suppression, record_feedback
+from agentfox.capabilities.improvement import contract
+from agentfox.capabilities.improvement.appliers import min_score_direction
+from agentfox.capabilities.improvement.proposals import (
+    AutomationRefused,
+    IllegalTransition,
+    ProposalError,
+    apply_proposal,
+    attach_proof,
+    decide,
+    effective_autonomy,
+    file_proposal,
+    rollback_proposal,
+    rollback_rate,
+    verify_proposal,
+)
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     Agent,
@@ -27,21 +42,6 @@ from agentfox.core.models import (
     as_aware,
 )
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
-from agentfox.improvement import contract
-from agentfox.improvement.appliers import min_score_direction
-from agentfox.improvement.proposals import (
-    AutomationRefused,
-    IllegalTransition,
-    ProposalError,
-    apply_proposal,
-    attach_proof,
-    decide,
-    effective_autonomy,
-    file_proposal,
-    rollback_proposal,
-    rollback_rate,
-    verify_proposal,
-)
 from agentfox.platform.ledger.operator_log import PRIVILEGED, unaudited
 from agentfox.platform.policy import PolicyDocument, save_policy
 from tests.conftest import PII_TEXT, as_user
@@ -180,7 +180,7 @@ def test_the_same_problem_is_one_open_proposal(seeded, enforcer):
 
 def test_losing_a_filing_race_merges_instead_of_duplicating(seeded, enforcer, monkeypatch):
     """Simulate a concurrent filing: the look-up misses, the database index catches it."""
-    from agentfox.improvement import proposals as module
+    from agentfox.capabilities.improvement import proposals as module
 
     suppression = _suppression(seeded, enforcer)
     first = _file_revoke(seeded, suppression, fingerprint="fp-race", evidence={"hits": 0})
@@ -550,10 +550,15 @@ def test_every_step_is_on_the_chain_with_the_right_actor(seeded, enforcer):
 
 def test_proposal_operations_are_registered_privileged_and_record():
     targets = {e.target: e.action for e in PRIVILEGED}
-    assert targets["agentfox.improvement.proposals.decide"] == "operator.proposal.decided"
-    assert targets["agentfox.improvement.proposals.apply_proposal"] == "operator.proposal.applied"
     assert (
-        targets["agentfox.improvement.proposals.rollback_proposal"]
+        targets["agentfox.capabilities.improvement.proposals.decide"] == "operator.proposal.decided"
+    )
+    assert (
+        targets["agentfox.capabilities.improvement.proposals.apply_proposal"]
+        == "operator.proposal.applied"
+    )
+    assert (
+        targets["agentfox.capabilities.improvement.proposals.rollback_proposal"]
         == "operator.proposal.rolled_back"
     )
     assert unaudited() == []

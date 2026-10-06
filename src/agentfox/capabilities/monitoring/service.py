@@ -49,6 +49,8 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.monitoring import alerts
+from agentfox.capabilities.monitoring import snapshots as snap
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     Finding,
@@ -62,8 +64,6 @@ from agentfox.core.models import (
 )
 from agentfox.core.tenancy import session_org
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
-from agentfox.monitoring import alerts
-from agentfox.monitoring import snapshots as snap
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger import findings as findings_mod
 
@@ -589,8 +589,8 @@ def request_run(
 
 def _run_github_repo(session: Session, monitor: Monitor, ctx: RunContext) -> RunOutcome:
     from agentfox.capabilities.discovery.repo import scan as discovery_scan
+    from agentfox.capabilities.monitoring import github as gh
     from agentfox.core.crypto import decrypt_secret
-    from agentfox.monitoring import github as gh
 
     config = monitor.config_json or {}
     conn = gh.connection(session, config.get("connection_id"))
@@ -667,7 +667,7 @@ def tools_digest(tools: list[dict[str, Any]]) -> str:
 
 
 def _run_mcp_server(session: Session, monitor: Monitor, ctx: RunContext) -> RunOutcome:
-    from agentfox.monitoring import mcp_live
+    from agentfox.capabilities.monitoring import mcp_live
     from agentfox.platform.registry.service import scan_mcp_server
 
     config = monitor.config_json or {}

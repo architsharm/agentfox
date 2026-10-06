@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+from agentfox.capabilities.improvement import contract
+from agentfox.capabilities.improvement.loops import propose_threshold_changes
+from agentfox.capabilities.improvement.proposals import apply_proposal, decide
 from agentfox.core.models import ChangeProposal, GuardrailFeedback
-from agentfox.improvement import contract
-from agentfox.improvement.loops import propose_threshold_changes
-from agentfox.improvement.proposals import apply_proposal, decide
 from agentfox.platform.policy import PolicyDocument, save_policy
 
 POLICY = """
@@ -165,7 +165,7 @@ def test_a_cut_off_that_would_lose_a_true_positive_is_filed_unproven(session):
 
 def test_labels_from_one_agent_scope_the_change_to_that_agent(session):
     """#28: labels from one agent filed an org-wide loosening for every agent."""
-    from agentfox.improvement.proposals import apply_proposal
+    from agentfox.capabilities.improvement.proposals import apply_proposal
     from agentfox.platform.policy.engine import NativePolicyEngine
     from agentfox.platform.policy.model import PolicyInput
 
@@ -205,8 +205,8 @@ def test_labels_from_one_agent_scope_the_change_to_that_agent(session):
     assert proposal.status == contract.APPROVED
     apply_proposal(session, proposal, actor="sec@example.com", automated=False)
 
+    from agentfox.capabilities.improvement.appliers import _document
     from agentfox.core.models import Policy, PolicyVersion
-    from agentfox.improvement.appliers import _document
 
     # Staged as a canary: the candidate version is the newest one.
     policy = session.scalars(select(Policy).where(Policy.key == "loop-test")).one()

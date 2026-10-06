@@ -218,7 +218,7 @@ class Finding(Base, TimestampMixin):
 
 
 #: Values of `Monitor.kind` the platform knows how to run. Other kinds can be
-#: registered at import time (`agentfox.monitoring.register_kind`).
+#: registered at import time (`agentfox.capabilities.monitoring.register_kind`).
 MONITOR_KINDS = ("github_repo", "hosted_api", "mcp_server", "deployed_agent")
 
 
@@ -229,7 +229,7 @@ class Monitor(Base, TimestampMixin):
     scanned, or an MCP server is registered — or by hand. The `monitors.run` job runs
     every enabled monitor whose `next_run_at` has passed, diffs the result against
     `baseline_json` (the previous run's snapshot), raises findings for what appeared
-    and closes the ones whose condition cleared. See `agentfox.monitoring`.
+    and closes the ones whose condition cleared. See `agentfox.capabilities.monitoring`.
     """
 
     __tablename__ = "monitors"

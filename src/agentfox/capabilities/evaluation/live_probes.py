@@ -690,7 +690,7 @@ def _ensure_monitor(session: Session, target: ProbeTarget, actor: str) -> None:
     `probes.run` job stays as the fallback; both share ``next_due_at``, so a target is
     probed at most once per window. A monitor that cannot be created never fails the
     opt-in."""
-    from agentfox.monitoring.service import safe_ensure_monitor
+    from agentfox.capabilities.monitoring.service import safe_ensure_monitor
 
     safe_ensure_monitor(
         session,

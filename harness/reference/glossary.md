@@ -2,7 +2,7 @@
 title: Glossary and ID conventions
 layer: reference
 audience: agents reading docs, code comments and commit messages
-source_of_truth: docs/design/PRD.md, docs/design/traceability.md, docs/design/failure-modes.md, docs/design/control-catalog.md, src/agentfox/improvement/contract.py
+source_of_truth: docs/design/PRD.md, docs/design/traceability.md, docs/design/failure-modes.md, docs/design/control-catalog.md, src/agentfox/capabilities/improvement/contract.py
 verified_against: branch claude/improvement-loop-phase0, 2026-09-20
 ---
 
