@@ -364,7 +364,7 @@ call is held like any untrusted one, so an attacker's amount or recipient never 
 declarations, which are org-wide, need two. Or write them by hand:
 
 ```bash
-agentfox declare tool billing.export --impact write    # none | read | write | irreversible
+agentfox declare tool billing.export --impact write    # read | write | high_impact | irreversible
 agentfox declare tool crm.lookup --impact read --output-trust trusted   # its output is yours
 agentfox permit grant support-triage tickets.close \
     --limit priority:in=low,normal --max-taint user
@@ -567,7 +567,7 @@ audit chain is only as trustworthy as the key that signs it.
 **3. Python, no containers** — the gateway is an ordinary ASGI app:
 
 ```bash
-pip install "agentfox[postgres] @ git+https://github.com/architsharm/agentfox.git"
+pip install "agentfox[postgres]"
 agentfox init                      # SQLite by default; set AGENTFOX_DATABASE_URL for Postgres
 uvicorn agentfox.gateway.app:app --host 0.0.0.0 --port 8080
 ```
