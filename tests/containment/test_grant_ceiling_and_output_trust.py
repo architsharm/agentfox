@@ -14,9 +14,9 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
+from agentfox.capabilities.detection.taint import TaintTracker
 from agentfox.core.config import get_settings
 from agentfox.core.models import Tool
-from agentfox.detection.taint import TaintTracker
 from agentfox.platform.identity import ensure_identity, grant_capability
 from agentfox.platform.ledger.trace import start_trace
 from agentfox.platform.policy import load_from_dir, save_policy

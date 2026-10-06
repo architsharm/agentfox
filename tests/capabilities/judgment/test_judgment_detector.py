@@ -11,13 +11,13 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.capabilities.detection import DetectorPipeline
+from agentfox.capabilities.detection.base import DetectionContext
+from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
+from agentfox.capabilities.detection.detectors.judgment import InjectionJudgmentDetector
 from agentfox.capabilities.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
 from agentfox.capabilities.judgment.egress import EgressRefused
 from agentfox.core.config import get_settings
-from agentfox.detection import DetectorPipeline
-from agentfox.detection.base import DetectionContext
-from agentfox.detection.detectors.injection import InjectionHeuristicDetector
-from agentfox.detection.detectors.judgment import InjectionJudgmentDetector
 
 #: An encoded payload of the shape the adaptive benchmark showed our pattern
 #: detectors cannot read: the instruction is in the framing, not the blob.
@@ -186,7 +186,7 @@ def test_it_does_not_flag_a_user_instructing_their_own_assistant(judgment_on) ->
 
 def test_the_question_asked_is_about_override_not_instruction() -> None:
     """Pins the distinction, so a reworder has to read why it is worded so."""
-    from agentfox.detection.detectors.judgment import QUESTIONS
+    from agentfox.capabilities.detection.detectors.judgment import QUESTIONS
 
     assert "override_attempt" in QUESTIONS
     text = QUESTIONS["override_attempt"]["instructions"].lower()

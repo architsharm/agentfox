@@ -47,7 +47,7 @@ _LIVE_DEMO_PROBES = [
 def _run_live_demo() -> tuple[int, int, float]:
     """Returns (caught, total, duration_ms). Runs entirely in-process — no network,
     no database, the exact same pipeline that would sit in front of real traffic."""
-    from agentfox.detection import DetectionContext, DetectorPipeline
+    from agentfox.capabilities.detection import DetectionContext, DetectorPipeline
 
     pipeline = DetectorPipeline()
     caught = 0

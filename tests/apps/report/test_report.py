@@ -23,9 +23,9 @@ from agentfox.apps.report.summary import (
     render_html,
     render_markdown,
 )
+from agentfox.capabilities.detection.taint import TaintTracker
 from agentfox.cli.main import app
 from agentfox.core.models import ControlStatus, GuardrailFeedback
-from agentfox.detection.taint import TaintTracker
 
 runner = CliRunner()
 

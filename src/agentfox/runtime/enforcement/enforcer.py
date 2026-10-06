@@ -15,6 +15,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.business.graph import combine as combine_business
+from agentfox.capabilities.detection import (
+    DetectionContext,
+    DetectorPipeline,
+    TaintTracker,
+    redact_content,
+)
+from agentfox.capabilities.detection.actions import analyse_arguments
+from agentfox.capabilities.detection.actions import summarise as summarise_actions
+from agentfox.capabilities.detection.composition import check_composed_escalation
+from agentfox.capabilities.detection.tuning import (
+    LatencyLedger,
+    active_suppressions,
+    explain,
+    filter_suppressed,
+)
 from agentfox.containment.findings import (
     detector_verdict,
     is_detector_rule,
@@ -23,11 +38,6 @@ from agentfox.containment.findings import (
 )
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Decision, Identity, Tool, Trace, as_aware, utcnow
-from agentfox.detection import DetectionContext, DetectorPipeline, TaintTracker, redact_content
-from agentfox.detection.actions import analyse_arguments
-from agentfox.detection.actions import summarise as summarise_actions
-from agentfox.detection.composition import check_composed_escalation
-from agentfox.detection.tuning import LatencyLedger, active_suppressions, explain, filter_suppressed
 from agentfox.grounding.context_integrity import assemble_context
 from agentfox.platform.identity import (
     check_capability,

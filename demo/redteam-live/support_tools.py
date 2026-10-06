@@ -7,7 +7,7 @@ real mutation (an order actually flips to "refunded") to prove a block actually
 stopped something rather than just returning a denial string nobody checked.
 
 Every call goes through `agentfox.integrations.mcp.McpGovernor` — the same governed
-call path `tests/detection/test_composition.py`'s `_governor` fixture exercises, reused as-is
+call path `tests/capabilities/detection/test_composition.py`'s `_governor` fixture exercises, reused as-is
 rather than inventing a parallel one. Treating these four Python functions as an
 "MCP server" (`support-tools`) is a convenience, not a protocol claim: `McpGovernor`
 is transport-agnostic by design (see its module docstring) and works with any

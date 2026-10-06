@@ -266,7 +266,7 @@ pre-commit hook (`scripts/rebuild_vendored_wheels.py`) does it, and CI's
 libraries in `detection/adapters/` (with an `available()` that is false when the extra is
 missing). Register it in `detection/__init__.py` with `register_detector`. It runs only if its
 key is in `Settings.enabled_detectors` (`core/config.py`). Policy acts on its entity types
-through `detection:` conditions; no new rule kind is needed. Tests go in `tests/detection/`.
+through `detection:` conditions; no new rule kind is needed. Tests go in `tests/capabilities/detection/`.
 
 **Add a policy condition (rule kind).** Add the field to `Condition` and, if it needs new
 input, to `PolicyInput` (`policy/model.py`); match it in `NativePolicyEngine._matches`

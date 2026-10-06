@@ -42,9 +42,9 @@ from pathlib import Path
 
 from _util import wipe_db
 
+from agentfox.capabilities.detection import warm_all
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
-from agentfox.detection import warm_all
 from agentfox.fixtures.seed import seed
 from agentfox.integrations.mcp import McpGovernor
 from agentfox.runtime.enforcement import Enforcer

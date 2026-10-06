@@ -1460,7 +1460,7 @@ def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dic
                         }
                     )
     else:
-        from agentfox.detection import (
+        from agentfox.capabilities.detection import (
             DetectionContext,
             DetectorPipeline,
             get_detector,

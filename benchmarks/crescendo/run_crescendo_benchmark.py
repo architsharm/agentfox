@@ -30,7 +30,7 @@ Every conversation is scored three ways:
 * **Windowed** — `Enforcer.check_conversation_window` re-run at every turn index, with
   only the turns before it in the conversation store, so the *first* turn at which the
   trajectory is caught is a measured number rather than a yes/no.
-* **Trajectory** — `CRESCENDO.TRAJECTORY_DRIFT` (F9.4, `src/agentfox/detection/trajectory.py`),
+* **Trajectory** — `CRESCENDO.TRAJECTORY_DRIFT` (F9.4, `src/agentfox/capabilities/detection/trajectory.py`),
   which rides on the same `check_conversation_window` call and reads the same window as
   a *sequence* rather than a join. Added after the first run of this benchmark returned
   0/13 and confirmed the gap; it is scored here as a third column rather than replacing
@@ -590,9 +590,9 @@ def measure_trajectory_latency(repeats: int = 40) -> dict[str, Any]:
     import statistics
     import time
 
-    from agentfox.detection.base import DetectionContext
-    from agentfox.detection.pipeline import DetectorPipeline
-    from agentfox.detection.trajectory import assess
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
+    from agentfox.capabilities.detection.trajectory import assess
 
     pipeline = DetectorPipeline()
     context = DetectionContext(surface="input", taint_source="user")

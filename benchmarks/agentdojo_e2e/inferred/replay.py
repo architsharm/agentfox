@@ -33,9 +33,9 @@ DB_PATH = SCRATCH / os.environ.get("REPLAY_DB", "agentfox_agentdojo_inferred.db"
 os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
 os.environ.setdefault("NOMETRIA_CONFIG", "none")
 
+from agentfox.capabilities.detection.taint import TaintTracker  # noqa: E402
 from agentfox.core import db  # noqa: E402
 from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402
-from agentfox.detection.taint import TaintTracker  # noqa: E402
 from agentfox.platform.identity.service import ensure_identity, grant_capability  # noqa: E402
 from agentfox.platform.policy import load_from_dir, save_policy  # noqa: E402
 from agentfox.platform.registry.service import register_agent, upsert_tool  # noqa: E402

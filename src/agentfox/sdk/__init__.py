@@ -40,8 +40,8 @@ from typing import Any
 import httpx
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.db import session_scope
-from agentfox.detection import TaintTracker
 
 # One class each, shared with the LangGraph integration and under `AgentFoxError`:
 # see `agentfox.errors`.
@@ -260,7 +260,7 @@ class AgentFox:
             # Local enforcement runs the detectors in this process: warm the
             # opted-in model detectors now, in the background, not inside the
             # first governed call. A gateway warms its own.
-            from agentfox.detection.warmup import warm_in_background
+            from agentfox.capabilities.detection.warmup import warm_in_background
 
             warm_in_background()
 

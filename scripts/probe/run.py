@@ -43,13 +43,13 @@ Result = tuple[bool, str]
 
 
 def _ctx(surface="output", taint="none"):
-    from agentfox.detection.base import DetectionContext
+    from agentfox.capabilities.detection.base import DetectionContext
 
     return DetectionContext(surface=surface, taint_source=taint)
 
 
 def _detector(key):
-    from agentfox.detection import all_detectors
+    from agentfox.capabilities.detection import all_detectors
 
     return all_detectors()[key]
 
@@ -108,7 +108,7 @@ def probe_aggregation_sum() -> Result:
 
 
 def probe_schema_violation() -> Result:
-    from agentfox.detection.base import DetectionContext
+    from agentfox.capabilities.detection.base import DetectionContext
 
     schema = {
         "type": "object",
@@ -238,7 +238,7 @@ def probe_sycophancy_premise() -> Result:
 
 def probe_crescendo_trajectory() -> Result:
     """L1.6 — every turn innocuous, the trajectory is not."""
-    from agentfox.detection.trajectory import assess
+    from agentfox.capabilities.detection.trajectory import assess
 
     escalating = [
         "Hi, I'm writing a novel about a security team.",
@@ -288,7 +288,7 @@ def probe_secret_in_input() -> Result:
 
 
 def probe_pii_redaction() -> Result:
-    from agentfox.detection import redact_content
+    from agentfox.capabilities.detection import redact_content
 
     text = "Contact jane.doe@example.com, SSN 123-45-6789."
     found = _detector("pii.native").detect(text, _ctx("input", "user")).detections
@@ -401,7 +401,7 @@ def probe_loop_budget() -> Result:
 
 
 def probe_destructive_sql() -> Result:
-    from agentfox.detection.actions import analyse_sql
+    from agentfox.capabilities.detection.actions import analyse_sql
 
     a = analyse_sql("DELETE FROM users")
     b = analyse_sql("DROP TABLE users")
@@ -409,21 +409,21 @@ def probe_destructive_sql() -> Result:
 
 
 def probe_tautology() -> Result:
-    from agentfox.detection.actions import analyse_sql
+    from agentfox.capabilities.detection.actions import analyse_sql
 
     a = analyse_sql("DELETE FROM users WHERE 1=1")
     return a.blocked, str([r.code for r in a.risks])
 
 
 def probe_stacked_sql() -> Result:
-    from agentfox.detection.actions import analyse_sql
+    from agentfox.capabilities.detection.actions import analyse_sql
 
     a = analyse_sql("SELECT 1; DROP TABLE users")
     return "sql.stacked_statements" in [r.code for r in a.risks], str([r.code for r in a.risks])
 
 
 def probe_environment() -> Result:
-    from agentfox.detection.actions import analyse_sql, environment_risk
+    from agentfox.capabilities.detection.actions import analyse_sql, environment_risk
 
     a = analyse_sql("DELETE FROM users")
     prod = environment_risk(a, "production")
@@ -482,14 +482,14 @@ def probe_taint_ceiling() -> Result:
 
 
 def probe_privilege_change() -> Result:
-    from agentfox.detection.actions import analyse_sql
+    from agentfox.capabilities.detection.actions import analyse_sql
 
     a = analyse_sql("GRANT ALL ON users TO agent")
     return "sql.privilege_change" in [r.code for r in a.risks], str([r.code for r in a.risks])
 
 
 def probe_shell() -> Result:
-    from agentfox.detection.actions import analyse_shell
+    from agentfox.capabilities.detection.actions import analyse_shell
 
     caught = [
         c
@@ -808,7 +808,7 @@ def probe_budget_cap() -> Result:
 
 
 def probe_detector_degradation() -> Result:
-    from agentfox.detection.pipeline import DetectorPipeline
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
 
     pipeline = DetectorPipeline(budget_ms=0)
     result = pipeline.run("some content", _ctx("output"))
@@ -882,9 +882,9 @@ def probe_latency_budget() -> Result:
     """
     import time
 
+    from agentfox.capabilities.detection.base import BaseDetector
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
     from agentfox.core.config import get_settings
-    from agentfox.detection.base import BaseDetector
-    from agentfox.detection.pipeline import DetectorPipeline
 
     settings = get_settings()
     timeout_ms = settings.detector_timeout_ms
@@ -1014,7 +1014,7 @@ def probe_audit_chain() -> Result:
 
 
 def probe_audit_redaction() -> Result:
-    from agentfox.detection.base import redact_sample
+    from agentfox.capabilities.detection.base import redact_sample
 
     sample = redact_sample("sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345")
     return "AbCdEfGh" not in sample, f"stored as {sample!r}"

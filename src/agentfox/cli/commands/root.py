@@ -151,7 +151,12 @@ def analyse_action(
     Deterministic, offline and immediate: no database, no model, no network. The point
     is that an engineer can check a generated statement before it is ever executed.
     """
-    from agentfox.detection.actions import analyse_http, analyse_shell, analyse_sql, summarise
+    from agentfox.capabilities.detection.actions import (
+        analyse_http,
+        analyse_shell,
+        analyse_sql,
+        summarise,
+    )
 
     if kind == "shell":
         analysis = analyse_shell(statement)

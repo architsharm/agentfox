@@ -15,6 +15,7 @@ import pytest
 from sqlalchemy import select
 from typer.testing import CliRunner
 
+from agentfox.capabilities.detection.taint import TaintTracker
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     ApprovalRequest,
@@ -25,7 +26,6 @@ from agentfox.core.models import (
     LineageEdge,
     Tool,
 )
-from agentfox.detection.taint import TaintTracker
 from agentfox.improvement import contract
 from agentfox.improvement.proposals import (
     AutomationRefused,

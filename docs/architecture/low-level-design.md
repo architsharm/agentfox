@@ -114,7 +114,7 @@ FastAPI middleware refuses with an HTTP 403 instead of raising.
 
 ---
 
-## 4. Detector pipeline — `src/agentfox/detection/`
+## 4. Detector pipeline — `src/agentfox/capabilities/detection/`
 
 `pipeline.py` (`DetectorPipeline`) runs the enabled `Detector` implementations concurrently
 per surface (`input`, `output`, `retrieved`, `tool_result`, `tool_args`, `memory_write`,

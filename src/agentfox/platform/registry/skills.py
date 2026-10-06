@@ -33,7 +33,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from agentfox.detection.actions import analyse_shell
+from agentfox.capabilities.detection.actions import analyse_shell
 
 #: Directive shapes in a skill's description or body. The same list
 #: `registry.service` uses on MCP tool descriptions, plus two that only make

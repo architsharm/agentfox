@@ -5,7 +5,7 @@ in-memory customer/order data, same real refund and email side effects, same
 `agentfox.auto()` wiring, same three demo scenarios. Nothing here is a mock:
 `issue_refund` really flips an order's status, `send_email` really queues a message,
 and every call goes through the same governed path (`agentfox.integrations.mcp.
-McpGovernor`) the automated test suite (`tests/detection/test_composition.py`) exercises.
+McpGovernor`) the automated test suite (`tests/capabilities/detection/test_composition.py`) exercises.
 
 **What's actually different from `demo/redteam-live/`: only the agent framework.**
 CrewAI's `Agent`/`Task`/`Crew` is replaced with a LangChain tool-calling agent
@@ -184,7 +184,7 @@ the chain is wrong on its own.**
    under the $500 cap, and `issue_refund` is a tool this agent genuinely holds.
 
 Individually, both calls pass every check. **AgentFox blocks it anyway**, because
-`agentfox.detection.composition.check_composed_escalation` (F3.8) tracks *where
+`agentfox.capabilities.detection.composition.check_composed_escalation` (F3.8) tracks *where
 each argument's value came from* — `TaintTracker`'s `propagated_from` provenance —
 and sees that `order_id` didn't come from the user or from Priya's own account; it
 came from a broad internal search a moment earlier, being reused as if it had been
@@ -206,7 +206,7 @@ message in isolation has no way to know that this specific 8-character string in
 this specific tool call is the same one that came back from a search 30 seconds ago.
 That's not a text property — it requires tracking data lineage across the whole
 tool-call sequence in one conversation, which is what taint tracking is for. This is
-the exact shape `tests/detection/test_composition.py` proves against a synthetic
+the exact shape `tests/capabilities/detection/test_composition.py` proves against a synthetic
 patient-records scenario; here it's the same mechanism against real tools with real
 state, and it works identically regardless of which agent framework is issuing the
 tool calls — the check lives in `McpGovernor`, below the framework entirely.

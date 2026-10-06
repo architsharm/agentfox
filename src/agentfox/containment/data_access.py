@@ -40,8 +40,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from agentfox.capabilities.detection.actions import SQLGLOT_AVAILABLE, exp, sqlglot
 from agentfox.core.finding import RiskFinding
-from agentfox.detection.actions import SQLGLOT_AVAILABLE, exp, sqlglot
 
 # --- Declaration -----------------------------------------------------------
 

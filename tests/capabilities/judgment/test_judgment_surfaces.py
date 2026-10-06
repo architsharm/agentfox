@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import pytest
 
+from agentfox.capabilities.detection.base import DetectionContext
+from agentfox.capabilities.detection.detectors.judgment import PiiJudgmentDetector
 from agentfox.capabilities.judgment import JevAnswer, JevClient, JevResult, JudgmentGateway
 from agentfox.capabilities.judgment.answerability import augment
 from agentfox.capabilities.judgment.egress import EgressRefused
 from agentfox.core.config import get_settings
-from agentfox.detection.base import DetectionContext
-from agentfox.detection.detectors.judgment import PiiJudgmentDetector
 from agentfox.grounding.answerability import UNKNOWABLE, UNSUPPORTED_TYPE, AnswerabilityVerdict
 
 

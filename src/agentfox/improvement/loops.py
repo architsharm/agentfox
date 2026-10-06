@@ -36,6 +36,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.detection.tuning import threshold_recommendations
 from agentfox.core.models import (
     Agent,
     ChangeProposal,
@@ -47,7 +48,6 @@ from agentfox.core.models import (
     Trace,
     utcnow,
 )
-from agentfox.detection.tuning import threshold_recommendations
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import (
     ApplierError,

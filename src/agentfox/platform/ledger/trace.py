@@ -251,7 +251,7 @@ def full_trace(session: Session, trace_id: str) -> dict[str, Any] | None:
     # `operator_log`, which reaches `audit.chain`, which is this package — a cycle
     # that the test suite's import order happened to avoid and starting the gateway
     # did not.
-    from agentfox.detection.tuning import explain_recorded
+    from agentfox.capabilities.detection.tuning import explain_recorded
 
     for row in decision_rows:
         row["explanation"] = explain_recorded(row, run_rows)

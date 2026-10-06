@@ -435,6 +435,7 @@ def doctor(
     each one names the consequence rather than the setting, because "fail_mode=open"
     means nothing to someone who has not read the PRD.
     """
+    from agentfox.capabilities.detection import available_detectors
     from agentfox.core.config import get_settings
     from agentfox.core.db import session_scope
     from agentfox.core.models import (
@@ -447,7 +448,6 @@ def doctor(
         Tool,
         Trace,
     )
-    from agentfox.detection import available_detectors
     from agentfox.platform.providers import available_providers
 
     settings = get_settings()
@@ -592,7 +592,7 @@ def doctor(
     # *available* detector showed ones nobody enabled (pii.presidio) and hid the
     # enabled ones that cannot run (a classifier without its model), which is the
     # one thing this line exists to say.
-    from agentfox.detection import all_detectors
+    from agentfox.capabilities.detection import all_detectors
 
     live = available_detectors()
     enabled = list(dict.fromkeys(settings.enabled_detectors))

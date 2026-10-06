@@ -8,6 +8,7 @@ PII.EMAIL" and nothing else.
 
 from __future__ import annotations
 
+from agentfox.capabilities.detection.taint import TaintTracker
 from agentfox.containment.findings import (
     cause_of,
     detector_verdict,
@@ -16,7 +17,6 @@ from agentfox.containment.findings import (
     untrusted_source,
 )
 from agentfox.core.models import Finding
-from agentfox.detection.taint import TaintTracker
 from agentfox.platform.policy import set_mode
 
 PAGE = (

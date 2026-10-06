@@ -48,8 +48,8 @@ from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from typing import Any
 
+from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.db import init_db, session_scope
-from agentfox.detection import TaintTracker
 
 # The SDK's classes, not look-alikes: `except agentfox.PolicyViolation` must catch
 # what a guarded node raises. Re-exported here so existing imports work.
@@ -111,7 +111,7 @@ class AgentFoxGuard:
         self._schema_ready = session is not None
         # The detectors run in this process: warm the opted-in model ones now, in
         # the background, rather than inside the graph's first node.
-        from agentfox.detection.warmup import warm_in_background
+        from agentfox.capabilities.detection.warmup import warm_in_background
 
         warm_in_background()
 

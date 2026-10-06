@@ -205,7 +205,7 @@ class JudgmentGateway:
         if not self._detector_tried:
             self._detector_tried = True
             try:
-                from agentfox.detection.detectors.pii import NativePiiDetector
+                from agentfox.capabilities.detection.detectors.pii import NativePiiDetector
 
                 self._detector = NativePiiDetector()
             except Exception as exc:  # noqa: BLE001
@@ -215,7 +215,7 @@ class JudgmentGateway:
 
     def _context(self) -> Any:
         try:
-            from agentfox.detection.base import DetectionContext
+            from agentfox.capabilities.detection.base import DetectionContext
 
             return DetectionContext(surface="input")
         except Exception:  # noqa: BLE001

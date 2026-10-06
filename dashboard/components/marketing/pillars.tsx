@@ -28,14 +28,14 @@ import {
  * guess:
  *
  *   - the six pillars and their questions .... README.md "The six pillars"
- *   - detector registrations ................. src/agentfox/detection/__init__.py
- *   - INJECTION.* entity types ............... src/agentfox/detection/detectors/injection.py
- *   - SECRET.* entity types .................. src/agentfox/detection/detectors/secrets.py
- *   - normalisation views .................... src/agentfox/detection/normalize.py
- *   - per-detector budget, degrade-not-skip .. src/agentfox/detection/pipeline.py
+ *   - detector registrations ................. src/agentfox/capabilities/detection/__init__.py
+ *   - INJECTION.* entity types ............... src/agentfox/capabilities/detection/detectors/injection.py
+ *   - SECRET.* entity types .................. src/agentfox/capabilities/detection/detectors/secrets.py
+ *   - normalisation views .................... src/agentfox/capabilities/detection/normalize.py
+ *   - per-detector budget, degrade-not-skip .. src/agentfox/capabilities/detection/pipeline.py
  *   - baseline / tool-containment rule ids ... src/agentfox/policies_data/*.yaml
  *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement/
- *   - the provenance ladder .................. src/agentfox/detection/taint.py, README "Commands"
+ *   - the provenance ladder .................. src/agentfox/capabilities/detection/taint.py, README "Commands"
  *   - impact tiers ........................... dashboard/app/glossary/page.tsx
  *   - static-only scanning, TS/JS pass ....... src/agentfox/discovery/repo.py
  *   - OpenAPI onboarding ..................... src/agentfox/discovery/openapi.py

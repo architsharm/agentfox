@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agentfox.detection import redact_content
+from agentfox.capabilities.detection import redact_content
 from agentfox.platform.identity.service import content_digest
 
 #: How much of a held message the approval shows. The digest binds the whole of it.

@@ -1,6 +1,6 @@
 # F3.8 — composed privilege escalation: built
 
-**Status, changed from the original investigation below**: F3.8 was genuinely absent (*"needs data-flow tracking at the orchestration layer, not per-tool argument or per-statement checks"* — `docs/design/failure-modes.md`). It's now built: `src/agentfox/detection/composition.py` (P9-11), wired into `enforcement.py::evaluate()` on the live `guard_tool_call` path, tested end-to-end in `tests/detection/test_composition.py`. The investigation that follows is kept as-is because it's *why* the fix looked the way it did — reusing infrastructure that already existed for a different purpose, rather than building a new tracking mechanism.
+**Status, changed from the original investigation below**: F3.8 was genuinely absent (*"needs data-flow tracking at the orchestration layer, not per-tool argument or per-statement checks"* — `docs/design/failure-modes.md`). It's now built: `src/agentfox/capabilities/detection/composition.py` (P9-11), wired into `enforcement.py::evaluate()` on the live `guard_tool_call` path, tested end-to-end in `tests/capabilities/detection/test_composition.py`. The investigation that follows is kept as-is because it's *why* the fix looked the way it did — reusing infrastructure that already existed for a different purpose, rather than building a new tracking mechanism.
 
 ## What F3.8 actually names
 
@@ -18,7 +18,7 @@ Two taint-mark path conventions carry tool identity today: MCP governance's `mcp
 
 ## Verification
 
-`tests/detection/test_composition.py` — 11 tests: pure-function coverage of the tool-key-recovery parsing (including the MCP taint-path-vs-registered-key format mismatch this surfaced and fixed during development) and the escalation-detection logic itself (flags read→write, doesn't flag same-tool pagination, doesn't flag read→read, skips unregistered origins rather than guessing), plus two end-to-end tests through a real `McpGovernor`: a read tool's internal ID reused by a write tool is blocked with `rule_id: composition.escalation`; the same write tool called with an independently-supplied argument is *not* blocked — the negative control proving the check is about provenance, not about the tool being write-scoped.
+`tests/capabilities/detection/test_composition.py` — 11 tests: pure-function coverage of the tool-key-recovery parsing (including the MCP taint-path-vs-registered-key format mismatch this surfaced and fixed during development) and the escalation-detection logic itself (flags read→write, doesn't flag same-tool pagination, doesn't flag read→read, skips unregistered origins rather than guessing), plus two end-to-end tests through a real `McpGovernor`: a read tool's internal ID reused by a write tool is blocked with `rule_id: composition.escalation`; the same write tool called with an independently-supplied argument is *not* blocked — the negative control proving the check is about provenance, not about the tool being write-scoped.
 
 Full suite: 1,174 tests passing (1,163 before this change + 11 new).
 

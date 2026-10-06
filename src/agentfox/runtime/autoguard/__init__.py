@@ -86,11 +86,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from agentfox.capabilities.detection.taint import TaintTracker
+from agentfox.capabilities.detection.warmup import warm_in_background
 from agentfox.core.config import get_settings
 from agentfox.core.db import init_db, session_scope
 from agentfox.core.models import utcnow
-from agentfox.detection.taint import TaintTracker
-from agentfox.detection.warmup import warm_in_background
 from agentfox.errors import AgentFoxError
 from agentfox.platform.identity import ensure_identity
 from agentfox.platform.ledger.trace import (

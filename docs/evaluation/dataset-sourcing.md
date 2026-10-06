@@ -8,7 +8,7 @@ Five capability areas researched in parallel, each required to surface at least 
 
 ## F3 — Destructive-action & blast-radius analysis
 
-Detection lives in `src/agentfox/detection/actions.py` (deterministic sqlglot SQL parsing, a shell deny-list, HTTP/scope checkers, environment binding).
+Detection lives in `src/agentfox/capabilities/detection/actions.py` (deterministic sqlglot SQL parsing, a shell deny-list, HTTP/scope checkers, environment binding).
 
 | Dataset | License | Size | Fit |
 |---|---|---|---|
@@ -42,7 +42,7 @@ Detection lives in `src/agentfox/grounding/entitlement.py` (default-deny ACL fil
 
 ## PII & secrets detection
 
-Detection: `src/agentfox/detection/detectors/pii.py` (native regex) + Presidio adapter (`PERSON`/`LOCATION`/`DATE_TIME` excluded by default as "noisy"), and `src/agentfox/detection/detectors/secrets.py` (named formats + entropy-gated generic fallback).
+Detection: `src/agentfox/capabilities/detection/detectors/pii.py` (native regex) + Presidio adapter (`PERSON`/`LOCATION`/`DATE_TIME` excluded by default as "noisy"), and `src/agentfox/capabilities/detection/detectors/secrets.py` (named formats + entropy-gated generic fallback).
 
 | Dataset | Capability | License | Size | Fit |
 |---|---|---|---|---|

@@ -15,7 +15,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from agentfox.detection.detectors.schema import extract_json, validate
+from agentfox.capabilities.detection.detectors.schema import extract_json, validate
 
 _WORD = re.compile(r"[a-z0-9']+")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
@@ -276,7 +276,7 @@ class SafetyScorer(BaseScorer):
     key, kind, higher_is_better, threshold = "safety", "safety", False, 0.5
 
     def score(self, output: str, ctx: ScoreContext) -> ScoreResult:
-        from agentfox.detection import DetectionContext, DetectorPipeline
+        from agentfox.capabilities.detection import DetectionContext, DetectorPipeline
 
         result = DetectorPipeline().run(output, DetectionContext(surface="output"))
         return self._result(

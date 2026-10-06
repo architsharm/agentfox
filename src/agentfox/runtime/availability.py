@@ -527,8 +527,8 @@ def reset_degradation_ledger() -> None:
 def _probe_detector_pipeline() -> str:
     """Not "a detector failed" — that is already handled per-detector. This is the
     pipeline having nothing at all it can run, so every request goes unchecked."""
+    from agentfox.capabilities.detection import available_detectors
     from agentfox.core.config import get_settings
-    from agentfox.detection import available_detectors
 
     enabled = set(get_settings().enabled_detectors)
     if not enabled:

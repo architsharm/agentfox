@@ -69,19 +69,19 @@ def score(rows: list[tuple[bool, bool]]) -> dict:
 
 
 def main() -> int:
+    from agentfox.capabilities.detection import DetectorPipeline
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
+    from agentfox.capabilities.detection.detectors.judgment import (
+        InjectionJudgmentDetector,
+        PiiJudgmentDetector,
+    )
+    from agentfox.capabilities.detection.detectors.pii import NativePiiDetector
     from agentfox.capabilities.judgment.answerability import augment as augment_answerability
     from agentfox.capabilities.judgment.capability import DecisionKind, Tier
     from agentfox.capabilities.judgment.commitments import augment as augment_commitments
     from agentfox.core.config import get_settings
     from agentfox.core.models import KnowledgeBoundary
-    from agentfox.detection import DetectorPipeline
-    from agentfox.detection.base import DetectionContext
-    from agentfox.detection.detectors.injection import InjectionHeuristicDetector
-    from agentfox.detection.detectors.judgment import (
-        InjectionJudgmentDetector,
-        PiiJudgmentDetector,
-    )
-    from agentfox.detection.detectors.pii import NativePiiDetector
     from agentfox.grounding.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability
     from agentfox.grounding.commitments import detect_commitments
 
@@ -303,9 +303,9 @@ def main() -> int:
     # balanced set, and checks two independent things: that the verdicts are
     # byte-identical to code alone, and that the router itself refuses to seat
     # any judgment tier for STRUCTURAL_PARSED.
+    from agentfox.capabilities.detection.actions import analyse_sql
     from agentfox.capabilities.judgment import panel as panel_mod
     from agentfox.capabilities.judgment.capability import CapabilityRouter
-    from agentfox.detection.actions import analyse_sql
 
     sql_cases = []
     for split in ("test_natural_dml", "test_adversarial_tautology", "test_natural_ddl"):

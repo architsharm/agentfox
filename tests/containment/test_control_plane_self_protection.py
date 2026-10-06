@@ -19,8 +19,8 @@ from __future__ import annotations
 import pytest
 import yaml
 
+from agentfox.capabilities.detection.actions import analyse_shell
 from agentfox.core.config import get_settings
-from agentfox.detection.actions import analyse_shell
 from agentfox.platform.policy.model import PROTECTED_RULES, PolicyDocument
 from agentfox.platform.policy.store import load_from_dir
 

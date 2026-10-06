@@ -7,13 +7,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from agentfox.capabilities.detection import DetectionContext
+from agentfox.capabilities.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
+from agentfox.capabilities.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
+from agentfox.capabilities.detection.trajectory import assess as assess_trajectory
 from agentfox.containment.control_flow import Plan
 from agentfox.containment.control_flow import check_selection as check_tool_selection
 from agentfox.core.models import Agent
-from agentfox.detection import DetectionContext
-from agentfox.detection.trajectory import ENTITY as TRAJECTORY_ENTITY
-from agentfox.detection.trajectory import SCAN_CHARS as TRAJECTORY_SCAN_CHARS
-from agentfox.detection.trajectory import assess as assess_trajectory
 from agentfox.grounding.commitments import (
     adverse_action_risk,
     check_disclosure,

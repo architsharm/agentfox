@@ -2,7 +2,7 @@
 
 Registers `support-crew-live` and its identity, capability grants and tool
 registrations, following the exact pattern `agentfox admin seed` and
-`tests/detection/test_composition.py`'s `_governor` fixture already use — `ensure_identity`,
+`tests/capabilities/detection/test_composition.py`'s `_governor` fixture already use — `ensure_identity`,
 `grant_capability`, `register_agent`, `McpGovernor.register_tools` — rather than
 inventing a new one. This is deliberately a separate, smaller seed than
 `agentfox admin seed`'s (which creates three different demo agents plus a full compliance

@@ -188,7 +188,7 @@ def test_db_backed_groups_work_on_a_fresh_database(tableless_db, args, exit_code
 
 
 def test_doctor_json_exits_nonzero_on_a_bad_check(monkeypatch):
-    monkeypatch.setattr("agentfox.detection.available_detectors", lambda: {})
+    monkeypatch.setattr("agentfox.capabilities.detection.available_detectors", lambda: {})
     result = runner.invoke(app, ["doctor", "--json"])
     assert result.exit_code == 1, result.output
     checks = _json(result.output)

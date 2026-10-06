@@ -36,9 +36,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentfox.detection.adapters.presidio import DEFAULT_EXCLUDED, PresidioPiiDetector
-from agentfox.detection.base import DetectionContext
-from agentfox.detection.detectors.pii import NativePiiDetector
+from agentfox.capabilities.detection.adapters.presidio import DEFAULT_EXCLUDED, PresidioPiiDetector
+from agentfox.capabilities.detection.base import DetectionContext
+from agentfox.capabilities.detection.detectors.pii import NativePiiDetector
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"

@@ -66,12 +66,12 @@ class PrivilegedAction:
 
 PRIVILEGED: tuple[PrivilegedAction, ...] = (
     PrivilegedAction(
-        "agentfox.detection.tuning.apply_suppression",
+        "agentfox.capabilities.detection.tuning.apply_suppression",
         "operator.guardrail.suppressed",
         "silences a detector — the one action that can hide every other action",
     ),
     PrivilegedAction(
-        "agentfox.detection.tuning.revoke_suppression",
+        "agentfox.capabilities.detection.tuning.revoke_suppression",
         "operator.guardrail.unsuppressed",
         "restores a detector; the pair has to be reconstructable to know what was "
         "unwatched and for how long",

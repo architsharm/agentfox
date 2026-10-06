@@ -6,7 +6,7 @@ AgentFox's red-team runner can be pointed at **live** to watch it actually block
 real attacks against real tool calls. Nothing here is a mock: `issue_refund`
 really flips an order's status, `send_email` really queues a message, and every
 call goes through the same governed path (`agentfox.integrations.mcp.McpGovernor`)
-the automated test suite (`tests/detection/test_composition.py`) exercises.
+the automated test suite (`tests/capabilities/detection/test_composition.py`) exercises.
 
 Everything below reflects a real run performed while building this demo (see the
 timestamps implied by the output — this is not a guess at what the tool *should*
@@ -55,7 +55,7 @@ four capability grants, and loads the three policy packs `agentfox` ships
 (`baseline`, `tool-containment`, `eu-ai-act-high-risk`) — the same packs
 `agentfox admin seed` loads, using the same `ensure_identity` / `grant_capability` /
 `register_agent` / `McpGovernor.register_tools` helpers `agentfox admin seed` and
-`tests/detection/test_composition.py`'s `_governor` fixture already use. It's idempotent —
+`tests/capabilities/detection/test_composition.py`'s `_governor` fixture already use. It's idempotent —
 safe to re-run.
 
 **This demo uses its own database file** (`demo/redteam-live/demo.db`, via
@@ -150,7 +150,7 @@ the chain is wrong on its own.**
    under the $500 cap, and `issue_refund` is a tool this agent genuinely holds.
 
 Individually, both calls pass every check. **AgentFox blocks it anyway**, because
-`agentfox.detection.composition.check_composed_escalation` (F3.8) tracks *where
+`agentfox.capabilities.detection.composition.check_composed_escalation` (F3.8) tracks *where
 each argument's value came from* — `TaintTracker`'s `propagated_from` provenance
 — and sees that `order_id` didn't come from the user or from Priya's own
 account; it came from a broad internal search a moment earlier, being reused as
@@ -177,7 +177,7 @@ message in isolation has no way to know that this specific 8-character string
 in this specific tool call is the same one that came back from a search 30
 seconds ago. That's not a text property — it requires tracking data lineage
 across the whole tool-call sequence in one conversation, which is what taint
-tracking is for. This is the exact shape `tests/detection/test_composition.py` proves
+tracking is for. This is the exact shape `tests/capabilities/detection/test_composition.py` proves
 against a synthetic patient-records scenario; here it's the same mechanism
 against real tools with real state.
 

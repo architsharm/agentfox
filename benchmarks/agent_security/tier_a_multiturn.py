@@ -82,8 +82,8 @@ SCENARIOS = [
 
 
 def score_turn_alone(pipeline_text: str) -> bool:
-    from agentfox.detection.base import DetectionContext
-    from agentfox.detection.detectors.injection import InjectionHeuristicDetector
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
 
     result = InjectionHeuristicDetector().detect(pipeline_text, DetectionContext(surface="input"))
     return bool(result.detections)

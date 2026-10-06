@@ -74,7 +74,7 @@ def test_doctor_says_offline_only_when_only_echo_is_available(monkeypatch):
 
 
 def test_test_action_without_sqlglot_keeps_the_install_hint(monkeypatch):
-    import agentfox.detection.actions as actions
+    import agentfox.capabilities.detection.actions as actions
 
     monkeypatch.setattr(actions, "SQLGLOT_AVAILABLE", False)
     result = runner.invoke(app, ["test", "action", "DELETE FROM users"])

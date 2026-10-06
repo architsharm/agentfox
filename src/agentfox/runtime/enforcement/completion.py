@@ -8,9 +8,9 @@ import logging
 import time
 from typing import Any
 
+from agentfox.capabilities.detection import TaintTracker
+from agentfox.capabilities.detection.taint import _flatten
 from agentfox.core.models import Agent, TaintTag, Trace
-from agentfox.detection import TaintTracker
-from agentfox.detection.taint import _flatten
 from agentfox.grounding.answerability import (
     classify_answerability,
     detect_over_refusal,

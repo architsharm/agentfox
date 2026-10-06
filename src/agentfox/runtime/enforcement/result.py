@@ -7,8 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.models import Agent, Identity, Trace
-from agentfox.detection import TaintTracker
 
 #: Verdicts whose outcome is a rewritten copy of the content rather than a yes or no.
 REWRITE_VERDICTS = frozenset({"redact", "mask", "tokenize"})

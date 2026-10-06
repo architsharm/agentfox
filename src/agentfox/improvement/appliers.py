@@ -149,7 +149,7 @@ def _suppression_direction(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _suppression_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from agentfox.detection.tuning import revoke_suppression
+    from agentfox.capabilities.detection.tuning import revoke_suppression
 
     suppression = session.get(Suppression, _suppression_id(proposal))
     if suppression is None:
@@ -178,7 +178,7 @@ def _suppression_apply(session: Session, proposal: ChangeProposal, *, actor: str
 def _suppression_revert(
     session: Session, proposal: ChangeProposal, *, actor: str
 ) -> dict[str, Any]:
-    from agentfox.detection.tuning import apply_suppression
+    from agentfox.capabilities.detection.tuning import apply_suppression
 
     original = session.get(Suppression, _suppression_id(proposal))
     if original is None:

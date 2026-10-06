@@ -347,8 +347,8 @@ export default function Privacy() {
                 recognise what kind of thing matched. It is not enough to be the value.
               </p>
               <Ref>
-                src/agentfox/detection/base.py:204-218;
-                src/agentfox/detection/detectors/pii.py:133; src/agentfox/core/models/:486-502
+                src/agentfox/capabilities/detection/base.py:204-218;
+                src/agentfox/capabilities/detection/detectors/pii.py:133; src/agentfox/core/models/:486-502
               </Ref>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 Separately, before anything reaches the audit chain, values under keys that

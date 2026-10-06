@@ -80,7 +80,7 @@ def test_the_client_imports_nothing_heavy():
     source = (
         "import sys; import agentfox.hooks.client as c; "
         "heavy = [m for m in ('sqlalchemy','torch','transformers','agentfox.runtime.enforcement',"
-        "'agentfox.detection') if m in sys.modules]; "
+        "'agentfox.capabilities.detection') if m in sys.modules]; "
         "print(','.join(heavy))"
     )
     out = subprocess.run([sys.executable, "-c", source], capture_output=True, text=True, check=True)

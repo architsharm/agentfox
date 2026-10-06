@@ -13,6 +13,7 @@ import datetime as dt
 import pytest
 from sqlalchemy import select
 
+from agentfox.capabilities.detection.tuning import apply_suppression, record_feedback
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     Agent,
@@ -26,7 +27,6 @@ from agentfox.core.models import (
     as_aware,
 )
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
-from agentfox.detection.tuning import apply_suppression, record_feedback
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import min_score_direction
 from agentfox.improvement.proposals import (

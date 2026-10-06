@@ -248,7 +248,7 @@ def _detector_index() -> dict[str, list[dict[str, Any]]]:
     listed threats somebody had already been attacked by would be a log, not a
     coverage view.
     """
-    from agentfox.detection import all_detectors
+    from agentfox.capabilities.detection import all_detectors
 
     out: dict[str, list[dict[str, Any]]] = {}
     for key, detector in all_detectors().items():

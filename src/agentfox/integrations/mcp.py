@@ -35,8 +35,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.models import McpToolSnapshot, Tool, Trace
-from agentfox.detection import TaintTracker
 from agentfox.errors import AgentFoxError
 from agentfox.platform.ledger.findings import raise_finding
 from agentfox.platform.registry.service import (

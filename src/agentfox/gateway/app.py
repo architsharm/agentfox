@@ -19,9 +19,9 @@ from sqlalchemy.orm import Session
 
 from agentfox import __version__
 from agentfox.capabilities.compliance.catalog import load_catalog
+from agentfox.capabilities.detection import all_detectors, available_detectors
 from agentfox.core.config import assert_production_secrets, get_settings
 from agentfox.core.db import init_db
-from agentfox.detection import all_detectors, available_detectors
 from agentfox.gateway.deps import current_user, db
 from agentfox.gateway.routes import (
     answerability,
@@ -103,7 +103,7 @@ async def lifespan(app: FastAPI):
     # that only gets slow once, on its very first call, would otherwise silently
     # degrade the first real request every time this process starts (the 40ms
     # per-detector timeout is nowhere near enough to also cover loading a model).
-    from agentfox.detection import warm_all
+    from agentfox.capabilities.detection import warm_all
 
     warm_all()
     yield

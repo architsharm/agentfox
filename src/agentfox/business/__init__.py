@@ -1,6 +1,6 @@
 """Business-process guardrails, and the catalogue that makes new ones cheap to write.
 
-The security guardrails in :mod:`agentfox.detection` answer "may this happen at all".
+The security guardrails in :mod:`agentfox.capabilities.detection` answer "may this happen at all".
 This package answers the other question a business actually asks — *"under which
 circumstances, and who has to agree"* — and the two compose by different algebras,
 which is the whole architectural point. See :mod:`agentfox.business.graph`.

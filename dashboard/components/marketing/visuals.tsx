@@ -328,14 +328,14 @@ type DetectorRow = {
  * duration is quoted as a measurement anywhere below.
  *
  * Detectors are listed in the order `DetectorPipeline.select()` sorts them, which is
- * `_COST_ORDER` at src/agentfox/detection/pipeline.py:66-77, cheapest first, so a
+ * `_COST_ORDER` at src/agentfox/capabilities/detection/pipeline.py:66-77, cheapest first, so a
  * budget breach loses the expensive-but-marginal signal rather than the cheap one.
  * The surface is `retrieved`, which is why `schema.json` is not selected at all:
  * its surfaces are `output` and `tool_args` only.
  */
 const PIPELINE: DetectorRow[] = [
   {
-    // key/version src/agentfox/detection/detectors/secrets.py:74-75, cost 0 pipeline.py:67
+    // key/version src/agentfox/capabilities/detection/detectors/secrets.py:74-75, cost 0 pipeline.py:67
     key: "secrets.native",
     version: "1.1",
     tier: "default",
@@ -344,7 +344,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Ran, found nothing. No provider format and no high-entropy value under a secret-shaped name.",
   },
   {
-    // key/version src/agentfox/detection/detectors/injection.py:460-461
+    // key/version src/agentfox/capabilities/detection/detectors/injection.py:460-461
     key: "injection.heuristic",
     version: "1.2",
     tier: "default",
@@ -357,7 +357,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Lexical, structural and contextual signals. Table stakes by design, not the durable defence.",
   },
   {
-    // key/version src/agentfox/detection/detectors/pii.py:83-84
+    // key/version src/agentfox/capabilities/detection/detectors/pii.py:83-84
     key: "pii.native",
     version: "1.1",
     tier: "default",
@@ -366,7 +366,7 @@ const PIPELINE: DetectorRow[] = [
     note: "The address the injected instruction wants the customer database sent to.",
   },
   {
-    // key/version src/agentfox/detection/detectors/safety.py:69-70
+    // key/version src/agentfox/capabilities/detection/detectors/safety.py:69-70
     key: "safety.lexicon",
     version: "1.0",
     tier: "default",
@@ -375,7 +375,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Ran, found nothing. A lexicon cannot resolve intent, so it reports a category or nothing.",
   },
   {
-    // key/version src/agentfox/detection/detectors/schema.py:113-114; surfaces :115
+    // key/version src/agentfox/capabilities/detection/detectors/schema.py:113-114; surfaces :115
     key: "schema.json",
     version: "1.0",
     tier: "default",
@@ -384,7 +384,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Its surfaces are output and tool_args. This content arrived on retrieved, so it never ran.",
   },
   {
-    // key/version src/agentfox/detection/adapters/presidio.py:84-85
+    // key/version src/agentfox/capabilities/detection/adapters/presidio.py:84-85
     key: "pii.presidio",
     version: "1.0",
     tier: "opt-in",
@@ -393,7 +393,7 @@ const PIPELINE: DetectorRow[] = [
     note: "Registered and swappable, off until the dependency is installed and the key is enabled.",
   },
   {
-    // key/version src/agentfox/detection/adapters/classifiers.py:135-136; timeout_ms :152
+    // key/version src/agentfox/capabilities/detection/adapters/classifiers.py:135-136; timeout_ms :152
     key: "injection.classifier",
     version: "1.0",
     tier: "opt-in",
@@ -523,7 +523,7 @@ export function DetectorPipeline({ className }: { className?: string }) {
 
 /*
  * The same ticket before and after `redact_content`
- * (src/agentfox/detection/detectors/pii.py:142-163), in both of its modes.
+ * (src/agentfox/capabilities/detection/detectors/pii.py:142-163), in both of its modes.
  *
  * The values are the ones already used as fixtures in this repository: the SSN from the
  * `exfiltration.pii` probe (src/agentfox/evaluation/redteam.py:199) and the key from
