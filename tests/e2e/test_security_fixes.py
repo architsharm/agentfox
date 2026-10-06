@@ -56,8 +56,8 @@ OTLP_PAYLOAD = {
 
 @pytest.fixture
 def seeded_app():
+    from agentfox.apps.gateway.app import create_app
     from agentfox.fixtures.seed import seed
-    from agentfox.gateway.app import create_app
 
     with session_scope() as s:
         seed(s)
@@ -73,8 +73,8 @@ def token_mode(monkeypatch):
 
 
 def _operator_token(email: str = "admin@example.com") -> str:
+    from agentfox.apps.gateway.auth import issue_token
     from agentfox.core.models import User
-    from agentfox.gateway.auth import issue_token
 
     with system_scope("test setup"), session_scope() as s:
         user = s.scalars(select(User).where(User.email == email)).first()

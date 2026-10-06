@@ -190,7 +190,7 @@ def build_api() -> dict[str, Any]:
     # builds it, with every router mounted. The OpenAPI document is the source, since
     # included routers are resolved lazily and are not all in `app.routes`.
     os.environ.setdefault("AGENTFOX_DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/ref.db")
-    from agentfox.gateway.app import create_app
+    from agentfox.apps.gateway.app import create_app
 
     spec = create_app().openapi()
     routes = []

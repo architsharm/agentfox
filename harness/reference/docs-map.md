@@ -89,7 +89,7 @@ Everything under `harness/` is agent-facing by design and follows `harness/STRUC
 |---|---|---|
 | How do I run X? | `harness/reference/cli.md` | `agentfox X --help` |
 | Which env var controls Y? | `harness/reference/config.md` | `src/agentfox/core/config.py` |
-| What does this API route take? | `harness/reference/http-api.md` | `src/agentfox/gateway/routes/` |
+| What does this API route take? | `harness/reference/http-api.md` | `src/agentfox/apps/gateway/routes/` |
 | Why was this built / is it in scope? | `docs/design/PRD.md` | `docs/design/gap-analysis.md` |
 | Where is requirement P9-11 implemented? | `docs/design/traceability.md` | `docs/architecture/low-level-design.md` |
 | Is failure mode F3.8 covered? | `docs/status.md` (regenerate first) | `docs/design/failure-modes.md` |

@@ -166,7 +166,7 @@ def test_long_strings_truncated(session):
 
 def test_no_orm_update_path_for_entries():
     """The absence of a mutation API is the control (P5-2)."""
-    from agentfox.gateway.routes import governance
+    from agentfox.apps.gateway.routes import governance
 
     audit_routes = [
         (r.path, m)

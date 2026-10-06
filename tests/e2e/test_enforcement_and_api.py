@@ -1301,7 +1301,7 @@ def test_proxy_responses_carry_both_verdict_headers(client):
 def test_the_alias_headers_are_exposed_across_origins(client):
     """The dashboard and the playground page read these cross-origin. A header the
     browser hides is a header that does not exist to them."""
-    from agentfox.gateway.app import create_app
+    from agentfox.apps.gateway.app import create_app
 
     exposed = {
         h.lower()
@@ -1328,7 +1328,7 @@ def test_a_block_body_says_which_verdict_took_effect(client):
 def test_nested_rule_effects_are_not_aliased():
     """`rules_fired[*].effect` is one rule's own outcome, not this request's. Aliasing
     it would invent a claim about what took effect that nobody made."""
-    from agentfox.gateway.verdicts import with_verdict_aliases
+    from agentfox.apps.gateway.verdicts import with_verdict_aliases
 
     payload = with_verdict_aliases(
         {"verdict": "allow", "effective_verdict": "block", "rules_fired": [{"effect": "block"}]}
@@ -1339,7 +1339,7 @@ def test_nested_rule_effects_are_not_aliased():
 
 
 def test_an_alias_already_set_is_left_alone():
-    from agentfox.gateway.verdicts import with_verdict_aliases
+    from agentfox.apps.gateway.verdicts import with_verdict_aliases
 
     payload = with_verdict_aliases({"verdict": "allow", "applied_verdict": "deliberate"})
 

@@ -19,7 +19,7 @@ from agentfox.platform.ledger.trace import full_trace, start_trace
 
 @pytest.fixture(autouse=True)
 def _reset_playground_rate_limits():
-    from agentfox.gateway import playground_sessions as pg
+    from agentfox.apps.gateway import playground_sessions as pg
 
     pg.session_creation_limiter._hits.clear()
     pg.action_limiter._hits.clear()

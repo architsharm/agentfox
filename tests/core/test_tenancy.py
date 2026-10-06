@@ -377,7 +377,7 @@ def test_interleaved_tenants_do_not_collide_on_sequence(isolated_db):
 
 
 def test_the_api_isolates_tenants(two_tenants):
-    from agentfox.gateway.app import create_app
+    from agentfox.apps.gateway.app import create_app
 
     client = TestClient(create_app())
     for org, mine, theirs in ((ACME, "acme-bot", "globex-bot"), (GLOBEX, "globex-bot", "acme-bot")):

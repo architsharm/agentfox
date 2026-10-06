@@ -160,7 +160,7 @@ Four deployable units, one shared Python package:
 ```
 
 **A fifth deployment shape exists**: `api/index.py` re-exports the identical
-`agentfox.gateway.app:app` object as a Vercel serverless function, for a hosted demo/trial
+`agentfox.apps.gateway.app:app` object as a Vercel serverless function, for a hosted demo/trial
 path that doesn't require self-hosting Postgres. This is not a separately designed API — see
 §10 for why it is nonetheless a real architectural risk.
 

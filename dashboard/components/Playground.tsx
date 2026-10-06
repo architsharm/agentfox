@@ -3,7 +3,7 @@
 /**
  * The public playground. Unauthenticated, talks straight to the gateway's own
  * unauthenticated `/api/playground/*` routes (see
- * `src/agentfox/gateway/routes/playground.py`) — no session cookie, no
+ * `src/agentfox/apps/gateway/routes/playground.py`) — no session cookie, no
  * `lib/api.ts`. Every visitor gets their own throwaway sandbox on mount; nothing
  * here is shared between visitors and nothing here is real (no real money, no
  * real email, no real model call — see the backend module's own docstring).

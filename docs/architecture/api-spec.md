@@ -401,7 +401,7 @@ canary rollout), `POST /api/traces/{id}/replay` (use `POST /api/policies/simulat
 ## C.4 Role → permission matrix
 
 Every authenticated role can read. Writes are gated per route family by `WRITE_ROLES` in
-`src/agentfox/gateway/deps.py`, which this table mirrors:
+`src/agentfox/apps/gateway/deps.py`, which this table mirrors:
 
 | Write family | owner | admin | security | compliance | developer | auditor |
 |---|---|---|---|---|---|---|

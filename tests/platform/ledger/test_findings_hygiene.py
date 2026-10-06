@@ -305,7 +305,7 @@ def test_a_false_resolution_rescan_does_not_refile(seeded):
 
 
 def test_a_repeatedly_stopped_loop_is_one_finding_per_session(seeded):
-    from agentfox.gateway.routes.inline import _record_loop_stop
+    from agentfox.apps.gateway.routes.inline import _record_loop_stop
 
     verdict = SimpleNamespace(decision="stop", reason="same call repeated", step=4, evidence={})
     steps = [SimpleNamespace(tool="search")] * 4

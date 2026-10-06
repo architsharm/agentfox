@@ -55,7 +55,7 @@ def test_scan_spec_with_no_paths_reports_the_gap_rather_than_crashing():
 
 
 def test_scanning_a_hosted_api_proposes_a_draft_agent_and_policy(client, monkeypatch):
-    import agentfox.gateway.routes.integrations as integrations
+    import agentfox.apps.gateway.routes.integrations as integrations
 
     monkeypatch.setattr(integrations, "fetch_spec", lambda url: PETSTORE_SPEC)
 
@@ -95,7 +95,7 @@ def test_scanning_with_no_spec_still_registers_the_endpoint_for_review(client, m
 
 
 def test_a_bad_spec_url_fails_the_scan_without_creating_a_draft_agent(client, monkeypatch):
-    import agentfox.gateway.routes.integrations as integrations
+    import agentfox.apps.gateway.routes.integrations as integrations
     from agentfox.capabilities.discovery.openapi import SpecFetchError
 
     def _boom(url):
@@ -117,7 +117,7 @@ def test_a_bad_spec_url_fails_the_scan_without_creating_a_draft_agent(client, mo
 
 
 def test_approving_a_hosted_api_draft_makes_it_active(client, monkeypatch):
-    import agentfox.gateway.routes.integrations as integrations
+    import agentfox.apps.gateway.routes.integrations as integrations
 
     monkeypatch.setattr(integrations, "fetch_spec", lambda url: PETSTORE_SPEC)
     scan = client.post(

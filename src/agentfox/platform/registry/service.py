@@ -371,7 +371,7 @@ DECLARED_TOOL_IMPACTS: dict[str, str] = {}
 #: `auto()` or MCP governance first saw it — rather than declared by an operator,
 #: the CLI/API or code. Kept as a JSON Schema vendor keyword in `schema_json`
 #: rather than a column of its own on purpose: a deployment runs new code before
-#: anyone runs its migration (tests/gateway/test_playground.py pins that window), and a
+#: anyone runs its migration (tests/apps/gateway/test_playground.py pins that window), and a
 #: new column on `tools` would break every tool lookup in it, the enforcement path
 #: included. Validators ignore `x-` keywords; `tool_input_schema` strips it.
 IMPACT_SOURCE_KEY = "x-agentfox-impact-source"

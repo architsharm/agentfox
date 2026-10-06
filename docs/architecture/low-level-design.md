@@ -303,7 +303,7 @@ does. The hierarchy is enforced at runtime: `evaluate()` resolves the same layer
 
 ---
 
-## 10. Gateway composition — `src/agentfox/gateway/`
+## 10. Gateway composition — `src/agentfox/apps/gateway/`
 
 `app.py`, `create_app()`:
 
@@ -358,7 +358,7 @@ the top level except two hidden protocol endpoints that installed configs call,
 | `report` | `summary`, `status`, `evidence`, `verify`, `risk`, `obligations`, `frameworks`, `board`, `signoff`, `drift` |
 | `admin` | `users` (`create`, `list`), `auth`, `db`, `jobs run-due`, `catalog`, `hooks`, `checkpoint`, `seed`, `mcp`, `version` |
 
-`agentfox serve` runs `uvicorn` on `agentfox.gateway.app:app`, the same app object
+`agentfox serve` runs `uvicorn` on `agentfox.apps.gateway.app:app`, the same app object
 `api/index.py` re-exports.
 
 ---

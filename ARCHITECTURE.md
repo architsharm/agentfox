@@ -194,7 +194,7 @@ Outside the package:
 | `scripts/` | Generators and checks: `claims.py`, `docs_reference.py`, `api_routes.py`, `coverage.py`, `rebuild_vendored_wheels.py`, `quickscan.sh`. |
 | `migrations/` | Alembic revisions (also shipped inside the wheel as `agentfox/_migrations`). |
 | `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), Render and Fly configs, dashboard runbook. |
-| `api/` | The Vercel deployment of the gateway: `api/index.py` re-exports `agentfox.gateway.app:app`. It installs from a **wheel committed in `api/vendor/`**, because Vercel's root directory for this function is `api/` and `../src` would not ship. |
+| `api/` | The Vercel deployment of the gateway: `api/index.py` re-exports `agentfox.apps.gateway.app:app`. It installs from a **wheel committed in `api/vendor/`**, because Vercel's root directory for this function is `api/` and `../src` would not ship. |
 | `demo/` | Two live red-team demos (`redteam-live/`, `redteam-live-lang/`); the second also deploys from a vendored wheel. |
 
 ## Invariants and cross-cutting concerns
@@ -289,7 +289,7 @@ then run `scripts/docs_reference.py --write` so the website's CLI reference pick
 A new router must be included in `gateway/app.py:create_app`. Regenerate
 `scripts/api_routes.py --write` and `scripts/docs_reference.py --write`, and update
 `harness/reference/http-api.md`. If the route is a privileged operator action, record it
-(see the audit invariant). Tests in `tests/gateway/` or `tests/e2e/`.
+(see the audit invariant). Tests in `tests/apps/gateway/` or `tests/e2e/`.
 
 **Add a website docs page.** Create `dashboard/app/docs/<section>/<slug>/page.tsx` using the
 blocks in `dashboard/components/docs/blocks.tsx` (copy a sibling page), and add it to

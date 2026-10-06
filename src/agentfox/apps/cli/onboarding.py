@@ -97,7 +97,7 @@ _SEVERITY_MARK = {
 
 
 def _fit_path(file: str, line: int, width: int) -> str:
-    """``src/agentfox/gateway/routes/inline.py:42`` shortened from the *left*.
+    """``src/agentfox/apps/gateway/routes/inline.py:42`` shortened from the *left*.
 
     The previous rendering cut from the right, which removed the filename and the
     line number — the two parts of the path that are the point of printing it. When a
@@ -502,7 +502,7 @@ def doctor(
 
     # Authentication first: it is the check most likely to be wrong and most costly
     # when it is, and a deployment that fails it does not need to read the rest.
-    from agentfox.gateway.auth import header_identity_allowed
+    from agentfox.apps.gateway.auth import header_identity_allowed
 
     if header_identity_allowed():
         add(

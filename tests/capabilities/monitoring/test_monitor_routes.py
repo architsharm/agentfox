@@ -73,7 +73,7 @@ def test_a_failed_download_is_reported_as_a_bad_gateway(client, encryption_key, 
 
 
 def test_scanning_a_hosted_api_spec_starts_monitoring_it(client, monkeypatch):
-    import agentfox.gateway.routes.integrations as integrations
+    import agentfox.apps.gateway.routes.integrations as integrations
 
     spec = {"info": {"title": "Pets"}, "paths": {"/pets": {"get": {"summary": "List"}}}}
     monkeypatch.setattr(integrations, "fetch_spec", lambda url: spec)

@@ -14,6 +14,6 @@ therefore the deployed code: a change to src/agentfox reaches production only on
 the wheel is rebuilt (`uv build --wheel --out-dir api/vendor`) and committed.
 """
 
-from agentfox.gateway.app import app
+from agentfox.apps.gateway.app import app
 
 __all__ = ["app"]

@@ -128,4 +128,4 @@ EXPOSE 8080
 # The app refuses to start outside AGENTFOX_ENVIRONMENT=development while
 # AGENTFOX_SERVICE_AUTH_SECRET or AGENTFOX_AUDIT_SIGNING_KEY is unset or a published
 # placeholder: both are in this repository, so neither would be a secret.
-CMD ["uvicorn", "agentfox.gateway.app:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "agentfox.apps.gateway.app:app", "--host", "0.0.0.0", "--port", "8080"]

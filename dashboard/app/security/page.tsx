@@ -186,7 +186,7 @@ export default function Security() {
                 separated from another by the same mechanism that separates two paying
                 customers, with no playground-specific filter for anyone to forget.
               </p>
-              <Ref>src/agentfox/gateway/playground_sessions.py:8-13</Ref>
+              <Ref>src/agentfox/apps/gateway/playground_sessions.py:8-13</Ref>
 
               <h3 className="mk-h3" style={{ marginTop: 34 }}>
                 2. The audit log is a hash chain, and the verifier is a pure function
@@ -287,7 +287,7 @@ export default function Security() {
                 actually bound the cost, and both are deployment-wide. That is written down
                 in the module rather than implied.
               </p>
-              <Ref>src/agentfox/gateway/playground_sessions.py:371-379</Ref>
+              <Ref>src/agentfox/apps/gateway/playground_sessions.py:371-379</Ref>
               <p className="mk-fine" style={{ marginTop: 26 }}>
                 Also here: <Link href="/privacy">privacy</Link>,{" "}
                 <Link href="/terms">terms</Link>, <Link href="/legal">legal</Link>.
