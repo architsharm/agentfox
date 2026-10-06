@@ -14,13 +14,17 @@ say).
 
 ## Files
 
+The support-tools agent itself (dataset, tools, grants, seed, verification) is shared
+with the LangChain demo and lives once in [`demo/kit/`](../kit/). The files here are
+the CrewAI crew plus thin adapters that name this demo's agent (`support-crew-live`).
+
 | File | What it's for |
 |---|---|
-| `_env.py` | Points AgentFox at this demo's own SQLite file. Imported first by everything else. |
-| `support_tools.py` | The fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `crew.py` and `verify_mechanics.py` call into. |
-| `seed_demo_agent.py` | One-time setup: registers the agent, its capability grants, its tools, and the shipped policy packs. |
+| `_env.py` | Puts `demo/` on `sys.path` so `kit` imports, and points AgentFox at this demo's own SQLite file (`kit/env.py`). Imported first by everything else. |
+| `support_tools.py` | This demo's view of `kit/support_tools.py` (the fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `crew.py` and `verify_mechanics.py` call into), with this demo's agent slug. |
+| `seed_demo_agent.py` | One-time setup: registers the agent, its capability grants, its tools, and the shipped policy packs (`kit/seed.py`). |
 | `crew.py` | The live CrewAI crew. **Run this for the actual demo.** |
-| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. |
+| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM (`kit/verify_mechanics.py`) — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. |
 | `requirements.txt` | What to install, and why (see below — do **not** install this into the main repo's `.venv`). |
 
 ## One-time setup
@@ -195,7 +199,7 @@ python verify_mechanics.py
 
 Runs the exact same `GovernedToolkit` path the crew's tools call into, with no
 model involved: a clean refund (succeeds, real mutation), a $50,000 refund
-attempt (blocked — `capability.denied`), the composed-escalation attack above
+attempt (blocked — `capability.constraint_violated`), the composed-escalation attack above
 (blocked — `composition.escalation`), and the negative control. Use this if the
 live LLM is flaky, offline, or does something unexpected mid-meeting — it
 reproduces the same three moments deterministically. It's also how this demo's
@@ -343,7 +347,7 @@ in `tests/frameworks/test_mcp_governance.py`. Re-verified directly against this 
 after the fix (`verify_mechanics.py` scenario 1): the clean $45 refund now
 comes back `"status": "refunded"` with no spurious post-decision block, where
 before the fix `outcome.allowed` was `False` for that exact call.
-`support_tools.py`'s `_render()` still keys off `pre_decision` rather than
+`kit/support_tools.py`'s `_render()` still keys off `pre_decision` rather than
 `outcome.allowed` — that was already correct (the pre-flight check is what
 actually gates execution) and remains a reasonable choice independent of this
 fix, not a workaround that needs undoing.

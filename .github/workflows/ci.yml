@@ -19,6 +19,8 @@ jobs:
       # these steps just make the failure obvious in the job log.
       - name: Plugins match the live CLI, repo paths and docs map, and their shared copies
         run: uv run python scripts/check/plugins.py
+      - name: The deployed demo's copy of demo/kit matches the original
+        run: uv run python scripts/check/demo_kit.py
       - name: Appendix C route tables match the running app
         run: uv run python scripts/gen/api_routes.py --check
       - name: Docs site reference is current and its commands exist

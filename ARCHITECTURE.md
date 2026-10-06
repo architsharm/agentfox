@@ -226,7 +226,7 @@ Outside the package:
 | `migrations/` | Alembic revisions (also shipped inside the wheel as `agentfox/_migrations`). |
 | `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), Render and Fly configs, dashboard runbook. |
 | `api/` | The Vercel deployment of the gateway: `api/index.py` re-exports `agentfox.apps.gateway.app:app`. It installs from a **wheel committed in `api/vendor/`**, because Vercel's root directory for this function is `api/` and `../src` would not ship. |
-| `demo/` | Two live red-team demos (`redteam-live/`, `redteam-live-lang/`); the second also deploys from a vendored wheel. |
+| `demo/` | Two live red-team demos (`redteam-live/`, CrewAI; `redteam-live-lang/`, LangChain) sharing one support-tools agent, seed and verification in `demo/kit/`. The second deploys on Vercel from a vendored wheel and a committed copy of the kit (`redteam-live-lang/kit/`), because its Vercel root directory is that folder. |
 
 ## Invariants and cross-cutting concerns
 
@@ -307,7 +307,9 @@ checks every `agentfox …` command shown on a docs page), `docs/design/coverage
 (`scripts/probe/run.py`). `scripts/check/plugins.py` checks the plugins against the live CLI,
 that the Claude Code plugin's copies of `plugins/shared/` match their originals (`--write`
 refreshes them), and that every tracked `.md` file is classified in
-`plugins/shared/reference/docs-map.md`.
+`plugins/shared/reference/docs-map.md`. `scripts/check/demo_kit.py` checks that
+`demo/redteam-live-lang/kit/` is a byte-identical copy of `demo/kit/` (`--write` refreshes
+it): edit the kit in `demo/kit/` only.
 
 **Vendored wheels are the deploy.** `api/vendor/` and `demo/redteam-live-lang/vendor/` hold
 built wheels. A change under `src/agentfox/` must rebuild both in the same commit; the

@@ -27,7 +27,7 @@ uvx pre-commit install
 ## The contract: `just ci`
 
 `just ci` runs what [CI](.github/workflows/ci.yml) runs: ruff at CI's pinned version, the
-Python suite, the four drift checks, the dashboard tests and the vendored-wheel freshness
+Python suite, the drift checks, the dashboard tests and the vendored-wheel freshness
 rule. If it passes locally, the pull request will pass, except for the Docker build
 (`just docker-smoke`, which needs Docker).
 
@@ -37,7 +37,7 @@ rule. If it passes locally, the pull request will pass, except for the Docker bu
 | `just test` | `uv run pytest -q` |
 | `just test-fast` | `uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo` |
 | `just lint` | `uvx ruff@0.15.7 check .`, `uvx ruff@0.15.7 format --check .` (`just fmt` applies them) and the import contracts, `PYTHONPATH=src uvx --from import-linter==2.15 lint-imports` |
-| `just check` | `scripts/check/plugins.py`, `scripts/gen/api_routes.py --check`, `scripts/gen/docs_reference.py --check`, `scripts/check/claims.py --check` |
+| `just check` | `scripts/check/plugins.py`, `scripts/check/demo_kit.py`, `scripts/gen/api_routes.py --check`, `scripts/gen/docs_reference.py --check`, `scripts/check/claims.py --check` |
 | `just regen` | rewrites the generated files those checks compare against |
 | `just dashboard` | `npm ci`, `npm test` and `tsc --noEmit` in `dashboard/` |
 | `just wheels` | rebuilds `api/vendor/` and `demo/redteam-live-lang/vendor/` |

@@ -1,21 +1,25 @@
 """Shared environment setup — imported first by every script in this demo.
 
-Points agentfox at a dedicated SQLite file living next to this demo, never at the
-repo's own `agentfox.db` (used by the dashboard and the rest of the dev environment).
-This must run before anything imports agentfox's settings, since they are cached for
-the process lifetime (`agentfox.core.config.get_settings`, `@lru_cache`) — hence importing
-this module (`import _env`) is the very first line of every other script here.
+Makes the shared kit (`demo/kit/`) importable and points agentfox at this demo's own
+SQLite file (`demo/redteam-live/demo.db`); see `kit/env.py` for the rules, including
+how to override the database. This must run before anything imports agentfox's
+settings, since they are cached for the process lifetime — hence `import _env` is the
+very first line of every other script here.
 
-The path is overridable: set `NOMETRIA_DATABASE_URL` yourself before running a script
-and this file's `setdefault` is a no-op.
+This demo is not deployed anywhere, so it imports `demo/kit/` in place by putting
+`demo/` on `sys.path`. (The LangChain demo deploys with its own folder as the Vercel
+root, so it carries a committed copy of the kit instead.)
 """
 
 from __future__ import annotations
 
-import os
+import sys
 from pathlib import Path
 
 DEMO_DIR = Path(__file__).resolve().parent
-DEFAULT_DB_PATH = DEMO_DIR / "demo.db"
+if str(DEMO_DIR.parent) not in sys.path:
+    sys.path.insert(0, str(DEMO_DIR.parent))
 
-os.environ.setdefault("NOMETRIA_DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
+from kit.env import configure  # noqa: E402  -- needs demo/ on sys.path first
+
+DEFAULT_DB_PATH = configure(DEMO_DIR)
