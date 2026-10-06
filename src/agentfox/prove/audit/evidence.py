@@ -90,7 +90,12 @@ def main():
             )
             expected = seq
         expected += 1
-        if sha256(canonical(row.get("payload") or {})) != row["payload_digest"]:
+        # A scoped package withholds the payload of entries about other agents; the
+        # entry digest below still covers its payload digest, so linkage is checked.
+        # A withheld row must really carry no payload, or the flag would hide an edit.
+        if row.get("payload_withheld") and row.get("payload") is None:
+            pass
+        elif sha256(canonical(row.get("payload") or {})) != row["payload_digest"]:
             breaks.append((seq, "payload_mismatch", "payload does not match its digest"))
         recomputed = sha256("%s|%s|%s|%s|%s" % (
             seq, row["occurred_at"], row["action"], row["payload_digest"], row["prev_digest"]))
@@ -197,6 +202,11 @@ def build(
     traces = list(session.scalars(trace_query.order_by(Trace.started_at)))
     trace_ids = {t.id for t in traces}
 
+    scoped = bool(agents and agents != ["*"])
+    agent_ids = {a.id for a in agent_rows}
+    # An agent is named by id in some records and by slug in others.
+    agent_keys = agent_ids | set(agent_slugs)
+
     decisions = [
         d
         for d in session.scalars(
@@ -204,8 +214,9 @@ def build(
                 Decision.created_at >= period_from, Decision.created_at <= period_to
             )
         )
-        if not trace_ids or d.trace_id in trace_ids or d.trace_id is None
+        if not scoped or d.agent_id in agent_ids or (d.trace_id and d.trace_id in trace_ids)
     ]
+    decision_ids = {d.id for d in decisions}
 
     audit_entries = list(
         session.scalars(
@@ -239,28 +250,79 @@ def build(
     policy_versions = [session.get(PolicyVersion, pid) for pid in policy_version_ids]
     policy_versions = [p for p in policy_versions if p is not None]
 
-    approvals = list(
-        session.scalars(
+    approvals = [
+        a
+        for a in session.scalars(
             select(ApprovalRequest).where(
                 ApprovalRequest.requested_at >= period_from,
                 ApprovalRequest.requested_at <= period_to,
             )
         )
-    )
-    eval_runs = list(
-        session.scalars(
+        if not scoped
+        or a.agent_id in agent_ids
+        or (a.trace_id and a.trace_id in trace_ids)
+        or (a.decision_id and a.decision_id in decision_ids)
+    ]
+    eval_runs = [
+        r
+        for r in session.scalars(
             select(EvalRun).where(
                 EvalRun.created_at >= period_from, EvalRun.created_at <= period_to
             )
         )
-    )
-    findings = list(
-        session.scalars(
+        if not scoped or (r.target_json or {}).get("agent") in agent_keys
+    ]
+    findings = [
+        f
+        for f in session.scalars(
             select(Finding).where(
                 Finding.created_at >= period_from, Finding.created_at <= period_to
             )
         )
-    )
+        if not scoped
+        or (f.subject_type == "agent" and f.subject_id in agent_keys)
+        or (f.subject_type == "trace" and f.subject_id in trace_ids)
+        or (f.evidence_json or {}).get("trace_id") in trace_ids
+    ]
+
+    # A scoped package must not disclose what other agents did, but dropping their
+    # audit entries would leave gaps the verifier reads as deletions. So every entry
+    # in the period ships, and an entry about something out of scope ships with its
+    # payload withheld: its digests still prove the chain is unbroken, and nothing
+    # about the other agent is in the file.
+    in_scope_subjects = {
+        "agent": agent_keys,
+        "trace": trace_ids,
+        "decision": decision_ids,
+        "finding": {f.id for f in findings},
+        "approval": {a.id for a in approvals},
+        "eval_run": {r.id for r in eval_runs},
+    }
+    agent_by_id = {a.id: a.slug for a in session.scalars(select(Agent))}
+
+    def _out_of_scope(entry: AuditEntry) -> bool:
+        if not scoped:
+            return False
+        allowed = in_scope_subjects.get(entry.subject_type)
+        if allowed is not None:
+            return entry.subject_id not in allowed
+        named = (entry.payload_json or {}).get("agent") or (entry.payload_json or {}).get(
+            "agent_id"
+        )
+        if isinstance(named, str) and named:
+            return named not in agent_keys and agent_by_id.get(named) not in agent_keys
+        return False
+
+    audit_rows = []
+    withheld_entries = 0
+    for entry in audit_entries:
+        row = chain.entry_to_row(entry)
+        if _out_of_scope(entry):
+            row["payload"] = None
+            row["subject_id"] = None
+            row["payload_withheld"] = True
+            withheld_entries += 1
+        audit_rows.append(row)
     statuses = list(
         session.scalars(select(ControlStatus).order_by(ControlStatus.computed_at.desc()))
     )
@@ -279,9 +341,7 @@ def build(
         # First in the archive, so it is the first thing anyone opening it sees.
         "SUMMARY.md": render_markdown(summary),
         "SUMMARY.html": render_html(summary),
-        "audit_entries.json": json.dumps(
-            [chain.entry_to_row(e) for e in audit_entries], indent=2, default=str
-        ),
+        "audit_entries.json": json.dumps(audit_rows, indent=2, default=str),
         "audit_checkpoints.json": json.dumps(
             [
                 {
@@ -460,6 +520,7 @@ def build(
             "traces": len(traces),
             "decisions": len(decisions),
             "audit_entries": len(audit_entries),
+            "audit_payloads_withheld": withheld_entries,
             "checkpoints": len(checkpoints),
             "approvals": len(approvals),
             "eval_runs": len(eval_runs),
@@ -544,6 +605,9 @@ decisions.json           Every policy decision with the rules that fired and the
 policy_versions.json     Those policy versions, verbatim. Policy versions are
                          immutable, so what is here is what was enforced.
 audit_entries.json       The tamper-evident audit chain for the period (NOM-AUD-02).
+                         In a package scoped to some agents, entries about other
+                         agents keep their digests (so the chain still verifies)
+                         but carry "payload_withheld": true and no payload.
 audit_checkpoints.json   Signed anchors over that chain.
 chain_verification.json  Our verification result — see below to check it yourself.
 approvals.json           Human-in-the-loop approvals and who resolved them (NOM-IAM-03).

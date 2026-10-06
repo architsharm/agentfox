@@ -152,12 +152,12 @@ chain_verification.json  verify_chain.py  README.txt  manifest.json`}</Output>
       <Output>{`note: AGENTFOX_AUDIT_KEY not set - checkpoint signatures not verified
 entries checked: 95 (seq 1..95)
 CHAIN INTACT`}</Output>
-      <Callout kind="warning" title="What the agent field narrows">
-        In this build the agents field narrows the agent inventory and the traces in the
-        package. Decisions, findings, approvals, eval runs and audit entries for the period
-        are included for every agent: a package built for <code>payments-ops</code> held 58
-        decisions when that agent had made 5. Do not rely on it to keep other agents&apos;
-        records out of a package you hand over.
+      <Callout kind="info" title="What the agent field narrows">
+        Naming agents limits the inventory, traces, decisions, findings, approvals and eval
+        runs to those agents. The audit chain still covers the whole period, because a gap
+        would read as a deletion; entries about other agents ship with their payload and
+        subject withheld (<code>&quot;payload_withheld&quot;: true</code>), and{" "}
+        <code>verify_chain.py</code> still checks their linkage.
       </Callout>
       <Code>{`agentfox report evidence --agent payments-ops --since-days 30
 agentfox report verify`}</Code>
@@ -166,7 +166,9 @@ agentfox report verify`}</Code>
   period                   2026-09-05 → 2026-10-05
   agents                   1
   traces                   0
-  decisions                58
+  decisions                3
+  audit entries            27
+  audit payloads withheld  22
 …
   chain verification       valid
 
@@ -253,7 +255,6 @@ framework.`}</Output>
       <ul>
         <li>Mappings are drafts until reviewed, and reviewed mappings are your reviewer&apos;s claim, not AgentFox&apos;s.</li>
         <li>No retention schedules from the web app; no legal-hold release button.</li>
-        <li>The agent scope on evidence packages is partial, as above.</li>
       </ul>
 
       <NextSteps
