@@ -1,8 +1,8 @@
 """End-to-end walkthrough — the "it just caught something" moment.
 
-The roadmap's Phase-0 test is that the wedge *demos itself*: a blocked injection and
-a trace a CISO can read beats any deck. This script walks the full request path from
-PRD §9.3 and prints what each pillar contributed, using only the offline provider.
+The product should *demo itself*: a blocked injection and a trace a CISO can read
+beats any deck. This script walks the full request path and prints what each pillar
+contributed, using only the offline provider.
 
 Every number printed here is computed live from the same code paths the product uses.
 Nothing is narrated that did not actually happen.

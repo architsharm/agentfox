@@ -1,4 +1,4 @@
-"""I-3 — FastAPI middleware and dependencies. 10 of 11 engineers run FastAPI.
+"""FastAPI middleware and dependencies. 10 of 11 engineers run FastAPI.
 
 Second only to LangGraph in the practitioner evidence, and the surface with the
 lowest adoption cost: a team that already serves its agent behind FastAPI gets
@@ -201,7 +201,7 @@ def guard(
                     "message": result.reason,
                     "trace_id": result.trace_id,
                     "decision_id": result.decision_id,
-                    # P3-12: the route for disputing it travels with the refusal.
+                    # The route for disputing it travels with the refusal.
                     "explanation": result.explanation,
                 },
             )

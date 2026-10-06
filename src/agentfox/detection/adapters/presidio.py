@@ -1,6 +1,6 @@
-"""Microsoft Presidio adapter — PII detection (P3-2).
+"""Microsoft Presidio adapter — PII detection.
 
-Appendix A.1: MIT, actively maintained, the de-facto OSS standard. The build-vs-reuse
+MIT, actively maintained, the de-facto OSS standard. The build-vs-reuse
 rule is explicit about this one — *rebuilding PII detection from scratch would be
 pure duplicated work.* We wrap it and own the policy/action layer above it.
 
@@ -43,7 +43,7 @@ _ENTITY_MAP = {
 
 #: Presidio's PERSON/LOCATION/DATE_TIME recognisers are noisy in agent traffic;
 #: excluded by default and re-enabled per policy. A guardrail with poor precision
-#: gets switched off (PRD R3). US_DRIVER_LICENSE and US_PASSPORT join them per
+#: gets switched off. US_DRIVER_LICENSE and US_PASSPORT join them per
 #: benchmarks/pii/README.md: both are low-specificity numeric/alphanumeric-ID
 #: patterns that fire on account numbers, reference IDs, and other short codes
 #: in dense documents far more often than on the real thing (3.2%/0.9%
@@ -107,26 +107,16 @@ class PresidioPiiDetector(BaseDetector):
     def _model_present() -> bool:
         """Is the spaCy model there, or would asking for it reach the network?
 
-        `available()` used to answer yes the moment `presidio_analyzer`
-        imported, and `AnalyzerEngine()` is built lazily on the first real
-        request. Measured on a clean install of `agentfox[pii]`:
+        `presidio_analyzer` importing is not enough: `AnalyzerEngine()` is built
+        lazily on the first real request, and without `en_core_web_lg` installed
+        it downloads the model (about 400 MB, tens of seconds) from inside a
+        guarded request, against a 300ms pre-flight budget and a 40ms
+        per-detector timeout. `allow_egress` gates our own outbound calls and
+        never sees that one. Air-gapped, every request would raise instead, and
+        PII would be reported as covered by a check that could not run.
 
-          available(): True
-          detect():    downloaded en_core_web_lg (400.7 MB) and returned in 29,791ms
-
-        A 400MB `pip install` from inside a guarded request, against a 300ms
-        pre-flight budget and a 40ms per-detector timeout, on a product whose
-        first README line is that it runs offline. `allow_egress` was false
-        throughout; it gates our own outbound calls and never saw this one.
-
-        Air-gapped, the same `available(): True` is followed by every request
-        raising a ProxyError against raw.githubusercontent.com — so the
-        Detectors strip reported PII as covered by a check that could not run.
-
-        `adapters/classifiers.py` already had the rule and the comment for
-        exactly this: "never trigger a download at request time. Absent weights
-        mean 'unavailable', not 'fetch it now'." One adapter honoured it; this
-        one did not.
+        Same rule as `adapters/classifiers.py`: never trigger a download at
+        request time. An absent model means unavailable, not "fetch it now".
         """
         try:
             import spacy.util

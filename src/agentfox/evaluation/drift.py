@@ -1,4 +1,4 @@
-"""Production drift detection (P4-2, P4-7 / NOM-EVL-02, NOM-EVL-05).
+"""Production drift detection (NOM-EVL-02, NOM-EVL-05).
 
 Agents degrade silently after release — the provider swaps a model version, the
 retrieval corpus shifts, a prompt is edited upstream. Offline evaluation cannot see
@@ -14,7 +14,7 @@ Two standard statistics, both interpretable, both explainable to an auditor:
   depend on binning.
 
 Deliberately not an ML anomaly detector: an alert that cannot explain itself is not
-evidence, and this pillar's output has to survive an audit (X-4).
+evidence, and this pillar's output has to survive an audit.
 """
 
 from __future__ import annotations
@@ -252,7 +252,7 @@ def set_slo(
 
 
 def evaluate_slos(session: Session, agent_slug: str | None = None) -> list[dict[str, Any]]:
-    """Measure declared reliability targets and report error-budget burn (P4-7)."""
+    """Measure declared reliability targets and report error-budget burn."""
     query = select(SLO)
     if agent_slug:
         query = query.where(SLO.agent_id == agent_slug)

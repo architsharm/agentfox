@@ -1,6 +1,6 @@
 """Seed a demonstrable environment (offline, deterministic).
 
-Everything here exists to make the claims in the PRD *observable* rather than
+Everything here exists to make the product's claims *observable* rather than
 asserted: a high-risk agent with an irreversible tool, an unowned agent, a poisoned
 MCP tool description, an eval suite containing a real ungrounded answer, and a
 capability model tight enough that containment actually fires.
@@ -78,7 +78,7 @@ TOOLS: list[dict[str, Any]] = [
         "name": "Update support ticket",
         "impact": "write",
         "description": "Update an existing ticket.",
-        # P9 — a status change fires the helpdesk's own notification webhook, which
+        # A status change fires the helpdesk's own notification webhook, which
         # sends mail nobody asked this call to send. Looks like a plain write; the
         # declared trigger is what lets cascade_risk() see the irreversible tail.
         "triggers": ["email.send"],
@@ -279,7 +279,7 @@ EVAL_CASES: list[dict[str, Any]] = [
 
 
 def register_scripts() -> None:
-    """Bind the offline provider's deterministic replies (X-3)."""
+    """Bind the offline provider's deterministic replies."""
     for case in EVAL_CASES:
         script(case["prompt"].lower(), case["scripted"])
 
@@ -341,7 +341,7 @@ def seed(
         if "triggers" in spec:
             tool.triggers_json = spec["triggers"]
 
-    # --- Access scope declarations (P18) ------------------------------
+    # --- Access scope declarations ------------------------------
     # Without these, analyse_access() has nothing to check a query against and
     # cascade_risk's sibling feature stays as inert as it was before it was wired
     # in — declaring a couple of real tables is what lets a fresh `agentfox demo`

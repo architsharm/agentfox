@@ -1614,8 +1614,8 @@
      {
       "path": "declare triggers",
       "name": "triggers",
-      "summary": "declare what a tool call sets off downstream (a DB trigger, a webhook, a fan-out), so `cascade_risk()` can actually see it.",
-      "help": "declare what a tool call sets off downstream (a DB trigger, a webhook, a\nfan-out), so `cascade_risk()` can actually see it. An undeclared trigger stays\ninvisible by design (see `effects.cascade_risk`'s own docstring) — this is how\nan operator closes that gap for one tool.",
+      "summary": "Declare what a tool call sets off downstream (a DB trigger, a webhook, a fan-out), so `cascade_risk()` can actually see it.",
+      "help": "Declare what a tool call sets off downstream (a DB trigger, a webhook, a\nfan-out), so `cascade_risk()` can actually see it. An undeclared trigger stays\ninvisible by design (see `effects.cascade_risk`'s own docstring) — this is how\nan operator closes that gap for one tool.",
       "panel": null,
       "params": [
        {
@@ -1651,8 +1651,8 @@
      {
       "path": "declare scope",
       "name": "scope",
-      "summary": "declare which column on a table decides whose row it is, so `analyse_access()` can prove a query is scoped instead of assuming it.",
-      "help": "declare which column on a table decides whose row it is, so\n`analyse_access()` can prove a query is scoped instead of assuming it. An\nundeclared table is reported, never assumed safe (see `data_access`'s own\ndocstring).",
+      "summary": "Declare which column on a table decides whose row it is, so `analyse_access()` can prove a query is scoped instead of assuming it.",
+      "help": "Declare which column on a table decides whose row it is, so\n`analyse_access()` can prove a query is scoped instead of assuming it. An\nundeclared table is reported, never assumed safe (see `data_access`'s own\ndocstring).",
       "panel": null,
       "params": [
        {
@@ -1714,8 +1714,8 @@
      {
       "path": "declare reference",
       "name": "reference",
-      "summary": "declare a table that belongs to nobody, so `analyse_access()` does not flag it as an undeclared/unscoped table.",
-      "help": "declare a table that belongs to nobody, so `analyse_access()` does not\nflag it as an undeclared/unscoped table.",
+      "summary": "Declare a table that belongs to nobody, so `analyse_access()` does not flag it as an undeclared/unscoped table.",
+      "help": "Declare a table that belongs to nobody, so `analyse_access()` does not\nflag it as an undeclared/unscoped table.",
       "panel": null,
       "params": [
        {

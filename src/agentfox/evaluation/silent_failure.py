@@ -1,12 +1,12 @@
-"""Silent-failure detection (P4-3, NOM-EVL-03).
+"""Silent-failure detection (NOM-EVL-03).
 
-**The highest-leverage requirement in the PRD, and the category we intend to own.**
+**The highest-leverage check in the product, and the category we intend to own.**
 
 The market data is unambiguous: 89–94% of teams have observability, ~52% run offline
 evals, 37% run online evals, and 22.8% run none at all — while roughly 78% of AI
 failures are "invisible": plausible, confident, and wrong. The gap is not that teams
 cannot *see* their agents. It is that they cannot *judge* them. No OSS project in the
-catalog addresses this (Appendix A.5), and it is what lets a governance product claim
+catalog addresses this, and it is what lets a governance product claim
 it governs **correctness**, not merely safety — the line between us and every
 pure-security vendor.
 
@@ -319,7 +319,7 @@ class TaskCompletionScorer(BaseScorer):
 
 
 class SilentFailureScorer(BaseScorer):
-    """The ensemble (P4-3). One number, with the contributing signals attached.
+    """The ensemble. One number, with the contributing signals attached.
 
     Weighted toward groundedness and consistency because those are the two signals
     that fire on *confidently wrong* output; hedging and incompletion mostly catch

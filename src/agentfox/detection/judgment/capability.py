@@ -89,7 +89,7 @@ class Combine(StrEnum):
     #: Ask in order and stop at the first decisive answer. Only questions that
     #: land in a tier's uncertain band reach the next tier, so the expensive
     #: ones are asked about a fraction of the traffic instead of all of it.
-    #: Union was costing a hosted LLM call on every single decision to buy
+    #: Union costs a hosted LLM call on every single decision to buy
     #: +0.1 to +4.2 F1; this buys most of the same gain for a fraction of it.
     CASCADE = "cascade"
 
@@ -186,8 +186,8 @@ ROUTING: dict[DecisionKind, Rule] = {
         ),
     ),
     # Measured: neither alone beats the pair.
-    # Cascade rather than union. Union asked every enabled tier on every
-    # decision, which bought +0.1 F1 on injection for a hosted LLM call on
+    # Cascade rather than union. Union asks every enabled tier on every
+    # decision, which buys +0.1 F1 on injection for a hosted LLM call on
     # 100% of traffic. Ordered cheapest-first, a question only reaches the
     # expensive tier when the cheap one lands in its uncertain band.
     DecisionKind.PATTERN_OPEN: Rule(
@@ -206,11 +206,10 @@ ROUTING: dict[DecisionKind, Rule] = {
         prefer=(Tier.DETERMINISTIC, Tier.JEV, Tier.LOCAL_LLM, Tier.LLM, Tier.LOCAL_MODEL),
         band=(0.3, 0.7),
     ),
-    # Union, and the deterministic layer stays in. An earlier version of this
-    # table forbade it on the strength of one template (0/96 on presupposition)
-    # — that was over-reach. Widening commitments.py took it to 26.7% recall at
-    # **100% precision** across 2,160 refund replies, and a perfect-precision
-    # signal is not something to throw away because it is narrow. It still
+    # Union, and the deterministic layer stays in. commitments.py reaches 26.7%
+    # recall at **100% precision** across 2,160 refund replies, and a
+    # perfect-precision signal is not something to throw away because it is
+    # narrow (it scores 0/96 on presupposition, which is not a reason to drop it). It still
     # cannot see presupposition, implicature or a commitment made in Spanish,
     # which is what the judgment tiers are added for.
     # Cheapest first here too, but with an asymmetric band, and the asymmetry
@@ -220,8 +219,7 @@ ROUTING: dict[DecisionKind, Rule] = {
     #     llm only                              80 LLM calls
     #     jev -> llm, symmetric band .3/.7      27
     #     jev -> llm, only a confident yes      29
-    # Asking the LLM first — which an earlier version of this table did — cost
-    # 80 calls for no gain at all, so Jev leads.
+    # Asking the LLM first costs 80 calls for no gain at all, so Jev leads.
     #
     # But a Jev *negative* must never end the cascade. Its dangerous errors
     # here are confident denials: 0.07 on an answer that settles a hire. A

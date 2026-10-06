@@ -1,8 +1,8 @@
-"""Native policy evaluator (P6-1, P2-2, P3-4).
+"""Native policy evaluator.
 
-Deterministic (X-4): same input + same policy version -> same decision, every time.
-That property is what makes replay (P5-6), simulation (P2-7) and evidence
-reproducibility (P5-7) possible, so it is a hard constraint rather than a nicety —
+Deterministic: same input + same policy version -> same decision, every time.
+That property is what makes replay, simulation and evidence
+reproducibility possible, so it is a hard constraint rather than a nicety —
 nothing here may consult the clock, a random source, or a network.
 
 The OPA adapter (``opa.py``) implements the same :class:`PolicyEngine` protocol and
@@ -97,8 +97,8 @@ class NativePolicyEngine:
                 effective = f.effect  # type: ignore[assignment]
 
         # Observe mode records the counterfactual but never blocks the caller.
-        # This is the R3 mitigation: a customer turns enforcement on deliberately,
-        # after simulating it, not by installing us.
+        # A customer turns enforcement on deliberately, after simulating it, not by
+        # installing us.
         verdict = effective if policy.mode == "enforce" else "allow"
 
         return PolicyDecision(
@@ -193,7 +193,7 @@ class NativePolicyEngine:
 
     @staticmethod
     def _action_matches(cond: Condition, p: PolicyInput) -> bool:
-        """P9 — match on what the artefact does, not on the tool it arrived through."""
+        """Match on what the artefact does, not on the tool it arrived through."""
         action = p.action or {}
         if cond.action_operation is not None:
             if action.get("operation") not in cond.action_operation:
@@ -273,7 +273,7 @@ class NativePolicyEngine:
     def _explain(rule: Rule, p: PolicyInput) -> str:
         """Auto-generated reason when the author did not write one.
 
-        X-4 requires every block to carry an auditable reason; falling back to the
+        Every block must carry an auditable reason; falling back to the
         rule id alone would technically satisfy that and practically fail it.
         """
         bits: list[str] = []

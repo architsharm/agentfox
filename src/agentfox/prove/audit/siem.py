@@ -1,4 +1,4 @@
-"""SIEM / OTel export (P5-4, NOM-AUD-04).
+"""SIEM / OTel export (NOM-AUD-04).
 
 Principle: **never require the customer to adopt our storage as their system of
 record.** A security team already has a SOC, already has correlation rules, and

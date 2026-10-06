@@ -1,10 +1,10 @@
-"""Evaluation runner (P4-1, P4-2, P4-6, P4-8).
+"""Evaluation runner.
 
 The native runner is the default. promptfoo (MIT, purpose-built for CI gating) is
 wrapped as an alternative :class:`EvalRunner` — the catalog's recommendation — but it
 is not on the critical path, because the runner has to do three things promptfoo does
 not model: score with our silent-failure ensemble, write results into the governance
-data model so controls can be computed from them (P6-4), and run the *same* scorers
+data model so controls can be computed from them, and run the *same* scorers
 online against sampled production traffic as offline against a dataset.
 
 That last property is the one worth stating: a team whose offline suite and online
@@ -206,7 +206,7 @@ def summarise(outcomes: list[CaseOutcome], scorer_keys: list[str]) -> dict[str, 
 
 
 # ---------------------------------------------------------------------------
-# Online evaluation (P4-2)
+# Online evaluation
 # ---------------------------------------------------------------------------
 
 
@@ -345,7 +345,7 @@ def sample_production(
 
 
 def fit_envelope(session: Session, agent_slug: str, limit: int = 500) -> Envelope:
-    """Learn the behavioural envelope from observed traffic (P4-3d)."""
+    """Learn the behavioural envelope from observed traffic."""
     from agentfox.core.models import Span
 
     traces = list(

@@ -8,8 +8,7 @@ an unaudited version of it means the audit log can be defeated by switching off 
 thing that would have written to it. `system_scope` lifts tenant isolation, which is
 the strongest guarantee this product makes. Issuing a token mints an identity. Changing
 a business rule's mode moves it from observe to enforce, or back. Each of those is a
-larger act than anything an agent can do at runtime, and until now none of them left a
-row anywhere.
+larger act than anything an agent can do at runtime, and each must leave a row.
 
 The mechanism is deliberately the same hash-chained per-tenant log the agent decisions
 go into, rather than a separate operator log. A separate log is a log an operator can

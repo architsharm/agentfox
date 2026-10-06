@@ -1,4 +1,4 @@
-"""F6 — commitment, disclosure and liability.
+"""Commitment, disclosure and liability.
 
 *"The agent told the customer their claim was approved. It wasn't, and now it is."*
 
@@ -44,7 +44,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-# --- Binding commitments (F6.1) --------------------------------------------
+# --- Binding commitments --------------------------------------------
 
 #: First-person performatives. These *are* the commitment — saying them makes them so.
 _PROMISE = re.compile(
@@ -174,7 +174,7 @@ def detect_commitments(text: str, *, authorised: bool = False) -> list[Commitmen
     return [c for c in found if not c.hedged]
 
 
-# --- AI disclosure (F6.3) --------------------------------------------------
+# --- AI disclosure --------------------------------------------------
 
 #: Wording that tells a human they are talking to a machine. Deliberately broad: the
 #: obligation is that the person was informed, and there is no prescribed script.
@@ -289,7 +289,7 @@ def check_disclosure(
     return check
 
 
-# --- Adverse action (F6.4) -------------------------------------------------
+# --- Adverse action -------------------------------------------------
 
 #: Outcomes that carry a reason-giving obligation.
 ADVERSE_OUTCOMES = (
@@ -417,7 +417,7 @@ def _key_terms(text: str) -> set[str]:
     return {w for w in re.findall(r"[a-z]{4,}", text.lower())}
 
 
-# --- Fairness (F6.5) -------------------------------------------------------
+# --- Fairness -------------------------------------------------------
 
 #: The four-fifths rule: a selection rate below 80% of the highest group's rate is the
 #: threshold US enforcement has used since 1978. It is a trigger to investigate, not a
@@ -569,7 +569,7 @@ def assess_liability(
     reasons: list[str] | None = None,
     domain: str = "",
 ) -> LiabilityAssessment:
-    """Everything F6 can say about one outbound message."""
+    """Everything this module can say about one outbound message."""
     return LiabilityAssessment(
         commitments=detect_commitments(text, authorised=authorised),
         disclosure=check_disclosure(

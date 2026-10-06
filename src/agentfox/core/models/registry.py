@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class Agent(Base, TimestampMixin):
-    """P1-1, P1-4. Created by explicit registration or on first observation."""
+    """Created by explicit registration or on first observation."""
 
     __tablename__ = "agents"
     __table_args__ = (UniqueConstraint("org_id", "slug", name="ux_agents_org_slug"),)
@@ -42,9 +42,9 @@ class Agent(Base, TimestampMixin):
     owner_email: Mapped[str | None] = mapped_column(String(200))
     owner_team: Mapped[str | None] = mapped_column(String(120))
     environment: Mapped[str] = mapped_column(String(32), default="production")
-    # EU AI Act aligned tiering (P6-3).
+    # EU AI Act aligned tiering.
     risk_tier: Mapped[str] = mapped_column(String(24), default="limited")
-    framework: Mapped[str | None] = mapped_column(String(64))  # P1-6, auto-detected
+    framework: Mapped[str | None] = mapped_column(String(64))  # auto-detected
     status: Mapped[str] = mapped_column(String(24), default="active")
     registered: Mapped[bool] = mapped_column(Boolean, default=True)
     # Set when a repo scan proposed this agent (status="draft") rather than it being
@@ -70,12 +70,12 @@ class Agent(Base, TimestampMixin):
 
     @property
     def is_owned(self) -> bool:
-        """An unowned agent is a reportable compliance finding (P1-4)."""
+        """An unowned agent is a reportable compliance finding."""
         return bool(self.owner_email)
 
 
 class AgentControl(Base, TimestampMixin):
-    """PL-3 — kill switch and quarantine.
+    """Kill switch and quarantine.
 
     Checked before anything else in the request path. Two states beyond `active`:
 
@@ -123,14 +123,14 @@ class Tool(Base, TimestampMixin):
     schema_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     mcp_server_id: Mapped[str | None] = mapped_column(String(40))
     description: Mapped[str] = mapped_column(Text, default="")
-    # P9 cascade analysis (effects.cascade_risk): declared downstream effects this
+    # Cascade analysis (effects.cascade_risk): declared downstream effects this
     # tool's own call sets off (a DB trigger, a webhook, a fan-out) — the graph
     # cascade_risk() walks. Undeclared triggers stay invisible by design (see that
     # function's own docstring); this column is how an operator declares one.
     triggers_json: Mapped[list[str]] = mapped_column(JSON, default=list)
-    #: P3-4: whether values copied out of this tool's output taint the arguments they
-    #: land in. ``untrusted`` (the default, and the behaviour before this column
-    #: existed) treats every tool result as content an attacker may have written.
+    #: Whether values copied out of this tool's output taint the arguments they
+    #: land in. ``untrusted`` (the default) treats every tool result as content an
+    #: attacker may have written.
     #: ``trusted`` is an operator's declaration that the output comes from a system
     #: of record they control — a CRM read — so a customer's email address copied
     #: from it into ``send_email`` is not untrusted input. See guardrails/taint.py.
@@ -155,7 +155,7 @@ class McpServer(Base, TimestampMixin):
 
 
 class McpToolSnapshot(Base, TimestampMixin):
-    """P1-5. Consecutive digests differing => schema drift finding."""
+    """Consecutive digests differing => schema drift finding."""
 
     __tablename__ = "mcp_tool_snapshots"
 
@@ -167,7 +167,7 @@ class McpToolSnapshot(Base, TimestampMixin):
 
 
 class LineageEdge(Base, TimestampMixin):
-    """P1-3. Derived from observed spans, not declared config."""
+    """Derived from observed spans, not declared config."""
 
     __tablename__ = "lineage_edges"
     __table_args__ = (

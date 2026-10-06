@@ -1,9 +1,9 @@
-"""OTLP ingestion (X-1c, P5-1).
+"""OTLP ingestion.
 
 The third integration surface, and the one that needs no integration at all: a team
-already emitting OpenTelemetry gets Pillar 1 (registry, shadow-agent detection) and
-Pillar 5 (traces) by pointing their existing collector at us. No code change, no
-proxy, no SDK — which matters for NFR-8's ten-minute time-to-first-value.
+already emitting OpenTelemetry gets the agent registry, shadow-agent detection and
+traces by pointing their existing collector at us. No code change, no proxy, no
+SDK — which keeps time-to-first-value to minutes.
 
 Spans following OpenLLMetry / OTel GenAI semantic conventions map onto our
 agent-native span model; anything else is retained as context rather than dropped,
@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.models import Span, Trace, utcnow
 from agentfox.prove.audit.trace import ATTR_AGENT, start_trace
 
-# Framework fingerprints for P1-6 auto-discovery. Order matters: more specific first.
+# Framework fingerprints for auto-discovery. Order matters: more specific first.
 _FRAMEWORK_MARKERS: list[tuple[str, tuple[str, ...]]] = [
     ("langgraph", ("langgraph", "langgraph.node", "langgraph.graph")),
     ("langchain", ("langchain", "lc.", "langchain.chain")),
@@ -57,7 +57,7 @@ def flatten_attributes(attributes: list[dict[str, Any]] | None) -> dict[str, Any
 
 
 def detect_framework(attributes: dict[str, Any], span_name: str = "") -> str | None:
-    """P1-6 — record what the agent is built on, for neutrality reporting."""
+    """Record what the agent is built on, for neutrality reporting."""
     haystack = " ".join([span_name.lower(), *(f"{k}={v}".lower() for k, v in attributes.items())])
     for framework, markers in _FRAMEWORK_MARKERS:
         if any(marker in haystack for marker in markers):
@@ -183,7 +183,7 @@ def ingest_otlp(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     """Ingest an OTLP/JSON trace export.
 
     Returns a summary including any agent slugs observed, so the caller can run
-    shadow-agent detection over them (P1-2).
+    shadow-agent detection over them.
     """
     ingested_spans = 0
     traces_touched: dict[str, Trace] = {}

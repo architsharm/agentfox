@@ -138,7 +138,7 @@ def domain_of(text: str) -> str:
 #: A dose is the clearest case of an instruction wearing a number. Abbreviated and
 #: spelled-out units both count — "500 milligrams" carries the same instruction as
 #: "500mg", and only checking the abbreviation is a vocabulary gap, not a different
-#: risk (P18 register broadening).
+#: risk.
 _DOSAGE = re.compile(
     r"\b\d+(?:\.\d+)?\s?(?:mg|mcg|µg|ml|g|iu|units?|"
     r"milligrams?|micrograms?|millilit(?:er|re)s?|grams?|international\s+units?)\b"

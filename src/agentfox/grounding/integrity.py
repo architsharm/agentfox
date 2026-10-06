@@ -1,4 +1,4 @@
-"""F7 — numeric, temporal and entity integrity.
+"""Numeric, temporal and entity integrity.
 
 The failures here are the ones that survive every other control. The answer is
 grounded, the source is authoritative, the action is safe, nobody needed to escalate
@@ -18,12 +18,12 @@ judge is the wrong instrument, and a false negative on a currency mismatch costs
 than the check.
 
 **Locale.** These checks run on live output, and live output is not always English.
-`benchmarks/multilingual/` measured what that cost: on matched pairs of the same
-logical content, English-formatted and localised, 12 checks went silent on the
-localised member and one invented an error that was not there — a parser that read
-`2,5 + 2,5 = 5` as "25 + 25 is 50, not 5". Numbers are therefore parsed under an
-explicit *separator convention* rather than by stripping commas, and the connective
-vocabulary that gates four of the check families is no longer English-only.
+`benchmarks/multilingual/` measures what an English-only reading costs: on matched
+pairs of the same logical content, English-formatted and localised, 12 checks go
+silent on the localised member and one invents an error that is not there — a parser
+that reads `2,5 + 2,5 = 5` as "25 + 25 is 50, not 5". Numbers are therefore parsed
+under an explicit *separator convention* rather than by stripping commas, and the
+connective vocabulary that gates four of the check families covers several languages.
 
 The rule that governs the whole locale layer: **ambiguity is reported, never
 resolved by assumption.** `1,234` is one thousand two hundred thirty-four in English
@@ -367,8 +367,8 @@ _TOTAL_WORD = (
     r"suma total|suma|importe total|soma|totalizando"
 )
 #: …and the connective that introduces the figure. Longest first, so that French
-#: "est de" is not consumed as Spanish "es". Word-bounded, so that "sum" no longer
-#: matches inside "assume" — a pre-existing hole this rewrite closes on the way past.
+#: "est de" is not consumed as Spanish "es". Word-bounded, so that "sum" does not
+#: match inside "assume".
 _TOTAL_CONNECT = (
     r"s'élève à|s'eleve a|se eleva a|asciende a|ammonta a|belief sich auf|"
     r"beläuft sich auf|belaeuft sich auf|liegt bei|est de|é de|es de|è di|beträgt|"
@@ -461,14 +461,14 @@ _DEADLINE = re.compile(
 
 
 # ---------------------------------------------------------------------------
-# F7.1 — hallucinated record match
+# Hallucinated record match
 # ---------------------------------------------------------------------------
 
 
 def detect_unmatched_records(
     answer: str, records: list[dict[str, Any]] | None, *, id_fields: tuple[str, ...] = ("id",)
 ) -> list[dict[str, Any]]:
-    """F7.1 — the reconciliation incident: a record "matched" that was never there.
+    """The reconciliation incident: a record "matched" that was never there.
 
     Only identifier-shaped tokens are checked. Comparing every number in the answer
     against the record set would flag quantities and dates, which is noise; an
@@ -502,7 +502,7 @@ def detect_unmatched_records(
 
 
 # ---------------------------------------------------------------------------
-# F7.2 — arithmetic
+# Arithmetic
 # ---------------------------------------------------------------------------
 
 
@@ -524,7 +524,7 @@ def _apply(op: str, a: float, b: float) -> float | None:
 def check_arithmetic(
     answer: str, *, components: list[float] | None = None, locale: str | None = None
 ) -> list[dict]:
-    """F7.2 — the sum does not match the rows cited.
+    """The sum does not match the rows cited.
 
     Two forms: an explicit statement of arithmetic, and a total claimed over a
     component list the caller supplies. Tolerance is relative, so rounding in a
@@ -638,7 +638,7 @@ def check_arithmetic(
 
 
 # ---------------------------------------------------------------------------
-# F7.3 — period
+# Period
 # ---------------------------------------------------------------------------
 
 
@@ -669,7 +669,7 @@ def _periods(text: str) -> dict[str, Any]:
 
 
 def detect_period_mismatch(question: str, answer: str, context: str = "") -> list[dict]:
-    """F7.3 — fiscal versus calendar, or an answer about a period nobody asked about.
+    """Fiscal versus calendar, or an answer about a period nobody asked about.
 
     The fiscal/calendar case is the expensive one: both parties say "2024" and mean
     date ranges that overlap by nine months, so the answer looks right to everyone in
@@ -742,7 +742,7 @@ def detect_period_mismatch(question: str, answer: str, context: str = "") -> lis
 
 
 # ---------------------------------------------------------------------------
-# F7.3b — numeric date format
+# Numeric date format
 # ---------------------------------------------------------------------------
 
 
@@ -811,7 +811,7 @@ def _date_convention(locale: str | None) -> str | None:
 def detect_date_mismatch(
     question: str, answer: str, context: str = "", *, locale: str | None = None
 ) -> list[dict[str, Any]]:
-    """F7.3b — `03/04/2024` in the source against `04.03.2024` in the answer.
+    """`03/04/2024` in the source against `04.03.2024` in the answer.
 
     This is deliberately the narrowest check in the module, and the narrowness is the
     design. A standalone "is this date ambiguous" check would fire on almost every
@@ -882,7 +882,7 @@ def detect_date_mismatch(
 
 
 # ---------------------------------------------------------------------------
-# F7.4 — unit and currency
+# Unit and currency
 # ---------------------------------------------------------------------------
 
 
@@ -896,7 +896,7 @@ def _scales(text: str) -> set[str]:
 
 
 def detect_unit_mismatch(answer: str, context: str = "") -> list[dict[str, Any]]:
-    """F7.4 — USD stated for a EUR figure, or thousands read as millions.
+    """USD stated for a EUR figure, or thousands read as millions.
 
     Reported when the answer asserts a currency or scale the context does not, which
     means a conversion happened somewhere with nothing recording that it did.
@@ -947,14 +947,14 @@ def detect_unit_mismatch(answer: str, context: str = "") -> list[dict[str, Any]]
 
 
 # ---------------------------------------------------------------------------
-# F7.5 — entity confusion
+# Entity confusion
 # ---------------------------------------------------------------------------
 
 
 def detect_entity_confusion(
     question: str, answer: str, entities: list[str] | None = None
 ) -> list[dict[str, Any]]:
-    """F7.5 — the right answer about the wrong customer.
+    """The right answer about the wrong customer.
 
     Fires when the question names one known entity and the answer names a different
     one. Bounded to the declared entity list on purpose: inferring entities from prose
@@ -989,12 +989,12 @@ def detect_entity_confusion(
 
 
 # ---------------------------------------------------------------------------
-# F7.6 — timezone
+# Timezone
 # ---------------------------------------------------------------------------
 
 
 def detect_timezone_ambiguity(answer: str) -> list[dict[str, Any]]:
-    """F7.6 — a deadline stated as a bare time, which is off by one day somewhere.
+    """A deadline stated as a bare time, which is off by one day somewhere.
 
     Only fires on deadline language. Flagging every clock time would be noise, and a
     deadline is where the off-by-one actually costs something.
@@ -1049,7 +1049,7 @@ def assess_integrity(
     components: list[float] | None = None,
     locale: str | None = None,
 ) -> IntegrityAssessment:
-    """All seven deterministic checks in one pass. F7.7 is the self-consistency scorer.
+    """All seven deterministic checks in one pass. Self-consistency is a separate scorer.
 
     `locale` is the caller's declaration of how this content is formatted (`"de"`,
     `"fr-CA"`, `"en-US"`). It is optional and defaults to undeclared, which is the

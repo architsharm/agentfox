@@ -1,9 +1,9 @@
 """What a held call looks like to the person deciding it, and how a retry redeems it.
 
-An approval is filed whenever a decision escalates (P2-3). For a tool call the
+An approval is filed whenever a decision escalates. For a tool call the
 person sees the tool and its arguments. A held *message* (an input, an output, an
-agent-to-agent message) has no tool, and used to be filed with ``tool: null`` and
-empty arguments, so the approver had nothing to decide on (#24). It is filed as
+agent-to-agent message) has no tool, and ``tool: null`` with empty arguments would
+leave the approver nothing to decide on. So it is filed as
 ``message:<surface>`` with the content (detected PII and secrets masked) and the
 content's digest, which is what a retry is matched against.
 """

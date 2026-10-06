@@ -137,7 +137,7 @@ def tools_set_triggers(
         "", "--triggers", help="Comma-separated tool keys this call sets off downstream"
     ),
 ) -> None:
-    """P9 — declare what a tool call sets off downstream (a DB trigger, a webhook, a
+    """Declare what a tool call sets off downstream (a DB trigger, a webhook, a
     fan-out), so `cascade_risk()` can actually see it. An undeclared trigger stays
     invisible by design (see `effects.cascade_risk`'s own docstring) — this is how
     an operator closes that gap for one tool.

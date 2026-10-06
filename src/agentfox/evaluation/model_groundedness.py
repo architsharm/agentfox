@@ -1,4 +1,4 @@
-"""P4-3 — model-based groundedness, alongside the lexical scorer.
+"""Model-based groundedness, alongside the lexical scorer.
 
 `silent_failure.py::groundedness` is deliberately lexical — numeric agreement plus
 token overlap, cheap enough to run inline. Its own docstring names exactly what that

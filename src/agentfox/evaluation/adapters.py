@@ -1,13 +1,13 @@
-"""promptfoo adapter (P4-1).
+"""promptfoo adapter.
 
-Appendix A.1 picks promptfoo as the wrapped eval runner: MIT, actively maintained,
-and purpose-built for regression gating in CI — exactly the Phase-0 feature. We wrap
+promptfoo is the wrapped eval runner: MIT, actively maintained, and purpose-built
+for regression gating in CI. We wrap
 it rather than rebuild it, and our value-add is what the catalog says it is: domain
 scorers, silent-failure detection, and the compliance tie-in.
 
 It stays *off* the critical path (the native runner is the default) for one concrete
 reason: promptfoo is a Node tool, and requiring a Node toolchain inside a regulated
-customer's air-gapped Python deployment would violate NFR-4/NFR-9. Where it is
+customer's air-gapped Python deployment is not acceptable. Where it is
 present, it is used; where it is not, nothing is lost.
 """
 

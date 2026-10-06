@@ -1,4 +1,4 @@
-"""P7 — answerability and abstention. Genuinely unclaimed across OSS and commercial.
+"""Answerability and abstention. Genuinely unclaimed across OSS and commercial.
 
 *"If someone asks for future sales, the answer should be 'data not available', not a
 generated one."*
@@ -6,7 +6,7 @@ generated one."*
 Everything in the competitive set scores an answer **after** it exists: Cleanlab TLM,
 Vectara HHEM, RAGAS, Galileo, Patronus all take a generated response and judge it.
 That is a fundamentally different control from refusing to generate one, and it cannot
-address F1 — by the time you are scoring, the number has been invented, and a
+address an invented answer — by the time you are scoring, the number has been invented, and a
 confident wrong number scored at 0.4 is still a confident wrong number in front of a
 user.
 
@@ -23,7 +23,7 @@ reach, what time range they cover, which entity scopes exist, and which question
 *types* are answerable at all. Four deterministic classifiers run pre-flight, and an
 unanswerable question is answered from a template without a model call.
 
-**The counter-metric is the point of the design.** Over-refusal (F1.5) kills adoption
+**The counter-metric is the point of the design.** Over-refusal kills adoption
 faster than hallucination does, and the AAAI 2026 work on retrieval-augmented refusal
 shows retrieval noise pushing models to refuse questions they could answer. So: every
 abstention is recorded, over-refusal is detected and raises a finding, and the whole
@@ -65,7 +65,7 @@ UNKNOWABLE = "unknowable"
 
 # --- Question-type markers -------------------------------------------------
 
-#: F1.1/F1.4 — the future tense is the single highest-signal marker there is. A
+#: The future tense is the single highest-signal marker there is. A
 #: question about what *will* happen cannot be answered from a system of record,
 #: whatever the model's confidence.
 PREDICTION_MARKERS = [
@@ -121,13 +121,13 @@ _PROCEDURE_MARKERS = [
     r"\bhow to\b",
 ]
 
-#: F1.6 — the agent narrating that it has part of the picture.
+#: The agent narrating that it has part of the picture.
 _COMPLETENESS_MARKERS = [
     r"\b(?:based on|from) the (?:\d+|few|some) (?:documents|records|results)\b",
     r"\bi found (\d+)\b",
 ]
 
-#: F1.5 — refusal language, used to detect refusals we did *not* ask for.
+#: Refusal language, used to detect refusals we did *not* ask for.
 _REFUSAL_MARKERS = [
     r"\bi (?:can'?t|cannot|am unable to|won'?t) (?:help|assist|answer|provide|share)\b",
     r"\bi (?:don'?t|do not) have (?:access|that|the) \w*",
@@ -185,7 +185,7 @@ def declare_boundary(
     mode: str | None = None,
     replace: bool = False,
 ) -> KnowledgeBoundary:
-    """P7-1 — declare what this agent can actually answer from.
+    """Declare what this agent can actually answer from.
 
     Declared rather than inferred, because the fact that decides the question — what
     the index behind the agent contains — is not visible to the model and is not
@@ -246,7 +246,7 @@ def get_boundary(session: Session, agent_id: str | None) -> KnowledgeBoundary | 
 
 
 # ---------------------------------------------------------------------------
-# Classification (P7-2)
+# Classification
 # ---------------------------------------------------------------------------
 
 
@@ -269,7 +269,7 @@ def question_type(text: str, now: dt.date | None = None) -> str:
 
     Prediction is checked first: a question that is *both* an aggregate and a forecast
     ("what will total revenue be next year") is a forecast, and treating it as an
-    aggregate is precisely the F1.4 failure — a projection returned in the same
+    aggregate is precisely the failure to avoid — a projection returned in the same
     register as a record.
     """
     if any(p.search(text) for p in _PREDICTION_RE):
@@ -288,7 +288,7 @@ def question_type(text: str, now: dt.date | None = None) -> str:
 def _temporal_scope(
     text: str, boundary: KnowledgeBoundary | None, now: dt.date | None = None
 ) -> dict[str, Any]:
-    """F1.2 — does the question reach past what the index holds?
+    """Does the question reach past what the index holds?
 
     Returns `in_scope: True` when no date is mentioned at all. Refusing every undated
     question would be the over-refusal failure in its purest form.
@@ -336,7 +336,7 @@ def _temporal_scope(
 def _entity_scope(
     text: str, boundary: KnowledgeBoundary | None, known_entities: list[str] | None = None
 ) -> dict[str, Any]:
-    """F1.3 — the customer who is not in the CRM.
+    """The customer who is not in the CRM.
 
     Only decides when the caller supplies the entities that *are* in scope. Guessing
     at entity membership from the prompt would produce refusals on typos and nicknames,
@@ -420,7 +420,7 @@ def _or_list(items: list[str]) -> str:
     return f"{', '.join(items[:-1])} or {items[-1]}"
 
 
-#: P7-3 — templated abstentions. Each says *what* is missing, because "I don't know"
+#: Templated abstentions. Each says *what* is missing, because "I don't know"
 #: sends the user away while "I hold 24 months and you asked about 2019" sends them to
 #: the right system.
 _TEMPLATES = {
@@ -451,7 +451,7 @@ def classify_answerability(
     known_entities: list[str] | None = None,
     now: dt.date | None = None,
 ) -> AnswerabilityVerdict:
-    """P7-2/P7-3 — decide before generation whether the question can be answered.
+    """Decide before generation whether the question can be answered.
 
     Four checks, cheapest and most decisive first. All deterministic: an answerability
     check that itself calls a model inherits the failure it is meant to prevent.
@@ -521,14 +521,14 @@ def classify_answerability(
 
 
 # ---------------------------------------------------------------------------
-# Post-flight (P7-4, P7-5, P7-7)
+# Post-flight
 # ---------------------------------------------------------------------------
 
 
 def verify_boundary(
     answer: str, verdict: AnswerabilityVerdict, boundary: KnowledgeBoundary | None
 ) -> list[dict[str, Any]]:
-    """P7-4 — did the answer exceed the boundary the question passed?
+    """Did the answer exceed the boundary the question passed?
 
     A question can be in scope and the answer still stray, most commonly by drifting
     from record into projection halfway through.
@@ -563,7 +563,7 @@ def verify_boundary(
 def completeness_signal(
     answer: str, *, retrieved: int | None = None, available: int | None = None
 ) -> dict[str, Any]:
-    """F1.6 — retrieved 3 of 50 and answered as though exhaustive.
+    """Retrieved 3 of 50 and answered as though exhaustive.
 
     The signal is the *absence* of a caveat when the counts say one is warranted, not
     the presence of hedging.
@@ -602,7 +602,7 @@ def detect_over_refusal(
     trace_id: str | None = None,
     raise_finding: bool = True,
 ) -> dict[str, Any] | None:
-    """**P7-6 — the counter-metric, and the reason this pillar is safe to ship.**
+    """**The counter-metric, and the reason this pillar is safe to ship.**
 
     An agent that refuses what it could have answered is uninstalled faster than one
     that occasionally invents. So a refusal on a question our own boundary says was

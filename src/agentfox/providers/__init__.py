@@ -1,4 +1,4 @@
-"""Model providers (X-2 — neutrality by construction).
+"""Model providers (neutrality by construction).
 
 Every provider is an adapter. `echo` is the offline default; hosted providers are
 gated on `AGENTFOX_ALLOW_EGRESS` so nothing leaves a regulated boundary by accident.

@@ -1,4 +1,4 @@
-"""LangGraph integration (I-1) — the primary adoption path.
+"""LangGraph integration — the primary adoption path.
 
 **11 of 11 senior AI engineers surveyed use LangGraph.** A governance product that is
 not a LangGraph primitive is a proxy teams route around, which is why this sits in
@@ -18,11 +18,11 @@ Design decisions:
   the graph has two ways to pause.
 * **Enforcement failures are loud.** A blocked node raises; it does not return a
   sentinel the graph might ignore. It raises `agentfox.PolicyViolation` /
-  `agentfox.ApprovalRequired` — the same classes the SDK raises (#46).
+  `agentfox.ApprovalRequired` — the same classes the SDK raises.
 * **A tool node authorises the call the model asked for.** In a real graph a node
   receives the state and nothing else, so the arguments come from the latest tool
   call for that tool in ``state["messages"]`` (or from ``arguments=``), not from the
-  node's keyword arguments, which are empty there (#45/#78).
+  node's keyword arguments, which are empty there.
 * **Provenance crosses nodes.** What a retrieval node read is kept in the governance
   state, so an argument a later tool node copies out of it is tainted ``retrieved``.
 
@@ -52,7 +52,7 @@ from agentfox.core.db import init_db, session_scope
 from agentfox.detection import TaintTracker
 
 # The SDK's classes, not look-alikes: `except agentfox.PolicyViolation` must catch
-# what a guarded node raises (#46). Re-exported here so existing imports work.
+# what a guarded node raises. Re-exported here so existing imports work.
 from agentfox.errors import AgentFoxError, ApprovalRequired, PolicyViolation
 from agentfox.integrations.correlation import links_for
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
@@ -110,7 +110,7 @@ class AgentFoxGuard:
         self.raise_on_escalate = raise_on_escalate
         self._schema_ready = session is not None
         # The detectors run in this process: warm the opted-in model ones now, in
-        # the background, rather than inside the graph's first node (#48).
+        # the background, rather than inside the graph's first node.
         from agentfox.detection.warmup import warm_in_background
 
         warm_in_background()
@@ -123,7 +123,7 @@ class AgentFoxGuard:
         else:
             if not self._schema_ready:
                 # Like `auto()`: a graph run against a fresh state directory must
-                # not fail with "no such table: agents" (#79). Idempotent, and done
+                # not fail with "no such table: agents". Idempotent, and done
                 # on first use rather than at construction, because a guard is
                 # usually built at import time when no database need be reachable.
                 init_db()
@@ -190,7 +190,7 @@ class AgentFoxGuard:
                         "trace_id": pre.trace.id if pre.trace else None,
                         "last_verdict": pre.result.verdict,
                     }
-                    # I-4/I-6: LangChain turns LangSmith tracing on by default, so the
+                    # LangChain turns LangSmith tracing on by default, so the
                     # ambient run tree is usually already there — the link costs the
                     # user no configuration. Carried in graph state so it survives a
                     # checkpoint and a resumed run still points at the same run.
@@ -257,7 +257,7 @@ class AgentFoxGuard:
                 if outcome.get("verdict") == "block":
                     self._stop(_result_from(outcome))
                 # Kept so a later tool node can tell that an argument was copied out
-                # of this (#78): taint that stops at the node boundary is no taint.
+                # of this: taint that stops at the node boundary is no taint.
                 prior = list(self.state_of(state).get("retrieved") or [])
                 entry = {
                     "path": f"$.retrieved[{len(prior)}]",
@@ -295,7 +295,7 @@ class AgentFoxGuard:
 
         A graph node receives only the state, so authorising its keyword arguments
         alone authorised ``{}`` in every real graph: an argument limit refused every
-        call and provenance had nothing to check (#45/#78).
+        call and provenance had nothing to check.
         """
 
         def decorator(inner: Callable) -> Callable:
@@ -326,8 +326,8 @@ class AgentFoxGuard:
 
                 out = inner(state, *args, **kwargs)
                 called = [*governance.get("tools_called", []), tool]
-                # PL-4 fast-follow: the same step-history shape McpGovernor already
-                # threads through guard_tool_call, so LoopGovernor sees an alternating
+                # The same step-history shape McpGovernor threads through
+                # guard_tool_call, so LoopGovernor sees an alternating
                 # A/B/A/B cycle or a stalled no-new-observation run here too, not just
                 # a per-tool repeat count.
                 steps = [

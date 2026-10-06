@@ -1,7 +1,7 @@
 """Framework integrations.
 
 Each integration is optional and degrades cleanly when its framework is absent, so
-`pip install agentfox` stays light and the offline story (X-3) holds.
+`pip install agentfox` stays light and the offline story holds.
 
 Re-exports are lazy. Importing them eagerly created a cycle — `enforcement` imports
 `correlation`, which would import this package, which would import `mcp`, which

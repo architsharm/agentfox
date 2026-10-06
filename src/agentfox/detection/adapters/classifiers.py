@@ -1,16 +1,14 @@
-"""Safety-classifier adapters (P3-5).
+"""Safety-classifier adapters.
 
 Two tiers, and the split is a **licence** decision, not a quality one:
 
 * :class:`GraniteGuardianDetector` — IBM Granite Guardian, **Apache-2.0 weights**.
-  The default. Appendix A.1 calls this the cleanest licence in the classifier group,
-  which is what a commercial product needs.
-* :class:`RestrictedClassifierDetector` — Meta Llama Guard 3-8B (the only one of
-  the three named in earlier revisions of this module that is actually wired up
-  here; Prompt Guard and ShieldGemma share the same licence gate but have no
-  registered adapter). The Llama Community licence is **not OSI-approved**: it
-  adds an acceptable-use policy and a >700M-MAU clause. Appendix A.4 requires
-  this to be opt-in, so the adapter refuses to load unless
+  The default. It is the cleanest licence in the classifier group, which is what a
+  commercial product needs.
+* :class:`RestrictedClassifierDetector` — Meta Llama Guard 3-8B (Prompt Guard and
+  ShieldGemma share the same licence gate but have no registered adapter). The
+  Llama Community licence is **not OSI-approved**: it adds an acceptable-use policy
+  and a >700M-MAU clause, so it has to be opt-in, and the adapter refuses to load unless
   ``AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`` — and, unlike every classifier
   above, it is not actually a classification model (see that class's docstring
   for why it cannot share `_TransformersClassifier`'s inference path).
@@ -57,7 +55,7 @@ class _TransformersClassifier(BaseDetector):
 
             return try_to_load_from_cache(self.model_id, "config.json") is not None
         except Exception:
-            # NFR-4/NFR-9: never trigger a download at request time. Absent weights
+            # Never trigger a download at request time. Absent weights
             # mean "unavailable", not "fetch it now".
             return False
 
@@ -69,7 +67,7 @@ class _TransformersClassifier(BaseDetector):
         # PyTorch's default intra-op thread pool sizes itself to the machine's core
         # count, which is right for one big batched job and wrong here: the
         # detector pipeline already parallelises across *detectors* with its own
-        # ThreadPoolExecutor (P3-6), so every concurrent classifier call spawns
+        # ThreadPoolExecutor, so every concurrent classifier call spawns
         # its own multi-threaded forward pass on top of that. The two thread pools
         # fight over the same cores — measured effect was ~22ms per call in
         # isolation ballooning past the 75ms timeout under concurrent/sustained

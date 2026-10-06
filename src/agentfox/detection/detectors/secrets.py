@@ -1,11 +1,11 @@
-"""Secret and credential leakage detection (P3-3, NOM-RTG-03).
+"""Secret and credential leakage detection (NOM-RTG-03).
 
 Built natively rather than wrapped: this is cheap, high-precision regex + entropy
 work where an OSS dependency buys little and costs a supply-chain surface.
 
 Precision matters more than recall here. A secrets detector that fires on every
 long hex string trains people to ignore it, and an ignored guardrail is an absent
-one (PRD R3). Entropy alone is therefore never sufficient — it must be paired with
+one. Entropy alone is therefore never sufficient — it must be paired with
 a contextual assignment cue.
 """
 

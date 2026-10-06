@@ -1,8 +1,8 @@
-"""The offline provider (X-3, NFR-9).
+"""The offline provider.
 
 Deterministic, keyless, network-free. It exists so that the entire enforcement,
 tracing, audit and evaluation path is demonstrable with nothing installed and no
-account anywhere — which is what NFR-8's ten-minute time-to-first-value actually
+account anywhere — which is what a ten-minute time-to-first-value actually
 requires.
 
 It is not a toy stub. Two behaviours make it useful as a *test substrate*:
@@ -13,8 +13,8 @@ It is not a toy stub. Two behaviours make it useful as a *test substrate*:
   need a real model and a real hallucination.
 * **Injection compliance.** If the prompt contains an instruction-override payload,
   the echo model *follows it* — modelling a compromised model rather than a safe
-  one. That is the honest test target: containment (P3-4) has to hold when the model
-  has already been convinced (Appendix E.1.1).
+  one. That is the honest test target: containment has to hold when the model
+  has already been convinced.
 """
 
 from __future__ import annotations

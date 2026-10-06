@@ -56,7 +56,7 @@ class _CompletionMixin:
         messages: list[dict[str, Any]],
         known_entities: list[str] | None = None,
     ) -> EnforcementResult | None:
-        """P7-2/3 — refuse to generate when the question is outside the declared boundary.
+        """Refuse to generate when the question is outside the declared boundary.
 
         Returns None when there is no boundary, when the question is answerable, or
         when the boundary is in observe mode. The observe case still records the
@@ -198,15 +198,15 @@ class _CompletionMixin:
         """Steps 2-6 of the request path, shared by buffered and streaming calls.
 
         Extracted so that streaming cannot drift from non-streaming enforcement. A
-        streaming path that quietly skips a check is exactly the class of defect
-        PL-1 exists to remove.
+        streaming path that quietly skips a check would break the guarantee that
+        every surface is enforced the same way.
         """
         self.reset_ledger()
         agent, identity, _is_shadow = self.resolve(
             agent_slug, credential, environment=environment, model=model
         )
 
-        # PL-3: a killed or quarantined agent never reaches the model.
+        # A killed or quarantined agent never reaches the model.
         control = self._control_verdict(agent)
         if control is not None:
             trace = start_trace(
@@ -240,7 +240,7 @@ class _CompletionMixin:
 
         self._correlate(trace, correlation)
 
-        # P15-3: hard caps, checked before the model call rather than after the spend.
+        # Hard caps, checked before the model call rather than after the spend.
         budget = self._budget_gate(agent, trace)
         if budget is not None:
             end_trace(self.session, trace, verdict="block", status="blocked")
@@ -249,10 +249,10 @@ class _CompletionMixin:
                 agent=agent, identity=identity, trace=trace, result=budget, stopped=True
             )
 
-        # P7: answerability, before generation. Every competitor scores the answer
-        # after it exists, which cannot address F1 — by then the number has been
-        # invented, and a confident wrong number scored at 0.4 is still a confident
-        # wrong number in front of a user.
+        # Answerability, before generation. Every competitor scores the answer
+        # after it exists, which cannot prevent fabrication — by then the number has
+        # been invented, and a confident wrong number scored at 0.4 is still a
+        # confident wrong number in front of a user.
         abstain = self._answerability_gate(agent, trace, messages, known_entities)
         if abstain is not None:
             end_trace(self.session, trace, verdict=abstain.verdict, status="abstained")
@@ -305,7 +305,7 @@ class _CompletionMixin:
                 taint_source=source,
                 intent=intent,
                 tracker=tracker,
-                # A retry of a held message presents its approval (#12); the message
+                # A retry of a held message presents its approval; the message
                 # it was granted for is the one it releases.
                 approval_id=approval_id,
             )
@@ -345,7 +345,7 @@ class _CompletionMixin:
         ladder: FallbackLadder | None = None,
         stream: bool = False,
     ):
-        """Call a provider with circuit breaking and a degradation ladder (P15-1/2).
+        """Call a provider with circuit breaking and a degradation ladder.
 
         Returns ``(response_or_iterator, DegradationRecord)``. Degradation is recorded
         rather than silently absorbed: an answer served by a smaller model did not come
@@ -467,7 +467,7 @@ class _CompletionMixin:
         final = outbound if rank(outbound) >= rank(worst) else worst
         final.trace_id = trace.id
 
-        # P7-4/P7-6: post-flight boundary verification and the counter-metric. Both
+        # Post-flight boundary verification and the counter-metric. Both
         # produce findings and neither blocks — an over-refusing agent is uninstalled
         # faster than a hallucinating one, so this side of the control never enforces.
         self._answerability_postflight(agent, trace, response.text)
@@ -504,7 +504,7 @@ class _CompletionMixin:
         max_tokens: int | None = None,
         approval_id: str | None = None,
     ) -> tuple[EnforcementResult, Any]:
-        """The complete request path (PRD §9.3). Returns (result, response|None)."""
+        """The complete request path. Returns (result, response|None)."""
         pre = self.preflight(
             agent_slug=agent_slug,
             messages=messages,

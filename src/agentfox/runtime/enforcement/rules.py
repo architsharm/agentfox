@@ -22,7 +22,7 @@ class _FallbackVersion:
 
     `id` is None on purpose. These ids are persisted onto the Decision row as
     the exact set of policy versions in force, which is what makes a decision
-    reproducible (X-4). The fallback has no stored version, so inventing an id
+    reproducible. The fallback has no stored version, so inventing an id
     would put a reference to a row that does not exist into the audit record —
     the one place in this product that must not contain a plausible fiction.
     Callers filter it out; a decision made under the fallback records no policy
@@ -149,8 +149,8 @@ def _fired_rule(
 ) -> dict[str, Any]:
     """One entry in `rules_fired` for a synthetic (non-policy-authored) rule —
     the shape a dozen-plus call sites in this module built by hand. Optional keys
-    are omitted rather than set to ``None`` so every call site keeps exactly the
-    keys it had before this was factored out.
+    are omitted rather than set to ``None`` so each entry carries only the keys its
+    call site supplies.
 
     ``mode`` says whether *this rule's* effect was applied or only recorded. It
     defaults to ``enforce`` because a synthetic rule is a fact about the call rather

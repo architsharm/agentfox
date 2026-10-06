@@ -1,6 +1,6 @@
 """Agent risk register, EU AI Act classification, obligations and board view.
 
-P6-3, P6-5, P6-6 (NOM-GOV-03, NOM-GOV-05, NOM-GOV-06).
+Evidences NOM-GOV-03, NOM-GOV-05 and NOM-GOV-06.
 
 Classification is *proposed* from what the platform observes — the tools an agent can
 reach, whether a human is in the loop, what data classes it touches — and then
@@ -197,7 +197,7 @@ def assess(
 def _default_mitigations(session: Session, agent: Agent) -> list[dict[str, Any]]:
     """Pre-fill the mitigation list from controls that are actually operating.
 
-    The point of a computed control status (P6-4) is that the risk register can cite
+    The point of a computed control status is that the risk register can cite
     evidence instead of intent.
     """
     statuses = {
@@ -263,7 +263,7 @@ def register(session: Session) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Obligation calendar (P6-5)
+# Obligation calendar
 # ---------------------------------------------------------------------------
 
 
@@ -313,7 +313,7 @@ def _human_facing(agent: Agent) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Board view (P6-6)
+# Board view
 # ---------------------------------------------------------------------------
 
 

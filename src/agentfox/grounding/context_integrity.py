@@ -1,4 +1,4 @@
-"""P14 — context integrity (F8).
+"""Context integrity.
 
 *"The answer was grounded in the retrieved context. The retrieved context was junk."*
 
@@ -80,7 +80,7 @@ def worst(findings: list[Finding]) -> str:
     return VERDICT_FOR[max((f.severity for f in findings), key=lambda s: _SEVERITY_RANK[s])]
 
 
-# --- Document quality (L2.14 corrupt ingest, L2.9 encoding failure) ---------
+# --- Document quality (corrupt ingest, encoding failure) ---------------------
 
 #: UTF-8 bytes decoded as latin-1. The single most common way a document arrives
 #: readable-looking and wrong: "don't" becomes "donâ€™t" and every downstream
@@ -227,7 +227,7 @@ def document_quality(text: str, *, source_key: str = "") -> DocumentQuality:
     return DocumentQuality(score, findings)
 
 
-# --- Chunk coherence (L2.8) ------------------------------------------------
+# --- Chunk coherence ------------------------------------------------
 
 #: A chunk that opens mid-clause. Leading lowercase is the signal, with the usual
 #: exceptions for identifiers and list continuations.
@@ -329,7 +329,7 @@ def chunk_quality(chunks: list[Any]) -> list[Finding]:
     return findings
 
 
-# --- Assembly: truncation and position (L2.10, L2.11) ----------------------
+# --- Assembly: truncation and position ----------------------
 
 #: Characters per token. Deliberately an estimate: the exact number is model-specific
 #: and the decision this feeds — "will the citation survive?" — needs a *conservative*
@@ -470,7 +470,7 @@ def assemble_context(
     return Assembly(kept=kept, dropped=dropped, order=order, findings=findings, tokens=spent)
 
 
-# --- Retrieval quality drift (L2.13) ---------------------------------------
+# --- Retrieval quality drift ---------------------------------------
 
 
 def retrieval_metrics(ranked: list[str], relevant: set[str] | list[str], *, k: int = 10) -> dict:
@@ -545,7 +545,7 @@ def retrieval_drift(current: dict, baseline: dict, *, tolerance: float = 0.05) -
     )
 
 
-# --- Memory binding (L2.12) ------------------------------------------------
+# --- Memory binding ------------------------------------------------
 
 
 def memory_binding_breach(
@@ -611,7 +611,7 @@ def memory_binding_breach(
 
 @dataclass
 class ContextAssessment:
-    """Everything P14 can say about one retrieval, in one object."""
+    """Everything context integrity can say about one retrieval, in one object."""
 
     findings: list[Finding] = field(default_factory=list)
     assembly: Assembly | None = None

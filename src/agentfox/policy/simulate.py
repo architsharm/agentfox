@@ -1,4 +1,4 @@
-"""Policy simulation — "what would this change break?" (P2-7, NOM-IAM-06).
+"""Policy simulation — "what would this change break?" (NOM-IAM-06).
 
 Disproportionately important for adoption, and the reason it is in the MVP rather
 than a later phase: the reason security tooling gets configured permissively and
@@ -59,7 +59,7 @@ class SimulationDiff:
 def _policy_input_from_decision(session: Session, decision: Decision) -> PolicyInput:
     """Reconstruct the evaluator input from what was recorded at decision time.
 
-    Determinism (X-4) is what makes this sound: the stored detections, taint summary
+    Determinism is what makes this sound: the stored detections, taint summary
     and arguments are exactly what the engine saw, so re-running a *different* policy
     over them isolates the policy change as the only variable.
     """
@@ -259,7 +259,7 @@ def rules_fingerprint(doc: PolicyDocument) -> str:
 def simulation_for(session: Session, version: PolicyVersion) -> SimulationRun | None:
     """The most recent recorded simulation of exactly this version's rules, if any.
 
-    The server-side half of "simulate before you enforce" (#64): promoting a
+    The server-side half of "simulate before you enforce": promoting a
     version to enforce over the API requires one.
     """
     from agentfox.policy.store import load_version_document

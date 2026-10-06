@@ -501,7 +501,7 @@ def register_mcp_tools(
     session: Session = Depends(db),
     user: User = Depends(require("registry")),
 ) -> dict[str, Any]:
-    """I-2 — snapshot a listing *and* register each tool in the registry.
+    """Snapshot a listing *and* register each tool in the registry.
 
     Distinct from ``/scan``, which only reports hygiene. Registration is what gives
     the tool a policy identity and a digest to compare against at call time; without
@@ -641,7 +641,7 @@ def patch_finding(
         raise HTTPException(404, "unknown finding")
     if payload.status not in FINDING_STATUSES:
         # The status is the queue. A free-text status is a finding that silently
-        # leaves every view filtering on open/suppressed/resolved — and it used to be
+        # leaves every view filtering on open/suppressed/resolved — and it would be
         # written into the audit chain as an action name, too.
         raise HTTPException(
             400, f"status must be one of {', '.join(FINDING_STATUSES)}, got {payload.status!r}"
@@ -868,7 +868,7 @@ def check(
 
 
 # ---------------------------------------------------------------------------
-# Approvals (P2-3)
+# Approvals
 # ---------------------------------------------------------------------------
 
 
@@ -908,9 +908,9 @@ def get_approval(
 ) -> dict[str, Any]:
     """One approval. An operator may read any; an agent key only its own agent's.
 
-    The SDK's `wait_for_approval` polls this with the agent's own key (#14): the
-    agent that is waiting is the one caller certain to need the answer, and it
-    used to need an operator token to read it.
+    The SDK's `wait_for_approval` polls this with the agent's own key: the
+    agent that is waiting is the one caller certain to need the answer, so it
+    does not need an operator token to read it.
     """
     # The SDK polls this single-approval route, not the bulk list below — without
     # expiring here too, a stale approval reads "pending" forever unless something
@@ -989,7 +989,7 @@ def _iso(value: dt.datetime | None) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Kill switch & quarantine (PL-3)
+# Kill switch & quarantine
 # ---------------------------------------------------------------------------
 
 
@@ -1001,14 +1001,12 @@ class ControlIn(BaseModel):
 def list_agent_controls(
     session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    """Kill-switch/quarantine state per agent (PL-3).
+    """Kill-switch/quarantine state per agent.
 
-    Deliberately not `/api/controls` — that path collided with governance.py's
-    compliance-control listing (NIST/EU-AI-Act style controls), and since both
-    routers registered a handler on the identical path, whichever was included
-    first in app.py silently ate every request to the other. This one was
-    winning, which meant the compliance page's `posture` field was never in the
-    response it actually got back — the crash that surfaced it.
+    Deliberately not `/api/controls`: that path belongs to governance.py's
+    compliance-control listing (NIST/EU-AI-Act style controls). Two routers with a
+    handler on the identical path means whichever is included first in app.py
+    silently takes every request meant for the other.
     """
     return {"controls": all_controls(session)}
 

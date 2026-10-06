@@ -5,8 +5,7 @@ human."*
 
 That sentence is the single most common form of governance a business hands an
 engineering team, and the existing policy engine cannot express it. Written as three
-ordinary rules it produces two silent defects, both reproduced before this module was
-written:
+ordinary rules it produces two silent defects:
 
 * ``lt 10`` and ``gt 10`` leave **exactly 10 uncovered** — the request falls through to
   the default with no rule fired and nothing to see in the trace.

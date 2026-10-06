@@ -1,13 +1,11 @@
 """Principal resolution — who is calling, and which tenant they speak for.
 
-The audit finding this closes was the shortest one to write and the worst to have:
-the control plane accepted an unverified ``X-Nometria-User`` header and trusted it.
-Anyone who could reach the port was any user they named, with write access to policy,
-controls and the kill switch. It was documented as an MVP shortcut confined to one
-function, which was true, and not a mitigation, because nothing enforced the
-confinement at runtime.
+The control plane never trusts an unverified ``X-Nometria-User`` header on its own:
+if it did, anyone who could reach the port would be any user they named, with write
+access to policy, controls and the kill switch. Confining that header to development
+is enforced at runtime, not by convention.
 
-Tenant isolation landed before this, and on its own it is a lock with the key left in:
+Tenant isolation on its own is a lock with the key left in:
 filtering by ``org_id`` is exact and pointless if the caller chooses their own
 identity. The two only work as a pair.
 
@@ -15,9 +13,9 @@ Three principals, resolved here and nowhere else:
 
 * **Operators** — humans and CI using the control plane. API tokens, argon2-hashed,
   prefix-narrowed so verification is one hash comparison rather than one per token.
-* **Agents** — the inline enforcement path. Agent credentials, which previously did
-  not bind a tenant at all: every governed completion ran in the default org
-  regardless of who owned the agent.
+* **Agents** — the inline enforcement path. Agent credentials bind the tenant that
+  owns the agent, so a governed completion runs in its owner's org rather than the
+  default one.
 * **Development** — the header, allowed only where it is obviously safe and refused
   everywhere else, loudly.
 

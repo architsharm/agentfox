@@ -1,17 +1,17 @@
-"""I-11 / I-10 — the providers enterprises actually deploy on.
+"""The providers enterprises actually deploy on.
 
 The CV evidence is blunt about this: **6 of 11 engineers run Azure OpenAI**, 4 run
 Bedrock, 3 run Vertex. A governance product that only speaks to `api.openai.com` is
 unusable at exactly the companies that need governance, because those companies made
-a deliberate decision *not* to send prompts to a vendor endpoint. Supporting OpenAI
-and Anthropic only was neutrality as an assertion; this is neutrality as a code path.
+a deliberate decision *not* to send prompts to a vendor endpoint. Supporting only OpenAI
+and Anthropic would be neutrality as an assertion; this is neutrality as a code path.
 
 Three adapters plus LiteLLM, each honest about what it needs:
 
 * **Azure OpenAI** is the important one and the cheapest: the wire format is OpenAI's,
   so only auth, URL shape and the deployment-vs-model distinction differ. That last
   one matters — in Azure the "model" a caller names is a *deployment*, and pinning
-  the model version for reproducibility (X-4) means reading it back from the response
+  the model version for reproducibility means reading it back from the response
   rather than trusting the request.
 * **Bedrock** needs SigV4, which needs botocore. Rather than reimplement request
   signing — a thing that is easy to get subtly wrong and catastrophic when you do —
@@ -74,7 +74,7 @@ class AzureOpenAIProvider(OpenAIProvider):
         settings = self._settings()
         # In Azure the caller names a *deployment*, not a model. Recording the
         # deployment as if it were the model would make the trace unreproducible
-        # against a different subscription (X-4).
+        # against a different subscription.
         deployment = request.model or settings.azure_openai_deployment or "gpt-4o-mini"
         body: dict[str, Any] = {
             "messages": request.messages,
@@ -143,7 +143,7 @@ class AzureOpenAIProvider(OpenAIProvider):
 
 
 class LiteLLMProvider(OpenAIProvider):
-    """I-10 — govern *through* the routing layer teams already run (2/11).
+    """Govern *through* the routing layer teams already run (2/11).
 
     LiteLLM speaks the OpenAI wire format, so this is a base-URL change and a
     different key. Deliberately not a competitor: their routing and our enforcement
@@ -160,11 +160,10 @@ class LiteLLMProvider(OpenAIProvider):
         settings = self._settings()
         # A self-hosted LiteLLM proxy commonly runs without a master key, so the key
         # is not required — only a configured base URL, and egress *unless the URL
-        # is loopback*. Requiring `allow_egress` to reach localhost was wrong:
-        # nothing crosses a network the customer does not control, so NFR-4 has
-        # nothing to gate, and the effect was that a fully self-hosted model could
-        # not be used by a deployment that had correctly turned egress off — the
-        # deployment most likely to want one.
+        # is loopback*. Reaching localhost crosses no network the customer does not
+        # control, so the egress gate has nothing to gate there; requiring it would
+        # keep a fully self-hosted model from a deployment that has correctly turned
+        # egress off — the deployment most likely to want one.
         url = settings.litellm_base_url
         if not url:
             return False

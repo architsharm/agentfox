@@ -1,6 +1,6 @@
 """Pillar 2 — non-human identity, least privilege, delegation, approvals.
 
-Appendix A.5's read of this layer: *"engines yes, agent-native no"*. OPA and Cedar
+The state of this layer: *"engines yes, agent-native no"*. OPA and Cedar
 solve the decision problem; nobody has modelled the thing that actually matters for
 agents — an identity whose capabilities are scoped per tool, per action, per
 argument value, **and per the provenance of that argument**. That last clause is
@@ -10,7 +10,7 @@ Three properties are enforced here rather than documented:
 
 * **Default deny.** No matching capability means denied, not allowed.
 * **Narrowing on delegation.** A sub-agent's capabilities must be a subset of its
-  parent's; widening is rejected at write time (P2-5), not audited afterwards.
+  parent's; widening is rejected at write time, not audited afterwards.
 * **Deny on approval timeout.** An approval that nobody answers fails closed.
 """
 
@@ -48,7 +48,7 @@ _hasher = PasswordHasher()
 AGENT_KEY_PREFIX = "nom_agt_"
 API_KEY_PREFIX = "nom_api_"
 
-#: A credential unused for this long is posture-flagged as stale (P2-1).
+#: A credential unused for this long is posture-flagged as stale.
 STALE_AFTER_DAYS = 30
 
 
@@ -172,8 +172,8 @@ class CapabilityDecision:
     constraint_reason: str = ""
     max_taint: str = "none"
     taint_violation: str | None = None
-    #: The matched grant's constraints, carried forward so downstream gates (P9-7
-    #: verified state) can read them without a second lookup.
+    #: The matched grant's constraints, carried forward so downstream gates (verified
+    #: state) can read them without a second lookup.
     constraints: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -318,7 +318,7 @@ def check_capability(
     arguments: dict[str, Any] | None = None,
     argument_taint: dict[str, str] | None = None,
 ) -> CapabilityDecision:
-    """Evaluate least privilege for one tool call (P2-2, NOM-IAM-02).
+    """Evaluate least privilege for one tool call (NOM-IAM-02).
 
     Default deny. Argument constraints and argument *provenance* are both checked,
     which is the agent-native part: a capability may permit ``payments.transfer``
@@ -401,7 +401,7 @@ def check_capability(
         ]
         # The cause is where an argument came from, not the grant: this grant may
         # require no approval at all. Saying "the granting capability requires
-        # human approval" sent the reader to a grant that asks for nothing (#16).
+        # human approval" sent the reader to a grant that asks for nothing.
         origins = ", ".join(f"{p} from {argument_taint[p]}" for p in offending)
         decision.taint_violation = (
             f"arguments {offending} carry provenance above the capability's "
@@ -470,7 +470,7 @@ def delegate(
     child: Identity,
     trace_id: str | None = None,
 ) -> DelegationEdge:
-    """Record a delegation, rejecting any widening of authority (P2-5).
+    """Record a delegation, rejecting any widening of authority.
 
     A child capability is permitted only if some parent capability covers it — the
     child's tool pattern must be *at least as narrow* as the parent's.
@@ -506,7 +506,7 @@ def delegate(
 
 
 # ---------------------------------------------------------------------------
-# Human-in-the-loop approvals (P2-3)
+# Human-in-the-loop approvals
 # ---------------------------------------------------------------------------
 
 
@@ -641,7 +641,7 @@ def redeem_approval(
     tool_key: str | None,
     arguments: dict[str, Any] | None,
 ) -> tuple[ApprovalRequest | None, str]:
-    """Spend an approval on the call it was granted for (#12).
+    """Spend an approval on the call it was granted for.
 
     Returns ``(approval, "")`` when the retry may run, or ``(None, why)`` when it may
     not. An approval lets through one call: the same agent, the same tool and the
@@ -698,7 +698,7 @@ def expire_stale_approvals(session: Session) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Posture (P2-1)
+# Posture
 # ---------------------------------------------------------------------------
 
 

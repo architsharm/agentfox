@@ -1,27 +1,27 @@
-"""The enforcement orchestrator — PRD §9.3, the request path.
+"""The enforcement orchestrator — the request path.
 
 This is where the six pillars stop being separate modules and become one product.
 Every inline surface (gateway proxy, direct guard endpoints, SDK, red-team runner)
 goes through this class, which is what makes the guarantees hold uniformly:
 
-    identity resolution (P1-2, P2-1)
-      -> taint annotation (P3-4)
-      -> budgeted detector pipeline (P3-1/2/3/5, P3-6)
-      -> capability check (P2-2)
-      -> policy decision (P6-1)
-      -> escalation to a human (P2-3)
-      -> provider call (X-2)
-      -> post-flight on the response (P3-2, P3-9, P4-3)
-      -> trace, audit chain, findings (P5-1, P5-2)
+    identity resolution
+      -> taint annotation
+      -> budgeted detector pipeline
+      -> capability check
+      -> policy decision
+      -> escalation to a human
+      -> provider call
+      -> post-flight on the response
+      -> trace, audit chain, findings
 
 Two invariants are enforced here rather than assumed:
 
 * **No block without a reason.** Every verdict carries the rule that produced it and
-  a human-readable explanation (principle X-4). A guardrail that blocks silently is
+  a human-readable explanation. A guardrail that blocks silently is
   a bug, not a strict configuration.
 * **Observe by default.** Enforcement is something a customer turns on deliberately,
   after simulating it. A tool that starts blocking the moment it is installed gets
-  uninstalled the same week (PRD R3).
+  uninstalled the same week.
 
 The package, by stage:
 

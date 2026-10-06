@@ -165,8 +165,8 @@ def analyse_action(
     summary = summarise([analysis], environment)
     colour = SEVERITY_COLOUR.get(analysis.severity, "green")
     # A statement that was never analysed (no sqlglot, or it did not parse) has no
-    # known reversibility; printing "reversible" for it was a guess in the safe-looking
-    # direction.
+    # known reversibility; printing "reversible" for it would be a guess in the
+    # safe-looking direction.
     if kind == "sql" and not analysis.parsed:
         reversibility = "reversibility unknown (not analysed)"
     else:

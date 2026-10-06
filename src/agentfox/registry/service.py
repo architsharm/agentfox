@@ -4,9 +4,9 @@ The design commitment that separates this from a GRC incumbent's registry: **lin
 is observed, not declared.** Credo AI and OneTrust model a self-reported form; a
 registry that only knows what someone typed into it is the spreadsheet Dana already
 has. Every edge here is derived from spans the agent actually produced, and a
-divergence between declared and observed is itself a finding (P1-7).
+divergence between declared and observed is itself a finding.
 
-Shadow-agent detection (P1-2) is the same idea applied to the population: traffic
+Shadow-agent detection is the same idea applied to the population: traffic
 that does not correlate to a registered agent creates the agent record, marked
 unregistered, with a ready-to-submit registration payload attached. Discovery that
 requires the shadow team to cooperate discovers nothing.
@@ -217,7 +217,7 @@ def observe_agent(
     """Record that an agent was seen. Returns ``(agent, is_new_shadow)``.
 
     Called on every gateway request and every ingested OTel batch, which is what
-    makes P1-2 work without asking anyone to cooperate.
+    makes shadow-agent discovery work without asking anyone to cooperate.
     """
     slug = slugify(slug)
     agent = session.scalar(select(Agent).where(Agent.slug == slug))
@@ -327,7 +327,7 @@ def detect_shadow_agents(session: Session, window_days: int = 30) -> list[dict[s
 
 
 def unowned_agents(session: Session) -> list[Finding]:
-    """An unowned agent is a reportable compliance finding (P1-4, NOM-DSC-03)."""
+    """An unowned agent is a reportable compliance finding (NOM-DSC-03)."""
     findings: list[Finding] = []
     for agent in list(session.scalars(select(Agent).where(Agent.status != "retired"))):
         if agent.is_owned:
@@ -486,7 +486,7 @@ def record_edge(
 
 
 def derive_lineage(session: Session, agent_slug: str | None = None) -> int:
-    """Rebuild the lineage graph from observed spans (P1-3)."""
+    """Rebuild the lineage graph from observed spans."""
     query = select(Trace)
     if agent_slug:
         query = query.where(Trace.agent_slug == agent_slug)
@@ -571,7 +571,7 @@ def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]
 
 
 def attest_registry(session: Session) -> list[Finding]:
-    """Compare declared configuration against observed behaviour (P1-7)."""
+    """Compare declared configuration against observed behaviour."""
     findings: list[Finding] = []
     for agent in session.scalars(select(Agent).where(Agent.registered.is_(True))):
         observed_models = {
@@ -619,7 +619,7 @@ def attest_registry(session: Session) -> list[Finding]:
 
 
 def assess_delegation(session: Session) -> list[Finding]:
-    """Detect agent-to-agent delegation cycles and runaway depth (L6.6).
+    """Detect agent-to-agent delegation cycles and runaway depth.
 
     Tool-call loop detection never sees this: A delegating to B delegating back to A
     is not a repeated tool call — every call is to a different agent — so the loop is
@@ -693,7 +693,7 @@ def _resolve_absent(session: Session, finding_type: str, *, keep: set[str], note
 
 
 # ---------------------------------------------------------------------------
-# MCP inventory & hygiene (P1-5)
+# MCP inventory & hygiene
 # ---------------------------------------------------------------------------
 
 #: Instructions embedded in a tool *description* — the tool-poisoning shape. A
@@ -780,7 +780,7 @@ def scan_mcp_server(
     last snapshot) and **description injection** (instructions hidden in tool
     metadata). ``mcp-scan`` is invoked as an external tool when present — never
     linked as a dependency, because it is Snyk-owned and Snyk is building this
-    category (Appendix A.3).
+    category.
     """
     tools = normalise_tool_list(tools)
     payload = json.dumps(tools, sort_keys=True, default=str)

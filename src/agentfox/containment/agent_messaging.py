@@ -1,9 +1,8 @@
 """Inter-agent message signing — NOM-IAM-08, closes OWASP ASI07.
 
-Every ``surface`` value before this module was ``input``/``output``/``tool_args``/
-``tool_result``/``retrieved``; a sub-agent's output was folded into ``tool_result``
-(same governance as a tool call's return value, not a boundary of its own). This
-module is the signing half of giving agent-to-agent traffic its own boundary —
+Agent-to-agent traffic is its own boundary rather than being folded into
+``tool_result`` with the same governance as a tool call's return value. This
+module is the signing half of that boundary —
 see :meth:`agentfox.runtime.enforcement.Enforcer.guard_agent_message` for the surface,
 replay and agent-card checks that use it.
 

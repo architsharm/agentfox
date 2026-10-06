@@ -1,13 +1,13 @@
 """The judgment posture surface — read it, and change it, from the product.
 
-Everything the judgment router does was configurable before this module existed, and
-every one of those knobs was an environment variable. That is the right home for
-*whether this deployment may talk to a third party at all*: it is set by whoever runs
-the process and accepts the risk, and no request should be able to reach it. It is the
-wrong home for *whether we want remote judgment on today*, which is a governance
-decision somebody makes repeatedly and which an auditor later asks the history of. An
-environment variable has no author, no reason and no history, and changing one needs a
-deploy — so in practice the answer to "who turned this on in March" was nobody.
+Everything the judgment router does can be configured by environment variable. That
+is the right home for *whether this deployment may talk to a third party at all*: it
+is set by whoever runs the process and accepts the risk, and no request should be
+able to reach it. It is the wrong home for *whether we want remote judgment on
+today*, which is a governance decision somebody makes repeatedly and which an auditor
+later asks the history of. An environment variable has no author, no reason and no
+history, and changing one needs a deploy — so in practice the answer to "who turned
+this on in March" would be nobody.
 
 So there are two layers, and the rule between them is enforced in
 :mod:`agentfox.detection.judgment.posture`: **posture may only narrow what the deployment

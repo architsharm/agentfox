@@ -1,4 +1,4 @@
-"""Policy routes (P6-1, P2-7).
+"""Policy routes.
 
 The route worth noting is ``/api/policies/simulate``: it replays recorded traffic
 against a candidate policy and returns the diff. Promotion to ``enforce`` is a
@@ -90,7 +90,7 @@ def list_policies(
         )
         latest = versions[0] if versions else None
         # The live binding, whichever version it points at: mid-canary or after a
-        # rollback it is an earlier version than the newest one (#65).
+        # rollback it is an earlier version than the newest one.
         binding, bound = current_binding(session, policy.id)
         out.append(
             {
@@ -116,7 +116,7 @@ def list_policies(
 
 
 # ---------------------------------------------------------------------------
-# Hierarchy (P12)
+# Hierarchy
 # ---------------------------------------------------------------------------
 
 
@@ -129,7 +129,7 @@ def get_effective(
     session: Session = Depends(db),
     _u: User = Depends(current_user),
 ) -> dict[str, Any]:
-    """The policy actually in force for a subject, with per-rule provenance (P12-3)."""
+    """The policy actually in force for a subject, with per-rule provenance."""
     return effective_for(
         session, agent_slug=agent, environment=environment, team=team, user=user
     ).explain()
@@ -137,7 +137,7 @@ def get_effective(
 
 @router.get("/lint")
 def get_lint(session: Session = Depends(db), _u: User = Depends(current_user)) -> dict[str, Any]:
-    """Policy lint (P12-4). `passed` is false when critical/high findings exist."""
+    """Policy lint. `passed` is false when critical/high findings exist."""
     return lint_all(session)
 
 
@@ -175,8 +175,8 @@ class PolicyIn(BaseModel):
     body: str
     notes: str = ""
     mode: str | None = None
-    #: P12 hierarchy (org -> team -> agent -> user, narrowest wins on ties) — every
-    #: save silently defaulted to org/*/extend until this was exposed to the form.
+    #: Policy hierarchy (org -> team -> agent -> user, narrowest wins on ties). Exposed
+    #: to the form so a save does not silently default to org/*/extend.
     level: str = "org"
     scope_id: str = "*"
     compose: str = "extend"
@@ -196,11 +196,11 @@ def upsert_policy(
     if payload.compose not in MODES:
         raise HTTPException(400, f"compose must be one of {MODES}")
 
-    # Saving never changes what is in force (#64). It used to bind the YAML's own
-    # `mode`, so saving `mode: enforce` enforced with no simulation, and saving the
-    # observe starter over an enforcing policy demoted it — while the editor said
+    # Saving never changes what is in force. Binding the YAML's own `mode` here
+    # would let saving `mode: enforce` enforce with no simulation, and saving the
+    # observe starter over an enforcing policy demote it — while the editor says
     # nothing in force changes until you promote. Promotion (`/{key}/mode`, which
-    # requires a recorded simulation to enforce) is now the only way to change it.
+    # requires a recorded simulation to enforce) is the only way to change it.
     if payload.mode == "enforce":
         if user.role not in {"owner", "admin", "security"}:
             raise HTTPException(
@@ -265,7 +265,7 @@ def validate_policy(payload: PolicyIn) -> dict[str, Any]:
     except Exception as exc:
         return {"valid": False, "error": str(exc)}
     # The same full lint `policy validate FILE` runs: a rule that can never fire, or
-    # one naming an unknown value, is not a valid policy (#50, X5).
+    # one naming an unknown value, is not a valid policy.
     lint = lint_summary(lint_documents([doc]))
     if not lint["passed"]:
         return {
@@ -305,7 +305,7 @@ def change_mode(
 
     Promoting to ``enforce`` requires a recorded simulation of exactly the rules
     being enforced (``POST /api/policies/simulate`` with that version's body) —
-    the server-side half of the editor's simulate-before-promote gate (#64).
+    the server-side half of the editor's simulate-before-promote gate.
     Demoting to ``observe`` never needs one: it can only stop blocking.
     """
     if payload.mode not in ("observe", "enforce"):
@@ -386,7 +386,7 @@ class SimulateIn(BaseModel):
 def simulate_policy(
     payload: SimulateIn, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    """P2-7 — replay recorded traffic against a candidate policy."""
+    """Replay recorded traffic against a candidate policy."""
     try:
         candidate = PolicyDocument.from_yaml(payload.body)
     except Exception as exc:
@@ -420,7 +420,7 @@ def simulate_policy(
 
 
 # ---------------------------------------------------------------------------
-# Canary rollout (P12-6)
+# Canary rollout
 # ---------------------------------------------------------------------------
 
 

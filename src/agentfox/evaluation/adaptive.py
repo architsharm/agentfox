@@ -1,8 +1,7 @@
 """Adaptive red-team campaigns — configuration regression testing that mutates.
 
-**What changed and why.** `docs/design/gap-analysis.md` item 3.2 admits "adaptive /
-generative red teaming (ours is static probes)" as a real competitive gap, and
-the standing critique of automated red-teaming products is correct on its own
+**Why this exists.** Static probes alone leave a real gap ("adaptive / generative
+red teaming"), and the standing critique of automated red-teaming products is correct on its own
 terms: a fixed list of prompts only ever proves things about that fixed list.
 Running it again next week proves the same thing again.
 

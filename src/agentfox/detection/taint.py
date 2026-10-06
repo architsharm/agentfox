@@ -1,7 +1,7 @@
-"""Taint tracking — provenance of content through an execution path (P3-4).
+"""Taint tracking — provenance of content through an execution path.
 
 This is the piece of runtime engineering with no equivalent in any OSS project
-surveyed (Appendix A.5), and it is the reason the product can claim *agent-native*
+surveyed, and it is the reason the product can claim *agent-native*
 rather than model-era filtering.
 
 The idea: a model-era guardrail asks "is this string malicious?". The agent-native
@@ -10,7 +10,7 @@ Content entering the agent from an untrusted source (a retrieved document, a too
 result, a sub-agent's output, persisted memory) is tagged. The tag propagates into
 tool-call arguments. Policy can then require that a high-impact tool never receives
 a tainted argument without human approval — which holds even when the injection
-detector missed the payload entirely (Appendix E.1.1).
+detector missed the payload entirely.
 """
 
 from __future__ import annotations

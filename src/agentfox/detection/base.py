@@ -1,9 +1,9 @@
-"""Detector interface — the build-vs-reuse seam for Pillar 3 (PRD §9.4).
+"""Detector interface — the build-vs-reuse seam for Pillar 3.
 
 Every runtime primitive, ours or wrapped OSS, implements :class:`Detector`. That is
-what makes the claim in PRD §12 ("wrap the primitive, own the interface") a tested
+what makes "wrap the primitive, own the interface" a tested
 property rather than an aspiration: swapping Presidio for something else, or
-dropping a project that gets archived (Appendix A.3), touches one adapter file.
+dropping a project that gets archived, touches one adapter file.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from agentfox.core.vocab import SURFACES
 class Detection:
     """One located finding inside a piece of content.
 
-    ``sample`` is redacted at construction (P5-5 / R8): we store enough to explain
+    ``sample`` is redacted at construction: we store enough to explain
     the decision to a human and never enough to re-leak the value.
     """
 
@@ -75,7 +75,7 @@ class Detector(Protocol):
         """False when an optional dependency or model weight is absent.
 
         Unavailable detectors degrade the pipeline rather than failing it — that is
-        what makes the offline default (X-3) work without pretending coverage exists.
+        what makes the offline default work without pretending coverage exists.
         """
         ...
 
@@ -110,7 +110,7 @@ class BaseDetector:
     #: None means "use the pipeline's default (`detector_timeout_ms`)". A detector
     #: that genuinely needs longer — a real model forward pass, not a regex scan —
     #: declares that here rather than the pipeline granting everyone more rope,
-    #: which would blunt the whole point of a per-detector budget (P3-6).
+    #: which would blunt the whole point of a per-detector budget.
     timeout_ms: int | None = None
 
     def available(self) -> bool:  # pragma: no cover - overridden by adapters
@@ -119,7 +119,7 @@ class BaseDetector:
     def warm(self) -> None:
         """Pay any first-call cost (loading a model into memory, say) now, off the
         request path. No-op by default; a detector backed by something with real
-        startup cost overrides this. `detector_timeout_ms` is short enough (P3-6)
+        startup cost overrides this. `detector_timeout_ms` is short enough
         that a detector which only gets slow once, on its very first call, would
         otherwise silently degrade the first real request after every process
         start — see :meth:`warm_all`."""
@@ -197,7 +197,7 @@ def redact_sample(value: str, keep: int = 4, max_len: int = 80) -> str:
 
     Keeps a short prefix so a human can recognise *what kind* of thing matched,
     masks the rest. An audit log that stores the SSN it detected is a new
-    liability, not a control (Appendix E.2.2).
+    liability, not a control.
     """
     value = _WS.sub(" ", (value or "").strip())
     if not value:

@@ -1,4 +1,4 @@
-"""Tamper-evident audit log (P5-2, NOM-AUD-02, NFR-5).
+"""Tamper-evident audit log (NOM-AUD-02).
 
 "Immutable" in most products means "we did not build a DELETE endpoint". That does
 not survive an auditor. This is a genuine hash chain:
@@ -12,7 +12,7 @@ and a verifier that detects insertion, deletion, reordering and mutation.
 Two properties make it credible rather than decorative:
 
 1. :func:`verify` is a **pure function over exported rows**. A third party can run
-   it against an evidence package with no access to our systems (P5-7).
+   it against an evidence package with no access to our systems.
 2. There is no update or delete path anywhere in the codebase for ``AuditEntry``.
 
 This is cheap to build correctly at the start and effectively impossible to
@@ -65,7 +65,7 @@ def compute_digest(
 
 
 # ---------------------------------------------------------------------------
-# Redaction at capture (P5-5 / R8)
+# Redaction at capture
 # ---------------------------------------------------------------------------
 
 _SENSITIVE_KEYS = {
@@ -86,8 +86,8 @@ _SENSITIVE_KEYS = {
 def redact_payload(payload: Any, depth: int = 0) -> Any:
     """Strip obviously-sensitive values before they reach the chain.
 
-    The audit log must not become the exact PII honeypot customers are afraid of
-    (Appendix E.2.2). Detectors already store redacted samples with offsets; the
+    The audit log must not become the exact PII honeypot customers are afraid of.
+    Detectors already store redacted samples with offsets; the
     chain stores structure and decisions, not raw content.
     """
     if depth > 8:
@@ -138,10 +138,10 @@ def append(
     ``system_scope`` (by design — reading across every tenant needs an unfiltered
     query). A caller that binds the session to a real tenant and then appends from
     inside ``system_scope`` — exactly what minting an operator token does, since the
-    recipient's tenant is only known after a cross-tenant lookup — used to have this
-    query silently see every tenant's rows merged into one sequence instead of just
+    recipient's tenant is only known after a cross-tenant lookup — would otherwise
+    have this query see every tenant's rows merged into one sequence instead of just
     its own, computing a ``seq``/``prev_digest`` against whichever tenant's chain
-    happened to run furthest, not the one the entry was actually joining.
+    runs furthest, not the one the entry is actually joining.
     """
     settings = get_settings()
     payload = payload or {}

@@ -1,13 +1,11 @@
 """Containment findings — a refused action, named by what actually refused it.
 
-Before this module a finding was raised only when a content detector fired. The
-controls that are supposed to hold *after* a detector has been fooled — the
-capability grant, argument provenance, composition, blast radius — set the verdict
-and then left no finding behind. Worse, when a detector happened to fire on the
-same call (an email address in the arguments, say), the finding was titled after
-the detector: "Blocked on tool_args: PII.EMAIL", for a call that default-deny and
-a taint rule had refused. A reader concluded the product had blocked an email
-address; it had stopped an exfiltration attempt.
+The controls that are supposed to hold *after* a detector has been fooled — the
+capability grant, argument provenance, composition, blast radius — set the verdict,
+and each needs a finding of its own. Titling the finding after whichever detector
+happened to fire on the same call ("Blocked on tool_args: PII.EMAIL" for a call
+that default-deny and a taint rule refused) would tell a reader the product blocked
+an email address, when it stopped an exfiltration attempt.
 
 So a rule that did not test detections is a cause in its own right, and the
 finding for it says, in one sentence, who tried to do what with which data and

@@ -1,6 +1,6 @@
-"""PL-3 — kill switch and quarantine.
+"""Kill switch and quarantine.
 
-The control every competitor ships and we did not. Design decisions worth stating:
+The control every competitor ships. Design decisions worth stating:
 
 * **Reversible.** An irreversible kill switch is one nobody dares use, so it stays
   unused during the incident it was built for. Both states resume cleanly.

@@ -1,4 +1,4 @@
-"""Continuous compliance monitoring (P6-4, NOM-GOV-04).
+"""Continuous compliance monitoring (NOM-GOV-04).
 
 **The difference between a compliance product and a compliance-theatre product.**
 
@@ -16,7 +16,7 @@ with. Two rules are deliberately strict:
   value at all.
 * A control whose evidence source is producing nothing is ``not_implemented``, not
   ``effective``. Silence is not success — and a detector that quietly stopped running
-  while its control reported green is the exact failure mode in Appendix E.2.3.
+  while its control reports green is the exact failure mode this rule prevents.
 """
 
 from __future__ import annotations

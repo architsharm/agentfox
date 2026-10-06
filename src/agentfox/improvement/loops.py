@@ -4,10 +4,10 @@ A loop never edits configuration. It reads evidence, decides whether a concrete 
 is warranted, and files a :class:`~agentfox.core.models.ChangeProposal` that a person (or,
 for classes that have earned it, automation) takes through the lifecycle.
 
-``propose_threshold_changes`` is the first loop. ``threshold_recommendations`` has told
-operators for a long time which detectors could run at a higher cut-off, but the number
-was only ever shown on a page. Here that advice becomes a proposal against the policy
-rule that actually enforces it. Raising a restrictive rule's ``min_score`` loosens it, so
+``propose_threshold_changes`` is the first loop. ``threshold_recommendations`` tells
+operators which detectors could run at a higher cut-off; here that advice becomes a
+proposal against the policy rule that actually enforces it, rather than a number on a
+page. Raising a restrictive rule's ``min_score`` loosens it, so
 these proposals always need a person to decide; the loop's job is to take the
 arithmetic, the rule lookup and the blast-radius check off their plate.
 

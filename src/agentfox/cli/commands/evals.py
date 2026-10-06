@@ -39,8 +39,9 @@ def _unknown_suite(session: Any, suite: str) -> None:
 def _scorer_keys(scorers: str | None) -> list[str] | None:
     """Parse ``--scorers`` and refuse keys no scorer is registered under.
 
-    The runner skips a key it cannot resolve, so a typo used to produce an empty
-    table and exit 0: a run that measured nothing, reported as a success.
+    The runner skips a key it cannot resolve, so without this check a typo would
+    produce an empty table and exit 0: a run that measured nothing, reported as a
+    success.
     """
     from agentfox.evaluation.scorers import all_scorers, unknown_scorers
 

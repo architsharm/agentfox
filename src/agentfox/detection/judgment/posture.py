@@ -28,8 +28,8 @@ is global — which is the correct way round, because the ceiling is the part th
 set by the person who accepted the risk.
 
 Resolution outside a request: :func:`effective` falls back to the deployment settings
-when no posture has been activated. A CLI run or a library embedding behaves exactly as
-it did before this module existed, which is what keeps the benchmarks comparable.
+when no posture has been activated. A CLI run or a library embedding uses the deployment
+settings alone, which is what keeps the benchmarks comparable.
 """
 
 from __future__ import annotations

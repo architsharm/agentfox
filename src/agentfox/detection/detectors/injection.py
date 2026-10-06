@@ -1,9 +1,9 @@
-"""Prompt-injection and jailbreak detection (P3-1, NOM-RTG-01).
+"""Prompt-injection and jailbreak detection (NOM-RTG-01).
 
 Design position, stated because it drives the code: detection alone is a losing
 arms race. This detector is deliberately *table stakes* — it exists to catch the
 common cases cheaply and inside the latency budget, while the durable defence is
-containment (``policy`` + taint tracking, P3-4). See Appendix E.1.1.
+containment (``policy`` + taint tracking).
 
 Three signal families, scored and combined:
   1. **Lexical** — known override/jailbreak phrasings.
@@ -12,7 +12,7 @@ Three signal families, scored and combined:
      surface. The *same string* is far more suspicious in a retrieved document than
      in a user's message, and no model-era string filter models that.
 
-Reference material: the multi-layer approach in Rebuff (stale, Appendix A.3) and
+Reference material: the multi-layer approach in Rebuff (stale) and
 the scanner taxonomy of LLM Guard (archived Jul 2026). Reimplemented, not depended on.
 """
 
@@ -567,7 +567,7 @@ _XML_SYSTEM = re.compile(r"</?(?:system|instructions?|admin)>", re.I)
 _HIDDEN_CHARS = re.compile(r"[​-‏‪-‮⁠-⁤﻿]")
 _LONG_B64 = re.compile(r"\b[A-Za-z0-9+/]{60,}={0,2}\b")
 
-# Instructions embedded where only data belongs — the tool-poisoning shape (P1-5).
+# Instructions embedded where only data belongs — the tool-poisoning shape.
 _IMPERATIVE_IN_DATA = re.compile(
     r"\b(?:you\s+must|always|before\s+(?:using|calling|responding))\b.{0,60}?"
     r"\b(?:call|invoke|send|read|include|append)\b",

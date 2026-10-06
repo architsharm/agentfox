@@ -1,6 +1,6 @@
 """Gateway dependencies — sessions, auth, RBAC.
 
-The role matrix in Appendix C §4 is enforced here. The property that matters for the
+The role matrix is enforced here. The property that matters for the
 product's credibility: ``auditor`` can read everything and mutate nothing. An audit
 log an auditor could alter is not an audit log.
 """
@@ -39,7 +39,7 @@ WRITE_ROLES: dict[str, set[str]] = {
     "compliance": {"owner", "admin", "compliance"},
     "evidence": {"owner", "admin", "security", "compliance", "auditor"},
     "users": {"owner", "admin"},
-    # P3-14: filing a false positive is open to anyone who can read a decision, but
+    # Filing a false positive is open to anyone who can read a decision, but
     # *acting* on one by suppressing a detector is a security decision — a developer
     # silencing a control to unblock a demo is the failure mode this separation exists
     # to prevent.
@@ -147,14 +147,13 @@ def agent_credential(
 ) -> str | None:
     """Extract an agent key from the inline request, and bind that agent's tenant.
 
-    The binding is the part that was missing. Without it every governed completion ran
-    in the deployment's default org whatever the agent's owner — and once isolation
-    was in place the credential lookup was itself filtered to that org, so an agent in
-    any other tenant could not authenticate at all.
+    Without the binding every governed completion would run in the deployment's default
+    org whatever the agent's owner — and because the credential lookup is itself
+    tenant-filtered, an agent in any other tenant could not authenticate at all.
 
     An absent credential is not an error here: the inline path deliberately serves
-    unregistered agents so that shadow traffic is *observed* rather than turned away
-    (P1-6). It simply stays in the default tenant. A presented ``nom_agt_`` key that
+    unregistered agents so that shadow traffic is *observed* rather than turned away.
+    It simply stays in the default tenant. A presented ``nom_agt_`` key that
     does not verify is a 401.
     """
     if not (authorization and authorization.lower().startswith("bearer ")):
@@ -168,9 +167,9 @@ def agent_credential(
     if resolved is None:
         # A presented agent key that does not verify — wrong, revoked, expired, or
         # belonging to a playground sandbox — is a refusal, in every environment.
-        # It used to be passed through, and the call was then attributed to
-        # whichever agent the body named: a made-up `nom_agt_` string worked exactly
-        # as well as the real one. "No credential" (shadow traffic, served and
+        # Passing it through would attribute the call to whichever agent the body
+        # named, so a made-up `nom_agt_` string would work exactly as well as the
+        # real one. "No credential" (shadow traffic, served and
         # observed) and "a bad credential" are different things.
         raise HTTPException(
             status_code=401,
@@ -198,7 +197,7 @@ def operator_or_agent(
     """An operator, or an agent presenting its own key (``nom_agt_…``).
 
     For the few control-plane reads an agent needs about *itself* — the approval it
-    is waiting on (#14). The route decides what an agent may see; an operator goes
+    is waiting on. The route decides what an agent may see; an operator goes
     through exactly the same resolution as `current_user`.
     """
     if authorization and authorization.lower().startswith("bearer "):

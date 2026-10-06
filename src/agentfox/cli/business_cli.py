@@ -72,7 +72,7 @@ def rules_apply(
         try:
             save_ladder(session, ladder, agent_slug=agent)
         except ValueError as exc:
-            # An unknown --agent used to surface as a raw ValueError traceback.
+            # An unknown --agent is reported as a readable error, not a raw traceback.
             from sqlalchemy import select
 
             from agentfox.core.models import Agent

@@ -1,4 +1,4 @@
-"""F3 — effects that outlive the call: retries, rollback and cascades.
+"""Effects that outlive the call: retries, rollback and cascades.
 
 Action analysis governs *what a statement will do*. This governs what happens to the
 effect afterwards, which is a different axis and the one that produces the expensive
@@ -34,7 +34,7 @@ from typing import Any
 
 from agentfox.core.finding import RiskFinding
 
-# --- Idempotency (F3.7) ----------------------------------------------------
+# --- Idempotency ----------------------------------------------------
 
 #: Argument names that vary between attempts of the same logical operation. Including
 #: them in the key makes every retry look new, which is the failure this exists to
@@ -229,7 +229,7 @@ class EffectLedger:
         return entry.result if entry else None
 
 
-# --- Compensation (F3.10) --------------------------------------------------
+# --- Compensation --------------------------------------------------
 
 
 @dataclass
@@ -341,7 +341,7 @@ def compensation_plan(steps: list[Step], *, executed: int | None = None) -> Plan
     return Plan(compensations, unrecoverable, findings, ordering_hint)
 
 
-# --- Cascade (F3.9) --------------------------------------------------------
+# --- Cascade --------------------------------------------------------
 
 
 @dataclass
@@ -507,7 +507,7 @@ def assess_effects(
     triggers: dict[str, list[str]] | None = None,
     destructive: tuple[str, ...] = (),
 ) -> EffectAssessment:
-    """Everything F3 can say about one effectful call, before it is made."""
+    """Everything this module can say about one effectful call, before it is made."""
     return EffectAssessment(
         replay=(ledger.check(tool, arguments, key=key, effectful=effectful) if ledger else []),
         plan=compensation_plan(steps) if steps else None,

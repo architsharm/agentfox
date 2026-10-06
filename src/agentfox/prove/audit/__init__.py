@@ -2,7 +2,7 @@
 
 OpenTelemetry gives us spans. The evidentiary layer — the hash chain, the signed
 checkpoints, the independently verifiable evidence package — is ours, because no
-OSS project provides it (Appendix A.5) and because it cannot be retrofitted: the
+OSS project provides it and because it cannot be retrofitted: the
 entries you already wrote were never chained.
 """
 

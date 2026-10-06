@@ -1,4 +1,4 @@
-"""Auditor-ready evidence packages (P5-3, P5-7, NOM-AUD-03).
+"""Auditor-ready evidence packages (NOM-AUD-03).
 
 The test a package has to pass: an auditor who has never heard of us, given only
 the zip file, can (a) see what was in scope, (b) read what the agent actually did,
@@ -9,10 +9,10 @@ That is why ``verify_chain.py`` ships *inside* the package: a standalone script 
 no imports beyond the standard library that re-derives the hash chain from the
 exported rows.
 
-Draft framework mappings ship inside the package too (Appendix B §B.6), but each
+Draft framework mappings ship inside the package too, but each
 one carries an explicit ``DRAFT — UNVERIFIED / NOT LEGAL ADVICE`` chip rather than
-being silently dropped. Hiding an unreviewed mapping told an auditor nothing was
-outstanding; badging it tells them exactly what still needs review.
+being silently dropped. Hiding an unreviewed mapping would tell an auditor nothing
+was outstanding; badging it tells them exactly what still needs review.
 """
 
 from __future__ import annotations
@@ -330,7 +330,7 @@ def build(
         statuses = [s for s in statuses if s.control_key in controls]
     risk = list(session.scalars(select(RiskAssessment)))
 
-    # Appendix B §B.6: every mapping ships, draft or reviewed — each one is
+    # Every mapping ships, draft or reviewed — each one is
     # chip-labeled below so an auditor can see exactly what is still outstanding
     # instead of the gap being invisible.
     mappings = list(session.scalars(select(FrameworkMapping)))
@@ -558,7 +558,7 @@ def build(
     record.path = str(path)
     session.flush()
 
-    # P5-7 / C.5: producing evidence is itself an audit event. Who looked at the
+    # Producing evidence is itself an audit event. Who looked at the
     # evidence matters as much as what the evidence says.
     chain.append(
         session,

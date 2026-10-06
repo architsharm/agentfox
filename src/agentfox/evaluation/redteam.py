@@ -1,4 +1,4 @@
-"""Automated red-teaming (P4-4, NOM-EVL-04).
+"""Automated red-teaming (NOM-EVL-04).
 
 Garak (NVIDIA, Apache-2.0) and PyRIT (Microsoft, MIT) are the wrapped runners — a
 scanner and an orchestrator respectively, exactly the split the catalog describes.
@@ -6,39 +6,34 @@ Giskard is a third option. What we add on top is the part they do not model:
 campaign tracking, **posture over time**, and the tie-in to controls and the OWASP /
 ATLAS taxonomies so a red-team result becomes compliance evidence rather than a log.
 
-The built-in probe suite exists so the capability is not simply absent offline
-(X-3). It is deliberately small and honest about that: it tests *our enforcement*,
+The built-in probe suite exists so the capability is not simply absent offline.
+It is deliberately small and honest about that: it tests *our enforcement*,
 not the frontier of adversarial ML, which is what Garak and PyRIT are for.
 
-**Two structural gaps closed in this round**, both found by reading what a probe
-actually reaches rather than assuming "runs the real enforcement pipeline" (the
-class's own prior docstring claim) covered everything:
+**Probe kinds, and why there is more than one.**
 
-1. Every probe used to be `kind="content"`, which only ever calls
-   `Enforcer.check_content()` — and `check_content()` never passes `arguments`/
-   `tool_key` to `evaluate()`. That means capability/constraint checks
+1. `kind="content"` probes call `Enforcer.check_content()`, which never passes
+   `arguments`/`tool_key` to `evaluate()`. Capability/constraint checks
    (`identity.check_capability`), the action-assurance/SQLi-scope backstop
    (`guardrails.actions.analyse_arguments`, only runs `if arguments`), and
-   composed-privilege-escalation (F3.8, needs a real `guard_tool_call` +
-   `TaintTracker`) were **structurally unreachable by any red-team probe** —
-   not weak against them, *invisible* to them. `kind="tool_call"` and
-   `kind="scenario"` probes below exercise `guard_tool_call()` directly, the
+   composed-privilege-escalation (needs a real `guard_tool_call` +
+   `TaintTracker`) are **structurally unreachable** from a content probe —
+   not weak against it, *invisible* to it. `kind="tool_call"` and
+   `kind="scenario"` probes exercise `guard_tool_call()` directly, the
    same call `McpGovernor` and `AgentFoxGuard.tool_node` make on the real
    request path, against a synthetic tool the runner provisions itself (so a
-   probe still runs against *any* agent slug, the way content probes always
-   could, rather than depending on what tools that agent happens to have).
-2. Every probe used to be an attack (`expect_blocked=True`), so a campaign
-   could only ever report a recall-shaped number (attacks caught) — never a
-   precision one (legitimate traffic wrongly blocked). `expect_blocked=False`
-   benign-control probes, and `ProbeOutcome.over_blocked`, close that: see
-   `run_campaign`'s summary for both `recall` and `precision` now, not just
-   `posture_score`.
+   probe runs against *any* agent slug rather than depending on what tools
+   that agent happens to have).
+2. An attack-only suite (`expect_blocked=True`) can only report a recall-shaped
+   number (attacks caught), never a precision one (legitimate traffic wrongly
+   blocked). `expect_blocked=False` benign-control probes, and
+   `ProbeOutcome.over_blocked`, cover that: `run_campaign`'s summary reports both
+   `recall` and `precision`, not just `posture_score`.
 
-**The third gap, and what the feature now claims** (`adaptive=True`). The
-standing critique of automated red-teaming products is that a fixed prompt list
-only ever proves things about that fixed list, and running it again next week
-proves the same thing again. That critique lands on the suite above, and
-`docs/design/gap-analysis.md` item 3.2 already admitted it.
+**What the adaptive mode claims** (`adaptive=True`). The standing critique of
+automated red-teaming products is that a fixed prompt list only ever proves
+things about that fixed list, and running it again next week proves the same
+thing again. That critique lands on the static suite above.
 
 The answer is not to claim robustness. It is to change what is claimed:
 `run_campaign(..., adaptive=True, budget=N)` runs **configuration regression
@@ -49,7 +44,7 @@ tools and bound policies; and the headline is a posture delta against the
 previous campaign for the same agent ("did this deployment get weaker"), not a
 pass rate. `SCOPE_STATEMENT` is carried into every adaptive summary so the
 output cannot be read as an adversarial-robustness claim. Static remains the
-default so nothing existing changes behaviour.
+default.
 """
 
 from __future__ import annotations
@@ -94,7 +89,7 @@ class Probe:
     #: "scenario" -> an ordered `steps` list of tool_call-shaped dicts sharing
     #: one TaintTracker, so a later step's argument can be *inferred* to have
     #: come from an earlier step's result — the composed-escalation shape
-    #: (F3.8) that no single-call probe can exercise.
+    #: that no single-call probe can exercise.
     kind: str = "content"
     tool_key: str | None = None
     tool_impact: str = "read"
@@ -961,7 +956,7 @@ def run_campaign(
     seed: int = 1337,
     include_deployment_probes: bool = True,
 ) -> RedTeamCampaign:
-    """Execute a campaign and record posture (P4-4).
+    """Execute a campaign and record posture.
 
     Static by default — `adaptive=False` is byte-for-byte the previous behaviour and
     remains the fast path for CI.

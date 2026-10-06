@@ -6,7 +6,7 @@ privileged planner, which sees only the user's instruction, from a quarantined c
 that processes untrusted data and can never influence *which* action runs. The critique
 that "guardrails don't work" concedes exactly this design, and it is right to.
 
-The taint tracker (P3-4) already covers half of it: an argument's *value* carries where it
+The taint tracker already covers half of it: an argument's *value* carries where it
 came from, and a value from a retrieved document cannot reach an irreversible tool. This
 module covers the other half, which taint cannot see: the **decision to call the tool at
 all**.
@@ -26,7 +26,7 @@ Two mechanisms, both deterministic, no model involved:
 
 Nothing here judges natural language. It compares a declared list against observed calls,
 and looks for the tool's own identifiers inside untrusted text — the same discipline the
-F7 integrity checkers use: narrow, deterministic, and silent when it has nothing to say.
+numeric integrity checkers use: narrow, deterministic, and silent when it has nothing to say.
 """
 
 from __future__ import annotations

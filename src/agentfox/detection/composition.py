@@ -1,4 +1,4 @@
-"""Composed privilege escalation (F3.8, P9-11).
+"""Composed privilege escalation.
 
 *"A read tool's output surfaces an internal ID that a second, differently-scoped
 tool then accepts as if it were user-supplied and authorized."*
@@ -11,16 +11,16 @@ the *second* one's argument happens to be a value the *first* one just returned.
 Neither tool's own scope check has any way to know that, because neither call looks
 wrong on its own.
 
-The mechanism: `guardrails.taint.TaintTracker` already tags an argument's value with
+The mechanism: `guardrails.taint.TaintTracker` tags an argument's value with
 `propagated_from` — the path of whichever earlier tool-result content it matched
-against (P3-4's provenance ledger, built for a different purpose — flagging
-untrusted content flowing into arguments — but it already records exactly the fact
-this check needs: *which tool produced this value*). This module adds the one
-comparison that was missing: does the *producing* tool's impact tier exceed what the
-*consuming* tool alone was scoped for. Everything else (marking, propagation,
-persistence) already existed; see `docs/evaluation/dataset-sourcing.md`'s investigation notes
-and `benchmarks/composed_privilege_escalation/README.md` for why no public dataset
-tests this specific composition, and why it was built directly instead.
+against (a provenance ledger built for a different purpose — flagging untrusted
+content flowing into arguments — that records exactly the fact this check needs:
+*which tool produced this value*). This module adds one comparison on top: does the
+*producing* tool's impact tier exceed what the *consuming* tool alone was scoped
+for. Marking, propagation and persistence live in the taint tracker; see
+`docs/evaluation/dataset-sourcing.md`'s investigation notes and
+`benchmarks/composed_privilege_escalation/README.md` for why no public dataset tests this
+specific composition, and why it was built directly instead.
 """
 
 from __future__ import annotations
@@ -111,7 +111,7 @@ def check_composed_escalation(
     argument_propagated_from: dict[str, str],
     tool_impact_lookup: Callable[[str], str | None],
 ) -> list[CompositionFinding]:
-    """F3.8 — does any argument's value originate from a lower-impact tool call.
+    """Does any argument's value originate from a lower-impact tool call.
 
     ``argument_propagated_from`` maps an argument path to the taint mark's
     ``propagated_from`` (only present for inferred, not caller-declared,

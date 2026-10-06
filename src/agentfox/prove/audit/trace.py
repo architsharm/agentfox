@@ -1,13 +1,13 @@
-"""Execution-path tracing (P5-1, P5-6, NOM-AUD-01).
+"""Execution-path tracing (NOM-AUD-01).
 
-OpenTelemetry is the wire format (Appendix A.1: industry standard, multi-vendor
+OpenTelemetry is the wire format (industry standard, multi-vendor
 governance, near-zero exposure). What OTel does *not* give us is an agent-native
 span model — the correlation of a prompt, its retrievals, its tool calls with their
 argument provenance, its delegations and the guardrail decisions taken along the
 way, as one auditable object. That correlation is the part we build.
 
 Attribute names follow the OpenLLMetry semantic conventions so existing collectors,
-dashboards and SIEMs understand our spans without a translation layer (X-2, P5-4).
+dashboards and SIEMs understand our spans without a translation layer.
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def span(
 
 
 # ---------------------------------------------------------------------------
-# Reconstruction (P5-6) — the object an auditor actually reads
+# Reconstruction — the object an auditor actually reads
 # ---------------------------------------------------------------------------
 
 
@@ -226,13 +226,12 @@ def full_trace(session: Session, trace_id: str) -> dict[str, Any] | None:
             "detector": r.detector_key,
             "version": r.detector_version,
             "surface": r.surface,
-            # Two different facts, and one field was being asked to carry both.
-            # `status` answers "did this detector execute" — ok, timeout,
-            # skipped_budget — and other code (P3-6 degradation) depends on that
-            # meaning, so it is untouched. `matched` answers "did it find
-            # anything", which is what a reader of the run table actually wants
-            # and could not previously tell: the detector that drove a block and
-            # the three that saw nothing all read `ok`.
+            # Two different facts, kept in two fields. `status` answers "did
+            # this detector execute" — ok, timeout, skipped_budget — and
+            # degradation handling depends on that meaning. `matched` answers
+            # "did it find anything", which is what a reader of the run table
+            # actually wants: otherwise the detector that drove a block and the
+            # three that saw nothing would all read `ok`.
             "status": r.status,
             "matched": bool(findings_by_run.get(r.id)),
             "duration_ms": r.duration_ms,

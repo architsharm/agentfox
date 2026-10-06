@@ -169,17 +169,18 @@ class Enforcer(
         self.settings = get_settings()
         self.pipeline = pipeline or DetectorPipeline()
         self.engine = get_engine()
-        # P3-13: one ledger per request, not per call. Reset at the start of each
+        # One ledger per request, not per call. Reset at the start of each
         # governed completion; a bare `evaluate()` gets a fresh one on demand.
         self._ledger: LatencyLedger | None = None
-        # F2/F7: the retrieval set, records and entities the answer was built from.
+        # The retrieval set, records and entities the answer was built from.
         # Set by the caller (SDK, LangGraph guard, gateway) before a governed call.
-        # Also read by the F6/F8 checks: `channel`/`counterparty` (AI disclosure),
-        # `decision` (adverse action), `chunks` (chunk coherence), `principal` and
-        # `memory` (memory binding), `retrieval`/`baseline` (retrieval drift).
+        # Also read by the commitment and context checks: `channel`/`counterparty` (AI
+        # disclosure), `decision` (adverse action), `chunks` (chunk coherence),
+        # `principal` and `memory` (memory binding), `retrieval`/`baseline` (retrieval
+        # drift).
         self.evidence: dict[str, Any] = {}
 
-    #: F8.4 — context assembly is the caller's step, not ours: it needs the ranked
+    #: Context assembly is the caller's step, not ours: it needs the ranked
     #: chunks and the real token budget, and it repairs as well as reports. Exposed
     #: here so whoever performs retrieval can run it (and feed the resulting findings
     #: back through `evidence`) without reaching into `context_integrity` directly.
@@ -228,7 +229,7 @@ class Enforcer(
         return agent, identity, is_shadow
 
     def ledger(self) -> LatencyLedger:
-        """The request-level detector budget (P3-13)."""
+        """The request-level detector budget."""
         if self._ledger is None:
             self._ledger = LatencyLedger(budget_ms=self.settings.request_budget_ms)
         return self._ledger
@@ -267,7 +268,7 @@ class Enforcer(
 
         `conversation_window` is the only argument here that is not about *this*
         message: it is the recent user turns, oldest first, ending with this one,
-        supplied by `check_conversation_window`. It exists so F9.4's trajectory check
+        supplied by `check_conversation_window`. It exists so the trajectory check
         can run through the same channel as every other check rather than beside it.
 
         `forced_rules` are synthetic rules a surface decided before calling this — an
@@ -277,8 +278,8 @@ class Enforcer(
         the lattice (``observe``) is recorded and changes nothing. `extra_taint` is
         merged into the recorded taint summary.
 
-        `approval_id` is a retry presenting a person's approval of this exact call
-        (#12). It only ever turns an escalation into an allow, and only when the
+        `approval_id` is a retry presenting a person's approval of this exact call.
+        It only ever turns an escalation into an allow, and only when the
         approval is for this agent, tool and arguments, unexpired and unused.
 
         The steps run in a fixed order, each one a method below: the kill switch,
@@ -287,13 +288,11 @@ class Enforcer(
         then the facts that stand on their own whatever the packs say, fail modes,
         ladder outcomes, forced rules, approval redemption, and finally the record.
         """
-        # PL-3: a killed or quarantined agent is refused on every surface, before
-        # anything else runs. The check used to live only on the completion
-        # (`preflight`) and tool-call paths, so /v1/guard/input, /output,
-        # /memory_write and /agent_message kept answering `allow` for an agent the
-        # operator had just stopped — and the kill switch's promise that every
-        # governed call is refused was true of two surfaces out of six. Here, it
-        # covers every surface that reaches a decision.
+        # A killed or quarantined agent is refused on every surface, before
+        # anything else runs. Checked here so that it covers every surface that
+        # reaches a decision (/v1/guard/input, /output, /memory_write,
+        # /agent_message), not only the completion and tool-call paths: the kill
+        # switch promises that every governed call is refused.
         control = self._control_verdict(agent)
         if control is not None:
             return control
@@ -332,7 +331,7 @@ class Enforcer(
         # algebras: rules take the lattice maximum, ladders select exactly one band.
         call.ladder_decisions = self._business_ladders(agent, surface, tool_key, arguments)
         self._analyse_action(call)
-        # --- budgets & loop containment (P3-10, PL-4) ---------------------
+        # --- budgets & loop containment ---------------------
         call.budget = self._budget_state(
             agent, trace, tool_key, prior_tools or [], prior_steps, arguments
         )
@@ -364,14 +363,11 @@ class Enforcer(
 
         tool_key = call.tool_key
         tool = self.session.scalar(select(Tool).where(Tool.key == tool_key)) if tool_key else None
-        # An undeclared tool used to inherit `impact = "read"`, the *least*
-        # dangerous value in the vocabulary — so a call to a tool nobody had
-        # ever declared was reasoned about as though it only read something.
-        # Every impact-based rule above `read` therefore skipped it, which is
-        # the wrong direction for the one case where the platform knows least.
-        # It stays "read" as the impact (inventing a higher one would be a
-        # guess) and the not-knowing is surfaced as its own fact instead, for
-        # policy to decide on.
+        # An undeclared tool gets `impact = "read"`, the *least* dangerous value
+        # in the vocabulary, because inventing a higher one would be a guess. On
+        # its own that would let every impact-based rule above `read` skip the
+        # one case where the platform knows least, so the not-knowing is surfaced
+        # as its own fact instead, for policy to decide on.
         call.tool_impact = tool.impact if tool else "read"
         call.tool_known = tool is not None if tool_key else True
 
@@ -397,7 +393,7 @@ class Enforcer(
         call.ledger = ledger
         call.pipeline_result = pipeline_result
 
-        # P3-14: suppressions are applied here rather than inside the pipeline. A
+        # Suppressions are applied here rather than inside the pipeline. A
         # suppression is a governance decision about a detector's output, not a
         # detector concern, and keeping it out of the pipeline means the raw detector
         # result stays honest.
@@ -421,7 +417,7 @@ class Enforcer(
 
     def _check_capability(self, call: _Evaluation) -> None:
         """Does the identity hold a grant for this tool, within its limits?"""
-        # --- capability check (P2-2) -------------------------------------
+        # --- capability check -------------------------------------
         call.capability = {"granted": True, "requires_approval": False, "state": "granted"}
         if call.tool_key:
             decision = check_capability(
@@ -436,9 +432,9 @@ class Enforcer(
     def _run_content_checks(self, call: _Evaluation) -> None:
         """Evidence integrity, disclosure, and the risk-raising checks, in one channel."""
         agent, surface, content, intent = call.agent, call.surface, call.content, call.intent
-        # --- P8/F7 evidence integrity (output surface only) ----------------
+        # --- evidence integrity (output surface only) ----------------
         # Groundedness asks whether the claim is supported by the text. It does not
-        # ask whether the text was authoritative (F2), nor whether 5 + 3 = 9 (F7).
+        # ask whether the text was authoritative, nor whether 5 + 3 = 9.
         # Both are properties of the answer's relationship to its evidence, so they
         # run here, where the evidence is in hand.
         evidence = self._evidence_checks(agent, surface, content, intent)
@@ -452,7 +448,7 @@ class Enforcer(
             if merged_issues:
                 evidence["evidence_issues"] = merged_issues
 
-        # --- F6 commitments / F8 context integrity ------------------------
+        # --- commitments / context integrity ---------------------------
         # Same channel as the two checks above, deliberately: one `evidence` dict that
         # lands in `taint_summary`, one `evidence_issues` list that becomes `Finding`
         # rows, one `rules_fired`. The only thing these add is `risks`, which join
@@ -483,7 +479,7 @@ class Enforcer(
     def _analyse_action(self, call: _Evaluation) -> None:
         """What the call's arguments would do, and the risks that follow from it."""
         arguments = call.arguments
-        # --- P9 action assurance ------------------------------------------
+        # --- action assurance ------------------------------------------
         # Argument-level containment governs *the call*; this governs *the artefact*.
         # An agent holding a legitimate `db.query` capability can pass `DROP TABLE` as
         # a well-formed string, and every argument check would pass it.
@@ -496,7 +492,7 @@ class Enforcer(
             else {}
         )
 
-        # --- P9 cascade risk / P18 data-access scoping, when declared ------
+        # --- cascade risk / data-access scoping, when declared ----------
         # Same block as the action-assurance check above, extending the same
         # `action["risks"]`/`action["critical"]` the policy engine already reasons
         # over (`policy/engine.py`'s `action_risk` glob condition) — no policy-layer
@@ -509,11 +505,12 @@ class Enforcer(
                 action["risks"] = [*action.get("risks", []), *extra_risks]
                 action["critical"] = [r for r in action["risks"] if r["severity"] == "critical"]
 
-        # F6/F8 risks reach the policy engine exactly as the P9/P18 ones above do, and
-        # deliberately never join `action["critical"]` — that list is hard-blocked
-        # later (`_apply_standing_refusals`), which is the one thing these checks must
-        # not do. They are capped at `high` at the point of construction so this stays
-        # true even if a detector raises its own severity later.
+        # Commitment and context risks reach the policy engine exactly as the cascade
+        # and data-access ones above do, and deliberately never join
+        # `action["critical"]` — that list is hard-blocked later
+        # (`_apply_standing_refusals`), which is the one thing these checks must not do.
+        # They are capped at `high` at the point of construction so this stays true even
+        # if a detector raises its own severity later.
         if call.pending_risks:
             action["risks"] = [*action.get("risks", []), *call.pending_risks]
         call.action = action
@@ -549,7 +546,7 @@ class Enforcer(
     def _evaluate_policies(self, call: _Evaluation) -> None:
         """Evaluate every pack in force for this subject and combine their decisions."""
         agent, agent_slug, environment = call.agent, call.agent_slug, call.environment
-        # --- 5. policy decision (P6-1) -----------------------------------
+        # --- 5. policy decision -----------------------------------
         pinput = PolicyInput(
             agent_slug=agent_slug,
             risk_tier=agent.risk_tier if agent else "limited",
@@ -572,7 +569,7 @@ class Enforcer(
             completion=call.completion or {},
         )
 
-        # P12: the hierarchy decides what is in force for this subject — the same
+        # The hierarchy decides what is in force for this subject — the same
         # resolution `policy effective` prints — so a team-scoped `restrict` binds
         # only that team's agents and a granted `override` really loosens.
         #
@@ -592,19 +589,19 @@ class Enforcer(
         )
         # Nothing bound is not the same as nothing to check.
         #
-        # A database that has never been initialised holds no policies, so every
-        # content rule was skipped and `auto()` governed exactly nothing while
-        # announcing a mode. Adding one line to an existing application is the
-        # integration this product leads with, and it produced a no-op.
+        # A database that has never been initialised holds no policies, so without
+        # a fallback every content rule would be skipped and `auto()` would govern
+        # nothing while announcing a mode — and adding one line to an existing
+        # application is the integration this product leads with.
         #
         # So the shipped baseline applies as a fallback. Deliberately OBSERVE
         # only, and deliberately only `baseline`:
         #
         #   - Observe because silently blocking traffic in an application whose
-        #     owner configured nothing is how governance gets ripped out — the
-        #     exact failure L8.8 exists to measure. Detections are recorded, so
-        #     the findings and traces are real and the banner stops lying, and
-        #     nothing is refused that would not have been refused anyway.
+        #     owner configured nothing is how governance gets ripped out.
+        #     Detections are recorded, so the findings and traces are real and the
+        #     banner is accurate, and nothing is refused that would not have been
+        #     refused anyway.
         #   - `baseline` alone because it is the general content pack.
         #     eu-ai-act-high-risk is jurisdiction- and risk-tier specific, and
         #     applying it to everyone by default would be overclaiming on
@@ -632,7 +629,7 @@ class Enforcer(
         ]
         merged = combine([d for _doc, _v, d in evaluated]) if evaluated else None
 
-        # X-4: a decision is only reproducible if the *whole* set of versions in force
+        # A decision is only reproducible if the *whole* set of versions in force
         # is recorded, not just the one that happened to win.
         # None is filtered, not stored: see _FallbackVersion. A decision made
         # under the fallback records no policy version, because there is none.
@@ -709,7 +706,7 @@ class Enforcer(
     def _raise_evidence_findings(self, call: _Evaluation) -> None:
         """Integrity issues the content checks found become findings, not blocks."""
         agent = call.agent
-        # F2/F7: an unauthoritative or arithmetically wrong answer is a finding, not
+        # An unauthoritative or arithmetically wrong answer is a finding, not
         # a block. Blocking here would withhold a mostly-correct answer over a
         # currency mismatch, and the failure this addresses is *silent* wrongness —
         # surfacing it is the control.
@@ -722,10 +719,10 @@ class Enforcer(
                 subject_type="agent",
                 subject_id=agent.id if agent else None,
                 evidence={**issue, "trace_id": call.trace_id},
-                # F2/F7 evidence issues evidence NOM-RTG-12; the F6/F8 issues that
-                # now flow through this same loop evidence different controls and
-                # say so, rather than being filed under a control they do not
-                # support.
+                # Source-authority and numeric-integrity issues evidence NOM-RTG-12;
+                # the commitment and context issues that flow through this same loop
+                # evidence different controls and say so, rather than being filed
+                # under a control they do not support.
                 control_keys=issue.get("control_keys") or ["NOM-RTG-12"],
                 # One finding per (agent, issue type, issue code, surface): the same
                 # integrity failure on every answer is one problem with a count.
@@ -740,8 +737,8 @@ class Enforcer(
         a pack already fired under the same id is not added twice.
         """
         rules_fired, fired_ids = call.rules_fired, call.fired_ids
-        # P10 (#4): an answer quoting a chunk the asking human is not entitled to see is
-        # the oversharing failure itself, not a quality issue, so unlike the F2/F7
+        # An answer quoting a chunk the asking human is not entitled to see is
+        # the oversharing failure itself, not a quality issue, so unlike the evidence
         # issues above it is preventive: the answer is withheld whenever the decision
         # enforces, and recorded as would-have-blocked when it observes. Gated on the
         # decision's mode like an approval requirement, because a principal declared
@@ -767,7 +764,7 @@ class Enforcer(
                 )
             )
 
-        # P9: a critical action risk stands on its own, exactly as a capability denial
+        # A critical action risk stands on its own, exactly as a capability denial
         # does. It is a fact about what the statement will do, not a policy opinion —
         # and a customer who wrote the rule explicitly does not see it twice.
         for risk in call.action.get("critical", []):
@@ -800,7 +797,7 @@ class Enforcer(
                 )
             )
 
-        # P9-11/F3.8: a read tool's output flowing into a higher-impact tool's
+        # A read tool's output flowing into a higher-impact tool's
         # argument is a composed escalation neither tool's own scope permits
         # alone — a fact about this call's inputs, not a policy opinion, so it
         # stands on its own exactly like the critical-action-risk check above.
@@ -839,14 +836,13 @@ class Enforcer(
     def _apply_fail_modes(self, call: _Evaluation) -> None:
         """Degraded detectors and unloadable packs, under the deployment's and packs' fail modes."""
         pipeline_result, rules_fired = call.pipeline_result, call.rules_fired
-        # P3-7: a degraded pipeline means reduced coverage. Fail-closed converts that
+        # A degraded pipeline means reduced coverage. Fail-closed converts that
         # into a block; fail-open accepts it and records the gap.
         #
-        # Two sources, the stricter wins (#42): the deployment-wide `fail_mode`, for
-        # an enforcing decision, and each pack's own `fail_mode` — which used to be
-        # stored and never read. A pack fails closed only where its coverage
-        # actually depended on the detectors: it is enforcing, says `closed`, and
-        # has an enabled detection rule for this surface.
+        # Two sources, the stricter wins: the deployment-wide `fail_mode`, for an
+        # enforcing decision, and each pack's own `fail_mode`. A pack fails closed only
+        # where its coverage actually depended on the detectors: it is enforcing, says
+        # `closed`, and has an enabled detection rule for this surface.
         closed_packs = (
             [
                 doc.key
@@ -914,9 +910,9 @@ class Enforcer(
         # silently promoted or ignored. Security dominates the combination, so a band
         # that says auto-approve can never loosen a rule that says block.
         #
-        # Each ladder's own `mode` decides whether its outcome is applied (#1). The
-        # policy packs' mode used to decide it, so an observe ladder escalated as soon
-        # as an enforcing pack governed the call, and an enforce ladder was only
+        # Each ladder's own `mode` decides whether its outcome is applied, not the
+        # policy packs' mode: otherwise an observe ladder would escalate as soon as
+        # an enforcing pack governed the call, and an enforce ladder would only be
         # recorded when nothing else enforced. Every ladder raises the effective
         # verdict (what enforcement would do); only enforcing ladders raise the
         # applied one.
@@ -953,7 +949,7 @@ class Enforcer(
 
     def _redeem_approval(self, call: _Evaluation) -> None:
         """A retry presenting a person's approval releases exactly the call they approved."""
-        # --- a retry presenting an approval (#12) ---------------------------
+        # --- a retry presenting an approval ---------------------------
         # Placed after every rule has had its say, so an approval can only release
         # what was held for a person: a block stays a block.
         call.held = (
@@ -1076,15 +1072,13 @@ class Enforcer(
         result.decision_id = decision_row.id
         # The trace's own verdict is the strongest thing that happened on it.
         #
-        # `Trace.verdict` defaults to "allow" and was only ever written by
-        # `end_trace`, which is called from the completion path alone — preflight,
-        # _finish_completion, run_completion_stream. Nothing on the tool-call path
-        # calls it, so a trace whose tool call was blocked or escalated sat in the
-        # database, and in the Traces list, reading `allow`.
-        #
-        # That is the worst direction for this error to run in: tool containment is
+        # `Trace.verdict` defaults to "allow", and `end_trace` is called from the
+        # completion path alone — preflight, _finish_completion,
+        # run_completion_stream. Nothing on the tool-call path calls it, so without
+        # this a trace whose tool call was blocked or escalated would read `allow`.
+        # That is the worst direction for the error to run in: tool containment is
         # the control that is supposed to hold after a content filter has been
-        # fooled, and every trace it acted on reported that nothing happened.
+        # fooled.
         #
         # Raised here rather than in `guard_tool_call` because every surface lands
         # on this line — tool_args, memory_write, agent_message and the completion
@@ -1092,7 +1086,7 @@ class Enforcer(
         # decisions: a blocked call followed by three allowed ones is a blocked
         # trace, and last-write-wins would erase it.
         self._raise_trace_verdict(call.trace, verdict)
-        # P3-12: the explanation is built before persistence so the non-persisting
+        # The explanation is built before persistence so the non-persisting
         # path still gets one, which leaves the dispute payload to be completed here —
         # a "file a false positive" link with no decision id is not a route anywhere.
         if result.explanation.get("dispute"):
@@ -1154,7 +1148,7 @@ class Enforcer(
         # flood the queue with routine catches nobody needs to act on. When it
         # *did* change the outcome, an operator reviewing findings gets nothing to
         # go on today but the entity type: `Detection.sample` is already redacted
-        # at construction (P5-5), so there is no reason to withhold it a second
+        # at construction, so there is no reason to withhold it a second
         # time behind a blanket "we don't store this" — showing the masked excerpt
         # is strictly more useful than a bare category name, and no less safe.
         #
@@ -1214,11 +1208,11 @@ class Enforcer(
         self, call: _Evaluation, decision_row: Decision, result: EnforcementResult
     ) -> None:
         """An escalated call files an approval request; a redeemed one links its approval."""
-        # --- 6. escalation (P2-3) ----------------------------------------
+        # --- 6. escalation ----------------------------------------
         if call.effective == "escalate":
             # Filed under what the approver needs to see: the tool and arguments, or
             # for a held message its (masked) content and the digest a retry is
-            # matched against (#24).
+            # matched against.
             approval = request_approval(
                 self.session,
                 agent_id=call.agent.id if call.agent else None,

@@ -20,7 +20,7 @@ switched off.
 
 **Offsets are carried, not recomputed.** Every view knows where each of its characters
 came from, so a detection found in a decoded base64 blob still reports a span in the
-original text. Without that, violation specificity (P3-12) would point at coordinates
+original text. Without that, violation specificity would point at coordinates
 in a string the user never sent, and redaction would corrupt the payload.
 """
 
@@ -183,7 +183,7 @@ _SEPARATED = re.compile(r"(?:[A-Za-z0-9]" + _SEP_CLASS + r"){3,}[A-Za-z0-9]")
 #: unlike ``_SEPARATED`` it has no space in the class, so it fails at almost every
 #: position instead of matching at the end of every word and backtracking. On a 32 KB
 #: document it costs 0.3 ms against 0.7 ms for the full pattern, which matters because
-#: `_is_plain` runs on every piece of content the gateway sees (NFR-1, X-7).
+#: `_is_plain` runs on every piece of content the gateway sees.
 _SEPARATED_HINT = re.compile(r"[A-Za-z0-9][!-/:-@\[-`{-~][A-Za-z0-9][!-/:-@\[-`{-~]")
 
 #: The word-sized chunks inside a separated run, split on the whitespace that separates
@@ -326,9 +326,8 @@ def _dominant_scripts(text: str) -> set[str]:
     """Which scripts the text is genuinely written in, as opposed to salted with.
 
     A single Cyrillic "а" among English words is an attack. A page of Russian is a
-    page of Russian, and folding it into Latin lookalikes destroys it — which is
-    exactly what the first version of this did, turning "предыдущие" into "пpeдыдyщиe"
-    and making every Russian pattern miss.
+    page of Russian, and folding it into Latin lookalikes destroys it — turning
+    "предыдущие" into "пpeдыдyщиe" and making every Russian pattern miss.
     """
     if text.isascii():
         # Nothing to protect: every confusable in the table is non-ASCII, so an ASCII
@@ -468,16 +467,14 @@ def _mixed_script_words(text: str) -> int:
 def _collapse_separators(pairs: list[tuple[str, int]]) -> tuple[list[tuple[str, int]], int]:
     """Collapse ``I-g-n-o-r-e`` to a *word*, preserving the boundaries between words.
 
-    The earlier version dropped every non-alphanumeric character inside a run, and the
-    space was in the separator class, so a run was welded onto whatever followed it::
+    Dropping every non-alphanumeric character inside a run, space included, would weld
+    the run onto whatever follows it::
 
         "I-g-n-o-r-e a-l-l p-r-e-v-i-o-u-s i-n-s-t-r-u-c-t-i-o-n-s now"
             -> "Ignoreallpreviousinstructionsnow"
 
     Every lexical pattern ends in ``s?\b``, which cannot match mid-word, so appending a
-    single word to a separated attack defeated the whole transform. The corpus case
-    passed only because its separated run happened to be the entire string. Measured in
-    ``benchmarks/adaptive/``: nothing fired at all on the ``input`` surface.
+    single word to a separated attack would defeat the whole transform.
 
     So the space is treated as what it is — a word boundary — and survives. Each
     whitespace-delimited chunk of a run is then validated on its own:
@@ -787,7 +784,7 @@ def normalize(text: str, *, aggressive: bool = True) -> Normalized:
 
     # Fast path. Ordinary content needs no transformation, and paying the
     # per-character cost to discover that would put a 32 KB retrieved document over
-    # the whole pipeline's latency budget on this detector alone (NFR-1, X-7). A
+    # the whole pipeline's latency budget on this detector alone. A
     # governance layer that adds 50 ms to every request gets removed.
     if _is_plain(text):
         result.views.append(View(text=text, kind="normalized"))

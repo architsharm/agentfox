@@ -16,7 +16,7 @@ from agentfox.core.models.registry import Agent
 
 
 class Identity(Base, TimestampMixin):
-    """P2-1. The governed non-human identity."""
+    """The governed non-human identity."""
 
     __tablename__ = "identities"
     __table_args__ = (UniqueConstraint("org_id", "principal", name="ux_identities_org_principal"),)
@@ -60,7 +60,7 @@ class Credential(Base, TimestampMixin):
 
 
 class Capability(Base, TimestampMixin):
-    """P2-2. Tool-scoped least privilege with argument-level constraints."""
+    """Tool-scoped least privilege with argument-level constraints."""
 
     __tablename__ = "capabilities"
 
@@ -70,7 +70,7 @@ class Capability(Base, TimestampMixin):
     actions: Mapped[list[str]] = mapped_column(JSON, default=lambda: ["*"])
     constraints_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     requires_approval: Mapped[bool] = mapped_column(Boolean, default=False)
-    # P3-4: the highest taint level permitted to reach this tool's arguments.
+    # The highest taint level permitted to reach this tool's arguments.
     max_taint: Mapped[str] = mapped_column(String(24), default="user")
     granted_by: Mapped[str | None] = mapped_column(String(120))
     expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
@@ -79,7 +79,7 @@ class Capability(Base, TimestampMixin):
 
 
 class AccessScopeRule(Base, TimestampMixin):
-    """P18 data-access scoping (data_access.analyse_access): declares what a table
+    """Data-access scoping (data_access.analyse_access): declares what a table
     means to the SQL-scoping analysis — a scoped table (rows must be filtered to the
     caller's own principal) or a reference table (lookup data, no principal filter
     required). Undeclared tables are reported by analyse_access but never assumed
@@ -100,7 +100,7 @@ class AccessScopeRule(Base, TimestampMixin):
 
 
 class DelegationEdge(Base, TimestampMixin):
-    """P2-5. Write-time invariant: child capabilities are a subset of the parent's."""
+    """Write-time invariant: child capabilities are a subset of the parent's."""
 
     __tablename__ = "delegation_edges"
 
@@ -112,7 +112,7 @@ class DelegationEdge(Base, TimestampMixin):
 
 
 class ApprovalRequest(Base, TimestampMixin):
-    """P2-3. Deny-on-timeout by default."""
+    """Deny-on-timeout by default."""
 
     __tablename__ = "approval_requests"
 
@@ -155,7 +155,7 @@ class User(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(String(200), index=True)
     name: Mapped[str] = mapped_column(String(200), default="")
     role: Mapped[str] = mapped_column(String(32), default="developer")
-    # OIDC/SAML seam (P2-4). Populated by an IdP when one is wired.
+    # OIDC/SAML seam. Populated by an IdP when one is wired.
     external_id: Mapped[str | None] = mapped_column(String(200))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 

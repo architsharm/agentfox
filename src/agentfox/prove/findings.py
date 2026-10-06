@@ -1,11 +1,10 @@
 """The one way a finding is raised, and the one way a condition that cleared closes it.
 
-A finding queue is only a sensing surface if one row means one problem. Before this
-module every producer constructed ``Finding(...)`` directly, so a detector that was
-degraded for an hour filed a finding per request, a drift view filed one per page
-load, and a red-team campaign re-run filed the same gap again. Counting those rows
-measured traffic, not problems — and the improvement loop's sense stage reads exactly
-that count.
+A finding queue is only a sensing surface if one row means one problem. If every
+producer constructed ``Finding(...)`` directly, a detector degraded for an hour would
+file a finding per request, a drift view one per page load, and a red-team campaign
+re-run the same gap again. Counting those rows measures traffic, not problems — and
+the improvement loop's sense stage reads exactly that count.
 
 Three rules live here:
 

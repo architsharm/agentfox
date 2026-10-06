@@ -1,8 +1,8 @@
 """Pillar 3 — Runtime Guardrails & Security.
 
 Detector registration happens here so that importing ``agentfox.detection`` gives
-you a working, offline-capable detector set with no optional dependency installed
-(X-3). Wrapped OSS adapters register too, but report ``available() == False`` until
+you a working, offline-capable detector set with no optional dependency installed.
+Wrapped OSS adapters register too, but report ``available() == False`` until
 their dependency (and, for classifiers, their weights) are actually present.
 """
 
@@ -70,7 +70,7 @@ register_detector(PiiJudgmentDetector())
 for _hub_detector in hub_detectors():
     register_detector(_hub_detector)
 
-# --- Licence-restricted, opt-in only (Appendix A.4) ---
+# --- Licence-restricted, opt-in only ---
 register_detector(RestrictedClassifierDetector())
 
 __all__ = [

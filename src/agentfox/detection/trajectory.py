@@ -1,4 +1,4 @@
-"""F9.4 — conversation trajectory scoring (crescendo detection).
+"""Conversation trajectory scoring (crescendo detection).
 
 Every detector in this codebase scores **one message**. A crescendo
 (Microsoft, arXiv:2404.01833) is built so that no single message is worth
@@ -6,21 +6,21 @@ scoring: each turn is a request a reasonable user could send and a reasonable
 assistant could answer, and only the *sequence* arrives somewhere no single
 message would have been allowed to go.
 
-`Enforcer.check_conversation_window` was the first answer to multi-turn attacks
-and it is the right answer to a different one — payload splitting, where a
+`Enforcer.check_conversation_window` answers a different multi-turn attack —
+payload splitting, where a
 sentence is cut into fragments that reassemble into a string the detector already
 recognises. `benchmarks/crescendo/` measured whether that transfers, and it does
 not: joining six innocuous turns yields six innocuous turns. **The signal is in
 the slope, not in the content.** This module measures the slope.
 
-What it does, following `docs/design/failure-modes.md` F9.4:
+What it does, following the crescendo entry in `docs/design/failure-modes.md`:
 
 1. Score each turn on three *risk-adjacent* components — none of which is
    evidence on its own, which is the point:
 
    * **sub-threshold detector activation** — a detector finding that scored
      above zero but below the threshold at which a policy would act. This is
-     component one in F9.4 and it is wired to the real pipeline
+     the first component the design names, and it is wired to the real pipeline
      (:class:`TurnRisk.detector_score` is supplied by the caller from the same
      run the per-message path already makes). Be aware of what it is worth:
      across the 22 conversations in `benchmarks/crescendo/` the shipped
@@ -30,9 +30,9 @@ What it does, following `docs/design/failure-modes.md` F9.4:
      traffic where a crescendo is interleaved with clumsier probing — not
      because it is what catches crescendos.
    * **topic drift** — lexical distance from the first turn in the window
-     (F9.4 says "embedding-distance drift from turn 1's topic"; this is the
-     offline, deterministic form of the same measurement — no model calls, per
-     this codebase's X-3 offline default).
+     (the design says "embedding-distance drift from turn 1's topic"; this is
+     the offline, deterministic form of the same measurement — no model calls,
+     per this codebase's offline default).
    * **reframing markers** — the scaffolding a crescendo is built out of:
      hypothetical framing, fiction/role framing, emotional framing, manufactured
      authority, persistence directives, restriction negotiation, and scope
@@ -49,7 +49,7 @@ What it does, following `docs/design/failure-modes.md` F9.4:
 
 **Observe-first.** Nothing here decides a verdict. `assess` returns a finding;
 `Enforcer.check_conversation_window` puts it on the `action_risk` channel that
-the F6/F8 checks already use, where a policy author can act on it. See the
+the action-assurance checks already use, where a policy author can act on it. See the
 module's use site in `enforcement.py` for how a policy makes it block.
 
 Deterministic and offline: regexes and set arithmetic, no model calls, no state.
@@ -62,7 +62,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-#: The entity/finding name F9.4 specifies, in the repo's entity convention
+#: The entity/finding name for this detection, in the repo's entity convention
 #: (`INJECTION.ROLE_DELIMITER`, `PII.US_SSN`, ...).
 ENTITY = "CRESCENDO.TRAJECTORY_DRIFT"
 
@@ -72,7 +72,7 @@ ENTITY = "CRESCENDO.TRAJECTORY_DRIFT"
 #: condition works without a schema change.
 RISK_CODE = "crescendo.trajectory_drift"
 
-#: Rolling window, in turns. F9.4 prescribes 5-8; 6 is also
+#: Rolling window, in turns. The design calls for 5-8; 6 is also
 #: `check_conversation_window`'s own long-standing default, so the two paths see
 #: the same history.
 DEFAULT_WINDOW = 6
@@ -395,7 +395,7 @@ def assess(
       measured on noise is not reported as a trajectory.
 
     And one veto: if the latest turn claims the conversation resolved, nothing
-    fires. F9.4 keeps the score rolling rather than cumulative precisely so a
+    fires. The score is kept rolling rather than cumulative precisely so a
     conversation that drifts and then lands is not penalised for the drift, and
     a resolution claim is the clearest statement that it landed.
     """

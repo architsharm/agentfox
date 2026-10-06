@@ -1,14 +1,14 @@
 """Persistence model for all six pillars.
 
-Implements Appendix D. Three invariants are enforced here in code rather than by
+Three invariants are enforced here in code rather than by
 convention, because they are the ones an auditor tests:
 
-  * ``AuditEntry`` is append-only and hash-chained (P5-2). There is no update or
+  * ``AuditEntry`` is append-only and hash-chained. There is no update or
     delete path anywhere in the codebase.
   * ``PolicyVersion`` is immutable; every ``Decision`` binds the exact version in
-    force at decision time (X-4).
+    force at decision time.
   * ``Capability`` narrowing on delegation is validated at write time, not audited
-    after the fact (P2-5).
+    after the fact.
 
 The models live in one module per pillar; this package is their single import
 point, so ``from agentfox.core.models import Agent`` names every table the same

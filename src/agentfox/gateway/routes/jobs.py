@@ -1,4 +1,4 @@
-"""Deferred job queue observability + cron backstop (PL-5).
+"""Deferred job queue observability + cron backstop.
 
 Evidence-package export and red-team-campaign runs enqueue and process within
 the same request that creates them (see `jobs_db.py`'s own module docstring

@@ -1,4 +1,4 @@
-"""Agent canary rollout by version, with health gates and automated rollback (P12-6).
+"""Agent canary rollout by version, with health gates and automated rollback.
 
 A canary sits on top of the current binding rather than replacing it outright: the
 binding still points at the *stable* version everyone keeps getting, while a

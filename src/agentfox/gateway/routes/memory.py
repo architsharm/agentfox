@@ -1,4 +1,4 @@
-"""Read surface for memory write governance (P14, NOM-RTG-13, closes ASI06).
+"""Read surface for memory write governance (NOM-RTG-13, closes ASI06).
 
 Writing goes through `POST /v1/guard/memory_write` (inline.py) — the same path
 every other governed surface uses. This is the visibility half: what's actually

@@ -1,12 +1,12 @@
 """The working baseline `agentfox admin hooks install --write` sets up.
 
-Before this, installing the hooks left the agent unable to do anything: the hook
-agent was first seen as a shadow agent in ``production`` with no identity and no
-grants, so capability default-deny refused ``ls``, ``Read`` and ``Edit`` alike, and
-every shell command also tripped ``action.production_irreversible``. An operator met
-that on the first tool call and removed the hook.
+Without it, installing the hooks leaves the agent unable to do anything: the hook
+agent is first seen as a shadow agent in ``production`` with no identity and no
+grants, so capability default-deny refuses ``ls``, ``Read`` and ``Edit`` alike, and
+every shell command also trips ``action.production_irreversible``. An operator who
+meets that on the first tool call removes the hook.
 
-What install now does, in one place so the CLI and tests share it:
+What install does, in one place so the CLI and tests share it:
 
 * registers the agent — ``development`` unless the operator names an environment,
   and an existing registered agent keeps its own;

@@ -1,8 +1,8 @@
 """FastAPI application — inline gateway + control-plane API.
 
 One process serves both surfaces, which is a deployment choice rather than an
-architectural one: it keeps the self-host story to a single container (NFR-4, X-8),
-and the gateway is stateless so it scales out horizontally (NFR-3).
+architectural one: it keeps the self-host story to a single container,
+and the gateway is stateless so it scales out horizontally.
 """
 
 from __future__ import annotations
@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
     (log.warning if posture.startswith("DEVELOPMENT") else log.info)("auth: %s", posture)
     # Pay any model-loading cost now, off the request path — a classifier detector
     # that only gets slow once, on its very first call, would otherwise silently
-    # degrade the first real request every time this process starts (P3-6's 40ms
+    # degrade the first real request every time this process starts (the 40ms
     # per-detector timeout is nowhere near enough to also cover loading a model).
     from agentfox.detection import warm_all
 
@@ -168,7 +168,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # The dashboard is a client of this API (X-5). In self-host it is same-origin or
+    # The dashboard is a client of this API. In self-host it is same-origin or
     # localhost; nothing here opens the control plane to the internet by itself.
     # The public playground page is the one deliberate exception — it is designed
     # to be called cross-origin, unauthenticated, from wherever it's hosted, so its
@@ -199,16 +199,16 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def degradation_gate(request: Request, call_next):
-        """Gap 0.7 — fail-open/closed per *service*, and never silently.
+        """Fail-open/closed per *service*, and never silently.
 
-        `fail_mode` was only ever consulted per detector: one detector timed out, so
-        this one request went unchecked. That is the wrong granularity for the failure
-        that actually matters. When the detector pipeline as a whole has nothing to
-        run, the policy engine's OPA sidecar is unreachable (`policy/store.py` quietly
-        substitutes the native engine), the database is refusing connections, or the
-        configured model provider is gone, *every* request is ungoverned — and the
-        deployment reports 200s throughout, which is precisely the indistinguishable-
-        from-working failure `availability.py`'s docstring refuses to accept.
+        `fail_mode` per detector covers one detector timing out on one request. That
+        is the wrong granularity for the failure that actually matters. When the
+        detector pipeline as a whole has nothing to run, the policy engine's OPA
+        sidecar is unreachable (`policy/store.py` quietly substitutes the native
+        engine), the database is refusing connections, or the configured model
+        provider is gone, *every* request is ungoverned — and the deployment reports
+        200s throughout, which is precisely the indistinguishable-from-working failure
+        `availability.py`'s docstring refuses to accept.
 
         So: probe the dependencies, run the operator's declared `FailPolicy`, and put
         the answer where it can be seen. Fail-closed refuses here rather than admitting
@@ -258,7 +258,7 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def admission_gate(request: Request, call_next):
-        """P15-6 — shed load before it reaches governance, never after.
+        """Shed load before it reaches governance, never after.
 
         Scoped to ``/v1/*``, the inline surface an agent actually calls under load;
         ``/api/*`` is the operator control plane, low-volume by nature and already
@@ -314,7 +314,7 @@ def create_app() -> FastAPI:
     # Unauthenticated by design (see playground.py's module docstring) — the only
     # router in this app that never depends on `current_user`. It keeps no state in
     # this process: a sandbox is a tenant in the deployment database, so any instance
-    # can serve any sandbox and NFR-3 still holds.
+    # can serve any sandbox and the gateway stays stateless.
     app.include_router(playground.router)
     # Also unauthenticated by design, and for a plainer reason than the playground's:
     # joining a waitlist is what someone does *before* they have an account to sign in
@@ -374,11 +374,11 @@ def create_app() -> FastAPI:
         return _health_payload()
 
     # `summary` pinned so the docstring below does not rewrite this route's label in
-    # the generated Appendix C table (scripts/api_routes.py) — the explanation belongs
+    # the generated API route table (scripts/api_routes.py) — the explanation belongs
     # in the description, and the public summary of this route has not changed.
     @app.get("/api/health", tags=["platform"], summary="Health")
     def health() -> dict[str, Any]:
-        """Liveness, plus what is currently not being checked (gap 0.7).
+        """Liveness, plus what is currently not being checked.
 
         `status` stays "ok" for a process that is up and serving — that is what every
         liveness probe already pointed at this route means by it, and changing it would
@@ -409,7 +409,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/detectors", tags=["platform"])
     def detectors(session: Session = Depends(db), _u=Depends(current_user)) -> dict[str, Any]:
-        """P3-11 — which detectors exist, which are live, and how fast they are."""
+        """Which detectors exist, which are live, and how fast they are."""
         from sqlalchemy import func
 
         from agentfox.core.models import DetectorRun
@@ -494,7 +494,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/reliability", tags=["platform"])
     def reliability(session: Session = Depends(db), _u=Depends(current_user)) -> dict[str, Any]:
-        """P15 — circuit-breaker state and live budget consumption."""
+        """Circuit-breaker state and live budget consumption."""
 
         from agentfox.core.models import Agent, Budget
         from agentfox.runtime.reliability import BREAKER, check_budget
@@ -508,7 +508,7 @@ def create_app() -> FastAPI:
             "circuit_breakers": BREAKER.snapshot(),
             "budgets": budgets,
             "fallback_chain": get_settings().fallback_chain,
-            # Gap 0.7: the per-service degradation ledger, alongside the per-provider
+            # The per-service degradation ledger, alongside the per-provider
             # breaker it complements. `fail_mode` travels with it because "degraded"
             # means something different under each — open means those requests were
             # served unchecked, closed means they were refused.
@@ -518,7 +518,7 @@ def create_app() -> FastAPI:
 
     @app.get("/metrics", tags=["platform"], response_class=PlainTextResponse)
     def metrics(session: Session = Depends(db)) -> str:
-        """I-7 — Prometheus exposition.
+        """Prometheus exposition.
 
         Unauthenticated on purpose, like every other /metrics endpoint: a scrape job
         that needs a bearer token is a scrape job nobody configures. It exposes counts
@@ -530,7 +530,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/providers", tags=["platform"])
     def providers(_u=Depends(current_user)) -> dict[str, Any]:
-        """X-2 — the neutrality surface, made inspectable."""
+        """The neutrality surface, made inspectable."""
         available = available_providers()
         return {
             "providers": [

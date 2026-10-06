@@ -1,4 +1,4 @@
-"""Local vector-similarity detector (P3-1 companion).
+"""Local vector-similarity detector, a companion to the injection detectors.
 
 The other two injection signals catch different things: `injection.heuristic`
 matches phrasing it was told to look for; `injection.classifier` recognizes what
@@ -87,7 +87,7 @@ class EmbeddingSimilarityDetector(BaseDetector):
 
             return try_to_load_from_cache(self.model_id, "config.json") is not None
         except Exception:
-            # NFR-4/NFR-9: never trigger a download at request time.
+            # Never trigger a download at request time.
             return False
 
     @functools.cached_property

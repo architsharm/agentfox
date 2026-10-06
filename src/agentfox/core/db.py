@@ -1,7 +1,7 @@
 """Database session management.
 
-SQLite by default so the whole control plane runs with no infrastructure at all
-(NFR-9); Postgres via ``AGENTFOX_DATABASE_URL`` for anything real.
+SQLite by default so the whole control plane runs with no infrastructure at all;
+Postgres via ``AGENTFOX_DATABASE_URL`` for anything real.
 """
 
 from __future__ import annotations
@@ -161,8 +161,7 @@ def init_db(stamp: bool = True) -> None:
     """Create the schema directly.
 
     Convenience for tests and first-run local use. **Production upgrades go through
-    Alembic** (`agentfox admin db upgrade`) — `create_all` cannot evolve an existing schema,
-    which is the defect PL-2 fixed.
+    Alembic** (`agentfox admin db upgrade`) — `create_all` cannot evolve an existing schema.
 
     When ``stamp`` is set and Alembic is available, the fresh database is stamped at
     ``head`` so a later `alembic upgrade` does not try to re-create tables that are

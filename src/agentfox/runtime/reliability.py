@@ -1,4 +1,4 @@
-"""Cost, reliability and degradation (P15).
+"""Cost, reliability and degradation.
 
 **Evidence.** Five of eleven senior engineers surveyed built this by hand. Aditya
 (Deloitte UK): *"circuit breaker for LLM provider outages, Redis-backpressure request
@@ -31,7 +31,7 @@ from agentfox.core.models import Budget, Finding, utcnow
 from agentfox.prove.findings import auto_resolve, raise_finding
 
 # ---------------------------------------------------------------------------
-# Circuit breaker (P15-1)
+# Circuit breaker
 # ---------------------------------------------------------------------------
 
 CLOSED, OPEN, HALF_OPEN = "closed", "open", "half_open"
@@ -51,7 +51,7 @@ class CircuitBreaker:
     Fails *fast* once a provider is known bad. The alternative — every request
     waiting out a 60-second timeout — turns a provider incident into an outage of
     your own, which is precisely the "governance tool became the outage" failure
-    mode we refuse to cause (NFR-2).
+    mode we refuse to cause.
 
     Process-local by design: this protects *this* worker's latency budget. A
     cluster-wide breaker needs shared state and is a Tranche-3 concern.
@@ -134,7 +134,7 @@ BREAKER = CircuitBreaker()
 
 
 # ---------------------------------------------------------------------------
-# Fallback ladder (P15-2)
+# Fallback ladder
 # ---------------------------------------------------------------------------
 
 
@@ -207,7 +207,7 @@ class DegradationRecord:
 
 
 # ---------------------------------------------------------------------------
-# Budgets (P15-3, P15-5)
+# Budgets
 # ---------------------------------------------------------------------------
 
 WINDOWS = {"minute": 60, "hour": 3600, "day": 86400}

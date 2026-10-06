@@ -99,7 +99,7 @@ class _SurfacesMixin:
         conversation history.
 
         This closes it using the substrate that already exists for a different
-        reason — `ConversationTurn`, written by escalation governance (P11) — by
+        reason — `ConversationTurn`, written by escalation governance — by
         joining the last `window` turns' `user_text` with the new message and
         running the same detector pipeline over the assembled text. Requires the
         caller to supply a stable `session_id` across turns (the same requirement
@@ -112,7 +112,7 @@ class _SurfacesMixin:
         rather than assuming it: 0 of 13 gradual-escalation conversations were caught
         at any turn index, because joining six innocuous turns produces six innocuous
         turns and there is no hidden string to reassemble. So the same window is also
-        handed to the trajectory scorer (F9.4, `trajectory.py`) as a *sequence* rather
+        handed to the trajectory scorer (`trajectory.py`) as a *sequence* rather
         than a join, which measures the slope of a risk-adjacent score instead of the
         content of the concatenation. The joined-text verdict is what this method
         returns; the trajectory finding rides along on `result.taint["trajectory"]`
@@ -165,7 +165,7 @@ class _SurfacesMixin:
         persist on the way in.
 
         Provenance is carried on the entry itself so a later retrieval can weight
-        or refuse it the way P8 already weights a source tier. An entry nobody
+        or refuse it the way retrieval already weights a source tier. An entry nobody
         has verified (``verified_by=None``) defaults **closed**: it decays after
         ``ttl_seconds`` (default: ``settings.memory_unverified_ttl_seconds``)
         rather than persisting indefinitely — the opposite default from
@@ -180,7 +180,7 @@ class _SurfacesMixin:
             surface="memory_write",
             trace=trace,
             taint_source=taint_source,
-            # F8.5: the entry about to be written, checked against the principal the
+            # The entry about to be written, checked against the principal the
             # caller declared in `evidence`. An entry with no subject is the dangerous
             # case rather than the safe one — it was written by someone, about someone,
             # and nothing records who.
@@ -192,7 +192,7 @@ class _SurfacesMixin:
             },
             persist=persist,
         )
-        # Mode-aware, like every other surface (R3: nothing blocks until a
+        # Mode-aware, like every other surface (nothing blocks until a
         # policy is promoted to enforce) — `result.verdict`, not the
         # `effective_verdict` counterfactual, is what actually gates the
         # write. Once enforced, a blocked or escalated write does not get to
@@ -235,7 +235,7 @@ class _SurfacesMixin:
         credential: str | None = None,
         persist: bool = True,
     ) -> EnforcementResult:
-        """Decide whether the agent is allowed to stop (F9.5).
+        """Decide whether the agent is allowed to stop.
 
         Every other guard on this class asks whether an action is safe. This one
         asks a question nobody was asking: the agent says it is finished — is it?
@@ -419,15 +419,15 @@ class _SurfacesMixin:
           key (:mod:`agent_messaging`), the HMAC is checked. Where the transport
           is external (a customer's own A2A/MCP bus) and no signature is
           present, the message is reported **unsigned** rather than silently
-          trusted — same "declare the gap, don't hide it" convention P14 uses
-          for what it doesn't check.
+          trusted — the same "declare the gap, don't hide it" convention used
+          elsewhere for what a check doesn't cover.
         """
         agent, identity, _ = self.resolve(sender_slug, None)
         agent_card_match = agent is not None and bool(agent.registered)
-        # #18: replay protection is `(sender, nonce)` uniqueness, so it only exists
-        # when the sender sends a nonce. A missing nonce used to be stored as "",
-        # which made a sender's second nonce-less message collide with its first and
-        # be blocked as a replay. Without a nonce there is nothing to protect with:
+        # Replay protection is `(sender, nonce)` uniqueness, so it only exists
+        # when the sender sends a nonce. Storing a missing nonce as "" would make a
+        # sender's second nonce-less message collide with its first and be blocked as
+        # a replay. Without a nonce there is nothing to protect with:
         # the replay check is skipped and the gap is declared on the decision
         # (`agent_message.no_nonce`, `replay_protected: false`) — the same "declare
         # the gap, don't hide it" treatment an unsigned message gets. Requiring a
@@ -485,10 +485,10 @@ class _SurfacesMixin:
                 except DecryptionFailed:
                     signature_valid = False
 
-        # #19/X3: these are decided *before* `evaluate`, and handed to it, so the
-        # Decision row and the audit chain record the verdict the caller gets. They
-        # used to be applied to the result afterwards, leaving a blocked replay in
-        # the audit chain as `decision.allow`.
+        # These are decided *before* `evaluate`, and handed to it, so the Decision
+        # row and the audit chain record the verdict the caller gets. Applied to the
+        # result afterwards, a blocked replay would sit in the audit chain as
+        # `decision.allow`.
         forced: list[dict[str, Any]] = []
         extra_taint: dict[str, Any] = {"replay_protected": replay_protected}
         replay_reason = f"replayed message: (sender='{sender_slug}', nonce) was already seen"

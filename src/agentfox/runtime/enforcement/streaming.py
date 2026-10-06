@@ -1,4 +1,4 @@
-"""The streaming completion path (PL-1)."""
+"""The streaming completion path."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class _StreamingMixin:
         mode: str | None = None,
         approval_id: str | None = None,
     ) -> Iterator[StreamEvent]:
-        """Enforced streaming completion (PL-1).
+        """Enforced streaming completion.
 
         Two modes, and the trade-off between them is real rather than cosmetic:
 

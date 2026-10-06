@@ -1,6 +1,6 @@
-"""Open Policy Agent adapter (P6-1, P2-2).
+"""Open Policy Agent adapter.
 
-Appendix A.1 picks OPA as the policy decision engine: CNCF-graduated, battle-tested,
+OPA is the policy decision engine: CNCF-graduated, battle-tested,
 sub-millisecond, and — the part that matters commercially — a language enterprise
 platform teams already run and already trust in their admission controllers.
 
@@ -195,7 +195,7 @@ class OpaPolicyEngine:
             r.raise_for_status()
             result = r.json().get("result") or {}
         except Exception as exc:
-            # NFR-2: never let a policy-engine outage take the customer's agent down.
+            # Never let a policy-engine outage take the customer's agent down.
             log.warning("OPA unavailable (%s); falling back to native engine", exc)
             from agentfox.policy.engine import NativePolicyEngine
 
@@ -203,7 +203,7 @@ class OpaPolicyEngine:
             decision.engine = "native(opa-fallback)"
             return decision
 
-        # X-4: every block carries an auditable reason. A rule whose reason is meant
+        # Every block carries an auditable reason. A rule whose reason is meant
         # to be generated (the capability-constraint rule names the limit and the
         # value that failed it, which cannot be written into the pack) comes back
         # from OPA with an empty string, so generate it here exactly as the native

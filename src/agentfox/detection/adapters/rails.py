@@ -1,14 +1,14 @@
-"""Guardrail-orchestration adapters — NeMo Guardrails and Guardrails AI (P3-1/P3-9).
+"""Guardrail-orchestration adapters — NeMo Guardrails and Guardrails AI.
 
-Both are Apache-2.0 and actively maintained (Appendix A.1), and the catalog's advice
+Both are Apache-2.0 and actively maintained, and the catalog's advice
 is "compose checks; don't hand-roll the runner". We take that seriously but not
 literally: our pipeline is the primary runner because it has to enforce the latency
-budget (NFR-1), record per-detector telemetry (P3-11), and feed control status
-(P6-4) — none of which these projects model. They are wrapped as *detectors inside*
+budget, record per-detector telemetry, and feed control status for continuous
+monitoring — none of which these projects model. They are wrapped as *detectors inside*
 our pipeline, which is the same wrap-the-primitive-own-the-interface split used
 everywhere else.
 
-Licence caution carried from Appendix A.1: the Guardrails AI **core** is Apache-2.0,
+Licence caution: the Guardrails AI **core** is Apache-2.0,
 but individual Guardrails Hub validators carry their own licences. Any Hub validator
 must be licence-checked before it ships, so none is enabled by default.
 """

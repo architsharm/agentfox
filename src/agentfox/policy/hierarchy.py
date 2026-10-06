@@ -1,4 +1,4 @@
-"""Hierarchical policy composition (P12).
+"""Hierarchical policy composition.
 
 **Evidence.** Two of eleven senior engineers surveyed hand-built this. Derrick
 (Murphy USA, ex-Apple/Cigna/Ally) quantified it: *"hierarchical policy framework
@@ -21,7 +21,7 @@ Three composition modes, and the asymmetry between them is the safety property:
 ``override``  loosen. Permitted **only** where the parent marked the rule
               ``overridable: true``. Loosening is a grant, not a right.
 
-The other half of the fix is not the algorithm but the *explanation*:
+The other half of the design is not the algorithm but the *explanation*:
 :func:`resolve_effective` reports, for every rule in force, which level it came from
 and what it overrode. Opacity is what makes flat policy dangerous, so a resolver that
 produced a correct answer nobody could read would have missed the point.
@@ -176,7 +176,7 @@ def resolve_effective(
 
     ``subject`` is a mapping like ``{"org": "acme", "team": "finance",
     "agent": "payments-ops", "user": "priya@acme.com"}``. Layers that do not apply
-    are skipped rather than merged, which is what gives context isolation (P12-5):
+    are skipped rather than merged, which is what gives context isolation:
     a team never sees another team's rules because they were never in scope.
     """
     subject = subject or {}
@@ -285,7 +285,7 @@ def resolve_effective(
 
 
 # ---------------------------------------------------------------------------
-# Lint (P12-4)
+# Lint
 # ---------------------------------------------------------------------------
 
 
@@ -385,7 +385,7 @@ def _unknown_values(rule: Rule) -> list[str]:
 def lint_policy(layers: list[PolicyLayer]) -> list[LintFinding]:
     """Catch the misconfigurations that hierarchy makes possible.
 
-    This is the half of P12 that produces the 87%. Composition without a linter just
+    This is the half of hierarchical policy that produces the 87%. Composition without a linter just
     moves the confusion somewhere harder to see.
     """
     findings: list[LintFinding] = []
@@ -404,10 +404,8 @@ def lint_policy(layers: list[PolicyLayer]) -> list[LintFinding]:
                         "duplicate-id",
                         "high",
                         rule.id,
-                        # Positional order is (code, severity, rule_id, message, level).
-                        # This call previously passed `level` into `message` *and* a
-                        # `message=` keyword, so the one lint code that catches a
-                        # silently-shadowed rule raised TypeError every time it fired.
+                        # Positional order is (code, severity, rule_id, message, level);
+                        # passing a `message=` keyword as well would raise TypeError.
                         f"'{rule.id}' is defined twice in the same layer; "
                         "the later definition silently wins",
                         layer.level,

@@ -159,7 +159,7 @@ def system_scope(reason: str, *, routine: bool = False) -> Iterator[None]:
     filter by tenant until you know whose tenant it is. That happens on every single
     request, and warning about it would bury the warnings that matter under one line
     per request until nobody reads any of them. Those pass ``routine=True`` and log at
-    debug — still greppable, no longer noise.
+    debug — still greppable, without the noise.
     """
     log.log(
         logging.DEBUG if routine else logging.WARNING,
