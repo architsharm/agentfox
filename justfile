@@ -44,9 +44,10 @@ fmt:
     {{ruff}} check --fix .
     {{ruff}} format .
 
-# The four drift checks: docs, reference and published numbers against the code.
+# The drift checks: docs, reference, published numbers and the demo kit copy against the code.
 check:
     uv run python scripts/check_plugins.py
+    uv run python scripts/check/demo_kit.py
     uv run python scripts/api_routes.py --check
     uv run python scripts/docs_reference.py --check
     uv run python scripts/claims.py --check

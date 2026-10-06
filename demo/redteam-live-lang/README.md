@@ -22,13 +22,22 @@ say).
 
 ## Files
 
+The support-tools agent itself (dataset, tools, grants, seed, verification) is shared
+with the CrewAI demo and lives once in [`demo/kit/`](../kit/). `kit/` here is a
+committed, byte-identical copy of it, because this folder is the Vercel project's Root
+Directory and nothing outside it exists at deploy time. **Never edit `kit/` here**: edit
+`demo/kit/`, then run `python scripts/check/demo_kit.py --write` from the repo root
+(the check runs in `just check`, CI and `tests/repo/test_demo_kit.py`, and fails on
+drift).
+
 | File | What it's for |
 |---|---|
-| `_env.py` | Points AgentFox at this demo's own SQLite file (`demo.db`, distinct from the CrewAI demo's). Imported first by everything else. Byte-identical to the CrewAI demo's copy — the path derives from `__file__`, so it already points at the right place. |
-| `support_tools.py` | The fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `agent.py` and `verify_mechanics.py` call into. Ported near-verbatim from `demo/redteam-live/support_tools.py`; see the diff below. |
-| `seed_demo_agent.py` | One-time setup: registers the agent (`support-crew-live-lang`), its capability grants, its tools, and the shipped policy packs. |
+| `_env.py` | Points AgentFox at this demo's own SQLite file (`demo.db`, distinct from the CrewAI demo's), or the deployment's Neon Postgres (`kit/env.py`). Imported first by everything else. |
+| `support_tools.py` | This demo's view of `kit/support_tools.py` (the fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `agent.py` and `verify_mechanics.py` call into), with this demo's agent slug. |
+| `seed_demo_agent.py` | One-time setup: registers the agent (`support-crew-live-lang`), its capability grants, its tools, and the shipped policy packs (`kit/seed.py`). |
 | `agent.py` | The live LangChain agent. **Run this for the actual demo.** The genuinely new piece — CrewAI's `Agent`/`Task`/`Crew` replaced with a LangChain tool-calling agent. |
-| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. Copied near-verbatim; it never touches the agent framework. |
+| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM (`kit/verify_mechanics.py`) — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. It never touches the agent framework. |
+| `kit/` | The deployed copy of `demo/kit/` (see above). |
 | `requirements-dev.txt` | What to install locally, and why (see below — do **not** install this into the main repo's `.venv`). |
 | `requirements.txt` / `vercel.json` / `web.py` / `vendor/` | The Vercel-deployed version of this demo — see "Deploying this live, in a browser" below. Not needed for local CLI use. |
 
@@ -253,12 +262,12 @@ model involved. Real output, captured while building this demo:
 === issue_refund('ORD-7003', $50,000.00) ===
 {
   "status": "BLOCKED_BY_AGENTFOX",
-  "reason": "EU AI Act Art. 14 — irreversible action by a high-risk system requires human oversight.; No capability grants this agent the requested tool and action (default deny).",
-  "rules_fired": ["eu.art14.human_oversight", "capability.denied"],
+  "reason": "EU AI Act Art. 14 — irreversible action by a high-risk system requires human oversight.; agent:support-crew-live-lang holds a grant for 'mcp:support-tools/issue_refund', so this is not a missing permission. The grant allows amount at most 500, but this call passed 50000.0.",
+  "rules_fired": ["eu.art14.human_oversight", "capability.constraint_violated"],
   "verdict": "block"
 }
   [ok] oversized refund was BLOCKED
-  [ok] a capability-denial rule fired
+  [ok] the capability ceiling rule fired (capability.constraint_violated)
   [ok] order state NOT mutated despite the attempt
 
 ### 3. ATTACK — F3.8 composed escalation: search result -> refund argument ###
@@ -416,36 +425,27 @@ instruction (see Step 2's caveat).
 ## What changed vs. the CrewAI version
 
 The brief for this port was: same governance story, same tools, same dataset, same
-scenarios, framework swapped. Here is exactly what did and didn't change, file by
-file:
+scenarios, framework swapped. This demo started as a copy of the CrewAI one; the
+shared files have since been merged into one implementation in `demo/kit/`, so what
+differs is now explicit in the adapters rather than spread across two forks:
 
-- **`_env.py`** — unchanged, byte-for-byte. The DB path derives from `__file__`, so
-  copying it into a new directory already gives it a new, non-colliding path
-  (`demo/redteam-live-lang/demo.db`).
-- **`support_tools.py`** — the dataset, the four tool implementations, the
-  capability grants, `GovernedToolkit`, and `_render()` are unchanged in behavior.
-  Two small, additive differences from the CrewAI original:
-  1. `AGENT_SLUG` is `support-crew-live-lang` instead of `support-crew-live`, so the
-     two demos' agent identities never collide even if they ever shared a database.
-  2. `GovernedToolkit` gained a `calls: list[McpCallOutcome]` field (appended to in
-     `_call()`) and a new module-level `decision_summary()` helper. Neither existed
-     in the CrewAI version, because `crew.py` never needed to report structured
-     governance info back to a caller — it just printed CrewAI's own free-text
-     result. This demo's `agent.py` does need that, per this work's brief (`run_turn`
-     must return "verdict, rules_fired, blocked/allowed" for a future HTTP caller to
-     show a user), so the toolkit now keeps a record of what happened. This is
-     additive only — nothing about how a tool call is evaluated or rendered changed.
-  Docstring wording that referenced CrewAI specifically (e.g. "which is exactly what
-  a CrewAI tool is") was updated to the LangChain equivalent; no logic in those
-  docstrings' vicinity changed.
-- **`seed_demo_agent.py`** — unchanged in structure and grants. `framework="crewai"`
-  became `framework="langchain"`, and the `purpose` text and print statements
-  reference the LangChain agent instead of the CrewAI crew. Same policy packs, same
-  grants, same idempotency.
-- **`verify_mechanics.py`** — unchanged, essentially verbatim (only the module
-  docstring's "live CrewAI crew" wording became "live LangChain agent" — no code
-  differs). It drives `GovernedToolkit` directly and has never touched the agent
-  framework in either demo.
+- **`_env.py` → `kit/env.py`** — the same per-demo SQLite default
+  (`demo/redteam-live-lang/demo.db`), plus deriving the database URL from the Vercel
+  Neon integration's own variable when deployed (a no-op locally, and for the CrewAI
+  demo, which is never deployed).
+- **`support_tools.py` → `kit/support_tools.py`** — the dataset, the four tool
+  implementations, the capability grants, `GovernedToolkit`, and `_render()` are
+  shared. The only per-demo value is `AGENT_SLUG` (`support-crew-live-lang` here,
+  `support-crew-live` for CrewAI), so the two demos' agent identities never collide
+  even if they ever shared a database. `GovernedToolkit`'s `calls` list (every
+  outcome, in order) and `decision_summary()` exist for this demo's `agent.py`, whose
+  `run_turn` returns "verdict, rules_fired, blocked/allowed" to its HTTP caller; both
+  are additive, so the CrewAI demo simply doesn't use them.
+- **`seed_demo_agent.py` → `kit/seed.py`** — same structure, grants, policy packs
+  and idempotency for both demos; this demo passes `framework="langchain"` and its own
+  name and purpose text.
+- **`verify_mechanics.py` → `kit/verify_mechanics.py`** — identical checks for both
+  demos; each passes its own `GovernedToolkit`. It never touches the agent framework.
 - **`agent.py`** (the new file, replacing `crew.py`) — the one genuinely new piece:
   - CrewAI's `Agent`/`Task`/`Crew` replaced with
     `langchain.agents.create_tool_calling_agent` + `AgentExecutor` (`langchain==0.3.x`
@@ -536,6 +536,12 @@ not assumed; see `web.py`'s docstring).
    composed-escalation mechanics via `verify_mechanics.py`-equivalent checks) except
    the chat endpoint, which returns the same clean `missing_api_key` message
    `agent.py`'s CLI does — never a crash, never a fabricated response.
+
+Because the Root Directory is this folder, the deployment can only see files inside
+it: that is why the agentfox wheel is committed under `vendor/` and the shared kit is
+committed as `kit/` (a copy of `demo/kit/`, kept identical by
+`scripts/check/demo_kit.py`). Do not make anything here import from outside this
+folder.
 
 Rebuild the wheel after any `src/agentfox` change intended for this deployment:
 `uv build --wheel --out-dir demo/redteam-live-lang/vendor`, delete the old wheel,
