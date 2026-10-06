@@ -51,7 +51,8 @@ def seed(
     ),
 ) -> None:
     """Load a demonstrable environment: three agents, policies, controls and an
-    eval suite, with traffic already recorded against them."""
+    eval suite. It records no traffic; `agentfox demo` sends sample requests through
+    the seeded agents, which is what fills traces, decisions and findings."""
     from agentfox.core.seed import seed as run_seed
 
     with _session() as session:
@@ -85,8 +86,10 @@ def seed(
 
     _print_next_steps(
         [
-            ("agentfox demo", "the end-to-end walkthrough against what was just seeded"),
-            ("agentfox findings", "what the seeded traffic already raised"),
+            (
+                "agentfox demo",
+                "send sample requests through the seeded agents: traces, decisions, findings",
+            ),
             ("agentfox permit list", "what each seeded agent is allowed to do"),
             ("agentfox doctor", "check the runtime configuration"),
         ]

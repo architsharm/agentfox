@@ -497,3 +497,29 @@ def test_report_signoff_appends_to_the_audit_chain():
     assert entries[0].subject_id == control
     assert entries[0].payload_json["reviewer"] == "dpo@acme.com"
     assert entries[0].payload_json["framework"] == framework
+
+
+# ---------------------------------------------------------------------------
+# init --demo / admin seed say what they load (#75)
+# ---------------------------------------------------------------------------
+
+
+def test_init_demo_and_seed_do_not_claim_traffic_they_did_not_record(tmp_path):
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Trace
+
+    result = runner.invoke(app, ["init", "--demo", "--path", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    with session_scope() as session:
+        assert session.query(Trace).count() == 0
+    assert "agentfox demo" in flat(result.output)
+
+    for args in (["init", "--help"], ["admin", "seed", "--help"]):
+        help_text = flat(runner.invoke(app, args).output).lower()
+        assert "sample traffic." not in help_text
+        assert "traffic already recorded" not in help_text
+
+    seeded = runner.invoke(app, ["admin", "seed"])
+    assert seeded.exit_code == 0, seeded.output
+    assert "seeded traffic" not in seeded.output
+    assert "agentfox demo" in flat(seeded.output)

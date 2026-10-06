@@ -69,7 +69,7 @@
       "required": false,
       "multiple": false,
       "default": null,
-      "help": "Also load the demo fixtures: three agents, an eval suite and sample traffic."
+      "help": "Also load the demo fixtures: three agents and an eval suite. No traffic is recorded; run `agentfox demo` afterwards for sample traces and findings."
      }
     ],
     "default_subcommand": null,
@@ -1141,7 +1141,7 @@
       "path": "declare boundary",
       "name": "boundary",
       "summary": "Declare what an agent is allowed to answer from.",
-      "help": "Declare what an agent is allowed to answer from.\n\nUntil this exists nothing stops the agent inventing an answer to a question it has\nno data for, which is the single failure most likely to reach a customer.",
+      "help": "Declare what an agent is allowed to answer from.\n\nUntil this exists nothing stops the agent inventing an answer to a question it has\nno data for, which is the single failure most likely to reach a customer.\n\nRe-running it changes only the options you pass, so `--mode enforce` on its own\nswitches enforcement on and keeps the systems, coverage and topics already declared.",
       "panel": null,
       "params": [
        {
@@ -1167,7 +1167,7 @@
         "choices": [],
         "required": false,
         "multiple": false,
-        "default": "",
+        "default": null,
         "help": "Comma-separated systems of record."
        },
        {
@@ -1193,8 +1193,8 @@
         "choices": [],
         "required": false,
         "multiple": false,
-        "default": "fact,aggregate,procedure",
-        "help": "Question types this agent may answer."
+        "default": null,
+        "help": "Question types this agent may answer (default fact,aggregate,procedure)."
        },
        {
         "kind": "option",
@@ -1206,7 +1206,7 @@
         "choices": [],
         "required": false,
         "multiple": false,
-        "default": "",
+        "default": null,
         "help": "Comma-separated topics."
        },
        {
@@ -1219,8 +1219,8 @@
         "choices": [],
         "required": false,
         "multiple": false,
-        "default": "observe",
-        "help": "observe | enforce"
+        "default": null,
+        "help": "observe | enforce (a new boundary starts in observe)"
        }
       ],
       "default_subcommand": null,
@@ -3698,8 +3698,8 @@
      {
       "path": "admin seed",
       "name": "seed",
-      "summary": "Load a demonstrable environment: three agents, policies, controls and an eval suite, with traffic already recorded against them.",
-      "help": "Load a demonstrable environment: three agents, policies, controls and an\neval suite, with traffic already recorded against them.",
+      "summary": "Load a demonstrable environment: three agents, policies, controls and an eval suite.",
+      "help": "Load a demonstrable environment: three agents, policies, controls and an\neval suite. It records no traffic; `agentfox demo` sends sample requests through\nthe seeded agents, which is what fills traces, decisions and findings.",
       "panel": null,
       "params": [
        {

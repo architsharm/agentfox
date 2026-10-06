@@ -522,7 +522,7 @@
    "section": "v1/traces",
    "audience": "public",
    "summary": "OTLP/HTTP trace ingest",
-   "description": "",
+   "description": "OTLP/HTTP trace ingest\n\nAccepts protobuf (`application/x-protobuf`, what the OpenTelemetry exporters send by\ndefault) and JSON, either one gzip-compressed. A protobuf request gets the empty\nprotobuf `ExportTraceServiceResponse` the OTLP spec asks for; a JSON request gets\nthe ingest summary.",
    "params": [
     {
      "name": "authorization",
