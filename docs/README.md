@@ -13,6 +13,7 @@ docs/
 ├── architecture/        how the system is put together
 ├── design/              what it must do, and how we know whether it does
 ├── evaluation/          how the numbers were measured, and how to read them
+├── adr/                 architecture decision records: what was decided, and what lost
 ├── deployment/          running it yourself, beyond the website's self-host page
 └── assets/              images used by the top-level README
 ```
@@ -73,6 +74,13 @@ numbers (Appendix A to E, §B.6 and so on), because other documents cite them th
 Numbers quoted in these documents are bound to result files by
 [`benchmarks/claims.yaml`](../benchmarks/claims.yaml); `python scripts/check/claims.py --check` fails if
 a quoted figure drifts from its source.
+
+## adr/
+
+| Document | What it is | Who it is for |
+|---|---|---|
+| [adr/README.md](adr/README.md) | The index of architecture decision records, and how to write one. | Anyone about to make a decision that is expensive to reverse. |
+| [adr/0001-repository-structure.md](adr/0001-repository-structure.md) | One package in layers held by import-linter, `capabilities/`, harnesses, `plugins/`, packs, the repository outside `src/`, and what is deferred. | Contributors who want the why behind the layout. |
 
 ## deployment/
 
