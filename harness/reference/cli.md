@@ -199,6 +199,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin auth status` | R | Is the dev `X-Nometria-User` header accepted here? It must not be in production. |
 | `admin auth issue EMAIL [--name/-n] [--days 365]` | W | **Shows the token once.** Never paste it into chat logs or files. |
 | `admin auth tokens [--json]` · `admin auth revoke TOKEN_ID` | W (audit entry) · W | |
+| `admin users create EMAIL [--role owner] [--name/-n] [--org] [--token]` · `admin users list [--json]` | W (audit entry) · R | First operator on a fresh install, no demo data. `--token` shows a token once. |
 | `admin db upgrade [--revision head]` · `admin db current` · `admin db downgrade REVISION` | W · R · W (**destructive**) | Needs a source checkout (`alembic.ini`, `migrations/`). |
 | `admin catalog validate` | R, offline | Catalog consistency: unique keys, known frameworks and rule kinds, obligations parse. Exit 1 on problems. |
 | `admin catalog sync` | W | Load control catalog + obligations from YAML. |

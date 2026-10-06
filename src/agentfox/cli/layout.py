@@ -368,8 +368,11 @@ def apply_layout(app: typer.Typer) -> None:
     app.add_typer(report_app, name="report")
 
     # -- Operate: admin ------------------------------------------------------------
-    admin_app = _new_group("Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.")
+    admin_app = _new_group(
+        "Run the deployment: operators, tokens, schema, catalog upkeep, hooks, seed data."
+    )
     admin_app.add_typer(sub["auth"].typer_instance, name="auth")
+    admin_app.add_typer(sub["users"].typer_instance, name="users")
     admin_app.add_typer(sub["db"].typer_instance, name="db")
     catalog_app = _new_group("Keep the control catalog and its computed status current.")
     for name in ("sync", "compute", "validate"):

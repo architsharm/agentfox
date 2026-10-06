@@ -571,7 +571,7 @@ export default async function AgentDetail({
 
         <h2>
           Kill switch
-          <InfoTip text="Quarantine: reversible, 'stop while I investigate.' Kill: the stronger incident action, requires the identity role rather than the registry role. Both refuse every governed call from this agent immediately and are logged to the audit chain." />
+          <InfoTip text="Quarantine: reversible, 'stop while I investigate.' Kill: the stronger incident action, requires the identity role rather than the registry role. Both refuse every governed call from this agent immediately (model calls, tool calls, and every /v1/guard check: input, output, memory writes, agent messages), block approving its pending approvals until it is resumed, and are logged to the audit chain." />
         </h2>
         <div className="panel body stack">
           <div className="row" style={{ gap: 10, alignItems: "center", flexWrap: "wrap" }}>

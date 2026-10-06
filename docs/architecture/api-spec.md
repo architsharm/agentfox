@@ -101,7 +101,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-182 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+183 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -317,6 +317,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{agent_id}/approve` | Approve Agent |
 | `POST` | `/api/agents/{agent_id}/reject` | Reject Agent |
 | `POST` | `/api/auth/github/provision` | Find-or-create the user behind a GitHub identity, and mint them a token. |
+| `POST` | `/api/auth/logout` | Revoke the bearer token this request presents — the dashboard's Sign Out. |
 | `POST` | `/api/integrations/github/connect` | Connect |
 | `GET` | `/api/integrations/github/repos` | List Repos |
 | `POST` | `/api/integrations/github/scan` | Trigger Scan |

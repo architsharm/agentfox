@@ -144,9 +144,10 @@ def agent_credential(
     was in place the credential lookup was itself filtered to that org, so an agent in
     any other tenant could not authenticate at all.
 
-    An absent or unrecognised credential is not an error here: the inline path
-    deliberately serves unregistered agents so that shadow traffic is *observed*
-    rather than turned away (P1-6). It simply stays in the default tenant.
+    An absent credential is not an error here: the inline path deliberately serves
+    unregistered agents so that shadow traffic is *observed* rather than turned away
+    (P1-6). It simply stays in the default tenant. A presented ``nom_agt_`` key that
+    does not verify is a 401.
     """
     if not (authorization and authorization.lower().startswith("bearer ")):
         activate_posture(session)
@@ -156,9 +157,23 @@ def agent_credential(
         activate_posture(session)
         return None
     resolved = resolve_agent(session, token)
-    if resolved is not None:
-        _identity, org_id = resolved
-        bind_session(session, org_id)
+    if resolved is None:
+        # A presented agent key that does not verify — wrong, revoked, expired, or
+        # belonging to a playground sandbox — is a refusal, in every environment.
+        # It used to be passed through, and the call was then attributed to
+        # whichever agent the body named: a made-up `nom_agt_` string worked exactly
+        # as well as the real one. "No credential" (shadow traffic, served and
+        # observed) and "a bad credential" are different things.
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "invalid, expired or revoked agent key. Issue a new one from the "
+                "agent's Identity page (POST /api/identities/{id}/credentials), or "
+                "send no Authorization header to be governed as an unregistered agent."
+            ),
+        )
+    _identity, org_id = resolved
+    bind_session(session, org_id)
     # After the binding, so an unregistered agent gets the default tenant's posture
     # rather than none at all — shadow traffic is governed, which is the point of
     # serving it in the first place.

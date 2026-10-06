@@ -3,6 +3,7 @@
 from agentfox.identity.service import (
     AGENT_KEY_PREFIX,
     API_KEY_PREFIX,
+    AgentStopped,
     CapabilityDecision,
     assess_posture,
     capability_set,
@@ -23,6 +24,7 @@ from agentfox.identity.service import (
 __all__ = [
     "AGENT_KEY_PREFIX",
     "API_KEY_PREFIX",
+    "AgentStopped",
     "CapabilityDecision",
     "assess_posture",
     "capability_set",

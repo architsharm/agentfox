@@ -730,7 +730,7 @@ token if it is lost.
         Send it as <code>Authorization: Bearer nom_api_…</code>. With token mode on, a request
         without one, or with only the header, gets a 401:
       </p>
-      <Output>{`{"detail":"authentication required. This deployment runs in 'development', where the X-Nometria-User header is not accepted. Send 'Authorization: Bearer nom_api_…' — create one with \`agentfox admin auth issue\`."}`}</Output>
+      <Output>{`{"detail":"authentication required: this deployment sets auth_mode='token', so API tokens are required and the X-Nometria-User header is not accepted. Send 'Authorization: Bearer nom_api_…' — create one with \`agentfox admin auth issue <email>\`."}`}</Output>
       <p>
         <Link href="/docs/reference/cli#cmd-admin-auth-revoke">
           <code>agentfox admin auth revoke tok_…</code>

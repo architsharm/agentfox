@@ -25,7 +25,7 @@ and one exists only on the API.
 
 | Value | Where | What breaks without it |
 |---|---|---|
-| `NOMETRIA_SERVICE_AUTH_SECRET` | both | Sign-in fails at the provisioning step. **If this is still `dev-insecure-service-secret`, anyone who reads the source can mint accounts in your tenant — rotate it before launch.** |
+| `NOMETRIA_SERVICE_AUTH_SECRET` | both | Sign-in fails at the provisioning step. Outside development the gateway **refuses to start** while it is unset or the published `dev-insecure-service-secret`, which would let anyone who reads the source mint owner tokens. Must be byte-identical on both. |
 | `NOMETRIA_TOKEN_ENCRYPTION_KEY` | API only | Connecting GitHub returns 503. It fails closed rather than storing the access token unencrypted. |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | UI only | Sign-in returns 503, or the callback fails. |
 

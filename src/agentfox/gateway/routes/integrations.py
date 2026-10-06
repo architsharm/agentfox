@@ -38,13 +38,25 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core import ids
-from agentfox.core.config import get_settings
-from agentfox.core.models import GithubConnection, Policy, PolicyVersion, ScanRun, User, utcnow
+from agentfox.core.config import (
+    PUBLISHED_SECRET_VALUES,
+    get_settings,
+    is_development,
+)
+from agentfox.core.models import (
+    ApiToken,
+    GithubConnection,
+    Policy,
+    PolicyVersion,
+    ScanRun,
+    User,
+    utcnow,
+)
 from agentfox.core.tenancy import bind_session, system_scope
 from agentfox.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
 from agentfox.discovery.repo import ScanReport
 from agentfox.discovery.repo import scan as discovery_scan
-from agentfox.gateway.auth import issue_token
+from agentfox.gateway.auth import issue_token, resolve_token_record, revoke_token
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.policy import PolicyDocument, save_policy
 from agentfox.prove.audit import chain
@@ -102,10 +114,30 @@ class ProvisionIn(BaseModel):
     name: str = ""
 
 
+#: How many GitHub sign-in sessions one person may hold at once. Each sign-in mints
+#: a token (the raw value is never stored, so an old one cannot be handed back), and
+#: before this cap every sign-in added another 365-day credential that nothing ever
+#: retired. Past the cap the oldest are revoked: a browser that has not signed in for
+#: a while is signed out, and the set of live login tokens stays small and known.
+MAX_LOGIN_SESSIONS = 5
+LOGIN_TOKEN_NAME = "github-login"
+
+
 def _require_service_secret(
     x_nometria_service_secret: Annotated[str | None, Header()] = None,
 ) -> None:
-    expected = get_settings().service_auth_secret
+    settings = get_settings()
+    expected = settings.service_auth_secret
+    if not is_development(settings) and expected in PUBLISHED_SECRET_VALUES:
+        # create_app() already refuses to start like this; this is the same rule at
+        # the one route it protects, so a process that got past startup some other
+        # way (settings changed underneath it) still cannot be talked into minting
+        # an owner token with a value printed in the source.
+        raise HTTPException(
+            503,
+            "GitHub sign-in is disabled: AGENTFOX_SERVICE_AUTH_SECRET is still a "
+            "published value on a non-development deployment.",
+        )
     if not x_nometria_service_secret or not secrets.compare_digest(
         x_nometria_service_secret, expected
     ):
@@ -116,14 +148,42 @@ def _require_service_secret(
 def provision(payload: ProvisionIn, session: Session = Depends(db)) -> dict[str, Any]:
     """Find-or-create the user behind a GitHub identity, and mint them a token.
 
+    **Trust model.** This route believes the GitHub identity in the body because of
+    who is allowed to send it, not because of anything in the body. The only holder
+    of ``service_auth_secret`` is the dashboard's OAuth callback, which calls here
+    only after it has completed GitHub's OAuth exchange itself (state cookie checked,
+    code exchanged for a token, ``/user`` read with that token) — so
+    ``github_user_id`` is GitHub's own answer to "who signed in", relayed by a party
+    that holds the deployment's secret. Under that model:
+
+    * The secret is equivalent to "sign in as any GitHub-linked user of this
+      deployment". It must be random, shared only between the gateway and the
+      dashboard, and never the published default — `create_app()` refuses to start
+      outside development with the default, and :func:`_require_service_secret`
+      refuses this route on its own as well.
+    * Find-or-create keys on ``github_user_id`` and nothing else: GitHub's numeric
+      id is immutable, unlike a login (renameable, then claimable by someone else)
+      or an email (the body's email is whatever GitHub reported, and keying on it
+      would let any GitHub account that lists an address take over the user who
+      owns that address here). An existing user is therefore only ever returned to
+      a sign-in that GitHub attested as that same account.
+    * A deactivated user is refused rather than handed a token that every other
+      route would then reject.
+
     Runs in system scope for the lookup because — like every credential resolution
     in auth.py — we cannot know the tenant until we know who this is. A first-time
     GitHub login gets a brand new org: there is no invite flow yet, so "new GitHub
     identity" and "new tenant" are the same event.
+
+    Each sign-in mints a fresh token (the raw value of an old one is not stored, so
+    it cannot be reused) and retires all but the newest ``MAX_LOGIN_SESSIONS`` login
+    tokens; signing out revokes the session's own token (``POST /api/auth/logout``).
     """
     is_new_org = False
     with system_scope("resolving a GitHub identity for provisioning", routine=True):
         user = session.scalar(select(User).where(User.external_id == payload.github_user_id))
+        if user is not None and not user.active:
+            raise HTTPException(403, "this account has been deactivated")
         if user is None:
             user = User(
                 email=payload.email or f"{payload.github_login}@users.noreply.github.com",
@@ -149,18 +209,75 @@ def provision(payload: ProvisionIn, session: Session = Depends(db)) -> dict[str,
 
         sync_catalog(session)
         sync_obligations(session)
-    _token, raw = issue_token(
+    token, raw = issue_token(
         session,
         user,
-        name="github-login",
+        name=LOGIN_TOKEN_NAME,
         actor=user.email or user.id,
         reason="GitHub OAuth sign-in",
     )
+    _retire_old_login_tokens(session, user, keep=token.id)
     session.commit()
     return {
         "token": raw,
         "user": {"id": user.id, "email": user.email, "org_id": user.org_id},
     }
+
+
+def _retire_old_login_tokens(session: Session, user: User, *, keep: str) -> None:
+    """Revoke all but the newest MAX_LOGIN_SESSIONS live GitHub-login tokens."""
+    live = [
+        t
+        for t in session.scalars(
+            select(ApiToken)
+            .where(
+                ApiToken.user_id == user.id,
+                ApiToken.name == LOGIN_TOKEN_NAME,
+                ApiToken.revoked_at.is_(None),
+            )
+            .order_by(ApiToken.created_at.desc(), ApiToken.id.desc())
+        )
+        if t.id != keep
+    ]
+    for stale in live[MAX_LOGIN_SESSIONS - 1 :]:
+        revoke_token(
+            session,
+            stale.id,
+            actor=user.email or user.id,
+            reason=f"GitHub sign-in: more than {MAX_LOGIN_SESSIONS} live login sessions",
+        )
+
+
+@router.post("/api/auth/logout")
+def logout(
+    session: Session = Depends(db),
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """Revoke the bearer token this request presents — the dashboard's Sign Out.
+
+    Deleting the cookie alone left the token valid for the rest of its 365 days, so
+    a copied cookie outlived the sign-out. Idempotent: an already-revoked, expired or
+    unknown token is reported as not revoked, never as an error, so a browser whose
+    session already ended can still sign out cleanly.
+    """
+    raw = ""
+    if authorization and authorization.lower().startswith("bearer "):
+        raw = authorization.split(" ", 1)[1].strip()
+    token = resolve_token_record(session, raw) if raw else None
+    if token is None:
+        return {"revoked": False}
+    with system_scope("signing out: revoking the presented token", routine=True):
+        user = session.get(User, token.user_id)
+    if user is not None:
+        bind_session(session, user.org_id)
+    revoke_token(
+        session,
+        token.id,
+        actor=(user.email or user.id) if user else token.user_id,
+        reason="signed out",
+    )
+    session.commit()
+    return {"revoked": True}
 
 
 # ---------------------------------------------------------------------------

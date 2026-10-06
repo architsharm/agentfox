@@ -114,8 +114,18 @@ USER agentfox
 
 EXPOSE 8080
 
-# Seed on first boot so the stack is demonstrable immediately, then serve. Seeding is
-# idempotent, so a restart against an existing database is a no-op. Schema *upgrades*
-# on an existing database go through `agentfox db upgrade` (Alembic), not this line —
-# `create_all` cannot evolve an existing schema, and this command doesn't try to.
-CMD ["sh", "-c", "agentfox seed || true; exec uvicorn nometria.gateway.app:app --host 0.0.0.0 --port 8080"]
+# Serve, and nothing else. This used to run `agentfox seed` on every boot "so the stack
+# is demonstrable immediately", which wrote demo agents, policies, users and traffic
+# into whatever database the container was pointed at — production included, on every
+# restart. The schema is created on startup (`init_db`); schema *upgrades* on an
+# existing database go through `agentfox db upgrade` (Alembic).
+#
+# The first operator, with no demo data:
+#   docker compose exec gateway agentfox admin users create you@example.com --role owner --token
+# Demo data, deliberately and only where you want it:
+#   docker compose exec gateway agentfox admin seed
+#
+# The app refuses to start outside AGENTFOX_ENVIRONMENT=development while
+# AGENTFOX_SERVICE_AUTH_SECRET or AGENTFOX_AUDIT_SIGNING_KEY is unset or a published
+# placeholder: both are in this repository, so neither would be a secret.
+CMD ["uvicorn", "agentfox.gateway.app:app", "--host", "0.0.0.0", "--port", "8080"]

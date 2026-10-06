@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox import __version__
-from agentfox.core.config import get_settings
+from agentfox.core.config import assert_production_secrets, get_settings
 from agentfox.core.db import init_db
 from agentfox.detection import all_detectors, available_detectors
 from agentfox.gateway.deps import current_user, db
@@ -93,6 +93,10 @@ async def lifespan(app: FastAPI):
         settings.default_policy_mode,
         settings.allow_egress,
     )
+    from agentfox.gateway.auth import auth_posture
+
+    posture = auth_posture()
+    (log.warning if posture.startswith("DEVELOPMENT") else log.info)("auth: %s", posture)
     # Pay any model-loading cost now, off the request path — a classifier detector
     # that only gets slow once, on its very first call, would otherwise silently
     # degrade the first real request every time this process starts (P3-6's 40ms
@@ -146,6 +150,12 @@ def _judgment_posture() -> dict[str, Any]:
 
 
 def create_app() -> FastAPI:
+    # Before anything else, and here rather than in `lifespan`: a serverless host may
+    # never run the lifespan, and a process that is going to refuse should refuse
+    # before it has served a single request. Outside development, a published service
+    # secret lets anyone mint an owner token, and a published signing key lets anyone
+    # forge the audit chain — neither is a configuration to run degraded on.
+    assert_production_secrets()
     app = FastAPI(
         title="AgentFox Control Plane",
         version=__version__,

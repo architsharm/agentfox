@@ -3679,8 +3679,8 @@
    {
     "path": "admin",
     "name": "admin",
-    "summary": "Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.",
-    "help": "Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.",
+    "summary": "Run the deployment: operators, tokens, schema, catalog upkeep, hooks, seed data.",
+    "help": "Run the deployment: operators, tokens, schema, catalog upkeep, hooks, seed data.",
     "panel": "Operate",
     "params": [],
     "default_subcommand": null,
@@ -3844,6 +3844,119 @@
         "help": "How this deployment authenticates, and whether that is what you intended.",
         "panel": null,
         "params": [],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "admin users",
+      "name": "users",
+      "summary": "Operators: create the first one on a fresh install, list them.",
+      "help": "Operators: create the first one on a fresh install, list them.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin users create",
+        "name": "create",
+        "summary": "Create an operator — the first one on a fresh self-hosted install, with no demo data.",
+        "help": "Create an operator — the first one on a fresh self-hosted install, with no demo data.\n\nThen `agentfox admin auth issue EMAIL` mints their API token (or pass --token).",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "email",
+          "opts": [
+           "email"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "The operator's email; what `auth issue` takes."
+         },
+         {
+          "kind": "option",
+          "name": "role",
+          "opts": [
+           "--role",
+           "-r"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "owner",
+          "help": "owner | admin | security | compliance | developer | auditor."
+         },
+         {
+          "kind": "option",
+          "name": "name",
+          "opts": [
+           "--name",
+           "-n"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "Display name."
+         },
+         {
+          "kind": "option",
+          "name": "org",
+          "opts": [
+           "--org"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "Tenant to create them in. Default: this deployment's AGENTFOX_ORG_ID."
+         },
+         {
+          "kind": "option",
+          "name": "token",
+          "opts": [
+           "--token"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Also issue an API token for them now, shown once."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin users list",
+        "name": "list",
+        "summary": "List operators in every tenant on this database.",
+        "help": "List operators in every tenant on this database.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
         "default_subcommand": null,
         "commands": []
        }

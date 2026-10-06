@@ -38,6 +38,7 @@ from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.core.config import DEV_ENVIRONMENTS as _DEV_ENVIRONMENTS
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, ApiToken, Identity, User, utcnow
 from agentfox.core.tenancy import bind_session, system_scope
@@ -52,10 +53,9 @@ PREFIX_LENGTH = len(API_KEY_PREFIX) + 8
 
 _hasher = PasswordHasher()
 
-#: Environments where an unverified identity header is acceptable. Everything else —
-#: including anything unrecognised — is treated as production, because the failure
-#: direction matters: a typo in a deployment variable must not silently open the door.
-DEV_ENVIRONMENTS = {"development", "dev", "test", "testing", "local"}
+#: Environments where an unverified identity header is acceptable. Defined in
+#: core.config (the published-secrets guard uses the same set) and re-exported here.
+DEV_ENVIRONMENTS = _DEV_ENVIRONMENTS
 
 
 def _is_sandbox_org(org_id: str | None) -> bool:
@@ -95,9 +95,94 @@ def header_identity_allowed() -> bool:
     return settings.environment.lower() in DEV_ENVIRONMENTS
 
 
+def _why_header_refused() -> str:
+    settings = get_settings()
+    mode = (settings.auth_mode or "auto").lower()
+    if mode != "auto":
+        return (
+            f"this deployment sets auth_mode='{settings.auth_mode}', so API tokens are "
+            "required and the X-Nometria-User header is not accepted."
+        )
+    return (
+        f"this deployment runs in environment '{settings.environment}', which is not a "
+        "development environment, so the X-Nometria-User header is not accepted."
+    )
+
+
+def auth_posture() -> str:
+    """One line saying how callers are authenticated, for the startup banner and logs.
+
+    Starts with ``DEVELOPMENT`` exactly when the identity header is accepted, so a
+    caller can key a warning off it without re-deriving the rule.
+    """
+    settings = get_settings()
+    if header_identity_allowed():
+        return (
+            f"DEVELOPMENT auth (environment={settings.environment}, "
+            f"auth_mode={settings.auth_mode}): /api requests without a token act as the "
+            "user named in X-Nometria-User, or admin@example.com — anyone who can reach "
+            "this port is that user. Never expose it."
+        )
+    return (
+        f"token auth (environment={settings.environment}, auth_mode={settings.auth_mode}): "
+        "/api needs 'Authorization: Bearer nom_api_…'; an agent key must be valid."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Operator tokens
 # ---------------------------------------------------------------------------
+
+
+#: The roles an operator may hold — the keys of the matrix in gateway/deps.py.
+OPERATOR_ROLES = ("owner", "admin", "security", "compliance", "developer", "auditor")
+
+
+class OperatorExists(ValueError):
+    """An operator with that email already exists in that tenant."""
+
+
+def create_operator(
+    session: Session,
+    email: str,
+    *,
+    role: str = "owner",
+    name: str = "",
+    org_id: str | None = None,
+    actor: str = "",
+    reason: str = "",
+) -> User:
+    """Create an operator in a tenant, without loading any demo data.
+
+    The first-operator path for a self-hosted deployment. Before it, the only ways to
+    get a user into a fresh database were GitHub sign-in (which needs an OAuth app
+    and a dashboard) and `agentfox admin seed` (which also writes demo agents,
+    policies and traffic into what is meant to be a production database).
+    """
+    email = email.strip()
+    if "@" not in email:
+        raise ValueError(f"'{email}' is not an email address")
+    if role not in OPERATOR_ROLES:
+        raise ValueError(f"unknown role '{role}'. Choose one of: {', '.join(OPERATOR_ROLES)}")
+    org = org_id or get_settings().org_id
+    with system_scope("creating an operator", routine=True):
+        existing = session.scalar(select(User).where(User.email == email, User.org_id == org))
+    if existing is not None:
+        raise OperatorExists(f"'{email}' already exists in {org} (role {existing.role})")
+    bind_session(session, org)
+    user = User(email=email, name=name or email.split("@", 1)[0], role=role, org_id=org)
+    session.add(user)
+    session.flush()
+    record(
+        session,
+        "operator.user.created",
+        actor=actor or "cli",
+        reason=reason or f"operator '{email}' created with role {role}",
+        subject_type="user",
+        subject_id=user.id,
+        after={"email": email, "role": role, "org_id": org},
+    )
+    return user
 
 
 def issue_token(
@@ -192,6 +277,22 @@ def resolve_token(session: Session, raw: str) -> User | None:
     Runs in system scope because the token store is the thing that tells us which
     tenant to scope to. Nothing else on this path reads tenant data.
     """
+    token = resolve_token_record(session, raw)
+    if token is None:
+        return None
+    with system_scope("resolving an operator token to its user", routine=True):
+        user = session.get(User, token.user_id)
+    if user is None or not user.active:
+        return None
+    return user
+
+
+def resolve_token_record(session: Session, raw: str) -> ApiToken | None:
+    """The live token row a raw operator token verifies against, or None.
+
+    Separate from :func:`resolve_token` for the one caller that needs the credential
+    rather than the person: signing out revokes *this* token and no other.
+    """
     if not raw.startswith(API_KEY_PREFIX):
         return None
     now = utcnow()
@@ -206,10 +307,7 @@ def resolve_token(session: Session, raw: str) -> User | None:
                 _hasher.verify(token.key_hash, raw)
             except VerifyMismatchError:
                 continue
-            user = session.get(User, token.user_id)
-            if user is None or not user.active:
-                return None
-            return user
+            return token
     return None
 
 
@@ -277,13 +375,15 @@ def authenticate(
         return user
 
     if not header_identity_allowed():
-        # Naming the environment matters: the commonest cause of this in practice is a
+        # Naming the reason matters: the commonest cause of this in practice is a
         # developer running against a deployment they did not realise was production.
+        # It is not always the environment, though — an explicit auth_mode refuses the
+        # header in development too, and blaming 'development' for that sent people
+        # looking in the wrong place.
         raise AuthenticationRequired(
-            f"authentication required. This deployment runs in "
-            f"'{get_settings().environment}', where the X-Nometria-User header is not "
-            "accepted. Send 'Authorization: Bearer nom_api_…' — create one with "
-            "`agentfox admin auth issue`."
+            f"authentication required: {_why_header_refused()} Send "
+            "'Authorization: Bearer nom_api_…' — create one with "
+            "`agentfox admin auth issue <email>`."
         )
 
     email = header_user or "admin@example.com"
