@@ -641,6 +641,132 @@ def _approximate_offsets(original: str, decoded: str) -> list[int]:
 
 
 # ---------------------------------------------------------------------------
+# Opt-in views: letter-spaced text and markup a reader never sees
+# ---------------------------------------------------------------------------
+#
+# Neither is part of `normalize()`, because every detector reads those views (through
+# `BaseDetector._detect_obfuscated`) and neither transform means anything to a secrets
+# or PII pattern. The injection detector asks for them explicitly.
+
+#: What may sit between the letters of a letter-spaced word: one to three spaces or
+#: tabs, or one of a short list of punctuation and invisible characters. Deliberately
+#: narrower than `_SEP_CLASS`: `_collapse_separators` already owns punctuation runs,
+#: and this pass exists for the case it cannot see, which is the plain space.
+_SPACING_GAP = r"(?:[ \t]{1,3}|[._\-\u00b7*/|~+:\u200b\u200c\u200d\u2060\ufeff\u00ad])"
+
+#: Five or more single letters, each separated by a gap, standing alone. Five because
+#: shorter runs are initialisms ("U S A", "N Y C") far more often than words, and a
+#: collapsed initialism is harmless anyway: this view only feeds patterns.
+_SPACED_RUN = re.compile(
+    r"(?<![^\W_])[^\W\d_](?:" + _SPACING_GAP + r"[^\W\d_]){4,}(?![^\W_])", re.UNICODE
+)
+_SPACED_PIECE = re.compile(r"[^\W\d_]|" + _SPACING_GAP + "+", re.UNICODE)
+
+
+@dataclass
+class SpacedRun:
+    """One letter-spaced run, with its letters joined and where it came from."""
+
+    letters: str
+    start: int
+    end: int
+    #: True when every gap was the same, so word boundaries could not be recovered
+    #: ("i g n o r e a l l") and the letters are one unbroken string.
+    uniform: bool
+
+
+def despaced(text: str) -> tuple[View | None, list[SpacedRun]]:
+    """Rejoin words written one letter at a time: ``i g n o r e  a l l`` -> ``ignore all``.
+
+    `_collapse_separators` handles ``I-g-n-o-r-e`` but not a plain space, because there
+    the space is both the separator and the word boundary and nothing in a single
+    chunk says which. Here the run is read as a whole: the gap that occurs most often
+    joins letters, and any other gap is a word boundary. When every gap is the same the
+    boundaries are gone; the letters are joined, and the run is reported as
+    ``uniform`` so a caller can search it as one string.
+
+    Returns no view when nothing in the text is letter-spaced, which is almost always.
+    """
+    runs: list[SpacedRun] = []
+    out: list[tuple[str, int]] = []
+    cursor = 0
+    for match in _SPACED_RUN.finditer(text):
+        start, end = match.span()
+        pieces = [(m.group(0), start + m.start()) for m in _SPACED_PIECE.finditer(match.group(0))]
+        gaps = [piece for piece, _ in pieces[1::2]]
+        counts: dict[str, int] = {}
+        for gap in gaps:
+            counts[gap] = counts.get(gap, 0) + 1
+        joiner = max(counts, key=lambda g: counts[g])
+        out.extend((ch, i) for i, ch in enumerate(text[cursor:start], start=cursor))
+        letters: list[str] = []
+        for index, (piece, origin) in enumerate(pieces):
+            if index % 2 == 0:
+                out.append((piece, origin))
+                letters.append(piece)
+            elif piece != joiner:
+                out.append((" ", origin))
+                letters.append(" ")
+        runs.append(SpacedRun("".join(letters), start, end, uniform=len(counts) == 1))
+        cursor = end
+    if not runs:
+        return None, []
+    out.extend((ch, i) for i, ch in enumerate(text[cursor:], start=cursor))
+    view_text, offsets = _render(out)
+    return View(text=view_text, offsets=offsets, kind="despaced", note="letter-spaced"), runs
+
+
+#: Markup a browser renders as nothing. An HTML comment, an element styled or marked
+#: hidden, and a markdown link title (shown only on hover) are where an instruction
+#: goes when the author wants the model to read it and the human not to.
+_HTML_COMMENT = re.compile(r"<!--(.*?)(?:-->|\Z)", re.S)
+_HIDDEN_OPEN_TAG = re.compile(
+    r"<([a-zA-Z][\w-]*)(?=\s)[^<>]*?(?:display\s*:\s*none|visibility\s*:\s*hidden|"
+    r"font-size\s*:\s*0(?:px|pt|em|rem|%)?\s*[;\"']|opacity\s*:\s*0(?:\.0+)?\s*[;\"']|"
+    r"\shidden(?=[\s>=/])|aria-hidden\s*=\s*[\"']?true)[^<>]*>",
+    re.I,
+)
+_MD_LINK_TITLE = re.compile(r"\]\(\s*[^\s()]+\s+(\"[^\"\n]{1,500}\"|'[^'\n]{1,500}')\s*\)")
+#: How far past a hidden opening tag to look for its closing tag. A hidden element
+#: that holds a whole page is not hiding a sentence, and the bound keeps the search
+#: linear on large documents.
+_HIDDEN_ELEMENT_SPAN = 2000
+_MARKUP_HINTS = ("<!--", "](")
+_HIDDEN_HINTS = ("display", "visibility", "hidden", "font-size", "opacity")
+
+
+def hidden_markup(text: str) -> list[View]:
+    """The text inside markup a reader would not see, one view per hidden region.
+
+    One view per region rather than a single concatenation, so a pattern can never
+    match across two unrelated comments. Offsets point into the original text, so a
+    detection inside a comment reports the comment.
+    """
+    has_markup = any(hint in text for hint in _MARKUP_HINTS)
+    lowered = text.lower() if "<" in text else ""
+    has_hidden = bool(lowered) and any(hint in lowered for hint in _HIDDEN_HINTS)
+    if not has_markup and not has_hidden:
+        return []
+    spans: list[tuple[int, int, str]] = []
+    if "<!--" in text:
+        spans.extend((m.start(1), m.end(1), "html_comment") for m in _HTML_COMMENT.finditer(text))
+    if has_hidden:
+        for m in _HIDDEN_OPEN_TAG.finditer(text):
+            close = lowered.find(f"</{m.group(1).lower()}", m.end(), m.end() + _HIDDEN_ELEMENT_SPAN)
+            if close != -1:
+                spans.append((m.end(), close, "hidden_element"))
+    if "](" in text:
+        spans.extend(
+            (m.start(1) + 1, m.end(1) - 1, "link_title") for m in _MD_LINK_TITLE.finditer(text)
+        )
+    return [
+        View(text=text[start:end], offsets=list(range(start, end)), kind="hidden_markup", note=note)
+        for start, end, note in spans
+        if text[start:end].strip()
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

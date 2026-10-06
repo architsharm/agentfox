@@ -29,7 +29,7 @@ from agentfox.detection.base import (
     snippet,
     taint_rank,
 )
-from agentfox.detection.normalize import evasion_score, normalize
+from agentfox.detection.normalize import despaced, evasion_score, hidden_markup, normalize
 
 OWASP = "LLM01"
 ATLAS = "AML.T0051"
@@ -65,6 +65,22 @@ _PARAPHRASE: list[tuple[str, str, float]] = [
     ),
     (r"\btreat\s+the\s+following\s+as\s+your\s+only\s+(?:task|instruction)\b", "OVERRIDE", 0.8),
     (r"\byour\s+(?:only|real|actual|true)\s+(?:task|job|purpose)\s+is\b", "OVERRIDE", 0.65),
+    # Precedence claimed over the model's own instructions — "these take priority over
+    # your earlier ones". Anchored on "your": a policy document saying its rules
+    # supersede *the* previous policy is ordinary; one telling the reader its words
+    # outrank *your* instructions is addressing a model.
+    (
+        r"\b(?:take|takes|taking|have|has)\s+(?:priority|precedence)\s+over\s+(?:all\s+)?your\s+"
+        r"(?:earlier|previous|prior|original|other|existing|current|system)\b",
+        "OVERRIDE",
+        0.8,
+    ),
+    (
+        r"\b(?:supersedes?|overrides?|replaces?)\s+(?:all\s+)?your\s+(?:earlier|previous|prior|"
+        r"original|existing|current|system)\s+(?:instructions?|rules?|prompt|directives?|ones)\b",
+        "OVERRIDE",
+        0.8,
+    ),
     # Persona replacement. The named jailbreaks churn constantly, so this matches the
     # *shape* — "you are now X, and X has no limits" — rather than the roster.
     (
@@ -272,6 +288,81 @@ _OVERRIDE_OBJECT = (
     r"boundar(?:y|ie)|protocol|training)"
 )
 
+#: The persona half of a persona jailbreak: the text tells the model it is now
+#: someone else. Covers "you are now", "from now on you are", "you are about to
+#: become", "pretend you are", "act as", "role-play as", "imagine you are" and
+#: "assume the role of".
+_PERSONA_SWITCH = (
+    r"(?:\byou\s+are\s+now\b|\bfrom\s+now\s+on,?\s+(?:you(?:'re|\s+are|\s+will\s+(?:be|act))|"
+    r"act\s+as|be)\b|\byou(?:'re|\s+are)\s+(?:going|about)\s+to\s+(?:be|become|act|play|"
+    r"pretend|immerse)\b|\bpretend\s+(?:that\s+)?(?:you(?:'re|\s+are)|to\s+be)\b|"
+    r"\b(?:act|role-?play|behave|respond)\s+as\b|\bimagine\s+(?:that\s+)?you(?:'re|\s+are)\b|"
+    r"\b(?:assume|take\s+on|adopt|play)\s+the\s+(?:role|persona|character|identity)\s+of\b)"
+)
+
+#: The other half: whatever constrained the model is gone. Only constraint *nouns*
+#: count after "no"/"without", so "with no prior experience" and "with no tolerance
+#: for typos" do not; and "uncensored" or "unfiltered" only when it describes the
+#: model ("an uncensored AI"), because NotInject's "an author revealing an uncensored
+#: version of your story" is a writing request.
+_RESTRICTION_REMOVED = (
+    r"(?:\b(?:no|without(?:\s+any)?|free\s+(?:from|of)(?:\s+all|\s+any)?|unbound\s+by|"
+    r"not\s+bound\s+by|ignores?|bypass(?:es)?|disregards?|(?:does\s+not|doesn'?t|never)\s+"
+    r"(?:follow|obey|have|abide\s+by))\s+(?:\w+\s+){0,3}?(?:rules?|restrictions?|filters?|"
+    r"guidelines?|censorship|ethics|morals?|morality|boundaries|polic(?:y|ies)|safeguards?|"
+    r"guardrails?|limitations?|constraints?)\b|\b(?:unrestricted|unfiltered|uncensored|amoral)"
+    r"\s+(?:\w+\s+){0,2}?(?:ai|assistant|model|chatbot|bot|llm|gpt|mode|persona|entity|"
+    r"version\s+of\s+(?:yourself|you|chatgpt|gpt|the\s+ai))\b|\bjailbroken\b|"
+    r"\bcan\s+do\s+anything\b|\bdo\s+anything\s+now\b|\bnever\s+refuses?\b)"
+)
+
+#: Letter-spaced overrides whose word boundaries are unrecoverable ("i g n o r e a l l
+#: p r e v i o u s ...") read as one string of letters, so the ordinary patterns'
+#: word boundaries cannot match. These are the same overrides with no spaces at all,
+#: searched only inside such a run — never in ordinary text, where "ignoreall" does
+#: not occur by accident either.
+_COMPACT_OVERRIDE: list[tuple[re.Pattern[str], str]] = [
+    (
+        re.compile(
+            r"(?:ignore|disregard|forget|override|bypass)(?:all|any|every)?(?:the|of)?"
+            r"(?:your|previous|prior|above|earlier|preceding)+(?:instruction|prompt|rule|"
+            r"direction|guideline|restriction|constraint|polic|directive|filter|guardrail|"
+            r"safeguard|command|order)"
+        ),
+        "INJECTION.INSTRUCTION_OVERRIDE",
+    ),
+    (
+        re.compile(r"forget(?:everything|all)(?:you)?(?:weretold|know|above|before)"),
+        "INJECTION.INSTRUCTION_OVERRIDE",
+    ),
+    (
+        re.compile(
+            r"(?:reveal|print|repeat|show|output)(?:me)?(?:all)?(?:your|the)(?:system)?prompt"
+        ),
+        "INJECTION.SYSTEM_PROMPT_LEAK",
+    ),
+]
+
+#: A hidden region that speaks to the model. In a comment or an invisible element a
+#: human reviewer never reads, text addressed to "assistant:" or "the AI" has no reader
+#: but the model.
+_ADDRESSES_MODEL = re.compile(
+    r"^\s*(?:(?:dear|hey|hi|hello|attention|note\s+to)\s+)?(?:the\s+)?(?:ai\s+)?"
+    r"(?:assistant|ai|model|llm|chatbot|bot|system|claude|gpt|chatgpt|copilot|"
+    r"language\s+model)\s*[:,]"
+    r"|\b(?:note|message|instructions?)\s+(?:to|for)\s+(?:the\s+|any\s+)?(?:ai|assistant|"
+    r"model|llm|chatbot|language\s+model)\b"
+    r"|\bif\s+you\s+are\s+an?\s+(?:ai|assistant|language\s+model|llm)\b",
+    re.I,
+)
+#: ...and tells it to do something.
+_DIRECTIVE = re.compile(
+    r"\b(?:ignore|disregard|forget|override|instructions?|reply|respond|answer|say|output|"
+    r"print|write|tell|send|email|forward|call|invoke|run|execute|reveal|approve|refund|"
+    r"transfer|delete|you\s+(?:must|should|will|are\s+to))\b",
+    re.I,
+)
+
 # (pattern, entity, base_score). Scores are calibrated so that a single weak
 # signal never blocks on its own; two independent signals do.
 _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
@@ -330,11 +421,36 @@ _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
         0.85,
     ),
     (
+        # "on" only when it ends the phrase: "developer mode on my Android phone" is a
+        # settings question, "Developer Mode on." is a switch being thrown.
         re.compile(
-            r"\b(?:developer|god|admin|debug|dan)\s+mode\s+(?:enabled|on|activated)\b", re.I
+            r"\b(?:developer|god|admin|debug|dan)\s+mode\s+(?:enabled|activated|on\b(?!\s+"
+            r"(?:my|your|the|a|an|this|that|his|her|their|our|its|android|ios|iphone|windows|"
+            r"mac)\b))",
+            re.I,
         ),
         "INJECTION.PERSONA_OVERRIDE",
         0.75,
+    ),
+    (
+        # Persona jailbreak: a persona switch *and* the removal of what constrains it, in
+        # the same sentence. Either half alone is ordinary — "act as a translator",
+        # "pretend you are the customer in this role-play", "no restrictions on returns"
+        # — so neither is enough. The named jailbreaks churn constantly; this matches
+        # the shape, not the roster.
+        re.compile(_PERSONA_SWITCH + r"[^.!?\n]{0,150}?" + _RESTRICTION_REMOVED, re.I),
+        "INJECTION.PERSONA_OVERRIDE",
+        0.8,
+    ),
+    (
+        # DAN by name. Case-sensitive on the name, because Dan from billing is a person.
+        re.compile(
+            r"\b(?:you\s+are|you're|act\s+as|pretend\s+to\s+be|known\s+as|called|named|"
+            r"become)\s+(?:now\s+)?(?-i:DAN)\b|\bdo\s+anything\s+now\b",
+            re.I,
+        ),
+        "INJECTION.PERSONA_OVERRIDE",
+        0.8,
     ),
     (
         re.compile(r"\b(?:pretend|imagine)\s+(?:you\s+are|to\s+be)\s+(?:an?\s+)?evil\b", re.I),
@@ -471,7 +587,7 @@ class InjectionHeuristicDetector(BaseDetector):
     # content that only matched after de-obfuscation and flag the obfuscation alone.
     handles_views = True
     key = "injection.heuristic"
-    version = "1.2"
+    version = "1.3"
     surfaces = (
         "input",
         "retrieved",
@@ -508,9 +624,18 @@ class InjectionHeuristicDetector(BaseDetector):
         # assumption that what the detector reads is what the model reads.
         normalised = normalize(content)
         seen: set[tuple[str, int, int]] = set()
+        # Two readings only this detector asks for (see `normalize.despaced` and
+        # `normalize.hidden_markup`): words written one letter at a time, and the text
+        # inside markup a human never sees. Both are cheap no-ops on ordinary content.
+        despaced_view, spaced_runs = despaced(content)
+        hidden_views = hidden_markup(content)
+        views = list(normalised.views)
+        if despaced_view is not None:
+            views.append(despaced_view)
+        views.extend(hidden_views)
 
         for pattern, entity, base_score in _LEXICAL + _EXTRA_LEXICAL:
-            for view in normalised.views:
+            for view in views:
                 match = pattern.search(view.text)
                 if match is None:
                     continue
@@ -541,6 +666,53 @@ class InjectionHeuristicDetector(BaseDetector):
                     )
                 )
                 break  # one view is enough; the rest would report the same thing
+
+        # A letter-spaced run with one gap throughout has lost its word boundaries, so
+        # it is searched as one string for the overrides themselves.
+        for run in spaced_runs:
+            if not run.uniform:
+                continue
+            compact = run.letters.lower()
+            for pattern, entity in _COMPACT_OVERRIDE:
+                if pattern.search(compact) is None or (entity, run.start, run.end) in seen:
+                    continue
+                seen.add((entity, run.start, run.end))
+                out.append(
+                    Detection(
+                        entity_type=entity,
+                        score=min(1.0, 0.85 + boost + 0.1),
+                        start=run.start,
+                        end=run.end,
+                        sample=snippet(content, run.start, run.end),
+                        owasp_id="LLM07" if "SYSTEM_PROMPT_LEAK" in entity else OWASP,
+                        atlas_id=ATLAS,
+                        detail={"signal": "lexical", "view": "despaced", "compact": True},
+                    )
+                )
+                break
+
+        # Hidden text addressed to the model and telling it to do something. Neither
+        # half is unusual alone ("<!-- nav -->", "<!-- assistant editor: Jane -->"); a
+        # comment that says "assistant: reply with..." has no reader but the model.
+        for view in hidden_views:
+            if not (_ADDRESSES_MODEL.search(view.text) and _DIRECTIVE.search(view.text)):
+                continue
+            start, end = view.origin(0, len(view.text))
+            if ("INJECTION.HIDDEN_INSTRUCTION", start, end) in seen:
+                continue
+            seen.add(("INJECTION.HIDDEN_INSTRUCTION", start, end))
+            out.append(
+                Detection(
+                    entity_type="INJECTION.HIDDEN_INSTRUCTION",
+                    score=min(1.0, 0.8 + boost),
+                    start=start,
+                    end=end,
+                    sample=snippet(content, start, end),
+                    owasp_id=OWASP,
+                    atlas_id=ATLAS,
+                    detail={"signal": "structural", "hidden_in": view.note},
+                )
+            )
 
         # Obfuscation is evidence in its own right. Ordinary content is occasionally
         # fullwidth or occasionally base64; it is rarely both and almost never

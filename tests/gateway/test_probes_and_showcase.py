@@ -129,6 +129,11 @@ def test_the_cron_builds_the_showcase_and_probes_it(client, showcase_on):
     totals = body["totals"]
     assert totals["runs"] == 1 and totals["attacks_attempted"] == 9
     assert totals["contained"] + totals["escaped"] == 9
+    # Every attack is contained and neither benign control is over-blocked. A probe that
+    # starts escaping is a detector regression the public page would show.
+    assert (totals["contained"], totals["escaped"], totals["over_blocked"]) == (9, 0, 0), [
+        (r["key"], r["status"]) for r in body["latest"]["results"]
+    ]
     # Honest numbers: whatever escaped is an open finding, and both say the same thing.
     assert body["findings"]["open"] == totals["escaped"]
     assert body["latest"]["run"]["escaped"] == totals["escaped"]

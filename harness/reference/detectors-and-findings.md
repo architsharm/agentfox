@@ -19,7 +19,7 @@ indirect injection is contained even when no detector fires.
 
 | Key | Detects | Needs |
 |---|---|---|
-| `injection.heuristic` | Lexical/structural injection, jailbreak, role override, hidden chars, encoded payloads, exfiltration (`INJECTION.*`) | built in, on by default |
+| `injection.heuristic` | Lexical/structural injection, jailbreak, role override, hidden chars, encoded payloads, exfiltration; also reads letter-spaced words and text hidden in HTML comments, hidden elements and markdown link titles (`INJECTION.*`, incl. `HIDDEN_INSTRUCTION`) | built in, on by default |
 | `pii.native` | Regex PII packs: email, phones, SSN, cards, IBAN, NHS, Aadhaar, PAN, IP, DOB, … (`PII.*`) | built in, on |
 | `secrets.native` | API keys, tokens, JWTs, private keys, connection strings (`SECRET.*`) | built in, on |
 | `safety.lexicon` | harm, harassment, self-harm, illicit, extremism, sexual (`SAFETY.*`) | built in, on |
