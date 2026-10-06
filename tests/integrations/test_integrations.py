@@ -157,7 +157,7 @@ def test_one_line_install_adds_a_health_probe(app):
 def test_the_health_probe_reports_the_mode_the_policies_are_in(app):
     """#51a: it said "observe" whatever the policies were doing."""
     from agentfox.core.db import session_scope
-    from agentfox.policy.store import set_mode
+    from agentfox.platform.policy.store import set_mode
 
     with session_scope() as s:
         for key in ("baseline", "eu-ai-act-high-risk", "tool-containment"):

@@ -18,8 +18,8 @@ import pytest
 
 from agentfox.core.models import Agent
 from agentfox.identity import ensure_identity, grant_capability
-from agentfox.policy.engine import NativePolicyEngine
-from agentfox.policy.model import Condition, PolicyDocument, PolicyInput, Rule
+from agentfox.platform.policy.engine import NativePolicyEngine
+from agentfox.platform.policy.model import Condition, PolicyDocument, PolicyInput, Rule
 from agentfox.runtime.enforcement import Enforcer
 
 
@@ -87,7 +87,7 @@ def test_the_shipped_rule_is_not_a_permission_rule():
     """If this were folded into `capability.denied` it would be silent for any
     agent holding a wildcard grant — which is exactly the test above."""
     from agentfox.core.config import get_settings
-    from agentfox.policy.store import load_from_dir
+    from agentfox.platform.policy.store import load_from_dir
 
     packs = load_from_dir(get_settings().policies_dir)
     rule = next(

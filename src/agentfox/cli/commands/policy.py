@@ -27,7 +27,7 @@ def policy_packs() -> None:
     it. A project pack replacing a shipped one is invisible in `policy list`,
     because by then they are the same row.
     """
-    from agentfox.policy import PolicyPackError, pack_sources, project_policy_dir
+    from agentfox.platform.policy import PolicyPackError, pack_sources, project_policy_dir
 
     try:
         rows = pack_sources()
@@ -78,7 +78,7 @@ def policy_list() -> None:
     from sqlalchemy import select
 
     from agentfox.core.models import Policy, PolicyVersion
-    from agentfox.policy import current_binding
+    from agentfox.platform.policy import current_binding
 
     with _session() as session:
         table = Table(box=None, pad_edge=False)
@@ -123,7 +123,7 @@ def policy_lint(
     reduction — composition without a linter just moves the confusion somewhere
     harder to see. Pass files to check them before they are loaded, e.g. in CI.
     """
-    from agentfox.policy import lint_all, lint_documents, lint_summary
+    from agentfox.platform.policy import lint_all, lint_documents, lint_summary
 
     if files:
         report = lint_summary(lint_documents([_read_policy_file(path) for path in files]))
@@ -139,7 +139,7 @@ def policy_lint(
 
 
 def _read_policy_file(path: Path):
-    from agentfox.policy import PolicyDocument
+    from agentfox.platform.policy import PolicyDocument
 
     try:
         return PolicyDocument.from_yaml(path.read_text())
@@ -187,7 +187,7 @@ def policy_effective(
     Opacity is what makes layered policy dangerous, so the resolver explains itself.
     """
     from agentfox.core.config import get_settings
-    from agentfox.policy import effective_for
+    from agentfox.platform.policy import effective_for
 
     environment = environment or get_settings().environment
     with _session() as session:
@@ -253,7 +253,7 @@ def policy_simulate(
     Exits non-zero when the change would newly block production traffic, so it can
     gate a policy PR the same way `eval gate` gates a code PR.
     """
-    from agentfox.policy import PolicyDocument, record_simulation, simulate
+    from agentfox.platform.policy import PolicyDocument, record_simulation, simulate
 
     candidate = PolicyDocument.from_yaml(file.read_text())
     with _session() as session:
@@ -312,7 +312,7 @@ def _set_mode(key: str, mode: str) -> None:
     from sqlalchemy import select
 
     from agentfox.core.models import Policy
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
     from agentfox.prove.audit import chain
 
     with _session() as session:
@@ -350,7 +350,7 @@ def policy_validate(file: Path) -> None:
     condition naming an unknown value (`surface: [toolargs]`) fails validation.
     Exits 1 on a parse error or a critical/high finding.
     """
-    from agentfox.policy import compile_to_rego, lint_documents, lint_summary
+    from agentfox.platform.policy import compile_to_rego, lint_documents, lint_summary
 
     doc = _read_policy_file(file)
     report = lint_summary(lint_documents([doc]))

@@ -346,7 +346,7 @@ def _leak(seeded, enforcer):
 def test_quoting_a_withheld_chunk_is_blocked_when_the_decision_enforces(seeded, enforcer):
     """#4: the output-side check was detective only — an enforcing deployment still
     returned an answer quoting a chunk the asker may not see, with only a finding."""
-    from agentfox.policy.store import set_mode
+    from agentfox.platform.policy.store import set_mode
 
     set_mode(seeded, "baseline", "enforce")
     result = _leak(seeded, enforcer)
@@ -356,7 +356,7 @@ def test_quoting_a_withheld_chunk_is_blocked_when_the_decision_enforces(seeded, 
 
 def test_quoting_a_withheld_chunk_is_would_block_in_observe(seeded, enforcer):
     from agentfox.core.models import Policy
-    from agentfox.policy.store import set_mode
+    from agentfox.platform.policy.store import set_mode
 
     for policy in seeded.query(Policy).all():
         set_mode(seeded, policy.key, "observe")
@@ -367,7 +367,7 @@ def test_quoting_a_withheld_chunk_is_would_block_in_observe(seeded, enforcer):
 
 def test_an_answer_from_entitled_chunks_is_not_blocked(seeded, enforcer):
     from agentfox.core.models import Agent
-    from agentfox.policy.store import set_mode
+    from agentfox.platform.policy.store import set_mode
 
     set_mode(seeded, "baseline", "enforce")
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()

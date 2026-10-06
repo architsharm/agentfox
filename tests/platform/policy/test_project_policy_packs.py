@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from agentfox.policy import (
+from agentfox.platform.policy import (
     PolicyPackError,
     load_available,
     load_from_dir,

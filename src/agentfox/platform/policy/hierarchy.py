@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agentfox.core.vocab import EFFECT_RANK, SURFACES
-from agentfox.policy.model import PolicyDocument, Rule
+from agentfox.platform.policy.model import PolicyDocument, Rule
 from agentfox.prove.compliance.risk import EU_CLASSES
 
 #: Broadest to narrowest. Order is load-bearing: later levels win ties.

@@ -392,7 +392,7 @@ def test_the_duplicate_id_lint_actually_fires(isolated_db):
     Nothing caught it because no test ever wrote a policy with a duplicated rule id —
     the one situation the check exists for. Found by the coverage probe.
     """
-    from agentfox.policy import PolicyDocument, PolicyLayer, lint_policy
+    from agentfox.platform.policy import PolicyDocument, PolicyLayer, lint_policy
 
     document = PolicyDocument.model_validate(
         {

@@ -1479,7 +1479,7 @@ def auto(
         # banner below claims a mode, and a mode claim with nothing behind it is
         # the failure this count exists to surface.
         with session_scope() as session:
-            from agentfox.policy import active_policies
+            from agentfox.platform.policy import active_policies
 
             state.policies_bound = len(active_policies(session))
     except Exception as exc:

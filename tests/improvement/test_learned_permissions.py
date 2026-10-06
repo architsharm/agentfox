@@ -44,7 +44,7 @@ from agentfox.improvement.traffic import (
     propose_from_traffic,
     suggest_limits,
 )
-from agentfox.policy import load_from_dir, save_policy
+from agentfox.platform.policy import load_from_dir, save_policy
 from agentfox.prove.audit.trace import start_trace
 from agentfox.registry.service import upsert_tool
 from agentfox.runtime.enforcement import Enforcer

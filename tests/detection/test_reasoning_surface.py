@@ -17,7 +17,7 @@ from __future__ import annotations
 from agentfox.core.config import get_settings
 from agentfox.core.vocab import SURFACES
 from agentfox.detection import get_detector
-from agentfox.policy.store import load_from_dir
+from agentfox.platform.policy.store import load_from_dir
 from agentfox.runtime.enforcement import Enforcer
 
 ADOPTED = (
@@ -55,7 +55,7 @@ def test_it_actually_blocks_once_baseline_is_enforced(seeded):
     """The claim that matters. A rule that only ever fires in a counterfactual
     is not a control, and `effective_verdict` alone would not have caught a
     rule wired to a surface the enforcement path never reaches."""
-    from agentfox.policy.store import set_mode
+    from agentfox.platform.policy.store import set_mode
 
     set_mode(seeded, "baseline", "enforce")
     result = Enforcer(seeded).guard_reasoning(agent_slug="support-triage", content=ADOPTED)

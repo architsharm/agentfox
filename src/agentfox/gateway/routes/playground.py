@@ -215,7 +215,7 @@ def set_enforce_mode(
     change from "would have blocked" to "blocked", the same "aha" `agentfox demo`
     already walks through interactively (`cli/demo.py`, section 08).
     """
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     if payload.mode not in ("observe", "enforce"):
         raise HTTPException(400, "mode must be 'observe' or 'enforce'")

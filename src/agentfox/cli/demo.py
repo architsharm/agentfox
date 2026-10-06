@@ -24,7 +24,7 @@ from agentfox.evaluation import gate, run_campaign, set_baseline
 from agentfox.evaluation.runner import NativeEvalRunner
 from agentfox.fixtures.seed import POISONED_DOCUMENT
 from agentfox.identity import assess_posture
-from agentfox.policy import set_mode
+from agentfox.platform.policy import set_mode
 from agentfox.prove.audit import chain, evidence
 from agentfox.prove.audit.trace import full_trace
 from agentfox.prove.compliance import compute_all, posture
@@ -64,7 +64,7 @@ def _rule_modes(session) -> dict[str, tuple[str, str]]:
     printing it next to a rule that came from a pack in observe said the opposite of
     what happened. This is the lookup that lets each rule say its own mode.
     """
-    from agentfox.policy import active_policies
+    from agentfox.platform.policy import active_policies
 
     out: dict[str, tuple[str, str]] = {}
     for document, _version, _binding in active_policies(session):

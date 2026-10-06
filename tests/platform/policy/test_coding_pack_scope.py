@@ -12,8 +12,8 @@ import json
 from typer.testing import CliRunner
 
 from agentfox.core.models import Finding
-from agentfox.policy import active_policies, load_available, save_policy
-from agentfox.policy.coding import (
+from agentfox.platform.policy import active_policies, load_available, save_policy
+from agentfox.platform.policy.coding import (
     CODING_PACK,
     enable_for_agent,
     hooked_agents,
@@ -89,7 +89,7 @@ def test_install_adds_the_agent_and_keeps_the_mode(seeded):
     assert CODING_PACK in _keys(seeded, "dev-laptop")
     assert CODING_PACK not in _keys(seeded, "support-triage")
 
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, CODING_PACK, "enforce")
     assert enable_for_agent(seeded, "ci-bot") == ["ci-bot", "dev-laptop"]

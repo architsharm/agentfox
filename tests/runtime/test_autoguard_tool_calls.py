@@ -222,7 +222,7 @@ def _bind_shipped_policies() -> None:
     """What `agentfox init` loads: every shipped pack in the mode it declares
     (`tool-containment` declares enforce)."""
     from agentfox.core.config import get_settings
-    from agentfox.policy import load_from_dir, save_policy
+    from agentfox.platform.policy import load_from_dir, save_policy
 
     with _db() as session:
         for document in load_from_dir(get_settings().policies_dir):

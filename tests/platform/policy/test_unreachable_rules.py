@@ -18,9 +18,9 @@ from __future__ import annotations
 
 from agentfox.core.config import get_settings
 from agentfox.core.vocab import SURFACES
-from agentfox.policy.hierarchy import PolicyLayer, lint_policy
-from agentfox.policy.model import Condition, PolicyDocument, Rule
-from agentfox.policy.store import load_from_dir
+from agentfox.platform.policy.hierarchy import PolicyLayer, lint_policy
+from agentfox.platform.policy.model import Condition, PolicyDocument, Rule
+from agentfox.platform.policy.store import load_from_dir
 from agentfox.prove.compliance.risk import EU_CLASSES
 from agentfox.runtime.enforcement import _fallback_policies
 
@@ -123,7 +123,7 @@ def test_the_prohibited_tier_reaches_the_eu_pack():
 def test_the_lint_enums_come_from_the_source_of_truth():
     """If either list were retyped here it would drift, which is the failure
     this module is about."""
-    from agentfox.policy.hierarchy import _ENUMERABLE_CONDITIONS
+    from agentfox.platform.policy.hierarchy import _ENUMERABLE_CONDITIONS
 
     assert _ENUMERABLE_CONDITIONS["risk_tier"] is EU_CLASSES
     assert _ENUMERABLE_CONDITIONS["surface"] is SURFACES

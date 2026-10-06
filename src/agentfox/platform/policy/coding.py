@@ -31,7 +31,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.policy.model import PolicyDocument
+from agentfox.platform.policy.model import PolicyDocument
 
 CODING_PACK = "coding-agent"
 
@@ -142,7 +142,7 @@ def enable_for_agent(session: Session, slug: str, *, author: str = "hooks instal
     enforce is not quietly demoted by installing a hook for a second agent.
     Returns the agents the pack now covers (``["*"]`` if a person bound it to all).
     """
-    from agentfox.policy.store import load_available, save_policy
+    from agentfox.platform.policy.store import load_available, save_policy
 
     doc = next((d for d in load_available() if d.key == CODING_PACK), None)
     if doc is None:

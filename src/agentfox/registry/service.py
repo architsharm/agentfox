@@ -39,7 +39,7 @@ from agentfox.core.models import (
     as_aware,
     utcnow,
 )
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.prove.findings import auto_resolve, raise_finding, resolve_finding
 
 _SLUG = re.compile(r"[^a-z0-9-]+")

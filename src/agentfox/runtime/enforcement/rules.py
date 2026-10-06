@@ -87,7 +87,7 @@ def _fallback_policies(risk_tier: str | None = None) -> tuple:
     # make "what protects an unconfigured deployment" depend on the working
     # directory of whatever process happened to start, and this result is
     # cached per tier and would not notice it changing.
-    from agentfox.policy import load_from_dir
+    from agentfox.platform.policy import load_from_dir
 
     wanted = _FALLBACK_FOR_TIER.get((risk_tier or "").lower(), _FALLBACK_DEFAULT)
     by_key = {}

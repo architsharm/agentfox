@@ -63,7 +63,7 @@ from agentfox.gateway.deps import current_user, db, require
 from agentfox.monitoring import github as gh
 from agentfox.monitoring.service import request_run, safe_ensure_monitor
 from agentfox.monitoring.snapshots import api_snapshot, repo_snapshot
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.prove.audit import chain
 from agentfox.registry.service import propose_from_scan, register_agent, slugify
 

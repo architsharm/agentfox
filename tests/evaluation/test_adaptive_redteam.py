@@ -42,7 +42,7 @@ def enforcing(seeded):
     seed agents with the shipped policy packs actually enforcing. Running adaptive
     against observe-mode policies would let almost everything through and prove
     nothing about mutation."""
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "baseline", "enforce")
     set_mode(seeded, "tool-containment", "enforce")
@@ -464,7 +464,7 @@ def test_an_observe_mode_binding_is_disclosed_next_to_the_counts(enforcing):
     deployment has stopped blocking anything. Every campaign therefore has to publish
     each bound policy's mode next to its blocked counts."""
     from agentfox.evaluation.adaptive import NOT_ESTABLISHED
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(enforcing, "baseline", "observe")
     campaign = run_campaign(enforcing, "support-triage", adaptive=True, budget=1)

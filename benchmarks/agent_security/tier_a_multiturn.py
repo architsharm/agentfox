@@ -45,7 +45,7 @@ from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
 from agentfox.core.models import ConversationTurn
 from agentfox.fixtures.seed import seed
-from agentfox.policy import set_mode
+from agentfox.platform.policy import set_mode
 from agentfox.runtime.enforcement import Enforcer
 
 RESULTS_DIR = Path(__file__).parent / "results"

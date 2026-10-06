@@ -33,7 +33,7 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.gateway.deps import current_user, db
-from agentfox.policy.store import active_layers
+from agentfox.platform.policy.store import active_layers
 
 router = APIRouter(prefix="/api", tags=["platform"])
 

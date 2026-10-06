@@ -404,7 +404,7 @@ def _detection_story(finding: Finding, slug_by_id: dict[str, str]) -> str:
 
 
 def _observe_policies(session: Session) -> list[str]:
-    from agentfox.policy import active_policies
+    from agentfox.platform.policy import active_policies
 
     seen: dict[str, str] = {}
     for doc, _version, binding in active_policies(session):

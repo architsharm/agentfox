@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.policy.store import load_available
+from agentfox.platform.policy.store import load_available
 
 PACK = "coding-agent"
 
@@ -100,7 +100,7 @@ def test_the_operator_s_own_turn_escalates_rather_than_blocks(pack):
 def test_the_whole_shipped_set_still_lints_clean():
     """Including the unreachable check — a rule whose conditions can never all
     hold is a rule somebody believes is protecting them."""
-    from agentfox.policy.hierarchy import PolicyLayer, lint_policy
+    from agentfox.platform.policy.hierarchy import PolicyLayer, lint_policy
 
     layers = [PolicyLayer(document=doc) for doc in load_available()]
     ours = {rule.id for doc in load_available() if doc.key == PACK for rule in doc.rules}

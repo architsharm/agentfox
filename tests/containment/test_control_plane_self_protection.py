@@ -21,8 +21,8 @@ import yaml
 
 from agentfox.core.config import get_settings
 from agentfox.detection.actions import analyse_shell
-from agentfox.policy.model import PROTECTED_RULES, PolicyDocument
-from agentfox.policy.store import load_from_dir
+from agentfox.platform.policy.model import PROTECTED_RULES, PolicyDocument
+from agentfox.platform.policy.store import load_from_dir
 
 
 def codes(command: str) -> list[str]:

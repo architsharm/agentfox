@@ -244,7 +244,7 @@ def install(app: Any, *, service: str = "app") -> Any:
 def _bound_policy_modes() -> dict[str, str]:
     """{policy key: mode} for every policy currently bound, any scope."""
     try:
-        from agentfox.policy.store import active_policies
+        from agentfox.platform.policy.store import active_policies
 
         with session_scope() as session:
             return {doc.key: doc.mode for doc, _version, _binding in active_policies(session)}

@@ -234,7 +234,7 @@ def _cohort_health(session: Session, canary: PolicyCanary, version_id: str) -> C
     read from the effective verdict (what enforcement would have done), so a policy
     in observe can be canaried: its applied verdict is always `allow`.
     """
-    from agentfox.policy.simulate import effective_verdict_of
+    from agentfox.platform.policy.simulate import effective_verdict_of
 
     rows = session.execute(
         select(

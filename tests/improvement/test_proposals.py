@@ -42,7 +42,7 @@ from agentfox.improvement.proposals import (
     rollback_rate,
     verify_proposal,
 )
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.prove.audit.operator_log import PRIVILEGED, unaudited
 from tests.conftest import PII_TEXT, as_user
 
@@ -488,7 +488,7 @@ def test_policy_change_can_be_staged_through_the_canary(seeded):
 
 
 def test_a_completed_canary_settles_the_proposal_as_applied(seeded):
-    from agentfox.policy.canary import _rebind
+    from agentfox.platform.policy.canary import _rebind
 
     _policy(seeded)
     proposal = _file_min_score(seeded, 0.6, scope_level="team", stage="canary")

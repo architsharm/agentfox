@@ -344,7 +344,7 @@ def test_live_campaigns_are_marked_apart_from_production_red_team_data(seeded, a
 
 
 def test_an_in_process_target_is_scored_on_the_gateway_verdict(seeded):
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "baseline", "enforce")
     target = live_probes.register_target(

@@ -26,7 +26,7 @@ test *args:
 
 # Stop at the first failure, skipping tests/e2e and tests/repo. The full suite is
 # ~3,200 tests and takes most of 20 minutes serially (each test builds its own
-# database), so pass the directory you changed: `just test-fast tests/policy`.
+# database), so pass the directory you changed: `just test-fast tests/platform/policy`.
 test-fast *args:
     uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo {{args}}
 

@@ -23,9 +23,9 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import Agent, Decision, Policy, PolicyVersion, SimulationRun, Trace
 from agentfox.core.vocab import EFFECT_RANK
-from agentfox.policy.engine import NativePolicyEngine
-from agentfox.policy.model import PolicyDecision, PolicyDocument, PolicyInput
-from agentfox.policy.taint_view import policy_taint
+from agentfox.platform.policy.engine import NativePolicyEngine
+from agentfox.platform.policy.model import PolicyDecision, PolicyDocument, PolicyInput
+from agentfox.platform.policy.taint_view import policy_taint
 
 
 @dataclass
@@ -200,7 +200,7 @@ class _OwnRules:
                 version = self.session.get(PolicyVersion, version_id)
                 ids: set[str] = set()
                 if version is not None and version.policy_id == self.policy_id:
-                    from agentfox.policy.store import (
+                    from agentfox.platform.policy.store import (
                         UnloadablePolicyVersion,
                         load_version_document,
                     )
@@ -262,7 +262,7 @@ def simulation_for(session: Session, version: PolicyVersion) -> SimulationRun | 
     The server-side half of "simulate before you enforce": promoting a
     version to enforce over the API requires one.
     """
-    from agentfox.policy.store import load_version_document
+    from agentfox.platform.policy.store import load_version_document
 
     target = rules_fingerprint(load_version_document(version))
     runs = session.scalars(

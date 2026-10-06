@@ -179,8 +179,12 @@ def init(
 
     from agentfox.core.config import get_settings
     from agentfox.core.db import init_db, session_scope
-    from agentfox.policy import load_available, save_policy
-    from agentfox.policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
+    from agentfox.platform.policy import load_available, save_policy
+    from agentfox.platform.policy.coding import (
+        hooked_agents,
+        retire_tool_wildcard,
+        scope_coding_pack,
+    )
     from agentfox.prove.compliance import load_catalog, sync_catalog
 
     if not Path(path).is_dir():

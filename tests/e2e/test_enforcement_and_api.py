@@ -14,7 +14,7 @@ from agentfox.core.models import (
     Trace,
 )
 from agentfox.identity import ensure_identity, grant_capability
-from agentfox.policy import set_mode
+from agentfox.platform.policy import set_mode
 from tests.conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user, promote
 
 # ---------------------------------------------------------------------------

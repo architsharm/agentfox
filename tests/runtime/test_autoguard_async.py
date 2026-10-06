@@ -326,7 +326,7 @@ def _llm_outputs() -> list[str]:
 
 def _enforce_baseline():
     from agentfox.core.db import session_scope
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     with session_scope() as session:
         set_mode(session, "baseline", "enforce")

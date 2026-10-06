@@ -17,7 +17,7 @@ from agentfox.containment.findings import (
 )
 from agentfox.core.models import Finding
 from agentfox.detection.taint import TaintTracker
-from agentfox.policy import set_mode
+from agentfox.platform.policy import set_mode
 
 PAGE = (
     "Shipping policy. Customer record: Jane Roe, jane.roe@example.com, account 4471. "

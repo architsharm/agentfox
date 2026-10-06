@@ -114,7 +114,7 @@ def test_irreversibility_is_recorded_either_way():
 
 def test_the_shipped_pack_grades_the_effects():
     from agentfox.core.config import get_settings
-    from agentfox.policy.store import load_from_dir
+    from agentfox.platform.policy.store import load_from_dir
 
     packs = load_from_dir(get_settings().policies_dir)
     by_id = {r.id: r for p in packs if p.key == "tool-containment" for r in p.rules}

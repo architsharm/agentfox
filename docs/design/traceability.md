@@ -33,7 +33,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | **P2-4** SSO / SCIM / RBAC | ◐ RBAC + tokens complete; IdP seam unwired | `gateway/deps.py::current_user, require`, `models.py::User`; `core/config.py::assert_production_secrets`; `POST /api/auth/logout`; `agentfox admin users create` | NOM-IAM-04 | `test_enforcement_and_api.py::test_auditor_cannot_mutate_anything`, `::test_developer_cannot_enforce_a_policy`; `tests/gateway/test_auth_hardening.py`, `tests/cli/test_first_operator.py` |
 | **P2-5** Delegation & sub-agent identity | ◐ narrowing enforced; no cross-process propagation | `identity/service.py::delegate, _covers` | NOM-IAM-05 | `::test_delegation_widening_rejected_at_write_time`, `::test_child_cannot_broaden_a_glob`, `::test_child_cannot_drop_an_approval_requirement` |
 | **P2-6** Credential brokerage | ✗ | — | NOM-IAM-01 | — |
-| **P2-7** Policy simulation | ✅ replays the candidate in context; promotion to enforce over HTTP needs a recorded simulation | `policy/simulate.py::simulate, record_simulation` | NOM-IAM-06 | `test_enforcement_and_api.py::test_policy_simulation_reports_a_diff`; `tests/policy/test_simulate_in_context.py`, `tests/gateway/test_policy_save_and_promote.py` |
+| **P2-7** Policy simulation | ✅ replays the candidate in context; promotion to enforce over HTTP needs a recorded simulation | `policy/simulate.py::simulate, record_simulation` | NOM-IAM-06 | `test_enforcement_and_api.py::test_policy_simulation_reports_a_diff`; `tests/platform/policy/test_simulate_in_context.py`, `tests/gateway/test_policy_save_and_promote.py` |
 
 ## Pillar 3 — Runtime Guardrails & Security
 
@@ -70,12 +70,12 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 
 | FR | Status | Implementation | Control | Test |
 |---|---|---|---|---|
-| **P12-1/2** Hierarchy and override semantics, enforced at runtime | ✅ | `policy/hierarchy.py::resolve_effective`, `policy/store.py::policies_in_force`, `runtime/enforcement/enforcer.py` | NOM-GOV-01 | `tests/policy/test_hierarchy_runtime.py`, `tests/business/test_ladder_mode.py` |
+| **P12-1/2** Hierarchy and override semantics, enforced at runtime | ✅ | `policy/hierarchy.py::resolve_effective`, `policy/store.py::policies_in_force`, `runtime/enforcement/enforcer.py` | NOM-GOV-01 | `tests/platform/policy/test_hierarchy_runtime.py`, `tests/business/test_ladder_mode.py` |
 | **P12-3** Effective policy with provenance | ✅ each layer's mode shown | `policy/store.py::effective_for`; `agentfox policy effective` | NOM-GOV-01 | `tests/cli/test_policy_effective_modes.py` |
 | **P12-4** Policy lint | ✅ run by `policy validate` | `policy/hierarchy.py::lint_policy`; `agentfox policy validate` | NOM-GOV-01 | `tests/cli/test_policy_validate_lint.py` |
-| **P12-6** Canary rollout | ✅ cohorts, two-way gate, saving never changes what is in force | `policy/canary.py::start_canary, evaluate_gate, canary_rollout` | NOM-GOV-01 | `tests/policy/test_canary_cohorts.py`, `tests/policy/test_mode_after_canary.py`, `tests/gateway/test_policy_save_and_promote.py` |
+| **P12-6** Canary rollout | ✅ cohorts, two-way gate, saving never changes what is in force | `policy/canary.py::start_canary, evaluate_gate, canary_rollout` | NOM-GOV-01 | `tests/platform/policy/test_canary_cohorts.py`, `tests/platform/policy/test_mode_after_canary.py`, `tests/gateway/test_policy_save_and_promote.py` |
 | **P12-7** Non-developer rule authoring | ✗ | — | — | — |
-| Stored versions load through one loader; an unloadable bound version follows the fail mode (`policy.unloadable`) | ✅ | `policy/store.py::load_version_document` | NOM-RTG-06 | `tests/policy/test_stored_version_loading.py`, `tests/runtime/test_pack_fail_mode.py` |
+| Stored versions load through one loader; an unloadable bound version follows the fail mode (`policy.unloadable`) | ✅ | `policy/store.py::load_version_document` | NOM-RTG-06 | `tests/platform/policy/test_stored_version_loading.py`, `tests/runtime/test_pack_fail_mode.py` |
 
 ## Pillar 5 — Audit, Observability & Traceability
 

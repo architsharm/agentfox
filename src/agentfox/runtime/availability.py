@@ -555,7 +555,7 @@ def _probe_policy_engine() -> str:
     settings = get_settings()
     if settings.policy_engine != "opa":
         return ""
-    from agentfox.policy.opa import OpaPolicyEngine
+    from agentfox.platform.policy.opa import OpaPolicyEngine
 
     if not OpaPolicyEngine().available():
         return (

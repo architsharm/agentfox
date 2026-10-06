@@ -34,7 +34,7 @@ TAMPER = "control_plane.tamper"
 
 
 def _bound_version(session, key: str) -> PolicyVersion:
-    from agentfox.policy.store import current_binding
+    from agentfox.platform.policy.store import current_binding
 
     policy = session.scalar(select(Policy).where(Policy.key == key))
     _binding, version = current_binding(session, policy.id)
@@ -134,12 +134,12 @@ def test_coverage_answers_with_a_legacy_version_bound(client):
 
 
 def test_the_runtime_evaluates_the_restored_rule(seeded, shell_agent, caplog):
-    from agentfox.policy import policies_in_force
+    from agentfox.platform.policy import policies_in_force
     from agentfox.runtime.enforcement import Enforcer
 
     version = _bind_raw(seeded, "tool-containment", _without_tamper(seeded))
 
-    with caplog.at_level(logging.WARNING, logger="agentfox.policy.store"):
+    with caplog.at_level(logging.WARNING, logger="agentfox.platform.policy.store"):
         in_force = policies_in_force(seeded, "support-triage")
     pack = next(doc for doc, _v, _b in in_force if doc.key == "tool-containment")
     assert TAMPER in {rule.id for rule in pack.rules}
@@ -154,7 +154,7 @@ def test_the_runtime_evaluates_the_restored_rule(seeded, shell_agent, caplog):
 
 def test_only_protected_rules_are_restored(seeded):
     """The loader restores the protected rule and nothing else the pack ships."""
-    from agentfox.policy.store import load_from_dir, load_version_document
+    from agentfox.platform.policy.store import load_from_dir, load_version_document
 
     compiled = _without_tamper(seeded)
     compiled["rules"] = compiled["rules"][:1]
@@ -170,7 +170,7 @@ def test_saving_a_document_without_the_protected_rule_is_still_refused(client):
     """A regression guard: the leniency is for stored rows only, never for a save."""
     import yaml
 
-    from agentfox.policy import PolicyDocument
+    from agentfox.platform.policy import PolicyDocument
 
     body = yaml.safe_dump({"key": "tool-containment", "rules": [{"id": "something.else"}]})
     with pytest.raises(Exception, match=TAMPER):
@@ -186,7 +186,7 @@ def test_saving_a_document_without_the_protected_rule_is_still_refused(client):
 
 
 def test_policies_in_force_names_the_broken_version(seeded):
-    from agentfox.policy import UnloadablePolicyVersion, policies_in_force
+    from agentfox.platform.policy import UnloadablePolicyVersion, policies_in_force
 
     version = _bind_raw(seeded, "tool-containment", _broken(seeded))
     with pytest.raises(UnloadablePolicyVersion) as excinfo:

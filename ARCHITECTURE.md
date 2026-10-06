@@ -186,7 +186,7 @@ Outside the package:
 
 | Path | What it is |
 |---|---|
-| `tests/` | Mirrors the package (`tests/runtime/`, `tests/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, harness, vendored wheels, install layout). |
+| `tests/` | Mirrors the package (`tests/runtime/`, `tests/platform/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, harness, vendored wheels, install layout). |
 | `dashboard/` | The Next.js 15 app: the signed-in product (`app/app/`), the marketing site, and the website docs (`app/docs/`, sidebar in `lib/docs.ts`). It is a client of the gateway API with no back channel. Tests with vitest. |
 | `benchmarks/` | Every published number: one directory per area with its runner, results and README; `claims.yaml` binds quoted numbers to result files. |
 | `harness/` | AgentFox packaged for coding agents: skills, slash commands, subagents, MCP config, reference files checked against the live CLI. Contract in `harness/STRUCTURE.md`. |
@@ -272,7 +272,7 @@ through `detection:` conditions; no new rule kind is needed. Tests go in `tests/
 input, to `PolicyInput` (`policy/model.py`); match it in `NativePolicyEngine._matches`
 (`policy/engine.py`) and translate it in `_rego_conditions` (`policy/opa.py`); populate the
 input in `Enforcer.evaluate`. Document it in `harness/reference/policy-schema.md` and the
-website's `dashboard/app/docs/reference/policies/page.tsx`. Tests in `tests/policy/`.
+website's `dashboard/app/docs/reference/policies/page.tsx`. Tests in `tests/platform/policy/`.
 
 **Add a CLI command.** Write the command in the module for its group (`cli/commands/<group>.py`
 or the relevant `*_cli.py`) and make sure it is registered in `cli/main.py`. Then place it in

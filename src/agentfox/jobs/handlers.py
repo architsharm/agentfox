@@ -144,7 +144,7 @@ def recompute_compliance(session: Session, payload: dict[str, Any]) -> dict[str,
 
 
 def advance_canaries(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    from agentfox.policy.canary import canary_rollout, evaluate_gate
+    from agentfox.platform.policy.canary import canary_rollout, evaluate_gate
 
     actor_type, actor_id = _actor(payload)
     outcomes: list[dict[str, Any]] = []

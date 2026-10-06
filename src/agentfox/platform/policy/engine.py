@@ -15,7 +15,7 @@ import fnmatch
 from typing import Any, Protocol
 
 from agentfox.core.vocab import COMPARATORS, EFFECT_RANK, taint_rank
-from agentfox.policy.model import (
+from agentfox.platform.policy.model import (
     Condition,
     FiredRule,
     PolicyDecision,

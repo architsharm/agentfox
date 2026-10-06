@@ -32,7 +32,7 @@ from agentfox.detection.trajectory import (
     slope,
     topic_drift,
 )
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 
 # --- Corpora ---------------------------------------------------------------
 # Copied from `benchmarks/crescendo/run_crescendo_benchmark.py` rather than

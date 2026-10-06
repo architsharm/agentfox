@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from agentfox.core.models import Agent, Finding
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.runtime.enforcement import Enforcer
 
 POISONED_DOC = (

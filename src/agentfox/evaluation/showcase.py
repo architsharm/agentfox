@@ -69,7 +69,7 @@ def ensure_showcase(session: Session) -> dict[str, Any] | None:
     created: dict[str, Any] = {"seeded": False, "target_created": False}
     if session.scalar(select(Agent.id).where(Agent.slug == SHOWCASE_AGENT)) is None:
         from agentfox.fixtures.seed import seed
-        from agentfox.policy import set_mode
+        from agentfox.platform.policy import set_mode
 
         seed(session, email_namespace="showcase")
         set_mode(session, "baseline", "enforce")

@@ -8,14 +8,14 @@ only loosen where explicitly granted.
 
 from __future__ import annotations
 
-from agentfox.policy import PolicyDocument, save_policy
-from agentfox.policy.hierarchy import (
+from agentfox.platform.policy import PolicyDocument, save_policy
+from agentfox.platform.policy.hierarchy import (
     PolicyLayer,
     lint_policy,
     lint_summary,
     resolve_effective,
 )
-from agentfox.policy.store import effective_for, lint_all
+from agentfox.platform.policy.store import effective_for, lint_all
 from tests.conftest import as_user
 
 ORG = """
@@ -186,7 +186,7 @@ def test_enforcement_escalates_and_never_relaxes_down_the_hierarchy():
 
 def test_effective_policy_collapses_to_an_evaluable_document():
     """The composed result must run on the existing engine unchanged."""
-    from agentfox.policy import NativePolicyEngine, PolicyInput
+    from agentfox.platform.policy import NativePolicyEngine, PolicyInput
 
     effective = resolve_effective([layer(ORG, "org")], {"org": "acme"})
     decision = NativePolicyEngine().evaluate(
@@ -306,7 +306,7 @@ def test_effective_and_lint_endpoints(client):
 
 def test_pre_hierarchy_bindings_default_to_org_wide(seeded):
     """Backwards compatibility: existing bindings behave exactly as before."""
-    from agentfox.policy.store import active_layers
+    from agentfox.platform.policy.store import active_layers
 
     for policy_layer in active_layers(seeded):
         assert policy_layer.level == "org"

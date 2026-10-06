@@ -28,7 +28,7 @@ from support_tools import (
 from agentfox.core.db import init_db, session_scope
 from agentfox.identity import ensure_identity, grant_capability
 from agentfox.integrations.mcp import McpGovernor, tool_key
-from agentfox.policy import load_from_dir, save_policy
+from agentfox.platform.policy import load_from_dir, save_policy
 from agentfox.registry.service import register_agent, upsert_tool
 
 

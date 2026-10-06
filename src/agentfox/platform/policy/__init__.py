@@ -9,7 +9,7 @@ upgrade). They are cross-verified in the test suite, which is what keeps the
 
 from __future__ import annotations
 
-from agentfox.policy.canary import (
+from agentfox.platform.policy.canary import (
     CanaryError,
     active_canary,
     canary_health,
@@ -18,8 +18,8 @@ from agentfox.policy.canary import (
     rollback_canary,
     start_canary,
 )
-from agentfox.policy.engine import NativePolicyEngine, PolicyEngine, combine
-from agentfox.policy.hierarchy import (
+from agentfox.platform.policy.engine import NativePolicyEngine, PolicyEngine, combine
+from agentfox.platform.policy.hierarchy import (
     LEVELS,
     MODES,
     EffectivePolicy,
@@ -31,7 +31,7 @@ from agentfox.policy.hierarchy import (
     lint_summary,
     resolve_effective,
 )
-from agentfox.policy.model import (
+from agentfox.platform.policy.model import (
     Condition,
     DetectionCondition,
     Effect,
@@ -41,15 +41,15 @@ from agentfox.policy.model import (
     PolicyInput,
     Rule,
 )
-from agentfox.policy.opa import OpaPolicyEngine, compile_to_rego
-from agentfox.policy.simulate import (
+from agentfox.platform.policy.opa import OpaPolicyEngine, compile_to_rego
+from agentfox.platform.policy.simulate import (
     SimulationDiff,
     record_simulation,
     rules_fingerprint,
     simulate,
     simulation_for,
 )
-from agentfox.policy.store import (
+from agentfox.platform.policy.store import (
     PROJECT_POLICY_DIR,
     PolicyPackError,
     UnloadablePolicyVersion,

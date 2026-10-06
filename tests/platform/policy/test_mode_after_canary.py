@@ -11,7 +11,13 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from agentfox.core.models import Policy, PolicyBinding, PolicyVersion
-from agentfox.policy import PolicyDocument, rollback_canary, save_policy, set_mode, start_canary
+from agentfox.platform.policy import (
+    PolicyDocument,
+    rollback_canary,
+    save_policy,
+    set_mode,
+    start_canary,
+)
 from tests.conftest import as_user
 
 V1 = "key: canary-mode\nmode: observe\nrules: []\n"

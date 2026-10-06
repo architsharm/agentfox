@@ -36,7 +36,7 @@ def test_ordinary_answers_are_not_claims(text):
 
 
 def test_the_rule_escalates_an_answer_that_claims_to_be_human(seeded, enforcer):
-    from agentfox.policy.store import set_mode
+    from agentfox.platform.policy.store import set_mode
 
     set_mode(seeded, "eu-ai-act-high-risk", "enforce")
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()

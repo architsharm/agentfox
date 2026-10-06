@@ -9,7 +9,7 @@ drift apart again.
 
 from __future__ import annotations
 
-from agentfox.policy import PolicyDocument, effective_for, policies_in_force, save_policy
+from agentfox.platform.policy import PolicyDocument, effective_for, policies_in_force, save_policy
 from agentfox.registry.service import register_agent
 from agentfox.runtime.enforcement import Enforcer
 

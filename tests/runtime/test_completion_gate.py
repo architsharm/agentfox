@@ -20,8 +20,8 @@ decision that differs per agent and per environment.
 from __future__ import annotations
 
 from agentfox.core.vocab import SURFACES
-from agentfox.policy.engine import NativePolicyEngine
-from agentfox.policy.model import Condition, PolicyDocument, PolicyInput, Rule
+from agentfox.platform.policy.engine import NativePolicyEngine
+from agentfox.platform.policy.model import Condition, PolicyDocument, PolicyInput, Rule
 from agentfox.runtime.enforcement import Enforcer
 
 
@@ -119,7 +119,7 @@ def test_the_claim_still_goes_through_the_detector_pipeline(seeded):
 
 def test_the_shipped_pack_carries_both_completion_rules():
     from agentfox.core.config import get_settings
-    from agentfox.policy.store import load_from_dir
+    from agentfox.platform.policy.store import load_from_dir
 
     packs = load_from_dir(get_settings().policies_dir)
     pack = next(p for p in packs if p.key == "tool-containment")

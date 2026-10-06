@@ -201,7 +201,7 @@ def test_the_showcase_is_cached_and_rate_limited(client, showcase_on, monkeypatc
 def test_a_showcase_regression_shows_up_and_closes(client, showcase_on, session):
     """Flip the showcase policy to observe (as a bad deploy might): attacks that were
     blocked now reach the model, the public numbers say so, and findings open."""
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     client.post(CRON, headers={"Authorization": "Bearer cron-test"})
     bind_session(session, get_settings().showcase_org_id)

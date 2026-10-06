@@ -19,7 +19,7 @@ from agentfox.integrations.langgraph import (
     ApprovalRequired,
     PolicyViolation,
 )
-from agentfox.policy import set_mode
+from agentfox.platform.policy import set_mode
 from agentfox.providers import CompletionRequest, get_provider, script
 from agentfox.registry.control import UnknownAgent, kill, quarantine, resume, state_of
 from agentfox.runtime.enforcement import Enforcer

@@ -35,14 +35,14 @@ from agentfox.identity import (
     request_approval,
     verify_credential,
 )
-from agentfox.policy import (
+from agentfox.platform.policy import (
     PolicyInput,
     UnloadablePolicyVersion,
     combine,
     get_engine,
     policies_in_force,
 )
-from agentfox.policy.taint_view import policy_taint
+from agentfox.platform.policy.taint_view import policy_taint
 from agentfox.prove.audit import chain
 from agentfox.prove.audit.trace import (
     ATTR_AGENT,

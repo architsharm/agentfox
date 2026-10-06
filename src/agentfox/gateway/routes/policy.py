@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import Policy, PolicyCanary, PolicyVersion, User
 from agentfox.gateway.deps import current_user, db, require
-from agentfox.policy import (
+from agentfox.platform.policy import (
     LEVELS,
     MODES,
     CanaryError,
@@ -45,7 +45,7 @@ from agentfox.policy import (
     simulation_for,
     start_canary,
 )
-from agentfox.policy.canary import evaluate_gate
+from agentfox.platform.policy.canary import evaluate_gate
 from agentfox.prove.audit import chain
 
 router = APIRouter(prefix="/api/policies", tags=["policy"])

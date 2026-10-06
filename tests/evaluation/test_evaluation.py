@@ -417,7 +417,7 @@ def test_campaign_produces_posture(seeded):
 
 
 def test_campaign_blocks_injection_probes_when_enforcing(seeded):
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "baseline", "enforce")
     campaign = run_campaign(
@@ -463,7 +463,7 @@ def test_campaign_breach_raises_a_finding(seeded):
 
 
 def test_a_tool_call_probe_with_no_grant_is_blocked(seeded):
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "tool-containment", "enforce")
     campaign = run_campaign(seeded, "support-triage", probes=["capability.ungranted_tool"])
@@ -471,7 +471,7 @@ def test_a_tool_call_probe_with_no_grant_is_blocked(seeded):
 
 
 def test_a_tool_call_probe_violating_a_grant_constraint_is_blocked(seeded):
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "tool-containment", "enforce")
     campaign = run_campaign(seeded, "support-triage", probes=["capability.constraint_violation"])
@@ -482,7 +482,7 @@ def test_action_assurance_probes_are_reachable_via_guard_tool_call(seeded):
     """These fire `analyse_arguments` (destructive SQL, the scope/SQLi backstop) —
     unreachable via `check_content()` before this round, since it never passes
     `arguments`/`tool_key` at all."""
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "tool-containment", "enforce")
     campaign = run_campaign(
@@ -501,7 +501,7 @@ def test_the_composed_escalation_scenario_probe_is_blocked(seeded):
     """F3.8 through the red-team runner specifically — a read tool's synthetic
     result feeding a write tool's argument across two real `guard_tool_call`s
     sharing one `TaintTracker`."""
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "tool-containment", "enforce")
     campaign = run_campaign(seeded, "support-triage", probes=["escalation.composed_privilege"])
@@ -512,7 +512,7 @@ def test_the_composed_escalation_negative_control_is_not_over_blocked(seeded):
     """The same two tools, but the second call's argument never appeared in the
     first call's result — must not be flagged, proving the block above is about
     provenance and not just "any two-step tool sequence on these tools"."""
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "tool-containment", "enforce")
     campaign = run_campaign(seeded, "support-triage", probes=["benign.independently_supplied_id"])
@@ -520,7 +520,7 @@ def test_the_composed_escalation_negative_control_is_not_over_blocked(seeded):
 
 
 def test_a_legitimate_call_within_the_same_constraint_is_not_over_blocked(seeded):
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     set_mode(seeded, "tool-containment", "enforce")
     campaign = run_campaign(

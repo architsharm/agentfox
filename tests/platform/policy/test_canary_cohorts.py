@@ -9,7 +9,7 @@ in observe always showed a block rate of zero and could never be canaried.
 from __future__ import annotations
 
 from agentfox.core.models import Decision
-from agentfox.policy import PolicyDocument, canary_health, save_policy, start_canary
+from agentfox.platform.policy import PolicyDocument, canary_health, save_policy, start_canary
 
 OTHER = "key: other-pack\nmode: enforce\nrules: []\n"
 V1 = "key: cohort-test\nmode: observe\nrules: []\n"

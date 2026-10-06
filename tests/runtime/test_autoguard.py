@@ -472,7 +472,7 @@ def test_a_payload_split_across_separate_calls_is_caught_by_the_conversation_win
     window does. Requires a stable `session_id` across calls — the same
     precondition `record_turn`/escalation governance already has."""
     from agentfox.core.db import session_scope
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     # baseline.yaml ships in observe mode (R3) — a detection alone never blocks
     # until an operator promotes it, same as every other policy in this project.
@@ -819,7 +819,7 @@ def init_db_only(isolated_db):
     packs, each in the mode it declares — and nothing from the demo seed."""
     from agentfox.core.config import get_settings
     from agentfox.core.db import session_scope
-    from agentfox.policy import load_from_dir, save_policy
+    from agentfox.platform.policy import load_from_dir, save_policy
     from agentfox.prove.compliance import sync_catalog
 
     with session_scope() as session:
@@ -865,7 +865,7 @@ def test_promoting_baseline_to_enforce_is_the_one_step_that_blocks(init_db_only,
     """README: `agentfox policy enforce baseline` is the one step that starts
     blocking. No second knob in code."""
     from agentfox.core.db import session_scope
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     with session_scope() as session:
         set_mode(session, "baseline", "enforce")
@@ -888,7 +888,7 @@ def test_promoting_baseline_to_enforce_is_the_one_step_that_blocks(init_db_only,
 
 def test_observe_mode_never_raises_even_under_an_enforced_policy(init_db_only, fake_openai):
     from agentfox.core.db import session_scope
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     with session_scope() as session:
         set_mode(session, "baseline", "enforce")
@@ -935,7 +935,7 @@ def test_the_output_surface_follows_the_same_mode_rules(init_db_only):
     """An output the enforced policy blocks raises under the default mode; the same
     output under an observe policy does not."""
     from agentfox.core.db import session_scope
-    from agentfox.policy import set_mode
+    from agentfox.platform.policy import set_mode
 
     saved = {k: sys.modules.get(k) for k in list(sys.modules) if k.startswith("openai")}
     client, _calls = _install_fake_openai(

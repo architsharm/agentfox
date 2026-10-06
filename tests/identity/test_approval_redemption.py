@@ -239,8 +239,8 @@ def test_a_held_message_is_filed_with_its_content_and_completes_on_retry(client)
     arguments, so the approver had nothing to decide on. #20: the proxy's hold is an
     error status a provider SDK raises on, not a 202 it parses as a completion."""
     from agentfox.core.db import session_scope
-    from agentfox.policy.model import PolicyDocument
-    from agentfox.policy.store import save_policy
+    from agentfox.platform.policy.model import PolicyDocument
+    from agentfox.platform.policy.store import save_policy
 
     with session_scope() as session:
         save_policy(session, PolicyDocument.from_yaml(_HOLD_CARDS), bind_mode="enforce")

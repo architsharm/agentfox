@@ -26,7 +26,7 @@ def _step(client, step_id: str) -> dict:
 def test_enforce_step_is_not_done_while_baseline_observes(client):
     from agentfox.core.db import session_scope
     from agentfox.core.models import Decision
-    from agentfox.policy.store import active_layers
+    from agentfox.platform.policy.store import active_layers
 
     with session_scope() as session:
         modes = {layer.document.key: layer.document.mode for layer in active_layers(session)}
@@ -41,7 +41,7 @@ def test_enforce_step_is_not_done_while_baseline_observes(client):
 
 def test_enforce_step_is_done_once_baseline_enforces(client):
     from agentfox.core.db import session_scope
-    from agentfox.policy.store import set_mode
+    from agentfox.platform.policy.store import set_mode
 
     with session_scope() as session:
         set_mode(session, "baseline", "enforce")

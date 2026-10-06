@@ -8,7 +8,7 @@ from agentfox.core.models import ChangeProposal, GuardrailFeedback
 from agentfox.improvement import contract
 from agentfox.improvement.loops import propose_threshold_changes
 from agentfox.improvement.proposals import apply_proposal, decide
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 
 POLICY = """
 key: loop-test
@@ -166,8 +166,8 @@ def test_a_cut_off_that_would_lose_a_true_positive_is_filed_unproven(session):
 def test_labels_from_one_agent_scope_the_change_to_that_agent(session):
     """#28: labels from one agent filed an org-wide loosening for every agent."""
     from agentfox.improvement.proposals import apply_proposal
-    from agentfox.policy.engine import NativePolicyEngine
-    from agentfox.policy.model import PolicyInput
+    from agentfox.platform.policy.engine import NativePolicyEngine
+    from agentfox.platform.policy.model import PolicyInput
 
     save_policy(session, PolicyDocument.from_yaml(POLICY), bind_mode="enforce")
     noisy = _agent(session, "noisy-bot")

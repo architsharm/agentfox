@@ -308,7 +308,7 @@ def _rule_index(
     A bound version that no longer loads is left out and appended to ``skipped``
     — not counted as covering anything, and not allowed to take the page down.
     """
-    from agentfox.policy.store import active_layers
+    from agentfox.platform.policy.store import active_layers
 
     out: dict[str, list[dict[str, Any]]] = {}
     for layer in active_layers(session, skipped=skipped):

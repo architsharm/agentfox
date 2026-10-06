@@ -23,9 +23,9 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Policy, PolicyBinding, PolicyVersion, utcnow
-from agentfox.policy.canary import active_canary, pick_version_id
-from agentfox.policy.engine import NativePolicyEngine, PolicyEngine
-from agentfox.policy.hierarchy import (
+from agentfox.platform.policy.canary import active_canary, pick_version_id
+from agentfox.platform.policy.engine import NativePolicyEngine, PolicyEngine
+from agentfox.platform.policy.hierarchy import (
     EffectivePolicy,
     LintFinding,
     PolicyLayer,
@@ -33,8 +33,8 @@ from agentfox.policy.hierarchy import (
     lint_summary,
     resolve_effective,
 )
-from agentfox.policy.model import PROTECTED_RULES, PolicyDocument
-from agentfox.policy.opa import OpaPolicyEngine
+from agentfox.platform.policy.model import PROTECTED_RULES, PolicyDocument
+from agentfox.platform.policy.opa import OpaPolicyEngine
 
 log = logging.getLogger(__name__)
 

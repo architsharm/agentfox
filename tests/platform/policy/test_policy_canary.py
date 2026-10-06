@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from agentfox.core.models import Decision, Policy, PolicyBinding, PolicyVersion
-from agentfox.policy import (
+from agentfox.platform.policy import (
     CanaryError,
     PolicyDocument,
     active_canary,
@@ -156,7 +156,7 @@ def test_canary_rollout_holds_when_sample_too_small(session):
 def test_canary_rollout_advances_when_healthy(session):
     policy, v1, v2 = _make_two_versions(session)
     # No dwell: this test is about the health decision, not the rate limit on advancing
-    # (settings default a dwell time; see tests/policy/test_canary_two_way_gate.py).
+    # (settings default a dwell time; see tests/platform/policy/test_canary_two_way_gate.py).
     canary = start_canary(
         session, "canary-test", steps=[10, 50, 100], min_sample=20, min_dwell_seconds=0
     )

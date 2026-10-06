@@ -39,7 +39,7 @@ from agentfox.grounding.entitlement import grant as grant_resource
 from agentfox.grounding.entitlement import upsert_principal
 from agentfox.grounding.provenance import APPROVED, SYSTEM_OF_RECORD, register_source
 from agentfox.identity import ensure_identity, grant_capability, issue_credential
-from agentfox.policy import load_available, save_policy
+from agentfox.platform.policy import load_available, save_policy
 from agentfox.prove.compliance.catalog import sync_catalog, sync_obligations
 from agentfox.prove.compliance.risk import assess
 from agentfox.providers import script
@@ -302,7 +302,7 @@ def seed(
     summary["obligations"] = sync_obligations(session)
 
     if with_policies:
-        from agentfox.policy.coding import hooked_agents, scope_coding_pack
+        from agentfox.platform.policy.coding import hooked_agents, scope_coding_pack
 
         # Demo agents are not coding agents; the coding pack binds only to agents
         # this directory has installed coding-harness hooks for (policy/coding.py).

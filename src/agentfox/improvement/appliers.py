@@ -251,7 +251,7 @@ def _policy_diff(proposal: ChangeProposal) -> tuple[str, str, float]:
 
 
 def _live_policy(session: Session, policy_key: str) -> tuple[Policy, PolicyVersion, PolicyBinding]:
-    from agentfox.policy.store import _open_binding_for_version
+    from agentfox.platform.policy.store import _open_binding_for_version
 
     policy = session.scalar(select(Policy).where(Policy.key == policy_key))
     if policy is None:
@@ -268,7 +268,7 @@ def _live_policy(session: Session, policy_key: str) -> tuple[Policy, PolicyVersi
 
 
 def _document(version: PolicyVersion):
-    from agentfox.policy.store import UnloadablePolicyVersion, load_version_document
+    from agentfox.platform.policy.store import UnloadablePolicyVersion, load_version_document
 
     try:
         return load_version_document(version)
@@ -374,8 +374,8 @@ def _policy_direction(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _policy_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from agentfox.policy.canary import CanaryError, start_canary
-    from agentfox.policy.store import save_policy
+    from agentfox.platform.policy.canary import CanaryError, start_canary
+    from agentfox.platform.policy.store import save_policy
 
     diff = proposal.diff_json or {}
     policy_key, rule_id, target = _policy_diff(proposal)
@@ -449,8 +449,8 @@ def _policy_stage_status(session: Session, proposal: ChangeProposal) -> str:
 
 
 def _policy_revert(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
-    from agentfox.policy.canary import rollback_canary
-    from agentfox.policy.store import _open_binding_for_version
+    from agentfox.platform.policy.canary import rollback_canary
+    from agentfox.platform.policy.store import _open_binding_for_version
 
     result = applied_result(session, proposal)
     prior_id = result.get("prior_version_id")

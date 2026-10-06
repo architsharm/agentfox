@@ -255,7 +255,7 @@ def hooks_install(
 
 def _enable_coding_pack(agent: str) -> None:
     """A hooked agent is a coding agent: bind the pack tuned for one, to it alone."""
-    from agentfox.policy.coding import enable_for_agent
+    from agentfox.platform.policy.coding import enable_for_agent
 
     with _session() as session:
         covered = enable_for_agent(session, agent)

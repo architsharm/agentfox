@@ -9,7 +9,7 @@ from __future__ import annotations
 from typer.testing import CliRunner
 
 from agentfox.cli.main import app
-from agentfox.policy import PolicyDocument, save_policy
+from agentfox.platform.policy import PolicyDocument, save_policy
 
 RULE = "rules:\n  - id: {id}\n    when: {{surface: [{surface}]}}\n    effect: block\n"
 OBSERVED = "key: watched\nmode: observe\n" + RULE.format(id="w.rule", surface="input")

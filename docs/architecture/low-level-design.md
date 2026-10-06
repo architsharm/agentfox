@@ -46,7 +46,7 @@ Everything lives in subpackages. The package root holds only `__init__.py` (the 
 
 ## 2. Tests
 
-`tests/` mirrors the package one directory per subpackage (`tests/runtime/`, `tests/policy/`,
+`tests/` mirrors the package one directory per subpackage (`tests/runtime/`, `tests/platform/policy/`,
 `tests/monitoring/`, …). Three directories are cross-cutting: `tests/e2e/` runs the request
 path end to end across packages, `tests/repo/` checks the repository itself (claims registry,
 docs site, harness, vendored wheels, install layout), and `tests/corpus/` holds fixture
@@ -264,7 +264,7 @@ runs the guard inside a compiled graph with a checkpointer.
 
 ---
 
-## 9. Policy engine — `src/agentfox/policy/`
+## 9. Policy engine — `src/agentfox/platform/policy/`
 
 | Module | Role |
 |---|---|
