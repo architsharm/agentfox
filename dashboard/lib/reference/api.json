@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/docs_reference.py",
- "count": 182,
+ "count": 183,
  "routes": [
   {
    "method": "GET",
@@ -151,7 +151,14 @@
    "audience": "public",
    "summary": "Enforce on content without proxying.",
    "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in Appendix C.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
-   "params": [],
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
    "body": {
     "model": "GuardContentRequest",
     "fields": [
@@ -276,7 +283,14 @@
    "audience": "public",
    "summary": "Enforce on content without proxying.",
    "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in Appendix C.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
-   "params": [],
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
    "body": {
     "model": "GuardContentRequest",
     "fields": [
@@ -1550,7 +1564,7 @@
    "section": "auth",
    "audience": "operator",
    "summary": "Find-or-create the user behind a GitHub identity, and mint them a token.",
-   "description": "Find-or-create the user behind a GitHub identity, and mint them a token.\n\nRuns in system scope for the lookup because — like every credential resolution\nin auth.py — we cannot know the tenant until we know who this is. A first-time\nGitHub login gets a brand new org: there is no invite flow yet, so \"new GitHub\nidentity\" and \"new tenant\" are the same event.",
+   "description": "Find-or-create the user behind a GitHub identity, and mint them a token.\n\n**Trust model.** This route believes the GitHub identity in the body because of\nwho is allowed to send it, not because of anything in the body. The only holder\nof ``service_auth_secret`` is the dashboard's OAuth callback, which calls here\nonly after it has completed GitHub's OAuth exchange itself (state cookie checked,\ncode exchanged for a token, ``/user`` read with that token) — so\n``github_user_id`` is GitHub's own answer to \"who signed in\", relayed by a party\nthat holds the deployment's secret. Under that model:\n\n* The secret is equivalent to \"sign in as any GitHub-linked user of this\n  deployment\". It must be random, shared only between the gateway and the\n  dashboard, and never the published default — `create_app()` refuses to start\n  outside development with the default, and :func:`_require_service_secret`\n  refuses this route on its own as well.\n* Find-or-create keys on ``github_user_id`` and nothing else: GitHub's numeric\n  id is immutable, unlike a login (renameable, then claimable by someone else)\n  or an email (the body's email is whatever GitHub reported, and keying on it\n  would let any GitHub account that lists an address take over the user who\n  owns that address here). An existing user is therefore only ever returned to\n  a sign-in that GitHub attested as that same account.\n* A deactivated user is refused rather than handed a token that every other\n  route would then reject.\n\nRuns in system scope for the lookup because — like every credential resolution\nin auth.py — we cannot know the tenant until we know who this is. A first-time\nGitHub login gets a brand new org: there is no invite flow yet, so \"new GitHub\nidentity\" and \"new tenant\" are the same event.\n\nEach sign-in mints a fresh token (the raw value of an old one is not stored, so\nit cannot be reused) and retires all but the newest ``MAX_LOGIN_SESSIONS`` login\ntokens; signing out revokes the session's own token (``POST /api/auth/logout``).",
    "params": [
     {
      "name": "x-nometria-service-secret",
@@ -1588,6 +1602,23 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/logout",
+   "section": "auth",
+   "audience": "operator",
+   "summary": "Revoke the bearer token this request presents — the dashboard's Sign Out.",
+   "description": "Revoke the bearer token this request presents — the dashboard's Sign Out.\n\nDeleting the cookie alone left the token valid for the rest of its 365 days, so\na copied cookie outlived the sign-out. Idempotent: an already-revoked, expired or\nunknown token is reported as not revoked, never as an error, so a browser whose\nsession already ended can still sign out cleanly.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "GET",

@@ -88,7 +88,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "service_auth_secret",
         "env": "AGENTFOX_SERVICE_AUTH_SECRET",
         "def": "dev-insecure-service-secret",
-        "what": "Shared between the gateway and the dashboard for the GitHub sign-in provisioning call. Must be identical on both, and must be changed for any real deployment."
+        "what": "Shared between the gateway and the dashboard for the GitHub sign-in provisioning call, which mints owner tokens. Must be identical on both. Outside development the gateway refuses to start while it is the published default."
       },
       {
         "key": "token_encryption_key",
@@ -550,7 +550,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "audit_signing_key",
         "env": "AGENTFOX_AUDIT_SIGNING_KEY",
         "def": "dev-insecure-checkpoint-key",
-        "what": "Signs audit-chain checkpoints. Change it before any real deployment, and keep it outside the database."
+        "what": "Signs audit-chain checkpoints. Keep it outside the database. Outside development the gateway refuses to start while it is the published default."
       },
       {
         "key": "audit_checkpoint_interval",

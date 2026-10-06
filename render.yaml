@@ -28,9 +28,14 @@
 #      https://<your-dashboard-host>/api/auth/github/callback
 #   2. Rotate NOMETRIA_AUDIT_SIGNING_KEY if you did not let Render generate it.
 #      The chain is only as trustworthy as the key that signs it.
+#   3. No demo data is loaded. Without GitHub, create the first operator from the
+#      gateway's shell (`agentfox admin users create you@example.com --role owner
+#      --token`) and sign in on /login with that token.
 #
 # Gateway settings are AGENTFOX_*; the pre-rename NOMETRIA_* names are still read as a
-# fallback. The dashboard reads only its NOMETRIA_* names, so those stay as they are.
+# fallback by both services. The NOMETRIA_* names below are kept so a blueprint sync
+# on an existing deployment does not create (and, for generated values, rotate) a
+# second variable.
 #
 # Full runbook, including Fly, Docker Compose and bare metal: deploy/README-dashboard.md
 
@@ -89,6 +94,16 @@ services:
       # of every existing deployment. NOMETRIA_* names are still read as a fallback.
       - key: NOMETRIA_AUDIT_SIGNING_KEY
         generateValue: true
+      # Authenticates the dashboard's GitHub sign-in call (/api/auth/github/provision),
+      # which mints an owner token. Generated HERE and copied to the dashboard below,
+      # so the two can never differ. It used to be generated on the dashboard only,
+      # which left this service on the published default: sign-in failed, and anyone
+      # who read the source could mint owner tokens on the gateway directly. The
+      # gateway now refuses to start outside development on the default. Same
+      # NOMETRIA_ name as the dashboard has always used, so a blueprint sync does not
+      # invent a second variable.
+      - key: NOMETRIA_SERVICE_AUTH_SECRET
+        generateValue: true
       # The five zero-dependency defaults. The classifier and safety models the
       # image can carry are opt-in: they need weights, which is what pushes this
       # service past the free instance type.
@@ -129,5 +144,9 @@ services:
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
+      # The gateway's generated value, never a second one (see the gateway above).
       - key: NOMETRIA_SERVICE_AUTH_SECRET
-        generateValue: true
+        fromService:
+          name: agentfox-gateway
+          type: web
+          envVarKey: NOMETRIA_SERVICE_AUTH_SECRET
