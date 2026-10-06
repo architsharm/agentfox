@@ -41,6 +41,7 @@ rule. If it passes locally, the pull request will pass, except for the Docker bu
 | `just regen` | rewrites the generated files those checks compare against |
 | `just dashboard` | `npm ci`, `npm test` and `tsc --noEmit` in `dashboard/` |
 | `just wheels` | rebuilds `api/vendor/` and `demo/redteam-live-lang/vendor/` |
+| `just new-harness <name>` | scaffolds `src/agentfox/harnesses/<name>/` from `scripts/templates/harness/` |
 | `just serve` / `just demo` | the gateway on :8080; the offline walkthrough on a throwaway database |
 
 Without `just`, each recipe is a plain command in the [`justfile`](justfile); copy it from
@@ -82,7 +83,9 @@ needs a reason and a TODO saying what removes it.
 ### Add a harness
 
 A harness is a coding agent AgentFox governs through its hooks (Claude Code today). It is
-one folder, `src/agentfox/harnesses/<name>/`, and touches nothing else in `src/`:
+one folder, `src/agentfox/harnesses/<name>/`, and touches nothing else in `src/`.
+`just new-harness <name> "Display Name"` writes the folder from `scripts/templates/harness/`
+(an adapter skeleton whose capabilities all start as "cannot", and a fixtures README):
 
 1. **`adapter.py`** implements `harnesses/base.py:HarnessAdapter` and exposes `ADAPTER`:
    `parse` (raw payload → `AgentEvent`), `render` (`Decision` → exact stdout, stderr and exit

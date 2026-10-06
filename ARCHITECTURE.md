@@ -219,12 +219,14 @@ Outside the package:
 |---|---|
 | `tests/` | Mirrors the package (`tests/runtime/`, `tests/platform/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, plugins, vendored wheels, install layout); `tests/harnesses/conformance.py` runs every registered harness adapter against its captured fixtures. |
 | `dashboard/` | The Next.js 15 app: the signed-in product (`app/app/`), the marketing site, and the website docs (`app/docs/`, sidebar in `lib/docs.ts`). It is a client of the gateway API with no back channel. Tests with vitest. |
-| `benchmarks/` | Every published number: one directory per area with its runner, results and README; `claims.yaml` binds quoted numbers to result files. |
+| `benchmarks/` | Every published number: one directory per claim family, named as its claim ids in `claims.yaml` are prefixed (`containment/`, `agentdojo/`, `injection/`, `generalization/`, …), each with its runner, results and README; `claims.yaml` binds quoted numbers to result files. `_common/` holds the helpers scripts share (database reset, dataset download, PII span scoring). Scripts run as modules from the root: `python -m benchmarks.<family>.<script>`. |
 | `plugins/` | AgentFox packaged for an operator's coding agent (to *use* AgentFox, as opposed to `src/agentfox/harnesses/`, which *governs* one). `shared/` holds the runtime-neutral AGENTS.md, skills and reference files checked against the live CLI; `claude-code/` is the Claude Code plugin (manifest, slash commands, subagents, safety hook, MCP config) with committed copies of `shared/`. Contract in `plugins/STRUCTURE.md`. |
-| `docs/` | Design and contributor docs; index in [docs/README.md](docs/README.md). User docs are on the website. |
-| `scripts/` | Generators and checks: `claims.py`, `docs_reference.py`, `api_routes.py`, `coverage.py`, `rebuild_vendored_wheels.py`, `quickscan.sh`. |
+| `docs/` | Design and contributor docs (`architecture/`, `design/`, `evaluation/`, `adr/` for decision records); index in [docs/README.md](docs/README.md). User docs are on the website. |
+| `scripts/` | `gen/` writes generated files (`api_routes.py`, `docs_reference.py`, `coverage.py`, and `new_harness.py` from `templates/`); `check/` holds the drift checks CI runs (`claims.py`, `plugins.py`, `demo_kit.py`) and the vendored-wheel pre-commit hook; `ops/` is for operating a deployment (`deploy_smoke.py`). `probe/` builds the coverage map and stays put because product code names its scenarios; `quickscan.sh` stays at the top because the README publishes its raw URL for `curl \| bash`. |
 | `migrations/` | Alembic revisions (also shipped inside the wheel as `agentfox/_migrations`). |
-| `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), Render and Fly configs, dashboard runbook. |
+| `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), the dashboard-only Render and Fly configs, the dashboard runbook, and the hand-applied Neon catch-up SQL. |
+| `render.yaml` | The one-click self-host blueprint (database, gateway, dashboard). At the root because Render's deploy button reads only that path. |
+| `justfile` | The command surface: `just ci` runs what CI runs; `just new-harness <name>` scaffolds an adapter. |
 | `api/` | The Vercel deployment of the gateway: `api/index.py` re-exports `agentfox.apps.gateway.app:app`. It installs from a **wheel committed in `api/vendor/`**, because Vercel's root directory for this function is `api/` and `../src` would not ship. |
 | `demo/` | Two live red-team demos (`redteam-live/`, CrewAI; `redteam-live-lang/`, LangChain) sharing one support-tools agent, seed and verification in `demo/kit/`. The second deploys on Vercel from a vendored wheel and a committed copy of the kit (`redteam-live-lang/kit/`), because its Vercel root directory is that folder. |
 
@@ -365,7 +367,7 @@ before writing the headline.
 [docs/README.md](docs/README.md); `scripts/check/plugins.py` fails otherwise.
 
 **Add a harness** (a coding agent to govern). One folder, `src/agentfox/harnesses/<name>/`,
-beside `claude_code/`:
+beside `claude_code/`; `just new-harness <name>` writes the skeleton:
 
 1. `adapter.py`: a class satisfying `harnesses/base.py:HarnessAdapter` and a module-level
    `ADAPTER`. Map the harness's event names to the canonical kinds (`events`), declare an
