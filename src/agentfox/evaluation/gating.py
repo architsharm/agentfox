@@ -27,6 +27,10 @@ from agentfox.evaluation.scorers import get_scorer
 #: constantly and gets disabled, which is worse than a slightly loose gate.
 DEFAULT_TOLERANCE = 0.05
 
+#: Where a SARIF viewer links the tool name: the project's public source, the same
+#: URL as ``[project.urls] Source`` in pyproject.toml.
+INFORMATION_URI = "https://github.com/architsharm/agentfox"
+
 
 @dataclass
 class Regression:
@@ -66,6 +70,10 @@ class GateResult:
     baseline_run_id: str | None = None
     regressions: list[Regression] = field(default_factory=list)
     absolute_failures: list[dict[str, Any]] = field(default_factory=list)
+    #: Cases the runner could not evaluate (the provider raised, the agent timed
+    #: out). Each one fails the gate: a case that produced no output was not
+    #: measured, and "5 cases, 5 errors -> GATE PASS" is a gate that cannot fail.
+    errors: list[dict[str, Any]] = field(default_factory=list)
     summary: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
@@ -75,6 +83,7 @@ class GateResult:
             "baseline_run_id": self.baseline_run_id,
             "regressions": [r.to_json() for r in self.regressions],
             "absolute_failures": self.absolute_failures,
+            "errors": self.errors,
             "summary": self.summary,
         }
 
@@ -99,6 +108,26 @@ def _pass_rates(session: Session, run_id: str) -> dict[str, float]:
     return {k: sum(1 for p in v if p) / len(v) for k, v in by_scorer.items() if v}
 
 
+def resolve_baseline(
+    session: Session, suite_id: str, baseline_run_id: str | None = None
+) -> tuple[str | None, dict[str, float]]:
+    """The baseline run a gate compares against, and the thresholds pinned with it.
+
+    An explicit run id wins; otherwise the suite's most recent pinned baseline.
+    Public so a caller can read the baseline's scorers and target *before* running
+    the current suite: a gate that scores with other scorers than its baseline
+    compares nothing.
+    """
+    if baseline_run_id:
+        return baseline_run_id, {}
+    record = session.scalars(
+        select(Baseline).where(Baseline.suite_id == suite_id).order_by(Baseline.created_at.desc())
+    ).first()
+    if record is None:
+        return None, {}
+    return record.run_id, dict(record.thresholds_json or {})
+
+
 def gate(
     session: Session,
     run: EvalRun,
@@ -110,17 +139,19 @@ def gate(
     result = GateResult(run_id=run.id, summary=run.summary_json or {})
     thresholds = thresholds or {}
 
-    baseline_id = baseline_run_id or run.baseline_run_id
-    if baseline_id is None:
-        record = session.scalars(
-            select(Baseline)
-            .where(Baseline.suite_id == run.suite_id)
-            .order_by(Baseline.created_at.desc())
-        ).first()
-        if record is not None:
-            baseline_id = record.run_id
-            thresholds = {**(record.thresholds_json or {}), **thresholds}
+    baseline_id, pinned = resolve_baseline(
+        session, run.suite_id, baseline_run_id or run.baseline_run_id
+    )
+    thresholds = {**pinned, **thresholds}
     result.baseline_run_id = baseline_id
+
+    summary = run.summary_json or {}
+    error_count = int(summary.get("errors") or 0)
+    if error_count:
+        listed = list(summary.get("errored_cases") or [])
+        result.errors = listed or [
+            {"case_id": None, "error": f"{error_count} case(s) errored (no detail recorded)"}
+        ]
 
     current_means = _means(session, run.id)
     current_rates = _pass_rates(session, run.id)
@@ -188,7 +219,7 @@ def gate(
                     )
                 )
 
-    result.passed = not result.regressions and not result.absolute_failures
+    result.passed = not result.regressions and not result.absolute_failures and not result.errors
     return result
 
 
@@ -214,12 +245,13 @@ def set_baseline(
 def to_junit(result: GateResult, suite_name: str = "agentfox-eval") -> str:
     failures = len(result.regressions) + len(result.absolute_failures)
     scorers = result.summary.get("scorers") or {}
+    errors = result.errors
     testsuite = ET.Element(
         "testsuite",
         name=suite_name,
-        tests=str(max(len(scorers), 1)),
+        tests=str(max(len(scorers) + len(errors), 1)),
         failures=str(failures),
-        errors="0",
+        errors=str(len(errors)),
     )
     for scorer_key, stats in scorers.items():
         case = ET.SubElement(testsuite, "testcase", classname=suite_name, name=scorer_key)
@@ -236,14 +268,27 @@ def to_junit(result: GateResult, suite_name: str = "agentfox-eval") -> str:
                 )
                 failure.text = json.dumps(absolute, indent=2)
         ET.SubElement(case, "system-out").text = json.dumps(stats)
-    if not scorers:
+    # One <testcase> per errored eval case, so CI shows which case broke and why
+    # rather than a green suite.
+    for index, errored in enumerate(errors):
+        case = ET.SubElement(
+            testsuite,
+            "testcase",
+            classname=f"{suite_name}.cases",
+            name=str(errored.get("case_id") or f"case-{index + 1}"),
+        )
+        message = str(errored.get("error") or "error")
+        ET.SubElement(case, "error", type="case_error", message=message).text = message
+    if not scorers and not errors:
         case = ET.SubElement(testsuite, "testcase", classname=suite_name, name="no-scorers")
         ET.SubElement(case, "skipped")
     return ET.tostring(testsuite, encoding="unicode")
 
 
-def to_sarif(result: GateResult, tool_version: str = "0.1.0") -> str:
+def to_sarif(result: GateResult, tool_version: str | None = None) -> str:
     """SARIF so GitHub renders regressions on the PR rather than in a log."""
+    if tool_version is None:
+        from agentfox import __version__ as tool_version
     rules: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -286,6 +331,13 @@ def to_sarif(result: GateResult, tool_version: str = "0.1.0") -> str:
         )
     for absolute in result.absolute_failures:
         add(f"threshold/{absolute.get('scorer')}", str(absolute.get("message")), "error", absolute)
+    for errored in result.errors:
+        add(
+            "case_error",
+            f"eval case {errored.get('case_id') or '?'} errored: {errored.get('error')}",
+            "error",
+            errored,
+        )
 
     return json.dumps(
         {
@@ -297,7 +349,7 @@ def to_sarif(result: GateResult, tool_version: str = "0.1.0") -> str:
                         "driver": {
                             "name": "AgentFox",
                             "version": tool_version,
-                            "informationUri": "https://agentfox.example/docs",
+                            "informationUri": INFORMATION_URI,
                             "rules": rules,
                         }
                     },

@@ -41,7 +41,9 @@ and you pass `--provider openai --model <model>`. Ask before enabling egress.
 agentfox test gate <suite> --baseline <run_id> --junit reports/eval.xml --sarif reports/eval.sarif
 ```
 
-- Exit 1 means a regression against the baseline, or a pass rate below `--min-pass-rate`.
+- Exit 1 means a regression against the baseline, a pass rate below `--min-pass-rate`, or a
+  case that errored (an unreachable model is a failure, not a pass).
+- The gate reuses the baseline run's scorers and agent unless `--scorers`/`--agent` is given.
 - Explain which cases flipped, and which scorer flagged them (for example groundedness or
   silent-failure scorers).
 
@@ -56,7 +58,7 @@ baseline to theirs. Each step fails the build for a different reason:
 | `agentfox scan . --fail` | a new model call is not governed |
 | `agentfox policy lint` | the policy hierarchy has critical/high findings |
 | `agentfox policy rules check` | two teams' business rules conflict |
-| `agentfox test gate` | quality regressed against the baseline |
+| `agentfox test gate` | quality regressed against the baseline, or a case errored |
 
 ## 5. Production drift (after launch)
 

@@ -196,6 +196,9 @@ def summarise(outcomes: list[CaseOutcome], scorer_keys: list[str]) -> dict[str, 
     return {
         "cases": total,
         "errors": len(errors),
+        # Which cases errored and why: without it the count is all a gate, a JUnit
+        # report or a reader gets, and nobody can tell a bad key from a bad agent.
+        "errored_cases": [{"case_id": o.case_id, "error": o.error} for o in errors[:50]],
         "scorers": per_scorer,
         "failing_cases": failing_cases[:50],
         "failing_count": len(failing_cases),

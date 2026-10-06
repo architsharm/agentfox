@@ -36,6 +36,25 @@ def _unknown_suite(session: Any, suite: str) -> None:
         console.print("  no suites exist yet — `agentfox admin seed` creates one to try.")
 
 
+def _scorer_keys(scorers: str | None) -> list[str] | None:
+    """Parse ``--scorers`` and refuse keys no scorer is registered under.
+
+    The runner skips a key it cannot resolve, so a typo used to produce an empty
+    table and exit 0: a run that measured nothing, reported as a success.
+    """
+    from agentfox.evaluation.scorers import all_scorers, unknown_scorers
+
+    if not scorers:
+        return None
+    keys = [s.strip() for s in scorers.split(",") if s.strip()]
+    unknown = unknown_scorers(keys)
+    if unknown or not keys:
+        console.print(f"[red]unknown scorer(s): {', '.join(unknown) or '(none given)'}[/]")
+        console.print(f"  known scorers: {', '.join(sorted(all_scorers()))}")
+        raise typer.Exit(1)
+    return keys
+
+
 @eval_app.command("suites")
 def eval_suites() -> None:
     """List the evaluation suites in this deployment."""
@@ -78,7 +97,7 @@ def eval_run(
     from agentfox.core.models import EvalSuite
     from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 
-    keys = [s.strip() for s in scorers.split(",")] if scorers else None
+    keys = _scorer_keys(scorers)
     with _session() as session:
         record = session.scalar(select(EvalSuite).where(EvalSuite.key == suite))
         if record is None:
@@ -107,6 +126,12 @@ def _print_eval_summary(suite: str, summary: dict[str, Any], run_id: str | None 
     # `eval baseline` takes a run id that nothing in the CLI ever printed.
     if run_id:
         console.print(f"  [dim]run {run_id} · `agentfox test baseline {run_id}` to pin it[/]")
+    errored = summary.get("errored_cases") or []
+    for case in errored[:10]:
+        first_line = str(case.get("error") or "").splitlines()[0:1] or [""]
+        console.print(f"  [red]error[/] case {case.get('case_id')}: {first_line[0]}")
+    if len(errored) > 10:
+        console.print(f"  [dim]… and {len(errored) - 10} more errored cases[/]")
     table = Table(box=None, pad_edge=False)
     for column in ("scorer", "mean", "min", "max", "pass rate"):
         table.add_column(
@@ -133,22 +158,51 @@ def eval_gate(
     model: str = "echo-1",
     baseline: str | None = typer.Option(None, help="Baseline run id."),
     min_pass_rate: float | None = None,
+    agent: str | None = typer.Option(
+        None, help="Agent to fit the envelope for. Default: the baseline run's agent."
+    ),
+    scorers: str | None = typer.Option(
+        None, help="Comma-separated scorer keys. Default: the baseline run's scorers."
+    ),
     junit: Path | None = typer.Option(None, help="Write JUnit XML here."),
     sarif: Path | None = typer.Option(None, help="Write SARIF here."),
 ) -> None:
-    """Run the suite and fail the build on regression. Exits 1 on failure."""
+    """Run the suite and fail the build on regression or on any errored case. Exits 1 on failure."""
     from sqlalchemy import select
 
-    from agentfox.core.models import EvalSuite
+    from agentfox.core.models import EvalRun, EvalSuite
     from agentfox.evaluation import gate, to_junit, to_sarif
-    from agentfox.evaluation.runner import NativeEvalRunner
+    from agentfox.evaluation.gating import resolve_baseline
+    from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 
+    keys = _scorer_keys(scorers)
     with _session() as session:
         record = session.scalar(select(EvalSuite).where(EvalSuite.key == suite))
         if record is None:
             _unknown_suite(session, suite)
             raise typer.Exit(1)
-        run = NativeEvalRunner().run(session, record, {"provider": provider, "model": model})
+        # Score the way the baseline was scored. Running the four defaults against
+        # a baseline pinned with other scorers compares nothing, and the gate
+        # passes because there is no overlap to regress on.
+        baseline_id, _ = resolve_baseline(session, record.id, baseline)
+        baseline_run = session.get(EvalRun, baseline_id) if baseline_id else None
+        if baseline and baseline_run is None:
+            console.print(f"[red]unknown baseline run '{baseline}'[/]")
+            raise typer.Exit(1)
+        if keys is None and baseline_run is not None and baseline_run.scorer_keys:
+            keys = list(baseline_run.scorer_keys)
+        if agent is None and baseline_run is not None:
+            agent = (baseline_run.target_json or {}).get("agent")
+        target: dict[str, Any] = {"provider": provider, "model": model}
+        if agent:
+            target["agent"] = agent
+        run = NativeEvalRunner().run(
+            session,
+            record,
+            target,
+            keys,
+            envelope=fit_envelope(session, agent) if agent else None,
+        )
         result = gate(session, run, baseline, min_pass_rate=min_pass_rate)
         junit_xml = to_junit(result, suite)
         sarif_json = to_sarif(result)
@@ -181,6 +235,11 @@ def eval_gate(
         console.print(f"  [red]regression[/] {regression.message}")
     for failure in result.absolute_failures:
         console.print(f"  [red]threshold[/]  {failure['message']}")
+    if result.errors:
+        console.print(
+            f"  [red]errors[/]     {len(result.errors)} case(s) errored and were not "
+            "measured — an unmeasured case is not a pass"
+        )
     raise typer.Exit(result.exit_code)
 
 

@@ -306,13 +306,15 @@ GATE FAIL
   threshold  silent_failure pass rate 0.0% below floor 50.0%`}</Output>
         </Step>
       </Steps>
-      <Callout kind="warning" title="The gate uses the default scorers">
-        <code>agentfox test gate</code> has no <code>--scorers</code> or{" "}
-        <code>--agent</code> option: it always scores with the four defaults. A baseline
-        pinned from <code>agentfox test run triage-answers --scorers contains,groundedness</code>{" "}
-        is only compared on the scorers both runs share (here,{" "}
-        <code>groundedness</code>); <code>contains</code> is never gated. Pin baselines
-        from a <code>test run</code> without <code>--scorers</code>.
+      <Callout kind="note" title="The gate scores the way the baseline was scored">
+        Without <code>--scorers</code> and <code>--agent</code>,{" "}
+        <code>agentfox test gate</code> reuses the baseline run&apos;s scorers and agent, so a
+        baseline pinned from{" "}
+        <code>agentfox test run triage-answers --scorers contains,groundedness</code> is
+        gated on <code>contains</code> and <code>groundedness</code>. Pass{" "}
+        <code>--scorers</code> or <code>--agent</code> to override them. An unknown scorer
+        key is an error (exit 1) that lists the valid ones, on <code>test run</code> and{" "}
+        <code>test gate</code> alike.
       </Callout>
 
       <h2 id="ci">A GitHub Actions job</h2>
@@ -347,19 +349,13 @@ jobs:
         run: |
           mkdir -p reports
           agentfox test gate support-quality --provider openai --model gpt-4o-mini --junit reports/agentfox-junit.xml --sarif reports/agentfox.sarif
-      - name: Fail if no case was scored
-        if: always()
-        run: |
-          if grep -q 'name="no-scorers"' reports/agentfox-junit.xml; then
-            echo "no case was scored; failing the job"; exit 1
-          fi
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: reports/agentfox.sarif`}</Code>
       <Callout kind="note" title="What was run, and what was not">
         This workflow file was not run on GitHub for this page. The gate command, the two
-        report files and the guard step were run locally against the seeded database with
+        report files were run locally against the seeded database with
         the <code>echo</code> provider; their output is below.
       </Callout>
       <Code>{`agentfox test gate support-quality --junit reports/agentfox-junit.xml --sarif reports/agentfox.sarif`}</Code>
@@ -392,19 +388,18 @@ GATE PASS`}</Output>
           "uri": "evals/"
         },
 …`}</Output>
-      <Callout kind="warning" title="A run where every case errors passes the gate">
-        If the model cannot be reached (egress off, a missing key, an outage), every case
-        errors, no scorer produces a result, and the gate prints <code>GATE PASS</code> and
-        exits 0, even with a baseline or <code>--min-pass-rate</code>:
+      <Callout kind="note" title="An errored case fails the gate">
+        If the model cannot be reached (egress off, a missing key, an outage), the case
+        errors and was never measured. Any errored case fails the gate (exit 1), with or
+        without a baseline, and each one is printed with its error:
         <Output>{`support-quality — 5 cases, 5 errors
+  error case cse_01m47awy0t93yjqj4a: HTTPStatusError: Client error '401 Unauthorized' for url 'https://api.openai.com/v1/chat/completions'
 …
-scorer  mean  min  max  pass rate
-
-GATE PASS`}</Output>
-        The JUnit file then holds a single skipped test case named{" "}
-        <code>no-scorers</code>, which is what the guard step in the workflow checks. A run
-        where only some cases error still passes silently: read the{" "}
-        <code>N errors</code> count in the log.
+GATE FAIL
+  errors     5 case(s) errored and were not measured — an unmeasured case is not a pass`}</Output>
+        The JUnit file counts them in <code>errors=&quot;5&quot;</code> and holds one test
+        case per errored eval case with an <code>&lt;error&gt;</code> element carrying the
+        message; the SARIF file has a <code>case_error</code> result for each.
       </Callout>
 
       <h2 id="online">Production sampling and drift</h2>

@@ -335,6 +335,11 @@ def all_scorers() -> dict[str, Scorer]:
     return dict(_SCORERS)
 
 
+def unknown_scorers(keys: list[str] | tuple[str, ...]) -> list[str]:
+    """The keys in ``keys`` no scorer is registered under, in the order given."""
+    return [key for key in keys if key not in _SCORERS]
+
+
 for _s in (
     ExactMatchScorer(),
     FuzzyMatchScorer(),
