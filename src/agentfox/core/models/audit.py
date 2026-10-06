@@ -35,7 +35,7 @@ class Trace(Base, TimestampMixin):
 
 
 class TraceLink(Base, TimestampMixin):
-    """I-4 / I-6 — the join key between our decision and an external observability run.
+    """The join key between our decision and an external observability run.
 
     Deliberately a link table and not a copy of their span data. Their trace store is
     better than ours; duplicating it would make us a worse LangSmith. What nobody has
@@ -60,7 +60,7 @@ class TraceLink(Base, TimestampMixin):
 
 
 class Span(Base, TimestampMixin):
-    """OpenLLMetry semantic conventions live in `attributes_json` (P5-1)."""
+    """OpenLLMetry semantic conventions live in `attributes_json`."""
 
     __tablename__ = "spans"
     __table_args__ = (Index("ix_spans_trace_time", "trace_id", "started_at"),)
@@ -79,7 +79,7 @@ class Span(Base, TimestampMixin):
 
 
 class AuditEntry(Base, TenantScoped):
-    """P5-2. Append-only, hash-chained.
+    """Append-only, hash-chained.
 
     There is intentionally no ``updated_at``, no ORM update path, and no delete
     endpoint. The chain is verified by :mod:`agentfox.prove.audit.chain`, which is a pure
@@ -111,7 +111,7 @@ class AuditEntry(Base, TenantScoped):
 
 
 class AuditCheckpoint(Base, TimestampMixin):
-    """Signed anchor. The key lives outside the application database (NFR-7)."""
+    """Signed anchor. The key lives outside the application database."""
 
     __tablename__ = "audit_checkpoints"
 
@@ -124,7 +124,7 @@ class AuditCheckpoint(Base, TimestampMixin):
 
 
 class Job(Base, TimestampMixin):
-    """Deferred work (P4/PL-5), persisted so the dead letter is real public state
+    """Deferred work, persisted so the dead letter is real public state
     across requests rather than in-process memory a serverless invocation throws
     away the moment it returns. Mirrors jobs.py's in-process Job/JobQueue shape —
     that module stays the reference implementation for local/offline use (`agentfox

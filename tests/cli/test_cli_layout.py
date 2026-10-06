@@ -1,9 +1,8 @@
-"""The CLI's visible shape, and the promise that no old command path broke.
+"""The CLI's visible shape: thirteen verbs in six panels, and nothing else.
 
-`agentfox --help` used to list thirty-four top-level entries. It now lists thirteen
-in six panels (see `src/agentfox/cli/layout.py`). Every name that existed before the
-consolidation is still registered — hidden, not removed — because old names live in
-CI scripts, docs people copied, and agent configs (`hooks run`, `mcp serve`).
+`agentfox --help` lists thirteen verbs (see `src/agentfox/cli/layout.py`). The
+pre-consolidation top-level names were removed; only the two protocol endpoints that
+installed configs call, `hooks run` and `mcp serve`, still resolve at their old paths.
 """
 
 from __future__ import annotations
@@ -21,128 +20,87 @@ from agentfox.cli.main import app
 runner = CliRunner()
 ROOT = typer.main.get_command(app)
 
-# Every command path that existed before the consolidation (typer 0.19 / click 8,
-# 118 paths: 97 runnable commands and 21 groups). Do not edit this list to make a
-# test pass: a path missing here is a user's script breaking.
-PRE_CONSOLIDATION_PATHS = (
-    "init",
+# The pre-consolidation top-level names, every one removed. A name coming back here
+# means a second way to reach a command, which is what the consolidation removed.
+REMOVED_TOP_LEVEL = (
     "check",
-    "doctor",
-    "findings",
-    "quickstart",
     "quickscan",
+    "quickstart",
     "version",
     "seed",
-    "demo",
-    "serve",
     "analyse-action",
-    "agents",
-    "agents list",
-    "agents discover",
-    "agents lineage",
-    "agents quarantine",
-    "agents kill",
-    "agents resume",
-    "agents controls",
-    "policy",
-    "policy packs",
-    "policy list",
-    "policy lint",
-    "policy effective",
-    "policy simulate",
-    "policy enforce",
-    "policy observe",
-    "policy validate",
     "eval",
-    "eval suites",
-    "eval run",
-    "eval gate",
-    "eval baseline",
-    "eval drift",
-    "eval online",
     "audit",
-    "audit verify",
-    "audit checkpoint",
     "evidence",
-    "evidence export",
     "compliance",
-    "compliance sync",
-    "compliance compute",
-    "compliance status",
-    "compliance validate",
-    "compliance review-packet",
-    "compliance review",
-    "compliance frameworks",
-    "compliance risk",
-    "compliance obligations",
-    "compliance board",
     "redteam",
-    "redteam run",
-    "redteam probes",
-    "scan",
-    "scan skills",
-    "scan mcp",
     "tools",
-    "tools declare",
-    "tools list",
-    "tools set-triggers",
     "access",
-    "access declare-scope",
-    "access declare-reference",
     "db",
-    "db upgrade",
-    "db downgrade",
-    "db current",
-    "hooks",
-    "hooks daemon",
-    "hooks run",
-    "hooks install",
-    "hooks status",
     "auth",
-    "auth issue",
-    "auth tokens",
-    "auth revoke",
-    "auth status",
     "boundary",
-    "boundary set",
-    "boundary check",
     "sources",
-    "sources add",
-    "sources import",
-    "sources list",
     "escalation",
-    "escalation set",
-    "escalation scan",
     "entitlement",
-    "entitlement principal",
-    "entitlement grant",
-    "entitlement report",
     "guardrails",
-    "guardrails apply",
-    "guardrails show",
-    "guardrails check",
-    "guardrails test",
-    "guardrails catalogue",
-    "guardrails explain",
-    "guardrails suggest",
-    "guardrails graph",
-    "guardrails compile",
-    "mcp",
-    "mcp serve",
-    "mcp tools",
     "capability",
-    "capability grant",
-    "capability list",
-    "capability revoke",
+    "approvals",
     "proposals",
-    "proposals list",
-    "proposals show",
-    "proposals approve",
-    "proposals reject",
-    "proposals apply",
-    "proposals rollback",
-    "proposals verify",
-    "proposals from-labels",
+    "users",
+)
+
+# Written into installed coding-agent hook configs and MCP client configs.
+KEPT_PROTOCOL_ENDPOINTS = ("hooks run", "mcp serve")
+
+# Where each removed name's commands live now.
+NEW_PATHS = (
+    "scan repo",
+    "scan sessions",
+    "init",
+    "admin version",
+    "admin seed",
+    "test action",
+    "test run",
+    "test gate",
+    "test baseline",
+    "test suites",
+    "test online",
+    "report drift",
+    "report verify",
+    "admin checkpoint",
+    "report evidence",
+    "report status",
+    "report signoff",
+    "admin catalog sync",
+    "test redteam",
+    "test probes",
+    "declare tool",
+    "declare triggers",
+    "declare list",
+    "declare scope",
+    "declare reference",
+    "admin db upgrade",
+    "admin auth issue",
+    "declare boundary",
+    "test boundary",
+    "declare source",
+    "declare import-sources",
+    "declare escalation",
+    "report escalations",
+    "declare principal",
+    "permit user",
+    "report entitlement",
+    "policy rules apply",
+    "test rule",
+    "permit grant",
+    "permit approvals",
+    "policy proposals list",
+    "admin users",
+    "admin hooks run",
+    "admin hooks daemon",
+    "admin hooks install",
+    "serve mcp",
+    "admin mcp tools",
 )
 
 
@@ -164,14 +122,31 @@ def _walk(group: click.Group, prefix: tuple[str, ...] = ()):
             yield from _walk(cmd, prefix + (name,))
 
 
-def test_the_snapshot_is_the_size_the_audit_counted():
-    assert len(PRE_CONSOLIDATION_PATHS) == 118
-    assert len(set(PRE_CONSOLIDATION_PATHS)) == 118
+@pytest.mark.parametrize("name", REMOVED_TOP_LEVEL)
+def test_removed_top_level_names_are_gone(name):
+    assert _resolve(name) is None, f"`agentfox {name}` should no longer resolve"
 
 
-@pytest.mark.parametrize("path", PRE_CONSOLIDATION_PATHS)
-def test_every_old_command_path_still_resolves(path):
-    assert _resolve(path) is not None, f"`agentfox {path}` no longer resolves"
+@pytest.mark.parametrize("path", KEPT_PROTOCOL_ENDPOINTS)
+def test_protocol_endpoints_still_resolve_at_their_old_paths(path):
+    command = _resolve(path)
+    assert command is not None, f"`agentfox {path}` is called by installed configs"
+    assert ROOT.commands[path.split()[0]].hidden
+
+
+@pytest.mark.parametrize("path", ["hooks install", "hooks daemon", "hooks status", "mcp tools"])
+def test_only_the_protocol_endpoints_survive_under_their_old_groups(path):
+    assert _resolve(path) is None
+
+
+@pytest.mark.parametrize("path", NEW_PATHS)
+def test_every_new_path_resolves(path):
+    assert _resolve(path) is not None, f"`agentfox {path}` does not resolve"
+
+
+def test_the_only_hidden_top_level_entries_are_the_protocol_endpoints():
+    hidden = sorted(name for name, cmd in ROOT.commands.items() if cmd.hidden)
+    assert hidden == sorted({path.split()[0] for path in KEPT_PROTOCOL_ENDPOINTS})
 
 
 def test_visible_top_level_is_thirteen_or_fewer():
@@ -213,14 +188,14 @@ def test_version_flag():
 
 def test_bare_scan_is_the_repo_scan_with_its_flags(isolated_db, tmp_path):
     (tmp_path / "app.py").write_text("import openai\nopenai.OpenAI().chat.completions.create()\n")
-    old = runner.invoke(app, ["check", str(tmp_path), "--json"])
+    old = runner.invoke(app, ["scan", "repo", str(tmp_path), "--json"])
     new = runner.invoke(app, ["scan", str(tmp_path), "--json"])
     assert new.exit_code == old.exit_code == 0
     assert json.loads(new.output)["files_scanned"] == json.loads(old.output)["files_scanned"]
     failing = runner.invoke(app, ["scan", str(tmp_path), "--fail", "--json"])
     assert (
         failing.exit_code
-        == runner.invoke(app, ["check", str(tmp_path), "--fail", "--json"]).exit_code
+        == runner.invoke(app, ["scan", "repo", str(tmp_path), "--fail", "--json"]).exit_code
     )
 
 
@@ -259,10 +234,7 @@ def test_bare_report_is_the_one_page_summary(isolated_db):
     bare = runner.invoke(app, ["report"])
     assert bare.exit_code == summary.exit_code == 0
     assert bare.output.startswith("# AgentFox summary")
-    assert (
-        runner.invoke(app, ["report", "status"]).output
-        == runner.invoke(app, ["compliance", "status"]).output
-    )
+    assert runner.invoke(app, ["report", "status"]).exit_code == 0
 
 
 # ---------------------------------------------------------------------------
@@ -288,49 +260,18 @@ def test_declare_list_shows_both_kinds(isolated_db):
 
 
 @pytest.mark.parametrize(
-    ("old", "new"),
-    [
-        (["eval", "suites"], ["test", "suites"]),
-        (["redteam", "probes"], ["test", "probes"]),
-        (["compliance", "frameworks"], ["report", "frameworks"]),
-        (["capability", "list"], ["permit", "list"]),
-        (["guardrails", "catalogue", "--json"], ["policy", "catalogue", "--json"]),
-        (["guardrails", "catalogue", "--json"], ["policy", "rules", "catalogue", "--json"]),
-        (["proposals", "list"], ["policy", "proposals", "list"]),
-        (["sources", "list", "--json"], ["declare", "list", "sources", "--json"]),
-        (["tools", "list", "--json"], ["declare", "list", "tools", "--json"]),
-        (["db", "current"], ["admin", "db", "current"]),
-        (["auth", "status"], ["admin", "auth", "status"]),
-        (["mcp", "tools"], ["admin", "mcp", "tools"]),
-    ],
+    "args",
+    [["hooks", "run", "--help"], ["mcp", "serve", "--help"]],
 )
-def test_new_name_runs_the_same_command(isolated_db, old, new):
-    before = runner.invoke(app, old)
-    after = runner.invoke(app, new)
-    assert after.exit_code == before.exit_code, after.output
-    assert after.output == before.output
-
-
-# ---------------------------------------------------------------------------
-# Rename hints
-# ---------------------------------------------------------------------------
-
-
-def test_old_names_hint_on_a_terminal_only(isolated_db, monkeypatch):
-    monkeypatch.setattr(layout, "_stderr_is_tty", lambda: True)
-    result = CliRunner().invoke(app, ["eval", "suites"])
-    assert "is now `agentfox test" in result.stderr
-    assert "is now" not in result.stdout
-
-    monkeypatch.setattr(layout, "_stderr_is_tty", lambda: False)
-    result = CliRunner().invoke(app, ["eval", "suites"])
-    assert "is now" not in result.output
-
-
-@pytest.mark.parametrize("endpoint", [["hooks", "run", "--help"], ["mcp", "serve", "--help"]])
-def test_protocol_endpoints_never_hint(monkeypatch, endpoint):
+def test_protocol_endpoints_run(args):
     """`hooks run` and `mcp serve` are written into agent configs and speak a protocol."""
-    monkeypatch.setattr(layout, "_stderr_is_tty", lambda: True)
-    result = CliRunner().invoke(app, endpoint)
-    assert result.exit_code == 0
-    assert "is now" not in result.output
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0, result.output
+
+
+def test_protocol_endpoint_is_the_same_command_as_its_new_path():
+    for old_path, new_path in (("hooks run", "admin hooks run"), ("mcp serve", "serve mcp")):
+        old, new = _resolve(old_path), _resolve(new_path)
+        assert old.callback.__qualname__ == new.callback.__qualname__
+        assert old.callback.__module__ == new.callback.__module__
+        assert [p.name for p in old.params] == [p.name for p in new.params]

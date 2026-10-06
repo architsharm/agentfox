@@ -11,7 +11,7 @@ Base: `http://localhost:8080` (self-host default). All control-plane routes unde
 | Credential | Header | Used by | Scope |
 |---|---|---|---|
 | **Agent key** (`nom_agt_…`) | `Authorization: Bearer <key>` | Agents calling the inline gateway | Bound to one `Identity`; binds the tenant. Optional: unauthenticated inline traffic is served in the default org and recorded as shadow traffic |
-| **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations | Bound to a `User` + role. Mint with `agentfox auth issue` or `POST /api/tokens`; shown once |
+| **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations | Bound to a `User` + role. Mint with `agentfox admin auth issue` or `POST /api/tokens`; shown once |
 | **Session cookie** | `nometria_session` | Dashboard browser sessions | Holds an API token the dashboard forwards as `Bearer` |
 | **Development header** | `X-Nometria-User: <email>` | Local development and tests | Accepted only when `AGENTFOX_AUTH_MODE=development`, or `auto` with a dev/test/local environment. `agentfox admin auth status` reports it |
 | **Service secret** | `X-Nometria-Service-Secret` | Dashboard OAuth provisioning | `POST /api/auth/github/provision` only |
@@ -125,23 +125,23 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/attention` | What needs a human, ranked. The home page is built from this. |
-| `GET` | `/api/detectors` | P3-11 — which detectors exist, which are live, and how fast they are. |
-| `GET` | `/api/health` | Liveness, plus what is currently not being checked (gap 0.7). |
+| `GET` | `/api/detectors` | Which detectors exist, which are live, and how fast they are. |
+| `GET` | `/api/health` | Liveness, plus what is currently not being checked. |
 | `GET` | `/api/me` | The signed-in identity, for the account menu. |
 | `GET` | `/api/memory` | List Entries |
 | `POST` | `/api/memory/{entry_id}/revoke` | Pull an entry immediately — the concrete fix for 'no way to find and |
 | `POST` | `/api/memory/{entry_id}/verify` | A human vouches for an entry — it stops decaying on the unverified TTL. |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
-| `GET` | `/api/providers` | X-2 — the neutrality surface, made inspectable. |
-| `GET` | `/api/reliability` | P15 — circuit-breaker state and live budget consumption. |
+| `GET` | `/api/providers` | The neutrality surface, made inspectable. |
+| `GET` | `/api/reliability` | Circuit-breaker state and live budget consumption. |
 | `GET` | `/api/version` | Every version that participates in a decision, so a verdict can be reproduced. |
-| `GET` | `/metrics` | I-7 — Prometheus exposition. |
+| `GET` | `/metrics` | Prometheus exposition. |
 
 ### Registry, discovery and findings (Pillar 1)
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/agent-controls` | Kill-switch/quarantine state per agent (PL-3). |
+| `GET` | `/api/agent-controls` | Kill-switch/quarantine state per agent. |
 | `GET` | `/api/agents` | List Agents |
 | `POST` | `/api/agents` | Create Agent |
 | `GET` | `/api/agents/{slug}` | Get Agent |
@@ -160,7 +160,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/mcp-servers` | List Mcp |
 | `POST` | `/api/mcp-servers` | Register an MCP server, and start monitoring it for tool drift. |
 | `POST` | `/api/mcp-servers/{name}/scan` | Scan Mcp |
-| `POST` | `/api/mcp-servers/{name}/tools` | I-2 — snapshot a listing *and* register each tool in the registry. |
+| `POST` | `/api/mcp-servers/{name}/tools` | Snapshot a listing *and* register each tool in the registry. |
 | `GET` | `/api/tools` | List Tools |
 | `POST` | `/api/tools` | Create Tool |
 
@@ -188,9 +188,9 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `GET` | `/api/policies` | List Policies |
 | `POST` | `/api/policies` | Upsert Policy |
-| `GET` | `/api/policies/effective` | The policy actually in force for a subject, with per-rule provenance (P12-3). |
-| `GET` | `/api/policies/lint` | Policy lint (P12-4). `passed` is false when critical/high findings exist. |
-| `POST` | `/api/policies/simulate` | P2-7 — replay recorded traffic against a candidate policy. |
+| `GET` | `/api/policies/effective` | The policy actually in force for a subject, with per-rule provenance. |
+| `GET` | `/api/policies/lint` | Policy lint. `passed` is false when critical/high findings exist. |
+| `POST` | `/api/policies/simulate` | Replay recorded traffic against a candidate policy. |
 | `POST` | `/api/policies/validate` | Validate Policy |
 | `GET` | `/api/policies/{key}` | Get Policy |
 | `GET` | `/api/policies/{key}/canary` | Get Policy Canary |
@@ -220,8 +220,8 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/eval/annotations/queue` | Eval results a human should look at: score within `band` of the scorer's |
-| `GET` | `/api/eval/drift` | Read-only. Viewing drift used to persist a DriftWindow — and a Finding when |
-| `POST` | `/api/eval/gate` | P4-1 — the CI entry point. Non-zero exit maps from ``passed: false``. |
+| `GET` | `/api/eval/drift` | Read-only. Viewing drift persists nothing, so the number of drift findings |
+| `POST` | `/api/eval/gate` | The CI entry point. Non-zero exit maps from ``passed: false``. |
 | `POST` | `/api/eval/online` | Run Online |
 | `POST` | `/api/eval/results/{result_id}/annotate` | Record a human's judgment on a borderline eval result. Requires a note — |
 | `GET` | `/api/eval/runs` | List Runs |
@@ -234,7 +234,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/eval/suites` | Create Suite |
 | `GET` | `/api/eval/suites/{key}` | Get Suite |
 | `POST` | `/api/eval/suites/{key}/cases` | Add Case |
-| `POST` | `/api/eval/suites/{key}/cases/from-trace` | P4-6 — promote a production failure into a regression test. |
+| `POST` | `/api/eval/suites/{key}/cases/from-trace` | Promote a production failure into a regression test. |
 | `GET` | `/api/probes/targets` | List Targets |
 | `POST` | `/api/probes/targets` | Register a target. It is created disabled; nothing is sent until opt-in. |
 | `GET` | `/api/probes/targets/{target_id}` | Get Target |
@@ -245,7 +245,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/probes/targets/{target_id}/run` | Probe the target now. Same consent and caps as a scheduled run, and refused |
 | `GET` | `/api/probes/warning` | What a person must read before enabling probes, plus the probe library, the |
 | `GET` | `/api/redteam/campaigns` | List Campaigns |
-| `POST` | `/api/redteam/campaigns` | Enqueues through jobs_db (PL-5) and processes within this same request |
+| `POST` | `/api/redteam/campaigns` | Enqueues through jobs_db and processes within this same request |
 | `GET` | `/api/redteam/probes` | List Probes |
 
 ### Audit, traces and evidence (Pillar 5)
@@ -256,7 +256,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/audit/entries` | Audit Entries |
 | `POST` | `/api/audit/verify` | Verify Chain |
 | `GET` | `/api/evidence` | List Evidence |
-| `POST` | `/api/evidence` | Enqueues through jobs_db (PL-5) rather than calling evidence.build() |
+| `POST` | `/api/evidence` | Enqueues through jobs_db rather than calling evidence.build() |
 | `GET` | `/api/evidence/{package_id}/download` | Download Evidence |
 | `GET` | `/api/export/siem` | Export Siem |
 | `POST` | `/api/legal-holds` | Place Hold |
@@ -275,7 +275,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/controls/compute` | Compute Controls |
 | `POST` | `/api/controls/sync` | Load the static control catalog and obligation calendar from YAML into this |
 | `GET` | `/api/frameworks` | Frameworks |
-| `POST` | `/api/frameworks/review` | Step 3 of the mapping review gate (Appendix B §B.6). |
+| `POST` | `/api/frameworks/review` | Step 3 of the mapping review gate. |
 | `GET` | `/api/frameworks/{key}` | Framework |
 | `GET` | `/api/obligations` | Obligations |
 | `POST` | `/api/risk/assessments/{slug}` | Create Assessment |
@@ -309,7 +309,7 @@ from the code. Regenerate after changing any route:
 | `PUT` | `/api/sources` | Register or re-tier a source. |
 | `POST` | `/api/sources/assess` | Would this answer, from these sources, pass? |
 | `POST` | `/api/sources/connections` | Attach a real connector to a registered source — a database or an |
-| `POST` | `/api/sources/context-check` | P14 — would this document or chunk set be fit to enter the corpus? |
+| `POST` | `/api/sources/context-check` | Would this document or chunk set be fit to enter the corpus? |
 | `GET` | `/api/sources/health` | Which registered sources are stale, deprecated, or unowned. |
 | `DELETE` | `/api/sources/{key}` | Retire a source. Deprecates by default rather than deleting. |
 | `POST` | `/api/sources/{key}/validate` | Actually fetch the source and check its content, rather than trust the tier. |
@@ -391,7 +391,7 @@ from the code. Regenerate after changing any route:
 <!-- END GENERATED ROUTES -->
 
 Not implemented, although earlier drafts of this appendix listed them: `/api/users` and
-`/api/roles` (users are provisioned through sign-in and `agentfox auth`), policy
+`/api/roles` (users are provisioned through sign-in and `agentfox admin auth`), policy
 `/versions` and `/bind` (replaced by `POST /api/policies` versioning, `/{key}/mode` and
 canary rollout), `POST /api/traces/{id}/replay` (use `POST /api/policies/simulate`),
 `POST /api/eval/compare`, and `POST /api/compliance/packs/{key}/import`.
@@ -439,4 +439,4 @@ with the reason, rather than storing a preference that silently does nothing —
 - **Idempotency**: `Idempotency-Key` is not implemented. Creation routes that take a natural key (agent slug, policy key, source key) upsert on it.
 - **Versioning**: `/api` is v1 implicitly; breaking changes go to `/api/v2`. `/v1` inline routes track provider compatibility, not our version.
 - **Rate limiting**: `/v1/*` goes through the admission gate (`429` + `Retry-After`); the playground is rate-limited per IP.
-- **Audit**: security-relevant mutations (policy mode changes, kill switch, credential issue/revoke, approvals, token listing) write an `AuditEntry` or system-audit entry; the chain is verifiable with `POST /api/audit/verify` or `agentfox audit verify`.
+- **Audit**: security-relevant mutations (policy mode changes, kill switch, credential issue/revoke, approvals, token listing) write an `AuditEntry` or system-audit entry; the chain is verifiable with `POST /api/audit/verify` or `agentfox report verify`.

@@ -5,8 +5,7 @@ human."*
 
 That sentence is the single most common form of governance a business hands an
 engineering team, and the existing policy engine cannot express it. Written as three
-ordinary rules it produces two silent defects, both reproduced before this module was
-written:
+ordinary rules it produces two silent defects:
 
 * ``lt 10`` and ``gt 10`` leave **exactly 10 uncovered** — the request falls through to
   the default with no rule fired and nothing to see in the trace.
@@ -349,7 +348,7 @@ def _satisfies(result: Any, expect: dict[str, Any]) -> tuple[bool, str]:
     if not isinstance(result, dict):
         return False, f"expected an object to match against, got {type(result).__name__}"
 
-    from agentfox.policy.model import COMPARATORS
+    from agentfox.core.vocab import COMPARATORS
 
     for path, condition in expect.items():
         value: Any = result

@@ -19,9 +19,9 @@ from agentfox.containment.data_access import ReferenceTable, ScopeRule
 from agentfox.containment.data_access import analyse_access as analyse_data_access
 from agentfox.containment.effects import cascade_risk
 from agentfox.core.models import AccessScopeRule, Agent, TaintTag, Tool, Trace
+from agentfox.core.vocab import taint_rank
 from agentfox.detection import TaintTracker
 from agentfox.detection.actions import find_sql_argument
-from agentfox.detection.base import taint_rank
 from agentfox.registry.service import record_edge
 from agentfox.runtime.enforcement.result import EnforcementResult
 from agentfox.runtime.enforcement.rules import _fired_rule
@@ -39,7 +39,7 @@ class _ToolCallMixin:
         exempt_rules: frozenset[str] = frozenset(),
         **kwargs: Any,
     ) -> EnforcementResult:
-        """Authorise a tool call on the full execution path (P3-4, P2-2, P9).
+        """Authorise a tool call on the full execution path.
 
         ``in_process`` says what the caller will do with the verdict, so a
         containment finding can say whether the call was actually stopped:
@@ -73,9 +73,9 @@ class _ToolCallMixin:
         approval_id: str | None = None,
         persist: bool = True,
     ) -> EnforcementResult:
-        """Authorise a tool call on the full execution path (P3-4, P2-2, P9).
+        """Authorise a tool call on the full execution path.
 
-        ``approval_id`` is a retry of a call a person approved (#12): the same agent,
+        ``approval_id`` is a retry of a call a person approved: the same agent,
         tool and arguments run once. A dry run never spends one.
 
         ``persist=False`` computes the verdict without writing a Decision, its
@@ -85,7 +85,7 @@ class _ToolCallMixin:
         """
         agent, identity, _ = self.resolve(agent_slug, credential)
 
-        # PL-3: a killed or quarantined agent must not execute tools either, not
+        # A killed or quarantined agent must not execute tools either, not
         # just be denied new completions. `preflight` already checks this before an
         # agent reaches the model — but an integration that calls `guard_tool_call`
         # directly (McpGovernor, AgentFoxGuard.tool_node, any multi-step agentic
@@ -108,7 +108,7 @@ class _ToolCallMixin:
         )
         marks = tracker.taint_arguments(arguments, provenance)
         argument_taint = {path: mark.source for path, mark in marks.items()}
-        # F3.8: which arguments were inferred (not caller-declared) from an
+        # Which arguments were inferred (not caller-declared) from an
         # earlier tool's result, and which tool that was — see composition.py.
         argument_propagated_from = {
             path: mark.propagated_from for path, mark in marks.items() if mark.propagated_from
@@ -150,7 +150,7 @@ class _ToolCallMixin:
             persist=persist,
         )
 
-        # P9-7: an irreversible act on a record the agent has not read back from the
+        # An irreversible act on a record the agent has not read back from the
         # system of record is the HR-termination failure — the agent acted on a stale
         # or hallucinated view of the world. The check runs after the main evaluation
         # so it composes with, rather than replaces, everything else.
@@ -161,7 +161,7 @@ class _ToolCallMixin:
             result.rules_fired.append(stale)
             result.reason = stale["reason"]
 
-        # P9-10: a dry run is analysis without execution. The verdict is computed and
+        # A dry run is analysis without execution. The verdict is computed and
         # recorded exactly as it would be, and the caller is told what *would* have
         # happened — which is what makes a policy safe to roll out.
         if dry_run:
@@ -248,9 +248,8 @@ class _ToolCallMixin:
     def _cascade_and_access_risks(
         self, tool_key: str | None, arguments: dict[str, Any] | None
     ) -> dict[str, Any]:
-        """P9 cascade risk (`effects.cascade_risk`) and P18 data-access scoping
-        (`data_access.analyse_access`) — wired into the live path here, rather than
-        living only in their own test files as before. Both are opt-in in the
+        """Cascade risk (`effects.cascade_risk`) and data-access scoping
+        (`data_access.analyse_access`), wired into the live path. Both are opt-in in the
         precise sense that nothing is declared by default: a `Tool` with no
         `triggers_json` and a database with no `AccessScopeRule` rows make this a
         zero-cost no-op, and an undeclared trigger or an undeclared table stays

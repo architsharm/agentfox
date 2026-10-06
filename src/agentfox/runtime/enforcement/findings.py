@@ -118,7 +118,7 @@ class _FindingsMixin:
         )
 
     def _record_degradation(self, agent: Agent | None, surface: str, pipeline_result) -> None:
-        """P3-7: a degraded detector is a finding — one per detector, closed on recovery."""
+        """A degraded detector is a finding — one per detector, closed on recovery."""
         record_detector_health(
             self.session,
             subject_id=agent.id if agent else None,

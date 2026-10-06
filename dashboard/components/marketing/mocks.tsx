@@ -11,7 +11,7 @@ import type { CSSProperties, ReactNode } from "react";
  * Every string below is real output from this product. The sources, so a later editor
  * can re-check them rather than guess:
  *
- *   - grants, agents, limits ........ src/agentfox/core/seed.py  (CAPABILITIES, AGENTS)
+ *   - grants, agents, limits ........ src/agentfox/fixtures/seed.py  (CAPABILITIES, AGENTS)
  *   - the refused transfer .......... dashboard/app/page.tsx Proof(), and
  *                                     Playground.tsx TOOL_PRESETS
  *   - capability.denied reason ...... dashboard/app/page.tsx Proof()
@@ -172,7 +172,7 @@ function Verdict({
  * The flagship visual: a tool call refused by the capability check, with the grants
  * that refused it sitting next to it.
  *
- * Verified against src/agentfox/core/seed.py — CAPABILITIES["support-triage"] holds exactly
+ * Verified against src/agentfox/fixtures/seed.py — CAPABILITIES["support-triage"] holds exactly
  * kb.search, crm.lookup and tickets.*, and payments.transfer belongs to payments-ops.
  * If that seed changes, change this.
  */

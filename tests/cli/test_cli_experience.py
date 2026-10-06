@@ -28,7 +28,7 @@ def _json(output: str):
 
 def _seed() -> dict:
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -52,7 +52,7 @@ def test_capability_grant_writes_a_grant_the_engine_then_honours():
     result = runner.invoke(
         app,
         [
-            "capability",
+            "permit",
             "grant",
             "support-triage",
             "reports.export",
@@ -82,12 +82,12 @@ def test_capability_grant_writes_a_grant_the_engine_then_honours():
 def test_capability_grant_asks_before_widening_what_an_agent_may_do():
     _seed()
     declined = runner.invoke(
-        app, ["capability", "grant", "support-triage", "payments.transfer"], input="n\n"
+        app, ["permit", "grant", "support-triage", "payments.transfer"], input="n\n"
     )
     assert declined.exit_code == 1
     assert "nothing granted" in flat(declined.output)
 
-    listed = runner.invoke(app, ["capability", "list", "support-triage", "--json"])
+    listed = runner.invoke(app, ["permit", "list", "support-triage", "--json"])
     assert all(row["tool_key"] != "payments.transfer" for row in _json(listed.output))
 
 
@@ -101,7 +101,7 @@ def test_capability_grant_is_recorded_in_the_audit_chain():
     from agentfox.prove.audit import chain
 
     _seed()
-    runner.invoke(app, ["capability", "grant", "support-triage", "reports.export", "--yes"])
+    runner.invoke(app, ["permit", "grant", "support-triage", "reports.export", "--yes"])
     with session_scope() as session:
         kinds = [e.action for e in session.scalars(select(AuditEntry))]
         assert "capability.granted" in kinds
@@ -121,7 +121,7 @@ def test_capability_grant_expiry_stops_the_grant_matching():
     runner.invoke(
         app,
         [
-            "capability",
+            "permit",
             "grant",
             "support-triage",
             "reports.export",
@@ -150,11 +150,11 @@ def test_capability_revoke_takes_the_permission_away_and_audits_it():
     from agentfox.identity import check_capability, ensure_identity
 
     _seed()
-    runner.invoke(app, ["capability", "grant", "support-triage", "reports.export", "--yes"])
-    listed = _json(runner.invoke(app, ["capability", "list", "--json"]).output)
+    runner.invoke(app, ["permit", "grant", "support-triage", "reports.export", "--yes"])
+    listed = _json(runner.invoke(app, ["permit", "list", "--json"]).output)
     grant_id = next(r["id"] for r in listed if r["tool_key"] == "reports.export")
 
-    result = runner.invoke(app, ["capability", "revoke", grant_id, "--yes"])
+    result = runner.invoke(app, ["permit", "revoke", grant_id, "--yes"])
     assert result.exit_code == 0, result.output
     with session_scope() as session:
         agent = session.scalar(select(Agent).where(Agent.slug == "support-triage"))
@@ -168,18 +168,18 @@ def test_capability_revoke_accepts_the_short_id_the_table_prints():
     from agentfox.cli._style import short_id
 
     _seed()
-    runner.invoke(app, ["capability", "grant", "support-triage", "reports.export", "--yes"])
-    listed = _json(runner.invoke(app, ["capability", "list", "--json"]).output)
+    runner.invoke(app, ["permit", "grant", "support-triage", "reports.export", "--yes"])
+    listed = _json(runner.invoke(app, ["permit", "list", "--json"]).output)
     grant_id = next(r["id"] for r in listed if r["tool_key"] == "reports.export")
 
-    result = runner.invoke(app, ["capability", "revoke", short_id(grant_id), "--yes"])
+    result = runner.invoke(app, ["permit", "revoke", short_id(grant_id), "--yes"])
     assert result.exit_code == 0, result.output
     assert "revoked" in flat(result.output)
 
 
 def test_capability_grant_names_the_known_agents_when_the_slug_is_wrong():
     _seed()
-    result = runner.invoke(app, ["capability", "grant", "nosuch", "tool.x", "--yes"])
+    result = runner.invoke(app, ["permit", "grant", "nosuch", "tool.x", "--yes"])
     assert result.exit_code == 1
     output = flat(result.output)
     assert "unknown agent 'nosuch'" in output
@@ -193,7 +193,7 @@ def test_capability_grant_refuses_a_comparison_the_engine_cannot_evaluate():
     result = runner.invoke(
         app,
         [
-            "capability",
+            "permit",
             "grant",
             "support-triage",
             "reports.export",
@@ -207,7 +207,7 @@ def test_capability_grant_refuses_a_comparison_the_engine_cannot_evaluate():
 
 
 def test_capability_list_on_an_empty_set_names_the_command_that_fills_it():
-    result = runner.invoke(app, ["capability", "list"])
+    result = runner.invoke(app, ["permit", "list"])
     assert result.exit_code == 0, result.output
     assert "agentfox permit grant" in flat(result.output)
 
@@ -385,7 +385,7 @@ def test_check_prints_whole_paths_or_shortens_them_from_the_left(tmp_path):
     (deep / "outbound_notification_dispatcher.py").write_text(
         "import openai\nopenai.chat.completions.create(model='gpt-4')\n"
     )
-    output = flat(runner.invoke(app, ["check", str(tmp_path), "--no-submit"]).output)
+    output = flat(runner.invoke(app, ["scan", "repo", str(tmp_path), "--no-submit"]).output)
     # The filename and its line number always survive.
     assert "outbound_notification_dispatcher.py:2" in output
     assert "dispatcher.p…" not in output
@@ -398,7 +398,7 @@ def test_check_marks_severity_with_a_word_not_only_a_colour(tmp_path):
     (tmp_path / "call.py").write_text(
         "import openai\nopenai.chat.completions.create(model='gpt-4')\n"
     )
-    result = runner.invoke(app, ["check", str(tmp_path), "--no-submit"])
+    result = runner.invoke(app, ["scan", "repo", str(tmp_path), "--no-submit"])
     output = flat(result.output)
     assert "CRITICAL" in output
     assert "high" in output
@@ -410,7 +410,7 @@ def test_check_overflow_hint_is_a_command_that_runs(tmp_path):
         (tmp_path / f"m{index}.py").write_text(
             "import openai\nopenai.chat.completions.create(model='gpt-4')\n"
         )
-    result = runner.invoke(app, ["check", str(tmp_path), "--limit", "2", "--no-submit"])
+    result = runner.invoke(app, ["scan", "repo", str(tmp_path), "--limit", "2", "--no-submit"])
     output = flat(result.output)
     assert "(--limit)" not in output
     hint = re.search(r"agentfox scan .*?--limit (\d+)", output)
@@ -418,7 +418,7 @@ def test_check_overflow_hint_is_a_command_that_runs(tmp_path):
     # The number in the hint is the number of sites, so running it shows all of them.
     rerun = runner.invoke(
         app,
-        ["check", str(tmp_path), "--limit", hint.group(1), "--no-submit", "--json"],
+        ["scan", "repo", str(tmp_path), "--limit", hint.group(1), "--no-submit", "--json"],
     )
     assert rerun.exit_code == 0
 
@@ -428,7 +428,7 @@ def test_check_does_not_cut_a_finding_mid_word(tmp_path):
     (tmp_path / ".mcp.json").write_text(
         json.dumps({"mcpServers": {"agentfox": {"command": "agentfox", "args": ["mcp"]}}})
     )
-    output = flat(runner.invoke(app, ["check", str(tmp_path), "--no-submit"]).output)
+    output = flat(runner.invoke(app, ["scan", "repo", str(tmp_path), "--no-submit"]).output)
     assert "change after you review them" in output
     # And the internal code the row used to end with is gone from what a user reads.
     assert "I-2" not in output
@@ -439,7 +439,7 @@ def test_check_still_promises_exactly_what_it_did_before(tmp_path):
     (tmp_path / "call.py").write_text(
         "import openai\nopenai.chat.completions.create(model='gpt-4')\n"
     )
-    output = flat(runner.invoke(app, ["check", str(tmp_path), "--no-submit"]).output)
+    output = flat(runner.invoke(app, ["scan", "repo", str(tmp_path), "--no-submit"]).output)
     assert "model call sites are ungoverned" in output
     assert "agentfox.auto()" in output
 
@@ -452,7 +452,7 @@ def test_check_still_promises_exactly_what_it_did_before(tmp_path):
 @pytest.fixture
 def walkthrough_output(capsys):
     from agentfox.cli import demo
-    from agentfox.core.seed import register_scripts
+    from agentfox.fixtures.seed import register_scripts
 
     _seed()
     register_scripts()
@@ -549,14 +549,14 @@ def test_demo_only_explains_matching_rows_when_they_really_do_match():
 
 def test_seed_does_not_open_by_reading_as_a_failure():
     """ "controls 0 created, 317 mappings" is the normal result of a second run."""
-    runner.invoke(app, ["seed"])
-    output = flat(runner.invoke(app, ["seed"]).output)
+    runner.invoke(app, ["admin", "seed"])
+    output = flat(runner.invoke(app, ["admin", "seed"]).output)
     assert "0 created" not in output
     assert "framework mappings" in output
 
 
 def test_seed_ends_with_a_next_panel_like_the_other_onboarding_commands():
-    output = flat(runner.invoke(app, ["seed"]).output)
+    output = flat(runner.invoke(app, ["admin", "seed"]).output)
     assert "Next" in output
     assert "agentfox demo" in output
 

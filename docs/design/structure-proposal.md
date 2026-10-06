@@ -285,9 +285,22 @@ proves the business-pack story.
 
 - `ARCHITECTURE.md` (domain model, a tool call traced through the code, code map, invariants),
   a `justfile` as the command surface, and a rewritten `CONTRIBUTING.md`.
-- The exception base, in part: `agentfox/errors.py` defines `AgentFoxError`, `PolicyViolation`
-  and `ApprovalRequired`, and the SDK, LangGraph and `auto()` raise them. The MCP governor
-  and FastAPI do not yet.
+- The exception base: `agentfox/errors.py` defines `AgentFoxError`, `PolicyViolation`
+  and `ApprovalRequired`. The SDK, LangGraph, `auto()` (`Blocked`) and the MCP governor
+  (`McpCallBlocked`) all raise `AgentFoxError` subclasses; `Blocked` and `McpCallBlocked`
+  are also `RuntimeError`s. FastAPI refuses over HTTP with a 403, which is its contract.
+- Phase 0 (hygiene):
+  - `core/seed.py` moved to `fixtures/seed.py`. `core` imports nothing outside `core`; the
+    two session extensions that live elsewhere (monitor alerts, finding webhooks) are named
+    in `core/db.py:SESSION_EXTENSIONS`.
+  - `core/vocab.py` holds `SURFACES`, `TAINT_ORDER`/`taint_rank`, `EFFECT_RANK`,
+    `COMPARATORS` and `AUTOMATION_ACTOR_TYPE`. `EU_CLASSES` stays put until the EU AI Act
+    pack (phase 4).
+  - The hidden pre-consolidation CLI names and the rename hints are gone. `hooks run` and
+    `mcp serve` stay at their old paths because installed configs call them.
+  - `Enforcer.evaluate` is split into named private steps over one `_Evaluation` record.
+  - Planning codes and change-history prose are out of `src` docstrings and comments.
+  - The stale `__pycache__` folders of the old layout are gone.
 - One loader for stored policy versions (`policy/store.py::load_version_document`), used by
   the runtime and every read-only view.
 - The `monitoring` package, added flat at `src/agentfox/monitoring/` rather than under
@@ -297,7 +310,7 @@ proves the business-pack story.
 
 | Phase | Remaining |
 |---|---|
-| 0. Hygiene | `core/vocab.py`; the exception base for the MCP governor and FastAPI; `core/seed.py` to `fixtures/`; stale `__pycache__` folders |
+| 0. Hygiene | Done |
 | 1. Layers | All of it: `platform/`, `capabilities/` (including moving `monitoring/`), `frameworks/`, `exporters/`, `apps/`; the cycle fixes; import-linter in CI |
 | 2. Harness SPI | All of it, including the `harness/` → `plugins/claude-code/` rename |
 | 3. Second harness | Deferred (section 9) |

@@ -56,7 +56,7 @@ OTLP_PAYLOAD = {
 
 @pytest.fixture
 def seeded_app():
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.gateway.app import create_app
 
     with session_scope() as s:

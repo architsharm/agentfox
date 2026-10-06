@@ -275,7 +275,7 @@ def test_no_proposal_tool_can_decide_apply_or_roll_back():
     from agentfox.cli.main import proposals_app
 
     exposed = {
-        tool.argv({"proposal_id": "chp_1"}, Path("/tmp"))[:2][1]
+        tool.argv({"proposal_id": "chp_1"}, Path("/tmp"))[:3][2]
         for name, tool in TOOLS.items()
         if name.startswith("agentfox_proposals_")
     }
@@ -337,7 +337,7 @@ def test_unknown_finding_is_a_genuine_failure():
 
 def test_guard_text_blocks_injection():
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)

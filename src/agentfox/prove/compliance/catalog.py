@@ -1,18 +1,18 @@
-"""Control catalog loading and framework mapping (P6-2, P6-8, NOM-GOV-02).
+"""Control catalog loading and framework mapping (NOM-GOV-02).
 
-Appendix A.5's finding for this pillar is stark: **essentially no OSS exists.** That
+**Essentially no OSS exists for this.** That
 is not an accident — mapping controls to regimes requires product integration and
 domain work, not a library. It is also why this is the moat.
 
 Two design decisions worth stating:
 
 * **Content, not code.** Frameworks change (the omnibus delay moved EU AI Act
-  high-risk obligations by a year while this was being written). Mappings live in
-  versioned YAML and ship without a release (PRD R6).
+  high-risk obligations by a year). Mappings live in versioned YAML and ship
+  without a release.
 * **Review status is enforced, not decorative.** Every mapping loads as ``draft``
   until a qualified reviewer marks it otherwise, drafts are badged in the UI, and
-  :mod:`agentfox.prove.audit.evidence` excludes them from evidence packages entirely
-  (Appendix B §B.6). A compliance product that presents unreviewed regulatory
+  :mod:`agentfox.prove.audit.evidence` ships them in evidence packages only with an
+  explicit draft chip. A compliance product that presents unreviewed regulatory
   mappings as evidence is worse than one with no mappings.
 """
 
@@ -166,7 +166,7 @@ def review_mapping(
     reviewer: str,
     reference: str | None = None,
 ) -> int:
-    """Mark mapping(s) reviewed. Gate step 3 of Appendix B §B.6."""
+    """Mark mapping(s) reviewed: the step that turns a draft mapping into evidence."""
     query = select(FrameworkMapping).where(
         FrameworkMapping.control_key == control_key, FrameworkMapping.framework == framework
     )

@@ -1,12 +1,12 @@
-"""Inline enforcement routes (X-1a, X-1b, X-1c).
+"""Inline enforcement routes.
 
-Drop-in by design (principle X-1): point an existing OpenAI or Anthropic client's
+Drop-in by design: point an existing OpenAI or Anthropic client's
 ``base_url`` at this service and enforcement, tracing and audit start working with no
-code change. That is what NFR-8's ten-minute time-to-first-value requires — a
+code change. Time to first value has to be minutes, not a project — a
 governance product that needs a re-architecture never gets installed.
 
 Blocks return a body carrying the trace id, the decision id, the rule that fired and
-a human-readable reason. Never block without an auditable reason (X-4).
+a human-readable reason. Never block without an auditable reason.
 
 **Two verdicts, and which one to gate on.** Every enforcement body and every set of
 response headers here carries both:
@@ -58,11 +58,12 @@ def _record_turn(
     messages: list[dict[str, Any]],
     answer: str,
 ) -> None:
-    """P11 over HTTP — the same gap the SDK path had for entitlement: escalation
-    governance reads recorded conversation turns, and only the SDK's `agentfox.auto()`
-    monkeypatch was ever recording them (autoguard.py's `_record_turn`). A team
-    integrating via this HTTP gateway directly — not the Python SDK — got zero
-    escalation tracking, however long they ran it. Never breaks the caller's request.
+    """Record this turn so escalation governance works over HTTP.
+
+    Escalation governance reads recorded conversation turns. Without this, only the
+    SDK's `agentfox.auto()` monkeypatch (autoguard.py's `_record_turn`) would record
+    them, and a team integrating via this HTTP gateway directly — not the Python SDK —
+    would get no escalation tracking at all. Never breaks the caller's request.
     """
     if not answer or not trace_id:
         return
@@ -105,7 +106,7 @@ def _trust_map(header: str | None) -> dict[str, str] | None:
 
 
 def _evidence_from_body(session: Session, body: dict[str, Any]) -> dict[str, Any] | None:
-    """P10 over HTTP — the caller declares who's asking and what was retrieved.
+    """Entitlement over HTTP — the caller declares who's asking and what was retrieved.
 
     Without this, ``run_completion``'s ``evidence=`` kwarg (which entitlement
     checking reads) is never populated by ordinary gateway traffic, so a real
@@ -137,7 +138,7 @@ def _explain_url(result) -> str:
 
     The single cheapest thing this response can do for the engineer who receives
     it. They meet a block as a line in a log, holding a decision id and a trace id,
-    and until now had to know that a dashboard exists, that it has a Traces page,
+    and otherwise has to know that a dashboard exists, that it has a Traces page,
     and how to get from an opaque identifier to the right row on it. Most of them
     will instead file a ticket saying the gateway is broken.
 
@@ -174,7 +175,7 @@ def _blocked_response(result, status: int = 403) -> JSONResponse:
                 "rules_fired": result.rules_fired,
                 "entities": result.entities,
                 "approval_id": result.approval_id,
-                # P3-12: "blocked by policy" is not an explanation, and an engineer
+                # "blocked by policy" is not an explanation, and an engineer
                 # who cannot tell whether the guardrail was right will disable it.
                 # The cheapest fix for a false positive must be filing one, not
                 # turning the detector off — so the dispute route ships in the error.
@@ -189,10 +190,10 @@ def _blocked_response(result, status: int = 403) -> JSONResponse:
     )
 
 
-#: The status a proxied call held for a person returns (#20). It used to be 202, a
-#: success status: the OpenAI and Anthropic SDKs parse a 2xx as a completion, so
-#: `create()` returned a ChatCompletion with `choices=None` and the caller's
-#: `choices[0]` failed far from the cause. 428 is an error to every client (the
+#: The status a proxied call held for a person returns. Deliberately not a 2xx:
+#: the OpenAI and Anthropic SDKs parse a 2xx as a completion, so `create()` would
+#: return a ChatCompletion with `choices=None` and the caller's `choices[0]` would
+#: fail far from the cause. 428 is an error to every client (the
 #: OpenAI and Anthropic SDKs raise `APIStatusError` and do not retry it) and says
 #: what is true: the request may go ahead once a condition, a person's approval,
 #: holds — retried with that approval in `X-Nometria-Approval`.
@@ -260,22 +261,20 @@ def _headers(result) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Loop governance across the proxy's tool loop (gap 0.4)
+# Loop governance across the proxy's tool loop
 # ---------------------------------------------------------------------------
 #
-# `agent_loop.py` was already called from `enforcement.py::_budget_state`, but only to
-# score the *one* decision in front of it: a caller had to thread its own step history
-# in through `/v1/guard/tool_call`'s `prior_steps`. The drop-in proxy — the surface
-# this product's whole X-1 pitch is built on — forwarded `tools` and `tool_calls`
-# straight through and governed nothing across turns. An agent alternating A-B-A-B
-# forever through `/v1/chat/completions` was invisible, because every individual
-# request looked perfectly reasonable.
+# `enforcement.py::_budget_state` calls `agent_loop.py` to score the *one* decision in
+# front of it, and a `/v1/guard/tool_call` caller threads its own step history in
+# through `prior_steps`. The drop-in proxy has to govern across turns as well: an
+# agent alternating A-B-A-B forever through `/v1/chat/completions` is otherwise
+# invisible, because every individual request looks perfectly reasonable.
 #
-# Nothing extra is needed from the client to fix that: both proxied protocols carry
+# Nothing extra is needed from the client: both proxied protocols carry
 # the entire prior loop in the request body, because that is how a tool-calling client
 # works. The run can therefore be reconstructed from the body alone — no server-side
-# per-session state to go stale, to be lost when this stateless process is replaced
-# (NFR-3), or to leak between tenants.
+# per-session state to go stale, to be lost when this stateless process is replaced,
+# or to leak between tenants.
 
 
 def _tool_steps(messages: list[dict[str, Any]]) -> list[Step]:
@@ -482,7 +481,7 @@ def _govern_tool_loop(
 
 
 # ---------------------------------------------------------------------------
-# SSE rendering (PL-1)
+# SSE rendering
 # ---------------------------------------------------------------------------
 
 
@@ -508,7 +507,7 @@ def _openai_chunk(
 
 
 def _stream_error_type(result) -> str:
-    """A held stream says so, with the approval to retry with (#20)."""
+    """A held stream says so, with the approval to retry with."""
     if result.escalated and result.approval_id:
         return "agentfox_approval_required"
     return "agentfox_policy_violation"
@@ -655,9 +654,9 @@ async def chat_completions(
         return refusal
 
     if body.get("stream"):
-        # PL-1: honour the caller's protocol. Previously this flag was silently
-        # ignored and a non-streaming body returned, which breaks every streaming
-        # client without telling it anything.
+        # Honour the caller's protocol: ignoring this flag and returning a
+        # non-streaming body would break every streaming client without telling it
+        # anything.
         events = enforcer.run_completion_stream(
             agent_slug=x_nometria_agent,
             messages=body.get("messages", []),
@@ -864,7 +863,7 @@ class GuardContentRequest(BaseModel):
     # commonest integration is a single call in a middleware that has no id to give.
     session_id: str | None = None
     trace_id: str | None = None
-    # #47: with `surface: "completion"`, the facts the caller observed when the agent
+    # With `surface: "completion"`, the facts the caller observed when the agent
     # claimed to be done — `{"work_verified": true}` — which `completion_requires`
     # rules check. Without a way to send them, every completion claim over HTTP was
     # held by `completion.unverified_claim`. A fact not reported counts as unmet.
@@ -878,7 +877,7 @@ class GuardToolCallRequest(BaseModel):
     provenance: dict[str, str] = Field(default_factory=dict)
     intent: str | None = None
     prior_tools: list[str] = Field(default_factory=list)
-    # PL-4 — a caller that already tracks its own step history (tool, arguments,
+    # A caller that already tracks its own step history (tool, arguments,
     # observation) can pass it so the real LoopGovernor sees alternating cycles and
     # stalled runs, not just a per-tool repeat count. Must default to None, not [] —
     # _budget_state() branches on `prior_steps is not None`, so an empty list from a
@@ -886,7 +885,7 @@ class GuardToolCallRequest(BaseModel):
     # repeats>=3 fallback instead of falling through to it.
     prior_steps: list[dict[str, Any]] | None = None
     session_id: str | None = None
-    # #12: the retry of a call a person approved. The same agent, tool and
+    # The retry of a call a person approved. The same agent, tool and
     # arguments run once; anything else escalates as it would have without it.
     approval_id: str | None = None
 
@@ -898,14 +897,14 @@ def guard_content(
     request: Request,
     session: Session = Depends(db),
     # Like every other guard route: an agent key, when presented, must verify (a bad
-    # one is a 401) and binds the agent's tenant. Without it this route ignored the
-    # Authorization header entirely, so a wrong or revoked key "worked".
+    # one is a 401) and binds the agent's tenant. Without it the route would ignore
+    # the Authorization header entirely, so a wrong or revoked key would "work".
     _credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
     """Enforce on content without proxying.
 
     The route's first line is kept short because `scripts/api_routes.py` uses it as
-    this operation's label in Appendix C.
+    this operation's label in the API route table.
 
     `verdict`/`applied_verdict` is what happened; `effective_verdict`/
     `would_be_verdict` is what the bound policy says should happen, which in observe
@@ -939,7 +938,7 @@ def guard_content(
     # Resolve before starting the trace so the trace carries an agent id, which is
     # what gives the agent a last-seen and lets the Traces page filter by agent.
     # `resolve` also registers an unknown slug as shadow traffic, which is the
-    # behaviour this path is documented to have (P1-6) and did not reach from here.
+    # behaviour this path is documented to have and did not reach from here.
     agent, _identity, _shadow = enforcer.resolve(payload.agent)
     # Reuse rather than insert when the caller names a trace that already exists:
     # guarding the input and then the output is two calls about one request, and the
@@ -958,7 +957,7 @@ def guard_content(
             trace_id=payload.trace_id,
         )
     if surface == "completion":
-        # The completion gate (F9.5): the claim is checked like any output, and the
+        # The completion gate: the claim is checked like any output, and the
         # caller's reported facts decide the `completion_requires` rules.
         result = enforcer.guard_completion(
             agent_slug=payload.agent,
@@ -1102,7 +1101,7 @@ def guard_agent_message(
 
 
 # ---------------------------------------------------------------------------
-# OTLP ingest (X-1c) — the zero-integration surface
+# OTLP ingest — the zero-integration surface
 # ---------------------------------------------------------------------------
 
 

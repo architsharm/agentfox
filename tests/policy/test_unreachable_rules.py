@@ -17,7 +17,7 @@ the argument for having it. One was a typo-class drift in `_FALLBACK_FOR_TIER`
 from __future__ import annotations
 
 from agentfox.core.config import get_settings
-from agentfox.detection.base import SURFACES
+from agentfox.core.vocab import SURFACES
 from agentfox.policy.hierarchy import PolicyLayer, lint_policy
 from agentfox.policy.model import Condition, PolicyDocument, Rule
 from agentfox.policy.store import load_from_dir

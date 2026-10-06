@@ -1,4 +1,4 @@
-"""P10 — entitlement over HTTP.
+"""Entitlement over HTTP.
 
 `POST /filter` is the one that does the work: a retriever hands it candidate chunks
 and the calling human, and gets back what that human may see plus a record of

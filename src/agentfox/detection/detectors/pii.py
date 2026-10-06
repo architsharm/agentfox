@@ -1,13 +1,13 @@
-"""Native PII detection (P3-2, NOM-RTG-02) — the offline fallback.
+"""Native PII detection (NOM-RTG-02) — the offline fallback.
 
-Presidio is the primary implementation (Appendix A.1: MIT, mature, de-facto
+Presidio is the primary implementation (MIT, mature, de-facto
 standard — rebuilding it would be pure duplicated work). This module exists so the
-platform still enforces something useful with **no optional dependency installed**
-(X-3 / NFR-9), and so there is a reference implementation the Presidio adapter is
+platform still enforces something useful with **no optional dependency installed**,
+and so there is a reference implementation the Presidio adapter is
 tested against.
 
 Entity sets are grouped into *jurisdiction packs* so a policy can say "EU + UK"
-rather than enumerating regexes — the shape P3-2 requires.
+rather than enumerating regexes.
 """
 
 from __future__ import annotations
@@ -128,7 +128,7 @@ class NativePiiDetector(BaseDetector):
 
                 # Luhn removes the bulk of credit-card false positives; without it
                 # this rule matches every long digit run and the detector becomes
-                # noise, which is how guardrails get switched off (PRD R3).
+                # noise, which is how guardrails get switched off.
                 if entity == "PII.CREDIT_CARD":
                     if not _luhn(value):
                         continue

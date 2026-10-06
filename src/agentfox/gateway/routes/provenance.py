@@ -1,11 +1,9 @@
-"""P8 — source authority over HTTP.
+"""Source authority over HTTP.
 
-This pillar shipped with a working engine and **no interface at all**: registering a
-source was a Python call, so the only people who could use it were people willing to
-import our package and write code against it. A control nobody can reach is not a
-control, and it is the reason the audit's usability table concluded that the things
-which are trivial are the things that observe while the things that protect are
-expert-only.
+A working engine with **no interface** is a control nobody can reach: if registering a
+source is only a Python call, the only people who can use it are people willing to
+import our package and write code against it, and the things that protect become
+expert-only while only the things that observe are trivial.
 
 The tiering decision is the part a business actually has to make — *which of our
 sources are systems of record, and which is someone's personal notebook* — so it needs
@@ -165,7 +163,7 @@ class ContextCheckIn(BaseModel):
 
 @router.post("/context-check")
 def context_check(payload: ContextCheckIn, _user: User = Depends(current_user)) -> dict[str, Any]:
-    """P14 — would this document or chunk set be fit to enter the corpus?
+    """Would this document or chunk set be fit to enter the corpus?
 
     A dry run against pasted or re-fetched text, in the same spirit as `/assess`:
     the ingestion/chunk quality gate (`context_integrity.py`) existed with no route

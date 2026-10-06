@@ -1,4 +1,4 @@
-"""P13 — failure attribution and handoff fidelity.
+"""Failure attribution and handoff fidelity.
 
 *"Step 3 was subtly wrong. By step 8 no single step looks wrong."*
 
@@ -106,7 +106,7 @@ URGENCY = "urgency"
 IDENTIFIER = "identifier"
 APPROVAL = "approval"
 #: A structured constraint pulled from a granted Capability's own constraints_json
-#: (models.py's Capability, P2-2), not from instruction prose — see
+#: (models.py's Capability), not from instruction prose — see
 #: handoff_fidelity's capability_constraints parameter.
 CAPABILITY = "capability"
 
@@ -234,7 +234,7 @@ def _format_capability_constraint(key: str, spec: Any) -> str:
     return f"{key} = {spec}"
 
 
-# --- Handoff fidelity (L6.1, L6.2) -----------------------------------------
+# --- Handoff fidelity -----------------------------------------
 
 
 @dataclass
@@ -318,8 +318,8 @@ def handoff_fidelity(
     is writing requirements rather than relaying them.
 
     ``capability_constraints`` widens what counts as a declared constraint beyond
-    instruction prose: the child's own granted `Capability.constraints_json`
-    (P2-2), when a caller has it in hand. A limit enforced there is real —
+    instruction prose: the child's own granted `Capability.constraints_json`,
+    when a caller has it in hand. A limit enforced there is real —
     checked on every call, independent of what either agent's instruction says —
     so it is folded into ``kept`` even when neither instruction mentions it,
     rather than leaving a caller to conclude a dropped mention means the
@@ -368,7 +368,7 @@ def trace_handoffs(steps: list[dict[str, Any]]) -> list[Handoff]:
     return handoffs
 
 
-# --- Goal drift (L3.2) -----------------------------------------------------
+# --- Goal drift -----------------------------------------------------
 
 
 @dataclass
@@ -411,7 +411,7 @@ def goal_drift(intent: str, trajectory: list[str]) -> Drift:
     return Drift(round(kept / total, 4), lost, len(trajectory))
 
 
-# --- Failure attribution (L3.4, L6.3) --------------------------------------
+# --- Failure attribution --------------------------------------
 
 
 @dataclass
@@ -503,7 +503,7 @@ def attribute(trace: list[dict[str, Any]], *, value: str, failed_step: str = "")
     )
 
 
-# --- Delegation graph (L6.6) -----------------------------------------------
+# --- Delegation graph -----------------------------------------------
 
 
 @dataclass

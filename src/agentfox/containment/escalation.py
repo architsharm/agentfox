@@ -1,4 +1,4 @@
-"""P11 — escalation governance. The largest single failure family, at 31.1%.
+"""Escalation governance. The largest single failure family, at 31.1%.
 
 Everyone ships the *mechanism* to escalate. LangGraph has `interrupt()`, Temporal has
 durable HITL workflows, Zendesk and ServiceNow have handoff queues, and the
@@ -109,7 +109,7 @@ _TOPIC_MARKERS = {
     "discrimination": [r"\b(?:discriminat|racist|sexist|ageis|disabilit)\w*\b"],
 }
 
-#: F5.5 — a resolution claim the agent makes about itself.
+#: A resolution claim the agent makes about itself.
 _RESOLUTION_CLAIMS = [
     r"\b(?:i(?:'ve| have)?\s+)?(?:resolved|fixed|sorted|completed|taken care of)\b",
     r"\bis (?:now )?(?:resolved|fixed|complete|sorted)\b",
@@ -118,7 +118,7 @@ _RESOLUTION_CLAIMS = [
     r"\bmarking this (?:as )?(?:resolved|closed)\b",
 ]
 
-#: F1-adjacent: an agent declining is not the same as an agent escalating. Repeated
+#: An agent declining is not the same as an agent escalating. Repeated
 #: abstention with no hand-off is the shape where the user gets nothing and leaves.
 _ABSTENTION = [
     r"\bi (?:don'?t|do not) have (?:that|access|the)\b[^.!?]{0,40}"
@@ -138,12 +138,12 @@ _ABSTENTION_RE = [re.compile(p, re.I) for p in _ABSTENTION]
 
 
 # ---------------------------------------------------------------------------
-# Signals (F5.7)
+# Signals
 # ---------------------------------------------------------------------------
 
 
 def sentiment_signal(text: str) -> dict[str, Any]:
-    """F5.7 — frustration, distress and legal exposure in one pass.
+    """Frustration, distress and legal exposure in one pass.
 
     Distress and legal threats are returned as *flags* rather than folded into the
     score, because they are escalation conditions in their own right. Averaging "I'm
@@ -501,7 +501,7 @@ def assess(
 
 
 def turn_depth_risk(turns: list[ConversationTurn], policy: EscalationPolicy | None = None) -> dict:
-    """F5.4 — quality degradation past a depth the agent was never evaluated at."""
+    """Quality degradation past a depth the agent was never evaluated at."""
     conditions = (policy.conditions_json if policy else None) or DEFAULT_CONDITIONS
     limit = int(conditions.get("turn_depth", 8))
     depth = len(turns)
@@ -517,11 +517,11 @@ def turn_depth_risk(turns: list[ConversationTurn], policy: EscalationPolicy | No
 
 
 # ---------------------------------------------------------------------------
-# Hand-off (F5.2, F5.6)
+# Hand-off
 # ---------------------------------------------------------------------------
 
 #: What a human needs to take over without re-interviewing the user. Missing any of
-#: these is F5.2 — the escalation happened and was still a failure.
+#: these is an incomplete hand-off — the escalation happened and was still a failure.
 REQUIRED_CONTEXT = (
     "user_request",
     "conversation_summary",
@@ -532,7 +532,7 @@ REQUIRED_CONTEXT = (
 
 
 def handoff_completeness(context: dict[str, Any]) -> dict[str, Any]:
-    """F5.2 — score the context package a human is about to receive."""
+    """Score the context package a human is about to receive."""
     present = [k for k in REQUIRED_CONTEXT if str((context or {}).get(k) or "").strip()]
     missing = [k for k in REQUIRED_CONTEXT if k not in present]
     return {
@@ -592,7 +592,8 @@ def raise_handoff(
     )
     session.add(handoff)
 
-    # F5.2 is its own failure: the hand-off happened *and* the human cannot act on it.
+    # An incomplete hand-off is its own failure: the hand-off happened *and* the human
+    # cannot act on it.
     if not completeness["complete"]:
         raise_finding(
             session,
@@ -610,7 +611,7 @@ def raise_handoff(
 
 
 def breached_handoffs(session: Session) -> list[Handoff]:
-    """F5.6 — hand-offs past their SLA that nobody has picked up.
+    """Hand-offs past their SLA that nobody has picked up.
 
     An escalation raised into a queue nobody watches is the same outcome as no
     escalation, and it is worse in one respect: the system believes it did its job.
@@ -649,7 +650,7 @@ def breached_handoffs(session: Session) -> list[Handoff]:
 
 
 # ---------------------------------------------------------------------------
-# The control: missed escalation (P11-2, F5.1)
+# The control: missed escalation
 # ---------------------------------------------------------------------------
 
 
@@ -760,12 +761,12 @@ def detect_missed_escalation(
 
 
 # ---------------------------------------------------------------------------
-# F5.3 loop-instead-of-escalate, F5.5 false resolution
+# Loop instead of escalate, false resolution
 # ---------------------------------------------------------------------------
 
 
 def _loop_without_handoff(session: Session, session_id: str) -> bool:
-    """F5.3 — breaking a loop is not the same as handing it off.
+    """Breaking a loop is not the same as handing it off.
 
     The existing loop breaker stops the agent burning budget. It does nothing for the
     user, who is still on the other end with an unsolved problem.
@@ -787,7 +788,7 @@ def detect_false_resolution(
     agent_id: str | None = None,
     raise_findings: bool = True,
 ) -> list[dict[str, Any]]:
-    """F5.5 — the agent said it was resolved and the conversation says otherwise.
+    """The agent said it was resolved and the conversation says otherwise.
 
     Three signals, any of which contradicts a resolution claim: the user came back
     afterwards, the claim sat on top of an abstention, or the closing sentiment was
@@ -877,7 +878,7 @@ def escalation_report(
         "conversations": missed["conversations"],
         "qualified_for_escalation": missed["qualified"],
         "missed_escalations": len(missed["missed"]),
-        # The headline metric. PRD §10.1 target: < 5% of qualifying conversations.
+        # The headline metric. Target: < 5% of qualifying conversations.
         "missed_rate": missed["missed_rate"],
         "handoffs": len(handoffs),
         "incomplete_handoffs": len(incomplete),

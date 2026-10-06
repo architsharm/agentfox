@@ -1,4 +1,4 @@
-"""`agentfox db` — apply, roll back and inspect the database schema (PL-2)."""
+"""`agentfox admin db` — apply, roll back and inspect the database schema."""
 
 from __future__ import annotations
 

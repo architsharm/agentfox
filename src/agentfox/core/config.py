@@ -1,6 +1,6 @@
 """Runtime configuration.
 
-Defaults are deliberately offline-first (X-3 / NFR-9): no API key, no downloaded
+Defaults are deliberately offline-first: no API key, no downloaded
 weights, no network egress. Every upgrade to a hosted model or a wrapped OSS
 classifier is configuration, never a rewrite.
 """
@@ -228,7 +228,7 @@ class Settings(BaseSettings):
     #
     # The gateway makes no request to it and does not check that it resolves.
     console_url: str = ""
-    # NFR-4: zero egress by default. Nothing leaves the customer boundary unless
+    # Zero egress by default. Nothing leaves the customer boundary unless
     # this is explicitly turned on.
     allow_egress: bool = False
     # Some features fetch a URL an operator names: the OpenAPI document for the
@@ -286,7 +286,7 @@ class Settings(BaseSettings):
     judgment_llm_model: str = ""
 
     # --- Enforcement (Pillar 3) -----------------------------------------
-    # NFR-1: hard budget for the whole pre-flight pipeline, and per detector.
+    # Hard budget for the whole pre-flight pipeline, and per detector.
     # Was 100 — raised after benchmarking `injection.classifier`/`injection.similarity`
     # under real dataset load found this *pipeline*-level cap silently overriding
     # each detector's own, higher `timeout_ms`: `allowance = min(own_timeout_ms,
@@ -303,18 +303,18 @@ class Settings(BaseSettings):
     # that one surface's budget can't exceed the whole request's).
     enforcement_budget_ms: int = 300
     detector_timeout_ms: int = 40
-    # P3-13: the *request*-level ceiling across every surface a single governed call
+    # The *request*-level ceiling across every surface a single governed call
     # touches. The per-call budget alone is a comfortable lie — one completion
     # evaluates several messages, the output and every tool call. Raised alongside
     # `enforcement_budget_ms` so a single surface's budget can never exceed the
     # whole request's.
     request_budget_ms: int = 350
-    # R3: observe-by-default. Enforcement is something a customer turns on
-    # deliberately, after simulating it (P2-7).
+    # Observe-by-default. Enforcement is something a customer turns on
+    # deliberately, after simulating it.
     default_policy_mode: str = "observe"  # observe | enforce
-    # P3-7: what happens when a detector errors or blows its budget.
+    # What happens when a detector errors or blows its budget.
     fail_mode: str = "open"  # open | closed
-    #: P3-4: what a tool call's provenance is, for the taint rules
+    #: What a tool call's provenance is, for the taint rules
     #: (`taint.irreversible_tool` and friends). The one setting that decides it.
     #:
     #: ``session``  — the worst provenance anywhere in the run so far *or* in the
@@ -382,7 +382,7 @@ class Settings(BaseSettings):
     # finding (closed by the next successful run).
     monitor_failure_threshold: int = 3
 
-    # --- Detector cut-offs that used to be hard-coded -------------------------
+    # --- Detector cut-offs -----------------------------------------------------
     #: A cut-off nothing can change without a code edit is a cut-off the improvement loop
     #: cannot tune and an operator cannot adjust. Read once when detectors register, like
     #: every other setting, so a change needs a restart.
@@ -446,13 +446,13 @@ class Settings(BaseSettings):
             raise ValueError(f"must be one of {', '.join(WEBHOOK_SEVERITIES)}")
         return value
 
-    # --- Cost & reliability (P15) ----------------------------------------
+    # --- Cost & reliability ----------------------------------------
     # Degradation ladder, preferred-first. Empty means no fallback: fail rather than
     # silently serve from a model the agent was never evaluated against.
     fallback_chain: list[str] = []
     breaker_failure_threshold: int = 5
     breaker_recovery_seconds: float = 30.0
-    # P15-6: admission control on the inline surface — shed work before it reaches
+    # Admission control on the inline surface — shed work before it reaches
     # governance, never after (availability.py's `AdmissionController`). Defaults
     # generous enough that no self-host demo ever notices them; sizing these to a
     # deployment's real capacity is the operator's job, the same as the breaker
@@ -461,8 +461,8 @@ class Settings(BaseSettings):
     admission_burst: int = 400
     admission_max_concurrent: int = 256
     admission_shed_below_priority: str = "normal"
-    # Gap 0.7: how long a service-availability probe's answer is reused before the
-    # dependency is re-checked (availability.py's `probe_services`). This exists
+    # How long a service-availability probe's answer is reused before the dependency
+    # is re-checked (availability.py's `probe_services`). This exists
     # because the probes are not free — the database probe opens a connection beyond
     # the request's own session, and with `policy_engine = "opa"` the policy probe is
     # an HTTP call to the sidecar. Paying either per request would make the module
@@ -471,7 +471,7 @@ class Settings(BaseSettings):
     # told what was true five seconds ago.
     service_probe_interval_seconds: float = 5.0
 
-    # --- Streaming (PL-1) ------------------------------------------------
+    # --- Streaming ------------------------------------------------
     # `buffered` enforces output identically to the non-streaming path at the cost of
     # first-token latency. `windowed` preserves latency but cannot recall content it
     # has already forwarded. Buffered is the default deliberately.
@@ -486,13 +486,13 @@ class Settings(BaseSettings):
         "safety.lexicon",
         "schema.json",
     ]
-    # Appendix A.4: restricted-licence model adapters refuse to load without this.
+    # Restricted-licence model adapters refuse to load without this.
     accept_restricted_model_licenses: bool = False
     granite_guardian_model: str = "ibm-granite/granite-guardian-3.0-2b"
     # MIT, ~86M params, no licence gate — but a real CPU forward pass still
     # costs tens of ms per call versus a regex scan's fractions of one, and every
-    # concurrent request pays it independently (P3-6's budget is per-request, not a
-    # shared inference queue). Opt-in via `enabled_detectors`, same reasoning as
+    # concurrent request pays it independently (the latency budget is per-request,
+    # not a shared inference queue). Opt-in via `enabled_detectors`, same reasoning as
     # Granite Guardian: a customer must choose the latency/recall trade-off, not
     # inherit it from a default. leolee99/PIGuard, not the more commonly cited
     # protectai/deberta model — see PromptInjectionClassifierDetector's docstring
@@ -513,7 +513,7 @@ class Settings(BaseSettings):
     # corpus file, no retraining required.
     embedding_similarity_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
-    # --- Wrapped rail orchestrators (P3-1) -------------------------------
+    # --- Wrapped rail orchestrators -------------------------------
     # Both adapters were registered with their configuration hard-coded empty —
     # `NemoRailsDetector()` with no config path, `GuardrailsAiDetector()` with no
     # validators — and `available()` returns False when those are empty. There
@@ -527,8 +527,8 @@ class Settings(BaseSettings):
     nemo_rails_config_path: str | None = None
     # Guardrails AI Hub validator slugs, e.g. ["valid_json", "detect_pii"]. Each
     # must already be installed (`pip install guardrails-ai-<slug-with-dashes>`)
-    # because Hub validators carry licences independent of the Apache-2.0 core
-    # (Appendix A.1), so none is ever enabled by inheritance.
+    # because Hub validators carry licences independent of the Apache-2.0 core,
+    # so none is ever enabled by inheritance.
     #
     # Prefer the per-validator `rails.hub.*` detectors: they report one entity
     # type per check, so existing policy rules match them and precision is
@@ -538,7 +538,7 @@ class Settings(BaseSettings):
     # `use_many` composition is for.
     guardrails_ai_validators: list[str] = []
 
-    # --- Entitlement (P10) -----------------------------------------------
+    # --- Entitlement -----------------------------------------------
     # native | openfga. The seam exists because no winner does: customers running
     # OpenFGA or Cedar keep them, and the much larger group who express permissions as
     # "this group can read this folder" get a control they can actually switch on.
@@ -564,7 +564,7 @@ class Settings(BaseSettings):
     # configured" — connecting a repo fails closed rather than storing a raw token.
     token_encryption_key: str | None = None
 
-    # --- Deferred job queue (PL-5) ----------------------------------------
+    # --- Deferred job queue ----------------------------------------
     # POST /api/internal/jobs/run is the cron backstop for a job stuck in
     # "running" because the request that started it crashed or hit a platform
     # timeout mid-attempt. `None` means unset, and the route refuses every
@@ -576,17 +576,17 @@ class Settings(BaseSettings):
     # `Authorization: Bearer <value>` automatically once that env var exists.
     cron_secret: str | None = None
 
-    # --- Action assurance (P9) -------------------------------------------
+    # --- Action assurance -------------------------------------------
     # The dialect artefacts are parsed against. Wrong dialect means wrong parse, and
     # a wrong parse fails closed rather than passing through.
     sql_dialect: str = "postgres"
-    # P9-7: how fresh a state read must be to authorise an irreversible act.
+    # How fresh a state read must be to authorise an irreversible act.
     verified_state_max_age_seconds: int = 300
-    # P18 — "standard" escalates an undeclared table (a human should look);
+    # "standard" escalates an undeclared table (a human should look);
     # "strict" blocks it outright. See data_access.analyse_access's own docstring.
     data_access_strictness: str = "standard"
 
-    # --- Agent loop governance (PL-4) -------------------------------------
+    # --- Agent loop governance -------------------------------------
     # Mirrors agent_loop.LoopBudget's own defaults — kept here, not just as
     # dataclass defaults, so a deployment can tune them without a code change.
     loop_max_steps: int = 25
@@ -594,12 +594,12 @@ class Settings(BaseSettings):
     loop_max_cycle_length: int = 4
     loop_max_steps_without_progress: int = 5
 
-    # --- Memory write governance (P14, NOM-RTG-13) -----------------------
+    # --- Memory write governance (NOM-RTG-13) ----------------------------
     # How long an unverified memory entry survives before it decays — the
     # default-closed counterpart to Suppression's default-open `expires_at`.
     memory_unverified_ttl_seconds: int = 86_400
 
-    # --- Inter-agent message security (P17, NOM-IAM-08) -------------------
+    # --- Inter-agent message security (NOM-IAM-08) ------------------------
     # A signature/nonce older than this is rejected even if it verifies.
     agent_message_validity_seconds: int = 300
 
@@ -607,7 +607,7 @@ class Settings(BaseSettings):
     policy_engine: str = "native"  # native | opa
     opa_url: str = "http://localhost:8181"
 
-    # --- Providers (X-2) -------------------------------------------------
+    # --- Providers -------------------------------------------------
     # `echo` is the offline provider: deterministic, no network, no key. It is what
     # makes the whole system demonstrable with `docker compose up` and nothing else.
     default_provider: str = "echo"
@@ -616,7 +616,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 
-    # I-11: the providers enterprises actually deploy on. 6 of 11 engineers run Azure
+    # The providers enterprises actually deploy on. 6 of 11 engineers run Azure
     # OpenAI, 4 Bedrock, 3 Vertex — a governance product that only speaks to
     # api.openai.com is unusable at exactly the companies that need governance.
     azure_openai_endpoint: str | None = None
@@ -628,11 +628,11 @@ class Settings(BaseSettings):
     vertex_project: str | None = None
     vertex_location: str = "us-central1"
     vertex_model: str = "gemini-2.0-flash"
-    # I-10: govern through the routing layer teams already run, rather than compete.
+    # Govern through the routing layer teams already run, rather than compete.
     litellm_base_url: str | None = None
     litellm_api_key: str | None = None
 
-    # --- Observability correlation (I-4 / I-6) ---------------------------
+    # --- Observability correlation ---------------------------
     # Correlation itself needs none of these: the join key travels in-band on a
     # traceparent or vendor header, so a team gets the link with zero configuration.
     # These only govern the optional write-back of our verdict onto their run.
@@ -656,7 +656,7 @@ class Settings(BaseSettings):
     # --- Audit (Pillar 5) ------------------------------------------------
     audit_signing_key: str = DEFAULT_AUDIT_SIGNING_KEY
     audit_checkpoint_interval: int = 100
-    # P5-5 / R8: the audit log must not become a new PII liability.
+    # The audit log must not become a new PII liability.
     redact_at_capture: bool = True
     evidence_dir: Path = STATE_ROOT / "var" / "evidence"
 

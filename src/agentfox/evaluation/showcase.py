@@ -5,7 +5,7 @@ something that is running. That claim is only worth making if the numbers are re
 and nobody picked them, so this module wires a dedicated tenant
 (`settings.showcase_org_id`) that runs exactly what a customer would run:
 
-* the demo world `agentfox demo` and the public playground use (`core.seed`), with the
+* the demo world `agentfox demo` and the public playground use (`fixtures.seed`), with the
   baseline policy in **enforce** mode;
 * one `ProbeTarget` on the playground's support agent, ``in_process`` through the
   real enforcement path, on the offline ``echo-1`` model. That model is deterministic,
@@ -68,7 +68,7 @@ def ensure_showcase(session: Session) -> dict[str, Any] | None:
     bind_session(session, showcase_org())
     created: dict[str, Any] = {"seeded": False, "target_created": False}
     if session.scalar(select(Agent.id).where(Agent.slug == SHOWCASE_AGENT)) is None:
-        from agentfox.core.seed import seed
+        from agentfox.fixtures.seed import seed
         from agentfox.policy import set_mode
 
         seed(session, email_namespace="showcase")

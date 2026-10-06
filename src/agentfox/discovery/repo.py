@@ -150,8 +150,8 @@ _AGENT_DEFINITIONS = {
 }
 
 #: Executable-artefact shapes worth flagging even without a model call nearby: these
-#: are what P9 governs, and a repo that builds SQL from an f-string is where the
-#: 1.9M-row incident starts. (User-facing text below says what P9 means instead.)
+#: are executable output an agent can act through, and a repo that builds SQL from an
+#: f-string is where a mass-deletion incident starts.
 _SQL_BUILD = re.compile(
     r"""(?:execute|executemany|cursor\.execute|text)\s*\(\s*f?["']\s*"""
     r"""(?:SELECT|INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER)""",
@@ -273,7 +273,7 @@ class ScanReport:
 
     @property
     def governable(self) -> list[Site]:
-        """`model_call` sites plus framework orchestration entrypoints (P9/CrewAI gap).
+        """`model_call` sites plus framework orchestration entrypoints.
 
         A pure `model_call` count is vacuous on a CrewAI/LangGraph repo that never
         calls the provider SDK directly — this is what makes coverage mean something
@@ -650,7 +650,7 @@ class _Visitor(ast.NodeVisitor):
 #   * `useChat` / `useCompletion` — React hooks that call the app's own route handler,
 #     not a provider. The route handler is where the model call is, and it is matched
 #     there.
-#   * `embed` / `embedMany` — embeddings, not generation. Not what P9 governs.
+#   * `embed` / `embedMany` — embeddings, not generation, so nothing to govern.
 #
 # The cost of that choice, stated rather than left to be discovered: a call shape that
 # is ambiguous on its own is only counted in a file that imported the SDK it belongs

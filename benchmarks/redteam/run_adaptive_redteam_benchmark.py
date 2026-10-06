@@ -56,9 +56,9 @@ def main() -> None:
     from agentfox.core import db
     from agentfox.core.config import reset_settings_cache
     from agentfox.core.models import Agent, Capability, Identity
-    from agentfox.core.seed import seed as run_seed
     from agentfox.evaluation.adaptive import OPERATORS, SCOPE_STATEMENT, mutation_classes
     from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
+    from agentfox.fixtures.seed import seed as run_seed
     from agentfox.policy import set_mode
 
     reset_settings_cache()

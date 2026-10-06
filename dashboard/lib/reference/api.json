@@ -156,7 +156,7 @@
    "section": "v1/guard",
    "audience": "public",
    "summary": "Enforce on content without proxying.",
-   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in Appendix C.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
+   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
    "params": [
     {
      "name": "authorization",
@@ -294,7 +294,7 @@
    "section": "v1/guard",
    "audience": "public",
    "summary": "Enforce on content without proxying.",
-   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in Appendix C.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
+   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
    "params": [
     {
      "name": "authorization",
@@ -583,7 +583,7 @@
    "section": "agent-controls",
    "audience": "operator",
    "summary": "Kill-switch/quarantine state per agent.",
-   "description": "Kill-switch/quarantine state per agent.\n\nDeliberately not `/api/controls` — that path collided with governance.py's\ncompliance-control listing (NIST/EU-AI-Act style controls), and since both\nrouters registered a handler on the identical path, whichever was included\nfirst in app.py silently ate every request to the other. This one was\nwinning, which meant the compliance page's `posture` field was never in the\nresponse it actually got back — the crash that surfaced it.",
+   "description": "Kill-switch/quarantine state per agent.\n\nDeliberately not `/api/controls`: that path belongs to governance.py's\ncompliance-control listing (NIST/EU-AI-Act style controls). Two routers with a\nhandler on the identical path means whichever is included first in app.py\nsilently takes every request meant for the other.",
    "params": [
     {
      "name": "authorization",
@@ -1473,7 +1473,7 @@
    "section": "approvals",
    "audience": "operator",
    "summary": "One approval. An operator may read any; an agent key only its own agent's.",
-   "description": "One approval. An operator may read any; an agent key only its own agent's.\n\nThe SDK's `wait_for_approval` polls this with the agent's own key (#14): the\nagent that is waiting is the one caller certain to need the answer, and it\nused to need an operator token to read it.",
+   "description": "One approval. An operator may read any; an agent key only its own agent's.\n\nThe SDK's `wait_for_approval` polls this with the agent's own key: the\nagent that is waiting is the one caller certain to need the answer, so it\ndoes not need an operator token to read it.",
    "params": [
     {
      "name": "approval_id",
@@ -1867,8 +1867,8 @@
    "path": "/api/controls/sync",
    "section": "controls",
    "audience": "operator",
-   "summary": "Load the static control catalog and obligation calendar from YAML into this tenant's control-plane DB. `agentfox compliance sync` does the same thing from the CLI against whatever DB it's pointed at — this is the same idempotent upsert, reachable without shell access to the deployment, so a freshly provisioned org isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it from the product itself.",
-   "description": "Load the static control catalog and obligation calendar from YAML into this\ntenant's control-plane DB. `agentfox compliance sync` does the same thing\nfrom the CLI against whatever DB it's pointed at — this is the same idempotent\nupsert, reachable without shell access to the deployment, so a freshly provisioned\norg isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it\nfrom the product itself.",
+   "summary": "Load the static control catalog and obligation calendar from YAML into this tenant's control-plane DB. `agentfox admin catalog sync` does the same thing from the CLI against whatever DB it's pointed at — this is the same idempotent upsert, reachable without shell access to the deployment, so a freshly provisioned org isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it from the product itself.",
+   "description": "Load the static control catalog and obligation calendar from YAML into this\ntenant's control-plane DB. `agentfox admin catalog sync` does the same thing\nfrom the CLI against whatever DB it's pointed at — this is the same idempotent\nupsert, reachable without shell access to the deployment, so a freshly provisioned\norg isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it\nfrom the product itself.",
    "params": [
     {
      "name": "authorization",
@@ -1948,8 +1948,8 @@
    "path": "/api/detectors",
    "section": "detectors",
    "audience": "operator",
-   "summary": "which detectors exist, which are live, and how fast they are.",
-   "description": "which detectors exist, which are live, and how fast they are.",
+   "summary": "Which detectors exist, which are live, and how fast they are.",
+   "description": "Which detectors exist, which are live, and how fast they are.",
    "params": [
     {
      "name": "authorization",
@@ -2762,8 +2762,8 @@
    "path": "/api/eval/drift",
    "section": "eval",
    "audience": "operator",
-   "summary": "Read-only. Viewing drift used to persist a DriftWindow — and a Finding when drifted — on every page load, so the number of drift findings measured how often someone looked, not how often the agent drifted. Recording is the scheduled `drift.check` job (or `agentfox eval drift` locally).",
-   "description": "Read-only. Viewing drift used to persist a DriftWindow — and a Finding when\ndrifted — on every page load, so the number of drift findings measured how often\nsomeone looked, not how often the agent drifted. Recording is the scheduled\n`drift.check` job (or `agentfox eval drift` locally).",
+   "summary": "Read-only. Viewing drift persists nothing, so the number of drift findings measures how often the agent drifted, not how often someone looked. Recording is the scheduled `drift.check` job (or `agentfox report drift` locally).",
+   "description": "Read-only. Viewing drift persists nothing, so the number of drift findings\nmeasures how often the agent drifted, not how often someone looked. Recording is\nthe scheduled `drift.check` job (or `agentfox report drift` locally).",
    "params": [
     {
      "name": "agent",
@@ -2797,8 +2797,8 @@
    "path": "/api/eval/gate",
    "section": "eval",
    "audience": "operator",
-   "summary": "the CI entry point. Non-zero exit maps from ``passed: false``.",
-   "description": "the CI entry point. Non-zero exit maps from ``passed: false``.",
+   "summary": "The CI entry point. Non-zero exit maps from ``passed: false``.",
+   "description": "The CI entry point. Non-zero exit maps from ``passed: false``.",
    "params": [
     {
      "name": "authorization",
@@ -3352,8 +3352,8 @@
    "path": "/api/eval/suites/{key}/cases/from-trace",
    "section": "eval",
    "audience": "operator",
-   "summary": "promote a production failure into a regression test.",
-   "description": "promote a production failure into a regression test.\n\nThe shortest path from \"this went wrong in production\" to \"this can never ship\nagain\" is the feature that makes an eval suite grow instead of rot.",
+   "summary": "Promote a production failure into a regression test.",
+   "description": "Promote a production failure into a regression test.\n\nThe shortest path from \"this went wrong in production\" to \"this can never ship\nagain\" is the feature that makes an eval suite grow instead of rot.",
    "params": [
     {
      "name": "key",
@@ -3687,8 +3687,8 @@
    "path": "/api/frameworks/review",
    "section": "frameworks",
    "audience": "operator",
-   "summary": "Step 3 of the mapping review gate (Appendix B §B.6).",
-   "description": "Step 3 of the mapping review gate (Appendix B §B.6).",
+   "summary": "Step 3 of the mapping review gate.",
+   "description": "Step 3 of the mapping review gate.",
    "params": [
     {
      "name": "authorization",
@@ -4073,8 +4073,8 @@
    "path": "/api/health",
    "section": "health",
    "audience": "operator",
-   "summary": "Liveness, plus what is currently not being checked (gap 0.7).",
-   "description": "Liveness, plus what is currently not being checked (gap 0.7).\n\n`status` stays \"ok\" for a process that is up and serving — that is what every\nliveness probe already pointed at this route means by it, and changing it would\nstart restarting healthy containers. What a fail-open deployment needs *on top*\nis `governance_healthy`: a fail-open system reports success while checking\nnothing, so a 200 here is exactly the signal that cannot tell a working control\nfrom an absent one.",
+   "summary": "Liveness, plus what is currently not being checked.",
+   "description": "Liveness, plus what is currently not being checked.\n\n`status` stays \"ok\" for a process that is up and serving — that is what every\nliveness probe already pointed at this route means by it, and changing it would\nstart restarting healthy containers. What a fail-open deployment needs *on top*\nis `governance_healthy`: a fail-open system reports success while checking\nnothing, so a 200 here is exactly the signal that cannot tell a working control\nfrom an absent one.",
    "params": [],
    "body": null
   },
@@ -4906,8 +4906,8 @@
    "path": "/api/mcp-servers/{name}/tools",
    "section": "mcp-servers",
    "audience": "operator",
-   "summary": "snapshot a listing *and* register each tool in the registry.",
-   "description": "snapshot a listing *and* register each tool in the registry.\n\nDistinct from ``/scan``, which only reports hygiene. Registration is what gives\nthe tool a policy identity and a digest to compare against at call time; without\nit the rug-pull check has no baseline.\n\nA changed listing for an already-registered tool is held (reported in ``held``,\nnot registered) and filed as a change proposal (``proposals``). With\n``accept_changes`` the signed-in person approves those proposals, which takes the\nsame role as approving any proposal (``policy_production``); a held tool is\nre-recorded once two different people have approved it.",
+   "summary": "Snapshot a listing *and* register each tool in the registry.",
+   "description": "Snapshot a listing *and* register each tool in the registry.\n\nDistinct from ``/scan``, which only reports hygiene. Registration is what gives\nthe tool a policy identity and a digest to compare against at call time; without\nit the rug-pull check has no baseline.\n\nA changed listing for an already-registered tool is held (reported in ``held``,\nnot registered) and filed as a change proposal (``proposals``). With\n``accept_changes`` the signed-in person approves those proposals, which takes the\nsame role as approving any proposal (``policy_production``); a held tool is\nre-recorded once two different people have approved it.",
    "params": [
     {
      "name": "name",
@@ -5741,8 +5741,8 @@
    "path": "/api/policies/simulate",
    "section": "policies",
    "audience": "operator",
-   "summary": "replay recorded traffic against a candidate policy.",
-   "description": "replay recorded traffic against a candidate policy.",
+   "summary": "Replay recorded traffic against a candidate policy.",
+   "description": "Replay recorded traffic against a candidate policy.",
    "params": [
     {
      "name": "authorization",
@@ -6034,7 +6034,7 @@
    "section": "policies",
    "audience": "operator",
    "summary": "Promote or demote a policy, optionally making a saved version live.",
-   "description": "Promote or demote a policy, optionally making a saved version live.\n\nPromoting to ``enforce`` requires a recorded simulation of exactly the rules\nbeing enforced (``POST /api/policies/simulate`` with that version's body) —\nthe server-side half of the editor's simulate-before-promote gate (#64).\nDemoting to ``observe`` never needs one: it can only stop blocking.",
+   "description": "Promote or demote a policy, optionally making a saved version live.\n\nPromoting to ``enforce`` requires a recorded simulation of exactly the rules\nbeing enforced (``POST /api/policies/simulate`` with that version's body) —\nthe server-side half of the editor's simulate-before-promote gate.\nDemoting to ``observe`` never needs one: it can only stop blocking.",
    "params": [
     {
      "name": "key",
@@ -6816,8 +6816,8 @@
    "path": "/api/providers",
    "section": "providers",
    "audience": "operator",
-   "summary": "the neutrality surface, made inspectable.",
-   "description": "the neutrality surface, made inspectable.",
+   "summary": "The neutrality surface, made inspectable.",
+   "description": "The neutrality surface, made inspectable.",
    "params": [
     {
      "name": "authorization",
@@ -6970,8 +6970,8 @@
    "path": "/api/reliability",
    "section": "reliability",
    "audience": "operator",
-   "summary": "circuit-breaker state and live budget consumption.",
-   "description": "circuit-breaker state and live budget consumption.",
+   "summary": "Circuit-breaker state and live budget consumption.",
+   "description": "Circuit-breaker state and live budget consumption.",
    "params": [
     {
      "name": "authorization",
@@ -7355,8 +7355,8 @@
    "path": "/api/sources/context-check",
    "section": "sources",
    "audience": "operator",
-   "summary": "would this document or chunk set be fit to enter the corpus?",
-   "description": "would this document or chunk set be fit to enter the corpus?\n\nA dry run against pasted or re-fetched text, in the same spirit as `/assess`:\nthe ingestion/chunk quality gate (`context_integrity.py`) existed with no route\nat all — this is deliberately the lightweight wiring rather than an inline\nretrieval-path gate, so a team can check a document before deciding whether to\nbuild that gate at all.",
+   "summary": "Would this document or chunk set be fit to enter the corpus?",
+   "description": "Would this document or chunk set be fit to enter the corpus?\n\nA dry run against pasted or re-fetched text, in the same spirit as `/assess`:\nthe ingestion/chunk quality gate (`context_integrity.py`) existed with no route\nat all — this is deliberately the lightweight wiring rather than an inline\nretrieval-path gate, so a team can check a document before deciding whether to\nbuild that gate at all.",
    "params": [
     {
      "name": "authorization",

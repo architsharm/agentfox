@@ -522,7 +522,7 @@ def _grant_diff(proposal: ChangeProposal) -> dict[str, Any]:
     diff = dict(proposal.diff_json or {})
     if not diff.get("agent") or not diff.get("tool_key"):
         raise ApplierError("capability.grant needs diff.agent and diff.tool_key")
-    from agentfox.detection.base import TAINT_ORDER
+    from agentfox.core.vocab import TAINT_ORDER
 
     if str(diff.get("max_taint") or "user") not in TAINT_ORDER:
         raise ApplierError(f"diff.max_taint must be one of {list(TAINT_ORDER)}")
@@ -577,7 +577,7 @@ def _domain_audit(
 
 def _grant_direction(session: Session, proposal: ChangeProposal) -> str:
     from agentfox.core.models import Capability
-    from agentfox.detection.base import taint_rank
+    from agentfox.core.vocab import taint_rank
 
     diff = _grant_diff(proposal)
     if not diff.get("replaces"):

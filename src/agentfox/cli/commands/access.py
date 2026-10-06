@@ -1,4 +1,4 @@
-"""`agentfox access` — declare which column decides whose row it is."""
+"""Data-access scope: which column decides whose row it is (`agentfox declare scope`)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def access_declare_scope(
         help="Comma-separated columns nobody should receive even for their own row",
     ),
 ) -> None:
-    """P18 — declare which column on a table decides whose row it is, so
+    """Declare which column on a table decides whose row it is, so
     `analyse_access()` can prove a query is scoped instead of assuming it. An
     undeclared table is reported, never assumed safe (see `data_access`'s own
     docstring).
@@ -58,7 +58,7 @@ def access_declare_reference(
         ..., help="Table name — belongs to nobody (currencies, statuses, postcodes)"
     ),
 ) -> None:
-    """P18 — declare a table that belongs to nobody, so `analyse_access()` does not
+    """Declare a table that belongs to nobody, so `analyse_access()` does not
     flag it as an undeclared/unscoped table.
     """
     from sqlalchemy import select

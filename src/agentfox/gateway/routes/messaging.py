@@ -1,4 +1,4 @@
-"""Inter-agent message security over HTTP (P17, NOM-IAM-08, closes ASI07).
+"""Inter-agent message security over HTTP (NOM-IAM-08, closes ASI07).
 
 Message evaluation itself is `POST /v1/guard/agent_message` (inline.py), same
 pattern as every other governed surface. This is the key-management and

@@ -23,14 +23,13 @@ recorded — without inventing an async polling UI Vercel's own cron-frequency
 limits (once/day on the Hobby tier this ships on) would make painfully slow
 for something a person is sitting in a browser waiting on. `run_pending()` is
 still exposed and wired to a cron-triggered endpoint (`GET|POST
-/api/internal/jobs/run`) as a backstop, and that backstop now does the three
-things it was always documented to do:
+/api/internal/jobs/run`) as a backstop, and that backstop does three things:
 
 * **Recovery.** A job left in `running` for longer than
   `settings.job_stuck_after_seconds` — the request that started it crashed or hit
   a platform timeout mid-attempt — is counted as a failed attempt and either
-  requeued with backoff or dead-lettered. Before, `run_pending` only ever looked
-  at `pending` rows, so a crashed job sat in `running` forever.
+  requeued with backoff or dead-lettered, so a crashed job does not sit in
+  `running` forever.
 * **Backoff.** A failed attempt sets `available_at = now + base * 2**(attempts-1)`
   and `run_pending` skips a job until then, so a retry is not burned against an
   upstream that failed a millisecond ago.

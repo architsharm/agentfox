@@ -85,7 +85,7 @@ jobs:
                   problems.append(f"{name} is version {built}, but the tag says {version}")
 
           # The two places the version is written by hand. uv build reads the first;
-          # `agentfox version` prints the second. They must agree with the tag, or a
+          # `agentfox --version` prints the second. They must agree with the tag, or a
           # released artefact reports a version nobody can match to a commit.
           declared = re.search(
               r'^version\s*=\s*"([^"]+)"',

@@ -19,7 +19,7 @@ decision that differs per agent and per environment.
 
 from __future__ import annotations
 
-from agentfox.detection.base import SURFACES
+from agentfox.core.vocab import SURFACES
 from agentfox.policy.engine import NativePolicyEngine
 from agentfox.policy.model import Condition, PolicyDocument, PolicyInput, Rule
 from agentfox.runtime.enforcement import Enforcer

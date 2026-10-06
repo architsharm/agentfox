@@ -1,4 +1,4 @@
-"""P11 — escalation governance over HTTP.
+"""Escalation governance over HTTP.
 
 The route that matters is `GET /api/escalation/missed`. Everything else here is
 plumbing that any HITL product has; that one answers the question nobody else asks —
@@ -37,7 +37,7 @@ def _agent_id(session: Session, slug: str | None) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Policy (P11-1)
+# Policy
 # ---------------------------------------------------------------------------
 
 
@@ -180,7 +180,7 @@ def conversation(
 
 
 # ---------------------------------------------------------------------------
-# The control (P11-2)
+# The control
 # ---------------------------------------------------------------------------
 
 
@@ -236,7 +236,7 @@ def report(
 
 
 # ---------------------------------------------------------------------------
-# Hand-offs (P11-6/7)
+# Hand-offs
 # ---------------------------------------------------------------------------
 
 

@@ -132,7 +132,7 @@ body:
       description: >
         Containment is exactly as good as the declarations behind it. If the call
         involved a tool, paste its impact tier (`read`, `write`, `high_impact`,
-        `irreversible`) from `agentfox tools list`, and the capability grant that
+        `irreversible`) from `agentfox declare list tools`, and the capability grant that
         applied. `agentfox doctor` grades declaration quality and often explains a
         surprising verdict on its own.
       render: shell
@@ -143,7 +143,7 @@ body:
     id: version
     attributes:
       label: AgentFox version
-      description: Output of `agentfox version`, or the commit SHA if you run from a clone.
+      description: Output of `agentfox --version`, or the commit SHA if you run from a clone.
       placeholder: "0.1.0, or commit 1b91e2c"
     validations:
       required: true

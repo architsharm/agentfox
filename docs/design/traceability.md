@@ -96,7 +96,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | FR | Status | Implementation | Control | Test |
 |---|---|---|---|---|
 | **P6-1** Policy-as-code engine | ✅ native + OPA | `policy/model.py`, `policy/engine.py`, `policy/opa.py`, `policy/store.py` | NOM-GOV-01 | `test_policy_and_identity.py::test_strongest_effect_wins`, `::test_policy_versions_are_immutable`, `::test_rego_compilation_produces_a_module` |
-| **P6-2** Control catalog & framework mapping | ✅ 43 controls × 7 frameworks | `compliance_data/controls.yaml`, `compliance/catalog.py`; `agentfox compliance validate` | NOM-GOV-02 | `test_registry_and_compliance.py::test_catalog_syncs_all_controls`, `::test_review_status_survives_resync` |
+| **P6-2** Control catalog & framework mapping | ✅ 43 controls × 7 frameworks | `compliance_data/controls.yaml`, `compliance/catalog.py`; `agentfox admin catalog validate` | NOM-GOV-02 | `test_registry_and_compliance.py::test_catalog_syncs_all_controls`, `::test_review_status_survives_resync` |
 | **P6-3** Risk register & assessment | ✅ | `compliance/risk.py::classify, assess, register` | NOM-GOV-03 | `::test_classification_proposes_high_risk_for_hiring_agent`, `::test_ungated_irreversible_tool_raises_the_proposal` |
 | **P6-4** Continuous compliance monitoring | ✅ | `compliance/status.py` — nine rule kinds | NOM-GOV-04 | `::test_status_is_computed_not_attested`, `::test_broken_chain_makes_the_audit_control_fail_hard` |
 | **P6-5** Obligation calendar | ✅ | `compliance/obligations.yaml`, `compliance/risk.py::obligation_calendar` | NOM-GOV-05 | `::test_obligation_calendar_scopes_agents` |
@@ -126,7 +126,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | **NFR-5** Audit integrity | ✅ | four tamper modes individually tested |
 | **NFR-6** Retention | ◐ | policies modelled; no deletion daemon |
 | **NFR-7** Platform security posture | ◐ | argon2 credentials, redaction at capture, signing key external; no SOC 2 |
-| **NFR-8** < 10 min time to first value | ✅ | `agentfox seed && agentfox demo` — offline, ~30 s |
+| **NFR-8** < 10 min time to first value | ✅ | `agentfox admin seed && agentfox demo` — offline, ~30 s |
 | **NFR-9** Offline operation | ✅ | full suite passes with no network |
 | **NFR-10** Determinism & replay | ✅ | `test_determinism`, simulation replay |
 
@@ -135,7 +135,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | ID | Requirement | Status | Implementation | Test |
 |---|---|---|---|---|
 | **PL-1** | Streaming (SSE) with inline enforcement | ✅ | `providers/base.py::StreamChunk`, `providers/echo.py::stream`, `providers/remote.py` (OpenAI + Anthropic SSE), `enforcement.py::run_completion_stream`, `gateway/routes/inline.py::_stream_openai/_stream_anthropic` | `test_tranche0.py` — 11 tests incl. `test_buffered_mode_never_forwards_blocked_output`, `test_streaming_and_non_streaming_agree_on_verdict`, `test_gateway_stream_block_emits_error_then_done` |
-| **PL-2** | Database migrations | ✅ | `alembic.ini`, `migrations/env.py` (URL from Settings, `render_as_batch` for SQLite), baseline revision, `db.py::upgrade_db/downgrade_db/current_revision`, `agentfox db upgrade` | `test_migrations_round_trip`, `test_app_runs_on_a_migrated_schema` |
+| **PL-2** | Database migrations | ✅ | `alembic.ini`, `migrations/env.py` (URL from Settings, `render_as_batch` for SQLite), baseline revision, `db.py::upgrade_db/downgrade_db/current_revision`, `agentfox admin db upgrade` | `test_migrations_round_trip`, `test_app_runs_on_a_migrated_schema` |
 | **PL-3** | Kill switch & quarantine | ✅ every guard surface | `models.py::AgentControl`, `registry/control.py`, `enforcement.py::_control_verdict` (checked before taint/detectors/policy), API `/agents/{slug}/kill|quarantine|resume`, `GET /api/controls`, `agentfox agents kill/quarantine/resume/controls` | 9 tests incl. `test_control_check_precedes_policy`, `test_kill_blocks_the_streaming_path_too`, `test_both_edges_are_audited`; `tests/runtime/test_kill_switch_every_surface.py` |
 | **I-1** | LangGraph-native SDK | ✅ | `integrations/langgraph.py::AgentFoxGuard` — `model_node`, `retrieval_node`, `tool_node`; trace id in graph state (survives checkpointing); escalation via LangGraph `interrupt()` when available | 8 tests incl. `test_tool_node_denies_before_the_body_runs`, `test_integration_imports_without_langgraph` |
 | **I-2** | Inline MCP governance | ✅ | `integrations/mcp.py::McpGovernor` — per-tool digest over name, description, input schema and impact annotations, pinned to the org-wide registered record (not per grant); a changed or dropped tool refuses the call (`mcp.schema_drift`, recorded as a `Decision`); a changed tool is held and filed as an `mcp.tool.accept` proposal (`improvement/appliers.py`), two-person and chained; a tool added under a wildcard grant raises `mcp_tool_added_under_wildcard` | `tests/integrations/test_mcp_governance.py`, `tests/integrations/test_mcp_change_governance.py` incl. `test_one_person_cannot_accept_a_changed_listing`, `test_a_changed_tool_omitted_from_the_next_listing_is_still_blocked`, `test_a_drift_block_writes_a_decision_row` |

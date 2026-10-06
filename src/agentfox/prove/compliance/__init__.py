@@ -1,8 +1,8 @@
 """Pillar 6 — Policy & Compliance Management.
 
-Appendix A.5's coverage map ends here: OSS coverage for this pillar is *essentially
-none*, because mapping controls to regimes needs product integration and domain work
-rather than a library. That is precisely why it is the moat.
+OSS coverage for this area is *essentially none*, because mapping controls to
+regimes needs product integration and domain work rather than a library. That is
+precisely why it is the moat.
 """
 
 from agentfox.prove.compliance import catalog, risk, status

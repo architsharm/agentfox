@@ -1,4 +1,4 @@
-"""`agentfox redteam` — attack your own configuration and score what got through."""
+"""Attack your own configuration and score what got through (`agentfox test redteam`)."""
 
 from __future__ import annotations
 

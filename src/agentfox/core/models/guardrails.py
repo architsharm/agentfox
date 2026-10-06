@@ -27,7 +27,7 @@ from agentfox.core.models.base import Base, TimestampMixin, as_aware, utcnow
 
 
 class DetectorRun(Base, TimestampMixin):
-    """status=timeout|skipped_budget is the P3-6 degradation signal (NOM-RTG-06)."""
+    """status=timeout|skipped_budget is the latency-budget degradation signal (NOM-RTG-06)."""
 
     __tablename__ = "detector_runs"
 
@@ -44,7 +44,7 @@ class DetectorRun(Base, TimestampMixin):
 
 
 class DetectionFinding(Base, TimestampMixin):
-    """`sample` is redacted at capture (P5-5) — we never store the raw secret."""
+    """`sample` is redacted at capture — we never store the raw secret."""
 
     __tablename__ = "detection_findings"
     __table_args__ = (Index("ix_detfind_entity", "entity_type", "created_at"),)
@@ -91,7 +91,7 @@ class BusinessRule(Base, TimestampMixin):
 
 
 class EndUserPrincipal(Base, TimestampMixin):
-    """P10-1 — the human the agent is acting for.
+    """The human the agent is acting for.
 
     Everything else in this pillar depends on this record existing. The Copilot-class
     failure is precisely its absence: the agent runs under its own service identity
@@ -119,7 +119,7 @@ class EndUserPrincipal(Base, TimestampMixin):
 
 
 class ResourceGrant(Base, TimestampMixin):
-    """P10-2 — who may see which resource, for the native entitlement engine.
+    """Who may see which resource, for the native entitlement engine.
 
     Deliberately a thin ACL rather than a relationship model. Customers who already
     run OpenFGA or Cedar should keep it; this exists so the control is usable by the
@@ -142,7 +142,7 @@ class ResourceGrant(Base, TimestampMixin):
 
 
 class DisclosureEvent(Base, TimestampMixin):
-    """P10-3 — what was withheld, and why.
+    """What was withheld, and why.
 
     The drop count *is* the oversharing metric. A pre-filter that silently returns
     fewer chunks tells nobody anything; the same filter recording what it removed turns
@@ -159,17 +159,17 @@ class DisclosureEvent(Base, TimestampMixin):
     candidates: Mapped[int] = mapped_column(Integer, default=0)
     withheld: Mapped[int] = mapped_column(Integer, default=0)
     reasons_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    #: P10-4: the agent could reach more than the principal. The diagnostic that
+    #: The agent could reach more than the principal. The diagnostic that
     #: motivates the whole exercise, and valuable before any model exists.
     over_permission: Mapped[float] = mapped_column(Float, default=0.0)
 
 
 class SourceRecord(Base, TimestampMixin):
-    """P8-1 — what a retrieved chunk came from, and whether that source may be trusted.
+    """What a retrieved chunk came from, and whether that source may be trusted.
 
     Our groundedness scorer checks the answer against the retrieved context and never
     asks whether that context was authoritative. An agent that faithfully grounds an
-    answer in a deprecated 2019 wiki page scores 1.0, which is the whole of F2.
+    answer in a deprecated 2019 wiki page still scores 1.0; this record closes that gap.
     """
 
     __tablename__ = "source_records"
@@ -186,7 +186,7 @@ class SourceRecord(Base, TimestampMixin):
     tier: Mapped[str] = mapped_column(String(24), default="unverified")
     owner: Mapped[str | None] = mapped_column(String(200))
     #: The corpus this belongs to, so a support agent answering from the finance
-    #: corpus (F2.6) is detectable rather than merely unlikely.
+    #: corpus is detectable rather than merely unlikely.
     domain: Mapped[str | None] = mapped_column(String(120), index=True)
     updated_at_source: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     freshness_sla_hours: Mapped[int | None] = mapped_column(Integer)
@@ -201,12 +201,12 @@ class SourceRecord(Base, TimestampMixin):
     content_hash: Mapped[str | None] = mapped_column(String(64))
     last_validated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     last_validation_status: Mapped[str | None] = mapped_column(String(24))
-    #: Set only by `agentfox seed` — see Agent.is_seed for why this exists.
+    #: Set only by `agentfox admin seed` — see Agent.is_seed for why this exists.
     is_seed: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class SourceConnection(Base, TimestampMixin):
-    """P8 — how to actually reach a source, for sources that are more than a
+    """How to actually reach a source, for sources that are more than a
     fetchable URL: an enterprise knowledge base or a customer's own database.
 
     A registry key alone is a claim; this is what turns "validate" from a plain
@@ -239,7 +239,7 @@ class SourceConnection(Base, TimestampMixin):
 
 
 class KnowledgeBoundary(Base, TimestampMixin):
-    """P7-1 — what this agent can actually answer from.
+    """What this agent can actually answer from.
 
     Declared, not inferred. The fact that decides answerability — what the index behind
     the agent contains — is invisible to the model and cannot be derived from the corpus
@@ -265,7 +265,7 @@ class KnowledgeBoundary(Base, TimestampMixin):
 
 
 class EscalationPolicy(Base, TimestampMixin):
-    """P11-1 — the conditions under which this agent *must* hand off to a human.
+    """The conditions under which this agent *must* hand off to a human.
 
     Declared per agent, and deliberately separate from the guardrail policy: a
     guardrail decides whether an action may proceed, an escalation policy decides
@@ -280,14 +280,14 @@ class EscalationPolicy(Base, TimestampMixin):
     #: Condition thresholds. Absent keys are not evaluated.
     conditions_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     owner_role: Mapped[str] = mapped_column(String(64), default="support")
-    #: F5.6 — an escalation nobody owns within an SLA is a dropped escalation.
+    #: An escalation nobody owns within an SLA is a dropped escalation.
     sla_minutes: Mapped[int] = mapped_column(Integer, default=60)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     mode: Mapped[str] = mapped_column(String(16), default="observe")  # observe | enforce
 
 
 class Handoff(Base, TimestampMixin):
-    """P11-6/7 — one hand-off to a human, with its context package and its clock.
+    """One hand-off to a human, with its context package and its clock.
 
     Distinct from `ApprovalRequest`, which asks a human to authorise an *action*. A
     hand-off transfers the *conversation*, and the failure modes are different: an
@@ -305,7 +305,7 @@ class Handoff(Base, TimestampMixin):
     reason: Mapped[str] = mapped_column(Text, default="")
     #: Which declared conditions triggered it — the audit answer to "why a human?".
     triggers_json: Mapped[list[Any]] = mapped_column(JSON, default=list)
-    #: F5.2 — the context the human receives. A hand-off without it is a failure even
+    #: The context the human receives. A hand-off without it is a failure even
     #: though the hand-off itself happened.
     context_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     completeness: Mapped[float] = mapped_column(Float, default=0.0)
@@ -322,7 +322,7 @@ class Handoff(Base, TimestampMixin):
 
 
 class ConversationTurn(Base, TimestampMixin):
-    """P11-3/5 — the per-turn record missed-escalation detection reads back.
+    """The per-turn record missed-escalation detection reads back.
 
     Traces record what the *agent* did. This records what the *conversation* looked
     like, which is what the escalation conditions are written against.
@@ -345,7 +345,7 @@ class ConversationTurn(Base, TimestampMixin):
 
 
 class GuardrailFeedback(Base, TimestampMixin):
-    """P3-14 — a human's verdict on our verdict.
+    """A human's verdict on our verdict.
 
     The measured complaint is that guardrails cannot be tuned: a team gets false
     positives, has nowhere to put that fact, and turns the detector off. This row is
@@ -378,7 +378,7 @@ class GuardrailFeedback(Base, TimestampMixin):
 
 
 class Suppression(Base, TimestampMixin):
-    """P3-14 — a scoped, expiring exception to a detector.
+    """A scoped, expiring exception to a detector.
 
     Expiry is not a nicety. A permanent silent exception is indistinguishable from a
     detector that stopped working, and that is exactly how guardrail programmes decay.
@@ -416,7 +416,7 @@ class Suppression(Base, TimestampMixin):
 
 
 class TaintTag(Base, TimestampMixin):
-    """P3-4. The substrate for intent-based containment."""
+    """The substrate for intent-based containment."""
 
     __tablename__ = "taint_tags"
 
@@ -429,7 +429,7 @@ class TaintTag(Base, TimestampMixin):
 
 
 class Budget(Base, TimestampMixin):
-    """P3-10. Consumption bounds and loop containment."""
+    """Consumption bounds and loop containment."""
 
     __tablename__ = "budgets"
 
@@ -448,14 +448,14 @@ class Budget(Base, TimestampMixin):
 
 
 class MemoryEntry(Base, TimestampMixin):
-    """NOM-RTG-13 — P14 extension, closes OWASP ASI06 (Memory & Context Poisoning).
+    """NOM-RTG-13 — closes OWASP ASI06 (Memory & Context Poisoning).
 
     A write into whatever an agent uses as long-term memory (vector store, `mem0`
     -style store, a LangGraph checkpointer) governed the same way a tool call is:
     the detector pipeline runs on the way *in*, not only on the way back out at
     retrieval time, and the entry carries the taint of whatever produced it so a
-    later retrieval can weight or refuse it the way P8 already weights a source
-    tier. ``verified_by`` is None until a human or a trusted process confirms the
+    later retrieval can weight or refuse it the way source provenance already weights a
+    source tier. ``verified_by`` is None until a human or a trusted process confirms the
     entry — until then :attr:`active` defaults closed rather than open, unlike
     :class:`Suppression`: an unconfirmed memory is not entitled to persist
     indefinitely just because nobody has gotten around to revoking it.
@@ -488,7 +488,7 @@ class MemoryEntry(Base, TimestampMixin):
 
 
 class AgentSigningKey(Base, TimestampMixin):
-    """NOM-IAM-08 — P17, closes OWASP ASI07 (agent-to-agent message integrity).
+    """NOM-IAM-08 — closes OWASP ASI07 (agent-to-agent message integrity).
 
     One HMAC secret per agent, encrypted at rest with the same primitive
     :mod:`crypto` already uses for a connected GitHub token or a source

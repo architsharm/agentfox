@@ -1,4 +1,4 @@
-"""Continuous compliance monitoring (P6-4, NOM-GOV-04).
+"""Continuous compliance monitoring (NOM-GOV-04).
 
 **The difference between a compliance product and a compliance-theatre product.**
 
@@ -16,7 +16,7 @@ with. Two rules are deliberately strict:
   value at all.
 * A control whose evidence source is producing nothing is ``not_implemented``, not
   ``effective``. Silence is not success — and a detector that quietly stopped running
-  while its control reported green is the exact failure mode in Appendix E.2.3.
+  while its control reports green is the exact failure mode this rule prevents.
 """
 
 from __future__ import annotations
@@ -421,7 +421,7 @@ _RULE_HANDLERS = {
 }
 
 #: Every ``status_rule.kind`` that ``evaluate_control`` understands. An unknown kind
-#: silently falls back to ``presence``, which is why ``agentfox compliance validate``
+#: silently falls back to ``presence``, which is why ``agentfox admin catalog validate``
 #: checks the catalog against this set.
 RULE_KINDS = frozenset(_RULE_HANDLERS)
 
@@ -489,7 +489,7 @@ def ensure_compliance_computed(session: Session, window_days: int = 30) -> bool:
     """Sync the catalog and compute control status if nobody has, or not recently.
 
     The board said "0% of 43 controls" on any deployment that had simply never run
-    `agentfox compliance compute` — a false statement about the controls, made on
+    `agentfox admin catalog compute` — a false statement about the controls, made on
     the screen an executive reads. Views a person reads call this first. Returns
     whether anything was computed.
     """

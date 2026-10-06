@@ -1,8 +1,8 @@
 """Pillar 3 — Runtime Guardrails & Security.
 
 Detector registration happens here so that importing ``agentfox.detection`` gives
-you a working, offline-capable detector set with no optional dependency installed
-(X-3). Wrapped OSS adapters register too, but report ``available() == False`` until
+you a working, offline-capable detector set with no optional dependency installed.
+Wrapped OSS adapters register too, but report ``available() == False`` until
 their dependency (and, for classifiers, their weights) are actually present.
 """
 
@@ -19,8 +19,6 @@ from agentfox.detection.adapters.hub import HubValidatorDetector, hub_detectors
 from agentfox.detection.adapters.presidio import PresidioPiiDetector
 from agentfox.detection.adapters.rails import GuardrailsAiDetector, NemoRailsDetector
 from agentfox.detection.base import (
-    SURFACES,
-    TAINT_ORDER,
     BaseDetector,
     Detection,
     DetectionContext,
@@ -31,7 +29,6 @@ from agentfox.detection.base import (
     get_detector,
     redact_sample,
     register_detector,
-    taint_rank,
     warm_all,
 )
 from agentfox.detection.detectors.injection import InjectionHeuristicDetector
@@ -73,12 +70,10 @@ register_detector(PiiJudgmentDetector())
 for _hub_detector in hub_detectors():
     register_detector(_hub_detector)
 
-# --- Licence-restricted, opt-in only (Appendix A.4) ---
+# --- Licence-restricted, opt-in only ---
 register_detector(RestrictedClassifierDetector())
 
 __all__ = [
-    "SURFACES",
-    "TAINT_ORDER",
     "BaseDetector",
     "Detection",
     "DetectionContext",
@@ -111,6 +106,5 @@ __all__ = [
     "HubValidatorDetector",
     "hub_detectors",
     "register_detector",
-    "taint_rank",
     "warm_all",
 ]

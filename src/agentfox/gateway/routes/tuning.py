@@ -1,7 +1,7 @@
-"""P3-12/13/14 — the guardrail tuning surface over HTTP.
+"""The guardrail tuning surface over HTTP.
 
 Detection is commoditised; tuning is not. These routes exist because the practitioner
-complaint was never "the detector missed it" — it was "it fired, I could not tell
+complaint is rarely "the detector missed it" — it is "it fired, I could not tell
 whether it was right, and I had nowhere to put the fact that it was wrong". The
 answer to a false positive has to be cheaper than turning the detector off, or the
 detector gets turned off.
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/guardrails", tags=["guardrails"])
 
 
 # ---------------------------------------------------------------------------
-# P3-13 — latency
+# Latency
 # ---------------------------------------------------------------------------
 
 
@@ -56,7 +56,7 @@ def latency(
 
 
 # ---------------------------------------------------------------------------
-# P3-14 — feedback
+# Feedback
 # ---------------------------------------------------------------------------
 
 

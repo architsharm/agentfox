@@ -1,8 +1,8 @@
 """End-to-end walkthrough — the "it just caught something" moment.
 
-The roadmap's Phase-0 test is that the wedge *demos itself*: a blocked injection and
-a trace a CISO can read beats any deck. This script walks the full request path from
-PRD §9.3 and prints what each pillar contributed, using only the offline provider.
+The product should *demo itself*: a blocked injection and a trace a CISO can read
+beats any deck. This script walks the full request path and prints what each pillar
+contributed, using only the offline provider.
 
 Every number printed here is computed live from the same code paths the product uses.
 Nothing is narrated that did not actually happen.
@@ -20,9 +20,9 @@ from rich.table import Table
 from agentfox.cli._style import SEVERITY_COLOUR
 from agentfox.core.db import session_scope
 from agentfox.core.models import AuditEntry, EvalSuite, Finding
-from agentfox.core.seed import POISONED_DOCUMENT
 from agentfox.evaluation import gate, run_campaign, set_baseline
 from agentfox.evaluation.runner import NativeEvalRunner
+from agentfox.fixtures.seed import POISONED_DOCUMENT
 from agentfox.identity import assess_posture
 from agentfox.policy import set_mode
 from agentfox.prove.audit import chain, evidence

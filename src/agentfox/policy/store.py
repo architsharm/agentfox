@@ -1,13 +1,13 @@
-"""Policy persistence and binding resolution (P6-1).
+"""Policy persistence and binding resolution.
 
 Two invariants live here:
 
 * **Versions are immutable.** Saving a changed body creates version *n+1*; it never
   rewrites *n*. Decisions reference the version id, so history stays truthful even
-  after the policy is edited (Appendix E.1.5 — "that rule was always on").
+  after the policy is edited and "that rule was always on" can be checked.
 * **Bindings carry the mode.** A policy version bound in ``observe`` records what it
   *would* have done; the same version bound in ``enforce`` blocks. Promotion between
-  the two is an explicit, audited act (PRD R3).
+  the two is an explicit, audited act.
 """
 
 from __future__ import annotations
@@ -321,8 +321,8 @@ def _bound_layers(
     three can never disagree about which version a binding means or what mode it
     is in.
 
-    ``pick_canary`` routes a request to the canary candidate when one is rolling
-    (P12-6): a running canary splits live traffic between the bound (stable)
+    ``pick_canary`` routes a request to the canary candidate when one is rolling:
+    a running canary splits live traffic between the bound (stable)
     version and a candidate by percentage, per request. `active_canary` only
     returns a hit when the binding still points at the canary's own recorded stable
     version, so a binding that moved out from under a stale canary (e.g. someone
@@ -381,7 +381,7 @@ def active_layers(
     *,
     skipped: list[UnloadablePolicyVersion] | None = None,
 ) -> list[PolicyLayer]:
-    """Every bound policy version, as hierarchy layers (P12).
+    """Every bound policy version, as hierarchy layers.
 
     Read-only views use this, so a bound version that no longer loads is left
     out rather than raised; pass ``skipped`` to find out which.
@@ -459,7 +459,7 @@ def policies_in_force(
     *,
     skipped: list[UnloadablePolicyVersion] | None = None,
 ) -> list[tuple[PolicyDocument, PolicyVersion, PolicyBinding]]:
-    """What the runtime evaluates for one subject: the hierarchy, resolved (P12).
+    """What the runtime evaluates for one subject: the hierarchy, resolved.
 
     The same `resolve_effective` that `policy effective` prints decides this, so the
     command shows what the enforcer does. Per layer that means:
@@ -499,7 +499,7 @@ def policies_in_force(
 
 
 def lint_all(session: Session) -> dict:
-    """Lint every bound policy layer. Intended for CI (P12-4).
+    """Lint every bound policy layer. Intended for CI.
 
     A bound version that no longer loads is a `high` finding rather than a crash:
     it is a policy the deployment believes is in force and the runtime cannot read.
@@ -536,7 +536,7 @@ def save_policy(
     already has a live binding it is left exactly as it is (same version, same
     mode), and the new version waits for an explicit promotion
     (:func:`set_mode` with ``version``). A policy with no live binding is bound,
-    in ``bind_mode``. The editor saves this way (#64).
+    in ``bind_mode``. The editor saves this way.
     """
     policy = session.scalar(select(Policy).where(Policy.key == doc.key))
     if policy is None:

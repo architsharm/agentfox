@@ -14,7 +14,7 @@ Everything created here is inert by construction, not by convention:
   the same way any unregistered agent is (see ``register_agent(..., draft=True)``).
 * A proposed policy is created through the same ``save_policy`` every hand-authored
   policy goes through, which means it starts in ``observe`` mode — recording, never
-  blocking (R3) — before a human has looked at it, and has no rules yet.
+  blocking — before a human has looked at it, and has no rules yet.
 
 Approving a proposal therefore doesn't grant capability the platform didn't already
 have; it just clears the review flag.
@@ -116,9 +116,9 @@ class ProvisionIn(BaseModel):
 
 
 #: How many GitHub sign-in sessions one person may hold at once. Each sign-in mints
-#: a token (the raw value is never stored, so an old one cannot be handed back), and
-#: before this cap every sign-in added another 365-day credential that nothing ever
-#: retired. Past the cap the oldest are revoked: a browser that has not signed in for
+#: a token (the raw value is never stored, so an old one cannot be handed back); without
+#: a cap every sign-in would add another 365-day credential that nothing ever
+#: retires. Past the cap the oldest are revoked: a browser that has not signed in for
 #: a while is signed out, and the set of live login tokens stays small and known.
 MAX_LOGIN_SESSIONS = 5
 LOGIN_TOKEN_NAME = "github-login"

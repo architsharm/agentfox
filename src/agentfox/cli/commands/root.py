@@ -53,7 +53,7 @@ def seed(
     """Load a demonstrable environment: three agents, policies, controls and an
     eval suite. It records no traffic; `agentfox demo` sends sample requests through
     the seeded agents, which is what fills traces, decisions and findings."""
-    from agentfox.core.seed import seed as run_seed
+    from agentfox.fixtures.seed import seed as run_seed
 
     with _session() as session:
         summary = run_seed(session)
@@ -100,8 +100,8 @@ def demo() -> None:
     """Run the end-to-end walkthrough (offline)."""
     from agentfox.core.db import init_db, session_scope
     from agentfox.core.models import Agent
-    from agentfox.core.seed import register_scripts
-    from agentfox.core.seed import seed as run_seed
+    from agentfox.fixtures.seed import register_scripts
+    from agentfox.fixtures.seed import seed as run_seed
 
     init_db()
     with session_scope() as session:
@@ -165,8 +165,8 @@ def analyse_action(
     summary = summarise([analysis], environment)
     colour = SEVERITY_COLOUR.get(analysis.severity, "green")
     # A statement that was never analysed (no sqlglot, or it did not parse) has no
-    # known reversibility; printing "reversible" for it was a guess in the safe-looking
-    # direction.
+    # known reversibility; printing "reversible" for it would be a guess in the
+    # safe-looking direction.
     if kind == "sql" and not analysis.parsed:
         reversibility = "reversibility unknown (not analysed)"
     else:

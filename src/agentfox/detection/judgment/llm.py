@@ -4,8 +4,8 @@ Jev answers a question with a probability and nothing else. A general model
 has to be *asked* for one, and will happily return prose instead, so this is
 mostly parsing discipline and prompt shape rather than cleverness.
 
-**It goes through `providers.get_provider`, not an SDK.** X-2 in
-`providers/base.py` is explicit that no feature may exist that only works on
+**It goes through `providers.get_provider`, not an SDK.** `providers/base.py`
+is explicit that no feature may exist that only works on
 one vendor, and a judge wired directly to one API would be exactly that. The
 same class therefore serves the hosted tier and the self-hosted one: a LiteLLM
 or vLLM endpoint on loopback is `Tier.LOCAL_LLM` and never leaves the box, the

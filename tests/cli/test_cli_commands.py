@@ -38,7 +38,7 @@ def _json(output: str):
 
 def _seed() -> dict:
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -121,7 +121,7 @@ def test_demo_command_restores_the_policy_and_says_so(monkeypatch):
 
 
 def test_seed_masks_agent_keys_by_default():
-    result = runner.invoke(app, ["seed"])
+    result = runner.invoke(app, ["admin", "seed"])
     assert result.exit_code == 0, result.output
     assert re.search(r"nom_agt_\w{4}…", result.output)
     assert not re.search(r"nom_agt_\w{5,}", result.output)
@@ -129,7 +129,7 @@ def test_seed_masks_agent_keys_by_default():
 
 
 def test_seed_show_keys_prints_them_in_full():
-    result = runner.invoke(app, ["seed", "--show-keys"])
+    result = runner.invoke(app, ["admin", "seed", "--show-keys"])
     assert result.exit_code == 0, result.output
     assert re.search(r"nom_agt_\w{20,}", result.output)
 
@@ -164,13 +164,13 @@ def test_findings_json_on_a_fresh_database(tableless_db):
 @pytest.mark.parametrize(
     ("args", "exit_code"),
     [
-        (["auth", "tokens", "--json"], 0),
-        (["sources", "list", "--json"], 0),
-        (["escalation", "scan"], 0),
-        (["entitlement", "report"], 0),
-        (["boundary", "check", "nobody", "what is our refund policy?"], 1),
-        (["guardrails", "show"], 0),
-        (["guardrails", "check", "--json"], 0),
+        (["admin", "auth", "tokens", "--json"], 0),
+        (["declare", "list", "sources", "--json"], 0),
+        (["report", "escalations"], 0),
+        (["report", "entitlement"], 0),
+        (["test", "boundary", "nobody", "what is our refund policy?"], 1),
+        (["policy", "rules", "show"], 0),
+        (["policy", "rules", "check", "--json"], 0),
     ],
 )
 def test_db_backed_groups_work_on_a_fresh_database(tableless_db, args, exit_code):
@@ -227,7 +227,7 @@ def test_scan_mcp_seed_fixture_must_be_asked_for():
 
 
 def test_scan_mcp_scans_the_given_file(tmp_path):
-    from agentfox.core.seed import MCP_TOOLS
+    from agentfox.fixtures.seed import MCP_TOOLS
 
     _seed()
     path = tmp_path / "tools.json"
@@ -248,7 +248,7 @@ def test_guardrails_compile_apply_saves_the_ladder(tmp_path):
 
     path = tmp_path / "refunds.txt"
     path.write_text(REFUND_POLICY)
-    result = runner.invoke(app, ["guardrails", "compile", str(path), "--apply"])
+    result = runner.invoke(app, ["policy", "rules", "compile", str(path), "--apply"])
     assert result.exit_code == 0, (result.output, result.exception)
     output = flat(result.output)
     assert "Saved 1 ladder(s)" in output
@@ -267,7 +267,7 @@ def test_guardrails_compile_apply_saves_the_ladder(tmp_path):
 
 
 def test_entitlement_report_hint_names_a_real_command():
-    result = runner.invoke(app, ["entitlement", "report"])
+    result = runner.invoke(app, ["report", "entitlement"])
     output = flat(result.output)
     assert "agentfox declare principal" in output
     assert "principal set" not in output
@@ -285,7 +285,7 @@ def test_compliance_status_verbose_honours_the_framework():
     from agentfox.prove.compliance.catalog import load_catalog
 
     _seed()
-    assert runner.invoke(app, ["compliance", "compute"]).exit_code == 0
+    assert runner.invoke(app, ["admin", "catalog", "compute"]).exit_code == 0
 
     with session_scope() as session:
         computed = set(latest_statuses(session))
@@ -297,7 +297,7 @@ def test_compliance_status_verbose_honours_the_framework():
         else:  # pragma: no cover - catalog shape guard
             pytest.skip("no framework maps a strict subset of controls")
 
-    result = runner.invoke(app, ["compliance", "status", "--framework", framework, "--verbose"])
+    result = runner.invoke(app, ["report", "status", "--framework", framework, "--verbose"])
     assert result.exit_code == 0, result.output
     for key in inside:
         assert key in result.output
@@ -358,7 +358,7 @@ def test_main_maps_keyboard_interrupt_to_130(monkeypatch):
 
 
 def test_compliance_validate_passes_on_the_shipped_catalog():
-    result = runner.invoke(app, ["compliance", "validate"])
+    result = runner.invoke(app, ["admin", "catalog", "validate"])
     assert result.exit_code == 0, result.output
     output = flat(result.output)
     assert "catalog valid" in output
@@ -407,7 +407,7 @@ def compliance_dir(tmp_path, monkeypatch):
 def test_compliance_validate_reports_every_problem(compliance_dir):
     (compliance_dir / "controls.yaml").write_text(BROKEN_CATALOG)
     (compliance_dir / "obligations.yaml").write_text(BROKEN_OBLIGATIONS)
-    result = runner.invoke(app, ["compliance", "validate"])
+    result = runner.invoke(app, ["admin", "catalog", "validate"])
     assert result.exit_code == 1, result.output
     output = flat(result.output)
     assert "C-1: duplicate control key" in output
@@ -421,7 +421,7 @@ def test_compliance_validate_reports_every_problem(compliance_dir):
 def test_compliance_validate_reports_unparseable_yaml(compliance_dir):
     (compliance_dir / "controls.yaml").write_text("controls: [unclosed\n")
     (compliance_dir / "obligations.yaml").write_text("obligations: []\n")
-    result = runner.invoke(app, ["compliance", "validate"])
+    result = runner.invoke(app, ["admin", "catalog", "validate"])
     assert result.exit_code == 1
     assert "does not parse" in flat(result.output)
 

@@ -1,20 +1,20 @@
-"""P3-12/13/14 — the guardrail tuning surface.
+"""The guardrail tuning surface.
 
 Detection is commoditised. Every vendor and every OSS project can tell you that a
 string contains an SSN. What none of them solve, and what the practitioner evidence
 kept returning to, is what happens **after** a detector fires:
 
-* **P3-12 — violation specificity.** "Blocked by policy" is not an explanation. An
+* **Violation specificity.** "Blocked by policy" is not an explanation. An
   engineer holding that message cannot tell whether the guardrail was right, and the
   cheapest way to make the error go away is to disable the detector. So every verdict
   can produce the detector, the rule, the matched span, the score against the
   threshold that decided it, and the concrete next action.
-* **P3-13 — cumulative latency budgeting.** The existing per-call budget is honest but
-  incomplete: one request evaluates several messages, the output, and every tool call,
-  so a stack that respects a 100 ms per-call budget can still spend 600 ms on a
-  request. The ledger below is per-*request*, and later surfaces shed expensive
-  detectors once it is exhausted rather than quietly blowing the SLO.
-* **P3-14 — false-positive loop.** A team with no route for "this was wrong" turns the
+* **Cumulative latency budgeting.** The per-call budget is honest but incomplete:
+  one request evaluates several messages, the output, and every tool call, so a
+  stack that respects a 100 ms per-call budget can still spend 600 ms on a request.
+  The ledger below is per-*request*, and later surfaces shed expensive detectors once
+  it is exhausted rather than quietly blowing the SLO.
+* **False-positive loop.** A team with no route for "this was wrong" turns the
   detector off. Feedback is recorded against the decision, aggregated into per-detector
   precision, and turned into a threshold recommendation — or, importantly, into an
   honest "these scores do not separate, no threshold fixes this".
@@ -57,7 +57,7 @@ MIN_LABELS_FOR_RECOMMENDATION = 5
 
 
 # ---------------------------------------------------------------------------
-# P3-12 — violation specificity
+# Violation specificity
 # ---------------------------------------------------------------------------
 
 
@@ -197,7 +197,7 @@ def explain(
     surface: str = "input",
     thresholds: dict[str, float] | None = None,
 ) -> Explanation:
-    """P3-12 — turn a verdict into something an engineer can act on or argue with."""
+    """Turn a verdict into something an engineer can act on or argue with."""
     thresholds = thresholds or {}
     rule = next(
         (r for r in result.rules_fired if r.get("effect") == result.effective_verdict),
@@ -302,7 +302,7 @@ def explain(
 
 
 # ---------------------------------------------------------------------------
-# P3-13 — cumulative latency budgeting
+# Cumulative latency budgeting
 # ---------------------------------------------------------------------------
 
 
@@ -382,7 +382,7 @@ def _percentile(values: list[float], pct: float) -> float:
 def latency_report(
     session: Session, *, agent_slug: str | None = None, days: int = 7
 ) -> dict[str, Any]:
-    """P3-13 — per-detector and per-agent latency, from what actually ran.
+    """Per-detector and per-agent latency, from what actually ran.
 
     Reported as p50/p95/max rather than a mean: a mean hides exactly the tail that
     gets a governance product removed for being slow.
@@ -426,7 +426,7 @@ def latency_report(
 
 
 # ---------------------------------------------------------------------------
-# P3-14 — false-positive feedback loop
+# False-positive feedback loop
 # ---------------------------------------------------------------------------
 
 
@@ -445,7 +445,7 @@ def record_feedback(
     note: str = "",
     actor: str | None = None,
 ) -> GuardrailFeedback:
-    """P3-14 — "this was wrong", attached to the decision it is about.
+    """Record "this was wrong", attached to the decision it is about.
 
     Labels are the input precision reporting, threshold recommendations and the
     improvement loop all trust, so three rules hold here rather than at each caller:
@@ -486,9 +486,9 @@ def record_feedback(
         entity_type = finding.entity_type if finding else None
     # The label is about one entity, so its score is that entity's score. The run's
     # score is the max over everything the detector matched in the request: a label
-    # on a 0.55 PII.EMAIL match in a run that also found a 0.95 PII.SSN used to be
-    # stored at 0.95, and a threshold recommendation fitted to these labels moved
-    # by the wrong entity's confidence.
+    # on a 0.55 PII.EMAIL match in a run that also found a 0.95 PII.SSN would
+    # otherwise be stored at 0.95, and a threshold recommendation fitted to these
+    # labels would move by the wrong entity's confidence.
     if entity_type and matching:
         entity_match = session.scalar(
             select(DetectionFinding)
@@ -748,8 +748,8 @@ def apply_suppression(
     global suppression is possible but must be asked for.
     """
     if scope not in SUPPRESSION_SCOPES:
-        # Anything but an exact "agent" used to fall through to a global suppression —
-        # a typo silencing a detector for every agent in the tenant.
+        # Reject rather than default to global, so a typo cannot silence a detector
+        # for every agent in the tenant.
         raise ValueError(f"scope must be one of {SUPPRESSION_SCOPES}, got {scope!r}")
     feedback = session.get(GuardrailFeedback, feedback_id)
     if feedback is None:
@@ -995,7 +995,7 @@ def explain_recorded(
     original content, and per-detector timings beyond what the run rows carry. The
     caller gets `None` for the excerpt rather than a plausible-looking blank.
     """
-    from agentfox.policy.model import EFFECT_RANK
+    from agentfox.core.vocab import EFFECT_RANK
 
     rules = list(decision.get("rules_fired") or [])
     # The *effective* verdict, which is what the live explanation describes and what

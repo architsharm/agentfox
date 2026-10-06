@@ -1,6 +1,6 @@
 """Prefixed, lexicographically-sortable identifiers.
 
-Sortable ids matter more here than usual: the audit chain (P5-2) and trace
+Sortable ids matter more here than usual: the audit chain and trace
 reconstruction both rely on stable ordering, and a prefix makes an id
 self-describing in an evidence package an auditor reads by hand.
 """

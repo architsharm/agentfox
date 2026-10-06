@@ -1,6 +1,6 @@
-"""Scorer library (P4-5).
+"""Scorer library.
 
-Deterministic and offline by default (X-3, X-4). LLM-as-judge exists but pins its
+Deterministic and offline by default. LLM-as-judge exists but pins its
 judge model and records the rubric, because a non-reproducible score cannot appear
 in an evidence package.
 
@@ -287,7 +287,7 @@ class SafetyScorer(BaseScorer):
 
 
 class LlmJudgeScorer(BaseScorer):
-    """LLM-as-judge with a pinned model and a recorded rubric (X-4).
+    """LLM-as-judge with a pinned model and a recorded rubric.
 
     Offline, the pinned judge is the deterministic ``echo`` provider, which scores
     by rubric-keyword coverage. That is honest: a judge you cannot reproduce should

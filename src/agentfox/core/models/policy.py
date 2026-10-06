@@ -44,7 +44,7 @@ class Policy(Base, TimestampMixin):
 
 
 class PolicyVersion(Base, TimestampMixin):
-    """Immutable. Never mutated in place — X-4."""
+    """Immutable. Never mutated in place."""
 
     __tablename__ = "policy_versions"
     __table_args__ = (UniqueConstraint("policy_id", "version", name="uq_policy_version"),)
@@ -59,7 +59,7 @@ class PolicyVersion(Base, TimestampMixin):
 
 
 class PolicyBinding(Base, TimestampMixin):
-    """Observe-by-default is the R3 (false-block) mitigation."""
+    """Observe-by-default is the mitigation for false blocks."""
 
     __tablename__ = "policy_bindings"
 
@@ -67,7 +67,7 @@ class PolicyBinding(Base, TimestampMixin):
     policy_version_id: Mapped[str] = mapped_column(String(40), index=True)
     scope_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     mode: Mapped[str] = mapped_column(String(16), default="observe")
-    # P12 — where this binding sits in the hierarchy. Defaults keep pre-hierarchy
+    # Where this binding sits in the hierarchy. Defaults keep pre-hierarchy
     # bindings behaving exactly as before: one org-wide layer that extends nothing.
     level: Mapped[str] = mapped_column(String(16), default="org")
     scope_id: Mapped[str] = mapped_column(String(160), default="*")
@@ -77,7 +77,7 @@ class PolicyBinding(Base, TimestampMixin):
 
 
 class PolicyCanary(Base, TimestampMixin):
-    """Agent canary rollout by version, with health gates and automated rollback (P12-6).
+    """Agent canary rollout by version, with health gates and automated rollback.
 
     A running canary sits *on top of* the current binding rather than replacing it:
     ``stable_version_id`` is what the binding already points to, ``candidate_version_id``
@@ -129,7 +129,7 @@ class Decision(Base, TimestampMixin):
     tool_key: Mapped[str | None] = mapped_column(String(160))
     verdict: Mapped[str] = mapped_column(String(16), default="allow", index=True)
     rules_fired_json: Mapped[list[Any]] = mapped_column(JSON, default=list)
-    # Always the exact version(s) in force at decision time — X-4, NOM-AUD-02.
+    # Always the exact version(s) in force at decision time — NOM-AUD-02.
     # `policy_version_id` is the version that produced the winning verdict;
     # `policy_version_ids` is every version evaluated, because a decision is only
     # reproducible if you know the whole set that was in force, not just the winner.
@@ -143,7 +143,7 @@ class Decision(Base, TimestampMixin):
 
 
 class SimulationRun(Base, TimestampMixin):
-    """P2-7. Replay recorded traffic against a candidate policy."""
+    """Replay recorded traffic against a candidate policy."""
 
     __tablename__ = "simulation_runs"
 
@@ -181,7 +181,7 @@ class Control(Base, TimestampMixin):
 
 class FrameworkMapping(Base, TimestampMixin):
     """`draft` mappings ship in evidence packages chip-labeled `DRAFT — UNVERIFIED /
-    NOT LEGAL ADVICE` rather than excluded (Appendix B §B.6)."""
+    NOT LEGAL ADVICE` rather than excluded."""
 
     __tablename__ = "framework_mappings"
 
@@ -196,7 +196,7 @@ class FrameworkMapping(Base, TimestampMixin):
 
 
 class ControlStatus(Base, TimestampMixin):
-    """P6-4. Computed from telemetry, never attested."""
+    """Computed from telemetry, never attested."""
 
     __tablename__ = "control_statuses"
     __table_args__ = (Index("ix_ctlstatus_key_time", "control_key", "computed_at"),)
@@ -227,7 +227,7 @@ class RiskAssessment(Base, TimestampMixin):
 
 
 class Obligation(Base, TimestampMixin):
-    """P6-5. The regulatory clock, as data rather than code (R6)."""
+    """The regulatory clock, as data rather than code."""
 
     __tablename__ = "obligations"
 

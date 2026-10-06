@@ -1,11 +1,12 @@
 """Database session management.
 
-SQLite by default so the whole control plane runs with no infrastructure at all
-(NFR-9); Postgres via ``AGENTFOX_DATABASE_URL`` for anything real.
+SQLite by default so the whole control plane runs with no infrastructure at all;
+Postgres via ``AGENTFOX_DATABASE_URL`` for anything real.
 """
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,6 +18,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from agentfox.core.config import get_settings
 from agentfox.core.models import Base
+
+#: Commit listeners every session factory gets, as ``module:function`` plus a label for
+#: the warning logged when one fails to install. Declared here by name so that `core`
+#: does not import the packages that deliver findings and monitor alerts; the order is
+#: the order they are installed in.
+SESSION_EXTENSIONS: tuple[tuple[str, str], ...] = (
+    ("agentfox.core.webhooks:install", "finding webhooks"),
+    ("agentfox.monitoring.alerts:install", "monitor alerts"),
+)
 
 _engine: Engine | None = None
 _SessionLocal: sessionmaker[Session] | None = None
@@ -136,22 +146,14 @@ def get_sessionmaker() -> sessionmaker[Session]:
 
         _SessionLocal = sessionmaker(bind=get_engine(), expire_on_commit=False, future=True)
         install_tenancy(_SessionLocal)
-        try:
-            from agentfox.core.webhooks import install as install_webhooks
+        for target, label in SESSION_EXTENSIONS:
+            try:
+                module, attribute = target.split(":")
+                getattr(importlib.import_module(module), attribute)(_SessionLocal)
+            except Exception:  # pragma: no cover - extensions must never block sessions
+                import logging
 
-            install_webhooks(_SessionLocal)
-        except Exception:  # pragma: no cover - webhooks must never block sessions
-            import logging
-
-            logging.getLogger(__name__).warning("finding webhooks not installed", exc_info=True)
-        try:
-            from agentfox.monitoring.alerts import install as install_alerts
-
-            install_alerts(_SessionLocal)
-        except Exception:  # pragma: no cover - alerts must never block sessions
-            import logging
-
-            logging.getLogger(__name__).warning("monitor alerts not installed", exc_info=True)
+                logging.getLogger(__name__).warning("%s not installed", label, exc_info=True)
     return _SessionLocal
 
 
@@ -159,8 +161,7 @@ def init_db(stamp: bool = True) -> None:
     """Create the schema directly.
 
     Convenience for tests and first-run local use. **Production upgrades go through
-    Alembic** (`agentfox db upgrade`) — `create_all` cannot evolve an existing schema,
-    which is the defect PL-2 fixed.
+    Alembic** (`agentfox admin db upgrade`) — `create_all` cannot evolve an existing schema.
 
     When ``stamp`` is set and Alembic is available, the fresh database is stamped at
     ``head`` so a later `alembic upgrade` does not try to re-create tables that are
@@ -211,7 +212,7 @@ def migration_root() -> tuple[Path, Path] | None:
     Two layouts, because there are two ways to have this package. In the
     repository both sit at the root. Installed from PyPI they are copied into
     the package itself (see the force-include in pyproject.toml) — the root
-    copies are simply not in the wheel, which is why `agentfox db upgrade` used
+    copies are simply not in the wheel, which is why `agentfox admin db upgrade` used
     to die with a raw alembic traceback naming a path inside the user's venv.
     """
     from agentfox.core.config import REPO_ROOT

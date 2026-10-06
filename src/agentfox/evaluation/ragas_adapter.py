@@ -1,4 +1,4 @@
-"""I-8 / P4-9 — Ragas scorer adapter. 3 of 11 use it for retrieval evaluation.
+"""Ragas scorer adapter. 3 of 11 use it for retrieval evaluation.
 
 This is a vocabulary adapter, not a capability import. Teams evaluating RAG describe
 quality in Ragas terms — faithfulness, answer relevancy, context precision, context
@@ -8,10 +8,9 @@ install still produces them.
 
 Where Ragas itself is installed and egress is allowed, `run_ragas` delegates to it:
 their model-based implementations are better than our lexical ones, and pretending
-otherwise would be the same overstatement the earlier PRD drafts made about
-groundedness. The native path exists so the metrics are *available* offline, not so
-we can claim parity — `implementation` is reported on every result for exactly that
-reason.
+otherwise would overstate what lexical groundedness can do. The native path exists
+so the metrics are *available* offline, not so we can claim parity —
+`implementation` is reported on every result for exactly that reason.
 """
 
 from __future__ import annotations
@@ -182,7 +181,7 @@ def score_dataset(samples: list[RagasSample], *, prefer_ragas: bool = True) -> d
 
 
 # ---------------------------------------------------------------------------
-# P4-9 wiring — Ragas metrics as selectable scorers (not just a standalone report)
+# Ragas metrics as selectable scorers (not just a standalone report)
 # ---------------------------------------------------------------------------
 
 

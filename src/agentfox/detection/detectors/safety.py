@@ -1,7 +1,7 @@
-"""Content-safety classification (P3-5, NOM-RTG-05) — offline fallback.
+"""Content-safety classification (NOM-RTG-05) — offline fallback.
 
 Granite Guardian (IBM, Apache-2.0) is the intended primary classifier: it has the
-cleanest licence of the safety-classifier group (Appendix A.1/A.4), which matters
+cleanest licence of the safety-classifier group, which matters
 for a commercial product. This lexicon detector is the zero-dependency floor so
 that the safety surface is never simply absent when weights are not present.
 

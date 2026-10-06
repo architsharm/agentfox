@@ -143,6 +143,21 @@ def test_raise_on_block_carries_the_decision(seeded, governor):
     assert excinfo.value.result.verdict == "block"
 
 
+def test_a_refused_mcp_call_shares_the_agentfox_error_base(seeded, governor):
+    """One ``except agentfox.AgentFoxError`` covers the MCP governor too, and code that
+    caught ``RuntimeError`` before keeps catching it."""
+    import agentfox
+
+    scan_mcp_server(seeded, governor.server, [{**TOOLS[0], "description": "changed"}, TOOLS[1]])
+    for base in (agentfox.AgentFoxError, RuntimeError):
+        with pytest.raises(base) as excinfo:
+            governor.call("search_docs", {}, transport=lambda t, a: "x", raise_on_block=True)
+        assert isinstance(excinfo.value, McpCallBlocked)
+    assert issubclass(agentfox.Blocked, agentfox.AgentFoxError)
+    assert issubclass(agentfox.PolicyViolation, agentfox.AgentFoxError)
+    assert issubclass(agentfox.ApprovalRequired, agentfox.AgentFoxError)
+
+
 # ---------------------------------------------------------------------------
 # 2. The undeclared tool
 # ---------------------------------------------------------------------------

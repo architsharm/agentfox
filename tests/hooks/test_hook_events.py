@@ -111,7 +111,7 @@ def test_a_tool_call_is_still_a_call_not_content():
 def test_every_event_we_install_maps_to_a_real_surface():
     """A surface the engine does not know would be evaluated under whichever
     rules happen to have no surface filter — enforcement by accident."""
-    from agentfox.detection.base import SURFACES
+    from agentfox.core.vocab import SURFACES
 
     assert set(EVENT_SURFACE.values()) <= set(SURFACES)
 

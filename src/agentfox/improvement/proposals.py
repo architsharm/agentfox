@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
 from agentfox.core.models import AuditEntry, ChangeProposal, utcnow
+from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.improvement import contract
 from agentfox.improvement.appliers import APPLY_ACTION, ApplierError, get_applier, has_applier
 from agentfox.prove.audit import chain
@@ -116,7 +117,7 @@ def automated_applies_last_day(session: Session) -> int:
             .where(
                 AuditEntry.org_id == session_org(session),
                 AuditEntry.action == APPLY_ACTION,
-                AuditEntry.actor_type == contract.AUTOMATION_ACTOR_TYPE,
+                AuditEntry.actor_type == AUTOMATION_ACTOR_TYPE,
                 AuditEntry.occurred_at >= since,
             )
         )

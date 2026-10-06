@@ -1,13 +1,12 @@
-"""Guardrails AI Hub validators, one detector each (P3-1 / P3-9).
+"""Guardrails AI Hub validators, one detector each.
 
-`adapters/rails.py` already wrapped Guardrails AI, but as a single detector with
-an empty validator list: nothing was configured by default, and when something
-did fire, every failure — a jailbreak, a leaked secret, malformed SQL —
-flattened into one `SCHEMA.VIOLATION`. That is the wrong shape twice over. It
-cannot be tuned, because precision and latency are recorded per detector key and
-there was only one key. And it cannot be governed, because our policies match on
+`adapters/rails.py` wraps Guardrails AI as a single detector, which flattens
+every failure — a jailbreak, a leaked secret, malformed SQL — into one
+`SCHEMA.VIOLATION`. That shape is wrong twice over for validators. It cannot be
+tuned, because precision and latency are recorded per detector key and there
+would be only one key. And it cannot be governed, because our policies match on
 entity prefixes (`entity_prefix: INJECTION`), so a jailbreak arriving as
-`SCHEMA.VIOLATION` matched no rule anybody had written.
+`SCHEMA.VIOLATION` matches no rule anybody has written.
 
 So each validator is its own detector here, with its own key, its own measured
 precision and latency, its own suppressions, and — the part that matters — an
@@ -21,7 +20,7 @@ status; we have those and a much smaller library. Wrapping theirs at the
 granularity of one validator per detector is what lets both halves count.
 
 **Nothing here is available by default, and that is deliberate.** Hub validators
-carry their own licences, independent of the Apache-2.0 core (Appendix A.1), and
+carry their own licences, independent of the Apache-2.0 core, and
 several download model weights on first use. A detector appears as available
 only once someone has installed that specific package on purpose, and still has
 to be named in `enabled_detectors` before it runs.
@@ -528,9 +527,8 @@ class HubValidatorDetector(BaseDetector):
         # this reads the shape rather than importing the class. Two independent
         # signals, because either alone is brittle: FailResult carries a
         # non-empty `error_message` and PassResult has none, and the class name
-        # says so too. Matching on the name ALONE was the first version of this
-        # and it silently treated every failure as a pass the moment a subclass
-        # or a rename appeared.
+        # says so too. Matching on the name alone would silently treat every
+        # failure as a pass the moment a subclass or a rename appeared.
         failed = (
             bool(getattr(outcome, "error_message", None))
             or "fail" in type(outcome).__name__.lower()
@@ -545,7 +543,7 @@ class HubValidatorDetector(BaseDetector):
                 score=1.0,
                 end=len(content),
                 # The validator's message can quote the offending span verbatim,
-                # so it is redacted like any other sample (P5-5): an audit row
+                # so it is redacted like any other sample: an audit row
                 # that echoes the secret it found is a new liability.
                 sample=redact_sample(reason, keep=24),
                 owasp_id=self.spec.owasp_id,

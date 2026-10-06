@@ -1,4 +1,4 @@
-"""Model-provider abstraction (X-2 — neutrality by construction).
+"""Model-provider abstraction (neutrality by construction).
 
 Neutrality is not a marketing property here, it is the moat: a model provider's
 evaluation or guardrail product that "also supports competitors" is a conflict of
@@ -8,7 +8,7 @@ may exist that only works on one vendor.
 
 Every provider is an adapter behind this protocol. The default is ``echo``, which is
 deterministic, offline, and keyless — which is what makes the whole enforcement path
-demonstrable with no account anywhere (X-3, NFR-9).
+demonstrable with no account anywhere.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class StreamChunk:
 
     Providers differ wildly in their SSE shapes; this is the normalised form the
     enforcement path and the gateway both work against, so streaming support is added
-    once rather than per provider (X-2).
+    once rather than per provider.
     """
 
     delta: str = ""
@@ -120,7 +120,7 @@ class ModelProvider(Protocol):
         Every provider must implement this. A provider that cannot stream natively
         should fall back to :func:`stream_from_complete` rather than leaving the
         method absent — silently degrading a streaming caller to a non-streaming
-        response is the defect this interface exists to prevent (PL-1).
+        response is the defect this interface exists to prevent.
         """
         ...
 
@@ -176,7 +176,7 @@ def register_provider(provider: ModelProvider) -> ModelProvider:
 
 #: Hosts that are inside the customer's own boundary. Calling one of these is
 #: not egress: nothing crosses a network the customer does not control, so
-#: `allow_egress` (NFR-4) has nothing to gate. Defined here, once, because the
+#: `allow_egress` has nothing to gate. Defined here, once, because the
 #: provider layer and the judgment layer both decide things on it and a second
 #: copy that drifted would mean a self-hosted model being treated as a vendor
 #: by one of them and not the other.

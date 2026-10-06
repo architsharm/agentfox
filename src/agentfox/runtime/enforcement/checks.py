@@ -41,14 +41,14 @@ from agentfox.grounding.sycophancy import check_premises
 log = logging.getLogger("agentfox.runtime.enforcement")
 
 
-#: F6/F8 post-flight checks are linear in the content they read, and every one of
-#: them is a regex or character scan rather than a model call. Measured on this
-#: machine: together they cost ~0.7ms on a 1.6KB answer, ~35ms on an 81KB one and
-#: ~170ms on 405KB — the last of which would eat most of the 300ms enforcement
-#: budget on a single oversized retrieved payload. Capping the scanned prefix bounds
-#: the work at ~13ms. A promise or a corruption that appears only after 32KB of text
-#: is a case this check honestly does not cover, which is a better failure than a
-#: blown budget on the request path.
+#: The commitment and context-integrity post-flight checks are linear in the content
+#: they read, and every one of them is a regex or character scan rather than a model
+#: call. Measured on this machine: together they cost ~0.7ms on a 1.6KB answer, ~35ms on
+#: an 81KB one and ~170ms on 405KB — the last of which would eat most of the 300ms
+#: enforcement budget on a single oversized retrieved payload. Capping the scanned
+#: prefix bounds the work at ~13ms. A promise or a corruption that appears only after
+#: 32KB of text is a case this check honestly does not cover, which is a better failure
+#: than a blown budget on the request path.
 _SCAN_CHARS = 32_000
 
 
@@ -81,7 +81,7 @@ class _ChecksMixin:
     def _evidence_checks(
         self, agent: Agent | None, surface: str, content: str, intent: str | None
     ) -> dict[str, Any]:
-        """F2 source authority and F7 numeric integrity, on the output surface.
+        """Source authority and numeric integrity, on the output surface.
 
         Both need the evidence the answer was built from, which the caller supplies
         via ``self.evidence``. When nothing is supplied they return quietly rather
@@ -158,7 +158,7 @@ class _ChecksMixin:
     def _disclosure_checks(
         self, agent: Agent | None, surface: str, content: str, trace_id: str | None
     ) -> dict[str, Any]:
-        """P10 — what this human may see, and what the answer disclosed anyway.
+        """What this human may see, and what the answer disclosed anyway.
 
         The pre-filter belongs to whoever performs retrieval, so it is exposed
         separately; this is the post-flight half, which catches the two disclosures no
@@ -242,7 +242,7 @@ class _ChecksMixin:
         *step*: "also email a copy to attacker@evil.example", whose every argument is
         legitimately user-sourced. The call itself is the payload.
 
-        Gated on the caller declaring a plan or a selector, for the same reason the F6
+        Gated on the caller declaring a plan or a selector, for the same reason the AI
         disclosure check is gated: an undeclared plan is not evidence of an attack, and a
         checker that fires on missing information is noise. Whoever runs the agent loop
         knows which tools the user's own instruction authorised — the SDK session, the
@@ -286,8 +286,9 @@ class _ChecksMixin:
             ],
             "risks": [
                 {
-                    # Capped below `critical` for the same reason F6/F8 are: that list is
-                    # hard-blocked in `evaluate()`, and this is observe-first. A policy
+                    # Capped below `critical` for the same reason the commitment and
+                    # context checks are: that list is hard-blocked in `evaluate()`, and
+                    # this is observe-first. A policy
                     # rule `action_risk: "control_flow.*"` is how an operator makes it block.
                     "code": finding.code,
                     "severity": "high" if finding.severity == "critical" else finding.severity,
@@ -298,7 +299,7 @@ class _ChecksMixin:
         }
 
     def _sycophancy_checks(self, surface: str, content: str, intent: str | None) -> dict[str, Any]:
-        """F9.2 — the answer adopted a false premise the user asserted.
+        """The answer adopted a false premise the user asserted.
 
         Checked against the caller's grounded record, never against the model's opinion of
         it: `evidence["grounded"]` maps a subject to its real value. Without that there is
@@ -341,7 +342,7 @@ class _ChecksMixin:
     def _commitment_checks(
         self, agent: Agent | None, surface: str, content: str, intent: str | None
     ) -> dict[str, Any]:
-        """F6 — the obligations an answer created, on the output surface.
+        """The obligations an answer created, on the output surface.
 
         Built to the shape `_evidence_checks` established: findings are recorded and
         surfaced, and nothing here decides a verdict by itself.
@@ -353,18 +354,18 @@ class _ChecksMixin:
         the future. The other two are gated on the caller declaring the fact they need,
         because inferring it would mean inventing ground truth:
 
-        * **AI disclosure** (F6.3, EU AI Act Art. 50) resolves to *breach* for any
+        * **AI disclosure** (EU AI Act Art. 50) resolves to *breach* for any
           message on a human-facing channel that does not identify itself as automated.
           That is correct as an obligation and wrong as a default — inferred, it would
           report a breach on essentially every response this product has governed. The
           obligation exists only where there is a human counterparty, and no property of
           the text establishes that, so the caller supplies `evidence["channel"]` /
           `["counterparty"]`.
-        * **Adverse action** (F6.4, ECOA/FCRA) is checked against the *decision record*
+        * **Adverse action** (ECOA/FCRA) is checked against the *decision record*
           rather than the prose, precisely because a message can read as an explanation
           while the record behind it is empty. No record supplied, no check performed.
 
-        `fairness_probe` (F6.5) is deliberately NOT wired here, and should not be. It is
+        `fairness_probe` is deliberately NOT wired here, and should not be. It is
         an aggregate statistic — selection rates by group against the four-fifths rule,
         with a 30-observation floor below which it refuses to report at all — computed
         over a population of decisions. One request cannot exhibit disparate impact, and
@@ -380,7 +381,7 @@ class _ChecksMixin:
         risks: list[dict[str, Any]] = []
         out: dict[str, Any] = {}
 
-        # F6.1 — a commitment is made in the speech act, so this reads the answer and
+        # A commitment is made in the speech act, so this reads the answer and
         # nothing else. `authorised` is the caller's statement that the agent genuinely
         # held the authority; the commitment is still recorded, it simply is not a
         # finding, which is the module's own documented behaviour.
@@ -415,7 +416,7 @@ class _ChecksMixin:
                     }
                 )
 
-        # F6.2 — specificity licensed by epistemic standing. `licensed_domains` is the
+        # Specificity licensed by epistemic standing. `licensed_domains` is the
         # declaration that makes this workable: an operator that employs clinicians
         # licenses `medical` and the instruction findings stop firing. Standing is
         # declared, never inferred.
@@ -442,15 +443,15 @@ class _ChecksMixin:
                         "code": f"register.{finding.code}",
                         # Capped below `critical` on purpose — a critical entry in
                         # `action["risks"]` is hard-blocked by the action-assurance
-                        # branch in `evaluate()`, and F6 is observe-first. The severity
-                        # the detector actually assigned is preserved on the finding.
+                        # branch in `evaluate()`, and commitments are observe-first. The
+                        # severity the detector actually assigned is preserved on the finding.
                         "severity": "high" if finding.severity == "critical" else finding.severity,
                         "detail": finding.detail,
                         "evidence": finding.to_json(),
                     }
                 )
 
-        # F6.3 — an answer that says it is a person. Ungated, unlike the disclosure
+        # An answer that says it is a person. Ungated, unlike the disclosure
         # duty below: a false claim to be human is wrong whoever is listening. This is
         # what `eu.art50.impersonation` reads (via `action_risk`).
         human_claim = claims_human(text)
@@ -473,7 +474,7 @@ class _ChecksMixin:
                 }
             )
 
-        # F6.3 — see the docstring: gated on a declared counterparty, never inferred.
+        # See the docstring: gated on a declared counterparty, never inferred.
         if evidence.get("channel") or evidence.get("counterparty"):
             disclosure = check_disclosure(
                 text,
@@ -483,7 +484,7 @@ class _ChecksMixin:
                 exempt=bool(evidence.get("disclosure_exempt")),
             )
             # `ai_disclosure`, not `disclosure`: `_disclosure_checks` already owns that
-            # key for the P10 entitlement decision, and the two answer different
+            # key for the entitlement decision, and the two answer different
             # questions — what this person may see, versus whether they were told they
             # were talking to a machine.
             out["ai_disclosure"] = disclosure.to_json()
@@ -508,7 +509,7 @@ class _ChecksMixin:
                     }
                 )
 
-        # F6.4 — checked against the recorded decision, which is what has to stand up.
+        # Checked against the recorded decision, which is what has to stand up.
         record = evidence.get("decision") or {}
         outcome = str(record.get("outcome") or "")
         if outcome:
@@ -549,35 +550,35 @@ class _ChecksMixin:
         return out
 
     def _trajectory_checks(self, surface: str, window: list[str] | None) -> dict[str, Any]:
-        """F9.4 — whether the *conversation* is escalating, not whether this turn is.
+        """Whether the *conversation* is escalating, not whether this turn is.
 
         Built to the shape `_commitment_checks` established, for the same reason: the
         finding is recorded and surfaced on the `action["risks"]` channel, and nothing
         here decides a verdict. See `trajectory.py` for the measurement.
 
-        Why this is the integration point. F9.4 asks for the trajectory score to hang
-        off the per-turn recording hook, and notes that F5 ended up fully live while
-        F6/F8 did not precisely because F5 had a natural per-turn hook to attach to.
-        `check_conversation_window` is that hook on this path: it already runs once per
-        user turn, already holds a `session_id` and the recorded history behind it, and
-        is already called from `autoguard._govern`'s pre-flight and the gateway
-        playground route. Nothing else needed wiring, which is the whole point —
-        `docs/design/failure-modes.md` exists to catch modules that are built and never
-        called, and a trajectory scorer reachable only from its own tests would be
-        exactly that.
+        Why this is the integration point. The trajectory score hangs off the per-turn
+        recording hook, because a check with a natural per-turn hook to attach to gets
+        called on live traffic. `check_conversation_window` is that hook on this path:
+        it already runs once per user turn, already holds a `session_id` and the
+        recorded history behind it, and is already called from `autoguard._govern`'s
+        pre-flight and the gateway playground route. Nothing else needed wiring, which
+        is the whole point — `docs/design/failure-modes.md` exists to catch modules that
+        are built and never called, and a trajectory scorer reachable only from its own
+        tests would be exactly that.
 
-        **Sub-threshold detector activations.** F9.4's first component is a detector
-        finding above zero and below the blocking threshold. The per-message run for
-        the *current* turn already exists, but the equivalent number for the earlier
-        turns in the window is not persisted anywhere — `ConversationTurn.signals_json`
-        is written by `escalation.record_turn` and carries escalation's signals, not
-        detector scores. So each turn in the window is scored here, through the real
-        pipeline, at a measured ~0.4ms per turn. Worth knowing what that buys:
-        `benchmarks/crescendo/` measures the shipped detectors returning **exactly
-        zero on all 132 turns** of that corpus, so on crescendo traffic this component
-        contributes nothing and the drift and reframing components are doing all the
-        work. It is kept because it is cheap and because a conversation that mixes
-        gradual escalation with clumsier probing is the case where it pays.
+        **Sub-threshold detector activations.** The trajectory score's first component
+        is a detector finding above zero and below the blocking threshold. The
+        per-message run for the *current* turn already exists, but the equivalent number
+        for the earlier turns in the window is not persisted anywhere —
+        `ConversationTurn.signals_json` is written by `escalation.record_turn` and
+        carries escalation's signals, not detector scores. So each turn in the window is
+        scored here, through the real pipeline, at a measured ~0.4ms per turn. Worth
+        knowing what that buys: `benchmarks/crescendo/` measures the shipped detectors
+        returning **exactly zero on all 132 turns** of that corpus, so on crescendo
+        traffic this component contributes nothing and the drift and reframing
+        components are doing all the work. It is kept because it is cheap and because a
+        conversation that mixes gradual escalation with clumsier probing is the case
+        where it pays.
         """
         if surface != "input" or not window or len(window) < 3:
             return {}
@@ -600,7 +601,8 @@ class _ChecksMixin:
                 "type": "trajectory_drift",
                 # High, never critical: a `critical` entry in `action["risks"]` is
                 # hard-blocked by the action-assurance branch in `evaluate()`, and
-                # F9.4 is observe-first. Same cap, same reason, as F6's findings.
+                # trajectory is observe-first. Same cap, same reason, as the commitment
+                # findings.
                 "severity": "high",
                 "title": f"{TRAJECTORY_ENTITY}: {assessment.reason}",
                 "entity": TRAJECTORY_ENTITY,
@@ -618,7 +620,7 @@ class _ChecksMixin:
         return out
 
     def _window_detector_scores(self, window: list[str]) -> list[float]:
-        """Each window turn's per-message detector max score, for F9.4's component one.
+        """Each window turn's per-message detector max score (the trajectory's first component).
 
         Runs the same pipeline the per-message path runs, one short turn at a time.
         A degraded or erroring run contributes 0.0 rather than failing the check —
@@ -643,7 +645,7 @@ class _ChecksMixin:
     def _context_checks(
         self, surface: str, content: str, memory_entry: dict[str, Any] | None
     ) -> dict[str, Any]:
-        """F8 — whether the context was intact, on the surfaces context arrives on.
+        """Whether the context was intact, on the surfaces context arrives on.
 
         The failure this addresses is invisible from the far end of the pipe: a model
         handed a mangled context does not report a mangled context, it answers fluently
@@ -685,7 +687,7 @@ class _ChecksMixin:
 
             # Chunk coherence needs the chunk boundaries, which only the retriever has —
             # the assembled string on this surface has already lost them. Supplied via
-            # the same `evidence["chunks"]` the F2/F7 checks read, so a caller that has
+            # the same `evidence["chunks"]` the evidence checks read, so a caller that has
             # wired evidence once gets this for free.
             if chunks := evidence.get("chunks"):
                 findings.extend(
@@ -699,14 +701,14 @@ class _ChecksMixin:
                     )
                 )
 
-            # F8.6 — regression is only visible against a baseline, so this needs one
+            # Regression is only visible against a baseline, so this needs one
             # rather than a threshold. Both come from the caller or it does not run.
             current, baseline = evidence.get("retrieval"), evidence.get("baseline")
             if current and baseline and (drift := retrieval_drift(current, baseline)):
                 findings.append(drift)
 
         elif surface == "memory_write":
-            # F8.5 — the boundary that matters within one tenant is the *subject* the
+            # The boundary that matters within one tenant is the *subject* the
             # memory is about, not the tenant that owns the store. Needs a principal to
             # check against; without one there is nothing to compare and it stays quiet.
             principal = evidence.get("principal")

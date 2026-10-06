@@ -10,7 +10,7 @@ Documented to be getting worse rather than better: AbstentionBench finds reasoni
 fine-tuning degrades a model's willingness to contradict its user, so this is not a problem
 that waits for the next model.
 
-The rule this module follows is the one that makes the F7 integrity checkers trustworthy:
+The rule this module follows is the one that makes the numeric integrity checkers trustworthy:
 **extract, do not judge.** It never decides whether a claim is true. It fires only when the
 caller supplies a grounded value that *contradicts* the user's asserted one, and the answer
 then neither corrects the user nor restates the grounded value. With no grounded source to
@@ -142,8 +142,8 @@ def check_premises(
     """Findings where the user asserted something the grounded record contradicts.
 
     `grounded` maps a subject to its real value, supplied by whoever holds the system of
-    record — the same contract `Enforcer.evidence` already uses for F2 and F7. Without it
-    this returns nothing, by design.
+    record — the same contract `Enforcer.evidence` already uses for provenance and
+    integrity. Without it this returns nothing, by design.
     """
     if not grounded:
         return []

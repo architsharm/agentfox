@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Callout, Code } from "@/components/docs/blocks";
-import { CliIndex, CliReference, RenamedTable } from "@/components/docs/reference";
+import { CliIndex, CliReference } from "@/components/docs/reference";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -42,13 +42,6 @@ agentfox scan --help`}</Code>
       </Callout>
 
       <CliReference />
-
-      <h2 id="renamed">Renamed commands</h2>
-      <p>
-        The CLI was consolidated. The old names still run, hidden from{" "}
-        <code>--help</code>, so scripts and installed hooks keep working.
-      </p>
-      <RenamedTable />
     </article>
   );
 }

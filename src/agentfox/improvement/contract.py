@@ -9,10 +9,6 @@ governance product into one that quietly rewrites its own guardrails.
 
 from __future__ import annotations
 
-#: Audit actor type for every change the loop makes on its own. Distinct from "user",
-#: "operator" and "agent" so an automated change is never recorded as a human decision.
-AUTOMATION_ACTOR_TYPE = "automation"
-
 # --- lifecycle ---------------------------------------------------------------
 PROPOSED = "proposed"
 PROVEN = "proven"

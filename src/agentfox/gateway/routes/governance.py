@@ -3,10 +3,10 @@
 Two things are deliberate here:
 
 * There is **no** PUT, PATCH or DELETE on ``/api/audit/entries``. The absence is the
-  control (P5-2).
+  control.
 * Reading an evidence package writes its own audit entry. Who looked at the evidence
   is audit-relevant, and a governance product that exempts itself from its own
-  controls is not credible (Appendix E.2.4).
+  controls is not credible.
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ router = APIRouter(prefix="/api", tags=["audit", "compliance"])
 
 
 # ---------------------------------------------------------------------------
-# Traces (P5-6)
+# Traces
 # ---------------------------------------------------------------------------
 
 
@@ -90,7 +90,7 @@ def list_traces(
 
 
 # ---------------------------------------------------------------------------
-# Observability correlation (I-4 / I-6)
+# Observability correlation
 # ---------------------------------------------------------------------------
 
 
@@ -154,7 +154,7 @@ def get_trace(
 
 
 # ---------------------------------------------------------------------------
-# Audit chain (P5-2) — append-only, no mutation routes exist
+# Audit chain — append-only, no mutation routes exist
 # ---------------------------------------------------------------------------
 
 
@@ -201,7 +201,7 @@ def checkpoint(
 
 
 # ---------------------------------------------------------------------------
-# SIEM export (P5-4)
+# SIEM export
 # ---------------------------------------------------------------------------
 
 
@@ -222,7 +222,7 @@ def export_siem(
 
 
 # ---------------------------------------------------------------------------
-# Evidence packages (P5-3, P5-7)
+# Evidence packages
 # ---------------------------------------------------------------------------
 
 
@@ -234,7 +234,7 @@ class EvidenceIn(BaseModel):
 
 
 def _run_evidence_package(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    """PL-5 — the job's handler. Runs inside jobs_db.run_pending(), which has
+    """The job's handler. Runs inside jobs_db.run_pending(), which has
     already tenant-bound the session to the job's own org_id, not whatever
     context happened to be ambient when this got registered at import time."""
     period_from = (
@@ -267,7 +267,7 @@ jobs_db.register("evidence.package", _run_evidence_package)
 def build_evidence(
     payload: EvidenceIn, session: Session = Depends(db), user: User = Depends(require("evidence"))
 ) -> dict[str, Any]:
-    """Enqueues through jobs_db (PL-5) rather than calling evidence.build()
+    """Enqueues through jobs_db rather than calling evidence.build()
     directly, and processes it within this same request — see jobs_db's own
     module docstring for why same-request processing, not a deferred worker,
     is the honest fit here. A transient failure gets one automatic retry
@@ -294,8 +294,8 @@ def build_evidence(
     if job.status == "dead":
         raise HTTPException(502, f"evidence package build failed: {job.last_error}")
     if job.status != "done":
-        # A failed first attempt is queued for retry with backoff. Returning 201 with an
-        # empty package here used to look like success.
+        # A failed first attempt is queued for retry with backoff. A 201 with an empty
+        # package here would look like success, so report it as still pending.
         return JSONResponse(
             status_code=202,
             content={
@@ -347,7 +347,7 @@ def download_evidence(
     package = session.get(EvidencePackage, package_id)
     if package is None or not package.path or not Path(package.path).exists():
         raise HTTPException(404, "evidence package not found on disk")
-    # Who read the evidence is itself audit-relevant (Appendix C §5).
+    # Who read the evidence is itself audit-relevant.
     chain.append(
         session,
         "evidence.downloaded",
@@ -363,7 +363,7 @@ def download_evidence(
 
 
 # ---------------------------------------------------------------------------
-# Retention & legal hold (P5-5)
+# Retention & legal hold
 # ---------------------------------------------------------------------------
 
 
@@ -421,7 +421,7 @@ def place_hold(
 
 
 # ---------------------------------------------------------------------------
-# Controls & frameworks (P6-2, P6-4)
+# Controls & frameworks
 # ---------------------------------------------------------------------------
 
 
@@ -469,7 +469,7 @@ def sync_controls(
     user: User = Depends(require("compliance")),
 ) -> dict[str, Any]:
     """Load the static control catalog and obligation calendar from YAML into this
-    tenant's control-plane DB (P6-2). `agentfox compliance sync` does the same thing
+    tenant's control-plane DB. `agentfox admin catalog sync` does the same thing
     from the CLI against whatever DB it's pointed at — this is the same idempotent
     upsert, reachable without shell access to the deployment, so a freshly provisioned
     org isn't stuck at "0 controls, mapped to seven frameworks" with no way to fix it
@@ -539,7 +539,7 @@ class ReviewIn(BaseModel):
 def mark_reviewed(
     payload: ReviewIn, session: Session = Depends(db), user: User = Depends(require("compliance"))
 ) -> dict[str, Any]:
-    """Step 3 of the mapping review gate (Appendix B §B.6)."""
+    """Step 3 of the mapping review gate."""
     count = sign_off_mapping(
         session,
         payload.control_key,
@@ -561,7 +561,7 @@ def compliance_status(
 
 
 # ---------------------------------------------------------------------------
-# Risk & obligations (P6-3, P6-5, P6-6)
+# Risk & obligations
 # ---------------------------------------------------------------------------
 
 

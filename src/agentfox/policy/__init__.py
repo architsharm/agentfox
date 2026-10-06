@@ -1,10 +1,10 @@
 """Pillars 2/3/6 — the policy layer.
 
-One authored artefact drives both runtime enforcement and compliance reporting
-(P6-1). Two interchangeable engines implement it: a deterministic native evaluator
+One authored artefact drives both runtime enforcement and compliance reporting.
+Two interchangeable engines implement it: a deterministic native evaluator
 (the default, and the offline path) and OPA/Rego (the scale and expressiveness
 upgrade). They are cross-verified in the test suite, which is what keeps the
-"swappable" claim in PRD §9.4 honest.
+"swappable" claim honest.
 """
 
 from __future__ import annotations
@@ -32,7 +32,6 @@ from agentfox.policy.hierarchy import (
     resolve_effective,
 )
 from agentfox.policy.model import (
-    EFFECT_RANK,
     Condition,
     DetectionCondition,
     Effect,
@@ -73,7 +72,6 @@ from agentfox.policy.store import (
 )
 
 __all__ = [
-    "EFFECT_RANK",
     "LEVELS",
     "MODES",
     "CanaryError",

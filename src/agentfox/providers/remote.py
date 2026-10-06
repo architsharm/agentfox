@@ -1,10 +1,10 @@
-"""Hosted model providers — OpenAI and Anthropic (X-2).
+"""Hosted model providers — OpenAI and Anthropic.
 
 Both are adapters of the same weight behind the same protocol; neither is privileged
 in core. That symmetry is the neutrality claim made structural rather than asserted:
 there is no code path that works better because the customer chose one vendor.
 
-Egress is gated. With ``AGENTFOX_ALLOW_EGRESS=false`` (the default, NFR-4) these
+Egress is gated. With ``AGENTFOX_ALLOW_EGRESS=false`` (the default) these
 providers report themselves unavailable rather than quietly making a network call
 from inside a customer's regulated boundary.
 """
@@ -25,7 +25,7 @@ from agentfox.providers.base import (
     register_provider,
 )
 
-#: Indicative USD per 1M tokens, for budget enforcement (P3-10) and cost reporting.
+#: Indicative USD per 1M tokens, for budget enforcement and cost reporting.
 #: Deliberately conservative and clearly labelled — the platform must never present
 #: a stale price list as an authoritative spend figure in a compliance report.
 _PRICING: dict[str, tuple[float, float]] = {
@@ -74,7 +74,7 @@ class _HttpProvider:
         raise NotImplementedError
 
     def judge(self, output: str, rubric: str, model: str = "default") -> dict[str, Any]:
-        """LLM-as-judge. The model is pinned by the caller and recorded (X-4)."""
+        """LLM-as-judge. The model is pinned by the caller and recorded."""
         if not self.available():
             from agentfox.providers.echo import EchoProvider
 

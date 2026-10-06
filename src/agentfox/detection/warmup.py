@@ -4,7 +4,7 @@ The gateway and the hooks daemon call `warm_all()` at startup. An application
 governed in-process — `agentfox.auto()`, the SDK's `AgentFox`, a LangGraph
 `AgentFoxGuard` — never did, so an opted-in model detector (``injection.classifier``,
 say) loaded its weights inside the first real request, blew the per-detector budget
-and degraded the first calls (#48).
+and degraded the first calls.
 
 Background, not inline: loading a model takes seconds, and ``auto()`` is one line
 at the top of somebody's program that must not stall it. Only detectors that are

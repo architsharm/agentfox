@@ -445,7 +445,7 @@ def test_a_definition_that_no_longer_validates_is_skipped_not_fatal(isolated_db)
 def test_the_ladder_governs_a_real_tool_call(isolated_db):
     """The whole point: not another engine nobody can reach."""
     from agentfox.core.models import Agent
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.identity import ensure_identity, grant_capability
     from agentfox.runtime.enforcement import Enforcer
 
@@ -470,7 +470,7 @@ def test_the_ladder_governs_a_real_tool_call(isolated_db):
 
 def test_the_decision_records_which_rule_decided(isolated_db):
     from agentfox.core.models import Agent
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.identity import ensure_identity, grant_capability
     from agentfox.runtime.enforcement import Enforcer
 
@@ -492,7 +492,7 @@ def test_the_decision_records_which_rule_decided(isolated_db):
 
 def test_ladders_do_not_run_on_surfaces_with_no_number_to_band(isolated_db):
     from agentfox.core.models import Agent
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
@@ -523,26 +523,27 @@ def _write(tmp_path, name, payload):
 
 def test_the_cli_authors_and_shows_a_rule(isolated_db, tmp_path):
     path = _write(tmp_path, "refund.yaml", REFUND)
-    applied = runner.invoke(app, ["guardrails", "apply", str(path)])
+    applied = runner.invoke(app, ["policy", "rules", "apply", str(path)])
     assert applied.exit_code == 0, applied.output
-    flat = " ".join(runner.invoke(app, ["guardrails", "show"]).output.split())
+    flat = " ".join(runner.invoke(app, ["policy", "rules", "show"]).output.split())
     assert "refund-approval" in flat
     assert "allow" in flat and "verify" in flat
 
 
 def test_the_cli_refuses_an_invalid_ladder(isolated_db, tmp_path):
     path = _write(tmp_path, "bad.yaml", {**REFUND, "bands": [{"upto": 10, "outcome": "allow"}]})
-    result = runner.invoke(app, ["guardrails", "apply", str(path)])
+    result = runner.invoke(app, ["policy", "rules", "apply", str(path)])
     assert result.exit_code == 1
     assert "not a valid ladder" in " ".join(result.output.split())
 
 
 def test_the_cli_exits_non_zero_on_a_conflict(isolated_db, tmp_path):
-    runner.invoke(app, ["guardrails", "apply", str(_write(tmp_path, "a.yaml", REFUND))])
+    runner.invoke(app, ["policy", "rules", "apply", str(_write(tmp_path, "a.yaml", REFUND))])
     runner.invoke(
         app,
         [
-            "guardrails",
+            "policy",
+            "rules",
             "apply",
             str(
                 _write(
@@ -558,20 +559,20 @@ def test_the_cli_exits_non_zero_on_a_conflict(isolated_db, tmp_path):
             ),
         ],
     )
-    result = runner.invoke(app, ["guardrails", "check"])
+    result = runner.invoke(app, ["policy", "rules", "check"])
     assert result.exit_code == 1
     assert "conflict" in " ".join(result.output.split())
 
 
 def test_the_cli_explains_a_guardrail_kind(isolated_db):
     flat = " ".join(
-        runner.invoke(app, ["guardrails", "explain", "threshold_ladder"]).output.split()
+        runner.invoke(app, ["policy", "rules", "explain", "threshold_ladder"]).output.split()
     )
     assert "bands" in flat
     assert "outcome" in flat
 
 
 def test_explaining_an_unknown_kind_lists_the_real_ones(isolated_db):
-    result = runner.invoke(app, ["guardrails", "explain", "made_up"])
+    result = runner.invoke(app, ["policy", "rules", "explain", "made_up"])
     assert result.exit_code == 1
     assert "threshold_ladder" in " ".join(result.output.split())

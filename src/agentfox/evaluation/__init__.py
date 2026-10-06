@@ -2,7 +2,7 @@
 
 The widest solved-vs-unsolved gap in the stack, and the pillar that separates this
 product from a pure-security tool: we govern whether the agent *worked*, not only
-whether it was safe (principle X-5).
+whether it was safe.
 """
 
 from agentfox.evaluation import (

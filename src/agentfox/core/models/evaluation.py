@@ -46,7 +46,7 @@ class EvalCase(Base, TimestampMixin):
     context_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     labels: Mapped[list[str]] = mapped_column(JSON, default=list)
     split: Mapped[str] = mapped_column(String(24), default="test")
-    # P4-6: "promote this production failure to a test case".
+    # "promote this production failure to a test case".
     source_trace_id: Mapped[str | None] = mapped_column(String(40))
     weight: Mapped[float] = mapped_column(Float, default=1.0)
 
@@ -84,7 +84,7 @@ class EvalResult(Base, TimestampMixin):
 
 
 class EvalAnnotation(Base, TimestampMixin):
-    """P4 — human review of a borderline eval result (score near the scorer's own
+    """Human review of a borderline eval result (score near the scorer's own
     threshold, or scorers disagreeing on the same case). A pass/fail scorer
     verdict close to its own cutoff, or two scorers splitting on the same case, is
     exactly the shape a human should look at rather than trust blindly — this is
@@ -109,7 +109,7 @@ class EvalAnnotation(Base, TimestampMixin):
 
 
 class Baseline(Base, TimestampMixin):
-    """Regression gate semantics for P4-1 live here."""
+    """Regression gate semantics live here."""
 
     __tablename__ = "baselines"
 

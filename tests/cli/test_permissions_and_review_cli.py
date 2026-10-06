@@ -23,8 +23,8 @@ def test_declaring_a_tool_records_its_impact(isolated_db):
     result = runner.invoke(
         app,
         [
-            "tools",
             "declare",
+            "tool",
             "payments.wire",
             "--impact",
             "irreversible",
@@ -33,7 +33,7 @@ def test_declaring_a_tool_records_its_impact(isolated_db):
         ],
     )
     assert result.exit_code == 0, result.output
-    listed = runner.invoke(app, ["tools", "list", "--json"])
+    listed = runner.invoke(app, ["declare", "list", "tools", "--json"])
     assert listed.exit_code == 0
     rows = json.loads(listed.output)
     row = next(r for r in rows if r["key"] == "payments.wire")
@@ -42,7 +42,7 @@ def test_declaring_a_tool_records_its_impact(isolated_db):
 
 
 def test_an_invalid_impact_is_refused_rather_than_stored(isolated_db):
-    result = runner.invoke(app, ["tools", "declare", "x.y", "--impact", "sort-of-dangerous"])
+    result = runner.invoke(app, ["declare", "tool", "x.y", "--impact", "sort-of-dangerous"])
     assert result.exit_code == 2
     assert "impact must be one of" in result.output
 
@@ -56,7 +56,7 @@ def test_doctor_reports_containment_readiness_not_just_detectors(isolated_db):
     assert checks["containment"]["state"] == "warn"
     assert "data scope" in checks
 
-    runner.invoke(app, ["tools", "declare", "payments.wire", "--impact", "irreversible"])
+    runner.invoke(app, ["declare", "tool", "payments.wire", "--impact", "irreversible"])
     after = json.loads(runner.invoke(app, ["doctor", "--json"]).output)
     containment = next(row for row in after if row["check"] == "containment")
     assert "can act" in containment["detail"] or "no capability grants" in containment["detail"]
@@ -66,7 +66,7 @@ def test_a_reviewer_packet_lists_every_mapping_awaiting_review(isolated_db, tmp_
     runner.invoke(app, ["init", "--path", str(tmp_path)])
     out = tmp_path / "packet.md"
     result = runner.invoke(
-        app, ["compliance", "review-packet", "--framework", "eu-ai-act", "--out", str(out)]
+        app, ["report", "review-packet", "--framework", "eu-ai-act", "--out", str(out)]
     )
     assert result.exit_code == 0, result.output
     document = out.read_text()
@@ -77,7 +77,7 @@ def test_a_reviewer_packet_lists_every_mapping_awaiting_review(isolated_db, tmp_
 
 def test_an_unknown_framework_is_refused(isolated_db, tmp_path):
     runner.invoke(app, ["init", "--path", str(tmp_path)])
-    result = runner.invoke(app, ["compliance", "review-packet", "--framework", "not-a-framework"])
+    result = runner.invoke(app, ["report", "review-packet", "--framework", "not-a-framework"])
     assert result.exit_code == 1
     assert "unknown framework" in result.output
 
@@ -87,8 +87,8 @@ def test_sign_off_moves_a_mapping_out_of_draft_and_names_the_reviewer(isolated_d
     result = runner.invoke(
         app,
         [
-            "compliance",
-            "review",
+            "report",
+            "signoff",
             "NOM-IAM-03",
             "--framework",
             "eu-ai-act",
@@ -120,7 +120,7 @@ def test_sign_off_moves_a_mapping_out_of_draft_and_names_the_reviewer(isolated_d
 def test_signing_off_something_that_does_not_exist_fails_loudly(isolated_db, tmp_path):
     runner.invoke(app, ["init", "--path", str(tmp_path)])
     result = runner.invoke(
-        app, ["compliance", "review", "NOM-IAM-03", "--framework", "nope", "--reviewer", "x"]
+        app, ["report", "signoff", "NOM-IAM-03", "--framework", "nope", "--reviewer", "x"]
     )
     assert result.exit_code == 1
     assert "no mapping matched" in result.output

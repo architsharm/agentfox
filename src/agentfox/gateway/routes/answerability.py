@@ -1,4 +1,4 @@
-"""P7 — knowledge boundary and abstention over HTTP.
+"""Knowledge boundary and abstention over HTTP.
 
 `POST /check` is the interesting one: it answers "would this question be refused, and
 what would we say instead?" without running anything. That is how a team tunes the

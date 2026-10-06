@@ -3,7 +3,7 @@
 A call held for a person (an ``escalate`` verdict) files an approval. Until this
 module the queue was reachable only from the dashboard or by hand-written HTTP,
 while the getting-started guide said it could be decided "from the dashboard or the
-CLI" (#15). Lives under ``agentfox permit approvals``: deciding an approval is
+CLI". Lives under ``agentfox permit approvals``: deciding an approval is
 granting one call.
 
 Deciding writes to the audit chain exactly as the API route does, with the

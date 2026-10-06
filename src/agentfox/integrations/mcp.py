@@ -1,9 +1,9 @@
-"""I-2 — inline governance of the MCP call path.
+"""Inline governance of the MCP call path.
 
-Before this, MCP was covered only by *hygiene*: scan a server, snapshot its tools,
-raise findings about drift and poisoned descriptions. That catches the server that is
-already malicious at scan time and nothing else. The three failures that actually
-happen in production all occur at call time:
+*Hygiene* alone (scan a server, snapshot its tools, raise findings about drift and
+poisoned descriptions) catches the server that is already malicious at scan time
+and nothing else. The three failures that actually happen in production all occur
+at call time:
 
 1. **The rug pull.** A server passes review, an agent is authorised against it, and
    the tool's schema or description changes afterwards. A scan on Monday says nothing
@@ -17,8 +17,8 @@ happen in production all occur at call time:
 2. **The undeclared tool.** An agent calls a tool nobody registered. Hygiene scanning
    never sees it because nobody pointed a scan at that server. Here it becomes an
    observed tool and a discovery finding — visible, not invisible.
-3. **The poisoned result.** MCP results are the canonical indirect-injection vector
-   (Appendix E.1.1): content authored by a third party, arriving as trusted context.
+3. **The poisoned result.** MCP results are the canonical indirect-injection vector:
+   content authored by a third party, arriving as trusted context.
    Results are evaluated on the ``tool_result`` surface and the taint is propagated,
    so an argument later derived from an MCP result cannot exceed the capability
    ceiling for ``tool_result``-sourced data.
@@ -43,6 +43,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import Capability, Decision, Identity, McpToolSnapshot, Tool, Trace
 from agentfox.detection import TaintTracker
+from agentfox.errors import AgentFoxError
 from agentfox.prove.findings import raise_finding
 from agentfox.registry.service import (
     normalise_tool_list,
@@ -67,8 +68,12 @@ _WRITE_HINTS = ("create", "update", "delete", "write", "send", "post", "put", "e
 _IRREVERSIBLE_HINTS = ("delete", "drop", "purge", "send", "transfer", "deploy", "revoke")
 
 
-class McpCallBlocked(RuntimeError):
-    """Raised when a governed MCP call is refused. Carries the decision."""
+class McpCallBlocked(AgentFoxError, RuntimeError):
+    """Raised when a governed MCP call is refused. Carries the decision.
+
+    An `agentfox.errors.AgentFoxError` like every other refusal, and still a
+    ``RuntimeError`` so ``except RuntimeError`` keeps catching it.
+    """
 
     def __init__(self, result: EnforcementResult) -> None:
         super().__init__(result.reason or "MCP call blocked by policy")
@@ -170,7 +175,7 @@ class McpGovernor:
     intent: str | None = None
     credential: str | None = None
     _prior_tools: list[str] = field(default_factory=list)
-    #: PL-4: this session's step history (tool, arguments, observation) — the shape
+    #: This session's step history (tool, arguments, observation) — the shape
     #: agent_loop.LoopGovernor replays to catch alternating cycles and no-new-
     #: observation runs that per-tool counting (what `_prior_tools` alone drives)
     #: cannot see. `McpGovernor` is the one place with both the prior-call history
@@ -607,13 +612,10 @@ class McpGovernor:
         ``arguments`` is the *original call's* arguments, not the result — passing
         ``tool_key`` to `evaluate()` re-runs the capability check as a side effect
         (it needs `tool_impact` either way), and that check reads argument values
-        for any constraint the grant declares (``amount < 1000`` and similar). Omitting
-        it here meant every constrained capability was re-checked against `{}` and
-        denied regardless of the real value — spuriously, and *after* `transport`
-        had already run the call's (possibly irreversible) effect, on every governed
-        MCP call with an argument-value constraint. Found building a demo target
-        with a constrained refund tool; regression test:
-        `test_a_call_within_an_argument_constraint_is_not_spuriously_blocked_post_call`.
+        for any constraint the grant declares (``amount < 1000`` and similar). Without
+        them every constrained capability would be re-checked against `{}` and denied
+        regardless of the real value — spuriously, and *after* `transport` has already
+        run the call's (possibly irreversible) effect.
         """
         text = raw if isinstance(raw, str) else json.dumps(raw, default=str)
         agent, identity, _ = self.enforcer.resolve(self.agent_slug, self.credential)

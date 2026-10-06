@@ -691,7 +691,7 @@ const SCAN: ScanRow[] = [
 
 /*
  * The registered agents and what each one reaches. Slugs and capability keys are from
- * src/agentfox/core/seed.py:118-183; the relation names are the three this product records,
+ * src/agentfox/fixtures/seed.py:118-183; the relation names are the three this product records,
  * `calls_tool`, `connects_mcp` and `delegates_to` (src/agentfox/registry/service.py).
  * `hr-screening` carries `owner_email: None` in that same seed (seed.py:148), which is
  * what makes it the unowned one.
@@ -826,7 +826,7 @@ type ScorerRow = {
  * The repository ships the suite and its cases but not a recorded result, so no number
  * here is presented as a measurement of anything.
  *
- * Real: the suite key and name (src/agentfox/core/seed.py:462-463), its five cases
+ * Real: the suite key and name (src/agentfox/fixtures/seed.py:462-463), its five cases
  * (seed.py:224-272), the scorer keys and their thresholds (evaluation/silent_failure.py:245,
  * :265 and evaluation/scorers.py:186), the summary line and column headers
  * (cli/main.py:727-745), the default tolerance (evaluation/gating.py:28), the regression

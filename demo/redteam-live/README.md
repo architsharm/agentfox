@@ -53,8 +53,8 @@ python seed_demo_agent.py
 `seed_demo_agent.py` registers the agent `support-crew-live`, its identity, its
 four capability grants, and loads the three policy packs `agentfox` ships
 (`baseline`, `tool-containment`, `eu-ai-act-high-risk`) — the same packs
-`agentfox seed` loads, using the same `ensure_identity` / `grant_capability` /
-`register_agent` / `McpGovernor.register_tools` helpers `agentfox seed` and
+`agentfox admin seed` loads, using the same `ensure_identity` / `grant_capability` /
+`register_agent` / `McpGovernor.register_tools` helpers `agentfox admin seed` and
 `tests/detection/test_composition.py`'s `_governor` fixture already use. It's idempotent —
 safe to re-run.
 
@@ -78,7 +78,7 @@ and a PII lookup) and granted, on its identity, exactly:
 |---|---|
 | `lookup_customer` | unrestricted |
 | `search_orders` | unrestricted |
-| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox seed`'s own `payments-ops` agent |
+| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox admin seed`'s own `payments-ops` agent |
 | `send_email` | **requires human approval** — same shape as `payments-ops`'s `email.send` grant |
 
 It is not a superuser. A red-team probe attempting a $50,000 refund, or an
@@ -88,7 +88,7 @@ switched off for the demo.
 ## Step 1 — show the probe library
 
 ```bash
-agentfox redteam probes
+agentfox test probes
 ```
 
 Lists every built-in probe: prompt injection, jailbreak, PII/secret
@@ -201,10 +201,10 @@ live LLM is flaky, offline, or does something unexpected mid-meeting — it
 reproduces the same three moments deterministically. It's also how this demo's
 mechanics were verified while building it (see "What I verified" below).
 
-## `agentfox redteam run` — an honest read of a real run
+## `agentfox test redteam` — an honest read of a real run
 
 ```bash
-agentfox redteam run support-crew-live
+agentfox test redteam support-crew-live
 ```
 
 A real run against this seeded agent, performed while building this demo,
@@ -247,7 +247,7 @@ gap, not just adversarial-input detection.
 process the clean $45 refund with no escalation, and that's not inconsistent
 with the paragraph above. `eu-ai-act-high-risk.yaml` ships in `mode: observe`,
 so its rules never change what actually gets blocked in production
-(`EnforcementResult.verdict`) — only `agentfox redteam run` measures
+(`EnforcementResult.verdict`) — only `agentfox test redteam` measures
 `effective_verdict`, the "would this be stopped" counterfactual, which is
 what a readiness score is supposed to answer regardless of what's currently
 switched on. Verified directly:
@@ -299,7 +299,7 @@ third-party network calls happen anywhere in this demo.
 ## What I verified myself (and what I didn't)
 
 Everything above that shows real output — the `verify_mechanics.py` run, the
-`agentfox redteam run` numbers, the `agentfox policy list` / `policy enforce
+`agentfox test redteam` numbers, the `agentfox policy list` / `policy enforce
 baseline` before/after, the crew's construction (tools attach, both providers'
 `LLM` objects resolve, `agentfox.auto()` reports `Patched: openai, anthropic,
 litellm`) — was actually run, in an isolated scratch virtualenv, while building

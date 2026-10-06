@@ -41,7 +41,7 @@ def ready(isolated_db):
     would leave it looking at an empty database — a property of the test harness, not
     of the product.
     """
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)

@@ -93,7 +93,7 @@ def policy_list() -> None:
             if latest is None:
                 continue
             # The live binding, whichever version it points at — mid-canary or after
-            # a rollback that is not the newest version (#65).
+            # a rollback that is not the newest version.
             binding, bound = current_binding(session, policy.id)
             mode = binding.mode if binding else "unbound"
             shown = bound or latest
@@ -197,7 +197,7 @@ def policy_effective(
         explanation = effective.explain()
 
     # Per layer, not one mode for the lot: "mode enforce" whenever any layer
-    # enforced read as though every rule listed was enforcing (#49).
+    # enforced read as though every rule listed was enforcing.
     console.print(
         f"[bold]effective policy[/] in [bold]{environment}[/] — "
         f"default {explanation['default_effect']}"

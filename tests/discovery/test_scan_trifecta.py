@@ -297,7 +297,7 @@ def test_a_submitted_trifecta_proposes_a_high_risk_agent(client):
 
 
 def test_check_leads_with_the_trifecta(support_bot):
-    result = runner.invoke(app, ["check", str(support_bot), "--no-submit"])
+    result = runner.invoke(app, ["scan", "repo", str(support_bot), "--no-submit"])
     assert result.exit_code == 0, result.output
     output = flat(result.output)
     assert output.index("lethal trifecta") < output.index("Scanned")
@@ -307,13 +307,15 @@ def test_check_leads_with_the_trifecta(support_bot):
 
 def test_check_output_has_no_internal_codes(support_bot):
     (support_bot / "db.py").write_text('cursor.execute(f"SELECT * FROM t WHERE id={x}")\n')
-    output = runner.invoke(app, ["check", str(support_bot), "--no-submit"]).output
+    output = runner.invoke(app, ["scan", "repo", str(support_bot), "--no-submit"]).output
     for code in ("I-2", "P9", "P1-5", "NOM-", "F3.8", "Pillar"):
         assert code not in output, code
 
 
 def test_quickscan_shows_tools_servers_and_the_trifecta(support_bot):
-    result = runner.invoke(app, ["quickscan", str(support_bot), "--skip-sessions", "--no-submit"])
+    result = runner.invoke(
+        app, ["scan", "sessions", str(support_bot), "--skip-sessions", "--no-submit"]
+    )
     assert result.exit_code == 0, result.output
     output = flat(result.output)
     assert output.index("lethal trifecta") < output.index("Committed")
@@ -324,7 +326,7 @@ def test_quickscan_shows_tools_servers_and_the_trifecta(support_bot):
 
 def test_a_clean_repo_shows_no_trifecta(tmp_path):
     (tmp_path / "a.py").write_text("print('hello')\n")
-    output = flat(runner.invoke(app, ["check", str(tmp_path), "--no-submit"]).output)
+    output = flat(runner.invoke(app, ["scan", "repo", str(tmp_path), "--no-submit"]).output)
     assert "trifecta" not in output
     assert "0 tools · 0 MCP servers" in output
 

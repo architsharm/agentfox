@@ -1,4 +1,4 @@
-"""I-7 — Prometheus exposition. 4 of 11 already run Prometheus and Grafana.
+"""Prometheus exposition. 4 of 11 already run Prometheus and Grafana.
 
 The argument for this is adoption, not capability. A governance metric that only
 exists in our dashboard competes for attention with the dashboard the team already
@@ -93,7 +93,7 @@ def render_metrics(session: Session, *, window_hours: int = 24) -> str:
         [({"mode": "observe"}, float(observed)), ({"mode": "enforce"}, float(enforced))],
     )
 
-    # --- Latency (P3-13) -------------------------------------------------
+    # --- Latency -------------------------------------------------
     latency = session.execute(
         select(
             DetectorRun.detector_key,
@@ -152,7 +152,7 @@ def render_metrics(session: Session, *, window_hours: int = 24) -> str:
         [({"type": t, "severity": s}, float(c)) for t, s, c in findings],
     )
 
-    # --- Escalation (P11) ------------------------------------------------
+    # --- Escalation ------------------------------------------------
     report = escalation_report(session, since_hours=window_hours)
     registry.add(
         "agentfox_missed_escalation_rate",
@@ -172,7 +172,7 @@ def render_metrics(session: Session, *, window_hours: int = 24) -> str:
         ],
     )
 
-    # --- Reliability (P15) -----------------------------------------------
+    # --- Reliability -----------------------------------------------
     breaker_states = {"closed": 0, "open": 1, "half_open": 2}
     registry.add(
         "agentfox_circuit_breaker_state",

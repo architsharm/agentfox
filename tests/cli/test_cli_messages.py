@@ -21,7 +21,7 @@ def flat(output: str) -> str:
 
 def _seed() -> dict:
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         return seed(session)
@@ -89,7 +89,7 @@ def test_eval_run_prints_the_run_id_that_eval_baseline_requires():
     The documented workflow was unusable without opening the database.
     """
     _seed()
-    result = runner.invoke(app, ["eval", "run", "support-quality"])
+    result = runner.invoke(app, ["test", "run", "support-quality"])
     assert result.exit_code == 0, result.output
 
     from sqlalchemy import select
@@ -118,7 +118,7 @@ def test_a_gate_with_no_baseline_and_no_floor_says_it_could_not_have_failed():
     deployment announcing enforce mode while enforcing nothing.
     """
     _seed()
-    result = runner.invoke(app, ["eval", "gate", "support-quality"])
+    result = runner.invoke(app, ["test", "gate", "support-quality"])
     output = flat(result.output)
 
     assert result.exit_code == 0
@@ -130,8 +130,8 @@ def test_a_gate_with_no_baseline_and_no_floor_says_it_could_not_have_failed():
 def test_an_armed_gate_does_not_carry_the_warning():
     """The notice must be about *this* gate, not printed on every pass."""
     _seed()
-    runner.invoke(app, ["eval", "run", "support-quality"])
-    result = runner.invoke(app, ["eval", "gate", "support-quality", "--min-pass-rate", "0.0"])
+    runner.invoke(app, ["test", "run", "support-quality"])
+    result = runner.invoke(app, ["test", "gate", "support-quality", "--min-pass-rate", "0.0"])
     assert result.exit_code == 0
     assert "nothing to fail against" not in flat(result.output)
 
@@ -143,14 +143,14 @@ def test_an_armed_gate_does_not_carry_the_warning():
 
 def test_an_unknown_suite_names_the_suites_that_exist():
     _seed()
-    result = runner.invoke(app, ["eval", "run", "no-such-suite"])
+    result = runner.invoke(app, ["test", "run", "no-such-suite"])
     assert result.exit_code == 1
     assert "support-quality" in flat(result.output)
 
 
 def test_eval_suites_lists_them_without_a_failed_command_first():
     _seed()
-    result = runner.invoke(app, ["eval", "suites"])
+    result = runner.invoke(app, ["test", "suites"])
     assert result.exit_code == 0, result.output
     assert "support-quality" in flat(result.output)
 
@@ -161,7 +161,7 @@ def test_an_unknown_agent_names_the_agents_that_exist():
     _seed()
     for argv in (
         ["agents", "quarantine", "no-such-agent"],
-        ["boundary", "check", "no-such-agent", "what is our refund policy?"],
+        ["test", "boundary", "no-such-agent", "what is our refund policy?"],
     ):
         result = runner.invoke(app, argv)
         assert result.exit_code == 1, argv
@@ -185,7 +185,7 @@ def test_proposals_list_says_something_when_there_are_none():
     `findings`, `sources list`, `tools list` and `capability list` all say what
     is missing and how to get some; this one did not.
     """
-    result = runner.invoke(app, ["proposals", "list"])
+    result = runner.invoke(app, ["policy", "proposals", "list"])
     assert result.exit_code == 0
     output = flat(result.output)
     assert "no proposals" in output
@@ -194,6 +194,6 @@ def test_proposals_list_says_something_when_there_are_none():
 
 def test_an_empty_filter_result_is_not_reported_as_an_empty_deployment():
     """ "there are none" and "none matched what you asked for" are different."""
-    result = runner.invoke(app, ["proposals", "list", "--status", "approved"])
+    result = runner.invoke(app, ["policy", "proposals", "list", "--status", "approved"])
     assert result.exit_code == 0
     assert "no proposals match that filter" in flat(result.output)

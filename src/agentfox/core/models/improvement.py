@@ -82,9 +82,9 @@ class ChangeProposal(Base, TimestampMixin):
 class JobSchedule(Base, TimestampMixin):
     """Recurring work, per tenant. The cron drains queues; this is what fills them.
 
-    Before this table the platform had a daily cron that only ever drained jobs someone
-    had already enqueued, so nothing periodic — posture campaigns, drift checks, canary
-    advancement, suppression hygiene — could run unattended at all.
+    A cron that only drains jobs someone already enqueued cannot run anything periodic;
+    schedules are what let posture campaigns, drift checks, canary advancement and
+    suppression hygiene run unattended.
     """
 
     __tablename__ = "job_schedules"

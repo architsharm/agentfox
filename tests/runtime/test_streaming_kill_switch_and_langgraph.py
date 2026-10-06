@@ -408,7 +408,7 @@ def test_app_runs_on_a_migrated_schema(tmp_path, monkeypatch):
     get_settings()
     # Deliberately no init_db(): the schema came from migrations alone.
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)

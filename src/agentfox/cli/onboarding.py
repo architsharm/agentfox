@@ -258,7 +258,7 @@ def init(
         console.print(f"  [green]✓[/] wrote {config_path.name}")
 
     if demo:
-        from agentfox.core.seed import seed
+        from agentfox.fixtures.seed import seed
 
         with session_scope() as session:
             seed(session)
@@ -781,40 +781,9 @@ def findings_cmd(
     _print_next_steps(steps)
 
 
-def quickstart() -> None:
-    """Print the shortest path from nothing to governed."""
-    console.print(
-        Panel(
-            "\n".join(
-                [
-                    "[bold]1.[/] [cyan]agentfox init[/]",
-                    "   [dim]database, controls, baseline policy in observe mode[/]",
-                    "",
-                    "[bold]2.[/] Add one line to your entry point:",
-                    "   [cyan]import agentfox; agentfox.auto()[/]",
-                    "   [dim]every model call is now traced, evaluated and audited[/]",
-                    "",
-                    "[bold]3.[/] [cyan]agentfox scan[/]",
-                    "   [dim]see what is still ungoverned[/]",
-                    "",
-                    "[bold]4.[/] [cyan]agentfox findings[/]",
-                    "   [dim]see what it found[/]",
-                    "",
-                    "[bold]5.[/] [cyan]agentfox policy enforce baseline[/]",
-                    "   [dim]when the findings look right — this is the only step that blocks[/]",
-                ]
-            ),
-            title="[bold]AgentFox in five steps[/]",
-            title_align="left",
-            border_style="cyan",
-        )
-    )
-
-
 def register(app: typer.Typer) -> None:
     """Attach the onboarding commands as top-level verbs."""
     app.command(name="init")(init)
     app.command(name="check")(check)
     app.command(name="doctor")(doctor)
     app.command(name="findings")(findings_cmd)
-    app.command(name="quickstart")(quickstart)

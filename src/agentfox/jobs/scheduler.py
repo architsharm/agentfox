@@ -1,9 +1,9 @@
 """Recurring work: the part that fills the job queue.
 
-The cron endpoint (`/api/internal/jobs/run`) used to drain only jobs someone had already
-enqueued, so nothing periodic — control recomputation, drift checks, canary advancement,
-posture campaigns — could run unattended at all. A `JobSchedule` row per tenant per kind
-is what now puts that work on the queue; the same cron call then drains it.
+The cron endpoint (`/api/internal/jobs/run`) drains the job queue, but draining alone
+runs only what someone has already enqueued. A `JobSchedule` row per tenant per kind is
+what puts periodic work — control recomputation, drift checks, canary advancement,
+posture campaigns — on the queue, so it runs unattended; the same cron call then drains it.
 
 Two functions:
 
@@ -30,8 +30,8 @@ kind                    interval   enabled   why
 ``compliance.recompute``  1 day    yes       Keeps control status current (30-day window)
                                              without someone pressing "compute".
 ``drift.check``         1 day      yes       Persists drift windows and drift findings
-                                             (groundedness) — the write `GET /api/eval/drift`
-                                             no longer does.
+                                             (groundedness), so `GET /api/eval/drift` stays
+                                             read-only.
 ``grants.propose``      1 day      yes       Learned permissions: files ``tool.declare`` and
                                              ``capability.grant`` proposals from observed
                                              tool calls. Files only; a person approves.
@@ -71,7 +71,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Job, JobSchedule, Monitor, Policy, User, utcnow
 from agentfox.core.tenancy import bind_session, session_org, system_scope
-from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
+from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.jobs import store as jobs_db
 from agentfox.jobs.queue import PENDING, RUNNING
 

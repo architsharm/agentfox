@@ -1,8 +1,8 @@
-"""CI regression gating (P4-1, NOM-EVL-01, and SOC 2 CC8.1).
+"""CI regression gating (NOM-EVL-01, and SOC 2 CC8.1).
 
-The Phase-0 feature that a platform engineer adopts without asking anyone: a command
-that fails the build when the agent got worse. It is also, quietly, a change-management
-control — which is how the Tier-A wedge turns into Tier-B compliance evidence.
+A command that fails the build when the agent got worse, which a platform engineer
+can adopt without asking anyone. It is also, quietly, a change-management control,
+so the same gate doubles as compliance evidence.
 
 Two outputs beyond the exit code, because a gate nobody can read gets `|| true`'d:
 JUnit XML (every CI system renders it) and SARIF (GitHub code scanning renders it

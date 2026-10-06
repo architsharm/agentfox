@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agentfox.detection.base import taint_rank
+from agentfox.core.vocab import taint_rank
 
 #: The provenance every grant accepts without saying so (the column default).
 BASELINE = "user"

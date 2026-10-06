@@ -62,7 +62,7 @@ class Verified:
 #: The table. Keyed (harness, event).
 #:
 #: Empty is the correct state for a harness nobody has probed, and it is not a
-#: placeholder to be filled in with plausible values. `agentfox hooks install`
+#: placeholder to be filled in with plausible values. `agentfox admin hooks install`
 #: reads this and tells the operator plainly when it cannot promise
 #: enforcement, which is better than installing a hook that reports itself as
 #: a gate.

@@ -126,7 +126,7 @@ export function Explain() {
           <div className="mk-up mk-d3">
             <GrantMock />
             {/* The 1,000 limit and the 5,000 call are the mock's own contents, which
-                mocks.tsx traces to src/agentfox/core/seed.py. No new figure here. */}
+                mocks.tsx traces to src/agentfox/fixtures/seed.py. No new figure here. */}
             <p className="mk-fine" style={{ marginTop: 16 }}>
               Step 3 as the product writes it. The payments agent does hold the transfer
               tool, but only for amounts under 1,000, so a call for 5,000 is refused with

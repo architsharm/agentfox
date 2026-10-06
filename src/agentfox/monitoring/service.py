@@ -61,7 +61,7 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.core.tenancy import session_org
-from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
+from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.monitoring import alerts
 from agentfox.monitoring import snapshots as snap
 from agentfox.prove import findings as findings_mod

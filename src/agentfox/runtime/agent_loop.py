@@ -87,7 +87,7 @@ class LoopBudget:
     #: linearly from its full value at this step index down to 1 at `max_steps` —
     #: a step deep into a long run is judged more strictly than an early one,
     #: using only the step index already tracked, no new state. `None` (the
-    #: default) keeps the threshold flat, exactly as before this existed.
+    #: default) keeps the threshold flat.
     decay_from_depth: int | None = None
 
     def effective_max_steps_without_progress(self, index: int) -> int:

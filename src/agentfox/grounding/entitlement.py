@@ -1,4 +1,4 @@
-"""P10 — entitlement and disclosure control. The highest commercial-value gap.
+"""Entitlement and disclosure control. The highest commercial-value gap.
 
 The Copilot research names the failure precisely: *"a governance failure rather than a
 security breach — **every permission check passed**."* The agent runs under its own
@@ -14,16 +14,16 @@ that must not be given.*
 Three things make this tractable without asking a customer to rebuild their
 permissions model first:
 
-* **The principal is propagated, not inferred.** P10-1 is the dependency for
-  everything else, and it is a plumbing problem rather than a modelling one.
+* **The principal is propagated, not inferred.** Propagation is the dependency
+  for everything else, and it is a plumbing problem rather than a modelling one.
 * **The engine is a seam.** Customers running OpenFGA, Cedar or SpiceDB keep them.
   The native ACL exists because the much larger group express permissions as "this
   group can read this folder" and nothing more formal, and a control that requires a
   relationship model first is a control they will never switch on.
-* **The diagnostic works with no entitlement model at all.** P10-4 compares what the
-  agent could reach against what the principal is entitled to. A customer with zero
-  grants configured still learns their over-permission ratio, which is the number that
-  motivates doing the rest.
+* **The diagnostic works with no entitlement model at all.** The over-permission
+  report compares what the agent could reach against what the principal is entitled
+  to. A customer with zero grants configured still learns their over-permission
+  ratio, which is the number that motivates doing the rest.
 
 **Withholding is recorded, never silent.** A pre-filter that quietly returns fewer
 chunks tells nobody anything. The drop count *is* the oversharing metric.
@@ -55,7 +55,7 @@ DEFAULT_K_ANONYMITY = 5
 
 @runtime_checkable
 class EntitlementEngine(Protocol):
-    """The swappable seam (PRD §7.2). No winner exists, so we build the seam."""
+    """The swappable seam. No winner exists, so we build the seam."""
 
     key: str
 
@@ -169,7 +169,7 @@ class NativeAclEngine:
 
 
 class OpenFgaEngine:
-    """P10-2 via OpenFGA `ListObjects`. Apache-2.0, CNCF incubating.
+    """Entitlement lookup via OpenFGA `ListObjects`. Apache-2.0, CNCF incubating.
 
     Reports unavailable without the SDK and a configured store rather than guessing —
     a permissions engine that improvises is worse than one that is honestly absent.
@@ -246,7 +246,7 @@ class DisclosureDecision:
             "visible": len(self.visible),
             "withheld": len(self.withheld),
             "reasons": self.reasons,
-            # P10-4: the agent's reach beyond the caller's entitlement. Meaningful even
+            # The agent's reach beyond the caller's entitlement. Meaningful even
             # with no grants configured, which is the point — it is the diagnostic that
             # motivates building the entitlement model.
             "over_permission": round(self.over_permission, 4),
@@ -270,7 +270,7 @@ def filter_retrieval(
     purpose: str | None = None,
     engine: EntitlementEngine | None = None,
 ) -> DisclosureDecision:
-    """P10-2/P10-3 — remove what this human may not see, and record what was removed.
+    """Remove what this human may not see, and record what was removed.
 
     With no principal the decision is to disclose nothing new and say so: an agent
     answering with no idea who is asking is exactly the Copilot failure, and silently
@@ -364,14 +364,14 @@ def record_disclosure(
 
 
 # ---------------------------------------------------------------------------
-# P10-6 aggregation, P10-9 inference
+# Aggregation and inference
 # ---------------------------------------------------------------------------
 
 
 def aggregation_risk(
     answer: str, *, contributors: int | None = None, k: int = DEFAULT_K_ANONYMITY
 ) -> dict[str, Any] | None:
-    """P10-6 — an aggregate over too few people is not an aggregate.
+    """An aggregate over too few people is not an aggregate.
 
     Salary band plus a headcount of one is one person's salary, and it passes every
     access check because no individual record was disclosed.
@@ -408,7 +408,7 @@ _INFERRED_ATTRIBUTES = (
 
 
 def inference_risk(answer: str, context: str = "") -> dict[str, Any] | None:
-    """P10-9 — the model asserting a protected attribute nobody stored.
+    """The model asserting a protected attribute nobody stored.
 
     Fires only when the claim is *absent from the retrieved context*, which is what
     distinguishes an inference from a lookup: reporting a field the user's own record
@@ -431,7 +431,7 @@ def inference_risk(answer: str, context: str = "") -> dict[str, Any] | None:
 
 
 def over_permission_report(session: Session, *, days: int = 7) -> dict[str, Any]:
-    """P10-4 — how much more the agent can reach than its callers are entitled to.
+    """How much more the agent can reach than its callers are entitled to.
 
     Useful before any entitlement model exists, which is the argument for shipping it
     first: a customer with zero grants sees a ratio of 1.0 and understands immediately

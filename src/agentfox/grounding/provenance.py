@@ -1,4 +1,4 @@
-"""P8 — source authority and provenance (F2).
+"""Source authority and provenance.
 
 *"How do we know it didn't use an unverified source?"*
 
@@ -156,7 +156,7 @@ def _finish(
 def _validate_database(
     session: Session, record: SourceRecord, connection: SourceConnection, now: dt.datetime
 ) -> dict[str, Any]:
-    """F2 for a source that's a customer's own database, not a URL.
+    """Validation for a source that's a customer's own database, not a URL.
 
     Validated by connecting and introspecting structure — table names by
     default, or a specific table's columns when `check_table` is configured —
@@ -209,7 +209,7 @@ def _validate_database(
 def _validate_api(
     session: Session, record: SourceRecord, connection: SourceConnection, now: dt.datetime
 ) -> dict[str, Any]:
-    """F2 for an enterprise knowledge base — Confluence, SharePoint, Notion and
+    """Validation for an enterprise knowledge base — Confluence, SharePoint, Notion and
     similar are all an authenticated REST endpoint under the hood, and that is
     the primitive this validates against rather than a vendor-specific SDK.
     """
@@ -250,7 +250,7 @@ def _validate_api(
 def validate_source(
     session: Session, key: str, *, now: dt.datetime | None = None
 ) -> dict[str, Any]:
-    """F2 — check that a registered source is actually there, not just declared.
+    """Check that a registered source is actually there, not just declared.
 
     Registering a source tiers it; it says nothing about whether the content
     behind it still resolves, or has moved out from under the tier a human
@@ -311,7 +311,7 @@ def validate_source(
 
 
 def source_tier(session: Session, key: str) -> str:
-    """F2.1 — the tier of a source, defaulting to `unverified`.
+    """The tier of a source, defaulting to `unverified`.
 
     An unregistered source is unverified, never approved. Defaulting the other way
     would make the control vacuous the moment a retriever emits something new.
@@ -321,7 +321,7 @@ def source_tier(session: Session, key: str) -> str:
 
 
 def freshness_breach(record: SourceRecord | None, now: dt.datetime | None = None) -> dict | None:
-    """F2.2 — the policy changed last week and the index is a month old."""
+    """The policy changed last week and the index is a month old."""
     if record is None or record.freshness_sla_hours is None:
         return None
     if record.updated_at_source is None:
@@ -347,7 +347,7 @@ def freshness_breach(record: SourceRecord | None, now: dt.datetime | None = None
 
 
 def domain_breach(record: SourceRecord | None, agent_domain: str | None) -> dict | None:
-    """F2.6 — the support agent answering from the finance corpus."""
+    """The support agent answering from the finance corpus."""
     if record is None or not agent_domain or not record.domain:
         return None
     if record.domain == agent_domain:
@@ -383,7 +383,7 @@ def extract_citations(answer: str) -> list[str]:
 def detect_fabricated_citations(
     answer: str, chunks: list[dict[str, Any]] | None
 ) -> list[dict[str, Any]]:
-    """F2.3 — a citation to a document that was never retrieved, or that lacks the claim.
+    """A citation to a document that was never retrieved, or that lacks the claim.
 
     Two distinct failures. Citing a document that does not exist in the retrieval set
     is the blatant one. Citing a real document that does not contain the claim is the
@@ -439,7 +439,7 @@ def _sentence_containing(text: str, needle: str) -> str:
 
 
 def uncited_claims(answer: str, chunks: list[dict[str, Any]] | None) -> list[str]:
-    """F2.5 — a material claim with no source at all.
+    """A material claim with no source at all.
 
     Only reported when retrieval actually happened. Demanding citations from an agent
     that was given nothing to cite is a bug report about the retriever, not about the
@@ -458,7 +458,7 @@ def uncited_claims(answer: str, chunks: list[dict[str, Any]] | None) -> list[str
 
 
 def detect_source_conflict(chunks: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
-    """F2.4 — two documents disagree and the agent picks one without saying so.
+    """Two documents disagree and the agent picks one without saying so.
 
     Compares figures attached to the same label across chunks. Deliberately narrow:
     detecting semantic contradiction reliably needs a model, and a lexical version of
@@ -530,7 +530,7 @@ def assess_provenance(
     agent_domain: str | None = None,
     now: dt.datetime | None = None,
 ) -> ProvenanceAssessment:
-    """Everything F2 asks, in one pass over the retrieval set and the answer."""
+    """Every provenance check, in one pass over the retrieval set and the answer."""
     assessment = ProvenanceAssessment(
         fabricated=detect_fabricated_citations(answer, chunks),
         conflicts=detect_source_conflict(chunks),

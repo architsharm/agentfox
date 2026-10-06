@@ -2,8 +2,8 @@
 
 The commands a platform engineer runs (``eval gate``, ``policy simulate``) and the
 commands a compliance lead runs (``compliance status``, ``evidence export``) are the
-same binary against the same API. That is the land-and-expand path in PRD §4.3
-expressed as a tool: the engineer installs it for CI, and the CISO finds their view
+same binary against the same API. That is the land-and-expand path expressed as a
+tool: the engineer installs it for CI, and the CISO finds their view
 already there.
 """
 

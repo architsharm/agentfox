@@ -1378,7 +1378,7 @@ def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dic
 
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.runtime.enforcement import Enforcer
 
     if config["detectors"] is None:

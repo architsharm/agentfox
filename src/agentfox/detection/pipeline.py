@@ -1,18 +1,18 @@
-"""Budgeted detector pipeline (P3-6, P3-7, P3-11 / NOM-RTG-06).
+"""Budgeted detector pipeline (NOM-RTG-06).
 
-Latency is a product constraint here, not an implementation detail (principle X-7).
+Latency is a product constraint here, not an implementation detail.
 A governance tool that adds 400ms to every model call becomes a performance
-incident, and performance incidents get the tool removed (Appendix E.2.1).
+incident, and performance incidents get the tool removed.
 
 So the pipeline:
 
 * runs detectors **concurrently**, cheapest-first;
-* enforces a **per-detector timeout** and a **total budget** (NFR-1);
+* enforces a **per-detector timeout** and a **total budget**;
 * on breach, degrades that detector to observe-only and records a
   ``budget_breach`` finding rather than silently skipping it — a control that
   quietly stops running while reporting ``effective`` is the failure mode that
-  makes compliance products worthless (Appendix E.2.3);
-* honours per-policy **fail-open / fail-closed** (P3-7), with the choice itself
+  makes compliance products worthless;
+* honours per-policy **fail-open / fail-closed**, with the choice itself
   recorded as a governed setting.
 """
 
@@ -173,7 +173,7 @@ class DetectorPipeline:
     def run(
         self, content: str, context: DetectionContext, budget_ms: float | None = None
     ) -> PipelineResult:
-        """P3-13: ``budget_ms`` lets a caller hand down what is left of a *request*-level
+        """``budget_ms`` lets a caller hand down what is left of a *request*-level
         allowance, which is smaller than the per-call budget once several surfaces have
         already been evaluated. Without it, a stack that respects 100 ms per call can
         still spend half a second on one request."""
@@ -182,13 +182,13 @@ class DetectorPipeline:
         # A detector that cannot physically finish inside the default budget —
         # currently only the judgment tiers, which make a network round trip
         # measured at a 332ms median — declares `requires_budget_ms`. Without
-        # this the 300ms pre-flight budget (NFR-1) silently times it out on
+        # this the 300ms pre-flight budget silently times it out on
         # every call, so enabling a hosted tier would buy nothing while looking
         # like it worked. Raising the budget is the honest alternative: an
         # operator who enables a hosted tier is choosing latency for recall,
         # and `PipelineResult.budget_ms` reports what was actually granted.
-        # Detectors nobody opted into cannot trigger this, so NFR-1 still holds
-        # for the default install.
+        # Detectors nobody opted into cannot trigger this, so the default install
+        # keeps the default budget.
         required = max((getattr(d, "requires_budget_ms", 0) or 0 for d in detectors), default=0)
         if required and required > effective_budget:
             effective_budget = float(required)
@@ -275,7 +275,7 @@ class DetectorPipeline:
 
 
 def fail_verdict(fail_mode: str | None = None) -> str:
-    """What a degraded pipeline means for the request (P3-7).
+    """What a degraded pipeline means for the request.
 
     ``open`` keeps the customer's agent working and accepts reduced coverage;
     ``closed`` blocks. Neither is right in general — which is why it is a governed,

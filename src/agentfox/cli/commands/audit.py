@@ -1,4 +1,4 @@
-"""`agentfox audit` and `agentfox evidence` — verify the recorded history, export it."""
+"""Verify the recorded history and export it (`agentfox report verify`, `report evidence`)."""
 
 from __future__ import annotations
 

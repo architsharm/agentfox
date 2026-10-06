@@ -48,10 +48,10 @@ Everything else prints Rich tables — parse text, or prefer the HTTP API
 theirs: `scan [PATH]` is `scan repo`, `serve [--port N]` is `serve api`, bare `report`
 is `report status`. The registration layer is `src/agentfox/cli/layout.py`.
 
-Every pre-consolidation name still runs, hidden from `--help`; see **Renamed** at the
-end. At a terminal an old name prints a one-line "now called" note on stderr; piped,
-in CI and under the MCP server it prints nothing extra. `hooks run`, `hooks daemon` and
-`mcp serve` are protocol endpoints in users' configs and never print the note.
+The pre-consolidation top-level names (`check`, `compliance`, `capability`, …) were
+removed; `CHANGELOG.md` maps each to its new path. Two stay, hidden, because installed
+configs call them: `hooks run` (coding-agent hook configs) and `mcp serve` (MCP client
+configs). They are the same commands as `admin hooks run` and `serve mcp`.
 
 
 
@@ -214,33 +214,5 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin version` | R | Versions of every component that participates in a decision. |
 | `admin hooks install --agent SLUG [--harness claude] [--path .] [--write] [--env ENV] [--grant/--no-grant]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. `--write` also registers the agent (development unless `--env`), declares the harness's built-in tools and grants them (`--no-grant` to skip). |
 | `admin hooks status` | R | Is the daemon up, and does a deny on this harness actually stop anything? |
-| `admin hooks daemon [--socket PATH]` · `admin hooks run --harness H [--agent]` | FG · stdio | The warm process and the per-call hook. Installed configs call `agentfox hooks run`, which keeps working. |
+| `admin hooks daemon [--socket PATH]` · `admin hooks run --harness H [--agent]` | FG · stdio | The warm process and the per-call hook. Installed configs call `agentfox hooks run`, which stays at that path. |
 | `admin mcp tools` | R | Lists the MCP server's tools with one-line descriptions. |
-
-## Renamed
-
-The old names still run (hidden from `--help`).
-
-| Old | New |
-|---|---|
-| `check` · `quickscan` | `scan` · `scan --sessions` |
-| `agents discover` · `agents controls` | `scan runtime` · `agents list --stopped` |
-| `quickstart` · `version` · `seed` | `init` · `--version` / `admin version` · `admin seed` |
-| `analyse-action` | `test action` |
-| `eval run/gate/baseline/suites/online` · `eval drift` | `test …` · `report drift` |
-| `redteam run` · `redteam probes` | `test redteam` · `test probes` |
-| `audit verify` · `audit checkpoint` | `report verify` · `admin checkpoint` |
-| `evidence export` | `report evidence` |
-| `compliance status/risk/obligations/frameworks/board/review-packet` · `compliance review` | `report …` · `report signoff` |
-| `compliance sync/compute/validate` | `admin catalog …` |
-| `tools declare` · `tools set-triggers` · `tools list` | `declare tool` · `declare triggers` · `declare list tools` |
-| `access declare-scope` · `access declare-reference` | `declare scope` · `declare reference` |
-| `boundary set` · `boundary check` | `declare boundary` · `test boundary` |
-| `sources add` · `sources import` · `sources list` | `declare source` · `declare import-sources` · `declare list sources` |
-| `escalation set` · `escalation scan` | `declare escalation` · `report escalations` |
-| `entitlement principal` · `entitlement grant` · `entitlement report` | `declare principal` · `permit user` · `report entitlement` |
-| `capability grant/list/revoke` | `permit grant/list/revoke` |
-| `guardrails …` · `guardrails test` | `policy rules …` (`catalogue`, `compile` also at `policy`) · `test rule` |
-| `proposals …` | `policy proposals …` |
-| `auth …` · `db …` · `hooks …` | `admin auth …` · `admin db …` · `admin hooks …` |
-| `mcp serve` · `mcp tools` | `serve mcp` · `admin mcp tools` |

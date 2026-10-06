@@ -20,7 +20,7 @@ block — and the gap is recorded as a gap rather than passed off as an allow.
 That is the same choice `availability.py` makes for a detector that times out,
 with the same caveat: this is the hook path, not the enforcement boundary. An
 agent whose only control is a hook on its own machine has one control, and
-`agentfox hooks install` says so.
+`agentfox admin hooks install` says so.
 """
 
 from __future__ import annotations

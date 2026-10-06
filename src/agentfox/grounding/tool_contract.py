@@ -42,8 +42,8 @@ from typing import Any
 #: Identifiers a request can name. Deliberately structural: an id is recognised by its
 #: shape, not by a list of known formats, because every schema invents its own.
 #: The `#` form cannot sit inside a leading \b — `#` is not a word character, so the
-#: boundary fails against the space before it and ticket references were silently never
-#: matched. Each alternative carries its own anchoring.
+#: boundary would fail against the space before it and never match a ticket reference.
+#: Each alternative carries its own anchoring.
 _IDENTIFIER = re.compile(
     r"\b[A-Z]{1,5}-\d{2,}\b"  # A-1182, ORD-4471
     r"|(?<![\w#])#\d{3,}\b"  # #44712

@@ -121,7 +121,6 @@ def scan_mcp(
     from sqlalchemy import select
 
     from agentfox.core.models import McpServer
-    from agentfox.core.seed import MCP_TOOLS
     from agentfox.discovery.exposure import (
         FLAG_LABEL,
         Member,
@@ -132,6 +131,7 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
+    from agentfox.fixtures.seed import MCP_TOOLS
     from agentfox.monitoring.service import safe_ensure_monitor
     from agentfox.registry.service import (
         normalise_tool_list,

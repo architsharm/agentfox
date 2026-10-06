@@ -35,7 +35,7 @@ class EnforcementResult:
     degraded: list[str] = field(default_factory=list)
     content: str | None = None  # redacted content, when the verdict is a redaction
     reason: str = ""
-    # P3-12/13/14. `explanation` is what an engineer reads instead of "blocked by
+    # `explanation` is what an engineer reads instead of "blocked by
     # policy"; `suppressed` records exceptions that fired, because an exception that
     # leaves no trace is a hole rather than a control.
     explanation: dict[str, Any] = field(default_factory=dict)

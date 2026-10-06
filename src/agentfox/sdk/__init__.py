@@ -2,7 +2,7 @@
 
 The second integration surface. The gateway needs zero code change but only sees what
 crosses the wire; the SDK sees *intent*, argument provenance, and the agent's own
-structure — which is what makes taint tracking (P3-4) precise rather than inferred.
+structure — which is what makes taint tracking precise rather than inferred.
 
 Two modes, both drop-in:
 
@@ -24,7 +24,7 @@ Two modes, both drop-in:
 
 The remote mode exists because a customer's agent may not be Python, or may not be
 allowed to hold a database connection. The local mode exists because an in-process
-call has no network hop to spend against the latency budget (NFR-1).
+call has no network hop to spend against the latency budget.
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ from sqlalchemy.orm import Session
 from agentfox.core.db import session_scope
 from agentfox.detection import TaintTracker
 
-# One class each, shared with the LangGraph integration and under `AgentFoxError`
-# (#46): see `agentfox.errors`.
+# One class each, shared with the LangGraph integration and under `AgentFoxError`:
+# see `agentfox.errors`.
 from agentfox.errors import AgentFoxError, ApprovalRequired, PolicyViolation
 from agentfox.integrations.correlation import refs_from_env
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
@@ -91,9 +91,9 @@ class AgentSession:
 
         ``tool`` names the *producing* tool (its registered `Tool.key`) so a later
         call whose argument matches this output can be checked for composed
-        privilege escalation (F3.8, `guardrails/composition.py`) — an argument
+        privilege escalation (`detection/composition.py`) — an argument
         value traced back to a lower-impact tool's result, now feeding a
-        higher-impact one. Omit it and the content is still tainted as before;
+        higher-impact one. Omit it and the content is still tainted;
         it just can't be checked against that specific failure mode, since
         nothing then names which tool produced it.
         """
@@ -251,7 +251,7 @@ class AgentFox:
         # Stored as `_session`: `session` is the context-manager method above.
         self._session = session
         # The `with fox.session(...)` block this thread or task is inside, so a
-        # `@fox.tool` function called there joins it (#44). Per client: a session
+        # `@fox.tool` function called there joins it. Per client: a session
         # of another AgentFox (another agent) is not this one's.
         self._active: ContextVar[AgentSession | None] = ContextVar(
             f"agentfox_session_{id(self)}", default=None
@@ -259,7 +259,7 @@ class AgentFox:
         if not self.remote:
             # Local enforcement runs the detectors in this process: warm the
             # opted-in model detectors now, in the background, not inside the
-            # first governed call (#48). A gateway warms its own.
+            # first governed call. A gateway warms its own.
             from agentfox.detection.warmup import warm_in_background
 
             warm_in_background()
@@ -312,7 +312,7 @@ class AgentFox:
         anything special.
 
         Called inside ``with fox.session(intent=...)``, the call joins that session —
-        its intent, taint marks and the tools already called (#44). Outside one it
+        its intent, taint marks and the tools already called. Outside one it
         runs in a session of its own. ``session=`` binds it to one explicitly.
 
         ``impact`` is a declaration, and is written to the tool registry: every
@@ -384,7 +384,7 @@ class AgentFox:
         ``surface="completion"`` asks whether the agent may stop: ``content`` is its
         claim ("your refund is processed") and ``completion`` the facts you observed,
         such as ``{"work_verified": True}``, which ``completion_requires`` rules check.
-        A fact you do not report counts as unmet (#47).
+        A fact you do not report counts as unmet.
         """
         if self.remote:
             body: dict[str, Any] = {
@@ -520,7 +520,7 @@ class AgentFox:
             import json
 
             headers["X-Nometria-Trust"] = json.dumps(kwargs["trust_map"])
-        # I-4/I-6: in remote mode the correlation ids have to travel on the wire, or
+        # In remote mode the correlation ids have to travel on the wire, or
         # the gateway records a governance decision that nothing can be joined to.
         for ref in refs_from_env():
             if ref.system == "langsmith":
@@ -552,7 +552,7 @@ class AgentFox:
             result.rules_fired = error.get("rules_fired", [])
             result.entities = error.get("entities", [])
             return result, None
-        # 428 since #20; 202 from a gateway that predates it.
+        # 428 from current gateways; 202 from older ones.
         if response.status_code in (428, 202):
             body = response.json()
             result.verdict = "escalate"

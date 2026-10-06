@@ -1,4 +1,4 @@
-"""I-4 / I-6 — LangSmith and Langfuse correlation.
+"""LangSmith and Langfuse correlation.
 
 The practitioner evidence is unambiguous: teams already run LangSmith or Langfuse,
 and they are not going to stop. Six of eleven engineers had additionally hand-rolled
@@ -292,7 +292,7 @@ def push_verdict(
 ) -> list[PushResult]:
     """Annotate the external run with our decision. Best-effort, never raises.
 
-    Gated on ``allow_egress`` like every other outbound path (NFR-4): a governance
+    Gated on ``allow_egress`` like every other outbound path: a governance
     product that phones out by default cannot be deployed in the environments that
     need it most.
     """

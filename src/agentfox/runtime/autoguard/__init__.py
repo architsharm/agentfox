@@ -235,16 +235,14 @@ class AutoState:
         # "enforce mode", the canonical injection went straight to OpenAI, and
         # the 401 from an invalid key proved it had left the process.
         #
-        # The enforcer now falls back to the shipped baseline in observe when
-        # nothing is bound (see _fallback_policies), so this line says what is
-        # actually running rather than warning that nothing is. Still said out
-        # loud, because "a fallback is deciding for you" is a fact an operator
-        # has to know before they trust a clean dashboard.
+        # The enforcer falls back to the shipped baseline in observe when nothing
+        # is bound (see _fallback_policies), so this line says what is actually
+        # running rather than warning that nothing is. Still said out loud, because
+        # "a fallback is deciding for you" is a fact an operator has to know before
+        # they trust a clean dashboard.
         #
-        # It used to add "Tool-call containment enforces regardless", which was false
-        # twice over: nothing on this path looked at a tool call at all, and the
-        # containment pack is not part of the fallback. What is true now depends on
-        # the mode, so the sentence does too.
+        # What is true about tool calls depends on the mode (the containment pack
+        # is not part of the fallback), so the sentence does too.
         if self.policies_bound == 0:
             tools = {
                 "enforce": "Tool calls are checked as well, and in strict enforce mode "
@@ -444,7 +442,7 @@ class _Call:
 
 
 def _pop_evidence(kwargs: dict[str, Any]) -> dict[str, Any]:
-    # P10 — the caller's end-user identity and retrieved context, if it supplied
+    # The caller's end-user identity and retrieved context, if it supplied
     # them. Popped before anything else so they never leak to the real provider
     # call, which sees these as unrecognised kwargs otherwise. A subject that
     # doesn't resolve to a registered principal still gets recorded correctly
@@ -591,7 +589,7 @@ def _postflight(
                             call, session, enforcer, identity, tool_calls
                         )
                         refusal = refusal or tool_refusal
-                    # P15: this call never goes through AgentFox's own provider
+                    # This call never goes through AgentFox's own provider
                     # abstraction — it's the caller's own SDK, patched in place — so
                     # nothing else on this path ever charges spend against the
                     # agent's budget. Charged even when the output is refused: the
@@ -637,7 +635,7 @@ def _postflight(
         state.calls_blocked += 1
         raise refusal
 
-    # P11: capture the exchange as a conversation turn. Escalation governance was
+    # Capture the exchange as a conversation turn. Escalation governance was
     # complete and inert for anyone using the one-liner — the detector reads recorded
     # turns, and nothing was recording them. Session grouping falls back to the trace
     # when the caller has no session concept.
@@ -759,7 +757,7 @@ def _describe_tool_refusal(
 
     ``exempt`` are the rules this process let through (the no-grants carve-out in
     ``"policy"`` mode). They did not refuse anything, so they never lead: the
-    message names the rule that did, and mentions the exempt ones last (#83).
+    message names the rule that did, and mentions the exempt ones last.
     """
     rules = sorted(_stopping_rules(result), key=lambda r: r.get("rule_id") in exempt)
     rule = rules[0] if rules else {}
@@ -813,7 +811,7 @@ def _govern_tool_calls(
     mode: an agent nobody has granted any capability to has not had least privilege
     configured, and capability default-deny would refuse every tool it has — so for
     that agent a refusal that is *only* a missing grant is recorded as
-    would-have-blocked rather than raised. The first grant (`agentfox capability
+    would-have-blocked rather than raised. The first grant (`agentfox permit
     grant`) is what turns it on, the same way `agentfox policy enforce` turns on a
     policy. Strict ``"enforce"`` mode raises on it regardless.
     """
@@ -918,7 +916,7 @@ def _evaluate_output(
 
     state = call.state
     # The only place on this path that writes a kind="llm" span with the raw
-    # response text — the shape sample_production() (P4-2 online eval) scores.
+    # response text — the shape sample_production() (online eval) scores.
     # Mirrors enforcement.py's _finish_completion(), the gateway path's equivalent.
     add_span(
         session,
@@ -938,8 +936,8 @@ def _evaluate_output(
     principal_ref = call.evidence.get("agentfox_principal")
     chunks = call.evidence.get("agentfox_chunks") or []
     # Either one is evidence. Chunks without a principal still carry the sources the
-    # answer was built from, which is what source authority (F2) and numeric
-    # integrity (F7) check; gating them on a principal skipped both (#5).
+    # answer was built from, which is what source authority and numeric
+    # integrity check; gating them on a principal skipped both.
     if principal_ref is not None or chunks:
         enforcer.evidence = {
             "principal": _resolve_principal(session, principal_ref),
@@ -967,11 +965,11 @@ def _evaluate_output(
 def _resolve_principal(session: Any, principal_ref: Any) -> Any:
     """The end user a call was made for, registered or not.
 
-    A subject nobody registered used to resolve to None, and the entitlement check
-    then ran as though no principal had been named — recording nothing at all (#5).
-    An unregistered subject is still a person: it is evaluated as itself, with no
-    groups or clearances (only what is granted to the subject directly), and what it
-    could not see is recorded against that subject. Never added to the session.
+    An unregistered subject still resolves, so the entitlement check does not run as
+    though no principal had been named and record nothing. It is still a person: it is
+    evaluated as itself, with no groups or clearances (only what is granted to the
+    subject directly), and what it could not see is recorded against that subject. Never
+    added to the session.
     """
     if principal_ref is None:
         return None
@@ -1469,7 +1467,7 @@ def auto(
                 )
                 # An agent with no identity holds no grants and cannot be given any
                 # by name until something creates one; its refusals said "no
-                # resolved identity for the caller" (#83). `permit grant` would
+                # resolved identity for the caller". `permit grant` would
                 # create it anyway; creating it here makes the first refusal name
                 # the agent and the grant to make.
                 identity = ensure_identity(session, agent)
@@ -1494,7 +1492,7 @@ def auto(
 
     # An opted-in model detector loads its weights on first use; in the gateway that
     # happens at startup, and in-process it must too, or the first governed calls
-    # time out while it loads (#48). Off this thread; a no-op for the default set.
+    # time out while it loads. Off this thread; a no-op for the default set.
     warm_in_background()
 
     state.patches = [result for patch in _PATCHERS for result in patch(state)]

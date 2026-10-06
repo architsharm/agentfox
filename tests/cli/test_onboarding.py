@@ -219,7 +219,7 @@ def test_init_ends_by_telling_you_what_to_do_next(isolated_db, tmp_path):
 
 
 def test_check_highlights_the_ungoverned_calls(isolated_db, project):
-    result = runner.invoke(app, ["check", str(project)])
+    result = runner.invoke(app, ["scan", "repo", str(project)])
     assert result.exit_code == 0
     assert "ungoverned" in flat(result.output)
     assert "app.py" in flat(result.output)
@@ -227,7 +227,7 @@ def test_check_highlights_the_ungoverned_calls(isolated_db, project):
 
 def test_check_can_gate_ci(isolated_db, project):
     """The same command a developer runs by hand is the one CI runs."""
-    result = runner.invoke(app, ["check", str(project), "--fail"])
+    result = runner.invoke(app, ["scan", "repo", str(project), "--fail"])
     assert result.exit_code == 1
 
 
@@ -235,13 +235,13 @@ def test_check_passes_ci_when_everything_is_governed(isolated_db, tmp_path):
     (tmp_path / "m.py").write_text(
         "import agentfox\nnometria.auto()\nc.messages.create(model='x', messages=[])\n"
     )
-    assert runner.invoke(app, ["check", str(tmp_path), "--fail"]).exit_code == 0
+    assert runner.invoke(app, ["scan", "repo", str(tmp_path), "--fail"]).exit_code == 0
 
 
 def test_check_emits_json_for_tooling(isolated_db, project):
     import json
 
-    result = runner.invoke(app, ["check", str(project), "--json"])
+    result = runner.invoke(app, ["scan", "repo", str(project), "--json"])
     payload = json.loads(result.output)
     assert payload["ungoverned_model_calls"] == 2
     assert payload["coverage"] == 0.0
@@ -252,7 +252,7 @@ def test_check_no_submit_never_touches_the_network(isolated_db, project, monkeyp
         raise AssertionError("httpx.post must not be called when --no-submit is passed")
 
     monkeypatch.setattr("agentfox.cli.submit.httpx.post", _boom)
-    result = runner.invoke(app, ["check", str(project), "--no-submit"])
+    result = runner.invoke(app, ["scan", "repo", str(project), "--no-submit"])
     assert result.exit_code == 0, result.output
 
 
@@ -261,7 +261,7 @@ def test_check_default_run_does_not_prompt_on_a_non_tty(isolated_db, project, mo
         raise AssertionError("nothing should be submitted with no flag on a non-tty run")
 
     monkeypatch.setattr("agentfox.cli.submit.httpx.post", _boom)
-    result = runner.invoke(app, ["check", str(project)])
+    result = runner.invoke(app, ["scan", "repo", str(project)])
     assert result.exit_code == 0, result.output
     assert "Submit to the dashboard?" not in result.output
 
@@ -283,7 +283,7 @@ def test_check_submit_sends_the_redacted_payload(isolated_db, project, monkeypat
         return _FakeResponse()
 
     monkeypatch.setattr("agentfox.cli.submit.httpx.post", _fake_post)
-    result = runner.invoke(app, ["check", str(project), "--submit"])
+    result = runner.invoke(app, ["scan", "repo", str(project), "--submit"])
     assert result.exit_code == 0, result.output
     assert "Submitted." in flat(result.output)
     assert "deploy.sh" not in repr(captured["json"])  # worker.py's shell_call detail
@@ -314,7 +314,7 @@ def test_doctor_reports_the_enforce_observe_split_honestly(isolated_db):
     # Committed and closed: `doctor` opens its own session, so an uncommitted fixture
     # session would leave it looking at an empty database.
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
     from agentfox.runtime.enforcement import Enforcer
 
     with session_scope() as session:
@@ -352,13 +352,6 @@ def test_findings_lists_what_the_platform_found(isolated_db):
         )
     result = runner.invoke(app, ["findings"])
     assert "missed_escalation" in flat(result.output)
-
-
-def test_quickstart_is_five_steps_and_names_the_only_blocking_one(isolated_db):
-    result = runner.invoke(app, ["quickstart"])
-    assert "agentfox init" in flat(result.output)
-    assert "agentfox.auto()" in flat(result.output)
-    assert "only step that blocks" in flat(result.output)
 
 
 def test_the_onboarding_verbs_are_top_level(isolated_db):

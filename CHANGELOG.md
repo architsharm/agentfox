@@ -11,7 +11,41 @@ the file it came from.
 
 ## [Unreleased]
 
-Nothing yet.
+### Removed
+
+- The hidden pre-consolidation CLI names. `agentfox --help` shows thirteen verbs, and
+  the old top-level names had kept running, hidden, with a "now called" hint. They no
+  longer resolve. `agentfox hooks run` and `agentfox mcp serve` stay,
+  because installed hook configs and MCP client configs call them. Where each old name
+  lives now:
+
+  | Old | New |
+  |---|---|
+  | `check` · `quickscan` | `scan` · `scan --sessions` |
+  | `quickstart` · `version` · `seed` | `init` · `--version` / `admin version` · `admin seed` |
+  | `analyse-action` | `test action` |
+  | `eval run/gate/baseline/suites/online` · `eval drift` | `test …` · `report drift` |
+  | `redteam run` · `redteam probes` | `test redteam` · `test probes` |
+  | `audit verify` · `audit checkpoint` | `report verify` · `admin checkpoint` |
+  | `evidence export` | `report evidence` |
+  | `compliance status/risk/obligations/frameworks/board/review-packet` · `compliance review` | `report …` · `report signoff` |
+  | `compliance sync/compute/validate` | `admin catalog …` |
+  | `tools declare` · `tools set-triggers` · `tools list` | `declare tool` · `declare triggers` · `declare list tools` |
+  | `access declare-scope` · `access declare-reference` | `declare scope` · `declare reference` |
+  | `boundary set` · `boundary check` | `declare boundary` · `test boundary` |
+  | `sources add` · `sources import` · `sources list` | `declare source` · `declare import-sources` · `declare list sources` |
+  | `escalation set` · `escalation scan` | `declare escalation` · `report escalations` |
+  | `entitlement principal` · `entitlement grant` · `entitlement report` | `declare principal` · `permit user` · `report entitlement` |
+  | `capability grant/list/revoke` | `permit grant/list/revoke` |
+  | `guardrails …` · `guardrails test` | `policy rules …` · `test rule` |
+  | `proposals …` · `approvals …` | `policy proposals …` · `permit approvals …` |
+  | `auth …` · `db …` · `users …` · `hooks …` | `admin auth …` · `admin db …` · `admin users …` · `admin hooks …` |
+  | `mcp tools` | `admin mcp tools` |
+
+### Changed
+
+- `McpCallBlocked`, raised by the MCP governor, is now an `agentfox.AgentFoxError` like
+  every other refusal. It is still a `RuntimeError`.
 
 ## [0.3.1] - 2026-09-26
 

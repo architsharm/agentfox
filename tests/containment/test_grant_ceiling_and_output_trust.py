@@ -233,14 +233,14 @@ def test_capability_grant_says_composition_still_applies(session):
     )
     session.commit()
     out = CliRunner().invoke(
-        app, ["capability", "grant", AGENT, EMAIL, "--max-taint", "tool_result", "--yes"]
+        app, ["permit", "grant", AGENT, EMAIL, "--max-taint", "tool_result", "--yes"]
     )
     assert out.exit_code == 0, out.output
     text = " ".join(out.output.split())
     assert "composition.escalation still applies" in text
     assert "--output-trust trusted" in text
 
-    plain = CliRunner().invoke(app, ["capability", "grant", AGENT, CRM, "--yes"])
+    plain = CliRunner().invoke(app, ["permit", "grant", AGENT, CRM, "--yes"])
     assert "composition.escalation" not in plain.output
 
 
@@ -296,13 +296,13 @@ def test_tools_declare_output_trust_from_the_cli():
 
     runner = CliRunner()
     out = runner.invoke(
-        app, ["tools", "declare", CRM, "--impact", "read", "--output-trust", "trusted"]
+        app, ["declare", "tool", CRM, "--impact", "read", "--output-trust", "trusted"]
     )
     assert out.exit_code == 0, out.output
     assert "output trusted" in out.output
-    listed = runner.invoke(app, ["tools", "list", "--json"])
+    listed = runner.invoke(app, ["declare", "list", "tools", "--json"])
     assert '"output_trust": "trusted"' in listed.output
-    bad = runner.invoke(app, ["tools", "declare", CRM, "--impact", "read", "--output-trust", "x"])
+    bad = runner.invoke(app, ["declare", "tool", CRM, "--impact", "read", "--output-trust", "x"])
     assert bad.exit_code == 2
 
 

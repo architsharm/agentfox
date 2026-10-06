@@ -1,14 +1,14 @@
 """Assemble the judges an operator enabled, and ask as few of them as possible.
 
-Every surface previously reached for `JevClient` directly, which made
-"enable the LLM tier" a setting with no effect. This resolves a decision kind
+Surfaces ask the panel rather than reaching for `JevClient` directly, so that
+"enable the LLM tier" is a setting with an effect. This resolves a decision kind
 into the judges permitted to answer it — `CapabilityRouter` for policy, each
 judge for availability — and combines their answers as the routing table says.
 
-**Cascade, not union, wherever more than one tier can answer.** The first
-version asked every enabled tier on every decision and kept the highest score.
-That is simple and it is wasteful: on injection it bought +0.1 F1 for a hosted
-LLM call on 100% of traffic. Under a cascade a tier's answer ends the matter
+**Cascade, not union, wherever more than one tier can answer.** Asking every
+enabled tier on every decision and keeping the highest score is simple and
+wasteful: on injection it buys +0.1 F1 for a hosted LLM call on 100% of
+traffic. Under a cascade a tier's answer ends the matter
 unless it lands in that kind's uncertain band, and only the still-unsettled
 questions are carried onward — so the expensive tiers see a fraction of the
 traffic instead of all of it, and a tier with nothing left to answer is never

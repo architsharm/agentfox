@@ -1,4 +1,4 @@
-"""P9 — action assurance: what the generated artefact will actually do.
+"""Action assurance: what the generated artefact will actually do.
 
 Everything else in this system governs the *call*: is this agent allowed to use
 `db.query`, and is the argument tainted? That containment is real and it is not
@@ -69,7 +69,7 @@ _WRITE_NODES = ("Insert", "Update", "Delete", "Merge")
 _ADMIN_NODES = ("Grant", "Revoke", "Create", "Set", "Command", "Alter")
 
 #: Environments where an irreversible statement is a production incident rather than
-#: a test. Bound to the agent's declared environment (P9-6).
+#: a test. Bound to the agent's declared environment.
 PRODUCTION_ENVIRONMENTS = ("production", "prod")
 
 
@@ -210,7 +210,7 @@ def _is_tautology(where: Any) -> bool:
 
 
 def analyse_sql(statement: str, *, dialect: str = "postgres") -> ActionAnalysis:
-    """Parse and classify a SQL artefact. P9-1…P9-5, P9-9."""
+    """Parse and classify a SQL artefact."""
     analysis = ActionAnalysis(dialect=dialect, parsed=False)
     if not SQLGLOT_AVAILABLE:
         analysis.risks.append(
@@ -227,7 +227,7 @@ def analyse_sql(statement: str, *, dialect: str = "postgres") -> ActionAnalysis:
     try:
         trees = [t for t in sqlglot.parse(statement, read=dialect) if t is not None]
     except Exception as exc:
-        # P9-1: fail closed. Passing through what we could not parse would invert the
+        # Fail closed. Passing through what we could not parse would invert the
         # control — the adversarial input is precisely the one that fails to parse.
         analysis.parse_error = f"{type(exc).__name__}: {exc}"
         analysis.risks.append(
@@ -262,7 +262,7 @@ def analyse_sql(statement: str, *, dialect: str = "postgres") -> ActionAnalysis:
     analysis.operation = operation
     analysis.targets = targets
 
-    # P9-3: stacked statements. A single "query" that is really two is the classic
+    # Stacked statements. A single "query" that is really two is the classic
     # injection shape, and no legitimate parameterised call needs it.
     if len(trees) > 1:
         analysis.risks.append(
@@ -292,7 +292,7 @@ def analyse_sql(statement: str, *, dialect: str = "postgres") -> ActionAnalysis:
 
         if name in ("Delete", "Update"):
             where = tree.args.get("where")
-            # P9-4: the unbounded mutation. This is the 1.9M-row shape.
+            # The unbounded mutation. This is the 1.9M-row shape.
             if where is None:
                 analysis.reversible = False
                 analysis.blast_radius = "unbounded"
@@ -322,7 +322,7 @@ def analyse_sql(statement: str, *, dialect: str = "postgres") -> ActionAnalysis:
                     analysis.blast_radius = "bounded"
 
         if name in ("Grant", "Revoke"):
-            # P9-9: an agent that can widen its own grants can defeat every other
+            # An agent that can widen its own grants can defeat every other
             # control here, so privilege change is never merely a write.
             analysis.risks.append(
                 ActionRisk(
@@ -857,7 +857,7 @@ def analyse_scope(key: str, value: str) -> ActionAnalysis | None:
                 # "critical", not "high": a legitimate identifier argument is never
                 # literally the string "*"/"all"/"any" — this is as unambiguous as
                 # `sql.destructive_ddl`, so it gets the same automatic-block
-                # treatment (enforcement.py's P9 "a critical action risk stands on
+                # treatment (enforcement.py's "a critical action risk stands on
                 # its own" rule) rather than depending on an operator to author a
                 # policy rule for it first.
                 severity="critical",
@@ -949,7 +949,7 @@ def _looks_like_sql(value: str) -> bool:
 
 def _is_sql_argument(key: str, value: Any) -> bool:
     """The exact SQL-detection heuristic `analyse_arguments` uses inline, factored
-    out so P18's data-access scoping (`find_sql_argument`, below) can share it
+    out so data-access scoping (`find_sql_argument`, below) can share it
     rather than re-implementing SQL-string detection a second time."""
     if not isinstance(value, str) or not value.strip():
         return False
@@ -1012,7 +1012,7 @@ def find_sql_argument(arguments: dict[str, Any]) -> str | None:
     """The first argument that looks like a SQL statement, or None.
 
     Shares `_is_sql_argument`'s detection with `analyse_arguments` so the two never
-    drift — a caller wanting the raw statement (P18's `analyse_access`) rather than
+    drift — a caller wanting the raw statement (`analyse_access`) rather than
     an `ActionAnalysis` uses this instead of duplicating the key/verb heuristics.
     """
     for key, _path, value in walk_arguments(arguments):
@@ -1048,7 +1048,7 @@ def analyse_arguments(
 
 
 def environment_risk(analysis: ActionAnalysis, environment: str) -> ActionRisk | None:
-    """P9-6 — the same statement is a test in staging and an incident in production.
+    """The same statement is a test in staging and an incident in production.
 
     The 1.9M-row incident was not an unusual statement. It was an ordinary statement
     pointed at the wrong database, which is why the environment has to be part of the

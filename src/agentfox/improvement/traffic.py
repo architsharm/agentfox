@@ -60,7 +60,7 @@ from agentfox.core.models import (
     as_aware,
     utcnow,
 )
-from agentfox.detection.base import taint_rank
+from agentfox.core.vocab import taint_rank
 from agentfox.identity.service import _constraint_ok
 from agentfox.improvement import contract
 from agentfox.improvement.loops import SUPERSEDE_ACTION, LoopReport

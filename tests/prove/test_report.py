@@ -147,7 +147,7 @@ def test_agent_filter(seeded, enforcer):
 
 def test_cli_report_md_and_html(tmp_path):
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)
@@ -189,11 +189,11 @@ def test_board_computes_control_status_itself(seeded):
 
 def test_board_cli_reports_counts_not_a_bare_ratio():
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)
-    result = runner.invoke(app, ["compliance", "board"])
+    result = runner.invoke(app, ["report", "board"])
     assert result.exit_code == 0, result.output
     assert "controls with evidence" in result.output
     assert "0% of" not in result.output

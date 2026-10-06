@@ -156,7 +156,7 @@ def add_case(
 def promote_trace(
     key: str, trace_id: str, session: Session = Depends(db), user: User = Depends(require("eval"))
 ) -> dict[str, Any]:
-    """P4-6 — promote a production failure into a regression test.
+    """Promote a production failure into a regression test.
 
     The shortest path from "this went wrong in production" to "this can never ship
     again" is the feature that makes an eval suite grow instead of rot.
@@ -417,7 +417,7 @@ class GateIn(BaseModel):
 def run_gate(
     payload: GateIn, session: Session = Depends(db), user: User = Depends(require("eval"))
 ) -> dict[str, Any]:
-    """P4-1 — the CI entry point. Non-zero exit maps from ``passed: false``."""
+    """The CI entry point. Non-zero exit maps from ``passed: false``."""
     suite = _suite(session, payload.suite)
     agent = payload.target.get("agent")
     run = NativeEvalRunner().run(
@@ -484,10 +484,9 @@ def drift(
     session: Session = Depends(db),
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
-    """Read-only. Viewing drift used to persist a DriftWindow — and a Finding when
-    drifted — on every page load, so the number of drift findings measured how often
-    someone looked, not how often the agent drifted. Recording is the scheduled
-    `drift.check` job (or `agentfox eval drift` locally)."""
+    """Read-only. Viewing drift persists nothing, so the number of drift findings
+    measures how often the agent drifted, not how often someone looked. Recording is
+    the scheduled `drift.check` job (or `agentfox report drift` locally)."""
     report = compute_drift(session, agent, scorer, persist=False)
     if report is None:
         return {
@@ -551,7 +550,7 @@ def scorers(_user: User = Depends(current_user)) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Red team (P4-4)
+# Red team
 # ---------------------------------------------------------------------------
 
 
@@ -571,7 +570,7 @@ class CampaignIn(BaseModel):
 
 
 def _run_redteam_sweep(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    """PL-5 — the job's handler. See governance.py's _run_evidence_package for
+    """The job's handler. See governance.py's _run_evidence_package for
     why the audit-chain entry lives here rather than in the route: this is what
     actually ran, whether that happened synchronously in the enqueueing
     request or later via the cron backstop."""
@@ -624,7 +623,7 @@ jobs_db.register("redteam.sweep", _run_redteam_sweep)
 def create_campaign(
     payload: CampaignIn, session: Session = Depends(db), user: User = Depends(require("eval"))
 ) -> dict[str, Any]:
-    """Enqueues through jobs_db (PL-5) and processes within this same request
+    """Enqueues through jobs_db and processes within this same request
     — see jobs_db's own module docstring and governance.py's build_evidence
     for the same reasoning applied to the other named candidate operation."""
     job = jobs_db.enqueue(

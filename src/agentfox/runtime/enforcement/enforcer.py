@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import time
+from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import select
@@ -82,6 +83,76 @@ def _relies_on_detections(doc: Any, surface: str) -> bool:
     )
 
 
+@dataclass
+class _Evaluation:
+    """One `Enforcer.evaluate` call: its inputs, and what each step has worked out.
+
+    The steps run in a fixed order and each reads what earlier steps set, so a field
+    is only meaningful once the step that sets it has run.
+    """
+
+    # inputs, exactly as `evaluate` received them
+    started: float
+    agent: Agent | None
+    identity: Identity | None
+    content: str
+    surface: str
+    trace: Trace | None
+    taint_source: str
+    tool_key: str | None
+    arguments: dict[str, Any] | None
+    argument_taint: dict[str, str] | None
+    argument_propagated_from: dict[str, str] | None
+    memory_entry: dict[str, Any] | None
+    intent: str | None
+    schema: dict[str, Any] | None
+    prior_tools: list[str] | None
+    prior_steps: list[dict[str, Any]] | None
+    tracker: TaintTracker | None
+    conversation_window: list[str] | None
+    completion: dict[str, Any] | None
+    persist: bool
+    forced_rules: list[dict[str, Any]] | None
+    extra_taint: dict[str, Any] | None
+    approval_id: str | None
+
+    # _resolve_tool
+    agent_slug: str | None = None
+    environment: str = "production"
+    trace_id: str | None = None
+    tool_impact: str = "read"
+    tool_known: bool = True
+    # _run_detectors
+    ledger: Any = None
+    pipeline_result: Any = None
+    suppressed: Any = None
+    detections: list[dict[str, Any]] = field(default_factory=list)
+    detector_run_ids: list[str] = field(default_factory=list)
+    # _check_capability, _run_content_checks, ladders, _analyse_action, budgets
+    capability: dict[str, Any] = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
+    pending_risks: list[dict[str, Any]] = field(default_factory=list)
+    ladder_decisions: list[Any] = field(default_factory=list)
+    action: dict[str, Any] = field(default_factory=dict)
+    budget: Any = None
+    taint_summary: dict[str, Any] = field(default_factory=dict)
+    # _evaluate_policies, then every step that raises a verdict
+    evaluated: list[Any] = field(default_factory=list)
+    unloadable: list[UnloadablePolicyVersion] = field(default_factory=list)
+    policy_version_ids: list[str] = field(default_factory=list)
+    policy_version_id: str | None = None
+    verdict: str = "allow"
+    effective: str = "allow"
+    mode: str = "observe"
+    rules_fired: list[dict[str, Any]] = field(default_factory=list)
+    fired_ids: set[Any] = field(default_factory=set)
+    # _redeem_approval, _build_result
+    held: tuple[str | None, Any] = (None, None)
+    redeemed_approval: Any = None
+    latency_ms: float = 0.0
+    reason: str = ""
+
+
 class Enforcer(
     _SurfacesMixin,
     _ToolCallMixin,
@@ -98,17 +169,18 @@ class Enforcer(
         self.settings = get_settings()
         self.pipeline = pipeline or DetectorPipeline()
         self.engine = get_engine()
-        # P3-13: one ledger per request, not per call. Reset at the start of each
+        # One ledger per request, not per call. Reset at the start of each
         # governed completion; a bare `evaluate()` gets a fresh one on demand.
         self._ledger: LatencyLedger | None = None
-        # F2/F7: the retrieval set, records and entities the answer was built from.
+        # The retrieval set, records and entities the answer was built from.
         # Set by the caller (SDK, LangGraph guard, gateway) before a governed call.
-        # Also read by the F6/F8 checks: `channel`/`counterparty` (AI disclosure),
-        # `decision` (adverse action), `chunks` (chunk coherence), `principal` and
-        # `memory` (memory binding), `retrieval`/`baseline` (retrieval drift).
+        # Also read by the commitment and context checks: `channel`/`counterparty` (AI
+        # disclosure), `decision` (adverse action), `chunks` (chunk coherence),
+        # `principal` and `memory` (memory binding), `retrieval`/`baseline` (retrieval
+        # drift).
         self.evidence: dict[str, Any] = {}
 
-    #: F8.4 — context assembly is the caller's step, not ours: it needs the ranked
+    #: Context assembly is the caller's step, not ours: it needs the ranked
     #: chunks and the real token budget, and it repairs as well as reports. Exposed
     #: here so whoever performs retrieval can run it (and feed the resulting findings
     #: back through `evidence`) without reaching into `context_integrity` directly.
@@ -157,7 +229,7 @@ class Enforcer(
         return agent, identity, is_shadow
 
     def ledger(self) -> LatencyLedger:
-        """The request-level detector budget (P3-13)."""
+        """The request-level detector budget."""
         if self._ledger is None:
             self._ledger = LatencyLedger(budget_ms=self.settings.request_budget_ms)
         return self._ledger
@@ -196,7 +268,7 @@ class Enforcer(
 
         `conversation_window` is the only argument here that is not about *this*
         message: it is the recent user turns, oldest first, ending with this one,
-        supplied by `check_conversation_window`. It exists so F9.4's trajectory check
+        supplied by `check_conversation_window`. It exists so the trajectory check
         can run through the same channel as every other check rather than beside it.
 
         `forced_rules` are synthetic rules a surface decided before calling this — an
@@ -206,64 +278,129 @@ class Enforcer(
         the lattice (``observe``) is recorded and changes nothing. `extra_taint` is
         merged into the recorded taint summary.
 
-        `approval_id` is a retry presenting a person's approval of this exact call
-        (#12). It only ever turns an escalation into an allow, and only when the
+        `approval_id` is a retry presenting a person's approval of this exact call.
+        It only ever turns an escalation into an allow, and only when the
         approval is for this agent, tool and arguments, unexpired and unused.
+
+        The steps run in a fixed order, each one a method below: the kill switch,
+        the tool's declaration, the detectors, the capability grant, the content
+        checks, business ladders, action analysis, budgets, the policies in force,
+        then the facts that stand on their own whatever the packs say, fail modes,
+        ladder outcomes, forced rules, approval redemption, and finally the record.
         """
-        # PL-3: a killed or quarantined agent is refused on every surface, before
-        # anything else runs. The check used to live only on the completion
-        # (`preflight`) and tool-call paths, so /v1/guard/input, /output,
-        # /memory_write and /agent_message kept answering `allow` for an agent the
-        # operator had just stopped — and the kill switch's promise that every
-        # governed call is refused was true of two surfaces out of six. Here, it
-        # covers every surface that reaches a decision.
+        # A killed or quarantined agent is refused on every surface, before
+        # anything else runs. Checked here so that it covers every surface that
+        # reaches a decision (/v1/guard/input, /output, /memory_write,
+        # /agent_message), not only the completion and tool-call paths: the kill
+        # switch promises that every governed call is refused.
         control = self._control_verdict(agent)
         if control is not None:
             return control
 
-        started = time.perf_counter()
-        agent_slug = agent.slug if agent else None
-        environment = agent.environment if agent else "production"
-        trace_id = trace.id if trace else None
+        call = _Evaluation(
+            started=time.perf_counter(),
+            agent=agent,
+            identity=identity,
+            content=content,
+            surface=surface,
+            trace=trace,
+            taint_source=taint_source,
+            tool_key=tool_key,
+            arguments=arguments,
+            argument_taint=argument_taint,
+            argument_propagated_from=argument_propagated_from,
+            memory_entry=memory_entry,
+            intent=intent,
+            schema=schema,
+            prior_tools=prior_tools,
+            prior_steps=prior_steps,
+            tracker=tracker,
+            conversation_window=conversation_window,
+            completion=completion,
+            persist=persist,
+            forced_rules=forced_rules,
+            extra_taint=extra_taint,
+            approval_id=approval_id,
+        )
+        self._resolve_tool(call)
+        self._run_detectors(call)
+        self._check_capability(call)
+        self._run_content_checks(call)
+        # Business ladders are evaluated separately from policy and combined
+        # afterwards (`_apply_ladders`), because the two compose by different
+        # algebras: rules take the lattice maximum, ladders select exactly one band.
+        call.ladder_decisions = self._business_ladders(agent, surface, tool_key, arguments)
+        self._analyse_action(call)
+        # --- budgets & loop containment ---------------------
+        call.budget = self._budget_state(
+            agent, trace, tool_key, prior_tools or [], prior_steps, arguments
+        )
+        self._summarise_taint(call)
+        self._evaluate_policies(call)
+        self._apply_capability(call)
+        self._raise_evidence_findings(call)
+        self._apply_standing_refusals(call)
+        self._apply_fail_modes(call)
+        self._apply_ladders(call)
+        self._apply_forced_rules(call)
+        self._redeem_approval(call)
+        result = self._build_result(call)
+        if not persist:
+            return result
+        self._persist_decision(call, result)
+        return result
 
+    # ------------------------------------------------------------------
+    # The steps of `evaluate`, in the order it runs them
+    # ------------------------------------------------------------------
+
+    def _resolve_tool(self, call: _Evaluation) -> None:
+        """The tool's declared impact, and whether it was declared at all."""
+        agent = call.agent
+        call.agent_slug = agent.slug if agent else None
+        call.environment = agent.environment if agent else "production"
+        call.trace_id = call.trace.id if call.trace else None
+
+        tool_key = call.tool_key
         tool = self.session.scalar(select(Tool).where(Tool.key == tool_key)) if tool_key else None
-        # An undeclared tool used to inherit `impact = "read"`, the *least*
-        # dangerous value in the vocabulary — so a call to a tool nobody had
-        # ever declared was reasoned about as though it only read something.
-        # Every impact-based rule above `read` therefore skipped it, which is
-        # the wrong direction for the one case where the platform knows least.
-        # It stays "read" as the impact (inventing a higher one would be a
-        # guess) and the not-knowing is surfaced as its own fact instead, for
-        # policy to decide on.
-        tool_impact = tool.impact if tool else "read"
-        tool_known = tool is not None if tool_key else True
+        # An undeclared tool gets `impact = "read"`, the *least* dangerous value
+        # in the vocabulary, because inventing a higher one would be a guess. On
+        # its own that would let every impact-based rule above `read` skip the
+        # one case where the platform knows least, so the not-knowing is surfaced
+        # as its own fact instead, for policy to decide on.
+        call.tool_impact = tool.impact if tool else "read"
+        call.tool_known = tool is not None if tool_key else True
 
+    def _run_detectors(self, call: _Evaluation) -> None:
+        """The detector pipeline (budgeted, concurrent), then suppressions."""
         # --- 4. detector pipeline (budgeted, concurrent) -----------------
         context = DetectionContext(
-            surface=surface,
-            agent_slug=agent_slug,
-            trace_id=trace_id,
-            tool_key=tool_key,
-            tool_impact=tool_impact,
-            intent=intent,
-            taint_source=taint_source,
-            schema=schema,
-            prior_tools=prior_tools or [],
+            surface=call.surface,
+            agent_slug=call.agent_slug,
+            trace_id=call.trace_id,
+            tool_key=call.tool_key,
+            tool_impact=call.tool_impact,
+            intent=call.intent,
+            taint_source=call.taint_source,
+            schema=call.schema,
+            prior_tools=call.prior_tools or [],
         )
         ledger = self.ledger()
         pipeline_result = self.pipeline.run(
-            content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)
+            call.content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)
         )
-        ledger.charge(pipeline_result, surface)
+        ledger.charge(pipeline_result, call.surface)
+        call.ledger = ledger
+        call.pipeline_result = pipeline_result
 
-        # P3-14: suppressions are applied here rather than inside the pipeline. A
+        # Suppressions are applied here rather than inside the pipeline. A
         # suppression is a governance decision about a detector's output, not a
         # detector concern, and keeping it out of the pipeline means the raw detector
         # result stays honest.
-        suppressions = active_suppressions(self.session, agent.id if agent else None)
-        suppressed = filter_suppressed(pipeline_result, suppressions, surface=surface)
+        suppressions = active_suppressions(self.session, call.agent.id if call.agent else None)
+        call.suppressed = filter_suppressed(pipeline_result, suppressions, surface=call.surface)
 
-        detections = [
+        call.detections = [
             {
                 "entity_type": d.entity_type,
                 "score": d.score,
@@ -273,29 +410,35 @@ class Enforcer(
             for d in pipeline_result.detections
         ]
 
-        detector_run_ids: list[str] = []
-        if persist:
-            detector_run_ids = self._persist_detectors(pipeline_result, trace_id, surface)
+        if call.persist:
+            call.detector_run_ids = self._persist_detectors(
+                pipeline_result, call.trace_id, call.surface
+            )
 
-        # --- capability check (P2-2) -------------------------------------
-        capability = {"granted": True, "requires_approval": False, "state": "granted"}
-        if tool_key:
+    def _check_capability(self, call: _Evaluation) -> None:
+        """Does the identity hold a grant for this tool, within its limits?"""
+        # --- capability check -------------------------------------
+        call.capability = {"granted": True, "requires_approval": False, "state": "granted"}
+        if call.tool_key:
             decision = check_capability(
                 self.session,
-                identity,
-                tool_key,
-                arguments=arguments or {},
-                argument_taint=argument_taint or {},
+                call.identity,
+                call.tool_key,
+                arguments=call.arguments or {},
+                argument_taint=call.argument_taint or {},
             )
-            capability = decision.to_json()
+            call.capability = decision.to_json()
 
-        # --- P8/F7 evidence integrity (output surface only) ----------------
+    def _run_content_checks(self, call: _Evaluation) -> None:
+        """Evidence integrity, disclosure, and the risk-raising checks, in one channel."""
+        agent, surface, content, intent = call.agent, call.surface, call.content, call.intent
+        # --- evidence integrity (output surface only) ----------------
         # Groundedness asks whether the claim is supported by the text. It does not
-        # ask whether the text was authoritative (F2), nor whether 5 + 3 = 9 (F7).
+        # ask whether the text was authoritative, nor whether 5 + 3 = 9.
         # Both are properties of the answer's relationship to its evidence, so they
         # run here, where the evidence is in hand.
         evidence = self._evidence_checks(agent, surface, content, intent)
-        disclosure = self._disclosure_checks(agent, surface, content, trace_id)
+        disclosure = self._disclosure_checks(agent, surface, content, call.trace_id)
         if disclosure:
             merged_issues = [
                 *evidence.get("evidence_issues", []),
@@ -305,7 +448,7 @@ class Enforcer(
             if merged_issues:
                 evidence["evidence_issues"] = merged_issues
 
-        # --- F6 commitments / F8 context integrity ------------------------
+        # --- commitments / context integrity ---------------------------
         # Same channel as the two checks above, deliberately: one `evidence` dict that
         # lands in `taint_summary`, one `evidence_issues` list that becomes `Finding`
         # rows, one `rules_fired`. The only thing these add is `risks`, which join
@@ -315,10 +458,10 @@ class Enforcer(
         pending_risks: list[dict[str, Any]] = []
         for extra in (
             self._commitment_checks(agent, surface, content, intent),
-            self._context_checks(surface, content, memory_entry),
-            self._control_flow_checks(surface, tool_key),
+            self._context_checks(surface, content, call.memory_entry),
+            self._control_flow_checks(surface, call.tool_key),
             self._sycophancy_checks(surface, content, intent),
-            self._trajectory_checks(surface, conversation_window),
+            self._trajectory_checks(surface, call.conversation_window),
         ):
             if not extra:
                 continue
@@ -330,34 +473,31 @@ class Enforcer(
                     *evidence.get("evidence_issues", []),
                     *extra_issues,
                 ]
+        call.evidence = evidence
+        call.pending_risks = pending_risks
 
-        # --- Business ladders ---------------------------------------------
-        # Evaluated separately from policy and combined afterwards, because the two
-        # compose by different algebras: rules take the lattice maximum, ladders select
-        # exactly one band. Security dominates the combination, so a band that says
-        # auto-approve can never loosen a rule that says block.
-        ladder_decisions = self._business_ladders(agent, surface, tool_key, arguments)
-        ladder_decision = ladder_decisions[0] if ladder_decisions else None
-
-        # --- P9 action assurance ------------------------------------------
+    def _analyse_action(self, call: _Evaluation) -> None:
+        """What the call's arguments would do, and the risks that follow from it."""
+        arguments = call.arguments
+        # --- action assurance ------------------------------------------
         # Argument-level containment governs *the call*; this governs *the artefact*.
         # An agent holding a legitimate `db.query` capability can pass `DROP TABLE` as
         # a well-formed string, and every argument check would pass it.
         action = (
             summarise_actions(
                 analyse_arguments(arguments or {}, dialect=self.settings.sql_dialect),
-                environment,
+                call.environment,
             )
             if arguments
             else {}
         )
 
-        # --- P9 cascade risk / P18 data-access scoping, when declared ------
+        # --- cascade risk / data-access scoping, when declared ----------
         # Same block as the action-assurance check above, extending the same
         # `action["risks"]`/`action["critical"]` the policy engine already reasons
         # over (`policy/engine.py`'s `action_risk` glob condition) — no policy-layer
         # change needed for either check to actually start firing.
-        extras = self._cascade_and_access_risks(tool_key, arguments)
+        extras = self._cascade_and_access_risks(call.tool_key, arguments)
         if extras:
             extra_risks = extras.pop("risks", [])
             action.update(extras)
@@ -365,64 +505,71 @@ class Enforcer(
                 action["risks"] = [*action.get("risks", []), *extra_risks]
                 action["critical"] = [r for r in action["risks"] if r["severity"] == "critical"]
 
-        # F6/F8 risks reach the policy engine exactly as the P9/P18 ones above do, and
-        # deliberately never join `action["critical"]` — that list is hard-blocked a few
-        # lines below, which is the one thing these checks must not do. They are capped
-        # at `high` at the point of construction so this stays true even if a detector
-        # raises its own severity later.
-        if pending_risks:
-            action["risks"] = [*action.get("risks", []), *pending_risks]
+        # Commitment and context risks reach the policy engine exactly as the cascade
+        # and data-access ones above do, and deliberately never join
+        # `action["critical"]` — that list is hard-blocked later
+        # (`_apply_standing_refusals`), which is the one thing these checks must not do.
+        # They are capped at `high` at the point of construction so this stays true even
+        # if a detector raises its own severity later.
+        if call.pending_risks:
+            action["risks"] = [*action.get("risks", []), *call.pending_risks]
+        call.action = action
 
-        # --- budgets & loop containment (P3-10, PL-4) ---------------------
-        budget = self._budget_state(
-            agent, trace, tool_key, prior_tools or [], prior_steps, arguments
+    def _summarise_taint(self, call: _Evaluation) -> None:
+        """The taint summary every decision records and policy reasons over."""
+        agent = call.agent
+        ladder_decision = call.ladder_decisions[0] if call.ladder_decisions else None
+        taint_summary = (
+            call.tracker.summary() if call.tracker else {"max_source": call.taint_source}
         )
-
-        taint_summary = tracker.summary() if tracker else {"max_source": taint_source}
         taint_summary = {
             **taint_summary,
-            "arguments": argument_taint or {},
-            "tool_impact": tool_impact,
+            "arguments": call.argument_taint or {},
+            "tool_impact": call.tool_impact,
             "risk_tier": agent.risk_tier if agent else "limited",
-            "capability": capability,
-            "budget": budget,
-            "detections": detections,
-            "prior_tools": prior_tools or [],
-            "detector_degraded": bool(pipeline_result.degraded),
-            "arguments_snapshot": arguments or {},
-            "action": action,
+            "capability": call.capability,
+            "budget": call.budget,
+            "detections": call.detections,
+            "prior_tools": call.prior_tools or [],
+            "detector_degraded": bool(call.pipeline_result.degraded),
+            "arguments_snapshot": call.arguments or {},
+            "action": call.action,
             "business": ladder_decision.to_json() if ladder_decision else {},
-            **evidence,
+            **call.evidence,
         }
-        if surface == "tool_args":
+        if call.surface == "tool_args":
             # Recorded on the decision, not only read from settings, so a replay
             # reasons about this call the way the live path did (policy/taint_view.py).
             taint_summary["scope"] = self.settings.taint_scope
+        call.taint_summary = taint_summary
 
-        # --- 5. policy decision (P6-1) -----------------------------------
+    def _evaluate_policies(self, call: _Evaluation) -> None:
+        """Evaluate every pack in force for this subject and combine their decisions."""
+        agent, agent_slug, environment = call.agent, call.agent_slug, call.environment
+        # --- 5. policy decision -----------------------------------
         pinput = PolicyInput(
             agent_slug=agent_slug,
             risk_tier=agent.risk_tier if agent else "limited",
             environment=environment,
-            surface=surface,
-            tool_key=tool_key,
-            tool_impact=tool_impact,
-            tool_known=tool_known,
-            arguments=arguments or {},
-            intent=intent,
-            detections=detections,
+            surface=call.surface,
+            tool_key=call.tool_key,
+            tool_impact=call.tool_impact,
+            tool_known=call.tool_known,
+            arguments=call.arguments or {},
+            intent=call.intent,
+            detections=call.detections,
             # What policy reasons over: the configured taint scope, and provenance an
             # explicit grant accepts. The record keeps the unmodified summary.
-            taint=policy_taint(taint_summary, capability),
-            capability=capability,
-            budget=budget,
-            prior_tools=prior_tools or [],
-            detector_degraded=bool(pipeline_result.degraded),
-            action=action,
-            completion=completion or {},
+            taint=policy_taint(call.taint_summary, call.capability),
+            capability=call.capability,
+            budget=call.budget,
+            prior_tools=call.prior_tools or [],
+            detector_degraded=bool(call.pipeline_result.degraded),
+            action=call.action,
+            completion=call.completion or {},
         )
 
-        # P12: the hierarchy decides what is in force for this subject — the same
+        # The hierarchy decides what is in force for this subject — the same
         # resolution `policy effective` prints — so a team-scoped `restrict` binds
         # only that team's agents and a granted `override` really loosens.
         #
@@ -442,19 +589,19 @@ class Enforcer(
         )
         # Nothing bound is not the same as nothing to check.
         #
-        # A database that has never been initialised holds no policies, so every
-        # content rule was skipped and `auto()` governed exactly nothing while
-        # announcing a mode. Adding one line to an existing application is the
-        # integration this product leads with, and it produced a no-op.
+        # A database that has never been initialised holds no policies, so without
+        # a fallback every content rule would be skipped and `auto()` would govern
+        # nothing while announcing a mode — and adding one line to an existing
+        # application is the integration this product leads with.
         #
         # So the shipped baseline applies as a fallback. Deliberately OBSERVE
         # only, and deliberately only `baseline`:
         #
         #   - Observe because silently blocking traffic in an application whose
-        #     owner configured nothing is how governance gets ripped out — the
-        #     exact failure L8.8 exists to measure. Detections are recorded, so
-        #     the findings and traces are real and the banner stops lying, and
-        #     nothing is refused that would not have been refused anyway.
+        #     owner configured nothing is how governance gets ripped out.
+        #     Detections are recorded, so the findings and traces are real and the
+        #     banner is accurate, and nothing is refused that would not have been
+        #     refused anyway.
         #   - `baseline` alone because it is the general content pack.
         #     eu-ai-act-high-risk is jurisdiction- and risk-tier specific, and
         #     applying it to everyone by default would be overclaiming on
@@ -482,14 +629,14 @@ class Enforcer(
         ]
         merged = combine([d for _doc, _v, d in evaluated]) if evaluated else None
 
-        # X-4: a decision is only reproducible if the *whole* set of versions in force
+        # A decision is only reproducible if the *whole* set of versions in force
         # is recorded, not just the one that happened to win.
         # None is filtered, not stored: see _FallbackVersion. A decision made
         # under the fallback records no policy version, because there is none.
         policy_version_ids = [
             version.id for _doc, version, _d in evaluated if version.id is not None
         ]
-        policy_version_id = next(
+        call.policy_version_id = next(
             (
                 version.id
                 for doc, version, _d in evaluated
@@ -497,20 +644,26 @@ class Enforcer(
             ),
             policy_version_ids[0] if policy_version_ids else None,
         )
+        call.policy_version_ids = policy_version_ids
+        call.evaluated = evaluated
+        call.unloadable = unloadable
 
-        verdict = merged.verdict if merged else "allow"
-        effective = merged.effective_verdict if merged else "allow"
-        mode = merged.mode if merged else self.settings.default_policy_mode
-        rules_fired = [r.to_json() for r in merged.rules_fired] if merged else []
+        call.verdict = merged.verdict if merged else "allow"
+        call.effective = merged.effective_verdict if merged else "allow"
+        call.mode = merged.mode if merged else self.settings.default_policy_mode
+        call.rules_fired = [r.to_json() for r in merged.rules_fired] if merged else []
 
+    def _apply_capability(self, call: _Evaluation) -> None:
+        """A missing grant blocks and a grant that needs approval escalates."""
+        capability, rules_fired = call.capability, call.rules_fired
         # A capability denial is not a policy opinion — it is the absence of a grant,
         # and it stands whether or not a policy happened to cover the case. The
         # synthetic rule is only added when no policy already said the same thing,
         # so a customer who wrote the rule explicitly does not see it twice.
-        fired_ids = {r.get("rule_id") for r in rules_fired}
+        call.fired_ids = fired_ids = {r.get("rule_id") for r in rules_fired}
         if not capability.get("granted", True):
-            verdict = "block"
-            effective = "block"
+            call.verdict = "block"
+            call.effective = "block"
             if not (fired_ids & _CAPABILITY_REFUSAL_RULE_IDS):
                 # Two different refusals, and saying the wrong one is a defect a
                 # reader can catch: "no grant exists" versus "the grant you hold
@@ -534,10 +687,10 @@ class Enforcer(
                         controls=["NOM-IAM-02"],
                     )
                 )
-        elif capability.get("requires_approval") and effective != "block":
-            effective = "escalate"
-            if mode == "enforce":
-                verdict = "escalate"
+        elif capability.get("requires_approval") and call.effective != "block":
+            call.effective = "escalate"
+            if call.mode == "enforce":
+                call.verdict = "escalate"
             if "capability.approval_required" not in fired_ids:
                 rules_fired.append(
                     _fired_rule(
@@ -546,15 +699,18 @@ class Enforcer(
                         "; ".join(capability.get("reasons") or ["approval required"]),
                         severity="medium",
                         controls=["NOM-IAM-03"],
-                        mode=mode,
+                        mode=call.mode,
                     )
                 )
 
-        # F2/F7: an unauthoritative or arithmetically wrong answer is a finding, not
+    def _raise_evidence_findings(self, call: _Evaluation) -> None:
+        """Integrity issues the content checks found become findings, not blocks."""
+        agent = call.agent
+        # An unauthoritative or arithmetically wrong answer is a finding, not
         # a block. Blocking here would withhold a mostly-correct answer over a
         # currency mismatch, and the failure this addresses is *silent* wrongness —
         # surfacing it is the control.
-        for issue in evidence.get("evidence_issues", []):
+        for issue in call.evidence.get("evidence_issues", []):
             raise_finding(
                 self.session,
                 type=issue["type"],
@@ -562,30 +718,40 @@ class Enforcer(
                 title=issue["title"],
                 subject_type="agent",
                 subject_id=agent.id if agent else None,
-                evidence={**issue, "trace_id": trace_id},
-                # F2/F7 evidence issues evidence NOM-RTG-12; the F6/F8 issues that
-                # now flow through this same loop evidence different controls and
-                # say so, rather than being filed under a control they do not
-                # support.
+                evidence={**issue, "trace_id": call.trace_id},
+                # Source-authority and numeric-integrity issues evidence NOM-RTG-12;
+                # the commitment and context issues that flow through this same loop
+                # evidence different controls and say so, rather than being filed
+                # under a control they do not support.
                 control_keys=issue.get("control_keys") or ["NOM-RTG-12"],
                 # One finding per (agent, issue type, issue code, surface): the same
                 # integrity failure on every answer is one problem with a count.
-                fingerprint_parts=(issue.get("code"), surface),
+                fingerprint_parts=(issue.get("code"), call.surface),
             )
 
-        # P10 (#4): an answer quoting a chunk the asking human is not entitled to see is
-        # the oversharing failure itself, not a quality issue, so unlike the F2/F7
+    def _apply_standing_refusals(self, call: _Evaluation) -> None:
+        """Facts that refuse a call on their own, whatever the packs say.
+
+        An entitlement disclosure, a critical action risk and a composed escalation
+        are facts about this call, not policy opinions, so each stands alone. A rule
+        a pack already fired under the same id is not added twice.
+        """
+        rules_fired, fired_ids = call.rules_fired, call.fired_ids
+        # An answer quoting a chunk the asking human is not entitled to see is
+        # the oversharing failure itself, not a quality issue, so unlike the evidence
         # issues above it is preventive: the answer is withheld whenever the decision
         # enforces, and recorded as would-have-blocked when it observes. Gated on the
         # decision's mode like an approval requirement, because a principal declared
         # in observe mode is how an operator dry-runs an entitlement model.
         leaks = [
-            i for i in evidence.get("evidence_issues", []) if i["type"] == "entitlement_disclosure"
+            i
+            for i in call.evidence.get("evidence_issues", [])
+            if i["type"] == "entitlement_disclosure"
         ]
         if leaks and "entitlement.disclosure" not in fired_ids:
-            effective = "block"
-            if mode == "enforce":
-                verdict = "block"
+            call.effective = "block"
+            if call.mode == "enforce":
+                call.verdict = "block"
             fired_ids.add("entitlement.disclosure")
             rules_fired.append(
                 _fired_rule(
@@ -594,14 +760,14 @@ class Enforcer(
                     "; ".join(i["title"] for i in leaks),
                     severity="critical",
                     controls=["NOM-IAM-07"],
-                    mode=mode,
+                    mode=call.mode,
                 )
             )
 
-        # P9: a critical action risk stands on its own, exactly as a capability denial
+        # A critical action risk stands on its own, exactly as a capability denial
         # does. It is a fact about what the statement will do, not a policy opinion —
         # and a customer who wrote the rule explicitly does not see it twice.
-        for risk in action.get("critical", []):
+        for risk in call.action.get("critical", []):
             # A risk *code* is how `effects.py` and `actions.py` name a condition;
             # a rule id is how a decision names what fired. For the conditions the
             # shipped packs already have a rule for, they are the same rule and must
@@ -617,8 +783,8 @@ class Enforcer(
                         existing["evidence"] = risk.get("evidence", {})
                         existing["detail"] = risk["detail"]
                 continue
-            verdict = "block"
-            effective = "block"
+            call.verdict = "block"
+            call.effective = "block"
             fired_ids.add(rule_id)
             rules_fired.append(
                 _fired_rule(
@@ -631,15 +797,16 @@ class Enforcer(
                 )
             )
 
-        # P9-11/F3.8: a read tool's output flowing into a higher-impact tool's
+        # A read tool's output flowing into a higher-impact tool's
         # argument is a composed escalation neither tool's own scope permits
         # alone — a fact about this call's inputs, not a policy opinion, so it
         # stands on its own exactly like the critical-action-risk check above.
+        tool_key = call.tool_key
         composition_findings = (
             check_composed_escalation(
                 consuming_tool_key=tool_key,
-                consuming_tool_impact=tool_impact,
-                argument_propagated_from=argument_propagated_from or {},
+                consuming_tool_impact=call.tool_impact,
+                argument_propagated_from=call.argument_propagated_from or {},
                 tool_impact_lookup=lambda key: self.session.scalar(
                     select(Tool.impact).where(Tool.key == key)
                 ),
@@ -647,13 +814,13 @@ class Enforcer(
             if tool_key
             else []
         )
-        taint_summary["composition"] = [f.to_json() for f in composition_findings]
+        call.taint_summary["composition"] = [f.to_json() for f in composition_findings]
         for finding in composition_findings:
             rule_id = f"composition.escalation.{finding.argument_path}"
             if rule_id in fired_ids:
                 continue
-            verdict = "block"
-            effective = "block"
+            call.verdict = "block"
+            call.effective = "block"
             fired_ids.add(rule_id)
             rules_fired.append(
                 _fired_rule(
@@ -666,29 +833,31 @@ class Enforcer(
                 )
             )
 
-        # P3-7: a degraded pipeline means reduced coverage. Fail-closed converts that
+    def _apply_fail_modes(self, call: _Evaluation) -> None:
+        """Degraded detectors and unloadable packs, under the deployment's and packs' fail modes."""
+        pipeline_result, rules_fired = call.pipeline_result, call.rules_fired
+        # A degraded pipeline means reduced coverage. Fail-closed converts that
         # into a block; fail-open accepts it and records the gap.
         #
-        # Two sources, the stricter wins (#42): the deployment-wide `fail_mode`, for
-        # an enforcing decision, and each pack's own `fail_mode` — which used to be
-        # stored and never read. A pack fails closed only where its coverage
-        # actually depended on the detectors: it is enforcing, says `closed`, and
-        # has an enabled detection rule for this surface.
+        # Two sources, the stricter wins: the deployment-wide `fail_mode`, for an
+        # enforcing decision, and each pack's own `fail_mode`. A pack fails closed only
+        # where its coverage actually depended on the detectors: it is enforcing, says
+        # `closed`, and has an enabled detection rule for this surface.
         closed_packs = (
             [
                 doc.key
-                for doc, _version, _decision in evaluated
+                for doc, _version, _decision in call.evaluated
                 if doc.mode == "enforce"
                 and doc.fail_mode == "closed"
-                and _relies_on_detections(doc, surface)
+                and _relies_on_detections(doc, call.surface)
             ]
             if pipeline_result.degraded
             else []
         )
-        deployment_closed = self.settings.fail_mode == "closed" and mode == "enforce"
+        deployment_closed = self.settings.fail_mode == "closed" and call.mode == "enforce"
         if pipeline_result.degraded and (deployment_closed or closed_packs):
-            verdict = "block"
-            effective = "block"
+            call.verdict = "block"
+            call.effective = "block"
             source = (
                 f"policy {', '.join(closed_packs)} declares fail_mode=closed"
                 if closed_packs and not deployment_closed
@@ -710,13 +879,13 @@ class Enforcer(
         # recorded and never blocks; an enforcing pack fails closed if either
         # source says closed, and otherwise the call is allowed with the gap named
         # in the decision.
-        for missing in unloadable:
+        for missing in call.unloadable:
             closed = missing.binding_mode == "enforce" and (
                 self.settings.fail_mode == "closed" or missing.fail_mode == "closed"
             )
             if closed:
-                verdict = "block"
-                effective = "block"
+                call.verdict = "block"
+                call.effective = "block"
             source = (
                 "fail_mode=closed"
                 if self.settings.fail_mode == "closed"
@@ -734,23 +903,26 @@ class Enforcer(
                 )
             )
 
+    def _apply_ladders(self, call: _Evaluation) -> None:
+        """Each business ladder's band joins the verdicts; security still dominates."""
         # The ladder outcome joins here rather than in the rule list, so that its
         # `verify` and `allow` outcomes cannot be swept into the lattice maximum and
-        # silently promoted or ignored.
+        # silently promoted or ignored. Security dominates the combination, so a band
+        # that says auto-approve can never loosen a rule that says block.
         #
-        # Each ladder's own `mode` decides whether its outcome is applied (#1). The
-        # policy packs' mode used to decide it, so an observe ladder escalated as soon
-        # as an enforcing pack governed the call, and an enforce ladder was only
+        # Each ladder's own `mode` decides whether its outcome is applied, not the
+        # policy packs' mode: otherwise an observe ladder would escalate as soon as
+        # an enforcing pack governed the call, and an enforce ladder would only be
         # recorded when nothing else enforced. Every ladder raises the effective
         # verdict (what enforcement would do); only enforcing ladders raise the
         # applied one.
-        for decision in ladder_decisions:
+        for decision in call.ladder_decisions:
             if decision.outcome == "allow":
                 continue
-            effective = combine_business(effective, decision).verdict
+            call.effective = combine_business(call.effective, decision).verdict
             if decision.mode == "enforce":
-                verdict = combine_business(verdict, decision).verdict
-            rules_fired.append(
+                call.verdict = combine_business(call.verdict, decision).verdict
+            call.rules_fired.append(
                 _fired_rule(
                     f"business.{decision.ladder_key}",
                     decision.outcome,
@@ -762,49 +934,54 @@ class Enforcer(
                 )
             )
 
-        for forced in forced_rules or []:
+    def _apply_forced_rules(self, call: _Evaluation) -> None:
+        """Rules the calling surface decided before `evaluate`, by lattice maximum."""
+        for forced in call.forced_rules or []:
             rank = _RANK.get(str(forced.get("effect")))
             if rank is not None:
-                if rank > _RANK.get(verdict, 0):
-                    verdict = str(forced["effect"])
-                if rank > _RANK.get(effective, 0):
-                    effective = str(forced["effect"])
-            rules_fired.append(forced)
-        if extra_taint:
-            taint_summary.update(extra_taint)
+                if rank > _RANK.get(call.verdict, 0):
+                    call.verdict = str(forced["effect"])
+                if rank > _RANK.get(call.effective, 0):
+                    call.effective = str(forced["effect"])
+            call.rules_fired.append(forced)
+        if call.extra_taint:
+            call.taint_summary.update(call.extra_taint)
 
-        # --- a retry presenting an approval (#12) ---------------------------
+    def _redeem_approval(self, call: _Evaluation) -> None:
+        """A retry presenting a person's approval releases exactly the call they approved."""
+        # --- a retry presenting an approval ---------------------------
         # Placed after every rule has had its say, so an approval can only release
         # what was held for a person: a block stays a block.
-        held = (
+        call.held = (
             held_call(
-                surface=surface,
-                tool_key=tool_key,
-                arguments=arguments,
-                content=content,
-                detections=pipeline_result.detections,
+                surface=call.surface,
+                tool_key=call.tool_key,
+                arguments=call.arguments,
+                content=call.content,
+                detections=call.pipeline_result.detections,
             )
-            if effective == "escalate"
-            else (tool_key, arguments or {})
+            if call.effective == "escalate"
+            else (call.tool_key, call.arguments or {})
         )
-        redeemed_approval = None
-        if approval_id and effective == "escalate" and persist:
-            redeemed_approval, refusal = redeem_approval(
+        approval_id = call.approval_id
+        if approval_id and call.effective == "escalate" and call.persist:
+            redeemed, refusal = redeem_approval(
                 self.session,
                 approval_id,
-                agent_id=agent.id if agent else None,
-                tool_key=held[0],
-                arguments=held[1],
+                agent_id=call.agent.id if call.agent else None,
+                tool_key=call.held[0],
+                arguments=call.held[1],
             )
-            taint_summary["approval"] = {
+            call.redeemed_approval = redeemed
+            call.taint_summary["approval"] = {
                 "id": approval_id,
-                "redeemed": redeemed_approval is not None,
+                "redeemed": redeemed is not None,
                 **({"refused": refusal} if refusal else {}),
             }
-            if redeemed_approval is not None:
-                verdict = "allow"
-                effective = "allow"
-                rules_fired.append(
+            if redeemed is not None:
+                call.verdict = "allow"
+                call.effective = "allow"
+                call.rules_fired.append(
                     _fired_rule(
                         "approval.redeemed",
                         "allow",
@@ -814,39 +991,43 @@ class Enforcer(
                     )
                 )
 
-        latency_ms = (time.perf_counter() - started) * 1000
+    def _build_result(self, call: _Evaluation) -> EnforcementResult:
+        """The result the caller gets: verdicts, reason, explanation, redacted content."""
+        rules_fired, pipeline_result = call.rules_fired, call.pipeline_result
+        call.latency_ms = (time.perf_counter() - call.started) * 1000
         reason = "; ".join(r.get("reason", "") for r in rules_fired if r.get("reason")) or (
             "no policy rule matched"
         )
-        if approval_id and redeemed_approval is None and effective == "escalate":
-            refused = (taint_summary.get("approval") or {}).get("refused")
+        if call.approval_id and call.redeemed_approval is None and call.effective == "escalate":
+            refused = (call.taint_summary.get("approval") or {}).get("refused")
             if refused:
                 reason = f"{reason}; the approval presented was not used: {refused}"
+        call.reason = reason
 
         result = EnforcementResult(
-            verdict=verdict,
-            effective_verdict=effective,
-            mode=mode,
-            trace_id=trace_id,
-            policy_version_id=policy_version_id,
+            verdict=call.verdict,
+            effective_verdict=call.effective,
+            mode=call.mode,
+            trace_id=call.trace_id,
+            policy_version_id=call.policy_version_id,
             rules_fired=rules_fired,
-            entities=sorted({d["entity_type"] for d in detections}),
-            taint=taint_summary,
-            latency_ms=latency_ms,
+            entities=sorted({d["entity_type"] for d in call.detections}),
+            taint=call.taint_summary,
+            latency_ms=call.latency_ms,
             degraded=pipeline_result.degraded,
             reason=reason,
-            suppressed=suppressed,
-            latency_budget=ledger.report(),
+            suppressed=call.suppressed,
+            latency_budget=call.ledger.report(),
         )
         result.explanation = explain(
             result,
             pipeline_result,
-            content=content,
-            surface=surface,
+            content=call.content,
+            surface=call.surface,
         ).to_json()
 
         # --- redaction (applied to the content, not just recorded) -------
-        if effective in ("redact", "mask", "tokenize") and pipeline_result.detections:
+        if call.effective in ("redact", "mask", "tokenize") and pipeline_result.detections:
             style = next(
                 (
                     r.get("redaction", "mask")
@@ -856,7 +1037,7 @@ class Enforcer(
                 "mask",
             )
             result.content = redact_content(
-                content,
+                call.content,
                 [
                     d
                     for d in pipeline_result.detections
@@ -864,60 +1045,110 @@ class Enforcer(
                 ],
                 mode="tokenize" if style == "tokenize" else "mask",
             )
+        return result
 
-        if not persist:
-            return result
-
+    def _persist_decision(self, call: _Evaluation, result: EnforcementResult) -> None:
+        """Record the decision, its findings, any approval request, the span, the audit entry."""
+        agent, surface, trace_id = call.agent, call.surface, call.trace_id
+        verdict, effective, rules_fired = call.verdict, call.effective, call.rules_fired
         # --- 9. persist decision, findings, audit ------------------------
         decision_row = Decision(
             trace_id=trace_id,
             agent_id=agent.id if agent else None,
-            identity_id=identity.id if identity else None,
+            identity_id=call.identity.id if call.identity else None,
             surface=surface,
-            tool_key=tool_key,
+            tool_key=call.tool_key,
             verdict=verdict,
             rules_fired_json=rules_fired,
-            policy_version_id=policy_version_id,
-            policy_version_ids=policy_version_ids,
-            detector_run_ids=detector_run_ids,
-            taint_summary_json=taint_summary,
-            latency_ms=latency_ms,
-            mode=mode,
+            policy_version_id=call.policy_version_id,
+            policy_version_ids=call.policy_version_ids,
+            detector_run_ids=call.detector_run_ids,
+            taint_summary_json=call.taint_summary,
+            latency_ms=call.latency_ms,
+            mode=call.mode,
         )
         self.session.add(decision_row)
         self.session.flush()
         result.decision_id = decision_row.id
         # The trace's own verdict is the strongest thing that happened on it.
         #
-        # `Trace.verdict` defaults to "allow" and was only ever written by
-        # `end_trace`, which is called from the completion path alone — preflight,
-        # _finish_completion, run_completion_stream. Nothing on the tool-call path
-        # calls it, so a trace whose tool call was blocked or escalated sat in the
-        # database, and in the Traces list, reading `allow`.
-        #
-        # That is the worst direction for this error to run in: tool containment is
+        # `Trace.verdict` defaults to "allow", and `end_trace` is called from the
+        # completion path alone — preflight, _finish_completion,
+        # run_completion_stream. Nothing on the tool-call path calls it, so without
+        # this a trace whose tool call was blocked or escalated would read `allow`.
+        # That is the worst direction for the error to run in: tool containment is
         # the control that is supposed to hold after a content filter has been
-        # fooled, and every trace it acted on reported that nothing happened.
+        # fooled.
         #
         # Raised here rather than in `guard_tool_call` because every surface lands
         # on this line — tool_args, memory_write, agent_message and the completion
         # surfaces alike — and raise-only because one trace can carry many
         # decisions: a blocked call followed by three allowed ones is a blocked
         # trace, and last-write-wins would erase it.
-        self._raise_trace_verdict(trace, verdict)
-        # P3-12: the explanation is built before persistence so the non-persisting
+        self._raise_trace_verdict(call.trace, verdict)
+        # The explanation is built before persistence so the non-persisting
         # path still gets one, which leaves the dispute payload to be completed here —
         # a "file a false positive" link with no decision id is not a route anywhere.
         if result.explanation.get("dispute"):
             result.explanation["dispute"]["payload"]["decision_id"] = decision_row.id
             result.explanation["decision_id"] = decision_row.id
 
+        self._raise_decision_findings(call, decision_row)
+        self._file_approval_request(call, decision_row, result)
+
+        if trace_id:
+            add_span(
+                self.session,
+                trace_id,
+                kind="guardrail",
+                name=f"guard.{surface}",
+                attributes={
+                    ATTR_AGENT: call.agent_slug,
+                    ATTR_VERDICT: verdict,
+                    ATTR_TAINT: call.taint_summary.get("max_source"),
+                    ATTR_TOOL_NAME: call.tool_key,
+                    ATTR_TOOL_IMPACT: call.tool_impact,
+                    "agentfox.entities": result.entities,
+                    "agentfox.rules": [r.get("rule_id") for r in rules_fired],
+                    "agentfox.detectors": [r.detector_key for r in call.pipeline_result.results],
+                },
+                duration_ms=call.latency_ms,
+            )
+
+        self._record_degradation(agent, surface, call.pipeline_result)
+
+        chain.append(
+            self.session,
+            f"decision.{verdict}",
+            actor_type="agent",
+            actor_id=call.agent_slug,
+            subject_type="decision",
+            subject_id=decision_row.id,
+            payload={
+                "surface": surface,
+                "tool": call.tool_key,
+                "verdict": verdict,
+                "effective_verdict": effective,
+                "mode": call.mode,
+                "policy_version_id": call.policy_version_id,
+                "rules_fired": rules_fired,
+                "entities": result.entities,
+                "taint": call.taint_summary.get("max_source"),
+                "latency_ms": round(call.latency_ms, 2),
+                "trace_id": trace_id,
+            },
+        )
+
+    def _raise_decision_findings(self, call: _Evaluation, decision_row: Decision) -> None:
+        """A detection finding when a detector changed the outcome; containment findings."""
+        agent, surface, rules_fired = call.agent, call.surface, call.rules_fired
+        pipeline_result = call.pipeline_result
         # A detector catch is invisible outside the trace it happened on unless it
         # actually changed the outcome — surfacing every allowed pass here would
         # flood the queue with routine catches nobody needs to act on. When it
         # *did* change the outcome, an operator reviewing findings gets nothing to
         # go on today but the entity type: `Detection.sample` is already redacted
-        # at construction (P5-5), so there is no reason to withhold it a second
+        # at construction, so there is no reason to withhold it a second
         # time behind a blanket "we don't store this" — showing the masked excerpt
         # is strictly more useful than a bare category name, and no less safe.
         #
@@ -942,12 +1173,12 @@ class Enforcer(
         if det_effective != "allow" and pipeline_result.detections:
             self._raise_detection_finding(
                 agent=agent,
-                trace_id=trace_id,
+                trace_id=call.trace_id,
                 decision_id=decision_row.id,
                 surface=surface,
                 effective=det_effective,
                 applied=det_applied,
-                reason=reason,
+                reason=call.reason,
                 rules_fired=[r for r in rules_fired if is_detector_rule(r)],
                 detections=[
                     d
@@ -958,83 +1189,43 @@ class Enforcer(
 
         # And the rules that are not detectors get findings of their own, titled by
         # what they are: the agent, the tool, and the actual reason it was stopped.
-        if surface == "tool_args" and effective != "allow":
+        if surface == "tool_args" and call.effective != "allow":
             raise_containment_findings(
                 self.session,
                 agent=agent,
-                tool_key=tool_key,
+                tool_key=call.tool_key,
                 surface=surface,
                 rules_fired=rules_fired,
-                argument_taint=argument_taint,
-                argument_propagated_from=argument_propagated_from,
-                trace_id=trace_id,
+                argument_taint=call.argument_taint,
+                argument_propagated_from=call.argument_propagated_from,
+                trace_id=call.trace_id,
                 decision_id=decision_row.id,
-                decision_verdict=verdict,
+                decision_verdict=call.verdict,
                 scope=scope,
             )
 
-        # --- 6. escalation (P2-3) ----------------------------------------
-        if effective == "escalate":
+    def _file_approval_request(
+        self, call: _Evaluation, decision_row: Decision, result: EnforcementResult
+    ) -> None:
+        """An escalated call files an approval request; a redeemed one links its approval."""
+        # --- 6. escalation ----------------------------------------
+        if call.effective == "escalate":
             # Filed under what the approver needs to see: the tool and arguments, or
             # for a held message its (masked) content and the digest a retry is
-            # matched against (#24).
+            # matched against.
             approval = request_approval(
                 self.session,
-                agent_id=agent.id if agent else None,
-                tool_key=held[0],
-                arguments=held[1],
-                reason=reason,
-                trace_id=trace_id,
+                agent_id=call.agent.id if call.agent else None,
+                tool_key=call.held[0],
+                arguments=call.held[1],
+                reason=call.reason,
+                trace_id=call.trace_id,
                 decision_id=decision_row.id,
             )
             decision_row.approval_id = approval.id
             result.approval_id = approval.id
-        elif redeemed_approval is not None:
-            decision_row.approval_id = redeemed_approval.id
-
-        if trace_id:
-            add_span(
-                self.session,
-                trace_id,
-                kind="guardrail",
-                name=f"guard.{surface}",
-                attributes={
-                    ATTR_AGENT: agent_slug,
-                    ATTR_VERDICT: verdict,
-                    ATTR_TAINT: taint_summary.get("max_source"),
-                    ATTR_TOOL_NAME: tool_key,
-                    ATTR_TOOL_IMPACT: tool_impact,
-                    "agentfox.entities": result.entities,
-                    "agentfox.rules": [r.get("rule_id") for r in rules_fired],
-                    "agentfox.detectors": [r.detector_key for r in pipeline_result.results],
-                },
-                duration_ms=latency_ms,
-            )
-
-        self._record_degradation(agent, surface, pipeline_result)
-
-        chain.append(
-            self.session,
-            f"decision.{verdict}",
-            actor_type="agent",
-            actor_id=agent_slug,
-            subject_type="decision",
-            subject_id=decision_row.id,
-            payload={
-                "surface": surface,
-                "tool": tool_key,
-                "verdict": verdict,
-                "effective_verdict": effective,
-                "mode": mode,
-                "policy_version_id": policy_version_id,
-                "rules_fired": rules_fired,
-                "entities": result.entities,
-                "taint": taint_summary.get("max_source"),
-                "latency_ms": round(latency_ms, 2),
-                "trace_id": trace_id,
-            },
-        )
-        return result
+        elif call.redeemed_approval is not None:
+            decision_row.approval_id = call.redeemed_approval.id
 
     def _raise_trace_verdict(self, trace: Trace | None, verdict: str) -> None:
         """Raise a trace's verdict to `verdict`, never lower it.

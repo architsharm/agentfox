@@ -210,7 +210,7 @@ def app_db(isolated_db):
     which is a property of the test harness rather than of the product.
     """
     from agentfox.core.db import session_scope
-    from agentfox.core.seed import seed
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as session:
         seed(session)

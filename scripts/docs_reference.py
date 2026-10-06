@@ -112,7 +112,6 @@ def build_cli() -> dict[str, Any]:
     import click
     import typer.main
 
-    from agentfox.cli import layout
     from agentfox.cli.main import app
 
     root = typer.main.get_command(app)
@@ -120,7 +119,6 @@ def build_cli() -> dict[str, Any]:
     return {
         "generated_by": "scripts/docs_reference.py",
         "root": tree,
-        "renamed": dict(sorted(getattr(layout, "RENAMED", {}).items())),
     }
 
 

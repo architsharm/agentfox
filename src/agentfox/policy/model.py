@@ -1,4 +1,4 @@
-"""Declarative policy model (P6-1).
+"""Declarative policy model.
 
 The catalog's advice is to put OPA/Rego underneath rather than hand-roll an engine —
 and we do (``policy/opa.py``). But Rego is not a language a CISO or a GRC lead will
@@ -6,55 +6,22 @@ read, review or sign off, and *"write once, enforce at runtime **and** report"* 
 the whole point of the pillar. So the authored artefact is this declarative YAML,
 which compiles to either evaluator.
 
-A policy version is immutable (X-4). Every ``Decision`` records the exact version in
-force, which is what stops "that rule was always on" retro-fitting (Appendix E.1.5).
+A policy version is immutable. Every ``Decision`` records the exact version in
+force, which is what stops "that rule was always on" retro-fitting.
 """
 
 from __future__ import annotations
 
 import fnmatch
-import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from agentfox.core.vocab import COMPARATORS
+
 Effect = Literal["allow", "redact", "mask", "tokenize", "abstain", "block", "escalate"]
-
-#: Effect precedence — a decision takes the strongest effect any rule produced.
-EFFECT_RANK: dict[str, int] = {
-    "allow": 0,
-    "tokenize": 1,
-    "mask": 2,
-    "redact": 3,
-    # P7: `abstain` withholds the answer without treating the user as an adversary,
-    # which is strictly stronger than redacting part of one and strictly weaker than
-    # pulling a human in.
-    "abstain": 4,
-    "escalate": 5,
-    "block": 6,
-}
-
-COMPARATORS = {
-    "eq": lambda a, b: a == b,
-    "ne": lambda a, b: a != b,
-    "gt": lambda a, b: _num(a) > _num(b),
-    "gte": lambda a, b: _num(a) >= _num(b),
-    "lt": lambda a, b: _num(a) < _num(b),
-    "lte": lambda a, b: _num(a) <= _num(b),
-    "in": lambda a, b: a in b,
-    "not_in": lambda a, b: a not in b,
-    "contains": lambda a, b: str(b).lower() in str(a).lower(),
-    "matches": lambda a, b: bool(re.search(str(b), str(a))),
-}
-
-
-def _num(value: Any) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return float("nan")
 
 
 class DetectionCondition(BaseModel):
@@ -96,7 +63,7 @@ class Condition(BaseModel):
     #: Fires when argument provenance is more dangerous than this level.
     taint_exceeds: str | None = None
     capability: str | None = None  # denied | requires_approval | granted
-    #: P9 — the *semantics of the generated artefact*, not the tool it was passed to.
+    #: The *semantics of the generated artefact*, not the tool it was passed to.
     #: An agent with a legitimate `db.query` capability can still pass `DROP TABLE`.
     action_operation: list[str] | None = None  # read | write | destructive | admin | unknown
     #: Fires when the estimated blast radius is at or above this level.
@@ -123,13 +90,13 @@ class Rule(BaseModel):
     when: Condition = Field(default_factory=Condition)
     effect: Effect = "block"
     reason: str = ""
-    #: Controls this rule provides evidence for (feeds P6-4 continuous monitoring).
+    #: Controls this rule provides evidence for (feeds continuous control monitoring).
     controls: list[str] = Field(default_factory=list)
     severity: str = "medium"
     enabled: bool = True
     #: Redaction style when effect is redact/mask/tokenize.
     redaction: str = "mask"
-    #: P12-2 — may a narrower level weaken this rule? Loosening is a grant, not a
+    #: May a narrower level weaken this rule? Loosening is a grant, not a
     #: right, so the default is no. Tightening never needs permission.
     overridable: bool = False
 
@@ -171,7 +138,7 @@ class PolicyDocument(BaseModel):
     name: str = ""
     description: str = ""
     version: int = 1
-    #: observe never blocks; it records what *would* have happened (PRD R3).
+    #: observe never blocks; it records what *would* have happened.
     mode: Literal["observe", "enforce"] = "observe"
     default_effect: Effect = "allow"
     fail_mode: Literal["open", "closed"] = "open"
@@ -231,7 +198,7 @@ class PolicyInput:
     Note what is here that a model-era filter does not have: ``tool_impact``,
     ``taint`` provenance per argument, ``prior_tools``, and the capability decision.
     That is the difference between "is this string bad" and "should this action
-    happen" (P3-4).
+    happen".
     """
 
     agent_slug: str | None = None
@@ -249,7 +216,7 @@ class PolicyInput:
     taint: dict[str, Any] = field(default_factory=dict)
     capability: dict[str, Any] = field(default_factory=dict)
     budget: dict[str, Any] = field(default_factory=dict)
-    #: P9 — the action-assurance summary for this call, empty when nothing executable
+    #: The action-assurance summary for this call, empty when nothing executable
     #: was found in the arguments.
     action: dict[str, Any] = field(default_factory=dict)
     prior_tools: list[str] = field(default_factory=list)

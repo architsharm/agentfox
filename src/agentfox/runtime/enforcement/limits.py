@@ -21,7 +21,7 @@ class _LimitsMixin:
     """Enforcer's kill switch and budget gates. Mixed into :class:`Enforcer`, never used alone."""
 
     def _budget_gate(self, agent: Agent | None, trace: Trace) -> EnforcementResult | None:
-        """P15-3. A breach is a governed event with an audit entry and a finding —
+        """A budget breach is a governed event with an audit entry and a finding —
         not an HTTP 429 that disappears into a load balancer log."""
         if agent is None:
             return None
@@ -58,7 +58,7 @@ class _LimitsMixin:
         return result
 
     def _control_verdict(self, agent: Agent | None) -> EnforcementResult | None:
-        """PL-3 kill switch / quarantine. Checked before anything else."""
+        """Kill switch / quarantine. Checked before anything else."""
         if agent is None:
             return None
         from agentfox.core.models import AgentControl
@@ -99,7 +99,7 @@ class _LimitsMixin:
     ) -> dict[str, Any]:
         state: dict[str, Any] = {"exceeded": False, "loop_detected": False}
         if tool_key and prior_steps is not None:
-            # PL-4: the real loop governor (agent_loop.LoopGovernor) — three
+            # The real loop governor (agent_loop.LoopGovernor) — three
             # detectors (identical re-issued calls, alternating cycles, no new
             # observation) instead of "the same tool three times in a row", which
             # misses an A-B-A-B alternation entirely since neither tool repeats

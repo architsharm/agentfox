@@ -1,11 +1,10 @@
 """The one way a finding is raised, and the one way a condition that cleared closes it.
 
-A finding queue is only a sensing surface if one row means one problem. Before this
-module every producer constructed ``Finding(...)`` directly, so a detector that was
-degraded for an hour filed a finding per request, a drift view filed one per page
-load, and a red-team campaign re-run filed the same gap again. Counting those rows
-measured traffic, not problems — and the improvement loop's sense stage reads exactly
-that count.
+A finding queue is only a sensing surface if one row means one problem. If every
+producer constructed ``Finding(...)`` directly, a detector degraded for an hour would
+file a finding per request, a drift view one per page load, and a red-team campaign
+re-run the same gap again. Counting those rows measures traffic, not problems — and
+the improvement loop's sense stage reads exactly that count.
 
 Three rules live here:
 
@@ -36,7 +35,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import Finding, utcnow
 from agentfox.core.tenancy import session_org
-from agentfox.improvement.contract import AUTOMATION_ACTOR_TYPE
+from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.prove.audit import chain
 
 OPEN = "open"
