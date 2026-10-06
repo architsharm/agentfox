@@ -175,3 +175,50 @@ class RedTeamFinding(Base, TimestampMixin):
     owasp_id: Mapped[str | None] = mapped_column(String(24))
     atlas_id: Mapped[str | None] = mapped_column(String(32))
     evidence_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class ProbeTarget(Base, TimestampMixin):
+    """A deployed agent's live endpoint that scheduled red-team probes may be sent to.
+
+    Probing sends adversarial input to something that is running, so nothing here
+    happens by default: a target is created **disabled**, and only an explicit opt-in
+    (``enabled=True``) recorded with who gave it, when, and the warning they
+    acknowledged lets `evaluation.live_probes` send anything. Changing the URL clears
+    the opt-in, because the consent was for that host.
+
+    Volume is bounded per target (``max_probes_per_run``, ``rate_limit_per_minute``,
+    ``interval_seconds``) and again by hard caps in `evaluation.live_probes` that a
+    row cannot exceed. Campaigns are written to ``redteam_campaigns`` with
+    ``runner="live"`` and ``target_json.source="live_probe"``.
+    """
+
+    __tablename__ = "probe_targets"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("prb"))
+    agent_slug: Mapped[str] = mapped_column(String(120), index=True)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    #: "http" (POST {message} -> {reply, tool_calls, blocked}) or "in_process" (an
+    #: agent governed by this gateway, run through the enforcement path).
+    adapter: Mapped[str] = mapped_column(String(24), default="http")
+    url: Mapped[str | None] = mapped_column(String(500))
+    #: The one host the opt-in covers. A request to any other host is refused.
+    registered_host: Mapped[str | None] = mapped_column(String(255))
+    #: Model for the in-process adapter.
+    model: Mapped[str | None] = mapped_column(String(64))
+    #: Encrypted ``Authorization`` header value for the http adapter (core.crypto).
+    auth_header_ciphertext: Mapped[str | None] = mapped_column(Text)
+    #: ``forbidden_tools`` / ``leak_markers`` / ``probes``: what an escape looks like
+    #: for this agent, and which probes to send.
+    config_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    opted_in_by: Mapped[str | None] = mapped_column(String(200))
+    opted_in_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    opt_in_acknowledgement: Mapped[str | None] = mapped_column(Text)
+    interval_seconds: Mapped[int] = mapped_column(Integer, default=86400)
+    max_probes_per_run: Mapped[int] = mapped_column(Integer, default=12)
+    rate_limit_per_minute: Mapped[int] = mapped_column(Integer, default=30)
+    timeout_seconds: Mapped[float] = mapped_column(Float, default=20.0)
+    next_due_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    last_run_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    last_campaign_id: Mapped[str | None] = mapped_column(String(40))
+    created_by: Mapped[str] = mapped_column(String(200), default="")

@@ -58,6 +58,7 @@ from agentfox.core.models.evaluation import (
     EvalResult,
     EvalRun,
     EvalSuite,
+    ProbeTarget,
     RedTeamCampaign,
     RedTeamFinding,
 )
@@ -185,6 +186,7 @@ __all__ = [
     "PolicyBinding",
     "PolicyCanary",
     "PolicyVersion",
+    "ProbeTarget",
     "RedTeamCampaign",
     "RedTeamFinding",
     "ResourceGrant",

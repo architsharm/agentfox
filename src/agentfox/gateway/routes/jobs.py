@@ -17,6 +17,7 @@ is still pending or running.
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from typing import Annotated, Any
@@ -28,6 +29,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.config import get_settings
 from agentfox.core.models import Job, User
 from agentfox.core.tenancy import session_org
+from agentfox.evaluation import showcase
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.jobs import handlers as job_handlers
 from agentfox.jobs import scheduler
@@ -36,6 +38,8 @@ from agentfox.jobs import store as jobs_db
 # Imported for its side effect: registers the eval.run, compliance.recompute,
 # canary.advance, drift.check and redteam.posture handlers wherever this router loads.
 _REGISTERED_KINDS = tuple(job_handlers.HANDLERS)
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["jobs"])
 
@@ -133,12 +137,21 @@ def run_pending_jobs(limit: int = 50, session: Session = Depends(db)) -> dict[st
     """The cron entry point. GET because that is what Vercel Cron sends; POST for
     anything else that drives it.
 
+    0. With `settings.showcase_enabled`, make sure the public showcase tenant and its
+       opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants
+       the scheduling pass below finds.
     1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default
        schedules and enqueue whatever is due.
     2. Recover jobs stuck in `running`, then run every pending job whose backoff has
        elapsed, across every tenant — the one place that's correct, since nothing
        about a cron trigger belongs to a single tenant's request.
     """
+    try:
+        with session.begin_nested():
+            showcase_state = showcase.ensure_showcase(session)
+    except Exception as exc:  # noqa: BLE001 - the showcase must never stop the cron
+        log.warning("showcase setup failed: %s", exc, exc_info=True)
+        showcase_state = {"error": f"{type(exc).__name__}: {exc}"}
     scheduled = scheduler.schedule_all_tenants(session)
     recovered = jobs_db.recover_stuck(session, org_id=None)
     finished = jobs_db.run_pending(session, org_id=None, limit=limit)
@@ -148,4 +161,5 @@ def run_pending_jobs(limit: int = 50, session: Session = Depends(db)) -> dict[st
         "scheduled": sum(scheduled.values()),
         "scheduled_by_tenant": scheduled,
         "scheduler_enabled": get_settings().scheduler_enabled,
+        "showcase": showcase_state,
     }

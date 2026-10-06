@@ -53,6 +53,9 @@ WRITE_ROLES: dict[str, set[str]] = {
     # sends a support ticket to a third party is not a developer's call to make, for
     # the same reason silencing a detector is not.
     "judgment_posture": {"owner", "admin", "security"},
+    # Enabling live probes points adversarial traffic at a running agent; the opt-in
+    # is recorded with the caller's name, and it is a security call to make.
+    "probes": {"owner", "admin", "security"},
 }
 
 ALL_ROLES = {"owner", "admin", "security", "compliance", "developer", "auditor"}

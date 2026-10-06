@@ -57,7 +57,7 @@ SECTIONS: list[tuple[str, tuple[str, ...]]] = [
     ),
     ("Policy (Pillars 2, 3, 12)", ("/api/policies",)),
     ("Guardrail tuning (Pillar 3)", ("/api/guardrails",)),
-    ("Evaluation and red team (Pillar 4)", ("/api/eval", "/api/redteam")),
+    ("Evaluation and red team (Pillar 4)", ("/api/eval", "/api/redteam", "/api/probes")),
     (
         "Audit, traces and evidence (Pillar 5)",
         (
@@ -87,6 +87,7 @@ SECTIONS: list[tuple[str, tuple[str, ...]]] = [
     ("Memory and inter-agent messaging (P16, P17)", ("/api/memory", "/api/agent-messages")),
     ("Jobs and integrations", ("/api/jobs", "/api/internal", "/api/integrations", "/api/auth")),
     ("Playground (unauthenticated, rate-limited)", ("/api/playground",)),
+    ("Public showcase (unauthenticated, cached, rate-limited)", ("/api/public",)),
 ]
 
 

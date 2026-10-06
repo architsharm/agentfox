@@ -24,6 +24,10 @@ kind                   what it does
 ``redteam.posture``    Runs an adaptive red-team campaign against every active agent
                        (``budget``, ``seed``). Expensive and finding-producing, so its
                        default schedule is created disabled.
+``probes.run``         Sends the live probe library to every *opted-in* probe target
+                       in the tenant that is due (``evaluation.live_probes``), records
+                       a campaign per target and opens/closes ``live_probe_escape``
+                       findings. A no-op in a tenant with no opted-in target.
 =====================  ===========================================================
 
 Handlers take a session already bound to the job's tenant (see
@@ -249,6 +253,19 @@ def redteam_posture(session: Session, payload: dict[str, Any]) -> dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
+# probes.run
+# ---------------------------------------------------------------------------
+
+
+def run_live_probes(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Probe every opted-in, due target in the tenant. Consent is per target and
+    checked inside `run_target`; a tenant without one does nothing here."""
+    from agentfox.evaluation.live_probes import run_due
+
+    return run_due(session, payload)
+
+
+# ---------------------------------------------------------------------------
 # tuning.propose
 # ---------------------------------------------------------------------------
 
@@ -282,6 +299,7 @@ HANDLERS = {
     "canary.advance": advance_canaries,
     "drift.check": check_drift,
     "redteam.posture": redteam_posture,
+    "probes.run": run_live_probes,
 }
 
 

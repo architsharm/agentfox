@@ -366,6 +366,19 @@ class Settings(BaseSettings):
     #: Base for exponential backoff between attempts.
     job_backoff_base_seconds: int = 60
 
+    # --- Live red-team probes and the public showcase ------------------------
+    #: Kill switch for scheduled probes against deployed agents
+    #: (`evaluation.live_probes`). Each target also needs its own recorded opt-in;
+    #: this turns every target off at once without touching those records.
+    live_probes_enabled: bool = True
+    #: Run AgentFox against its own demo agent in a dedicated tenant and publish the
+    #: results at `GET /api/public/showcase` (`evaluation.showcase`). Off by default:
+    #: only the hosted deployment that backs the marketing site's /live page runs it.
+    showcase_enabled: bool = False
+    #: The tenant the showcase lives in. Nothing outside it is ever read by the
+    #: public endpoint.
+    showcase_org_id: str = "org_showcase"
+
     @field_validator("taint_scope")
     @classmethod
     def _check_taint_scope(cls, value: str) -> str:

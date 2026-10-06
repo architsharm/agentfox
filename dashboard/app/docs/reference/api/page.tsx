@@ -73,7 +73,7 @@ export default function Page() {
       <ApiReference audience="operator" />
 
       <h2 id="unauthenticated">Public, unauthenticated</h2>
-      <p>The playground and the waitlist. Sandboxed, rate-limited, and separate from your data.</p>
+      <p>The playground, the waitlist and the live showcase feed. Sandboxed or read-only, rate-limited, and separate from your data.</p>
       <ApiReference audience="public-unauthenticated" />
     </article>
   );
