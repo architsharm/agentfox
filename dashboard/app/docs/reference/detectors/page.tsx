@@ -43,7 +43,7 @@ const SURFACES: Row[] = [
 ];
 
 const DEFAULTS: Row[] = [
-  ["injection.heuristic", "Patterns for instruction override, persona and jailbreak, system-prompt extraction, covert instructions, exfiltration, fake role delimiters and system blocks, hidden characters, encoded payloads. Paraphrases and several languages. Re-scans de-obfuscated views.", "input, output, retrieved, tool_result, memory_write, agent_message, reasoning, tool_args"],
+  ["injection.heuristic", "Patterns for instruction override, persona and jailbreak, system-prompt extraction, covert instructions, exfiltration, fake role delimiters and system blocks, hidden characters, encoded payloads. Paraphrases and several languages. Re-scans de-obfuscated views, including letter-spaced words (\"i g n o r e\") and text inside HTML comments, hidden elements and markdown link titles. A persona jailbreak needs both a persona switch and a removed restriction in the same sentence.", "input, output, retrieved, tool_result, memory_write, agent_message, reasoning, tool_args"],
   ["pii.native", "Regex packs: global (email, IP, card with Luhn, IBAN, date of birth) plus US, UK and EU by default; an India pack exists.", "all nine"],
   ["secrets.native", "API keys (OpenAI, Anthropic, AWS, GitHub, Slack, Google, Stripe, AgentFox), private keys, JWTs, connection strings, high-entropy generic secrets.", "all nine"],
   ["safety.lexicon", "A small lexicon: harm, self-harm, illicit, harassment, extremism.", "input, output, retrieved, tool_result, completion"],
@@ -63,7 +63,7 @@ const OPTIN: Row[] = [
 ];
 
 const ENTITIES: Row[] = [
-  ["INJECTION.*", "INSTRUCTION_OVERRIDE, INSTRUCTION_INJECTION, INSTRUCTION_LEAK, INSTRUCTION_PERSONA, PERSONA_OVERRIDE, SYSTEM_PROMPT_LEAK, JAILBREAK, COVERT_INSTRUCTION, EXFILTRATION, ROLE_DELIMITER, CONTROL_TOKENS, FAKE_SYSTEM_BLOCK, INSTRUCTION_IN_DATA, HIDDEN_CHARACTERS, ENCODED_PAYLOAD, OBFUSCATED_CONTENT (injection.heuristic); JAILBREAK (classifiers); SEMANTIC_SIMILARITY (injection.similarity); CLASSIFIER, UNUSUAL (Hub validators)"],
+  ["INJECTION.*", "INSTRUCTION_OVERRIDE, INSTRUCTION_INJECTION, INSTRUCTION_LEAK, INSTRUCTION_PERSONA, PERSONA_OVERRIDE, SYSTEM_PROMPT_LEAK, JAILBREAK, COVERT_INSTRUCTION, EXFILTRATION, ROLE_DELIMITER, CONTROL_TOKENS, FAKE_SYSTEM_BLOCK, INSTRUCTION_IN_DATA, HIDDEN_CHARACTERS, HIDDEN_INSTRUCTION, ENCODED_PAYLOAD, OBFUSCATED_CONTENT (injection.heuristic); JAILBREAK (classifiers); SEMANTIC_SIMILARITY (injection.similarity); CLASSIFIER, UNUSUAL (Hub validators)"],
   ["PII.*", "EMAIL, IP_ADDRESS, CREDIT_CARD, IBAN, DATE_OF_BIRTH, US_SSN, US_PHONE, US_PASSPORT, US_MRN, UK_NINO, UK_NHS, EU_VAT, IN_AADHAAR, IN_PAN (pii.native); PERSON, LOCATION, DATE_TIME, US_DRIVER_LICENSE, MEDICAL_LICENSE, CRYPTO_WALLET (pii.presidio); PRESENT_UNLOCATED (pii.judgment: personal data present, location unknown); HUB"],
   ["SECRET.*", "OPENAI_KEY, ANTHROPIC_KEY, AWS_ACCESS_KEY, GITHUB_TOKEN, SLACK_TOKEN, GOOGLE_API_KEY, STRIPE_KEY, NOMETRIA_KEY, PRIVATE_KEY, JWT, CONNECTION_STRING, GENERIC (secrets.native); HUB"],
   ["SAFETY.*", "HARM, SELF_HARM, ILLICIT, HARASSMENT, EXTREMISM (safety.lexicon; SEXUAL is a category with no patterns yet); HARM (Granite, Llama Guard); TOXIC, NSFW, PROFANITY, DRUGS, BIAS, BANNED_TERM, LLAMA_GUARD, SHIELD_GEMMA (Hub validators)"],
@@ -272,9 +272,10 @@ output      block    SECRET.OPENAI_KEY
 tool_result block    PII.EMAIL, SECRET.CONNECTION_STRING
 input       block    SAFETY.ILLICIT`}</Output>
       <p>
-        The misses are as real: an HTML comment telling the assistant to send the
-        customer list elsewhere, and &quot;how to make a pipe bomb&quot; worded outside the
-        lexicon&apos;s patterns, both came back with no entities from the default set.
+        The misses are as real: &quot;how to make a pipe bomb&quot; worded outside the
+        lexicon&apos;s patterns came back with no entities from the default set. An HTML
+        comment telling the assistant to send the customer list elsewhere used to be one
+        too; it now raises <code>INJECTION.HIDDEN_INSTRUCTION</code>.
       </p>
 
       <h2 id="to-policy">From detection to verdict</h2>
