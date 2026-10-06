@@ -372,19 +372,42 @@ class AgentFox:
 
     # -- direct calls ------------------------------------------------------
     def check(
-        self, content: str, *, surface: str = "input", taint_source: str = "user"
+        self,
+        content: str,
+        *,
+        surface: str = "input",
+        taint_source: str = "user",
+        completion: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        """One decision on one piece of content, as a dict. Never raises on a verdict.
+
+        ``surface="completion"`` asks whether the agent may stop: ``content`` is its
+        claim ("your refund is processed") and ``completion`` the facts you observed,
+        such as ``{"work_verified": True}``, which ``completion_requires`` rules check.
+        A fact you do not report counts as unmet (#47).
+        """
         if self.remote:
+            body: dict[str, Any] = {
+                "agent": self.agent,
+                "content": content,
+                "surface": surface,
+                "taint_source": taint_source,
+            }
+            if completion is not None:
+                body["completion"] = completion
             return self._post(
                 f"/v1/guard/{'output' if surface == 'output' else 'input'}",
-                {
-                    "agent": self.agent,
-                    "content": content,
-                    "surface": surface,
-                    "taint_source": taint_source,
-                },
+                body,
             )
         with self._db() as session:
+            if surface == "completion":
+                return (
+                    Enforcer(session)
+                    .guard_completion(
+                        agent_slug=self.agent, claim=content, completion=completion or {}
+                    )
+                    .to_json()
+                )
             return Enforcer(session).check_content(
                 agent_slug=self.agent,
                 content=content,

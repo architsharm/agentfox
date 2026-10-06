@@ -31,7 +31,7 @@ auditor). Reads need any operator.
 |---|---|
 | `POST /v1/chat/completions` | **OpenAI-compatible proxy.** Point any OpenAI client's `base_url` at `http://host:8080/v1`. Streaming supported. |
 | `POST /v1/messages` | Anthropic-compatible proxy. |
-| `POST /v1/guard/input`, `POST /v1/guard/output` | Check a piece of text. Body `{agent, content, taint_source?, intent?}`. **No auth.** |
+| `POST /v1/guard/input`, `POST /v1/guard/output` | Check a piece of text. Body `{agent, content, surface?, taint_source?, intent?, session_id?, trace_id?, completion?}`. With `surface: "completion"`, `completion` carries the facts observed when the agent claimed to be done (`{"work_verified": true}`); an unreported fact counts as unmet. **No auth.** |
 | `POST /v1/guard/tool_call` | Authorise a tool call before running it. Body `{agent, tool, arguments, provenance, intent?, prior_tools?, session_id?}`. |
 | `POST /v1/guard/memory_write` | Govern a write to agent memory. |
 | `POST /v1/guard/agent_message` | Govern an inter-agent message (signature, nonce, freshness). |

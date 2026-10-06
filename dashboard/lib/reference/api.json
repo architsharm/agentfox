@@ -202,6 +202,12 @@
       "type": "string",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -325,6 +331,12 @@
      {
       "name": "trace_id",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
       "required": false,
       "description": ""
      }

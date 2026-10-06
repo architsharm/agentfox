@@ -38,7 +38,7 @@ const SURFACES: Row[] = [
   ["retrieved", "Documents and pages pulled into context.", "LangGraph retrieval_node; SDK messages carrying session.retrieved() content; check(surface=\"retrieved\"); /v1/guard/input with surface=retrieved"],
   ["memory_write", "A write into an agent's long-term memory.", "/v1/guard/memory_write"],
   ["agent_message", "A message from one agent to another.", "/v1/guard/agent_message"],
-  ["completion", "The agent saying it is finished.", "Python Enforcer.guard_completion() only (the HTTP route accepts the surface but has no field for the facts)"],
+  ["completion", "The agent saying it is finished.", "/v1/guard/input with surface=completion and the observed facts in \"completion\"; check(claim, surface=\"completion\", completion={...}); Enforcer.guard_completion()"],
   ["reasoning", "The model's own reasoning, before it acts.", "/v1/guard/input with surface=reasoning; check(surface=\"reasoning\")"],
 ];
 
@@ -161,9 +161,12 @@ block block ['PII.EMAIL'] ['capability.denied', 'tool.not_declared']`}</Output>
       <p>Two things in that output are worth knowing:</p>
       <ul>
         <li>
-          Over HTTP the <code>completion</code> surface has no way to report what was
-          verified, so <code>completion.unverified_claim</code> always escalates there.
-          Use <code>Enforcer.guard_completion(completion={"{...}"})</code> in Python.
+          The <code>completion</code> call reported no facts, so{" "}
+          <code>completion.unverified_claim</code> escalated: a fact not reported counts as
+          unmet. Report what you observed in <code>completion</code>, for example{" "}
+          <code>{`"completion": {"work_verified": true}`}</code> over HTTP or{" "}
+          <code>{`fox.check(claim, surface="completion", completion={"work_verified": True})`}</code>{" "}
+          in Python, and the rule is satisfied.
         </li>
         <li>
           No shipped injection detector runs on <code>tool_args</code>: the injection

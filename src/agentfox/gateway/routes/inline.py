@@ -864,6 +864,11 @@ class GuardContentRequest(BaseModel):
     # commonest integration is a single call in a middleware that has no id to give.
     session_id: str | None = None
     trace_id: str | None = None
+    # #47: with `surface: "completion"`, the facts the caller observed when the agent
+    # claimed to be done — `{"work_verified": true}` — which `completion_requires`
+    # rules check. Without a way to send them, every completion claim over HTTP was
+    # held by `completion.unverified_claim`. A fact not reported counts as unmet.
+    completion: dict[str, Any] | None = None
 
 
 class GuardToolCallRequest(BaseModel):
@@ -948,13 +953,23 @@ def guard_content(
             intent=payload.intent,
             trace_id=payload.trace_id,
         )
-    result = enforcer.check_content(
-        agent_slug=payload.agent,
-        content=payload.content,
-        surface=surface,
-        taint_source=payload.taint_source,
-        trace=trace,
-    )
+    if surface == "completion":
+        # The completion gate (F9.5): the claim is checked like any output, and the
+        # caller's reported facts decide the `completion_requires` rules.
+        result = enforcer.guard_completion(
+            agent_slug=payload.agent,
+            claim=payload.content,
+            completion=payload.completion or {},
+            trace=trace,
+        ).to_json()
+    else:
+        result = enforcer.check_content(
+            agent_slug=payload.agent,
+            content=payload.content,
+            surface=surface,
+            taint_source=payload.taint_source,
+            trace=trace,
+        )
     # `evaluate` raises the trace's verdict to the strongest thing that happened on
     # it, so ending it must not overwrite that with the default: a second guard call
     # on the same trace_id that allows must not erase the first one that blocked.
