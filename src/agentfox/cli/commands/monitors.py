@@ -226,8 +226,8 @@ def jobs_run_due(
     Put this on a scheduler (cron, a systemd timer, a Kubernetes CronJob) every 10-30
     minutes on a self-hosted deployment. Safe to run as often as you like.
     """
-    from agentfox.jobs import handlers as _registers_kinds  # noqa: F401
-    from agentfox.jobs.scheduler import run_due
+    from agentfox.apps import jobs as _registers_kinds  # noqa: F401
+    from agentfox.platform.jobs.scheduler import run_due
 
     with _session() as session:
         result = run_due(session, limit=limit)

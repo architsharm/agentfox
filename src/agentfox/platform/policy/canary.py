@@ -24,7 +24,7 @@ immediate.
 Rollback is "automated" in the sense that matters for an operator: given a canary in
 flight, calling this once decides advance, hold or revert from telemetry alone. The
 cadence comes from a caller — the dashboard's action, or the scheduled
-``canary.advance`` job (see ``agentfox.jobs.handlers``); the function itself is
+``canary.advance`` job (see ``agentfox.apps.jobs``); the function itself is
 idempotent and safe to call as often or as rarely as that caller likes.
 """
 

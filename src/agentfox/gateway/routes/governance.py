@@ -34,7 +34,7 @@ from agentfox.core.models import (
 from agentfox.core.tenancy import session_org
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
 from agentfox.integrations.correlation import links_for, resolve_external
-from agentfox.jobs import store as jobs_db
+from agentfox.platform.jobs import store as jobs_db
 from agentfox.prove.audit import chain, evidence, siem
 from agentfox.prove.audit.trace import full_trace, search_traces
 from agentfox.prove.compliance import (

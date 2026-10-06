@@ -1,9 +1,8 @@
-"""Handlers for the deferrable job kinds that had a name but nothing behind them.
+"""The job handlers: each deferrable job kind bound to the capability that does the work.
 
-`jobs.DEFERRABLE` has listed `eval.run` and `compliance.recompute` for a long time, but
-only `evidence.package` and `redteam.sweep` were ever registered, so enqueueing either of
-the others raised `KeyError`. This module registers real handlers for them, plus the
-kinds the scheduler (`agentfox.jobs.scheduler`) fills the queue with:
+This module is wiring, which is why it lives with the apps rather than in
+`agentfox.platform.jobs`: it registers handlers for these kinds, plus the
+kinds the scheduler (`agentfox.platform.jobs.scheduler`) fills the queue with:
 
 =====================  ===========================================================
 kind                   what it does
@@ -58,7 +57,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, EvalSuite, Policy, PolicyCanary, utcnow
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
-from agentfox.jobs import store as jobs_db
+from agentfox.platform.jobs import store as jobs_db
 from agentfox.prove.audit import chain
 
 

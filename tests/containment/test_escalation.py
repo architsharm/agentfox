@@ -621,9 +621,9 @@ def test_the_turn_api_returns_the_live_handoff(client):
 
 
 def test_the_escalation_scan_is_a_default_schedule_with_a_handler():
-    from agentfox.jobs import handlers as job_handlers
-    from agentfox.jobs import scheduler
-    from agentfox.jobs import store as jobs_db
+    from agentfox.apps import jobs as job_handlers
+    from agentfox.platform.jobs import scheduler
+    from agentfox.platform.jobs import store as jobs_db
 
     schedule = {d.kind: d for d in scheduler.DEFAULT_SCHEDULES}["escalation.scan"]
     assert schedule.enabled
@@ -632,7 +632,7 @@ def test_the_escalation_scan_is_a_default_schedule_with_a_handler():
 
 
 def test_the_scheduled_job_marks_sla_breaches(seeded, agent_id):
-    from agentfox.jobs import handlers as job_handlers
+    from agentfox.apps import jobs as job_handlers
 
     _conversation(seeded, agent_id, [("hi", "hello", {})], session_id="sla-job")
     turns = seeded.query(ConversationTurn).filter_by(session_id="sla-job").all()

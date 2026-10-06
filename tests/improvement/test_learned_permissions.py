@@ -543,8 +543,8 @@ def test_from_traffic_on_the_command_line(session, packs):
 
 
 def test_the_loop_runs_on_a_schedule():
-    from agentfox.jobs import handlers as job_handlers
-    from agentfox.jobs import scheduler
+    from agentfox.apps import jobs as job_handlers
+    from agentfox.platform.jobs import scheduler
 
     assert "grants.propose" in job_handlers.HANDLERS
     schedule = {d.kind: d for d in scheduler.DEFAULT_SCHEDULES}["grants.propose"]
@@ -552,7 +552,7 @@ def test_the_loop_runs_on_a_schedule():
 
 
 def test_the_scheduled_job_files_proposals(session, packs):
-    from agentfox.jobs.handlers import propose_from_traffic as handler
+    from agentfox.apps.jobs import propose_from_traffic as handler
 
     _traffic(session)
     result = handler(session, {"days": 30})

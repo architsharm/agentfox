@@ -11,6 +11,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
+from agentfox.apps import jobs as _handlers  # noqa: F401 - registers job kinds
 from agentfox.core.config import get_settings
 from agentfox.core.crypto import encrypt_secret
 from agentfox.core.models import (
@@ -24,11 +25,10 @@ from agentfox.core.models import (
     ScanRun,
     User,
 )
-from agentfox.jobs import handlers as _handlers  # noqa: F401 - registers job kinds
-from agentfox.jobs import scheduler
-from agentfox.jobs import store as jobs_db
 from agentfox.monitoring import service as monitoring
 from agentfox.monitoring import snapshots as snap
+from agentfox.platform.jobs import scheduler
+from agentfox.platform.jobs import store as jobs_db
 from agentfox.platform.registry.service import scan_mcp_server, upsert_mcp_server
 from tests.monitoring.conftest import T0
 

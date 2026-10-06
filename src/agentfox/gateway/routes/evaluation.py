@@ -44,7 +44,7 @@ from agentfox.evaluation.redteam import BUILTIN_PROBES
 from agentfox.evaluation.runner import NativeEvalRunner, fit_envelope
 from agentfox.evaluation.scorers import get_scorer
 from agentfox.gateway.deps import current_user, db, get_agent_or_404, require
-from agentfox.jobs import store as jobs_db
+from agentfox.platform.jobs import store as jobs_db
 from agentfox.prove.audit import chain
 
 router = APIRouter(prefix="/api", tags=["evaluation"])

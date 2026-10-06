@@ -561,8 +561,11 @@ def request_run(
     A run already queued for the same monitor is reused (its ref updated) rather than
     duplicated: ten pushes in a minute are one rescan of the latest commit.
     """
-    from agentfox.jobs import handlers as _registers_kinds  # noqa: F401 - registers monitors.run
-    from agentfox.jobs import store as jobs_db
+    from agentfox.platform.jobs import store as jobs_db
+
+    # This package owns the `monitors.run` kind, so it registers it rather than
+    # relying on whichever app wired the job handlers having been imported.
+    jobs_db.register(JOB_KIND, handle_job)
 
     monitor.next_run_at = utcnow()
     for job in session.scalars(select(Job).where(Job.kind == JOB_KIND, Job.status == "pending")):

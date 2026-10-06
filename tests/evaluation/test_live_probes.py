@@ -374,7 +374,8 @@ def test_an_in_process_target_is_scored_on_the_gateway_verdict(seeded):
 
 
 def test_the_job_runs_only_opted_in_due_targets_and_moves_next_due(seeded, agent):
-    from agentfox.jobs import handlers, scheduler
+    from agentfox.apps import jobs as handlers
+    from agentfox.platform.jobs import scheduler
 
     assert "probes.run" in handlers.HANDLERS
     assert any(d.kind == "probes.run" and d.enabled for d in scheduler.DEFAULT_SCHEDULES)

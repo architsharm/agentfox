@@ -18,8 +18,8 @@ from agentfox.core.models import (
     PolicyBinding,
     PolicyVersion,
 )
-from agentfox.jobs import scheduler
-from agentfox.jobs import store as jobs_db
+from agentfox.platform.jobs import scheduler
+from agentfox.platform.jobs import store as jobs_db
 from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.platform.policy.canary import canary_rollout, evaluate_gate, start_canary
 from tests.conftest import as_user

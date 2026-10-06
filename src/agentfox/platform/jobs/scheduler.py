@@ -72,8 +72,8 @@ from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Job, JobSchedule, Monitor, Policy, User, utcnow
 from agentfox.core.tenancy import bind_session, session_org, system_scope
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
-from agentfox.jobs import store as jobs_db
-from agentfox.jobs.queue import PENDING, RUNNING
+from agentfox.platform.jobs import store as jobs_db
+from agentfox.platform.jobs.queue import PENDING, RUNNING
 
 HOUR = 3600
 DAY = 24 * HOUR

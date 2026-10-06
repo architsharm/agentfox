@@ -543,7 +543,7 @@ def _run_queued_job(job_id: str, org_id: str) -> None:
     freezes the process after responding, the cron runner picks the job up instead."""
     from agentfox.core.db import session_scope
     from agentfox.core.models import Job
-    from agentfox.jobs import store as jobs_db
+    from agentfox.platform.jobs import store as jobs_db
 
     try:
         with session_scope() as background:

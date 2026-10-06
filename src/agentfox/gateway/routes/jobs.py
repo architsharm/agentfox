@@ -9,7 +9,7 @@ record of every attempt — including one that's dead-lettered, or one stuck in
 
 The cron endpoint accepts GET (what Vercel Cron sends) and POST, and authenticates
 with either `AGENTFOX_CRON_SECRET` or Vercel's own `CRON_SECRET`. Each call first
-fills the queue from per-tenant `JobSchedule` rows (`agentfox.jobs.scheduler`), then
+fills the queue from per-tenant `JobSchedule` rows (`agentfox.platform.jobs.scheduler`), then
 recovers stuck jobs and drains everything due. Calling it twice in a row is safe:
 a schedule enqueues at most once per interval and never while its previous job
 is still pending or running.
@@ -26,14 +26,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.apps import jobs as job_handlers
 from agentfox.core.config import get_settings
 from agentfox.core.models import Job, User
 from agentfox.core.tenancy import session_org
 from agentfox.evaluation import showcase
 from agentfox.gateway.deps import current_user, db, require
-from agentfox.jobs import handlers as job_handlers
-from agentfox.jobs import scheduler
-from agentfox.jobs import store as jobs_db
+from agentfox.platform.jobs import scheduler
+from agentfox.platform.jobs import store as jobs_db
 
 # Imported for its side effect: registers the eval.run, compliance.recompute,
 # canary.advance, drift.check, redteam.posture, monitors.run and probes.run handlers

@@ -13,6 +13,7 @@ import datetime as dt
 
 import pytest
 
+from agentfox.apps import jobs as job_handlers
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
     DriftWindow,
@@ -24,9 +25,8 @@ from agentfox.core.models import (
     Job,
     JobSchedule,
 )
-from agentfox.jobs import handlers as job_handlers
-from agentfox.jobs import scheduler
-from agentfox.jobs import store as jobs_db
+from agentfox.platform.jobs import scheduler
+from agentfox.platform.jobs import store as jobs_db
 from tests.conftest import as_user
 
 NOW = dt.datetime(2026, 9, 16, 12, 0, tzinfo=dt.UTC)
@@ -229,7 +229,7 @@ def test_a_failed_first_attempt_is_reported_as_queued_for_retry_not_success(clie
 
 
 def test_every_deferrable_kind_but_retrieval_has_a_handler():
-    from agentfox.jobs.queue import DEFERRABLE
+    from agentfox.platform.jobs.queue import DEFERRABLE
 
     for kind in ("eval.run", "compliance.recompute", "evidence.package", "redteam.sweep"):
         assert kind in DEFERRABLE
