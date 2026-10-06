@@ -81,6 +81,8 @@ anywhere.
 | Command | Effect | Notes |
 |---|---|---|
 | `agents list [--json] [--stopped]` | R\* | Registered + shadow agents. `--stopped`: only quarantined/killed agents, with reason and actor. |
+| `agents register SLUG [--name] [--owner EMAIL] [--team] [--env] [--risk-tier]` | W | Register (or update) an agent so it is owned, not shadow. Options left out keep the current values. Audited. |
+| `agents budget SLUG [--max-calls N] [--max-tokens N] [--max-cost-usd F] [--max-depth N] [--window minute\|hour\|day] [--clear]` | W | No option: show caps and usage. Each option sets one cap (0 removes it); over a cap, `budget.exhausted` blocks until the window rolls. Exit 1 on unknown agent. Audited. |
 | `agents lineage SLUG [--depth 2]` | W | Blast radius: what the agent can reach. |
 | `agents quarantine SLUG [--reason/-r TEXT]` | W, **BLK** | Reversible, audited. Exit 1 on unknown agent. |
 | `agents kill SLUG [--reason/-r TEXT]` | W, **BLK** | Stop now. |

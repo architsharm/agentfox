@@ -66,6 +66,202 @@ def agents_list(
     )
 
 
+@agents_app.command("register")
+def agents_register(
+    slug: str = typer.Argument(..., help="Agent slug, e.g. support-triage."),
+    name: str | None = typer.Option(None, "--name", help="Display name. Default: the slug."),
+    owner: str | None = typer.Option(
+        None, "--owner", help="Owner's email. An agent with no owner is a finding."
+    ),
+    team: str | None = typer.Option(None, "--team", help="Owning team."),
+    env: str | None = typer.Option(
+        None, "--env", help="Environment it runs in. Default: production, or its current one."
+    ),
+    risk_tier: str | None = typer.Option(
+        None,
+        "--risk-tier",
+        help="minimal | limited | high | prohibited. Default: limited, or its current one.",
+    ),
+) -> None:
+    """Register an agent (or update one), so it is owned rather than shadow.
+
+    Agents also appear on their first call; registering one up front gives it an
+    owner and an environment before it has run, and turns a shadow agent into a
+    registered one. Options left out keep the agent's current values.
+    """
+    from sqlalchemy import select
+
+    from agentfox.core.models import Agent
+    from agentfox.prove.audit import chain
+    from agentfox.registry.service import register_agent
+
+    tiers = ("minimal", "limited", "high", "prohibited")
+    if risk_tier is not None and risk_tier not in tiers:
+        console.print(f"[red]--risk-tier must be one of {', '.join(tiers)}[/]")
+        raise typer.Exit(2)
+    with _session() as session:
+        existing = session.scalar(select(Agent).where(Agent.slug == slug))
+        was_shadow = existing is not None and not existing.registered
+        agent = register_agent(
+            session,
+            slug,
+            name=name or "",
+            owner_email=owner,
+            owner_team=team,
+            # register_agent overwrites these two every call; keep what is there
+            # unless the operator said otherwise.
+            environment=env or (existing.environment if existing else "production"),
+            risk_tier=risk_tier or (existing.risk_tier if existing else "limited"),
+        )
+        chain.append(
+            session,
+            "agent.registered",
+            actor_type="user",
+            actor_id="cli",
+            subject_type="agent",
+            subject_id=agent.id,
+            payload={
+                "slug": agent.slug,
+                "name": agent.name,
+                "owner": agent.owner_email,
+                "team": agent.owner_team,
+                "environment": agent.environment,
+                "risk_tier": agent.risk_tier,
+                "created": existing is None,
+            },
+        )
+        row = (agent.slug, agent.name, agent.owner_email, agent.environment, agent.risk_tier)
+    verb = "registered" if existing is None else "was shadow, now registered" if was_shadow else "updated"
+    console.print(f"[green]✓[/] [bold]{row[0]}[/] {verb}")
+    console.print(f"  name {row[1]} · owner {row[2] or '[red]none[/]'} · env {row[3]} · risk {row[4]}")
+    if not row[2]:
+        console.print("  [dim]no owner — set one with --owner, or it shows up as unowned.[/]")
+
+
+@agents_app.command("budget")
+def agents_budget(
+    slug: str = typer.Argument(..., help="Agent slug."),
+    max_calls: int | None = typer.Option(None, "--max-calls", help="Calls per window."),
+    max_tokens: int | None = typer.Option(None, "--max-tokens", help="Tokens per window."),
+    max_cost_usd: float | None = typer.Option(
+        None, "--max-cost-usd", help="Spend per window, in USD."
+    ),
+    max_depth: int | None = typer.Option(
+        None, "--max-depth", help="Longest tool-call chain in one run."
+    ),
+    window: str | None = typer.Option(None, "--window", help="minute | hour | day."),
+    clear: bool = typer.Option(False, "--clear", help="Remove the agent's budget."),
+) -> None:
+    """Show or set an agent's budget: the caps `budget.exceeded` blocks on.
+
+    With no option it prints the current caps and usage. Each option sets one cap and
+    leaves the others as they are; 0 removes that cap. Over a cap, the agent's calls
+    are blocked (`budget.exhausted`) until the window rolls over.
+    """
+    from sqlalchemy import select
+
+    from agentfox.core.models import Agent, Budget
+    from agentfox.prove.audit import chain
+    from agentfox.runtime.reliability import WINDOWS
+
+    if window is not None and window not in WINDOWS:
+        console.print(f"[red]--window must be one of {', '.join(WINDOWS)}[/]")
+        raise typer.Exit(2)
+    for label, value in (
+        ("--max-calls", max_calls),
+        ("--max-tokens", max_tokens),
+        ("--max-cost-usd", max_cost_usd),
+        ("--max-depth", max_depth),
+    ):
+        if value is not None and value < 0:
+            console.print(f"[red]{label} cannot be negative[/]")
+            raise typer.Exit(2)
+    changing = clear or any(
+        v is not None for v in (max_calls, max_tokens, max_cost_usd, max_depth, window)
+    )
+
+    with _session() as session:
+        agent = session.scalar(select(Agent).where(Agent.slug == slug))
+        if agent is None:
+            print_unknown_agent(console, session, slug)
+            raise typer.Exit(1)
+        budget = session.scalar(
+            select(Budget).where(Budget.scope_type == "agent", Budget.scope_id == agent.id)
+        )
+        if clear:
+            if budget is not None:
+                session.delete(budget)
+                chain.append(
+                    session,
+                    "budget.cleared",
+                    actor_type="user",
+                    actor_id="cli",
+                    subject_type="agent",
+                    subject_id=agent.id,
+                    payload={"slug": slug},
+                )
+            console.print(f"[green]✓[/] {slug}: no budget")
+            return
+        if changing:
+            if budget is None:
+                budget = Budget(scope_type="agent", scope_id=agent.id)
+                session.add(budget)
+            before = {
+                "max_calls": budget.max_calls,
+                "max_tokens": budget.max_tokens,
+                "max_cost_usd": budget.max_cost_usd,
+                "max_depth": budget.max_depth,
+                "window": budget.window,
+            }
+            if max_calls is not None:
+                budget.max_calls = max_calls or None
+            if max_tokens is not None:
+                budget.max_tokens = max_tokens or None
+            if max_cost_usd is not None:
+                budget.max_cost_usd = max_cost_usd or None
+            if max_depth is not None:
+                budget.max_depth = max_depth or None
+            if window is not None:
+                budget.window = window
+            budget.window = budget.window or "hour"
+            session.flush()
+            chain.append(
+                session,
+                "budget.set",
+                actor_type="user",
+                actor_id="cli",
+                subject_type="agent",
+                subject_id=agent.id,
+                payload={
+                    "slug": slug,
+                    "before": before,
+                    "after": {
+                        "max_calls": budget.max_calls,
+                        "max_tokens": budget.max_tokens,
+                        "max_cost_usd": budget.max_cost_usd,
+                        "max_depth": budget.max_depth,
+                        "window": budget.window,
+                    },
+                },
+            )
+        if budget is None:
+            console.print(
+                f"[bold]{slug}[/]: no budget — set one with "
+                f"`agentfox agents budget {slug} --max-calls N`."
+            )
+            return
+        caps = (
+            ("calls", budget.calls, budget.max_calls),
+            ("tokens", budget.tokens, budget.max_tokens),
+            ("cost USD", round(budget.cost_usd, 4), budget.max_cost_usd),
+        )
+        depth, per = budget.max_depth, budget.window
+    console.print(f"[bold]{slug}[/] budget, per {per}" + (" [green](saved)[/]" if changing else ""))
+    for label, used, cap in caps:
+        console.print(f"  {label:<9} {used} / {cap if cap is not None else '[dim]no cap[/]'}")
+    console.print(f"  {'depth':<9} {depth if depth is not None else '[dim]no cap[/]'}")
+
+
 @agents_app.command("discover")
 def agents_discover() -> None:
     """Sweep for shadow agents, unowned agents, registry drift, identity posture and

@@ -192,14 +192,13 @@ block block ['INJECTION.INSTRUCTION_OVERRIDE', 'PII.EMAIL'] ['capability.denied'
 agentfox doctor`}</Code>
       <p>
         <code>agentfox doctor</code> lists the detectors that are both enabled and
-        available. It does not list one you enabled that could not load, so if a
-        detector you asked for is missing from that line, its extra or its weights are
-        missing. <code>GET /api/detectors</code> shows every registered detector with{" "}
+        available as running, and names any you enabled that could not load, with the
+        reason, as a warning. <code>GET /api/detectors</code> shows every registered detector with{" "}
         <code>available</code>, <code>enabled</code>, the reason it is unavailable, and
         its run statistics.
       </p>
-      <Output>{`  ✓    detectors           6 available: injection.heuristic, pii.native, pii.presidio, safety.lexicon, schema.json,
-                           secrets.native`}</Output>
+      <Output>{`  ✓    detectors           6 running: injection.classifier, injection.heuristic, pii.native, safety.lexicon,
+                           schema.json, secrets.native`}</Output>
       <p>
         A paraphrased injection the default heuristic misses, caught once the classifier
         is enabled. Call <code>warm_all()</code> at startup: the first call to a cold

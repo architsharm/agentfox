@@ -473,12 +473,12 @@ radius, and the calling agent declares environment 'production'`}</Output>
         <code>postgres</code>. Without sqlglot installed, every SQL statement is refused
         rather than waved through:
       </p>
-      <Output>{`unknown · blast radius unknown · reversible · 0 target(s): —
+      <Output>{`unknown · blast radius unknown · reversibility unknown (not analysed) · 0 target(s): —
   critical analysis.unavailable — sqlglot is not installed, so this statement cannot be analysed.
-Install agentfox or the action is refused — an unanalysable statement is not a safe statement.`}</Output>
+Run \`pip install 'agentfox[sql]'\`, or the action is refused — an unanalysable statement is not a
+safe statement.`}</Output>
       <p>
-        The package to install is <code>agentfox[sql]</code>; the message prints it without
-        the brackets. The same analysis runs on live tool calls; see{" "}
+        The same analysis runs on live tool calls; see{" "}
         <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>.
       </p>
 
