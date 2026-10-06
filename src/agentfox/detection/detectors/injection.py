@@ -30,6 +30,7 @@ from agentfox.detection.base import (
     taint_rank,
 )
 from agentfox.detection.normalize import despaced, evasion_score, hidden_markup, normalize
+from agentfox.detection.prefilter import LoweredText, opening_literals
 
 OWASP = "LLM01"
 ATLAS = "AML.T0051"
@@ -551,6 +552,14 @@ _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
     ),
 ]
 
+# Each pattern with the words a match must open with, so a large benign document
+# skips the patterns it cannot match instead of paying one full regex pass apiece
+# (see `detection.prefilter`).
+_PATTERNS: list[tuple[re.Pattern[str], str, float, frozenset[str] | None]] = [
+    (pattern, entity, score, opening_literals(pattern))
+    for pattern, entity, score in _LEXICAL + _EXTRA_LEXICAL
+]
+
 # --- 2. Structural signals -------------------------------------------------
 _ROLE_DELIMITER = re.compile(r"(?:^|\n)\s*(?:###\s*)?(?:system|assistant|user)\s*:\s*", re.I | re.M)
 _CHATML = re.compile(r"<\|(?:im_start|im_end|system|endoftext)\|>", re.I)
@@ -637,8 +646,11 @@ class InjectionHeuristicDetector(BaseDetector):
             views.append(despaced_view)
         views.extend(hidden_views)
 
-        for pattern, entity, base_score in _LEXICAL + _EXTRA_LEXICAL:
-            for view in views:
+        lowered = [LoweredText(view.text) for view in views]
+        for pattern, entity, base_score, literals in _PATTERNS:
+            for view, low in zip(views, lowered, strict=True):
+                if not low.may_match(literals):
+                    continue
                 match = pattern.search(view.text)
                 if match is None:
                     continue

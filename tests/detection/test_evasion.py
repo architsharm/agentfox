@@ -107,10 +107,10 @@ def test_a_large_ordinary_document_stays_within_budget():
     would start recording this detector as degraded — which is the line worth
     defending, and an actionable failure rather than a flaky one.
 
-    It is still slow: ~24 ms is 67 compiled patterns each scanning the whole 33 KB
-    document, and a benign document pays the full cost. Making that cheaper is real
-    work on a security-critical path, tracked separately rather than rushed in to
-    quiet a red build.
+    Each pattern used to scan the whole 33 KB document, so a benign document paid
+    one regex pass per pattern (~28 ms). `detection.prefilter` now skips a pattern
+    when none of the words it must open with appear in the text (~8 ms), and
+    `test_prefilter.py` checks that skipping never changes a detection.
     """
     budget_ms = get_settings().detector_timeout_ms
     document = "The quarterly report shows revenue of 4.2m across regions. " * 560
