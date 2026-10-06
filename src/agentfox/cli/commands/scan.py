@@ -132,6 +132,7 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
+    from agentfox.monitoring.service import safe_ensure_monitor
     from agentfox.registry.service import scan_mcp_server, upsert_mcp_server
 
     if file is not None and seed_fixture:
@@ -158,13 +159,21 @@ def scan_mcp(
         # An existing record keeps the trust level an operator gave it.
         for decl in declared.values():
             existing = session.scalar(select(McpServer).where(McpServer.name == decl.name))
-            upsert_mcp_server(
+            record = upsert_mcp_server(
                 session,
                 decl.name,
                 url=decl.url,
                 transport=decl.transport,
                 trust_level=existing.trust_level if existing else "untrusted",
                 pinned_version=decl.pinned_version,
+            )
+            # Registered means watched: `agentfox scan monitors list` shows it.
+            safe_ensure_monitor(
+                session,
+                kind="mcp_server",
+                target=record.name,
+                config={"mcp_server_id": record.id},
+                created_by="cli",
             )
         names = [server] if server else sorted(declared)
         if not names:
@@ -316,3 +325,9 @@ _MCP_ISSUE_TEXT = {
     "tool_poisoning": "instructions hidden in a tool description",
     "unpinned_server": "no version pinned — its tools can change silently",
 }
+
+
+# `agentfox scan monitors …` — the scheduled counterpart of every scan above.
+from agentfox.cli.commands.monitors import monitors_app  # noqa: E402
+
+scan_app.add_typer(monitors_app, name="monitors")
