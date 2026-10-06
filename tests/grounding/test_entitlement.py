@@ -322,6 +322,70 @@ def test_quoting_a_withheld_chunk_in_the_answer_is_critical(seeded, enforcer):
     assert findings and findings[0].severity == "critical"
 
 
+def _leak(seeded, enforcer):
+    from agentfox.core.models import Agent
+
+    agent = seeded.query(Agent).filter_by(slug="support-triage").one()
+    grant(seeded, "kb/*", principal="all-staff")
+    principal = upsert_principal(seeded, "alice@acme.com", groups=["all-staff"])
+    enforcer.evidence = {
+        "principal": principal,
+        "chunks": [
+            {"source": "kb/faq", "text": "Refunds within 30 days."},
+            {"source": "hr/salaries", "text": "Head of Eng earns 210,000 per year."},
+        ],
+    }
+    return enforcer.evaluate(
+        agent=agent,
+        identity=None,
+        content="Sure. Head of Eng earns 210,000 per year.",
+        surface="output",
+    )
+
+
+def test_quoting_a_withheld_chunk_is_blocked_when_the_decision_enforces(seeded, enforcer):
+    """#4: the output-side check was detective only — an enforcing deployment still
+    returned an answer quoting a chunk the asker may not see, with only a finding."""
+    from agentfox.policy.store import set_mode
+
+    set_mode(seeded, "baseline", "enforce")
+    result = _leak(seeded, enforcer)
+    assert result.verdict == "block"
+    assert any(r["rule_id"] == "entitlement.disclosure" for r in result.rules_fired)
+
+
+def test_quoting_a_withheld_chunk_is_would_block_in_observe(seeded, enforcer):
+    from agentfox.core.models import Policy
+    from agentfox.policy.store import set_mode
+
+    for policy in seeded.query(Policy).all():
+        set_mode(seeded, policy.key, "observe")
+    result = _leak(seeded, enforcer)
+    assert result.effective_verdict == "block"
+    assert result.verdict != "block", (result.mode, result.rules_fired)
+
+
+def test_an_answer_from_entitled_chunks_is_not_blocked(seeded, enforcer):
+    from agentfox.core.models import Agent
+    from agentfox.policy.store import set_mode
+
+    set_mode(seeded, "baseline", "enforce")
+    agent = seeded.query(Agent).filter_by(slug="support-triage").one()
+    grant(seeded, "kb/*", principal="all-staff")
+    enforcer.evidence = {
+        "principal": upsert_principal(seeded, "alice@acme.com", groups=["all-staff"]),
+        "chunks": [
+            {"source": "kb/faq", "text": "Refunds within 30 days."},
+            {"source": "hr/salaries", "text": "Head of Eng earns 210,000 per year."},
+        ],
+    }
+    result = enforcer.evaluate(
+        agent=agent, identity=None, content="Refunds within 30 days.", surface="output"
+    )
+    assert result.verdict == "allow"
+    assert not any(r["rule_id"] == "entitlement.disclosure" for r in result.rules_fired)
+
+
 def test_no_principal_supplied_means_no_disclosure_checks(seeded, enforcer):
     """The filter belongs to whoever performs retrieval; with no principal there is
     nothing to compare against and inventing one would be worse than abstaining."""

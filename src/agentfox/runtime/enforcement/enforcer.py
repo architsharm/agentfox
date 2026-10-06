@@ -500,6 +500,31 @@ class Enforcer(
                 fingerprint_parts=(issue.get("code"), surface),
             )
 
+        # P10 (#4): an answer quoting a chunk the asking human is not entitled to see is
+        # the oversharing failure itself, not a quality issue, so unlike the F2/F7
+        # issues above it is preventive: the answer is withheld whenever the decision
+        # enforces, and recorded as would-have-blocked when it observes. Gated on the
+        # decision's mode like an approval requirement, because a principal declared
+        # in observe mode is how an operator dry-runs an entitlement model.
+        leaks = [
+            i for i in evidence.get("evidence_issues", []) if i["type"] == "entitlement_disclosure"
+        ]
+        if leaks and "entitlement.disclosure" not in fired_ids:
+            effective = "block"
+            if mode == "enforce":
+                verdict = "block"
+            fired_ids.add("entitlement.disclosure")
+            rules_fired.append(
+                _fired_rule(
+                    "entitlement.disclosure",
+                    "block",
+                    "; ".join(i["title"] for i in leaks),
+                    severity="critical",
+                    controls=["NOM-IAM-07"],
+                    mode=mode,
+                )
+            )
+
         # P9: a critical action risk stands on its own, exactly as a capability denial
         # does. It is a fact about what the statement will do, not a policy opinion —
         # and a customer who wrote the rule explicitly does not see it twice.

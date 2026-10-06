@@ -329,6 +329,40 @@ def test_reserved_evidence_kwargs_record_disclosure_and_never_reach_the_provider
     assert event.withheld == 1
 
 
+def test_strict_mode_refuses_an_answer_quoting_a_withheld_chunk(app_db):
+    """#4: auto(mode="enforce") with a principal and chunks used to hand back an answer
+    quoting a chunk the principal may not see, recording only a critical finding."""
+    from agentfox.core.db import session_scope
+    from agentfox.grounding.entitlement import grant, upsert_principal
+    from agentfox.runtime.autoguard import Blocked
+
+    with session_scope() as session:
+        grant(session, "kb/*", principal="all-staff")
+        upsert_principal(session, "alice@acme.com", groups=["all-staff"])
+
+    saved = {k: sys.modules.get(k) for k in list(sys.modules) if k.startswith("openai")}
+    client, _calls = _install_fake_openai("Per HR: Head of Eng: 210,000 per year.")
+    try:
+        auto(agent="support-triage", mode="enforce", quiet=True)
+        with pytest.raises(Blocked):
+            client().create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": "what does the head of eng earn?"}],
+                agentfox_principal={"subject": "alice@acme.com"},
+                agentfox_chunks=[
+                    {"source": "kb/faq", "text": "Refunds within 30 days."},
+                    {"source": "hr/salaries-2026", "text": "Head of Eng: 210,000 per year."},
+                ],
+            )
+    finally:
+        off()
+        for key in [k for k in list(sys.modules) if k.startswith("openai")]:
+            del sys.modules[key]
+        for key, value in saved.items():
+            if value is not None:
+                sys.modules[key] = value
+
+
 def test_detections_in_the_response_are_recorded(app_db):
     saved = {k: sys.modules.get(k) for k in list(sys.modules) if k.startswith("openai")}
     client, _calls = _install_fake_openai("Contact jane.doe@example.com, SSN 123-45-6789.")
