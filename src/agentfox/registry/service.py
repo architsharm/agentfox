@@ -747,8 +747,8 @@ def normalise_tool_list(data: Any) -> list[dict[str, Any]]:
         data = data["tools"]
     if not isinstance(data, list) or not all(isinstance(t, dict) for t in data):
         raise ValueError(
-            "expected the tools/list output: a list of tools, {\"tools\": [...]}, or a "
-            "JSON-RPC response {\"result\": {\"tools\": [...]}}"
+            'expected the tools/list output: a list of tools, {"tools": [...]}, or a '
+            'JSON-RPC response {"result": {"tools": [...]}}'
         )
     return data
 

@@ -174,13 +174,13 @@ def init(
     implicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)
     override that file.
     """
+    from rich.markup import escape
+
     from agentfox.core.config import get_settings
     from agentfox.core.db import init_db, session_scope
     from agentfox.policy import load_available, save_policy
     from agentfox.policy.coding import hooked_agents, retire_tool_wildcard, scope_coding_pack
     from agentfox.prove.compliance import load_catalog, sync_catalog
-
-    from rich.markup import escape
 
     if not Path(path).is_dir():
         # Checked first, so a typo does not leave a half-initialised database behind

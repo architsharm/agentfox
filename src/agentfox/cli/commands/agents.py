@@ -131,9 +131,17 @@ def agents_register(
             },
         )
         row = (agent.slug, agent.name, agent.owner_email, agent.environment, agent.risk_tier)
-    verb = "registered" if existing is None else "was shadow, now registered" if was_shadow else "updated"
+    verb = (
+        "registered"
+        if existing is None
+        else "was shadow, now registered"
+        if was_shadow
+        else "updated"
+    )
     console.print(f"[green]✓[/] [bold]{row[0]}[/] {verb}")
-    console.print(f"  name {row[1]} · owner {row[2] or '[red]none[/]'} · env {row[3]} · risk {row[4]}")
+    console.print(
+        f"  name {row[1]} · owner {row[2] or '[red]none[/]'} · env {row[3]} · risk {row[4]}"
+    )
     if not row[2]:
         console.print("  [dim]no owner — set one with --owner, or it shows up as unowned.[/]")
 

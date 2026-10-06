@@ -470,7 +470,8 @@ def _clauses(sentence: str) -> list[_Clause]:
     # ("10,000 rows"), not a clause break: splitting there turned "over 10,000 rows
     # require approval" into a clause "000 rows require approval" with a band of 0.
     parts = re.split(
-        r",(?!(?<=\d,)\d{3}(?!\d))|;| and (?=[^,]*\b(?:under|over|above|below|between|more|less)\b)",
+        r",(?!(?<=\d,)\d{3}(?!\d))|;"
+        r"| and (?=[^,]*\b(?:under|over|above|below|between|more|less)\b)",
         sentence,
     )
     out: list[_Clause] = []
@@ -491,9 +492,7 @@ def _clauses(sentence: str) -> list[_Clause]:
             low, low_unit = _amount(between.group(1))
             high, high_unit = _amount(between.group(2))
             unit = low_unit or high_unit or ("count" if counted else None)
-            out.append(
-                _Clause(low, high, outcome, unit, role, text, sentence, ambiguous, counted)
-            )
+            out.append(_Clause(low, high, outcome, unit, role, text, sentence, ambiguous, counted))
             continue
 
         value, unit = _amount(text)
