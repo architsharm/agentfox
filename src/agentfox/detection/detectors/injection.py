@@ -293,7 +293,10 @@ _OVERRIDE_OBJECT = (
 #: become", "pretend you are", "act as", "role-play as", "imagine you are" and
 #: "assume the role of".
 _PERSONA_SWITCH = (
-    r"(?:\byou\s+are\s+now\b|\bfrom\s+now\s+on,?\s+(?:you(?:'re|\s+are|\s+will\s+(?:be|act))|"
+    # The leading lookahead is only a fast reject: one character class test at each
+    # word start instead of trying every branch, which made this the most expensive
+    # pattern in the table on a 32 KB document.
+    r"\b(?=[yfpabrit])(?:\byou\s+are\s+now\b|\bfrom\s+now\s+on,?\s+(?:you(?:'re|\s+are|\s+will\s+(?:be|act))|"
     r"act\s+as|be)\b|\byou(?:'re|\s+are)\s+(?:going|about)\s+to\s+(?:be|become|act|play|"
     r"pretend|immerse)\b|\bpretend\s+(?:that\s+)?(?:you(?:'re|\s+are)|to\s+be)\b|"
     r"\b(?:act|role-?play|behave|respond)\s+as\b|\bimagine\s+(?:that\s+)?you(?:'re|\s+are)\b|"
@@ -445,7 +448,7 @@ _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
     (
         # DAN by name. Case-sensitive on the name, because Dan from billing is a person.
         re.compile(
-            r"\b(?:you\s+are|you're|act\s+as|pretend\s+to\s+be|known\s+as|called|named|"
+            r"\b(?=[yapkcnbd])(?:you\s+are|you're|act\s+as|pretend\s+to\s+be|known\s+as|called|named|"
             r"become)\s+(?:now\s+)?(?-i:DAN)\b|\bdo\s+anything\s+now\b",
             re.I,
         ),
