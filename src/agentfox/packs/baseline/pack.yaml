@@ -1,0 +1,19 @@
+# The general content pack: prompt injection, PII, secrets and safety on every
+# surface. Not a property of a sector or a jurisdiction, so it is also what protects a
+# deployment that has bound nothing (`fallback`, always in observe).
+id: baseline
+version: 1.0.0
+maturity: stable
+requires_core: ">=0.3"
+title: Baseline runtime guardrails
+description: >
+  Prompt-injection, PII, secrets and safety rules across every surface, with indirect
+  injection treated more severely than direct.
+owners: [agentfox-maintainers]
+tags: [content, injection, pii, secrets, safety]
+compliance:
+  controls: [NOM-RTG-01, NOM-RTG-02, NOM-RTG-03, NOM-RTG-05, NOM-RTG-06, NOM-RTG-07, NOM-RTG-13, NOM-IAM-08, NOM-DSC-05]
+requires_detectors: [injection.heuristic, pii.native, secrets.native, safety.lexicon, schema.json]
+fallback:
+  risk_tiers: ["*"]
+  order: 0

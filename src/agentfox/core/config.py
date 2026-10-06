@@ -660,15 +660,22 @@ class Settings(BaseSettings):
     redact_at_capture: bool = True
     evidence_dir: Path = STATE_ROOT / "var" / "evidence"
 
-    # --- Content paths -----------------------------------------------------
-    # Packaged *inside* agentfox/ (not at the repo root) so `packages =
-    # ["src/agentfox"]` in pyproject.toml bundles them into the wheel automatically —
-    # a repo-root-relative path resolves fine from a source checkout but silently
-    # finds nothing once installed (e.g. the Vercel deployment installs from the
-    # vendored wheel, not the source tree), which is why the control catalog and
-    # baseline policy pack were empty in production despite syncing without error.
-    compliance_dir: Path = Path(__file__).resolve().parents[1] / "compliance_data"
-    policies_dir: Path = Path(__file__).resolve().parents[1] / "policies_data"
+    # --- Content: capability packs ------------------------------------------
+    # The shipped policies, the control catalog, obligations and threats live in the
+    # capability packs under `agentfox/packs/` (inside the package, so the wheel
+    # carries them: a repo-root-relative path resolves from a source checkout and
+    # silently finds nothing once installed, which is how the control catalog and
+    # the baseline policy were once empty in production).
+    #
+    # The two directories below are overrides, unset by default. Set
+    # `compliance_dir` to read `controls.yaml`, `obligations.yaml` and `threats.yaml`
+    # from your own directory instead of the packs; set `policies_dir` to read the
+    # shipped policy files from a directory instead of the packs.
+    compliance_dir: Path | None = None
+    policies_dir: Path | None = None
+    # Which packs load: `stable` (only stable packs), `incubating` (stable and
+    # incubating) or `sandbox` (every pack).
+    pack_maturity: str = "stable"
 
     @property
     def restricted_models_allowed(self) -> bool:

@@ -215,41 +215,40 @@ def init(
             f"[dim]v{catalog.get('version')} ({catalog.get('review_status')})[/]"
         )
 
-        if settings.policies_dir.exists():
-            # The project's own packs too, not just the shipped ones: a team
-            # that keeps policy in `.agentfox/policies/` expects `init` to
-            # install it, and a pack the loader can see but `init` ignores is
-            # a policy that silently does nothing.
-            # The coding-agent pack only for agents a coding harness runs: see
-            # policy/coding.py for why a wildcard binding was the wrong default.
-            documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
-            if coding_agents == []:
-                retire_tool_wildcard(session)
-            for document in documents:
-                save_policy(session, document, author="init", notes="loaded by agentfox init")
-            # Say the truth per pack: a blanket "observe mode" was wrong the moment one
-            # shipped pack (tool-containment) declared enforce.
-            console.print(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
-            for document in sorted(documents, key=lambda d: d.key):
-                colour = "red" if document.mode == "enforce" else "yellow"
-                meaning = _MODE_MEANING.get(document.mode, "")
-                console.print(
-                    f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]"
-                )
-            if coding_agents:
-                console.print(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
-            elif coding_agents == []:
-                console.print(
-                    "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
-                    "`agentfox admin hooks install --agent <slug> --write` turns it on for that "
-                    "agent.[/]"
-                )
-            enforcing = [d.key for d in documents if d.mode == "enforce"]
-            if enforcing:
-                console.print(
-                    f"      [dim]{', '.join(enforcing)} blocks from the start — "
-                    "demote with `agentfox policy observe <key>`.[/]"
-                )
+        # The project's own packs too, not just the shipped ones: a team
+        # that keeps policy in `.agentfox/policies/` expects `init` to
+        # install it, and a pack the loader can see but `init` ignores is
+        # a policy that silently does nothing.
+        # The coding-agent pack only for agents a coding harness runs: see
+        # policy/coding.py for why a wildcard binding was the wrong default.
+        documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
+        if coding_agents == []:
+            retire_tool_wildcard(session)
+        for document in documents:
+            save_policy(session, document, author="init", notes="loaded by agentfox init")
+        # Say the truth per pack: a blanket "observe mode" was wrong the moment one
+        # shipped pack (tool-containment) declared enforce.
+        console.print(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
+        for document in sorted(documents, key=lambda d: d.key):
+            colour = "red" if document.mode == "enforce" else "yellow"
+            meaning = _MODE_MEANING.get(document.mode, "")
+            console.print(
+                f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]"
+            )
+        if coding_agents:
+            console.print(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
+        elif coding_agents == []:
+            console.print(
+                "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
+                "`agentfox admin hooks install --agent <slug> --write` turns it on for that "
+                "agent.[/]"
+            )
+        enforcing = [d.key for d in documents if d.mode == "enforce"]
+        if enforcing:
+            console.print(
+                f"      [dim]{', '.join(enforcing)} blocks from the start — "
+                "demote with `agentfox policy observe <key>`.[/]"
+            )
 
     config_path = Path(path) / "agentfox.toml"
     if config_path.exists():

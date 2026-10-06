@@ -1,0 +1,52 @@
+# The EU AI Act: the runtime-enforceable measures for high-risk systems, the risk-class
+# vocabulary the classifier emits, and the Annex III / Art. 5 cues it proposes a class
+# from. An engineering interpretation, not legal advice.
+id: eu-ai-act
+version: 1.0.0
+maturity: stable
+requires_core: ">=0.3"
+title: EU AI Act
+description: >
+  Runtime measures supporting Art. 12, 14, 15 and 50 for agents classified high-risk,
+  and the risk classification the compliance views propose.
+owners: [agentfox-maintainers]
+tags: [compliance, eu-ai-act, regulation]
+compliance:
+  controls: [NOM-AUD-01, NOM-AUD-05, NOM-GOV-03, NOM-GOV-05, NOM-IAM-03, NOM-RTG-01, NOM-RTG-02, NOM-RTG-05, NOM-RTG-06]
+  frameworks:
+    eu-ai-act: [Art. 5, Art. 6, Art. 12, Art. 14, Art. 15, Art. 50]
+requires_detectors: [injection.heuristic, pii.native]
+# An agent somebody classified high-risk (or prohibited) gets this pack's policies,
+# in observe, beside baseline when nothing is bound. Never inferred: only the tier the
+# operator declared.
+fallback:
+  risk_tiers: [high, prohibited]
+  order: 10
+vocabulary:
+  # The classes the classifier emits (`compliance/risk.py:classify`), and so the values
+  # a policy's `risk_tier` condition can match; policy lint flags anything else.
+  condition_values:
+    risk_tier: [prohibited, high, limited, minimal]
+  # Annex III-flavoured domain cues. Deliberately conservative and advisory: they
+  # propose a class for a person to confirm.
+  annex_iii_cues:
+    employment: [hiring, recruit, candidate, cv, resume, performance review, promotion, termination]
+    credit: [credit, loan, underwrit, lending, creditworthiness, mortgage]
+    essential_services: [benefit, welfare, insurance, eligibility, housing]
+    education: [exam, grading, admission, student assessment]
+    law_enforcement: [criminal, policing, suspect, recidivism]
+    migration: [visa, asylum, immigration, border]
+    biometric: [biometric, facial recognition, emotion recognition]
+    critical_infrastructure: [safety component, traffic, water supply, power grid]
+    # Bare "triage" was too generic: it matches "support-triage" and any ticket
+    # triaging agent, a false Annex III "medical" class with nothing medical about it.
+    # Scoped to phrases that only occur in a clinical context.
+    medical: [diagnos, clinical triage, patient triage, triage nurse, clinical, patient care, medical device]
+  # Art. 5 prohibited-practice cues.
+  prohibited_cues:
+    - social scoring
+    - subliminal manipulation
+    - exploit vulnerabilit
+    - real-time remote biometric identification
+    - emotion recognition in the workplace
+    - predictive policing based on profiling

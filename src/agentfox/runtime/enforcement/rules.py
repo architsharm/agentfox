@@ -35,42 +35,26 @@ class _FallbackVersion:
 _FALLBACK_VERSION = _FallbackVersion()
 
 
-#: Which shipped packs apply to a deployment that has configured nothing.
-#:
-#: Only the default case. Anything an operator binds replaces all of this —
-#: `active_policies` is consulted first and the fallback is never reached.
-#:
-#: `baseline` is unconditional because prompt injection, PII and secrets are not
-#: properties of a sector or a jurisdiction; every agent that reads text has
-#: them. The rest is chosen from what the operator has ALREADY DECLARED about
-#: the agent, never inferred:
-#:
-#:   risk_tier == "high"  ->  eu-ai-act-high-risk
-#:
-#: That pack's own header says it is "for agents classified high-risk", so
-#: applying it to an agent somebody classified high-risk is responding to their
-#: declaration rather than deciding on their behalf. An agent at the default
-#: tier gets baseline alone, because silently applying EU AI Act rules to
-#: someone who never said they were in scope would be overclaiming.
-#:
-#: Framework is deliberately NOT a selector. Which content pack is right does
-#: not depend on whether the app is built on LangChain or CrewAI — the same
-#: injection reaches the same model either way — and a framework-to-policy
-#: mapping would be a rule that looks considered and means nothing.
-#: Keyed on the vocabulary the classifier actually emits, which is
-#: `compliance.risk.EU_CLASSES` — prohibited, high, limited, minimal. This said
-#: "unacceptable", a word nothing in the product ever sets, so the branch was
-#: dead and the tier it was meant to cover got `_FALLBACK_DEFAULT` instead: an
-#: agent classified as a *prohibited practice* fell through to the weakest pack
-#: of the three. Found by `policy.hierarchy`'s unreachable-rule lint, which was
-#: written for policy YAML and caught this on the way past.
-_FALLBACK_FOR_TIER: dict[str, tuple[str, ...]] = {
-    "high": ("baseline", "eu-ai-act-high-risk"),
-    "prohibited": ("baseline", "eu-ai-act-high-risk"),
-}
-
-
-_FALLBACK_DEFAULT: tuple[str, ...] = ("baseline",)
+# Which shipped policies apply to a deployment that has configured nothing is pack
+# data: a built-in capability pack's `fallback` block names the agent risk tiers its
+# policies protect when nothing is bound (`platform/packs:fallback_policy_packs`).
+#
+# Only the default case. Anything an operator binds replaces all of this —
+# `active_policies` is consulted first and the fallback is never reached.
+#
+# `baseline` declares every tier ("*") because prompt injection, PII and secrets are
+# not properties of a sector or a jurisdiction; every agent that reads text has them.
+# The rest is chosen from what the operator has ALREADY DECLARED about the agent,
+# never inferred: the `eu-ai-act` pack declares `high` and `prohibited`, the classes
+# its own policy is written for, so applying it to an agent somebody classified
+# high-risk is responding to their declaration rather than deciding on their behalf.
+# An agent at the default tier gets baseline alone, because silently applying EU AI
+# Act rules to someone who never said they were in scope would be overclaiming.
+#
+# Framework is deliberately NOT a selector. Which content pack is right does not
+# depend on whether the app is built on LangChain or CrewAI — the same injection
+# reaches the same model either way — and a framework-to-policy mapping would be a
+# rule that looks considered and means nothing.
 
 
 @functools.lru_cache(maxsize=8)
@@ -87,11 +71,18 @@ def _fallback_policies(risk_tier: str | None = None) -> tuple:
     # make "what protects an unconfigured deployment" depend on the working
     # directory of whatever process happened to start, and this result is
     # cached per tier and would not notice it changing.
-    from agentfox.platform.policy import load_from_dir
+    from agentfox.platform.packs import fallback_policy_packs
+    from agentfox.platform.policy import PolicyDocument, load_from_dir
 
-    wanted = _FALLBACK_FOR_TIER.get((risk_tier or "").lower(), _FALLBACK_DEFAULT)
     by_key = {}
+    wanted: tuple[str, ...] = ()
     try:
+        # The keys of the policies each fallback pack ships, in fallback order.
+        wanted = tuple(
+            PolicyDocument.from_yaml(path.read_text()).key
+            for pack in fallback_policy_packs(risk_tier)
+            for path in pack.files("policies")
+        )
         for doc in load_from_dir():
             if doc.key not in wanted:
                 continue

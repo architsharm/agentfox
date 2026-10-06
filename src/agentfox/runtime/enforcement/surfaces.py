@@ -116,7 +116,8 @@ class _SurfacesMixin:
         than a join, which measures the slope of a risk-adjacent score instead of the
         content of the concatenation. The joined-text verdict is what this method
         returns; the trajectory finding rides along on `result.taint["trajectory"]`
-        and on the `action["risks"]` channel, observe-first — see `capabilities/detection/checks.py:trajectory_check`.
+        and on the `action["risks"]` channel, observe-first — see
+        `capabilities/detection/checks.py:trajectory_check`.
         """
         from agentfox.core.models import ConversationTurn
 
