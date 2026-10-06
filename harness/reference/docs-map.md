@@ -16,7 +16,9 @@ commit; `scripts/check_harness.py` fails if a repo `.md` file is unclassified.
 
 | File | Read it when you need | Notes |
 |---|---|---|
-| `README.md` | the pitch, install paths, the CLI cheat sheet, honest limits | Entry point for humans |
+| `README.md` | the pitch, quickstart, one contained tool call, headline numbers, honest limits | Entry point for humans; numbers bound in `benchmarks/claims.yaml` |
+| `ARCHITECTURE.md` | the domain model, one tool call traced through `auto()` and the gateway, the code map, invariants, where to start for a change | Start here before changing code; names functions, not line numbers |
+| `docs/product-tour.md` | every integration surface (auto, gateway, LangGraph, MCP, Claude Code hooks), commands grouped by task, demo output, self-hosting | Moved out of the README; the website guides cover the same ground |
 | `docs/design/PRD.md` | *why* a feature exists, requirement IDs, roadmap, non-goals | 1,200 lines — jump to §5 pillars, §6 integrations, §9 roadmap, §10.3 non-goals, §12 shipped since |
 | `docs/architecture/high-level-design.md` | architecture, request path, deployment topology | Derived from code; code wins |
 | `docs/architecture/low-level-design.md` | which module implements what, class internals, CLI tree | Counts drift; code wins |
@@ -62,7 +64,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | `benchmarks/REPORT.md`, `benchmarks/*/README.md` (one per benchmark area) | running or changing that benchmark |
 | `benchmarks/data/README.md`, `benchmarks/data_generalization/README.md`, `docs/evaluation/dataset-sourcing.md` | dataset provenance and licensing |
 | `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md` | running or deploying the live demos |
-| `CONTRIBUTING.md` | setting up to work on the code: the extras to install, the checks that must pass, and the two things that surprise people (vendored wheels, numbers bound to result files) |
+| `CONTRIBUTING.md` | setting up to work on the code: `just setup`/`just ci` (the `justfile` mirrors CI), test layout, generated files and their checks, the vendored-wheel rule, branch and docstring conventions |
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant 2.1, verbatim. Reporting contact only; nothing project-specific to read |
 | `CHANGELOG.md` | what changed in a release, and the section `.github/workflows/release.yml` turns into release notes |

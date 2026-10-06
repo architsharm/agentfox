@@ -4,8 +4,8 @@ Say what breaks without it.
 
 # Checks
 
-[CONTRIBUTING.md](../blob/main/CONTRIBUTING.md) has the detail. These four run in CI, so
-a red one will not merge:
+[CONTRIBUTING.md](../blob/main/CONTRIBUTING.md) has the detail. `just ci` runs everything CI
+runs; these four are the Python checks, and a red one will not merge:
 
 ```bash
 pytest -q
@@ -19,7 +19,7 @@ python harness/scripts/check_harness.py
 - [ ] `scripts/claims.py --check` passes. If a published number moved, the benchmark was
       re-run and its result file is in this PR. Numbers are not edited by hand.
 - [ ] `harness/scripts/check_harness.py` passes, if `harness/` or the CLI changed.
-- [ ] If `src/nometria/` changed, the vendored wheels in `api/vendor/` and
+- [ ] If `src/agentfox/` changed, the vendored wheels in `api/vendor/` and
       `demo/redteam-live-lang/vendor/` were rebuilt in the same commit. The pre-commit
       hook does this for you (`uvx pre-commit install`); CI fails the push otherwise,
       because `api/` and the live demo deploy the wheel, not an editable install.
