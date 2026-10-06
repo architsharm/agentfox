@@ -157,7 +157,7 @@ Before any mapping in this appendix is presented to a customer's auditor:
 
 1. **Engineering** confirms the `implemented_by` FR actually ships and the `evidence_sources` actually populate.
 2. **Compliance counsel / qualified assessor** reviews the framework citation for accuracy and scope.
-3. The mapping is marked reviewed on its `framework_mappings` row (`review_status`, `reviewed_by`, `reviewed_at`; `prove/compliance/catalog.py:review_mapping`).
+3. The mapping is marked reviewed on its `framework_mappings` row (`review_status`, `reviewed_by`, `reviewed_at`; `capabilities/compliance/catalog.py:review_mapping`).
 4. Unreviewed mappings render in the UI with a `DRAFT — not reviewed` badge and ship inside evidence packages with a `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` chip on each row, instead of being excluded, so reviewers can see exactly what is still outstanding.
 
 **As of 2026-10-06: all mappings are still `DRAFT`.** None have completed step 2.

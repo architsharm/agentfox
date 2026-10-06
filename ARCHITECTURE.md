@@ -28,10 +28,10 @@ order:
 
 | Step | Question | Where it lives |
 |---|---|---|
-| **See** | What agents, tools and MCP servers do I have, and what changed? | `discovery/`, `registry/`, `monitoring/` (`agentfox scan`, `agentfox scan monitors`, `agentfox agents`) |
-| **Watch** | What are they doing right now? | `runtime/`, `detection/`, `gateway/` (`agentfox serve`, `agentfox findings`) |
-| **Contain** | What may each one do? | `identity/`, `policy/`, `containment/` (`agentfox permit`, `declare`, `policy`) |
-| **Prove** | Can I show what happened? | `prove/`, `evaluation/` (`agentfox report`, `agentfox test`) |
+| **See** | What agents, tools and MCP servers do I have, and what changed? | `capabilities/discovery/`, `platform/registry/`, `capabilities/monitoring/` (`agentfox scan`, `agentfox scan monitors`, `agentfox agents`) |
+| **Watch** | What are they doing right now? | `runtime/`, `capabilities/detection/`, `apps/gateway/` (`agentfox serve`, `agentfox findings`) |
+| **Contain** | What may each one do? | `platform/identity/`, `platform/policy/`, `capabilities/containment/` (`agentfox permit`, `declare`, `policy`) |
+| **Prove** | Can I show what happened? | `platform/ledger/`, `capabilities/compliance/`, `apps/report/`, `capabilities/evaluation/` (`agentfox report`, `agentfox test`) |
 
 ## Domain model
 
@@ -60,21 +60,21 @@ order:
 
 | Concept | In plain words | Owned by |
 |---|---|---|
-| **Agent** | Something that makes model and tool calls. Registered explicitly, or recorded as a "shadow" agent the first time it is seen. | `core/models/registry.py` (`Agent`), `registry/service.py` (`observe_agent`, `register_agent`) |
-| **Identity, credential** | The non-human identity an agent authenticates as (`nom_agt_…` keys, argon2-hashed). | `core/models/identity.py`, `identity/service.py` (`issue_credential`, `verify_credential`) |
-| **Tool, impact** | A callable the agent can invoke. `impact` is the declared blast radius every containment rule reasons over; an undeclared tool is treated as `read` and flagged `tool_known=False`. `output_trust` says whether values copied from its output taint later arguments. | `core/models/registry.py` (`Tool`), `cli/commands/tools.py` (`agentfox declare tool`) |
-| **Capability grant** | Permission for one identity to call one tool, with optional argument limits and a provenance ceiling (`--max-taint`). No matching grant means default deny. The one softening: `auto()` in its default mode does not raise for an agent that holds no grants at all, until its first grant. | `core/models/identity.py` (`Capability`), `identity/service.py` (`grant_capability`, `check_capability`), `cli/capability_cli.py` |
-| **Provenance / taint** | Where each argument's value came from. Inferred from the conversation (a value copied out of a tool result is `tool_result`) or declared by the caller. `taint_scope` chooses per-session or per-argument reading. | `detection/taint.py` (`TaintTracker`, `TaintMark`), `core/vocab.py` (`TAINT_ORDER`, `taint_rank`), `policy/taint_view.py` |
-| **Detector, detection** | A check over text on one surface (`input`, `output`, `retrieved`, `tool_result`, `tool_args`, …) that returns scored entities. Run in a budgeted, concurrent pipeline. | `detection/base.py` (`Detector`, `BaseDetector`), `detection/pipeline.py` (`DetectorPipeline`), `detection/detectors/`, `detection/adapters/` |
-| **Policy, pack, rule, mode** | A policy document (a "pack") is YAML: rules with a `when` condition and an `effect` (`allow` … `escalate`, `block`). Each bound pack is in `observe` (records what it would do) or `enforce` (applies it). Shipped packs: `baseline`, `eu-ai-act-high-risk`, `tool-containment`, `coding-agent`. Versions are immutable. | `policy/model.py` (`PolicyDocument`, `Rule`, `Condition`), `policy/engine.py` (`NativePolicyEngine`, `combine`), `policy/store.py` (`active_policies`, `set_mode`, and `load_version_document`, the one loader for stored versions), `policies_data/*.yaml` |
+| **Agent** | Something that makes model and tool calls. Registered explicitly, or recorded as a "shadow" agent the first time it is seen. | `core/models/registry.py` (`Agent`), `platform/registry/service.py` (`observe_agent`, `register_agent`) |
+| **Identity, credential** | The non-human identity an agent authenticates as (`nom_agt_…` keys, argon2-hashed). | `core/models/identity.py`, `platform/identity/service.py` (`issue_credential`, `verify_credential`) |
+| **Tool, impact** | A callable the agent can invoke. `impact` is the declared blast radius every containment rule reasons over; an undeclared tool is treated as `read` and flagged `tool_known=False`. `output_trust` says whether values copied from its output taint later arguments. | `core/models/registry.py` (`Tool`), `apps/cli/commands/tools.py` (`agentfox declare tool`) |
+| **Capability grant** | Permission for one identity to call one tool, with optional argument limits and a provenance ceiling (`--max-taint`). No matching grant means default deny. The one softening: `auto()` in its default mode does not raise for an agent that holds no grants at all, until its first grant. | `core/models/identity.py` (`Capability`), `platform/identity/service.py` (`grant_capability`, `check_capability`), `apps/cli/capability_cli.py` |
+| **Provenance / taint** | Where each argument's value came from. Inferred from the conversation (a value copied out of a tool result is `tool_result`) or declared by the caller. `taint_scope` chooses per-session or per-argument reading. | `capabilities/detection/taint.py` (`TaintTracker`, `TaintMark`), `core/vocab.py` (`TAINT_ORDER`, `taint_rank`), `platform/policy/taint_view.py` |
+| **Detector, detection** | A check over text on one surface (`input`, `output`, `retrieved`, `tool_result`, `tool_args`, …) that returns scored entities. Run in a budgeted, concurrent pipeline. | `capabilities/detection/base.py` (`Detector`, `BaseDetector`), `capabilities/detection/pipeline.py` (`DetectorPipeline`), `capabilities/detection/detectors/`, `capabilities/detection/adapters/` |
+| **Policy, pack, rule, mode** | A policy document (a "pack") is YAML: rules with a `when` condition and an `effect` (`allow` … `escalate`, `block`). Each bound pack is in `observe` (records what it would do) or `enforce` (applies it). Shipped packs: `baseline`, `eu-ai-act-high-risk`, `tool-containment`, `coding-agent`. Versions are immutable. | `platform/policy/model.py` (`PolicyDocument`, `Rule`, `Condition`), `platform/policy/engine.py` (`NativePolicyEngine`, `combine`), `platform/policy/store.py` (`active_policies`, `set_mode`, and `load_version_document`, the one loader for stored versions), `policies_data/*.yaml` |
 | **Decision, verdict** | One row per evaluated surface. `verdict` is what was applied; `effective_verdict` is what would have happened with every pack enforcing. Records every policy version in force, so it can be replayed. | `core/models/policy.py` (`Decision`), `runtime/enforcement/result.py` (`EnforcementResult`) |
-| **Finding** | A problem a person should look at, deduplicated by fingerprint and counted on recurrence. A refused tool call is a containment finding titled by what refused it. | `core/models/registry.py` (`Finding`), `prove/findings.py` (`raise_finding`), `containment/findings.py` (`raise_containment_findings`) |
-| **Approval** | A held call waiting for a human; `timeout_action` defaults to deny. Approved, it lets exactly one retry of the same call through, then reads `used`. | `core/models/identity.py` (`ApprovalRequest`), `identity/service.py` (`request_approval`, `resolve_approval`, `redeem_approval`) |
-| **Monitor** | A connected source re-checked on a schedule (a GitHub repo, a hosted API spec, a remote MCP server, a deployed agent). Each run is diffed against the last; what appeared becomes a finding, what cleared closes. | `core/models/registry.py` (`Monitor`, `AlertChannel`), `monitoring/service.py` (`run_monitor`, `run_due`) |
-| **Probe target** | A deployed agent's endpoint that live red-team probes may be sent to, after an explicit, recorded opt-in. | `core/models/evaluation.py` (`ProbeTarget`), `evaluation/live_probes.py` (`opt_in`, `run_target`) |
-| **Proposal** | A change the platform wants to make (a grant learned from traffic, a declaration, a tuning change), with evidence. Filed → proven → approved → applied → verified, or rolled back. Loosening is never applied automatically. | `core/models/improvement.py` (`ChangeProposal`), `improvement/proposals.py`, `improvement/traffic.py` (`propose_from_traffic`) |
-| **Trace, span** | The execution record of one request: an llm span, guardrail spans, tool spans. | `core/models/audit.py`, `prove/audit/trace.py` (`start_trace`, `add_span`, `end_trace`) |
-| **Audit chain, evidence** | Append-only hash chain over every decision and operator action; evidence packages ship a stdlib-only `verify_chain.py`. | `prove/audit/chain.py` (`append`, `verify`), `prove/audit/evidence.py`, `prove/audit/operator_log.py` |
+| **Finding** | A problem a person should look at, deduplicated by fingerprint and counted on recurrence. A refused tool call is a containment finding titled by what refused it. | `core/models/registry.py` (`Finding`), `platform/ledger/findings.py` (`raise_finding`), `capabilities/containment/findings.py` (`raise_containment_findings`) |
+| **Approval** | A held call waiting for a human; `timeout_action` defaults to deny. Approved, it lets exactly one retry of the same call through, then reads `used`. | `core/models/identity.py` (`ApprovalRequest`), `platform/identity/service.py` (`request_approval`, `resolve_approval`, `redeem_approval`) |
+| **Monitor** | A connected source re-checked on a schedule (a GitHub repo, a hosted API spec, a remote MCP server, a deployed agent). Each run is diffed against the last; what appeared becomes a finding, what cleared closes. | `core/models/registry.py` (`Monitor`, `AlertChannel`), `capabilities/monitoring/service.py` (`run_monitor`, `run_due`) |
+| **Probe target** | A deployed agent's endpoint that live red-team probes may be sent to, after an explicit, recorded opt-in. | `core/models/evaluation.py` (`ProbeTarget`), `capabilities/evaluation/live_probes.py` (`opt_in`, `run_target`) |
+| **Proposal** | A change the platform wants to make (a grant learned from traffic, a declaration, a tuning change), with evidence. Filed → proven → approved → applied → verified, or rolled back. Loosening is never applied automatically. | `core/models/improvement.py` (`ChangeProposal`), `capabilities/improvement/proposals.py`, `capabilities/improvement/traffic.py` (`propose_from_traffic`) |
+| **Trace, span** | The execution record of one request: an llm span, guardrail spans, tool spans. | `core/models/audit.py`, `platform/ledger/trace.py` (`start_trace`, `add_span`, `end_trace`) |
+| **Audit chain, evidence** | Append-only hash chain over every decision and operator action; evidence packages ship a stdlib-only `verify_chain.py`. | `platform/ledger/chain.py` (`append`, `verify`), `apps/report/evidence.py`, `platform/ledger/operator_log.py` |
 
 ## The request path
 
@@ -87,7 +87,7 @@ recorded. New surfaces must call these methods, not reimplement them.
 ### (a) A tool call under `agentfox.auto()`
 
 1. `agentfox.auto()` resolves lazily from `src/agentfox/__init__.py` to
-   `runtime/autoguard/__init__.py:auto`. It registers the agent (`registry/service.py:register_agent`),
+   `frameworks/autoguard/__init__.py:auto`. It registers the agent (`platform/registry/service.py:register_agent`),
    counts bound policies, and runs `_PATCHERS` (`_patch_openai`, `_patch_anthropic`,
    `_patch_litellm`, `_patch_langchain`), which replace e.g. `openai.resources.chat.completions.Completions.create`
    with a wrapper built by `_sdk_method`.
@@ -102,10 +102,10 @@ recorded. New surfaces must call these methods, not reimplement them.
 4. The real provider call runs.
 5. **Post-flight.** `_postflight` evaluates the response text (`_evaluate_output` →
    `Enforcer.evaluate` on the `output` surface), then reads tool calls out of the response
-   (`runtime/autoguard/tool_calls.py:_tool_calls_of`, OpenAI `tool_calls` or Anthropic
+   (`frameworks/autoguard/tool_calls.py:_tool_calls_of`, OpenAI `tool_calls` or Anthropic
    `tool_use`) and hands them to `_govern_tool_calls`.
 6. `_govern_tool_calls` registers unseen tools with an inferred impact (`_register_tool`,
-   using `integrations/mcp.py:infer_impact`) and calls `Enforcer.guard_tool_call` for each,
+   using `platform/registry/impact.py:infer_impact`) and calls `Enforcer.guard_tool_call` for each,
    with a `TaintTracker` rebuilt from the request's conversation (`tool_calls.py:_provenance_of`).
 7. `guard_tool_call` (`runtime/enforcement/tool_calls.py`) checks the kill switch again,
    marks each argument's provenance (`TaintTracker.taint_arguments`), writes `TaintTag`
@@ -114,15 +114,15 @@ recorded. New surfaces must call these methods, not reimplement them.
    (`DetectorPipeline.run`, budgeted by a per-request `LatencyLedger`), suppressions,
    `identity.check_capability`, the content checks from `checks.py`, business ladders and
    action analysis, then a `PolicyInput` evaluated by every bound pack
-   (`policy/store.py:active_policies`, `NativePolicyEngine.evaluate`, `combine`). If no
+   (`platform/policy/store.py:active_policies`, `NativePolicyEngine.evaluate`, `combine`). If no
    pack is bound, an in-memory fallback (`rules.py:_fallback_policies`) applies `baseline`
    in observe. A missing grant then overrides the policy result with
    `capability.default_deny` or `capability.constraint_violated`.
 9. `evaluate` persists: a `Decision` row; the trace's verdict is raised; a detection finding
    if a detector rule changed the outcome (`_raise_detection_finding`); containment
-   findings for a refused tool call (`containment/findings.py:raise_containment_findings`
-   → `prove/findings.py:raise_finding`); an `ApprovalRequest` on escalate; a guardrail span;
-   and finally `prove/audit/chain.py:append(session, "decision.<verdict>", …)`.
+   findings for a refused tool call (`capabilities/containment/findings.py:raise_containment_findings`
+   → `platform/ledger/findings.py:raise_finding`); an `ApprovalRequest` on escalate; a guardrail span;
+   and finally `platform/ledger/chain.py:append(session, "decision.<verdict>", …)`.
 10. Back in `_govern_tool_calls`, a `tool` span records what this process actually did,
     and `Blocked` is raised if the mode says so. In the default `policy` mode, an agent with
     no grants at all is not refused for a missing grant (recorded as would-have-blocked);
@@ -130,55 +130,85 @@ recorded. New surfaces must call these methods, not reimplement them.
 
 ### (b) `POST /v1/guard/tool_call` on the gateway
 
-1. `gateway/app.py:create_app` builds the FastAPI app (`app` at module bottom; `agentfox serve`
+1. `apps/gateway/app.py:create_app` builds the FastAPI app (`app` at module bottom; `agentfox serve`
    and `api/index.py` both serve it). Two middlewares run first for `/v1/*` only:
    `degradation_gate` (probes dependencies, applies the fail-open/closed policy, returns 503
    or stamps `X-Nometria-Degraded`) and `admission_gate` (load shedding, 429).
-2. The route `guard_tool_call` in `gateway/routes/inline.py` takes a `GuardToolCallRequest`
+2. The route `guard_tool_call` in `apps/gateway/routes/inline.py` takes a `GuardToolCallRequest`
    body (`agent`, `tool`, `arguments`, `provenance`, `intent`, …). Its dependencies are
-   `gateway/deps.py:db` (a session from `core/db.py:get_session`, committed when the
+   `apps/gateway/deps.py:db` (a session from `core/db.py:get_session`, committed when the
    response is produced) and `agent_credential`, which resolves the bearer key (one that does
    not verify is a 401) and binds the session to that agent's tenant (`core/tenancy.py:bind_session`) and judgment posture.
 3. The handler builds `Enforcer(session)`, resolves the agent, opens a trace
-   (`prove/audit/trace.py:start_trace`) and calls `Enforcer.guard_tool_call` with the
+   (`platform/ledger/trace.py:start_trace`) and calls `Enforcer.guard_tool_call` with the
    caller's declared `provenance`. From here it is steps 7–9 above, unchanged.
-4. The result is serialised with `gateway/verdicts.py:with_verdict_aliases` (which adds the
+4. The result is serialised with `apps/gateway/verdicts.py:with_verdict_aliases` (which adds the
    applied/would-be verdict names) and returned: `verdict`, `effective_verdict`,
    `rules_fired`, `decision_id`, and `approval_id` when escalated.
 
 The drop-in proxy routes (`/v1/chat/completions`, `/v1/messages`, same file) follow
 `Enforcer.run_completion` / `run_completion_stream`, which wrap the same `preflight`, a
-provider call through `providers/` with the circuit breaker in `runtime/reliability.py`,
+provider call through `platform/providers/` with the circuit breaker in `runtime/reliability.py`,
 and the same post-flight.
 
 ## Code map
 
 All paths are under `src/agentfox/` unless they start at the repo root.
 
+### Layers
+
+The package is layered. A layer imports only the layers below it; packages in the
+same layer may import each other. `lint-imports` checks this on every push (CI's lint
+job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlinter]`.
+
+```
+  L5  apps/          cli/  gateway/  mcp_server.py  report/  jobs.py  showcase.py
+        │
+  L4  frameworks/    sdk/  autoguard/  langgraph.py  fastapi.py  mcp.py      (ingress)
+      exporters/     correlation.py  otel.py  siem.py  prometheus.py         (egress)
+      hooks/         coding-agent hooks (Claude Code)
+      fixtures/      the demo world
+        │
+  L3  runtime/       enforcement/ (the Enforcer), availability, reliability, agent loop
+        │
+  L2  capabilities/  detection/  judgment/  grounding/  containment/  business/
+                     discovery/  evaluation/  improvement/  monitoring/  compliance/
+        │
+  L1  platform/      ledger/  policy/  registry/  identity/  providers/  jobs/
+        │
+  L0  core/          config, db, models, tenancy, ids, crypto, outbound, vocab, text
+```
+
+`agentfox/__init__.py` (the lazy `auto`, `AgentFox`, `PolicyViolation` … re-exports) and
+`agentfox/errors.py` (the exception base every ingress raises) sit outside the layers.
+
 | Package | What lives there | Start reading at |
 |---|---|---|
-| `core/` | Settings (`AGENTFOX_*` env, `agentfox.toml`), engine and sessions, ORM models for every table, tenancy, ids, the shared vocabulary (surfaces, taint order, effect ranks, comparators), outbound URL safety, finding webhooks. Imports nothing outside `core`. | `config.py:Settings`, `db.py:get_sessionmaker`, `models/`, `tenancy.py`, `vocab.py` |
-| `fixtures/` | The deterministic demo world (agents, tools, grants, policies, an eval suite) that `agentfox demo`, the playground and the tests seed. | `seed.py:seed` |
-| `runtime/` | The request path. `enforcement/` is the `Enforcer` split into mixins (`enforcer`, `tool_calls`, `surfaces`, `completion`, `streaming`, `checks`, `limits`, `findings`, `rules`, `result`); `autoguard/` is `auto()`; plus availability (fail modes, admission), reliability (breaker, fallback) and loop governance. | `enforcement/__init__.py` docstring, `enforcement/enforcer.py:evaluate`, `autoguard/__init__.py:auto` |
-| `detection/` | Detectors and the pipeline that runs them; taint tracking; text normalisation; `prefilter.py`, which skips a regex on text that cannot match it; action analysis (SQL/shell semantics); composed-escalation checks; tuning and suppressions; `judgment/`, the optional model tiers and the routing table that limits what each may decide. | `base.py`, `pipeline.py`, `taint.py`, `detectors/`, `judgment/capability.py` |
-| `policy/` | The YAML policy model, the native engine and the OPA adapter, storage and binding, the stored-version loader (`load_version_document`, `UnloadablePolicyVersion`), hierarchy and lint, simulation, canaries. | `model.py`, `engine.py`, `store.py` |
-| `identity/` | Non-human identities, credentials, capability grants and their constraints, delegation, approvals. | `service.py:check_capability` |
-| `containment/` | What an agent may do beyond the grant: control-flow integrity, data-access scoping, effects that outlive a call, inter-agent message signing, escalation governance, containment findings. | `findings.py`, `control_flow.py` |
-| `grounding/` | What an answer may say: answerability and abstention, provenance and source authority, entitlement filtering, commitments, numeric/temporal integrity, context integrity, tool contracts, sycophancy. | `answerability.py`, `entitlement.py` |
-| `discovery/` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, exposure (the lethal trifecta), threat coverage. | `repo.py`, `exposure.py` |
-| `registry/` | The agent registry, observed lineage, kill switch and quarantine, skills scanning. | `service.py`, `control.py` |
-| `prove/` | Audit chain, traces, evidence packages, SIEM/OTLP, operator and system logs, compliance catalog and status, findings, the one-page report, failure attribution. | `audit/chain.py`, `findings.py`, `report.py` |
-| `evaluation/` | Eval runner and scorers, CI gating, drift, silent-failure sampling, red team (native probes, adaptive campaigns, Garak/PyRIT adapters), live probes of deployed agents and the public showcase, Ragas. | `runner.py`, `gating.py`, `redteam.py`, `live_probes.py` |
-| `improvement/` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. | `contract.py`, `proposals.py`, `traffic.py` |
-| `business/` | Business rules as guardrails: threshold ladders, compiling written policy into rules, merging rules from many authors, the guardrail catalogue. | `ladder.py`, `compile.py` |
-| `gateway/` | The FastAPI app: inline `/v1/*` enforcement and the `/api/*` control plane the dashboard calls; auth, RBAC, playground sandboxes. One router per file in `routes/`. | `app.py:create_app`, `routes/inline.py`, `deps.py` |
-| `cli/` | The `agentfox` binary (Typer). Command bodies live in `commands/` and the `*_cli.py` modules; `layout.py` decides the visible tree. | `main.py`, `layout.py`, `commands/` |
+| `core/` | Settings (`AGENTFOX_*` env, `agentfox.toml`), engine and sessions, ORM models for every table, tenancy, ids, the shared vocabulary (surfaces, taint order, effect ranks, comparators), the word tokenizer, outbound URL safety, finding webhooks. | `config.py:Settings`, `db.py:get_sessionmaker`, `models/`, `tenancy.py`, `vocab.py` |
+| `platform/ledger/` | The append-only audit chain, traces and spans, operator and system logs, findings. Everything that records what happened. | `chain.py`, `trace.py`, `findings.py`, `operator_log.py` |
+| `platform/policy/` | The YAML policy model, the native engine and the OPA adapter, storage and binding, the stored-version loader (`load_version_document`, `UnloadablePolicyVersion`), hierarchy and lint, simulation, canaries. | `model.py`, `engine.py`, `store.py` |
+| `platform/registry/` | The agent and tool registry, observed lineage, kill switch and quarantine, tool impact (`impact.py:infer_impact`, the one place a tool's impact is guessed), delegation-graph attribution. | `service.py`, `control.py`, `impact.py` |
+| `platform/identity/` | Non-human identities, credentials, capability grants and their constraints, delegation, approvals; operators and their API tokens (`operators.py`). | `service.py:check_capability`, `operators.py` |
+| `platform/providers/` | The `ModelProvider` seam: `echo` (offline default), OpenAI, Anthropic, Azure, Bedrock, Vertex, LiteLLM. | `base.py`, `echo.py` |
+| `platform/jobs/` | Work outside the request: an in-process queue with retries and a dead letter, its persisted store, a scheduler. The handlers that bind job kinds to capabilities are `apps/jobs.py`. Driven by the cron endpoint or `agentfox admin jobs run-due`. | `queue.py`, `store.py`, `scheduler.py` |
+| `capabilities/detection/` | Detectors and the pipeline that runs them; taint tracking; text normalisation; `prefilter.py`, which skips a regex on text that cannot match it; action analysis (SQL/shell semantics); composed-escalation and trajectory checks; tuning, suppressions and explanations. | `base.py`, `pipeline.py`, `taint.py`, `detectors/` |
+| `capabilities/judgment/` | The optional model tiers and the routing table that limits what each may decide; the egress gate in front of hosted tiers. | `capability.py`, `egress.py`, `posture.py` |
+| `capabilities/grounding/` | What an answer may say: answerability and abstention, provenance and source authority, entitlement filtering, commitments, numeric/temporal integrity, context integrity, tool contracts, sycophancy. | `answerability.py`, `entitlement.py` |
+| `capabilities/containment/` | What an agent may do beyond the grant: control-flow integrity, data-access scoping, effects that outlive a call, inter-agent message signing, escalation governance, containment findings. | `findings.py`, `control_flow.py` |
+| `capabilities/business/` | Business rules as guardrails: threshold ladders, compiling written policy into rules, merging rules from many authors, the guardrail catalogue. | `ladder.py`, `compile.py` |
+| `capabilities/discovery/` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, skill files, exposure (the lethal trifecta), threat coverage. | `repo.py`, `exposure.py` |
+| `capabilities/evaluation/` | Eval runner and scorers, CI gating, drift, silent-failure sampling, red team (native probes, adaptive campaigns, Garak/PyRIT adapters), live probes of deployed agents, Ragas. | `runner.py`, `gating.py`, `redteam.py`, `live_probes.py` |
+| `capabilities/improvement/` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. | `contract.py`, `proposals.py`, `traffic.py` |
+| `capabilities/monitoring/` | Continuous monitoring of connected sources: run, diff against the last snapshot, raise and close findings, Slack alerts; GitHub push webhooks queue a rescan. | `service.py`, `snapshots.py`, `alerts.py` |
+| `capabilities/compliance/` | The control catalog, computed control status, EU AI Act risk classification. | `catalog.py`, `status.py`, `risk.py` |
+| `runtime/` | The request path. `enforcement/` is the `Enforcer` split into mixins (`enforcer`, `tool_calls`, `surfaces`, `completion`, `streaming`, `checks`, `limits`, `findings`, `rules`, `result`); plus availability (fail modes, admission), reliability (breaker, fallback), loop governance, and `trace_exporters.py`, the exporters it tells about each trace. | `enforcement/__init__.py` docstring, `enforcement/enforcer.py:evaluate` |
+| `frameworks/` | Ingress for application frameworks, each mapping its calls onto the `Enforcer`: `autoguard/` is `auto()`, `sdk/` the explicit SDK (`AgentFox`, `@fox.tool(impact=…)`), the LangGraph guard (`AgentFoxGuard`), FastAPI middleware, the MCP governor (`McpGovernor`). | `autoguard/__init__.py:auto`, `sdk/__init__.py`, `mcp.py` |
+| `exporters/` | Egress: LangSmith/Langfuse trace correlation (`correlation.py:TraceCorrelation`, which the runtime emits to), OTLP ingest and export, SIEM, Prometheus. | `correlation.py`, `otel.py` |
 | `hooks/` | Coding-agent hooks (Claude Code): a thin per-call client, a warm daemon on a Unix socket that calls the `Enforcer`, the harness contract, and the per-event capability table. | `daemon.py`, `client.py`, `capability.py` |
-| `integrations/` | LangGraph guard (`AgentFoxGuard`), MCP governor (`McpGovernor`) and the read-only MCP server, FastAPI middleware, LangSmith/Langfuse correlation, Prometheus. | `langgraph.py`, `mcp.py`, `mcp_server.py` |
-| `sdk/` | The explicit Python SDK: `AgentFox`, `AgentSession`, `@fox.tool(impact=…)`, local or remote mode. | `__init__.py` |
-| `providers/` | The `ModelProvider` seam: `echo` (offline default), OpenAI, Anthropic, Azure, Bedrock, Vertex, LiteLLM. | `base.py`, `echo.py` |
-| `jobs/` | Work outside the request: an in-process queue with retries and a dead letter, its persisted store, handlers, a scheduler. Driven by the cron endpoint or `agentfox admin jobs run-due`. | `queue.py`, `scheduler.py` |
-| `monitoring/` | Continuous monitoring of connected sources: run, diff against the last snapshot, raise and close findings, Slack alerts; GitHub push webhooks queue a rescan. | `service.py`, `snapshots.py`, `alerts.py` |
+| `fixtures/` | The deterministic demo world (agents, tools, grants, policies, an eval suite) that `agentfox demo`, the playground and the tests seed. | `seed.py:seed` |
+| `apps/gateway/` | The FastAPI app (`agentfox.apps.gateway.app:app`): inline `/v1/*` enforcement and the `/api/*` control plane the dashboard calls; request authentication, RBAC, playground sandboxes. One router per file in `routes/`. | `app.py:create_app`, `routes/inline.py`, `deps.py` |
+| `apps/cli/` | The `agentfox` binary (Typer, `agentfox.apps.cli.main:main`). Command bodies live in `commands/` and the `*_cli.py` modules; `layout.py` decides the visible tree. | `main.py`, `layout.py`, `commands/` |
+| `apps/` (the rest) | `mcp_server.py`, the read-only MCP server for AI clients; `report/`, the one-page summary and evidence packages; `jobs.py`, the job handler table; `showcase.py`, the public showcase run. | `mcp_server.py`, `report/summary.py`, `report/evidence.py` |
 | `policies_data/`, `compliance_data/` | Shipped YAML: the four policy packs; controls, obligations and threats. | — |
 | `src/nometria/` | Deprecated compatibility shim: `import nometria` resolves to the same `agentfox` modules. | — |
 
@@ -199,15 +229,35 @@ Outside the package:
 
 ## Invariants and cross-cutting concerns
 
+**Imports follow the layers** (see [Layers](#layers)); `lint-imports` fails CI otherwise:
+
+- `core` imports nothing in `agentfox` outside `core`. The two session extensions that
+  live higher up (monitor alerts, finding webhooks) are named, not imported, in
+  `core/db.py:SESSION_EXTENSIONS`.
+- `platform` never imports a capability, the runtime or an app. The ledger takes its
+  explainer as an argument (`ledger/trace.py:full_trace(explain=…)`) rather than
+  importing detection.
+- `capabilities` never import the runtime, a framework, an exporter or an app.
+- `runtime` never imports a framework, an exporter or an app: it tells the exporters
+  named in `runtime/trace_exporters.py:TRACE_EXPORTERS` about each trace.
+- `apps/cli` never imports `apps/gateway`: operator tokens live in
+  `platform/identity/operators.py`, which both use.
+
+Three edges are known exceptions, listed by name in `pyproject.toml` with what removes
+each: `platform/policy/hierarchy.py` reads `EU_CLASSES` from `capabilities/compliance`
+(until the EU AI Act pack exists), and evaluation's in-process red-team runner and
+live-probe adapter build an `Enforcer` to measure it.
+
+
 **Tenancy is applied at the session, not the query.** `core/db.py:get_sessionmaker` installs
 `core/tenancy.py`, which attaches a loader criterion to every ORM statement. Do not create
 another session factory, and do not write raw `text()` SQL against tenant tables. Gateway
-code binds the tenant with `bind_session` (see `gateway/deps.py`); with nothing bound, queries
+code binds the tenant with `bind_session` (see `apps/gateway/deps.py`); with nothing bound, queries
 resolve to the deployment's default org, never to every org.
 
-**The audit chain is append-only.** `prove/audit/chain.py:append` is the only write path for
+**The audit chain is append-only.** `platform/ledger/chain.py:append` is the only write path for
 `AuditEntry`; there is no update or delete anywhere. Every decision appends. Every
-privileged operator action must be recorded: `prove/audit/operator_log.py:PRIVILEGED`
+privileged operator action must be recorded: `platform/ledger/operator_log.py:PRIVILEGED`
 declares them, and `tests/platform/ledger/test_operator_log.py` fails if a new operator surface has
 no recording call.
 
@@ -232,7 +282,7 @@ per-process.
 **Nothing leaves the machine by default.** `Settings.allow_egress` (`AGENTFOX_ALLOW_EGRESS`)
 is false; the `echo` provider makes the whole path run with no model or key. Detectors never
 download weights during a request: a missing model reports itself unavailable. Hosted
-judgment tiers, the finding webhook and Slack alerts need egress on, and the admin's posture is clamped by the deployment (`detection/judgment/posture.py`, `egress.py`). Fetching a
+judgment tiers, the finding webhook and Slack alerts need egress on, and the admin's posture is clamped by the deployment (`capabilities/judgment/posture.py`, `egress.py`). Fetching a
 URL a user typed (a spec, an MCP server, a probe target) goes through `core/outbound.py`
 (`guarded_get`, `guarded_post`).
 
@@ -261,22 +311,22 @@ pre-commit hook (`scripts/rebuild_vendored_wheels.py`) does it, and CI's
 
 ## Where to start for common changes
 
-**Add a detector.** Subclass `BaseDetector` (`detection/base.py`) with a `key`, `version`,
-`surfaces` and `_detect`; put native ones in `detection/detectors/`, wrappers of optional
-libraries in `detection/adapters/` (with an `available()` that is false when the extra is
-missing). Register it in `detection/__init__.py` with `register_detector`. It runs only if its
+**Add a detector.** Subclass `BaseDetector` (`capabilities/detection/base.py`) with a `key`, `version`,
+`surfaces` and `_detect`; put native ones in `capabilities/detection/detectors/`, wrappers of optional
+libraries in `capabilities/detection/adapters/` (with an `available()` that is false when the extra is
+missing). Register it in `capabilities/detection/__init__.py` with `register_detector`. It runs only if its
 key is in `Settings.enabled_detectors` (`core/config.py`). Policy acts on its entity types
 through `detection:` conditions; no new rule kind is needed. Tests go in `tests/capabilities/detection/`.
 
 **Add a policy condition (rule kind).** Add the field to `Condition` and, if it needs new
-input, to `PolicyInput` (`policy/model.py`); match it in `NativePolicyEngine._matches`
-(`policy/engine.py`) and translate it in `_rego_conditions` (`policy/opa.py`); populate the
+input, to `PolicyInput` (`platform/policy/model.py`); match it in `NativePolicyEngine._matches`
+(`platform/policy/engine.py`) and translate it in `_rego_conditions` (`platform/policy/opa.py`); populate the
 input in `Enforcer.evaluate`. Document it in `harness/reference/policy-schema.md` and the
 website's `dashboard/app/docs/reference/policies/page.tsx`. Tests in `tests/platform/policy/`.
 
-**Add a CLI command.** Write the command in the module for its group (`cli/commands/<group>.py`
-or the relevant `*_cli.py`) and make sure it is registered in `cli/main.py`. Then place it in
-the visible tree in `cli/layout.py:apply_layout`: commands are found by CLI name and
+**Add a CLI command.** Write the command in the module for its group (`apps/cli/commands/<group>.py`
+or the relevant `*_cli.py`) and make sure it is registered in `apps/cli/main.py`. Then place it in
+the visible tree in `apps/cli/layout.py:apply_layout`: commands are found by CLI name and
 re-registered under one of the thirteen visible verbs (`VISIBLE`); a working name that is not
 re-homed there is not reachable. `tests/apps/cli/test_cli_layout.py` enforces the ceiling, the
 removed names, and the two protocol endpoints kept at their old paths (`hooks run`,
@@ -284,9 +334,9 @@ removed names, and the two protocol endpoints kept at their old paths (`hooks ru
 whether traffic is blocked, and add a pattern to `harness/scripts/guard_blocking_commands.py`),
 then run `scripts/docs_reference.py --write` so the website's CLI reference picks it up.
 
-**Add an HTTP route.** Add it to the router for its family in `gateway/routes/` (use
+**Add an HTTP route.** Add it to the router for its family in `apps/gateway/routes/` (use
 `deps.db`, and `agent_credential` for `/v1/*` or `current_user`/`require(...)` for `/api/*`).
-A new router must be included in `gateway/app.py:create_app`. Regenerate
+A new router must be included in `apps/gateway/app.py:create_app`. Regenerate
 `scripts/api_routes.py --write` and `scripts/docs_reference.py --write`, and update
 `harness/reference/http-api.md`. If the route is a privileged operator action, record it
 (see the audit invariant). Tests in `tests/apps/gateway/` or `tests/e2e/`.
@@ -317,14 +367,12 @@ user-facing version is the website's [limits page](https://useagentfox.com/docs/
 - Admission control, rate limits and the fail-open budget are per-process, so N replicas get
   N times the declared budget.
 - No live IdP, SSO, OIDC or SCIM; principals and grants are declared in AgentFox.
-- `jobs/` is in-process; there is no external queue backend, and scheduled work (monitors,
+- `platform/jobs/` is in-process; there is no external queue backend, and scheduled work (monitors,
   probes, canaries) runs only when something calls the runner.
 - `auto()` does not cover the OpenAI Responses API, or tools your code calls without the model
   asking.
 - The Vercel deployment (`api/`) cannot run Alembic migrations through normal channels.
 - The hand-written prose in `docs/architecture/api-spec.md` (outside the generated route
   tables) still uses some `NOMETRIA_*` names; trust the code.
-- Much of the source carries internal tracking codes (`P3-4`, `PL-7`, `F8.3`) and history in
-  docstrings. They map to [docs/design/PRD.md](docs/design/PRD.md) and
-  [docs/design/traceability.md](docs/design/traceability.md); new code should not add more
-  (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+- Three imports still point up a layer, each named with its TODO in `pyproject.toml`'s
+  `[tool.importlinter]` (see [Invariants](#invariants-and-cross-cutting-concerns)).

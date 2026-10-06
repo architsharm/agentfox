@@ -14,8 +14,8 @@ there. Probes are shallow by design: they prove a capability is *wired*, not tha
 | **Partial** | 16 ◐ |
 | **Absent** | 0 ✗ |
 | **Weighted coverage** | **81%** *(partial counts half)* |
-| **Tests** | 3234 |
-| **Lines** | 129,169 (src + tests) |
+| **Tests** | 3181 |
+| **Lines** | 129,626 (src + tests) |
 | **Failure modes covered** | **96%** — 54 of 57 outright, 2 partial |
 | **Injection recall, regression corpus** | **100%** — 33/33 adversarial, 0 false positive(s) on 18 benign. Our own test strings, so a regression check, not a recall estimate; held-out and external numbers are in benchmarks/REPORT.md |
 
@@ -31,7 +31,7 @@ in [design/traceability.md](design/traceability.md).
 | `P3` | 3 Guardrails | Runtime detectors across nine surfaces + taint | ✅ built | 100 | model-based detectors wired but need an opt-in weights download |
 | `P9` | 9 Action Assurance | Action semantics, blast radius, verified-state preconditions | ◐ partial | 79 | cascade analysis is exactly as good as the trigger declarations it is given — an undeclared webhook stays invisible, and shell analysis remains a deny-list rather than a parser |
 | `P10` | 10 Entitlement | End-user principal, retrieval entitlement filtering | ◐ partial | 26 | OpenFGA adapter is a declared seam, not an implementation |
-| `P7` | 7 Answerability | Knowledge boundary, forced abstention | ✅ built | 141 |  |
+| `P7` | 7 Answerability | Knowledge boundary, forced abstention | ✅ built | 142 |  |
 | `P8` | 8 Provenance | Source tiers, freshness, citation binding | ◐ partial | 96 | catalog ingestion (P8-9: DataHub/OpenMetadata/Unity) absent |
 | `P14` | 14 Context Integrity | Ingestion and retrieval quality gates | ◐ partial | 27 | gates the ingestion and assembly path. Semantic chunk-boundary repair and automatic re-extraction of a corrupt document are not built — a finding is reported and the decision to drop the document belongs to the operator |
 | `P4` | 4 Evaluation | Eval runner, CI gating, drift, silent failure, red team | ◐ partial | 85 | Ragas scorers (I-8) and model-based groundedness (via ModelProvider.judge()) run from the runner alongside the lexical scorer, and a gate fails on an errored case rather than skipping it. Red-team probe calls leave no decisions or findings in the production tables. An annotation queue for human review of borderline eval results is not built |
@@ -53,12 +53,12 @@ in [design/traceability.md](design/traceability.md).
 | `PL-10` | Platform | Operator actions recorded in the decision chain | ✅ built | 22 | the registry of privileged operations is declared and the check is structural, so a new operator surface without an audit call fails the suite. system_scope's cross-tenant operations now land somewhere real: resolving a token's own org before recording (system_log.py, chain.append's org_id) fixed a live misattribution — issuing/revoking a token used to record into whichever tenant the session defaulted to, with its seq computed from a query system_scope had left unfiltered — and the one operation with no tenant to attribute to at all (listing tokens across every org) now writes to a dedicated system-level chain. The registry that makes operator actions structural has no equivalent yet for which system_scope call sites must write to that chain — this one is wired by hand, not enforced by an import-time check |
 | `PL-8` | Platform | Tenant isolation enforced at the session | ✅ built | 31 |  |
 | `X-1` | Adoption | One-line auto-instrumentation | ✅ built | 34 |  |
-| `X-2` | Adoption | Static repo discovery and zero-effort CLI | ✅ built | 68 |  |
+| `X-2` | Adoption | Static repo discovery and zero-effort CLI | ✅ built | 67 |  |
 | `P16` | 16 Business rules | Business-process guardrails and the guardrail catalogue | ◐ partial | 40 | policy compilation is deterministic: 86% of a tuned document and 64% of a held-out one compile with no question. Prose with no parseable structure ("be courteous") is reported as inexpressible rather than guessed at; a model-assisted path for those sentences is not built |
 | `X-4` | Adoption | Protective controls reachable without writing code | ✅ built | 14 |  |
 | `X-3` | Adoption | Control-plane onboarding and attention-first home | ✅ built | 10 |  |
 | `I-1` | Integration | LangGraph-native SDK | ✅ built | 15 |  |
-| `I-2` | Integration | MCP inline governance | ✅ built | 51 |  |
+| `I-2` | Integration | MCP inline governance | ✅ built | 52 |  |
 | `I-3` | Integration | FastAPI middleware and dependency | ✅ built | 7 |  |
 | `I-4` | Integration | LangSmith correlation | ✅ built | 7 |  |
 | `I-5` | Integration | OpenTelemetry | ✅ built | 7 |  |

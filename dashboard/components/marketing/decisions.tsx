@@ -137,9 +137,9 @@ const BLOCK: Decision = {
     { label: "Rule", value: "capability.constraint_violated", mono: true }, // tool-containment.yaml:75
     {
       label: "Reason",
-      // Generated, not written in the policy file: identity/service.py:355-360 builds
+      // Generated, not written in the policy file: platform/identity/service.py:355-360 builds
       // this sentence from the grant and the value that failed it, via
-      // _describe_violation() at identity/service.py:274-287.
+      // _describe_violation() at platform/identity/service.py:274-287.
       value:
         "agent:payments-ops holds a grant for 'payments.transfer', so this is not a missing permission. The grant allows amount below 1000, but this call passed 25000.",
     },
@@ -265,7 +265,7 @@ const RECORD: Decision = {
     {
       label: "Verifier",
       // audit/chain.py:306-311 lists what verify() detects; the command is
-      // cli/main.py:860, and demo.py:519-548 runs it and then edits a record to
+      // apps/cli/main.py:860, and demo.py:519-548 runs it and then edits a record to
       // show the check failing.
       value:
         "Re-hashing the export reports a changed record, a gap in the sequence, an insertion or a reordering.",

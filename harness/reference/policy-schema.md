@@ -2,7 +2,7 @@
 title: Policy YAML schema
 layer: reference
 audience: agents authoring or explaining policy
-source_of_truth: src/agentfox/platform/policy/model.py (PolicyDocument, Rule, Condition), policy/engine.py
+source_of_truth: src/agentfox/platform/policy/model.py (PolicyDocument, Rule, Condition), platform/policy/engine.py
 verified_against: commit 6863b8b, 2026-09-15 — template validated with `agentfox policy validate`
 ---
 

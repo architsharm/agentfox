@@ -286,7 +286,7 @@ type FindingRow = {
 /**
  * Four findings the product raises against itself and against the agents it watches.
  * Types and titles are the literal ones in the source: `redteam_mutation_class`
- * (evaluation/redteam.py), `fabricated_citation` (enforcement.py, titled with
+ * (capabilities/evaluation/redteam.py), `fabricated_citation` (enforcement.py, titled with
  * provenance.py's own reason), `missed_escalation` (escalation.py) and `over_refusal`
  * (answerability.py). `occurrences` is the recurrence count described in the product
  * glossary: the same problem happening again counts on one row rather than filing a

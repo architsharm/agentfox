@@ -396,12 +396,12 @@ export function Discovery() {
 
 const ASSURANCE_ITEMS: Item[] = [
   {
-    // README.md "Test before you trust"; scorer keys in evaluation/scorers.py.
+    // README.md "Test before you trust"; scorer keys in capabilities/evaluation/scorers.py.
     label: "A regression gate",
     body: "Scores a suite against its recorded baseline and exits 1 on a regression. Groundedness, safety and tool_trajectory are registered scorers.",
   },
   {
-    // evaluation/adaptive.py is explicit that this is configuration regression
+    // capabilities/evaluation/adaptive.py is explicit that this is configuration regression
     // testing and a dishonest thing to call adversarial robustness. So is this line.
     label: "A red-team run",
     body: "Probes fired at your own agents' grants, then retried in mutated form. A posture delta, not a robustness certificate.",

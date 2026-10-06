@@ -13,34 +13,40 @@ counts, because those drift; current test and line counts are generated into
 
 ## 1. Package layout — `src/agentfox/`
 
-Everything lives in subpackages. The package root holds only `__init__.py` (the lazy
-`auto`/`off`/`state`/`Blocked` re-exports) and `errors.py` (the exception hierarchy, §3.2).
+The package is layered, and a layer imports only the layers below it (the contracts in
+`pyproject.toml`'s `[tool.importlinter]`, checked by `lint-imports`; the diagram and the
+named exceptions are in [ARCHITECTURE.md](../../ARCHITECTURE.md#layers)). The package
+root holds only `__init__.py` (the lazy `auto`/`off`/`state`/`Blocked`/`AgentFox`
+re-exports) and `errors.py` (the exception hierarchy, §3.2).
 
-| Subpackage | Key modules | Responsibility |
-|---|---|---|
-| **`core/`** | `config.py`, `db.py`, `tenancy.py`, `models/`, `vocab.py`, `outbound.py`, `webhooks.py`, `crypto.py`, `ids.py`, `finding.py` | Settings (`AGENTFOX_*`, `agentfox.toml`) and the startup secret check; engine and session factory; session-level tenant isolation; the ORM (§5); the shared vocabulary (`SURFACES`, `TAINT_ORDER`/`taint_rank`, `EFFECT_RANK`, `COMPARATORS`, `AUTOMATION_ACTOR_TYPE`); vetted outbound HTTP (`guarded_get`/`guarded_post`); the signed finding webhook; at-rest encryption. Imports nothing outside `core`. |
-| **`fixtures/`** | `seed.py` | The deterministic demo world `agentfox demo`, the playground and the tests seed. |
-| **`jobs/`** | `queue.py`, `store.py`, `scheduler.py`, `handlers.py` | Work outside the request: the in-process reference queue, the persisted `jobs` store with retries and a dead letter, per-tenant `JobSchedule` rows, and the handler table (`monitors.run`, `probes.run`, `escalation.scan`, `canary.advance`, `drift.check`, …). |
-| **`discovery/`** | `repo.py`, `exposure.py`, `threats.py`, `openapi.py`, `sessions.py` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, lethal-trifecta exposure, threat coverage. |
-| **`registry/`** | `service.py`, `control.py`, `skills.py` | The agent registry (`observe_agent`, `register_agent`), observed lineage, kill switch and quarantine, MCP tool-poisoning and skill scanning. |
-| **`runtime/`** | `enforcement/` (§3), `autoguard/` (§7), `availability.py`, `reliability.py`, `agent_loop.py` | The request path: the `Enforcer`, `auto()`, fail modes and admission control, the provider circuit breaker and fallback, loop governance. |
-| **`containment/`** | `escalation.py`, `effects.py`, `data_access.py`, `control_flow.py`, `agent_messaging.py`, `findings.py` | What an agent may do beyond the grant: escalation governance and hand-offs, effects that outlive a call, data-access scoping, control-flow integrity, inter-agent message signing, containment findings. |
-| **`grounding/`** | `answerability.py`, `provenance.py`, `entitlement.py`, `commitments.py`, `integrity.py`, `context_integrity.py`, `arbitration.py`, `register.py`, `tool_contract.py`, `sycophancy.py` | What an answer may say: knowledge boundaries and abstention, source authority, entitlement filtering, commitment and disclosure language, numeric/temporal/entity integrity, context integrity, source arbitration, tool contracts, sycophancy. |
-| **`detection/`** | `base.py`, `pipeline.py`, `detectors/`, `adapters/`, `taint.py`, `normalize.py`, `prefilter.py`, `actions.py`, `composition.py`, `trajectory.py`, `files.py`, `tuning.py`, `warmup.py`, `judgment/` | The detector pipeline and everything it reads (§4). `judgment/` holds the optional model tiers and the routing table that limits what each may decide ([judgment-tiers.md](judgment-tiers.md)). |
-| **`policy/`** | `model.py`, `engine.py`, `opa.py`, `store.py`, `hierarchy.py`, `simulate.py`, `canary.py`, `taint_view.py`, `coding.py` | Policy documents, the native engine and the OPA adapter, storage, binding and the stored-version loader, hierarchy and lint, simulation, canaries (§9). |
-| **`business/`** | `compile.py`, `catalogue.py`, `ladder.py`, `graph.py`, `store.py` | Business rules as guardrails: threshold ladders (each with its own mode), compiling written policy into rules, merging rules from many authors. |
-| **`identity/`** | `service.py` | Non-human identities, credentials, capability grants and constraints, delegation, approvals and their redemption (§3.1). |
-| **`prove/`** | `audit/` (`chain.py`, `evidence.py`, `trace.py`, `otel.py`, `siem.py`, `operator_log.py`, `system_log.py`), `compliance/` (`catalog.py`, `status.py`, `risk.py`), `findings.py`, `report.py`, `attribution.py` | The audit chain (§6), traces, evidence packages, SIEM/OTLP, operator logs, the control catalog and computed status, findings, the one-page report, failure attribution. |
-| **`evaluation/`** | `runner.py`, `scorers.py`, `gating.py`, `drift.py`, `silent_failure.py`, `redteam.py`, `adaptive.py`, `live_probes.py`, `showcase.py`, `ragas_adapter.py`, `adapters.py`, `model_groundedness.py` | Eval runner, CI gating (errored cases fail the gate), drift, silent-failure sampling, offline red team (dry-run, isolated), adaptive campaigns, live probes of deployed agents and the public showcase (§15). |
-| **`improvement/`** | `contract.py`, `proposals.py`, `loops.py`, `appliers.py`, `traffic.py` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. |
-| **`monitoring/`** | `service.py`, `snapshots.py`, `alerts.py`, `github.py`, `mcp_live.py` | Continuous monitoring of connected sources: scheduling, diffing runs into findings, Slack alerts, GitHub archive download and push-signature checks, remote MCP tool listings (§15). |
-| **`gateway/`** | `app.py`, `auth.py`, `deps.py`, `verdicts.py`, `playground_sessions.py`, `routes/` | The FastAPI app: inline `/v1/*` and the `/api/*` control plane (§10). One router per file in `routes/`. |
-| **`cli/`** | `main.py`, `layout.py`, `commands/`, `*_cli.py` | The `agentfox` binary (§11). |
-| **`hooks/`** | `daemon.py`, `client.py`, `harness.py`, `protocol.py`, `capability.py`, `baseline.py` | Coding-agent hooks: a thin per-call client, a warm daemon on a Unix socket that calls the `Enforcer`, and the baseline `hooks install` sets up (registers the agent, grants the built-in tools). |
-| **`integrations/`** | `langgraph.py`, `mcp.py`, `mcp_server.py`, `fastapi.py`, `correlation.py`, `prometheus.py` | LangGraph guard (§8), MCP governor and the read-only MCP server, FastAPI middleware, LangSmith/Langfuse correlation, Prometheus. |
-| **`sdk/`** | `__init__.py` | The explicit SDK: `AgentFox`, `AgentSession`, `@fox.tool(impact=…)` (joins the session's trace), `wait_for_approval`; local or remote mode. |
-| **`providers/`** | `base.py`, `echo.py`, `remote.py`, `enterprise.py` | The `ModelProvider` seam: `echo` (offline default), OpenAI, Anthropic, Azure, Bedrock, Vertex, LiteLLM. |
-| `policies_data/`, `compliance_data/` | `baseline.yaml`, `eu-ai-act-high-risk.yaml`, `tool-containment.yaml`, `coding-agent.yaml`; `controls.yaml`, `obligations.yaml`, `threats.yaml` | Shipped YAML, read by `policy/store.py` and `prove/compliance/catalog.py`. |
+| Layer | Subpackage | Key modules | Responsibility |
+|---|---|---|---|
+| L0 | **`core/`** | `config.py`, `db.py`, `tenancy.py`, `models/`, `vocab.py`, `text.py`, `outbound.py`, `webhooks.py`, `crypto.py`, `ids.py`, `finding.py` | Settings (`AGENTFOX_*`, `agentfox.toml`) and the startup secret check; engine and session factory; session-level tenant isolation; the ORM (§5); the shared vocabulary (`SURFACES`, `TAINT_ORDER`/`taint_rank`, `EFFECT_RANK`, `COMPARATORS`, `AUTOMATION_ACTOR_TYPE`); the word tokenizer; vetted outbound HTTP (`guarded_get`/`guarded_post`); the signed finding webhook; at-rest encryption. Imports nothing outside `core`. |
+| L1 | **`platform/ledger/`** | `chain.py`, `trace.py`, `findings.py`, `operator_log.py`, `system_log.py` | The audit chain (§6), traces and spans, findings, operator and system logs. |
+| L1 | **`platform/policy/`** | `model.py`, `engine.py`, `opa.py`, `store.py`, `hierarchy.py`, `simulate.py`, `canary.py`, `taint_view.py`, `coding.py` | Policy documents, the native engine and the OPA adapter, storage, binding and the stored-version loader, hierarchy and lint, simulation, canaries (§9). |
+| L1 | **`platform/registry/`** | `service.py`, `control.py`, `impact.py`, `attribution.py` | The agent and tool registry (`observe_agent`, `register_agent`), observed lineage, kill switch and quarantine, MCP tool-poisoning, tool impact (`infer_impact`), delegation-graph attribution. |
+| L1 | **`platform/identity/`** | `service.py`, `operators.py` | Non-human identities, credentials, capability grants and constraints, delegation, approvals and their redemption (§3.1); operators and their API tokens. |
+| L1 | **`platform/providers/`** | `base.py`, `echo.py`, `remote.py`, `enterprise.py` | The `ModelProvider` seam: `echo` (offline default), OpenAI, Anthropic, Azure, Bedrock, Vertex, LiteLLM. |
+| L1 | **`platform/jobs/`** | `queue.py`, `store.py`, `scheduler.py` | Work outside the request: the in-process reference queue, the persisted `jobs` store with retries and a dead letter, per-tenant `JobSchedule` rows. The handler table is `apps/jobs.py`. |
+| L2 | **`capabilities/detection/`** | `base.py`, `pipeline.py`, `detectors/`, `adapters/`, `taint.py`, `normalize.py`, `prefilter.py`, `actions.py`, `composition.py`, `trajectory.py`, `files.py`, `tuning.py`, `warmup.py` | The detector pipeline and everything it reads (§4). |
+| L2 | **`capabilities/judgment/`** | `capability.py`, `router.py`, `egress.py`, `posture.py`, `panel.py`, `llm.py`, `jev.py` | The optional model tiers and the routing table that limits what each may decide ([judgment-tiers.md](judgment-tiers.md)). |
+| L2 | **`capabilities/grounding/`** | `answerability.py`, `provenance.py`, `entitlement.py`, `commitments.py`, `integrity.py`, `context_integrity.py`, `arbitration.py`, `register.py`, `tool_contract.py`, `sycophancy.py` | What an answer may say: knowledge boundaries and abstention, source authority, entitlement filtering, commitment and disclosure language, numeric/temporal/entity integrity, context integrity, source arbitration, tool contracts, sycophancy. |
+| L2 | **`capabilities/containment/`** | `escalation.py`, `effects.py`, `data_access.py`, `control_flow.py`, `agent_messaging.py`, `findings.py` | What an agent may do beyond the grant: escalation governance and hand-offs, effects that outlive a call, data-access scoping, control-flow integrity, inter-agent message signing, containment findings. |
+| L2 | **`capabilities/business/`** | `compile.py`, `catalogue.py`, `ladder.py`, `graph.py`, `store.py` | Business rules as guardrails: threshold ladders (each with its own mode), compiling written policy into rules, merging rules from many authors. |
+| L2 | **`capabilities/discovery/`** | `repo.py`, `exposure.py`, `threats.py`, `openapi.py`, `sessions.py`, `skills.py` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, skill files, lethal-trifecta exposure, threat coverage. |
+| L2 | **`capabilities/evaluation/`** | `runner.py`, `scorers.py`, `gating.py`, `drift.py`, `silent_failure.py`, `redteam.py`, `adaptive.py`, `live_probes.py`, `ragas_adapter.py`, `adapters.py`, `model_groundedness.py` | Eval runner, CI gating (errored cases fail the gate), drift, silent-failure sampling, offline red team (dry-run, isolated), adaptive campaigns, live probes of deployed agents (§15). |
+| L2 | **`capabilities/improvement/`** | `contract.py`, `proposals.py`, `loops.py`, `appliers.py`, `traffic.py` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. |
+| L2 | **`capabilities/monitoring/`** | `service.py`, `snapshots.py`, `alerts.py`, `github.py`, `mcp_live.py` | Continuous monitoring of connected sources: scheduling, diffing runs into findings, Slack alerts, GitHub archive download and push-signature checks, remote MCP tool listings (§15). |
+| L2 | **`capabilities/compliance/`** | `catalog.py`, `status.py`, `risk.py` | The control catalog, computed control status, EU AI Act risk classification. |
+| L3 | **`runtime/`** | `enforcement/` (§3), `availability.py`, `reliability.py`, `agent_loop.py`, `trace_exporters.py` | The request path: the `Enforcer`, fail modes and admission control, the provider circuit breaker and fallback, loop governance, and the exporters it tells about each trace. |
+| L4 | **`frameworks/`** | `autoguard/` (§7), `sdk/`, `langgraph.py`, `fastapi.py`, `mcp.py` | Ingress for application frameworks: `auto()`, the explicit SDK (`AgentFox`, `AgentSession`, `@fox.tool(impact=…)`, `wait_for_approval`), the LangGraph guard (§8), FastAPI middleware, the MCP governor. |
+| L4 | **`exporters/`** | `correlation.py`, `otel.py`, `siem.py`, `prometheus.py` | Egress: LangSmith/Langfuse correlation (the runtime's trace exporter), OTLP ingest and export, SIEM, Prometheus. |
+| L4 | **`hooks/`** | `daemon.py`, `client.py`, `harness.py`, `protocol.py`, `capability.py`, `baseline.py` | Coding-agent hooks: a thin per-call client, a warm daemon on a Unix socket that calls the `Enforcer`, and the baseline `hooks install` sets up (registers the agent, grants the built-in tools). |
+| L4 | **`fixtures/`** | `seed.py` | The deterministic demo world `agentfox demo`, the playground and the tests seed. |
+| L5 | **`apps/gateway/`** | `app.py`, `auth.py`, `deps.py`, `verdicts.py`, `playground_sessions.py`, `routes/` | The FastAPI app (`agentfox.apps.gateway.app:app`): inline `/v1/*` and the `/api/*` control plane (§10). One router per file in `routes/`. |
+| L5 | **`apps/cli/`** | `main.py`, `layout.py`, `commands/`, `*_cli.py` | The `agentfox` binary (`agentfox.apps.cli.main:main`, §11). |
+| L5 | **`apps/`** | `mcp_server.py`, `report/` (`summary.py`, `evidence.py`), `jobs.py`, `showcase.py` | The read-only MCP server, the one-page report and evidence packages, the job handler table (`monitors.run`, `probes.run`, `escalation.scan`, `canary.advance`, `drift.check`, …), the public showcase. |
+| — | `policies_data/`, `compliance_data/` | `baseline.yaml`, `eu-ai-act-high-risk.yaml`, `tool-containment.yaml`, `coding-agent.yaml`; `controls.yaml`, `obligations.yaml`, `threats.yaml` | Shipped YAML, read by `platform/policy/store.py` and `capabilities/compliance/catalog.py`. |
 
 ---
 
@@ -82,7 +88,7 @@ memory writes and agent messages included), not only on completions and tool cal
 `evaluate` or one of the `guard_*` methods; they never reimplement gate logic. `auto()` once
 carried a partial copy that drifted from the gateway's, which is why `preflight` is shared.
 
-### 3.1 Approvals and redemption — `identity/service.py`
+### 3.1 Approvals and redemption — `platform/identity/service.py`
 
 An escalation files an `ApprovalRequest` (`request_approval`) bound to the agent and to what
 `held_call` returned. `resolve_approval` approves or denies it:
@@ -216,7 +222,7 @@ prove this record hasn't been altered."
 `agentfox.frameworks.autoguard` via module `__getattr__`, so a bare `import agentfox` touches no
 DB and makes no client calls.
 
-`runtime/autoguard/__init__.py`, `auto(agent=None, *, mode="policy", environment=None,
+`frameworks/autoguard/__init__.py`, `auto(agent=None, *, mode="policy", environment=None,
 session_id=None, intent=None, register=True, quiet=False, …)`:
 
 1. Detects installed frameworks from `sys.modules` (`autoguard/environment.py`,
@@ -402,7 +408,7 @@ cron secret (`/api/internal/jobs/run` only). Six roles (`owner`, `admin`, `secur
 
 Conventions: errors are FastAPI `{"detail": …}` bodies; `/v1/*` returns 429 with
 `Retry-After` when admission control sheds load and 503 when degraded under `fail_mode=closed`;
-privileged operator actions are recorded on the audit chain (`prove/audit/operator_log.py`
+privileged operator actions are recorded on the audit chain (`platform/ledger/operator_log.py`
 declares them), including evidence downloads.
 
 ---
@@ -425,23 +431,23 @@ declares them), including evidence downloads.
 
 ---
 
-## 15. Monitoring and live probes — `src/agentfox/capabilities/monitoring/`, `evaluation/live_probes.py`
+## 15. Monitoring and live probes — `src/agentfox/capabilities/monitoring/`, `capabilities/evaluation/live_probes.py`
 
 **Monitors.** A `Monitor` row watches one source: `github_repo` (`owner/repo`), `hosted_api`
 (an OpenAPI URL), `mcp_server` (a registered server's name) or `deployed_agent` (a
 `ProbeTarget` id). Monitors are created when a source is connected and scanned, or by hand
-(`POST /api/monitors`, `agentfox scan monitors add`). `monitoring/service.py:run_monitor` runs
+(`POST /api/monitors`, `agentfox scan monitors add`). `capabilities/monitoring/service.py:run_monitor` runs
 one in three steps, the same for every kind:
 
 1. **Observe** — the kind's runner (`register_kind`) re-reads the source: downloads and rescans
-   the repository archive (`github.py`), refetches the spec (`discovery/openapi.py`, through
+   the repository archive (`github.py`), refetches the spec (`capabilities/discovery/openapi.py`, through
    `guarded_get`), or reads a remote MCP server's tool listing (`mcp_live.py`, through
    `guarded_post`).
 2. **Diff** — `snapshots.diff_repo` / `diff_api` compare the snapshot with `baseline_json`. The
    first run only stores a baseline.
 3. **Reconcile** — each new condition (`monitor_lethal_trifecta`, `monitor_new_tool`,
    `monitor_governance_removed`, `monitor_api_destructive_endpoint`, …) is raised through
-   `prove.findings.raise_finding` keyed by the condition, so a recurrence reopens the same
+   `platform.ledger.findings.raise_finding` keyed by the condition, so a recurrence reopens the same
    finding; an open finding whose condition cleared is resolved as automated.
 
 A run that fails never closes a finding and never replaces the baseline. After
@@ -450,19 +456,19 @@ finding, closed by the next successful run. A run that could not decide (a disab
 target, live probes off) is `inconclusive`.
 
 **Scheduling.** The `monitors.run` job runs a tenant's due monitors; each monitor keeps its own
-interval (clamped between 5 minutes and 30 days). `jobs/scheduler.py` fills the queue from
+interval (clamped between 5 minutes and 30 days). `platform/jobs/scheduler.py` fills the queue from
 per-tenant `JobSchedule` rows; nothing runs unless something triggers the runner:
 `/api/internal/jobs/run` (Vercel cron, and `.github/workflows/monitors.yml` every 30 minutes)
 or `agentfox admin jobs run-due` on a self-hosted scheduler. A signed GitHub push to the watched
 branch queues an immediate rescan of that commit.
 
 **Alerts.** Findings a run opens, reopens or closes go to the deployment's finding webhook
-(`core/webhooks.py`) and, when configured, to Slack (`monitoring/alerts.py`): the deployment's
+(`core/webhooks.py`) and, when configured, to Slack (`capabilities/monitoring/alerts.py`): the deployment's
 `AGENTFOX_SLACK_WEBHOOK_URL` and a tenant's own `AlertChannel` (encrypted, `https://hooks.slack.com/`
 only). Messages are queued on the session and sent after commit by one daemon worker with a
 bounded queue; with `allow_egress` off nothing is sent.
 
-**Live probes.** `evaluation/live_probes.py` sends a fixed library of adversarial messages to a
+**Live probes.** `capabilities/evaluation/live_probes.py` sends a fixed library of adversarial messages to a
 deployed agent and scores what comes back (a reversed canary code, forbidden tool calls, leak
 markers). A `ProbeTarget` is created disabled; `opt_in` records who agreed, when, and the
 warning text, and creates the target's `deployed_agent` monitor. The `http` adapter posts only
@@ -471,7 +477,7 @@ the opt-in. Per-target limits are clamped to hard caps (probes per run, rate, mi
 timeout; plus targets and wall-clock per job), and `AGENTFOX_LIVE_PROBES_ENABLED=false` turns
 every target off. Each run is a `redteam_campaigns` row (`runner="live"`); an escape opens a
 `live_probe_escape` finding, a later contained run closes it, and an endpoint error is recorded
-as `error`, which does neither. `evaluation/showcase.py` runs the same thing against the demo
+as `error`, which does neither. `apps/showcase.py` runs the same thing against the demo
 agent in a dedicated tenant for the public `/live` page, only when
 `AGENTFOX_SHOWCASE_ENABLED` is set.
 

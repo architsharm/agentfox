@@ -303,15 +303,30 @@ proves the business-pack story.
   - The stale `__pycache__` folders of the old layout are gone.
 - One loader for stored policy versions (`policy/store.py::load_version_document`), used by
   the runtime and every read-only view.
-- The `monitoring` package, added flat at `src/agentfox/monitoring/` rather than under
-  `capabilities/`; it moves in phase 1.
+- Phase 1 (layers):
+  - `src/agentfox/` is `core/` < `platform/` (ledger, policy, registry, identity,
+    providers, jobs) < `capabilities/` (detection, judgment, grounding, containment,
+    business, discovery, evaluation, improvement, monitoring, compliance) < `runtime/` <
+    `frameworks/`, `exporters/`, `hooks/`, `fixtures/` < `apps/` (cli, gateway,
+    mcp_server, report, the job handlers, the showcase). `prove/` and `integrations/` are
+    split across those homes; `harness/` and `hooks/` are unchanged until phase 2.
+  - The cycles in section 3 are broken: `core/seed.py` is `fixtures/`; the constants are
+    `core/vocab.py`; trace correlation is an exporter the runtime tells about each trace
+    (`runtime/trace_exporters.py`); `infer_impact` is one function in
+    `platform/registry/impact.py`; operator tokens are `platform/identity/operators.py`,
+    so the CLI does not import the gateway; detection no longer imports grounding or
+    containment; the ledger no longer imports detection.
+  - import-linter enforces the layers and "core imports nothing outside core" in CI's
+    lint job and `just lint`. Three edges are named exceptions: `EU_CLASSES`
+    (policy -> compliance, until the EU AI Act pack in phase 4) and evaluation's
+    in-process red-team runner and live-probe adapter (-> runtime).
 
 **Remaining, per phase:**
 
 | Phase | Remaining |
 |---|---|
 | 0. Hygiene | Done |
-| 1. Layers | All of it: `platform/`, `capabilities/` (including moving `monitoring/`), `frameworks/`, `exporters/`, `apps/`; the cycle fixes; import-linter in CI |
+| 1. Layers | Done, except the three import-linter exceptions named above. Intra-layer cycles remain between `capabilities/detection` and `capabilities/judgment` (the judgment detector, and egress redaction through detection's PII detector) and between `capabilities/evaluation` and `capabilities/monitoring` (opting a probe target in creates its monitor) |
 | 2. Harness SPI | All of it, including the `harness/` → `plugins/claude-code/` rename |
 | 3. Second harness | Deferred (section 9) |
 | 4. Packs | All of it |

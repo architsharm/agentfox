@@ -236,11 +236,11 @@ PROBES: list[Probe] = [
         "the finding webhook. GitHub is the only code host; there is no PagerDuty or "
         "email channel; each job runs a bounded batch of due monitors",
         test_files=(
-            "monitoring/test_monitor_runs.py",
-            "monitoring/test_monitor_routes.py",
-            "monitoring/test_monitor_schema.py",
-            "monitoring/test_snapshots.py",
-            "cli/test_monitor_cli.py",
+            "capabilities/monitoring/test_monitor_runs.py",
+            "capabilities/monitoring/test_monitor_routes.py",
+            "capabilities/monitoring/test_monitor_schema.py",
+            "capabilities/monitoring/test_snapshots.py",
+            "apps/cli/test_monitor_cli.py",
         ),
     ),
     Probe(
@@ -364,7 +364,7 @@ PROBES: list[Probe] = [
         "gates the ingestion and assembly path. Semantic chunk-boundary repair and "
         "automatic re-extraction of a corrupt document are not built — a finding is "
         "reported and the decision to drop the document belongs to the operator",
-        test_files=("grounding/test_context_integrity.py",),
+        test_files=("capabilities/grounding/test_context_integrity.py",),
     ),
     # --- Layer D: Judge
     Probe(
@@ -394,9 +394,9 @@ PROBES: list[Probe] = [
         "fixed rather than adaptive, and an http target must speak the small JSON contract "
         "the adapter sends. The public showcase is off unless AGENTFOX_SHOWCASE_ENABLED is set",
         test_files=(
-            "evaluation/test_live_probes.py",
-            "gateway/test_probes_and_showcase.py",
-            "monitoring/test_deployed_agent_monitor.py",
+            "capabilities/evaluation/test_live_probes.py",
+            "apps/gateway/test_probes_and_showcase.py",
+            "capabilities/monitoring/test_deployed_agent_monitor.py",
         ),
     ),
     Probe(
@@ -410,7 +410,7 @@ PROBES: list[Probe] = [
         "each handoff dropped. Both work on constraints that were written down — an "
         "expectation the human held and never typed is invisible here, and no trace "
         "analysis recovers it",
-        test_files=("prove/test_attribution.py",),
+        test_files=("platform/registry/test_attribution.py",),
     ),
     Probe(
         "P11",
@@ -508,7 +508,7 @@ PROBES: list[Probe] = [
         "schedules and drained by a cron call (Vercel cron, a 30-minute GitHub Actions "
         "runner, or `agentfox admin jobs run-due`). Each drain runs in the calling "
         "process; a Redis or SQS worker belongs behind the same interface and is not built",
-        test_files=("jobs/test_scheduler_and_jobs.py",),
+        test_files=("platform/jobs/test_scheduler_and_jobs.py",),
     ),
     Probe(
         "PL-6",
@@ -571,10 +571,10 @@ PROBES: list[Probe] = [
         "are lexical and licensed per domain; they judge standing, not content, and a "
         "licensed operator turns them off deliberately",
         test_files=(
-            "containment/test_data_access.py",
-            "grounding/test_tool_contract.py",
-            "grounding/test_register.py",
-            "grounding/test_arbitration.py",
+            "capabilities/containment/test_data_access.py",
+            "capabilities/grounding/test_tool_contract.py",
+            "capabilities/grounding/test_register.py",
+            "capabilities/grounding/test_arbitration.py",
         ),
     ),
     Probe(
@@ -595,7 +595,7 @@ PROBES: list[Probe] = [
         "The registry that makes operator actions structural has no equivalent yet for "
         "which system_scope call sites must write to that chain — this one is wired by "
         "hand, not enforced by an import-time check",
-        test_files=("prove/test_operator_log.py", "prove/test_system_log.py"),
+        test_files=("platform/ledger/test_operator_log.py", "platform/ledger/test_system_log.py"),
     ),
     Probe(
         "PL-8",

@@ -636,7 +636,7 @@ export function RedactionMock({ className }: { className?: string }) {
 type ScanRow = {
   /** Site.kind, src/agentfox/capabilities/discovery/repo.py:164 */
   kind: string;
-  /** Site.severity, rendered by the CLI as the word itself, cli/onboarding.py:81-87 */
+  /** Site.severity, rendered by the CLI as the word itself, apps/cli/onboarding.py:81-87 */
   severity: "critical" | "high" | "medium" | "low" | "info";
   governed: boolean;
   where: string;
@@ -713,13 +713,13 @@ const AGENTS: AgentRow[] = [
     slug: "hr-screening",
     governed: false,
     reaches: ["hr.score_candidate"], // seed.py:182
-    flag: "unowned", // cli/main.py:360
+    flag: "unowned", // apps/cli/main.py:360
   },
 ];
 
 function SeverityMark({ severity, governed }: { severity: ScanRow["severity"]; governed: boolean }) {
   if (governed) {
-    // cli/onboarding.py:286
+    // apps/cli/onboarding.py:286
     return <span className="mk-chip mk-chip-go">governed</span>;
   }
   const tone =
@@ -728,7 +728,7 @@ function SeverityMark({ severity, governed }: { severity: ScanRow["severity"]; g
       : severity === "medium"
         ? " mk-chip-hold"
         : "";
-  // cli/onboarding.py:81-87: critical is upper-cased, the rest are lower-case.
+  // apps/cli/onboarding.py:81-87: critical is upper-cased, the rest are lower-case.
   const word = severity === "critical" ? "CRITICAL" : severity;
   return <span className={`mk-chip${tone}`}>{word}</span>;
 }
@@ -760,9 +760,9 @@ export function DiscoveryMock({ className }: { className?: string }) {
   return (
     <Frame title="agentfox scan" className={className}>
       <div style={{ display: "grid", gap: 7 }}>
-        {/* cli/onboarding.py:248 */}
+        {/* apps/cli/onboarding.py:248 */}
         <Field name="scanned">412 files in ~/work/checkout-agents</Field>
-        {/* cli/onboarding.py:257-258. 56% covered, so 44% of the bar is the problem. */}
+        {/* apps/cli/onboarding.py:257-258. 56% covered, so 44% of the bar is the problem. */}
         <div className="mk-row" style={{ gap: 10, justifyContent: "space-between" }}>
           <span className="mk-label">model call sites governed</span>
           <span className="mk-mono" style={{ color: "var(--mk-stop)", fontWeight: 600 }}>
@@ -776,7 +776,7 @@ export function DiscoveryMock({ className }: { className?: string }) {
 
       <Rule />
 
-      {/* Two rows, worst first, one line each. cli/onboarding.py:264-265. */}
+      {/* Two rows, worst first, one line each. apps/cli/onboarding.py:264-265. */}
       <div style={{ display: "grid", gap: 9 }}>
         <span className="mk-label">worst first</span>
         {SCAN.slice(0, 2).map((row) => (
@@ -827,10 +827,10 @@ type ScorerRow = {
  * here is presented as a measurement of anything.
  *
  * Real: the suite key and name (src/agentfox/fixtures/seed.py:462-463), its five cases
- * (seed.py:224-272), the scorer keys and their thresholds (evaluation/silent_failure.py:245,
- * :265 and evaluation/scorers.py:186), the summary line and column headers
- * (cli/main.py:727-745), the default tolerance (evaluation/gating.py:28), the regression
- * sentence (gating.py:42-47) and the gate verdict (cli/main.py:786-790).
+ * (seed.py:224-272), the scorer keys and their thresholds (capabilities/evaluation/silent_failure.py:245,
+ * :265 and capabilities/evaluation/scorers.py:186), the summary line and column headers
+ * (apps/cli/main.py:727-745), the default tolerance (capabilities/evaluation/gating.py:28), the regression
+ * sentence (gating.py:42-47) and the gate verdict (apps/cli/main.py:786-790).
  */
 const SCORERS: ScorerRow[] = [
   {
@@ -871,7 +871,7 @@ export function EvalMock({ className }: { className?: string }) {
         {/* seed.py:462-463 */}
         <Field name="suite">support-quality</Field>
         <Field name="name">Support answer quality</Field>
-        {/* cli/main.py:727-728 */}
+        {/* apps/cli/main.py:727-728 */}
         <Field name="run">5 cases, 0 errors</Field>
       </div>
 
@@ -892,7 +892,7 @@ export function EvalMock({ className }: { className?: string }) {
         >
           <thead>
             <tr>
-              {/* cli/main.py:731 */}
+              {/* apps/cli/main.py:731 */}
               {["scorer", "mean", "min", "max", "pass rate"].map((h, i) => (
                 <th
                   key={h}
@@ -959,7 +959,7 @@ export function EvalMock({ className }: { className?: string }) {
 
       <Rule />
 
-      {/* cli/main.py:788 */}
+      {/* apps/cli/main.py:788 */}
       <Verdict tone="stop" verdict="GATE FAIL">
         <p style={STRONG}>
           {/* gating.py:42-47, with gating.py:28 DEFAULT_TOLERANCE as the tolerance */}
@@ -973,7 +973,7 @@ export function EvalMock({ className }: { className?: string }) {
       </Verdict>
 
       <div className="mk-row" style={{ gap: 8 }}>
-        {/* cli/main.py:781-785 */}
+        {/* apps/cli/main.py:781-785 */}
         <span className="mk-chip">exit 1</span>
         <span className="mk-chip">JUnit XML</span>
         <span className="mk-chip">SARIF</span>
@@ -1003,7 +1003,7 @@ type ProbeRow = {
  * Real: every probe key, category, severity, OWASP id, ATLAS id and description
  * (src/agentfox/capabilities/evaluation/redteam.py:136-360), the summary keys and how recall and
  * precision are defined (redteam.py:1053-1076), the headline sentence
- * (redteam.py:822-825) and the scope statement (evaluation/adaptive.py:72-80).
+ * (redteam.py:822-825) and the scope statement (capabilities/evaluation/adaptive.py:72-80).
  */
 const PROBES: ProbeRow[] = [
   {
@@ -1187,7 +1187,7 @@ type ControlRow = {
  * the framework keys (controls.yaml:16-24), the control count (43 entries in that file),
  * every control key and title, the status vocabulary (compliance/status.py:43), the
  * rationale sentence each rule handler emits (status.py:155-390) and the posture line
- * (cli/main.py:1011-1014).
+ * (apps/cli/main.py:1011-1014).
  */
 const CONTROLS: ControlRow[] = [
   {
@@ -1284,9 +1284,9 @@ export function CompliancePanel({ className }: { className?: string }) {
       <Rule />
 
       <div style={{ display: "grid", gap: 8 }}>
-        {/* cli/main.py:1042 */}
+        {/* apps/cli/main.py:1042 */}
         <span className="mk-label">all frameworks, 43 controls</span>
-        {/* cli/main.py:1044-1047; the four statuses are status.py:43 */}
+        {/* apps/cli/main.py:1044-1047; the four statuses are status.py:43 */}
         <div className="mk-row" style={{ gap: 7 }}>
           <span className="mk-chip mk-chip-go">29 effective</span>
           <span className="mk-chip mk-chip-hold">6 degraded</span>

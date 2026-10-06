@@ -2536,7 +2536,7 @@
     }
    ],
    "body": {
-    "model": "agentfox__gateway__routes__escalation__PolicyIn",
+    "model": "agentfox__apps__gateway__routes__escalation__PolicyIn",
     "fields": [
      {
       "name": "agent",
@@ -5619,7 +5619,7 @@
     }
    ],
    "body": {
-    "model": "agentfox__gateway__routes__policy__PolicyIn",
+    "model": "agentfox__apps__gateway__routes__policy__PolicyIn",
     "fields": [
      {
       "name": "body",
@@ -5796,7 +5796,7 @@
    "description": "",
    "params": [],
    "body": {
-    "model": "agentfox__gateway__routes__policy__PolicyIn",
+    "model": "agentfox__apps__gateway__routes__policy__PolicyIn",
     "fields": [
      {
       "name": "body",
@@ -7033,7 +7033,7 @@
     }
    ],
    "body": {
-    "model": "agentfox__gateway__routes__governance__AssessIn",
+    "model": "agentfox__apps__gateway__routes__governance__AssessIn",
     "fields": [
      {
       "name": "eu_ai_act_class",
@@ -7270,7 +7270,7 @@
     }
    ],
    "body": {
-    "model": "agentfox__gateway__routes__provenance__AssessIn",
+    "model": "agentfox__apps__gateway__routes__provenance__AssessIn",
     "fields": [
      {
       "name": "answer",

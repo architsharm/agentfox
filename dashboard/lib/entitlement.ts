@@ -2,7 +2,7 @@
  * Which kind of principal a grant names.
  *
  * The gateway matches a grant against a caller as either `("subject", their id)` or
- * `("group", one of their teams)` (grounding/entitlement.py). The Access control form
+ * `("group", one of their teams)` (capabilities/grounding/entitlement.py). The Access control form
  * used to post `principal_kind=group` for every grant, so a grant to
  * `alice@yourcompany.com` was stored as a *group* called that, matched nobody, and
  * the source stayed invisible to Alice with no error anywhere.

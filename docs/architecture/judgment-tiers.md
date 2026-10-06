@@ -37,7 +37,7 @@ and no network, and some decisions have no other permitted decider.
 | `semantic` | is this question contested | 8.4% | **81.7%** | best available |
 | `performative` | does "shall I send the rejection" settle it | 0/96 | 7% | vote, else escalate |
 
-Every number is in `EVIDENCE` in `detection/judgment/capability.py` with its corpus and
+Every number is in `EVIDENCE` in `capabilities/judgment/capability.py` with its corpus and
 sample size, and every exclusion quotes the measurement that caused it:
 
 ```python
@@ -119,7 +119,7 @@ So there are two layers:
 | **posture** — which permitted tiers to use, how strictly | admin, in the product | yes | yes, in the audit chain |
 
 The rule between them is one-directional and enforced in
-`detection/judgment/posture.py`: **posture may narrow what the deployment permits and may
+`capabilities/judgment/posture.py`: **posture may narrow what the deployment permits and may
 never widen it.** Enabling `jev` on a deployment with `allow_egress = false`
 returns `409` with the reason, rather than storing a preference that silently
 does nothing — a settings page showing a hosted tier as enabled while nothing

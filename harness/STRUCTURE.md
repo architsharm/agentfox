@@ -61,8 +61,8 @@ never copies them.
    explicit confirm step in every skill that reaches it. All three change together.
 6. **Generated docs are regenerated, never edited.** `docs/status.md` and
    `docs/design/coverage-map.md` have commands in `reference/docs-map.md`.
-7. **Same-commit rule.** A change to `src/agentfox/apps/cli/`, `config.py`, `gateway/routes/`,
-   `policy/model.py` or `policies_data/` updates the matching `reference/` file in the same
+7. **Same-commit rule.** A change to `src/agentfox/apps/cli/`, `config.py`, `apps/gateway/routes/`,
+   `platform/policy/model.py` or `policies_data/` updates the matching `reference/` file in the same
    commit. Fixing a bug in `known-issues.md` deletes its entry in the same commit.
 8. **Every repo `.md` is classified.** A new doc anywhere in the repo gets a row in
    `reference/docs-map.md`.
