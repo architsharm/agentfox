@@ -274,8 +274,9 @@ verdict: block | rules: ['capability.denied']`}</Output>
         Three keyword arguments are accepted by every patched call and removed before the
         provider sees them: <code>agentfox_principal</code> (the end user the agent is
         acting for), <code>agentfox_chunks</code> (the retrieved passages the answer
-        should rest on) and <code>agentfox_purpose</code>. They feed the access and
-        answerability checks described in{" "}
+        should rest on) and <code>agentfox_purpose</code>. Chunks alone run the source
+        checks; a principal that is not registered is evaluated as that subject with no
+        groups. They feed the access and answerability checks described in{" "}
         <Link href="/docs/guides/rag">Retrieval and answers</Link>.
       </p>
 

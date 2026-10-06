@@ -362,8 +362,8 @@ agentfox declare list sources`}</Code>
 }`}</Output>
           <p>
             At run time the same checks run on the model&apos;s answer when{" "}
-            <code>agentfox.auto()</code> is given <code>agentfox_chunks</code> together with{" "}
-            <code>agentfox_principal</code>. An answer grounded in the deprecated page above
+            <code>agentfox.auto()</code> is given <code>agentfox_chunks</code> (with or without{" "}
+            <code>agentfox_principal</code>). An answer grounded in the deprecated page above
             produced:
           </p>
           <Output>{` …qdjh27k7  high      source_authority        'kb/support/legacy-billing.md' is marked deprecated
@@ -601,11 +601,12 @@ say:     That asks for a projection rather than a recorded fact. I can only repo
           <Link href="/docs/guides/gateway">the gateway guide</Link>.
         </li>
         <li>
-          <strong>No finding from <code>auto()</code>.</strong> An{" "}
-          <code>agentfox_principal</code> that is not registered is skipped silently, with
-          nothing recorded. <code>agentfox_chunks</code> without{" "}
-          <code>agentfox_principal</code> runs neither the entitlement check nor the source
-          checks.
+          <strong>No finding from <code>auto()</code>.</strong> Pass the passages as{" "}
+          <code>agentfox_chunks</code>: the source checks run on them with or without a
+          principal. An <code>agentfox_principal</code> that is not registered is evaluated
+          as that subject with no groups or clearances, so it sees only what is granted to
+          the subject directly, and what it could not see is recorded against it. Register
+          it (<code>agentfox declare principal</code>) to give it its groups.
         </li>
         <li>
           <strong>A source reads <code>age unknown</code> or stale right after import.</strong>{" "}
