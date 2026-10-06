@@ -104,12 +104,12 @@ def start_canary(
     """Begin rolling a candidate version out against the version that precedes it.
 
     ``candidate_version`` is a version *number* (the one shown in the UI and
-    ``history()``), defaulting to the latest. Every save auto-binds the new version
-    it creates (there is no separate "draft" state), so by the time this is called
-    the candidate is typically already the live binding at 100% — that save is what
-    prompted wanting a canary in the first place. This pulls the binding back to
-    whatever was live immediately before the candidate, so the canary, not the save,
-    now controls how much traffic the candidate actually sees.
+    ``history()``), defaulting to the latest. A version saved through the API or
+    editor is not live until promoted, so the candidate is usually not yet bound and
+    the live binding is the stable side. A candidate that *is* already live (bound
+    directly with ``save_policy``) has the binding pulled back to whatever was live
+    immediately before it, so the canary, not the save, controls how much traffic
+    the candidate actually sees.
 
     ``max_block_rate_drop`` and ``min_dwell_seconds`` default from settings
     (``canary_max_block_rate_drop``, ``canary_min_dwell_seconds``) — fail-safe defaults,
