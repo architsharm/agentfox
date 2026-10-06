@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.models import Finding, utcnow
 from agentfox.core.tenancy import session_org
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
-from agentfox.platform.ledger import chain
+from agentfox.platform.ledger import chain, finding_types
 
 OPEN = "open"
 SUPPRESSED = "suppressed"
@@ -102,11 +102,15 @@ def raise_finding(
     Returns ``(finding, created)``. ``created`` is True only when a new row was added;
     a reopened resolved finding returns False (it is the same problem, recurring).
 
+    ``type`` should be registered (`finding_types`): an unregistered one is logged,
+    and refused only when `finding_types.STRICT_ENV` is set, as it is in the tests.
+
     ``once=True`` is for findings about one past event that a periodic scan re-detects
     (a specific conversation turn, a specific hand-off). Seeing that event again is
     not a new occurrence and certainly not a recurrence after a fix, so an existing
     match in any status is returned untouched.
     """
+    finding_types.check(type)
     org_id = session_org(session)
     fp = fingerprint(org_id, type, subject_type, subject_id, fingerprint_parts)
     now = utcnow()

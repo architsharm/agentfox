@@ -18,6 +18,7 @@ from sqlalchemy import select
 from agentfox.core import webhooks
 from agentfox.core.db import session_scope
 from agentfox.core.models import Agent, AuditEntry, Budget, Finding
+from agentfox.platform.ledger import finding_types
 from agentfox.platform.ledger import findings as findings_mod
 from agentfox.platform.ledger.findings import (
     fingerprint,
@@ -27,6 +28,20 @@ from agentfox.platform.ledger.findings import (
 )
 from tests.conftest import as_user
 from tests.core.test_webhooks import configure, receiver  # noqa: F401 - the shared harness
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _unit_problem_type():
+    """The fixture type these tests raise, registered like any producer's type."""
+    finding_types.register(
+        finding_types.FindingType(
+            type="unit_problem",
+            title="Unit problem",
+            severity="medium",
+            description="Raised by the findings hygiene tests.",
+            owner="tests",
+        )
+    )
 
 
 @pytest.fixture(autouse=True)
