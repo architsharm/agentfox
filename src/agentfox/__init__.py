@@ -25,8 +25,9 @@ _LAZY = {
     "state": ("agentfox.runtime.autoguard", "state"),
     "Blocked": ("agentfox.runtime.autoguard", "Blocked"),
     "AgentFox": ("agentfox.sdk", "AgentFox"),
-    "PolicyViolation": ("agentfox.sdk", "PolicyViolation"),
-    "ApprovalRequired": ("agentfox.sdk", "ApprovalRequired"),
+    "AgentFoxError": ("agentfox.errors", "AgentFoxError"),
+    "PolicyViolation": ("agentfox.errors", "PolicyViolation"),
+    "ApprovalRequired": ("agentfox.errors", "ApprovalRequired"),
 }
 
 __all__ = ["__version__", *sorted(_LAZY)]

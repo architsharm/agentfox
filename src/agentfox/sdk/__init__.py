@@ -33,6 +33,7 @@ import functools
 import logging
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -41,32 +42,14 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.db import session_scope
 from agentfox.detection import TaintTracker
+
+# One class each, shared with the LangGraph integration and under `AgentFoxError`
+# (#46): see `agentfox.errors`.
+from agentfox.errors import AgentFoxError, ApprovalRequired, PolicyViolation
 from agentfox.integrations.correlation import refs_from_env
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
-
-
-class PolicyViolation(Exception):
-    """Raised when enforcement blocks. Carries the full decision, never just a message."""
-
-    def __init__(self, result: EnforcementResult) -> None:
-        super().__init__(result.reason or "blocked by policy")
-        self.result = result
-        self.trace_id = result.trace_id
-        self.decision_id = result.decision_id
-        self.rules_fired = result.rules_fired
-        self.entities = result.entities
-
-
-class ApprovalRequired(Exception):
-    """Raised when a decision escalates to a human (P2-3)."""
-
-    def __init__(self, result: EnforcementResult) -> None:
-        super().__init__(result.reason or "human approval required")
-        self.result = result
-        self.approval_id = result.approval_id
-        self.trace_id = result.trace_id
 
 
 @dataclass
@@ -137,8 +120,10 @@ class AgentSession:
         provider: str | None = None,
         schema: dict[str, Any] | None = None,
         raise_on_block: bool = True,
+        approval_id: str | None = None,
         **kwargs: Any,
     ) -> Any:
+        """A governed model call. ``approval_id`` retries one a person approved."""
         result, response = self._client._complete(
             agent=self.agent,
             messages=messages,
@@ -149,6 +134,7 @@ class AgentSession:
             intent=self.intent,
             trust_map=self._trust_map(messages),
             schema=schema,
+            approval_id=approval_id,
             **kwargs,
         )
         self.trace_id = result.trace_id
@@ -166,7 +152,15 @@ class AgentSession:
         *,
         provenance: dict[str, str] | None = None,
         raise_on_block: bool = True,
+        approval_id: str | None = None,
     ) -> EnforcementResult:
+        """Authorise one tool call before it runs.
+
+        ``approval_id`` is the retry of a call that raised `ApprovalRequired` and a
+        person has since approved (see `AgentFox.wait_for_approval`). It lets this
+        call through once, and only if the tool and arguments are the ones that
+        were approved.
+        """
         result = self._client._guard_tool(
             agent=self.agent,
             tool=tool,
@@ -175,6 +169,7 @@ class AgentSession:
             intent=self.intent,
             tracker=self.tracker,
             prior_tools=list(self.prior_tools),
+            approval_id=approval_id,
         )
         self.prior_tools.append(tool)
         if raise_on_block:
@@ -183,6 +178,12 @@ class AgentSession:
             if result.escalated:
                 raise ApprovalRequired(result)
         return result
+
+    def wait_for_approval(
+        self, approval_id: str, timeout: float = 1800.0, *, interval: float = 2.0
+    ) -> str:
+        """`AgentFox.wait_for_approval`, from inside a session."""
+        return self._client.wait_for_approval(approval_id, timeout, interval=interval)
 
     # -- helpers ----------------------------------------------------------
     def _trust_map(self, messages: list[dict[str, Any]]) -> dict[str, str]:
@@ -249,6 +250,19 @@ class AgentFox:
         self.timeout = timeout
         # Stored as `_session`: `session` is the context-manager method above.
         self._session = session
+        # The `with fox.session(...)` block this thread or task is inside, so a
+        # `@fox.tool` function called there joins it (#44). Per client: a session
+        # of another AgentFox (another agent) is not this one's.
+        self._active: ContextVar[AgentSession | None] = ContextVar(
+            f"agentfox_session_{id(self)}", default=None
+        )
+        if not self.remote:
+            # Local enforcement runs the detectors in this process: warm the
+            # opted-in model detectors now, in the background, not inside the
+            # first governed call (#48). A gateway warms its own.
+            from agentfox.detection.warmup import warm_in_background
+
+            warm_in_background()
 
     @contextmanager
     def _db(self) -> Iterator[Session]:
@@ -273,7 +287,15 @@ class AgentFox:
             session_id=session_id,
             _client=self,
         )
-        yield agent_session
+        token = self._active.set(agent_session)
+        try:
+            yield agent_session
+        finally:
+            self._active.reset(token)
+
+    def current_session(self) -> AgentSession | None:
+        """The `with fox.session(...)` block the caller is inside, if any."""
+        return self._active.get()
 
     # -- decorators -------------------------------------------------------
     def tool(
@@ -289,6 +311,10 @@ class AgentFox:
         why argument-level constraints and provenance work without the caller doing
         anything special.
 
+        Called inside ``with fox.session(intent=...)``, the call joins that session —
+        its intent, taint marks and the tools already called (#44). Outside one it
+        runs in a session of its own. ``session=`` binds it to one explicitly.
+
         ``impact`` is a declaration, and is written to the tool registry: every
         impact-based containment rule reads `Tool.impact`, so an impact that lived
         only on this wrapper was one no policy ever saw.
@@ -303,7 +329,9 @@ class AgentFox:
                 nonlocal declared
                 if not declared:  # the database was not there at import time
                     declared = self._declare_tool(key, impact, description)
-                target = session or getattr(wrapper, "_nometria_session", None)
+                target = (
+                    session or getattr(wrapper, "_nometria_session", None) or self._active.get()
+                )
                 if target is None:
                     with self.session() as ad_hoc:
                         ad_hoc.guard_tool(key, dict(kwargs))
@@ -344,25 +372,109 @@ class AgentFox:
 
     # -- direct calls ------------------------------------------------------
     def check(
-        self, content: str, *, surface: str = "input", taint_source: str = "user"
+        self,
+        content: str,
+        *,
+        surface: str = "input",
+        taint_source: str = "user",
+        completion: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        """One decision on one piece of content, as a dict. Never raises on a verdict.
+
+        ``surface="completion"`` asks whether the agent may stop: ``content`` is its
+        claim ("your refund is processed") and ``completion`` the facts you observed,
+        such as ``{"work_verified": True}``, which ``completion_requires`` rules check.
+        A fact you do not report counts as unmet (#47).
+        """
         if self.remote:
+            body: dict[str, Any] = {
+                "agent": self.agent,
+                "content": content,
+                "surface": surface,
+                "taint_source": taint_source,
+            }
+            if completion is not None:
+                body["completion"] = completion
             return self._post(
                 f"/v1/guard/{'output' if surface == 'output' else 'input'}",
-                {
-                    "agent": self.agent,
-                    "content": content,
-                    "surface": surface,
-                    "taint_source": taint_source,
-                },
+                body,
             )
         with self._db() as session:
+            if surface == "completion":
+                return (
+                    Enforcer(session)
+                    .guard_completion(
+                        agent_slug=self.agent, claim=content, completion=completion or {}
+                    )
+                    .to_json()
+                )
             return Enforcer(session).check_content(
                 agent_slug=self.agent,
                 content=content,
                 surface=surface,
                 taint_source=taint_source,
             )
+
+    # -- approvals ----------------------------------------------------------
+    def approval(self, approval_id: str) -> dict[str, Any]:
+        """The approval's current state: ``status``, ``reason``, ``tool``, ``arguments``.
+
+        Remote mode reads ``GET /api/approvals/{id}`` with this client's key — an
+        agent key may read its own agent's approvals. Local mode reads the database.
+        """
+        if self.remote:
+            response = httpx.get(
+                f"{self.base_url}/api/approvals/{approval_id}",
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return response.json()
+        from agentfox.core.models import ApprovalRequest
+        from agentfox.identity import expire_stale_approvals
+
+        with self._db() as session:
+            # Unanswered fails closed (NOM-IAM-03), here as on the route.
+            expire_stale_approvals(session)
+            approval = session.get(ApprovalRequest, approval_id)
+            if approval is None:
+                raise LookupError(f"no approval '{approval_id}'")
+            return {
+                "id": approval.id,
+                "status": approval.status,
+                "reason": approval.reason,
+                "tool": approval.tool_key,
+                "arguments": approval.arguments_json,
+                "rationale": approval.resolution_rationale,
+            }
+
+    def wait_for_approval(
+        self, approval_id: str, timeout: float = 1800.0, *, interval: float = 2.0
+    ) -> str:
+        """Wait for a person to decide an approval. Returns its status.
+
+        ``approved`` — retry the call with ``approval_id=`` and it runs once.
+        ``denied``, ``expired`` (nobody decided in time) — it will not run.
+        ``pending`` — ``timeout`` seconds passed with no decision.
+
+            try:
+                s.guard_tool("billing.export", args)
+            except ApprovalRequired as held:
+                if fox.wait_for_approval(held.approval_id) != "approved":
+                    return
+                s.guard_tool("billing.export", args, approval_id=held.approval_id)
+        """
+        import time
+
+        deadline = time.monotonic() + max(0.0, timeout)
+        while True:
+            status = str(self.approval(approval_id).get("status", "pending"))
+            if status != "pending":
+                return status
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return "pending"
+            time.sleep(min(interval, remaining))
 
     # -- internals ---------------------------------------------------------
     def _declare_tool(self, key: str, impact: str, description: str = "") -> bool:
@@ -402,6 +514,8 @@ class AgentFox:
             headers["X-Nometria-Intent"] = kwargs["intent"]
         if kwargs.get("session_id"):
             headers["X-Nometria-Session"] = kwargs["session_id"]
+        if kwargs.get("approval_id"):
+            headers["X-Nometria-Approval"] = kwargs["approval_id"]
         if kwargs.get("trust_map"):
             import json
 
@@ -438,7 +552,8 @@ class AgentFox:
             result.rules_fired = error.get("rules_fired", [])
             result.entities = error.get("entities", [])
             return result, None
-        if response.status_code == 202:
+        # 428 since #20; 202 from a gateway that predates it.
+        if response.status_code in (428, 202):
             body = response.json()
             result.verdict = "escalate"
             result.approval_id = body.get("approval_id")
@@ -458,6 +573,7 @@ class AgentFox:
                     "provenance": kwargs.get("provenance") or {},
                     "intent": kwargs.get("intent"),
                     "prior_tools": kwargs.get("prior_tools") or [],
+                    **({"approval_id": kwargs["approval_id"]} if kwargs.get("approval_id") else {}),
                 },
             )
             return EnforcementResult(
@@ -492,6 +608,7 @@ class AgentFox:
                 trace=trace,
                 tracker=kwargs.get("tracker"),
                 prior_tools=kwargs.get("prior_tools"),
+                approval_id=kwargs.get("approval_id"),
             )
 
     def _headers(self) -> dict[str, str]:
@@ -512,6 +629,7 @@ class AgentFox:
 
 
 __all__ = [
+    "AgentFoxError",
     "AgentSession",
     "ApprovalRequired",
     "AgentFox",

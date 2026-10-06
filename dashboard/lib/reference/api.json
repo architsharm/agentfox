@@ -73,6 +73,12 @@
      "type": null
     },
     {
+     "name": "x-nometria-approval",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
      "name": "authorization",
      "in": "header",
      "required": false,
@@ -201,6 +207,12 @@
      {
       "name": "trace_id",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
       "required": false,
       "description": ""
      }
@@ -335,6 +347,12 @@
       "type": "string",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -401,6 +419,12 @@
      },
      {
       "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "approval_id",
       "type": "string",
       "required": false,
       "description": ""
@@ -517,6 +541,12 @@
     },
     {
      "name": "x-nometria-stream-mode",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-approval",
      "in": "header",
      "required": false,
      "type": null
@@ -1334,8 +1364,8 @@
    "path": "/api/approvals/{approval_id}",
    "section": "approvals",
    "audience": "operator",
-   "summary": "Get Approval",
-   "description": "",
+   "summary": "One approval. An operator may read any; an agent key only its own agent's.",
+   "description": "One approval. An operator may read any; an agent key only its own agent's.\n\nThe SDK's `wait_for_approval` polls this with the agent's own key (#14): the\nagent that is waiting is the one caller certain to need the answer, and it\nused to need an operator token to read it.",
    "params": [
     {
      "name": "approval_id",

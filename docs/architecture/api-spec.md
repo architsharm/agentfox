@@ -48,7 +48,10 @@ Response adds:
 | `X-Nometria-Latency-Ms` | Added enforcement latency (NFR-1 observability). |
 
 **On block** → `HTTP 403` with `{"error": {"type": "agentfox_policy_violation", "message", "verdict", "trace_id", "decision_id", "policy_version", "rules_fired", "entities", "explanation", "suppressed"}}` (X-4: never block without an auditable reason).
-**On escalate** → `HTTP 202` with `approval_id`; poll `GET /api/approvals/{id}` (P2-3).
+**On escalate** → `HTTP 428` with `error.type = "agentfox_approval_required"` and `approval_id`
+(an error status, so provider SDKs raise rather than parse a completion); poll
+`GET /api/approvals/{id}` (an agent key may read its own agent's), and once it is `approved` send
+the same request with `X-Nometria-Approval: <id>` — it runs once (P2-3).
 **On overload** → `HTTP 429` with `Retry-After` from the admission gate; `X-Nometria-Priority` raises a request's priority.
 
 ### `POST /v1/guard/input` · `POST /v1/guard/output` · `POST /v1/guard/tool_call` · `POST /v1/guard/memory_write` · `POST /v1/guard/agent_message` · `POST /v1/mcp/call`
@@ -166,7 +169,7 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/approvals` | List Approvals |
-| `GET` | `/api/approvals/{approval_id}` | Get Approval |
+| `GET` | `/api/approvals/{approval_id}` | One approval. An operator may read any; an agent key only its own agent's. |
 | `POST` | `/api/approvals/{approval_id}/approve` | Approve |
 | `POST` | `/api/approvals/{approval_id}/deny` | Deny |
 | `POST` | `/api/credentials/{credential_id}/revoke` | Revoke |

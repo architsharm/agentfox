@@ -274,8 +274,9 @@ verdict: block | rules: ['capability.denied']`}</Output>
         Three keyword arguments are accepted by every patched call and removed before the
         provider sees them: <code>agentfox_principal</code> (the end user the agent is
         acting for), <code>agentfox_chunks</code> (the retrieved passages the answer
-        should rest on) and <code>agentfox_purpose</code>. They feed the access and
-        answerability checks described in{" "}
+        should rest on) and <code>agentfox_purpose</code>. Chunks alone run the source
+        checks; a principal that is not registered is evaluated as that subject with no
+        groups. They feed the access and answerability checks described in{" "}
         <Link href="/docs/guides/rag">Retrieval and answers</Link>.
       </p>
 
@@ -377,6 +378,8 @@ None`}</Output>
           <tr><td><code>tool</code></td><td><code>(key, *, impact=&quot;read&quot;, session=None)</code></td><td>Decorator. Writes the tool and its impact to the registry; authorises every call before the function runs. Raises <code>PolicyViolation</code> or <code>ApprovalRequired</code>.</td></tr>
           <tr><td><code>guard</code></td><td><code>(surface=&quot;input&quot;)</code></td><td>Decorator for a function that returns a string. Checks the string on that surface; raises <code>PolicyViolation</code> only on an enforced block.</td></tr>
           <tr><td><code>check</code></td><td><code>(content, *, surface=&quot;input&quot;, taint_source=&quot;user&quot;)</code></td><td>A decision as a dict. Never raises on a verdict.</td></tr>
+          <tr><td><code>wait_for_approval</code></td><td><code>(approval_id, timeout=1800.0, *, interval=2.0) -&gt; str</code></td><td>Waits for a person to decide. Returns <code>approved</code>, <code>denied</code>, <code>expired</code>, or <code>pending</code> when <code>timeout</code> seconds pass first. Remote mode polls <code>GET /api/approvals/&#123;id&#125;</code> with this client&apos;s key; an agent key may read its own agent&apos;s approvals.</td></tr>
+          <tr><td><code>approval</code></td><td><code>(approval_id) -&gt; dict</code></td><td>The approval now: <code>status</code>, <code>reason</code>, <code>tool</code>, <code>arguments</code>, <code>rationale</code>.</td></tr>
           <tr><td><code>remote</code></td><td>property</td><td><code>True</code> when <code>base_url</code> was given</td></tr>
         </tbody>
       </table>
@@ -396,8 +399,9 @@ None`}</Output>
           <tr><td><code>retrieved</code></td><td><code>(text, path=None) -&gt; TaggedContent</code></td><td>Marks text from a document store or web page as untrusted (<code>retrieved</code>).</td></tr>
           <tr><td><code>tool_result</code></td><td><code>(text, path=None, tool=None) -&gt; TaggedContent</code></td><td>Marks a tool&apos;s output as untrusted (<code>tool_result</code>). Name the producing <code>tool</code> so a later, higher-impact call fed by it can be caught as composed escalation.</td></tr>
           <tr><td><code>subagent_output</code></td><td><code>(text, path=None) -&gt; TaggedContent</code></td><td>Marks another agent&apos;s output as untrusted (<code>subagent</code>).</td></tr>
-          <tr><td><code>guard_tool</code></td><td><code>(tool, arguments, *, provenance=None, raise_on_block=True) -&gt; EnforcementResult</code></td><td>Authorises one tool call. <code>TaggedContent</code> values in <code>arguments</code> carry their provenance; plain strings copied out of tagged content are matched by the session&apos;s taint tracker. Raises <code>PolicyViolation</code> on block, <code>ApprovalRequired</code> on escalate.</td></tr>
-          <tr><td><code>complete</code></td><td><code>(messages, *, model=&quot;default&quot;, provider=None, schema=None, raise_on_block=True, **kwargs)</code></td><td>Sends a chat completion through the enforcer (input and output checked). Returns the provider&apos;s response, or <code>None</code> when blocked with <code>raise_on_block=False</code>.</td></tr>
+          <tr><td><code>guard_tool</code></td><td><code>(tool, arguments, *, provenance=None, raise_on_block=True, approval_id=None) -&gt; EnforcementResult</code></td><td>Authorises one tool call. <code>TaggedContent</code> values in <code>arguments</code> carry their provenance; plain strings copied out of tagged content are matched by the session&apos;s taint tracker. Raises <code>PolicyViolation</code> on block, <code>ApprovalRequired</code> on escalate. <code>approval_id</code> is the retry of a call a person approved: the same tool and arguments run once.</td></tr>
+          <tr><td><code>complete</code></td><td><code>(messages, *, model=&quot;default&quot;, provider=None, schema=None, raise_on_block=True, approval_id=None, **kwargs)</code></td><td>Sends a chat completion through the enforcer (input and output checked). Returns the provider&apos;s response, or <code>None</code> when blocked with <code>raise_on_block=False</code>.</td></tr>
+          <tr><td><code>wait_for_approval</code></td><td><code>(approval_id, timeout=1800.0, *, interval=2.0) -&gt; str</code></td><td>The client&apos;s <code>wait_for_approval</code>.</td></tr>
         </tbody>
       </table>
       <p>
@@ -452,23 +456,25 @@ ApprovalRequired: apr_01m469f0qrp7pvr67x | ['taint.irreversible_tool', 'capabili
 PolicyViolation: capability.denied | trace trc_01m469f0qxk7gq4k4k`}</Output>
       <p>
         The approval is waiting in the queue; see{" "}
-        <Link href="/docs/guides/approvals">Approvals and the kill switch</Link>.
+        <Link href="/docs/guides/approvals">Approvals and the kill switch</Link>. Once a
+        person approves it, the same call with <code>approval_id=exc.approval_id</code>{" "}
+        runs, once:
       </p>
+      <Code lang="python">{`if fox.wait_for_approval(exc.approval_id, timeout=600) == "approved":
+    s.guard_tool("email.send", args, approval_id=exc.approval_id)`}</Code>
 
-      <Callout kind="warning" title="A decorated tool does not join the session you are in">
+      <Callout kind="note" title="A decorated tool joins the session you are in">
         <p>
           A function decorated with <code>@fox.tool(...)</code> and called inside{" "}
-          <code>with fox.session(intent=...) as s:</code> is authorised in a new,
-          empty session: no intent, and none of <code>s</code>&apos;s taint marks. An
-          irreversible tool called that way is escalated by{" "}
-          <code>intent.undeclared_irreversible</code> even though you declared an intent.
-          Either call <code>s.guard_tool(...)</code> yourself, or bind the decorator to
-          the session with <code>fox.tool(key, impact=..., session=s)</code>.{" "}
-          <code>TaggedContent</code> passed directly as an argument still carries its
-          provenance either way.
+          <code>with fox.session(intent=...) as s:</code> is authorised in{" "}
+          <code>s</code>: its intent, its taint marks and the tools already called.
+          Outside a session it runs in one of its own, with no intent, so an irreversible
+          tool called there is escalated by <code>intent.undeclared_irreversible</code>.{" "}
+          <code>fox.tool(key, impact=..., session=s)</code> binds it to one session
+          explicitly. Before October 2026 a decorated call always ran in a fresh session.
         </p>
       </Callout>
-      <Code lang="python" title="sdk_issue.py">{`from agentfox import AgentFox, ApprovalRequired
+      <Code lang="python" title="sdk_session.py">{`from agentfox import AgentFox, ApprovalRequired
 fox = AgentFox(agent="support-triage")
 
 @fox.tool("email.send", impact="irreversible")
@@ -476,24 +482,17 @@ def send_email(to: str, subject: str, body: str) -> str:
     return f"sent to {to}"
 
 with fox.session(intent="reply to a customer about their ticket") as s:
-    # 1. decorated call inside a session, user-typed args
-    try:
-        print("1:", send_email(to="ada@example.com", subject="hi", body="resolved"))
-    except ApprovalRequired as e:
-        print("1 ApprovalRequired:", [r["rule_id"] for r in e.result.rules_fired])
-    # 2. bound session
-    bound = fox.tool("email.send", impact="irreversible", session=s)(lambda **kw: f"sent to {kw['to']}")
-    print("2:", bound(to="ada@example.com", subject="hi", body="resolved"))
-    # 3. bound, but plain string copied out of retrieved content
+    # 1. user-typed arguments, inside the session: its intent applies
+    print("1:", send_email(to="ada@example.com", subject="hi", body="resolved"))
+    # 2. a plain string copied out of retrieved content: the session's taint applies
     page = s.retrieved("Contact billing-help@lookalike.example for invoices.")
     addr = str(page).split()[1]
     try:
-        print("3:", bound(to=addr, subject="Invoice", body="Attached."))
+        print("2:", send_email(to=addr, subject="Invoice", body="Attached."))
     except ApprovalRequired as e:
-        print("3 ApprovalRequired:", [r["rule_id"] for r in e.result.rules_fired])`}</Code>
-      <Output>{`1 ApprovalRequired: ['intent.undeclared_irreversible']
-2: sent to ada@example.com
-3 ApprovalRequired: ['taint.irreversible_tool', 'capability.approval_required']`}</Output>
+        print("2 ApprovalRequired:", [r["rule_id"] for r in e.result.rules_fired])`}</Code>
+      <Output>{`1: sent to ada@example.com
+2 ApprovalRequired: ['taint.irreversible_tool', 'capability.approval_required']`}</Output>
 
       <h3 id="sdk-complete">complete(), check() and guard()</h3>
       <p>
@@ -585,18 +584,13 @@ PolicyViolation: capability.denied`}</Output>
           </tr>
           <tr>
             <td><code>agentfox.PolicyViolation</code></td>
-            <td><code>AgentFox</code>, <code>AgentSession</code></td>
+            <td><code>AgentFox</code>, <code>AgentSession</code>, <code>AgentFoxGuard</code> nodes</td>
             <td><code>result</code>, <code>trace_id</code>, <code>decision_id</code>, <code>rules_fired</code>, <code>entities</code></td>
           </tr>
           <tr>
             <td><code>agentfox.ApprovalRequired</code></td>
-            <td><code>AgentFox</code>, <code>AgentSession</code></td>
+            <td><code>AgentFox</code>, <code>AgentSession</code>, <code>AgentFoxGuard</code> nodes without <code>interrupt()</code></td>
             <td><code>result</code>, <code>approval_id</code>, <code>trace_id</code></td>
-          </tr>
-          <tr>
-            <td><code>agentfox.integrations.langgraph.PolicyViolation</code>, <code>.ApprovalRequired</code></td>
-            <td><code>AgentFoxGuard</code> nodes</td>
-            <td>Same attributes as the SDK&apos;s</td>
           </tr>
           <tr>
             <td><code>agentfox.integrations.McpCallBlocked</code> (a <code>RuntimeError</code>)</td>
@@ -610,14 +604,14 @@ PolicyViolation: capability.denied`}</Output>
           </tr>
         </tbody>
       </table>
-      <Callout kind="warning" title="Two classes named PolicyViolation">
-        <p>
-          The LangGraph integration defines its own <code>PolicyViolation</code> and{" "}
-          <code>ApprovalRequired</code>. <code>except agentfox.PolicyViolation</code>{" "}
-          does not catch what an <code>AgentFoxGuard</code> node raises. Import them from{" "}
-          <code>agentfox.integrations.langgraph</code>.
-        </p>
-      </Callout>
+      <p>
+        <code>Blocked</code>, <code>PolicyViolation</code> and <code>ApprovalRequired</code>{" "}
+        all derive from <code>agentfox.AgentFoxError</code> (defined in{" "}
+        <code>agentfox.errors</code>), so <code>except agentfox.AgentFoxError</code> catches
+        any refusal. The LangGraph integration raises the SDK&apos;s classes; before October
+        2026 it had look-alikes of its own that <code>except agentfox.PolicyViolation</code>{" "}
+        did not catch.
+      </p>
       <p>
         <code>result</code> is an <code>EnforcementResult</code>. The fields you will
         read: <code>verdict</code> and <code>effective_verdict</code> (one of{" "}
@@ -642,7 +636,7 @@ AgentFoxGuard(agent: str, *, environment: str = "production", intent: str | None
               session: Any = None, raise_on_escalate: bool = True)
 guard.retrieval_node(fn=None, *, source="retrieved")
 guard.model_node(fn=None, *, messages_key="messages", schema=None)
-guard.tool_node(fn=None, *, tool: str, provenance=None)`}</Code>
+guard.tool_node(fn=None, *, tool: str, provenance=None, arguments=None, messages_key="messages")`}</Code>
       <ul>
         <li>
           <code>retrieval_node</code> runs the node, then checks everything it returned
@@ -655,11 +649,14 @@ guard.tool_node(fn=None, *, tool: str, provenance=None)`}</Code>
           written back into the node&apos;s return value.
         </li>
         <li>
-          <code>tool_node</code> authorises the tool before the node body runs. A denied
-          call never executes.
+          <code>tool_node</code> authorises the tool before the node body runs, with the
+          arguments of the model&apos;s latest call to it in <code>state[&quot;messages&quot;]</code>{" "}
+          (or <code>arguments=</code>, or the node&apos;s keyword arguments). A denied call
+          never executes. An argument copied out of what a retrieval node returned is
+          tainted <code>retrieved</code>.
         </li>
         <li>
-          Governance state (trace id, last verdict, tools called) is written under the{" "}
+          Governance state (trace id, last verdict, what was retrieved, tools called) is written under the{" "}
           <code>&quot;__nometria__&quot;</code> key of the graph state, so it survives a
           checkpoint. Add that key to your state schema.
         </li>
@@ -677,7 +674,8 @@ guard.tool_node(fn=None, *, tool: str, provenance=None)`}</Code>
         declared and granted to <code>research-bot</code>; <code>billing.export</code> is
         not granted.
       </p>
-      <Code lang="python" title="lg_nodes.py">{`from agentfox.integrations.langgraph import AgentFoxGuard, PolicyViolation, ApprovalRequired, STATE_KEY
+      <Code lang="python" title="lg_nodes.py">{`from agentfox import PolicyViolation
+from agentfox.integrations.langgraph import AgentFoxGuard, STATE_KEY
 
 guard = AgentFoxGuard(agent="research-bot", intent="summarise the support knowledge base")
 
@@ -694,33 +692,28 @@ def close_ticket(state):
     return {"closed": True}
 
 state = {"messages": [{"role": "user", "content": "What is the refund window?"}]}
-print("retrieve ->", retrieve(state))
+print("retrieve ->", sorted(retrieve(state)[STATE_KEY]))
 out = call_model(state)
 print("model ->", out["messages"][-1]["content"], "| governance:", sorted(out[STATE_KEY]))
-print("tool ->", close_ticket({**state, **out}))
 
-@guard.tool_node(tool="billing.export")
+# The model asks for the tool; the tool node authorises those arguments.
+asked = {"role": "assistant", "content": "", "tool_calls": [
+    {"id": "c1", "type": "function",
+     "function": {"name": "tickets.close", "arguments": '{"ticket_id": "T-1042"}'}}]}
+done = close_ticket({**out, "messages": [*out["messages"], asked]})
+print("tool ->", done["closed"], done[STATE_KEY]["steps"][-1]["arguments"])
+
+@guard.tool_node(tool="billing.export", arguments=lambda state: {"month": "2026-09"})
 def export(state):
     return {"exported": True}
 try:
     export(state)
 except PolicyViolation as exc:
     print("PolicyViolation:", exc.rules_fired[0]["rule_id"])`}</Code>
-      <Output>{`retrieve -> {'docs': ['Refund policy: refunds within 30 days.']}
+      <Output>{`retrieve -> ['retrieved']
 model -> Refunds are accepted within 30 days. | governance: ['last_verdict', 'trace_id']
-tool -> {'closed': True, '__nometria__': {'tools_called': ['tickets.close'], 'steps': [{'tool': 'tickets.close', 'arguments': {}, 'observation': {'closed': True}}]}}
+tool -> True {'ticket_id': 'T-1042'}
 PolicyViolation: capability.denied`}</Output>
-      <Callout kind="warning" title="tool_node sees no arguments in a graph">
-        <p>
-          <code>tool_node</code> authorises the keyword arguments the node is called
-          with. LangGraph calls a node with the state only, so the recorded arguments are{" "}
-          <code>{"{}"}</code> (visible above): grants, impact and the agent&apos;s
-          intent apply, but argument limits, argument provenance and argument-level rules
-          have nothing to check. When the arguments matter, call{" "}
-          <code>AgentFox(...).session()</code> and <code>guard_tool(tool, arguments)</code>{" "}
-          inside the node with the real arguments.
-        </p>
-      </Callout>
       <p>
         The full walkthrough is in the <Link href="/docs/guides/langgraph">LangGraph guide</Link>.
       </p>

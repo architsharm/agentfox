@@ -34,7 +34,8 @@ export default function Page() {
       <p>
         <code>/app/approvals</code>, filtered by <code>?status=</code>: <strong>pending</strong>{" "}
         (the default), <strong>approved</strong>, <strong>denied</strong>,{" "}
-        <strong>expired</strong>, each with its count. From{" "}
+        <strong>expired</strong>, <strong>used</strong> (approved, and the agent&apos;s retry
+        has run), each with its count. From{" "}
         <code>GET /api/approvals?status=…</code>.
       </p>
       <p>
@@ -44,7 +45,12 @@ export default function Page() {
         or an irreversible action by a high-risk agent. Each row shows:
       </p>
       <ul>
-        <li><strong>agent</strong> and <strong>tool</strong></li>
+        <li>
+          <strong>agent</strong> and <strong>tool</strong>. A held message rather than a tool
+          call shows as <code>message:input</code> (or <code>message:output</code>,{" "}
+          <code>message:agent_message</code>) with the message, personal data masked, as its
+          arguments.
+        </li>
         <li>
           <strong>reason</strong>: every rule that fired, one per line. This is what you are
           deciding against.
@@ -70,9 +76,11 @@ arguments: amount 250 · currency USD · to acct_attacker_991`}</Output>
       </p>
       <p>
         An unanswered request is denied when it expires, and the call stays blocked: it fails
-        closed. The SDK waiting on an approval polls{" "}
-        <code>GET /api/approvals/&#123;id&#125;</code>. There is no CLI command for deciding
-        approvals; over HTTP:
+        closed. Approving does not run anything by itself: the agent retries the same call
+        with the <code>approval_id</code>, and that one retry runs. The SDK waiting on an
+        approval polls <code>GET /api/approvals/&#123;id&#125;</code> with the agent&apos;s own
+        key. From the CLI: <code>agentfox permit approvals list</code>, then{" "}
+        <code>approve ID</code> or <code>deny ID</code>. Over HTTP:
       </p>
       <Code>{`curl -s -X POST http://127.0.0.1:8080/api/approvals/apr_01m4699s09007f7x9p/deny \\
   -H "Authorization: Bearer $AGENTFOX_API_TOKEN" -H 'Content-Type: application/json' \\

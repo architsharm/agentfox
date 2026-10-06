@@ -70,8 +70,13 @@ class _ToolCallMixin:
         prior_steps: list[dict[str, Any]] | None = None,
         verified_state: dict[str, Any] | None = None,
         dry_run: bool = False,
+        approval_id: str | None = None,
     ) -> EnforcementResult:
-        """Authorise a tool call on the full execution path (P3-4, P2-2, P9)."""
+        """Authorise a tool call on the full execution path (P3-4, P2-2, P9).
+
+        ``approval_id`` is a retry of a call a person approved (#12): the same agent,
+        tool and arguments run once. A dry run never spends one.
+        """
         agent, identity, _ = self.resolve(agent_slug, credential)
 
         # PL-3: a killed or quarantined agent must not execute tools either, not
@@ -135,6 +140,7 @@ class _ToolCallMixin:
             prior_tools=prior_tools,
             prior_steps=prior_steps,
             tracker=tracker,
+            approval_id=None if dry_run else approval_id,
         )
 
         # P9-7: an irreversible act on a record the agent has not read back from the

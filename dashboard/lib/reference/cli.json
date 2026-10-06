@@ -624,8 +624,8 @@
    {
     "path": "permit",
     "name": "permit",
-    "summary": "Grant, list and withdraw what an agent — or an end user — may do.",
-    "help": "Grant, list and withdraw what an agent — or an end user — may do.",
+    "summary": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
+    "help": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
     "panel": "Contain",
     "params": [],
     "default_subcommand": null,
@@ -912,6 +912,206 @@
       ],
       "default_subcommand": null,
       "commands": []
+     },
+     {
+      "path": "permit approvals",
+      "name": "approvals",
+      "summary": "See the calls waiting for a person, and approve or deny them.",
+      "help": "See the calls waiting for a person, and approve or deny them.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "permit approvals list",
+        "name": "list",
+        "summary": "The calls held for a person.",
+        "help": "The calls held for a person. Unanswered ones expire, and expiry denies.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "status",
+          "opts": [
+           "--status"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "pending",
+          "help": "pending (the default), approved, denied, expired, used, or all."
+         },
+         {
+          "kind": "option",
+          "name": "agent",
+          "opts": [
+           "--agent"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Only this agent's approvals."
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Machine-readable output for scripts."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "permit approvals show",
+        "name": "show",
+        "summary": "One approval in full: the call, its arguments, why it was held, and the decision.",
+        "help": "One approval in full: the call, its arguments, why it was held, and the decision.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "approval_id",
+          "opts": [
+           "approval_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Approval id, or the short id `list` prints."
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Machine-readable output for scripts."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "permit approvals approve",
+        "name": "approve",
+        "summary": "Let the held call run once: the same agent, tool and arguments, when retried.",
+        "help": "Let the held call run once: the same agent, tool and arguments, when retried.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "approval_id",
+          "opts": [
+           "approval_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Approval id, or the short id `list` prints."
+         },
+         {
+          "kind": "option",
+          "name": "rationale",
+          "opts": [
+           "--rationale",
+           "-r"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "Why, for the audit record."
+         },
+         {
+          "kind": "option",
+          "name": "actor",
+          "opts": [
+           "--as"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Who is deciding (an email), for the audit record."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "permit approvals deny",
+        "name": "deny",
+        "summary": "Refuse the held call.",
+        "help": "Refuse the held call. A retry presenting this approval escalates again.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "approval_id",
+          "opts": [
+           "approval_id"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Approval id, or the short id `list` prints."
+         },
+         {
+          "kind": "option",
+          "name": "rationale",
+          "opts": [
+           "--rationale",
+           "-r"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "Why, for the audit record."
+         },
+         {
+          "kind": "option",
+          "name": "actor",
+          "opts": [
+           "--as"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Who is deciding (an email), for the audit record."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
      }
     ]
    },
@@ -4273,6 +4473,7 @@
  "renamed": {
   "access": "agentfox declare scope / declare reference",
   "analyse-action": "agentfox test action",
+  "approvals": "agentfox permit approvals",
   "audit": "agentfox report verify / agentfox admin checkpoint",
   "auth": "agentfox admin auth",
   "boundary": "agentfox declare boundary / agentfox test boundary",

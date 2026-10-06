@@ -18,13 +18,15 @@ from __future__ import annotations
 
 import datetime as dt
 import fnmatch
+import hashlib
+import json
 import secrets
 from dataclasses import dataclass, field
 from typing import Any
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from agentfox.core.models import (
@@ -152,6 +154,10 @@ def revoke_credential(session: Session, credential_id: str) -> bool:
 
 
 #: Constraint keys that configure the grant rather than naming an argument path.
+#: Why a call is held when the grant itself asks for a person on every call. A taint
+#: ceiling holds a call for a different reason and says so (`taint_violation`).
+APPROVAL_REQUIRED_REASON = "The granting capability requires human approval for this action."
+
 RESERVED_CONSTRAINTS = frozenset({"requires_verified_state", "dry_run_only"})
 
 
@@ -394,9 +400,14 @@ def check_capability(
             for p, s in argument_taint.items()
             if taint_rank(str(s)) > taint_rank(capability.max_taint)
         ]
+        # The cause is where an argument came from, not the grant: this grant may
+        # require no approval at all. Saying "the granting capability requires
+        # human approval" sent the reader to a grant that asks for nothing (#16).
+        origins = ", ".join(f"{p} from {argument_taint[p]}" for p in offending)
         decision.taint_violation = (
             f"arguments {offending} carry provenance above the capability's "
-            f"max_taint '{capability.max_taint}'"
+            f"max_taint '{capability.max_taint}' ({origins}), so a person must approve "
+            f"this call before it runs"
         )
         decision.granted = True
         decision.requires_approval = True
@@ -406,7 +417,7 @@ def check_capability(
     decision.granted = True
     decision.requires_approval = capability.requires_approval
     if decision.requires_approval:
-        decision.reasons.append(f"capability '{capability.tool_key}' requires human approval")
+        decision.reasons.append(APPROVAL_REQUIRED_REASON)
     return decision
 
 
@@ -552,6 +563,16 @@ def _stopped_state(session: Session, agent_id: str | None) -> tuple[str, str | N
     return control.state, agent.slug if agent else None
 
 
+#: How long an approved call stays redeemable once a person approves it. The clock
+#: restarts at approval, so a decision made in the 29th minute of a 30-minute wait
+#: does not leave the agent seconds to retry.
+REDEEM_WINDOW_MINUTES = 30
+
+#: Statuses an approval can have. ``used`` is an approval a retry has redeemed: an
+#: approval lets exactly one call through.
+APPROVAL_STATUSES = ("pending", "approved", "denied", "expired", "used")
+
+
 def resolve_approval(
     session: Session,
     approval_id: str,
@@ -581,8 +602,84 @@ def resolve_approval(
     request.status = "approved" if approved else "denied"
     request.resolver_user_id = resolver_user_id
     request.resolution_rationale = rationale
+    if approved:
+        # From here `expires_at` is how long the approval may be redeemed.
+        request.expires_at = utcnow() + dt.timedelta(minutes=REDEEM_WINDOW_MINUTES)
     session.flush()
     return request
+
+
+def _canonical(arguments: Any) -> str:
+    """One spelling of an argument set, so a retry's arguments compare equal to the
+    ones a person approved after both have been through JSON."""
+    normalised = json.loads(json.dumps(arguments or {}, default=str))
+    return json.dumps(normalised, sort_keys=True, separators=(",", ":"))
+
+
+def content_digest(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8", "replace")).hexdigest()
+
+
+def _binding(tool_key: str | None, arguments: dict[str, Any] | None) -> str:
+    """What an approval is bound to besides the agent: the tool and its arguments.
+    A held *message* is bound to its content's digest, which is what the stored
+    arguments carry for it (`runtime/enforcement/approvals.py`)."""
+    arguments = arguments or {}
+    if "content_sha256" in arguments and str(tool_key or "").startswith("message:"):
+        return f"{tool_key}|{arguments['content_sha256']}"
+    return f"{tool_key}|{_canonical(arguments)}"
+
+
+def _already_used(approval_id: str) -> str:
+    return f"approval '{approval_id}' was already used; each approval lets one call through"
+
+
+def redeem_approval(
+    session: Session,
+    approval_id: str,
+    *,
+    agent_id: str | None,
+    tool_key: str | None,
+    arguments: dict[str, Any] | None,
+) -> tuple[ApprovalRequest | None, str]:
+    """Spend an approval on the call it was granted for (#12).
+
+    Returns ``(approval, "")`` when the retry may run, or ``(None, why)`` when it may
+    not. An approval lets through one call: the same agent, the same tool and the
+    same arguments a person saw, before it expires, once. Anything else is refused
+    and the caller escalates as it would have without it, so presenting an approval
+    can never make a call *more* permitted than a person said.
+    """
+    request = session.get(ApprovalRequest, approval_id)
+    if request is None:
+        return None, f"no approval '{approval_id}' exists"
+    if request.status == "used":
+        return None, _already_used(approval_id)
+    if request.status != "approved":
+        return None, f"approval '{approval_id}' is {request.status}, not approved"
+    expires = as_aware(request.expires_at)
+    if expires and expires < utcnow():
+        return None, f"approval '{approval_id}' expired at {expires.isoformat()}"
+    if request.agent_id != agent_id:
+        return None, f"approval '{approval_id}' was granted to a different agent"
+    if (request.tool_key or None) != (tool_key or None):
+        return None, (f"approval '{approval_id}' is for '{request.tool_key}', not '{tool_key}'")
+    if _binding(request.tool_key, request.arguments_json) != _binding(tool_key, arguments):
+        return None, (
+            f"approval '{approval_id}' was granted for different arguments than this call's"
+        )
+    # Conditional on the status still reading `approved`, so two retries racing on
+    # one approval cannot both spend it.
+    spent = session.execute(
+        update(ApprovalRequest)
+        .where(ApprovalRequest.id == request.id, ApprovalRequest.status == "approved")
+        .values(status="used")
+        .execution_options(synchronize_session=False)
+    )
+    if spent.rowcount != 1:
+        return None, _already_used(approval_id)
+    session.refresh(request)
+    return request, ""
 
 
 def expire_stale_approvals(session: Session) -> int:

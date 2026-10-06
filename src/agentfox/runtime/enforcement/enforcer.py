@@ -28,7 +28,12 @@ from agentfox.detection.actions import summarise as summarise_actions
 from agentfox.detection.composition import check_composed_escalation
 from agentfox.detection.tuning import LatencyLedger, active_suppressions, explain, filter_suppressed
 from agentfox.grounding.context_integrity import assemble_context
-from agentfox.identity import check_capability, request_approval, verify_credential
+from agentfox.identity import (
+    check_capability,
+    redeem_approval,
+    request_approval,
+    verify_credential,
+)
 from agentfox.policy import PolicyInput, combine, get_engine, policies_in_force
 from agentfox.policy.taint_view import policy_taint
 from agentfox.prove.audit import chain
@@ -42,6 +47,7 @@ from agentfox.prove.audit.trace import (
 )
 from agentfox.prove.findings import raise_finding
 from agentfox.registry.service import observe_agent
+from agentfox.runtime.enforcement.approvals import held_call
 from agentfox.runtime.enforcement.checks import _ChecksMixin
 from agentfox.runtime.enforcement.completion import _CompletionMixin
 from agentfox.runtime.enforcement.findings import _FindingsMixin
@@ -178,6 +184,7 @@ class Enforcer(
         persist: bool = True,
         forced_rules: list[dict[str, Any]] | None = None,
         extra_taint: dict[str, Any] | None = None,
+        approval_id: str | None = None,
     ) -> EnforcementResult:
         """One decision on one surface. The single point every guarantee flows through.
 
@@ -192,6 +199,10 @@ class Enforcer(
         and audited, so the record says what the caller is told. An effect outside
         the lattice (``observe``) is recorded and changes nothing. `extra_taint` is
         merged into the recorded taint summary.
+
+        `approval_id` is a retry presenting a person's approval of this exact call
+        (#12). It only ever turns an escalation into an allow, and only when the
+        approval is for this agent, tool and arguments, unexpired and unused.
         """
         # PL-3: a killed or quarantined agent is refused on every surface, before
         # anything else runs. The check used to live only on the completion
@@ -691,10 +702,55 @@ class Enforcer(
         if extra_taint:
             taint_summary.update(extra_taint)
 
+        # --- a retry presenting an approval (#12) ---------------------------
+        # Placed after every rule has had its say, so an approval can only release
+        # what was held for a person: a block stays a block.
+        held = (
+            held_call(
+                surface=surface,
+                tool_key=tool_key,
+                arguments=arguments,
+                content=content,
+                detections=pipeline_result.detections,
+            )
+            if effective == "escalate"
+            else (tool_key, arguments or {})
+        )
+        redeemed_approval = None
+        if approval_id and effective == "escalate" and persist:
+            redeemed_approval, refusal = redeem_approval(
+                self.session,
+                approval_id,
+                agent_id=agent.id if agent else None,
+                tool_key=held[0],
+                arguments=held[1],
+            )
+            taint_summary["approval"] = {
+                "id": approval_id,
+                "redeemed": redeemed_approval is not None,
+                **({"refused": refusal} if refusal else {}),
+            }
+            if redeemed_approval is not None:
+                verdict = "allow"
+                effective = "allow"
+                rules_fired.append(
+                    _fired_rule(
+                        "approval.redeemed",
+                        "allow",
+                        f"approved by a person ({approval_id}); this call is the one they approved",
+                        severity="low",
+                        controls=["NOM-IAM-03"],
+                    )
+                )
+
         latency_ms = (time.perf_counter() - started) * 1000
         reason = "; ".join(r.get("reason", "") for r in rules_fired if r.get("reason")) or (
             "no policy rule matched"
         )
+        if approval_id and redeemed_approval is None and effective == "escalate":
+            refused = (taint_summary.get("approval") or {}).get("refused")
+            if refused:
+                reason = f"{reason}; the approval presented was not used: {refused}"
 
         result = EnforcementResult(
             verdict=verdict,
@@ -848,17 +904,22 @@ class Enforcer(
 
         # --- 6. escalation (P2-3) ----------------------------------------
         if effective == "escalate":
+            # Filed under what the approver needs to see: the tool and arguments, or
+            # for a held message its (masked) content and the digest a retry is
+            # matched against (#24).
             approval = request_approval(
                 self.session,
                 agent_id=agent.id if agent else None,
-                tool_key=tool_key,
-                arguments=arguments or {},
+                tool_key=held[0],
+                arguments=held[1],
                 reason=reason,
                 trace_id=trace_id,
                 decision_id=decision_row.id,
             )
             decision_row.approval_id = approval.id
             result.approval_id = approval.id
+        elif redeemed_approval is not None:
+            decision_row.approval_id = redeemed_approval.id
 
         if trace_id:
             add_span(

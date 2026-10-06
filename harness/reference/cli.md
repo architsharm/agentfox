@@ -94,6 +94,9 @@ anywhere.
 | `permit list [AGENT] [--json]` | R | Grants with their limits, taint ceiling and expiry. |
 | `permit revoke CAPABILITY_ID [--yes]` | W | Accepts the short id the table prints. |
 | `permit user RESOURCE PRINCIPAL [--kind group\|subject] [--classes CSV] [--purposes CSV]` | W | An end user's entitlement to a resource. |
+| `permit approvals list [--status pending\|approved\|denied\|expired\|used\|all] [--agent SLUG] [--json]` | R | Calls held for a person. Expires stale ones first (expiry denies). |
+| `permit approvals show ID [--json]` | R | The held call, its arguments, why, and the decision. Accepts the short id. |
+| `permit approvals approve ID [--rationale/-r TEXT] [--as WHO]` · `permit approvals deny ID …` | W, **BLK** | Approving lets the agent's retry with that `approval_id` run once (same agent, tool, arguments, within 30 min). Audited. |
 
 ## `declare` — the facts containment reasons over (P7, P8, P9, P10, P11, P18)
 

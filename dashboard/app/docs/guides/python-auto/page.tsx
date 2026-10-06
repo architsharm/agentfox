@@ -240,12 +240,12 @@ agentfox: governed 16 model call(s). Run \`agentfox findings\` to see what it fo
           <Output>{`Customer c-42 says: https://shop.example/t/4411
   crm_lookup({"customer_id": "c-42"})
   web_fetch({"url": "https://shop.example/t/4411"})
-  Blocked: agentfox: tool call email_send was refused by capability.denied: no resolved identity for the caller, so it holds no grants (default deny). To have grants proposed from the calls this agent has made, run \`agentfox policy proposals from-traffic\` and approve them; to grant this one directly, \`agentfox permit grant <agent> email_send\` (also: composition.escalation, taint.irreversible_tool). Argument provenance: to from tool result (the result of crm_lookup, messages[2]).
+  Blocked: agentfox: tool call email_send was refused by composition.escalation: argument 'to' carries a value produced by tool 'crm_lookup' (read), now passed into 'email_send' (irreversible) — a composition neither tool's own scope permits alone (also: taint.irreversible_tool); capability.denied not applied: this agent has no capability grant yet. Argument provenance: to from tool result (the result of crm_lookup, messages[2]).
 …
 Customer c-42 says: https://shop.example/t/6666
   crm_lookup({"customer_id": "c-42"})
   web_fetch({"url": "https://shop.example/t/6666"})
-  Blocked: agentfox: tool call email_send was refused by capability.denied: no resolved identity for the caller, so it holds no grants (default deny). To have grants proposed from the calls this agent has made, run \`agentfox policy proposals from-traffic\` and approve them; to grant this one directly, \`agentfox permit grant <agent> email_send\` (also: composition.escalation, taint.irreversible_tool). Argument provenance: to from tool result (the result of web_fetch, messages[4]); subject from tool result (the result of web_fetch, messages[4]); body from tool result (the result of crm_lookup, messages[2]).
+  Blocked: agentfox: tool call email_send was refused by composition.escalation: argument 'to' carries a value produced by tool 'web_fetch' (read), now passed into 'email_send' (irreversible) — a composition neither tool's own scope permits alone (also: taint.irreversible_tool); capability.denied not applied: this agent has no capability grant yet. Argument provenance: to from tool result (the result of web_fetch, messages[4]); subject from tool result (the result of web_fetch, messages[4]); body from tool result (the result of crm_lookup, messages[2]).
 agentfox: governed 12 model call(s). Run \`agentfox findings\` to see what it found.`}</Output>
           <p>
             Now the shipped <code>tool-containment</code> pack, which <code>agentfox init</code>{" "}
@@ -257,13 +257,15 @@ agentfox: governed 12 model call(s). Run \`agentfox findings\` to see what it fo
             <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link> does, with
             this same agent.
           </p>
-          <Callout kind="note" title="Why the message names capability.denied">
+          <Callout kind="note" title="Why capability.denied is named last">
             <p>
               In policy mode an agent with no grants is not held to default deny (it would
-              refuse every tool an existing app has), yet the refusal message lists{" "}
-              <code>capability.denied</code> first. The rules that actually stopped these
-              calls are the ones in <code>(also: …)</code>:{" "}
-              <code>composition.escalation</code> and <code>taint.irreversible_tool</code>.
+              refuse every tool an existing app has), so the message leads with the rules
+              that stopped the call, <code>composition.escalation</code> and{" "}
+              <code>taint.irreversible_tool</code>, and says default deny was not applied.
+              The first <code>agentfox permit grant</code> for the agent turns it on.{" "}
+              <code>auto()</code> creates the agent&apos;s identity (<code>agent:&lt;slug&gt;</code>)
+              when it registers it, so the grant has something to attach to.
             </p>
           </Callout>
         </Step>

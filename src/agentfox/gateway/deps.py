@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.db import get_session
-from agentfox.core.models import Agent, User
+from agentfox.core.models import Agent, Identity, User
 from agentfox.core.tenancy import bind_session
 from agentfox.gateway.auth import (
     AuthenticationRequired,
@@ -179,6 +179,32 @@ def agent_credential(
     # serving it in the first place.
     activate_posture(session)
     return token
+
+
+def operator_or_agent(
+    request: Request,
+    session: Session = Depends(get_session),
+    authorization: Annotated[str | None, Header()] = None,
+    x_nometria_user: Annotated[str | None, Header()] = None,
+) -> User | Identity:
+    """An operator, or an agent presenting its own key (``nom_agt_…``).
+
+    For the few control-plane reads an agent needs about *itself* — the approval it
+    is waiting on (#14). The route decides what an agent may see; an operator goes
+    through exactly the same resolution as `current_user`.
+    """
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        if token.startswith("nom_agt_"):
+            resolved = resolve_agent(session, token)
+            if resolved is None:
+                raise HTTPException(status_code=401, detail="invalid, expired or revoked agent key")
+            identity, org_id = resolved
+            bind_session(session, org_id)
+            request.state.org_id = org_id
+            activate_posture(session)
+            return identity
+    return current_user(request, session, authorization, x_nometria_user)
 
 
 def ingest_credential(

@@ -88,7 +88,11 @@ from typing import Any
 
 from agentfox.core.config import get_settings
 from agentfox.core.db import init_db, session_scope
+from agentfox.core.models import utcnow
 from agentfox.detection.taint import TaintTracker
+from agentfox.detection.warmup import warm_in_background
+from agentfox.errors import AgentFoxError
+from agentfox.identity import ensure_identity
 from agentfox.prove.audit.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
@@ -359,8 +363,11 @@ def _record_turn(
         log.debug("agentfox: turn capture skipped: %s", exc)
 
 
-class Blocked(RuntimeError):
+class Blocked(AgentFoxError, RuntimeError):
     """Raised when a governed call is refused in-process.
+
+    An `agentfox.errors.AgentFoxError`, so one ``except`` covers it and the SDK's and
+    LangGraph's exceptions; still a ``RuntimeError`` for code written before that.
 
     When it is raised depends on the `auto()` mode (see the module docstring);
     ``.result`` is the `EnforcementResult` that refused it. When what was refused is
@@ -740,11 +747,21 @@ def _describe_origin(path: str | None) -> str:
 
 
 def _describe_tool_refusal(
-    tool_call: _ToolCall, result: EnforcementResult, marks: list[Any], *, applied: bool
+    tool_call: _ToolCall,
+    result: EnforcementResult,
+    marks: list[Any],
+    *,
+    applied: bool,
+    exempt: frozenset[str] = frozenset(),
 ) -> str:
     """One sentence an engineer can act on: which tool, which rule, and where the
-    arguments that mattered came from."""
-    rules = _stopping_rules(result)
+    arguments that mattered came from.
+
+    ``exempt`` are the rules this process let through (the no-grants carve-out in
+    ``"policy"`` mode). They did not refuse anything, so they never lead: the
+    message names the rule that did, and mentions the exempt ones last (#83).
+    """
+    rules = sorted(_stopping_rules(result), key=lambda r: r.get("rule_id") in exempt)
     rule = rules[0] if rules else {}
     rule_id = rule.get("rule_id") or "policy"
     reason = (rule.get("reason") or result.reason or "").strip().rstrip(".")
@@ -757,9 +774,17 @@ def _describe_tool_refusal(
     message = f"tool call {tool_call.name} {outcome} by {rule_id}"
     if reason:
         message += f": {reason}"
-    others = [r.get("rule_id") for r in rules[1:] if r.get("rule_id")]
+    others = [
+        r.get("rule_id") for r in rules[1:] if r.get("rule_id") and r.get("rule_id") not in exempt
+    ]
     if others:
         message += f" (also: {', '.join(dict.fromkeys(others))})"
+    waived = [r.get("rule_id") for r in rules[1:] if r.get("rule_id") in exempt]
+    if waived:
+        message += (
+            f"; {', '.join(dict.fromkeys(waived))} not applied: this agent has no "
+            "capability grant yet"
+        )
     untrusted = [m for m in marks if m.trust == "untrusted"]
     if untrusted:
         parts = [
@@ -843,12 +868,13 @@ def _govern_tool_calls(
             if refusal is None:
                 refusal = Blocked(
                     result,
-                    "agentfox: " + _describe_tool_refusal(tool_call, result, marks, applied=True),
+                    "agentfox: "
+                    + _describe_tool_refusal(tool_call, result, marks, applied=True, exempt=exempt),
                     tool_call=tool_call,
                 )
         elif effective:
             call.flagged = call.flagged or _describe_tool_refusal(
-                tool_call, result, marks, applied=False
+                tool_call, result, marks, applied=False, exempt=exempt
             )
             if not note and (result.blocked or result.escalated):
                 note = f"auto() is in {state.mode} mode; recorded, not applied in-process"
@@ -910,20 +936,14 @@ def _evaluate_output(
     )
 
     principal_ref = call.evidence.get("agentfox_principal")
-    if principal_ref is not None:
-        from sqlalchemy import select
-
-        from agentfox.core.models import EndUserPrincipal
-
-        subject = (
-            principal_ref.get("subject") if isinstance(principal_ref, dict) else str(principal_ref)
-        )
-        principal_obj = session.scalar(
-            select(EndUserPrincipal).where(EndUserPrincipal.subject == subject)
-        )
+    chunks = call.evidence.get("agentfox_chunks") or []
+    # Either one is evidence. Chunks without a principal still carry the sources the
+    # answer was built from, which is what source authority (F2) and numeric
+    # integrity (F7) check; gating them on a principal skipped both (#5).
+    if principal_ref is not None or chunks:
         enforcer.evidence = {
-            "principal": principal_obj,
-            "chunks": call.evidence.get("agentfox_chunks") or [],
+            "principal": _resolve_principal(session, principal_ref),
+            "chunks": chunks,
             "purpose": call.evidence.get("agentfox_purpose"),
         }
 
@@ -942,6 +962,31 @@ def _evaluate_output(
     if enforced or effective:
         call.flagged = call.flagged or outbound.reason or "output flagged by policy"
     return None
+
+
+def _resolve_principal(session: Any, principal_ref: Any) -> Any:
+    """The end user a call was made for, registered or not.
+
+    A subject nobody registered used to resolve to None, and the entitlement check
+    then ran as though no principal had been named — recording nothing at all (#5).
+    An unregistered subject is still a person: it is evaluated as itself, with no
+    groups or clearances (only what is granted to the subject directly), and what it
+    could not see is recorded against that subject. Never added to the session.
+    """
+    if principal_ref is None:
+        return None
+    from sqlalchemy import select
+
+    from agentfox.core.models import EndUserPrincipal
+
+    subject = principal_ref.get("subject") if isinstance(principal_ref, dict) else principal_ref
+    subject = str(subject or "").strip()
+    if not subject:
+        return None
+    registered = session.scalar(select(EndUserPrincipal).where(EndUserPrincipal.subject == subject))
+    if registered is not None:
+        return registered
+    return EndUserPrincipal(subject=subject, groups=[], clearances=[], purposes=[])
 
 
 def _is_stream(kwargs: dict[str, Any], response: Any) -> bool:
@@ -1414,7 +1459,7 @@ def auto(
         init_db()
         if register:
             with session_scope() as session:
-                register_agent(
+                agent = register_agent(
                     session,
                     state.agent,
                     name=state.agent,
@@ -1422,6 +1467,16 @@ def auto(
                     framework=state.frameworks[0] if state.frameworks else None,
                     purpose="auto-registered by agentfox.auto()",
                 )
+                # An agent with no identity holds no grants and cannot be given any
+                # by name until something creates one; its refusals said "no
+                # resolved identity for the caller" (#83). `permit grant` would
+                # create it anyway; creating it here makes the first refusal name
+                # the agent and the grant to make.
+                identity = ensure_identity(session, agent)
+                # In process there is no credential to be verified, so nothing else
+                # marks the identity as in use; without this a running agent's
+                # identity is posture-flagged stale.
+                identity.last_used_at = utcnow()
         # How many policies actually reach this agent. Taken here because the
         # banner below claims a mode, and a mode claim with nothing behind it is
         # the failure this count exists to surface.
@@ -1436,6 +1491,11 @@ def auto(
         # not be taken it stays -1, and the banner says nothing rather than
         # claiming an all-clear it did not verify.
         log.warning("agentfox: could not register agent '%s': %s", state.agent, exc)
+
+    # An opted-in model detector loads its weights on first use; in the gateway that
+    # happens at startup, and in-process it must too, or the first governed calls
+    # time out while it loads (#48). Off this thread; a no-op for the default set.
+    warm_in_background()
 
     state.patches = [result for patch in _PATCHERS for result in patch(state)]
     state.started = True

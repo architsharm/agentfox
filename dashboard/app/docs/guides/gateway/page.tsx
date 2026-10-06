@@ -209,12 +209,10 @@ x-nometria-mode: enforce
       <h3>Python (openai)</h3>
       <p>
         Set <code>base_url</code> and send the agent&apos;s name as a default header. Use{" "}
-        <code>with_raw_response</code> when you want the verdict headers or need to tell a 202
-        apart from a 200.
+        <code>with_raw_response</code> when you want the verdict headers. A block (403) and a
+        call held for a person (428) are errors the client raises.
       </p>
-      <Code lang="python" title="agent.py">{`import json
-
-from openai import OpenAI, PermissionDeniedError
+      <Code lang="python" title="agent.py">{`from openai import APIStatusError, OpenAI, PermissionDeniedError
 
 client = OpenAI(
     base_url="http://localhost:8080/v1",
@@ -236,9 +234,12 @@ def ask(text: str, session: str) -> str:
     except PermissionDeniedError as exc:  # 403: blocked
         rule = exc.body["rules_fired"][0]["rule_id"]
         return f"blocked by {rule} (trace {exc.body['trace_id']})"
-    if raw.status_code == 202:  # held for a person
-        held = json.loads(raw.content)
-        return f"waiting on {held['approval_id']}, poll {held['poll']}"
+    except APIStatusError as exc:
+        if exc.status_code != 428:
+            raise
+        # Held for a person. Once approved, send the same request with
+        # extra_headers={"X-Nometria-Approval": approval_id} and it runs once.
+        return f"waiting on {exc.body['approval_id']}, poll {exc.body['poll']}"
     print("verdict:", raw.headers["x-nometria-verdict"], "trace:", raw.headers["x-nometria-trace"])
     return raw.parse().choices[0].message.content
 
@@ -252,16 +253,17 @@ blocked by injection.direct (trace trc_01m46a53gad7pvztv9)
 waiting on apr_01m46a53gqzvwgkxtj, poll /api/approvals/apr_01m46a53gqzvwgkxtj`}</Output>
       <p>
         The third call was held because this deployment has a policy that sends card numbers
-        in support conversations to a person; that is how a 202 arises (see{" "}
+        in support conversations to a person; that is how a 428 arises (see{" "}
         <Link href="/docs/guides/approvals">Approvals and the kill switch</Link>).
       </p>
-      <Callout kind="warning" title="A 202 is a success status to an SDK">
-        The OpenAI Python client does not raise on a 202. A plain{" "}
-        <code>client.chat.completions.create(...)</code> returns a <code>ChatCompletion</code>{" "}
-        whose <code>choices</code> is <code>None</code>, with <code>status</code> and{" "}
-        <code>approval_id</code> in <code>model_extra</code>; code that reads{" "}
-        <code>choices[0]</code> then fails with a <code>TypeError</code>. Check the status as
-        above whenever a policy can escalate.
+      <Callout kind="note" title="A held call is an error, not an empty completion">
+        A call held for a person answers HTTP 428 with{" "}
+        <code>{`{"error":{"type":"agentfox_approval_required","approval_id","poll",…}}`}</code>,
+        which the OpenAI and Anthropic SDKs raise as <code>APIStatusError</code> (and do not
+        retry). Before October 2026 it was a 202, which the SDKs parsed as a completion with{" "}
+        <code>choices</code> set to <code>None</code>. The top-level{" "}
+        <code>status</code>, <code>approval_id</code>, <code>poll</code>, <code>reason</code>{" "}
+        and <code>trace_id</code> fields the 202 body had are still there.
       </Callout>
       <p>
         Streaming works the same way (<code>stream=True</code>). A request refused before the
@@ -319,7 +321,7 @@ async function ask(content: string, session: string): Promise<string> {
   if (res.status === 403) {
     return \`blocked by \${body.error.rules_fired[0].rule_id} (trace \${body.error.trace_id})\`;
   }
-  if (res.status === 202) {
+  if (res.status === 428) {
     return \`waiting on \${body.approval_id}, poll \${body.poll}\`;
   }
   if (!res.ok) throw new Error(\`gateway returned \${res.status}\`);
@@ -486,12 +488,17 @@ data: [DONE]`}</Output>
             <td>Use the answer.</td>
           </tr>
           <tr>
-            <td>202</td>
+            <td>428</td>
             <td>
-              Escalated. Body: <code>{`{"status":"awaiting_approval","approval_id","poll","reason","trace_id"}`}</code>.
+              Held for a person. Body:{" "}
+              <code>{`{"error":{"type":"agentfox_approval_required","approval_id","poll","message",…},"status":"awaiting_approval","approval_id","poll","reason","trace_id"}`}</code>.
               The model was not called.
             </td>
-            <td>Tell the user it is waiting on a person; poll the approval.</td>
+            <td>
+              Tell the user it is waiting on a person; poll the approval. Once it is{" "}
+              <code>approved</code>, send the same request with{" "}
+              <code>X-Nometria-Approval: apr_…</code>; it runs once.
+            </td>
           </tr>
           <tr>
             <td>403</td>
@@ -609,7 +616,8 @@ email.send     (no grant)               {"verdict": "block", "reason": "no capab
         ticket id came out of a document, which is above the grant&apos;s{" "}
         <code>max_taint</code> of <code>user</code>, so it needs a person. The reason for that
         is in <code>taint.capability.reasons</code>:{" "}
-        <code>{`arguments ['ticket_id'] carry provenance above the capability's max_taint 'user'`}</code>.
+        <code>{`arguments ['ticket_id'] carry provenance above the capability's max_taint 'user' (ticket_id from retrieved), so a person must approve this call before it runs`}</code>,
+        and it is the escalation&apos;s <code>reason</code> too.
         Optional fields: <code>prior_tools</code> or <code>prior_steps</code> (your own step
         history, for loop detection), <code>session_id</code>.
       </p>
@@ -759,8 +767,8 @@ curl -s -X POST "http://localhost:8080/api/identities/idn_01m469q1nh59wj649k/cre
       <Callout kind="note">
         An agent key is not checked strictly on <code>/v1</code>: an unknown{" "}
         <code>nom_agt_</code> value is treated as no credential and the call is served. It is
-        also not an operator credential, so an agent cannot use it to read{" "}
-        <code>/api/approvals</code> in token mode.
+        also not an operator credential: the one control-plane read it is good for is{" "}
+        <code>GET /api/approvals/&#123;id&#125;</code> for its own agent&apos;s approvals.
       </Callout>
 
       <h2>Troubleshooting</h2>
@@ -781,7 +789,10 @@ curl -s -X POST "http://localhost:8080/api/identities/idn_01m469q1nh59wj649k/cre
           </tr>
           <tr>
             <td><code>TypeError: &apos;NoneType&apos; object is not subscriptable</code> on <code>choices[0]</code>.</td>
-            <td>The gateway answered 202 and the SDK treated it as success. Check the status code.</td>
+            <td>
+              A gateway older than October 2026 answered a held call with 202, which the SDK
+              treated as success. Upgrade it; a held call is now a 428 the SDK raises.
+            </td>
           </tr>
           <tr>
             <td>A grant you just made has no effect.</td>
@@ -848,7 +859,7 @@ curl -s -X POST "http://localhost:8080/api/identities/idn_01m469q1nh59wj649k/cre
 
       <NextSteps
         items={[
-          { href: "/docs/guides/approvals", label: "Approvals and the kill switch", why: "what to do with a 202 or an escalate verdict" },
+          { href: "/docs/guides/approvals", label: "Approvals and the kill switch", why: "what to do with a 428 or an escalate verdict" },
           { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "the grants and declarations /v1/guard/tool_call reads" },
           { href: "/docs/reference/api", label: "HTTP API reference", why: "every route and body" },
           { href: "/docs/self-host", label: "Self-hosting", why: "running the gateway somewhere other than your laptop" },
