@@ -30,7 +30,7 @@ import logging
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -1045,8 +1045,29 @@ async def ingest_traces(
     request: Request,
     session: Session = Depends(db),
     _credential: str | None = Depends(ingest_credential),
-) -> dict[str, Any]:
-    payload = await request.json()
+) -> Any:
+    """OTLP/HTTP trace ingest
+
+    Accepts protobuf (`application/x-protobuf`, what the OpenTelemetry exporters send by
+    default) and JSON, either one gzip-compressed. A protobuf request gets the empty
+    protobuf `ExportTraceServiceResponse` the OTLP spec asks for; a JSON request gets
+    the ingest summary.
+    """
+    from agentfox.prove.audit.otel import (
+        PROTOBUF_CONTENT_TYPE,
+        OtlpDecodeError,
+        decode_otlp_body,
+    )
+
+    content_type = request.headers.get("content-type")
+    try:
+        payload = decode_otlp_body(
+            await request.body(),
+            content_type=content_type,
+            content_encoding=request.headers.get("content-encoding"),
+        )
+    except OtlpDecodeError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
     summary = ingest_otlp(session, payload)
 
     # Passive observation is enough to populate the registry and raise shadow-agent
@@ -1060,4 +1081,7 @@ async def ingest_traces(
             framework=summary.get("frameworks", {}).get(slug),
         )
     summary["shadow_agents"] = detect_shadow_agents(session)
+    if (content_type or "").split(";", 1)[0].strip().lower() == PROTOBUF_CONTENT_TYPE:
+        # An empty ExportTraceServiceResponse (full success) serialises to zero bytes.
+        return Response(content=b"", media_type=PROTOBUF_CONTENT_TYPE)
     return summary
