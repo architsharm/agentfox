@@ -461,12 +461,33 @@ def doctor(
             if settings.environment.lower() in ("development", "dev", "test", "local")
             else "bad",
             "authentication",
-            f"the X-Nometria-User header is accepted (environment={settings.environment}, "
-            f"auth_mode={settings.auth_mode}) — anyone who can reach this port is any "
-            "user they name. Fine locally, unacceptable anywhere else.",
+            f"DEVELOPMENT auth is active (environment={settings.environment}, "
+            f"auth_mode={settings.auth_mode}): an /api request with no token acts as the "
+            "user named in X-Nometria-User, or as admin@example.com (an owner, once "
+            "seeded) — anyone who can reach this port is any user they name. Fine "
+            "locally, unacceptable anywhere else.",
         )
     else:
         add("ok", "authentication", "API tokens required; the identity header is refused")
+
+    from agentfox.core.config import insecure_production_secrets, is_development
+
+    secret_problems = insecure_production_secrets(settings)
+    if secret_problems:
+        add(
+            "bad",
+            "secrets",
+            "the gateway will refuse to start: " + " ".join(secret_problems),
+        )
+    elif is_development(settings):
+        add(
+            "ok",
+            "secrets",
+            "development: the published default secrets are allowed here, and refused "
+            "(the gateway will not start) in any other environment",
+        )
+    else:
+        add("ok", "secrets", "service secret and audit signing key are set")
 
     # Containment before detection, deliberately. Every published adversarial-robustness
     # result says a determined attacker eventually gets past content inspection; what is

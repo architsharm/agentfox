@@ -844,6 +844,10 @@ def guard_content(
     payload: GuardContentRequest,
     request: Request,
     session: Session = Depends(db),
+    # Like every other guard route: an agent key, when presented, must verify (a bad
+    # one is a 401) and binds the agent's tenant. Without it this route ignored the
+    # Authorization header entirely, so a wrong or revoked key "worked".
+    _credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
     """Enforce on content without proxying.
 

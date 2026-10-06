@@ -125,7 +125,12 @@ class Enforcer(
             model=model,
             framework=framework,
         )
-        if identity is None:
+        if identity is None and not credential:
+            # Only when no credential was presented: an unauthenticated caller naming
+            # a registered agent is governed under that agent's identity, which is
+            # the shadow-traffic rule. A credential that was presented and did *not*
+            # verify must never be upgraded to the named agent's identity — that
+            # would make a wrong key indistinguishable from the right one.
             identity = self.session.scalar(select(Identity).where(Identity.agent_id == agent.id))
         return agent, identity, is_shadow
 
@@ -169,6 +174,17 @@ class Enforcer(
         supplied by `check_conversation_window`. It exists so F9.4's trajectory check
         can run through the same channel as every other check rather than beside it.
         """
+        # PL-3: a killed or quarantined agent is refused on every surface, before
+        # anything else runs. The check used to live only on the completion
+        # (`preflight`) and tool-call paths, so /v1/guard/input, /output,
+        # /memory_write and /agent_message kept answering `allow` for an agent the
+        # operator had just stopped — and the kill switch's promise that every
+        # governed call is refused was true of two surfaces out of six. Here, it
+        # covers every surface that reaches a decision.
+        control = self._control_verdict(agent)
+        if control is not None:
+            return control
+
         started = time.perf_counter()
         agent_slug = agent.slug if agent else None
         environment = agent.environment if agent else "production"

@@ -126,6 +126,13 @@ def serve(
     console.print(f"  [dim]inline:  POST http://{host}:{port}/v1/chat/completions[/]")
     console.print(f"  [dim]api:     http://{host}:{port}/api/agents[/]")
     console.print(f"  [dim]docs:    http://{host}:{port}/docs[/]")
+    from agentfox.gateway.auth import auth_posture
+
+    posture = auth_posture()
+    if posture.startswith("DEVELOPMENT"):
+        console.print(f"  [yellow]auth:    {posture}[/]")
+    else:
+        console.print(f"  [dim]auth:    {posture}[/]")
     uvicorn.run("agentfox.gateway.app:app", host=host, port=port, reload=reload)
 
 
