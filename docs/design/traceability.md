@@ -70,7 +70,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 
 | FR | Status | Implementation | Control | Test |
 |---|---|---|---|---|
-| **P12-1/2** Hierarchy and override semantics, enforced at runtime | ✅ | `policy/hierarchy.py::resolve_effective`, `policy/store.py::policies_in_force`, `runtime/enforcement/enforcer.py` | NOM-GOV-01 | `tests/platform/policy/test_hierarchy_runtime.py`, `tests/business/test_ladder_mode.py` |
+| **P12-1/2** Hierarchy and override semantics, enforced at runtime | ✅ | `policy/hierarchy.py::resolve_effective`, `policy/store.py::policies_in_force`, `runtime/enforcement/enforcer.py` | NOM-GOV-01 | `tests/platform/policy/test_hierarchy_runtime.py`, `tests/capabilities/business/test_ladder_mode.py` |
 | **P12-3** Effective policy with provenance | ✅ each layer's mode shown | `policy/store.py::effective_for`; `agentfox policy effective` | NOM-GOV-01 | `tests/cli/test_policy_effective_modes.py` |
 | **P12-4** Policy lint | ✅ run by `policy validate` | `policy/hierarchy.py::lint_policy`; `agentfox policy validate` | NOM-GOV-01 | `tests/cli/test_policy_validate_lint.py` |
 | **P12-6** Canary rollout | ✅ cohorts, two-way gate, saving never changes what is in force | `policy/canary.py::start_canary, evaluate_gate, canary_rollout` | NOM-GOV-01 | `tests/platform/policy/test_canary_cohorts.py`, `tests/platform/policy/test_mode_after_canary.py`, `tests/gateway/test_policy_save_and_promote.py` |

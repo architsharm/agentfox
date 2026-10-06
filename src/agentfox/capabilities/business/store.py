@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.business.ladder import Ladder
+from agentfox.capabilities.business.ladder import Ladder
 from agentfox.core.models import Agent, BusinessRule
 from agentfox.platform.ledger.operator_log import record
 

@@ -31,8 +31,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.business.ladder import Ladder, LadderDecision
-from agentfox.business.ladder import evaluate as evaluate_ladder
+from agentfox.capabilities.business.ladder import Ladder, LadderDecision
+from agentfox.capabilities.business.ladder import evaluate as evaluate_ladder
 from agentfox.core.vocab import EFFECT_RANK
 
 #: Business outcomes mapped onto the security lattice, so the two can be compared.
@@ -270,7 +270,7 @@ def build_graph(
     — a control listed as configured but never reachable is worse than one that is
     visibly missing, because it reads as coverage.
     """
-    from agentfox.business.catalogue import CATALOGUE
+    from agentfox.capabilities.business.catalogue import CATALOGUE
 
     supplied = supplied_inputs or set()
     nodes: list[GraphNode] = []

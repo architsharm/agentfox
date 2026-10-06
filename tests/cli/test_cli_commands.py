@@ -243,7 +243,7 @@ def test_scan_mcp_scans_the_given_file(tmp_path):
 
 
 def test_guardrails_compile_apply_saves_the_ladder(tmp_path):
-    from agentfox.business import all_ladders
+    from agentfox.capabilities.business import all_ladders
     from agentfox.core.db import session_scope
 
     path = tmp_path / "refunds.txt"

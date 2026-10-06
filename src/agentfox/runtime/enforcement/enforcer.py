@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.business.graph import combine as combine_business
+from agentfox.capabilities.business.graph import combine as combine_business
 from agentfox.capabilities.containment.findings import (
     detector_verdict,
     is_detector_rule,

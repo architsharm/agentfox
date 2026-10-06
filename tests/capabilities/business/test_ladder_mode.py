@@ -7,7 +7,7 @@ and an enforce-mode ladder was only recorded when no enforcing pack fired.
 
 from __future__ import annotations
 
-from agentfox.business import Ladder, save_ladder
+from agentfox.capabilities.business import Ladder, save_ladder
 from agentfox.core.db import session_scope
 from agentfox.core.models import Agent
 from agentfox.fixtures.seed import seed

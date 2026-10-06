@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.business.ladder import Ladder
-from agentfox.business.store import save_ladder, set_mode
+from agentfox.capabilities.business.ladder import Ladder
+from agentfox.capabilities.business.store import save_ladder, set_mode
 from agentfox.platform.ledger.operator_log import (
     PRIVILEGED,
     ReasonRequired,

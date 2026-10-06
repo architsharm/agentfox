@@ -3,14 +3,20 @@
 The security guardrails in :mod:`agentfox.capabilities.detection` answer "may this happen at all".
 This package answers the other question a business actually asks — *"under which
 circumstances, and who has to agree"* — and the two compose by different algebras,
-which is the whole architectural point. See :mod:`agentfox.business.graph`.
+which is the whole architectural point. See :mod:`agentfox.capabilities.business.graph`.
 """
 
 from __future__ import annotations
 
-from agentfox.business.catalogue import CATALOGUE, GuardrailKind, by_intent, inert_kinds, suggest
-from agentfox.business.catalogue import to_json as catalogue_json
-from agentfox.business.graph import (
+from agentfox.capabilities.business.catalogue import (
+    CATALOGUE,
+    GuardrailKind,
+    by_intent,
+    inert_kinds,
+    suggest,
+)
+from agentfox.capabilities.business.catalogue import to_json as catalogue_json
+from agentfox.capabilities.business.graph import (
     CombinedDecision,
     Conflict,
     GraphNode,
@@ -18,7 +24,7 @@ from agentfox.business.graph import (
     combine,
     find_conflicts,
 )
-from agentfox.business.ladder import (
+from agentfox.capabilities.business.ladder import (
     Band,
     Ladder,
     LadderDecision,
@@ -26,8 +32,14 @@ from agentfox.business.ladder import (
     VerifySpec,
     run_verification,
 )
-from agentfox.business.ladder import evaluate as evaluate_ladder
-from agentfox.business.store import all_ladders, load_ladders, save_ladder, set_mode, summary
+from agentfox.capabilities.business.ladder import evaluate as evaluate_ladder
+from agentfox.capabilities.business.store import (
+    all_ladders,
+    load_ladders,
+    save_ladder,
+    set_mode,
+    summary,
+)
 
 __all__ = [
     "CATALOGUE",

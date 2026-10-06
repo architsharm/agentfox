@@ -1572,8 +1572,8 @@ def probe_cascade() -> Result:
 
 def probe_operator_log() -> Result:
     """Every control watches the agent; the operator is who can turn them off."""
-    from agentfox.business.ladder import Ladder
-    from agentfox.business.store import save_ladder, set_mode
+    from agentfox.capabilities.business.ladder import Ladder
+    from agentfox.capabilities.business.store import save_ladder, set_mode
     from agentfox.core.db import session_scope
     from agentfox.platform.ledger.operator_log import PRIVILEGED, operator_history, unaudited
 

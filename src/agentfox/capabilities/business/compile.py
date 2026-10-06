@@ -35,7 +35,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.business.ladder import KNOWN_UNITS, Ladder
+from agentfox.capabilities.business.ladder import KNOWN_UNITS, Ladder
 
 # --- Lexicon ---------------------------------------------------------------
 
@@ -616,7 +616,7 @@ def _handle_non_threshold(
     and enforces nothing at runtime, so a rule is only emitted here when its
     definition is complete enough to run. Anything short of that becomes a question.
     """
-    from agentfox.business.catalogue import CATALOGUE, suggest
+    from agentfox.capabilities.business.catalogue import CATALOGUE, suggest
 
     lowered = " ".join(sentence.lower().split())
     matches = suggest(sentence, limit=3)

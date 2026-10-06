@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.business.compile import compile_document
-from agentfox.business.ladder import Ladder, evaluate
+from agentfox.capabilities.business.compile import compile_document
+from agentfox.capabilities.business.ladder import Ladder, evaluate
 
 
 def _ladder(compilation):
@@ -321,7 +321,7 @@ def test_held_out_document_mostly_compiles(held_out):
 
 
 def test_a_thousands_separator_is_not_a_clause_break():
-    from agentfox.business.compile import _clauses
+    from agentfox.capabilities.business.compile import _clauses
 
     clauses = _clauses("Exports over 10,000 rows require approval from the data team.")
     assert len(clauses) == 1
@@ -330,7 +330,7 @@ def test_a_thousands_separator_is_not_a_clause_break():
 
 
 def test_a_row_count_sentence_is_not_folded_into_a_money_ladder():
-    from agentfox.business.compile import compile_document
+    from agentfox.capabilities.business.compile import compile_document
 
     result = compile_document(
         "Credits under $50 are auto-approved. Credits above $500 require finance approval.\n"
@@ -354,7 +354,7 @@ def test_a_row_count_sentence_is_not_folded_into_a_money_ladder():
 
 
 def test_a_row_count_ladder_compiles_without_asking_for_a_unit():
-    from agentfox.business.compile import compile_document
+    from agentfox.capabilities.business.compile import compile_document
 
     result = compile_document(
         "Data exports under 1,000 rows are allowed. Exports between 1,000 and 50,000 rows "

@@ -208,7 +208,7 @@ for amount in (25, 120, 900, 8000):
             not run has not passed.
           </p>
           <Code lang="python" title="verify_band.py">{`from agentfox import AgentFox
-from agentfox.business import VerifySpec, run_verification
+from agentfox.capabilities.business import VerifySpec, run_verification
 
 nom = AgentFox(agent="billing-ops")
 

@@ -77,12 +77,12 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "unwatched and for how long",
     ),
     PrivilegedAction(
-        "agentfox.business.store.save_ladder",
+        "agentfox.capabilities.business.store.save_ladder",
         "operator.business_rule.changed",
         "changes the thresholds that decide what is auto-approved",
     ),
     PrivilegedAction(
-        "agentfox.business.store.set_mode",
+        "agentfox.capabilities.business.store.set_mode",
         "operator.business_rule.mode_changed",
         "moves a rule between observe and enforce — the same rule, opposite effect",
     ),

@@ -11,10 +11,10 @@ from typing import Any
 
 from sqlalchemy import select
 
-from agentfox.business.graph import BUSINESS_RANK
-from agentfox.business.ladder import LadderDecision
-from agentfox.business.ladder import evaluate as evaluate_ladder
-from agentfox.business.store import load_ladders
+from agentfox.capabilities.business.graph import BUSINESS_RANK
+from agentfox.capabilities.business.ladder import LadderDecision
+from agentfox.capabilities.business.ladder import evaluate as evaluate_ladder
+from agentfox.capabilities.business.store import load_ladders
 from agentfox.capabilities.containment.data_access import ReferenceTable, ScopeRule
 from agentfox.capabilities.containment.data_access import analyse_access as analyse_data_access
 from agentfox.capabilities.containment.effects import cascade_risk
