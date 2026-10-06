@@ -1,7 +1,7 @@
 """Model providers (X-2 — neutrality by construction).
 
 Every provider is an adapter. `echo` is the offline default; hosted providers are
-gated on `NOMETRIA_ALLOW_EGRESS` so nothing leaves a regulated boundary by accident.
+gated on `AGENTFOX_ALLOW_EGRESS` so nothing leaves a regulated boundary by accident.
 """
 
 from agentfox.providers.base import (

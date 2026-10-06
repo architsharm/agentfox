@@ -295,7 +295,7 @@ def _tool_steps(messages: list[dict[str, Any]]) -> list[Step]:
 
 
 def _loop_budget() -> LoopBudget:
-    """The deployment's declared `NOMETRIA_LOOP_*` budgets — the same ones
+    """The deployment's declared `AGENTFOX_LOOP_*` budgets — the same ones
     `enforcement.py::_budget_state` reads, so the proxy and the direct guard endpoint
     cannot disagree about what a runaway loop is."""
     settings = get_settings()

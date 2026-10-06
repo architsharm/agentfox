@@ -194,7 +194,7 @@ class OpenFgaEngine:
     ) -> set[str]:
         raise NotImplementedError(
             "the OpenFGA adapter is a declared seam, not an implementation. "
-            "Configure NOMETRIA_ENTITLEMENT_ENGINE=native, or contribute the adapter."
+            "Configure AGENTFOX_ENTITLEMENT_ENGINE=native, or contribute the adapter."
         )
 
 

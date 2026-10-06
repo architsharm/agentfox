@@ -194,7 +194,7 @@ def status() -> None:
                 f"{settings.auth_mode}\n"
                 "Anyone who can reach this port is any user they name. That is fine for "
                 "local work and unacceptable anywhere else.\n\n"
-                "Set NOMETRIA_ENVIRONMENT=production, or NOMETRIA_AUTH_MODE=token, to "
+                "Set AGENTFOX_ENVIRONMENT=production, or AGENTFOX_AUTH_MODE=token, to "
                 "require API tokens.[/]",
                 title="[bold]Authentication: development mode[/]",
                 title_align="left",

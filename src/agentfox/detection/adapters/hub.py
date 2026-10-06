@@ -209,7 +209,7 @@ def _silence_guardrails_telemetry() -> None:
 
     That is not a defect in their project; it is a reasonable default for a
     library. It is intolerable here. This product's first README line is that it
-    runs offline with no egress, `NOMETRIA_ALLOW_EGRESS` defaults to false, and
+    runs offline with no egress, `AGENTFOX_ALLOW_EGRESS` defaults to false, and
     the whole argument for self-hosting a governance tool is that it does not
     quietly talk to anyone. A control plane that starts exporting telemetry to a
     third party the moment somebody enables a PII check would be breaking its own

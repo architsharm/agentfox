@@ -99,7 +99,7 @@ def _current_target() -> _Target | None:
             _egress_notice_logged = True
             log.info(
                 "A finding webhook is configured (%s) but egress is disabled "
-                "(NOMETRIA_ALLOW_EGRESS=false); nothing will be sent.",
+                "(AGENTFOX_ALLOW_EGRESS=false); nothing will be sent.",
                 _display_url(settings.webhook_url),
             )
         return None
@@ -372,9 +372,9 @@ def send_test_event() -> tuple[bool, str]:
     try:
         settings = get_settings()
         if not settings.webhook_url:
-            return False, "webhook_url is not set (NOMETRIA_WEBHOOK_URL)"
+            return False, "webhook_url is not set (AGENTFOX_WEBHOOK_URL)"
         if not settings.allow_egress:
-            return False, "egress is disabled (NOMETRIA_ALLOW_EGRESS=false); nothing sent"
+            return False, "egress is disabled (AGENTFOX_ALLOW_EGRESS=false); nothing sent"
         target = _Target(
             url=settings.webhook_url,
             secret=settings.webhook_secret or None,

@@ -72,7 +72,7 @@ def _fernet() -> Fernet:
         raise HTTPException(
             503,
             "GitHub connect is not configured on this deployment "
-            "(NOMETRIA_TOKEN_ENCRYPTION_KEY is unset) — fails closed rather than "
+            "(AGENTFOX_TOKEN_ENCRYPTION_KEY is unset) — fails closed rather than "
             "storing an access token unencrypted.",
         )
     return Fernet(key.encode() if isinstance(key, str) else key)

@@ -21,7 +21,7 @@ Three adapters plus LiteLLM, each honest about what it needs:
   it speaks the OpenAI wire format, so we govern *through* it rather than competing
   with it. Their routing and our enforcement are different jobs at the same point.
 
-All four inherit the egress gate. With ``NOMETRIA_ALLOW_EGRESS=false`` they report
+All four inherit the egress gate. With ``AGENTFOX_ALLOW_EGRESS=false`` they report
 unavailable rather than making a network call from inside a regulated boundary.
 """
 
@@ -246,7 +246,7 @@ class BedrockProvider(_HttpProvider):
     def complete(self, request: CompletionRequest) -> CompletionResponse:
         if not self.available():
             raise RuntimeError(
-                "bedrock provider unavailable: needs NOMETRIA_ALLOW_EGRESS=1, a region, "
+                "bedrock provider unavailable: needs AGENTFOX_ALLOW_EGRESS=1, a region, "
                 "and boto3 (pip install 'agentfox[bedrock]')"
             )
         model = request.model or self._settings().bedrock_model
@@ -316,7 +316,7 @@ class VertexProvider(_HttpProvider):
     def complete(self, request: CompletionRequest) -> CompletionResponse:
         if not self.available():
             raise RuntimeError(
-                "vertex provider unavailable: needs NOMETRIA_ALLOW_EGRESS=1, a project and "
+                "vertex provider unavailable: needs AGENTFOX_ALLOW_EGRESS=1, a project and "
                 "location, and google-auth (pip install 'agentfox[vertex]')"
             )
         settings = self._settings()

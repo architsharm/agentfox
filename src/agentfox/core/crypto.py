@@ -3,7 +3,7 @@
 Same primitive and same fail-closed behaviour `gateway/routes/integrations.py`
 already uses for a connected GitHub account's access token — extracted here so a
 second call site (source connection credentials) doesn't reimplement it. Both
-share the one `NOMETRIA_TOKEN_ENCRYPTION_KEY` setting: there is one boundary to
+share the one `AGENTFOX_TOKEN_ENCRYPTION_KEY` setting: there is one boundary to
 reason about ("is this deployment configured to hold secrets at rest"), not one
 per feature.
 """
@@ -16,7 +16,7 @@ from agentfox.core.config import get_settings
 
 
 class EncryptionNotConfigured(RuntimeError):
-    """`NOMETRIA_TOKEN_ENCRYPTION_KEY` is unset. Callers map this to a 503 —
+    """`AGENTFOX_TOKEN_ENCRYPTION_KEY` is unset. Callers map this to a 503 —
     failing closed rather than ever storing a secret unencrypted."""
 
 
@@ -29,7 +29,7 @@ def _fernet() -> Fernet:
     key = get_settings().token_encryption_key
     if not key:
         raise EncryptionNotConfigured(
-            "NOMETRIA_TOKEN_ENCRYPTION_KEY is unset — refusing to store a secret unencrypted."
+            "AGENTFOX_TOKEN_ENCRYPTION_KEY is unset — refusing to store a secret unencrypted."
         )
     return Fernet(key.encode() if isinstance(key, str) else key)
 
