@@ -613,6 +613,18 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Whether scheduled jobs are queued."
       },
       {
+        "key": "monitor_batch_limit",
+        "env": "AGENTFOX_MONITOR_BATCH_LIMIT",
+        "def": "5",
+        "what": "Most due monitors one monitors.run job runs; the rest wait for the next runner call."
+      },
+      {
+        "key": "monitor_failure_threshold",
+        "env": "AGENTFOX_MONITOR_FAILURE_THRESHOLD",
+        "def": "3",
+        "what": "Failed runs in a row before a monitor raises a monitor_failing finding."
+      },
+      {
         "key": "job_stuck_after_seconds",
         "env": "AGENTFOX_JOB_STUCK_AFTER_SECONDS",
         "def": "900",
@@ -683,6 +695,24 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_WEBHOOK_MIN_SEVERITY",
         "def": "high",
         "what": "critical, high, medium or low."
+      },
+      {
+        "key": "slack_webhook_url",
+        "env": "AGENTFOX_SLACK_WEBHOOK_URL",
+        "def": "unset",
+        "what": "Slack incoming webhook for monitor findings opened, reopened or closed. Needs allow_egress. A tenant can also set its own (PUT /api/alerts/slack)."
+      },
+      {
+        "key": "slack_min_severity",
+        "env": "AGENTFOX_SLACK_MIN_SEVERITY",
+        "def": "medium",
+        "what": "critical, high, medium or low."
+      },
+      {
+        "key": "github_webhook_secret",
+        "env": "AGENTFOX_GITHUB_WEBHOOK_SECRET",
+        "def": "unset",
+        "what": "Verifies X-Hub-Signature-256 on /api/integrations/github/webhook. A connection may carry its own instead; with neither, push deliveries are refused."
       },
       {
         "key": "correlation_push",

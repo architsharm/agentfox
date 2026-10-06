@@ -219,6 +219,27 @@ not visible to it at all.
 Turning enforcement on for model traffic is one step: `agentfox policy enforce baseline`. Everything
 before it is safe to run, and `agentfox policy observe baseline` puts it back.
 
+## Tracking without anyone running a command
+
+A scan is a snapshot. Connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
+once and AgentFox keeps re-checking it: every few hours, and on every push once the GitHub webhook
+is registered. Each run is diffed against the one before, and what changed becomes a finding — a
+new lethal trifecta, a model call that lost its governance, a new tool or MCP server, a new
+destructive endpoint, an MCP server whose tools drifted. A finding closes itself when its condition
+clears and reopens if it comes back; a run that could not read the source closes nothing.
+
+```bash
+agentfox scan monitors list                       # what is watched, last outcome, next run
+agentfox scan monitors add github_repo acme/bot   # or created for you when you connect one
+agentfox admin jobs run-due                       # self-hosted: put this on cron
+```
+
+Findings go out through the signed finding webhook and, with `AGENTFOX_SLACK_WEBHOOK_URL` set, to
+Slack, both only with `AGENTFOX_ALLOW_EGRESS=true`. The hosted runner is triggered by a daily
+Vercel cron and by [`.github/workflows/monitors.yml`](.github/workflows/monitors.yml) every 30
+minutes (secrets `AGENTFOX_API_URL` and `AGENTFOX_CRON_SECRET`; without them it does nothing).
+Setup, the push webhook and every finding type: [Monitor connected sources](https://useagentfox.com/docs/guides/monitoring).
+
 <br />
 
 ## What we measured

@@ -89,7 +89,7 @@
     "path": "scan",
     "name": "scan",
     "summary": "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.",
-    "help": "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `mcp`, `skills` and `runtime` scan the rest.",
+    "help": "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
     "panel": "See",
     "params": [],
     "default_subcommand": "repo",
@@ -295,6 +295,213 @@
       "params": [],
       "default_subcommand": null,
       "commands": []
+     },
+     {
+      "path": "scan monitors",
+      "name": "monitors",
+      "summary": "Watch connected sources on a schedule: list, add, pause, resume, remove, run.",
+      "help": "Watch connected sources on a schedule: list, add, pause, resume, remove, run.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "scan monitors list",
+        "name": "list",
+        "summary": "Every monitor, its last outcome, and when it runs next.",
+        "help": "Every monitor, its last outcome, and when it runs next.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Print JSON."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "scan monitors add",
+        "name": "add",
+        "summary": "Start watching a source.",
+        "help": "Start watching a source. Its first run stores a baseline; later runs report changes.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "kind",
+          "opts": [
+           "kind"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "github_repo, hosted_api or mcp_server."
+         },
+         {
+          "kind": "argument",
+          "name": "target",
+          "opts": [
+           "target"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "owner/repo, the spec URL, or the MCP server name."
+         },
+         {
+          "kind": "option",
+          "name": "every",
+          "opts": [
+           "--every"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "Interval, e.g. 30m, 6h, 1d. Default per kind."
+         },
+         {
+          "kind": "option",
+          "name": "name",
+          "opts": [
+           "--name"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "A label for lists and alerts."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "scan monitors pause",
+        "name": "pause",
+        "summary": "Stop scheduled runs.",
+        "help": "Stop scheduled runs. Open findings stay open.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "ident",
+          "opts": [
+           "ident"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Monitor id or target."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "scan monitors resume",
+        "name": "resume",
+        "summary": "Resume scheduled runs.",
+        "help": "Resume scheduled runs.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "ident",
+          "opts": [
+           "ident"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Monitor id or target."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "scan monitors remove",
+        "name": "remove",
+        "summary": "Stop watching a source.",
+        "help": "Stop watching a source. Its findings are kept.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "ident",
+          "opts": [
+           "ident"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": "Monitor id or target."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "scan monitors run",
+        "name": "run",
+        "summary": "Run one monitor now, or every monitor that is due.",
+        "help": "Run one monitor now, or every monitor that is due.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "ident",
+          "opts": [
+           "ident"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "",
+          "help": "Monitor id or target. Omit to run every due monitor."
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Print JSON."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
      }
     ]
    },
@@ -3679,8 +3886,8 @@
    {
     "path": "admin",
     "name": "admin",
-    "summary": "Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.",
-    "help": "Run the deployment: tokens, schema, catalog upkeep, hooks, seed data.",
+    "summary": "Run the deployment: tokens, schema, scheduled jobs, catalog upkeep, hooks, seed data.",
+    "help": "Run the deployment: tokens, schema, scheduled jobs, catalog upkeep, hooks, seed data.",
     "panel": "Operate",
     "params": [],
     "default_subcommand": null,
@@ -4113,6 +4320,54 @@
         "help": "Is the daemon up, and does a deny on this harness actually stop anything?",
         "panel": null,
         "params": [],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "admin jobs",
+      "name": "jobs",
+      "summary": "Run scheduled work: monitors, drift, compliance, canaries.",
+      "help": "Run scheduled work: monitors, drift, compliance, canaries.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin jobs run-due",
+        "name": "run-due",
+        "summary": "One pass of the job runner: enqueue due schedules, recover stuck jobs, run them.",
+        "help": "One pass of the job runner: enqueue due schedules, recover stuck jobs, run them.\n\nPut this on a scheduler (cron, a systemd timer, a Kubernetes CronJob) every 10-30\nminutes on a self-hosted deployment. Safe to run as often as you like.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "limit",
+          "opts": [
+           "--limit"
+          ],
+          "type": "integer",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": 50,
+          "help": "Most jobs to run in this pass."
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Print JSON."
+         }
+        ],
         "default_subcommand": null,
         "commands": []
        }

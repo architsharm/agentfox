@@ -76,7 +76,8 @@ Settings are cached per process, so restart after changing them.
 | `AGENTFOX_IMPROVEMENT_MAX_AUTO_CHANGES_PER_DAY` | 20 | Cap on automated applies per tenant per day. |
 | `AGENTFOX_IMPROVEMENT_ROLLBACK_BUDGET` | 0.05 | A change kind rolled back more often than this drops one autonomy level. |
 | `AGENTFOX_CANARY_MIN_DWELL_SECONDS` / `_MAX_BLOCK_RATE_DROP` | 3600 / 0.15 | Default canary dwell time, and how much *less* the candidate may block before it rolls back. |
-| `AGENTFOX_SCHEDULER_ENABLED` | `true` | Whether cron runs queue scheduled work: canary advance hourly; compliance, drift and threshold proposals daily; red-team posture weekly (off by default). |
+| `AGENTFOX_SCHEDULER_ENABLED` | `true` | Whether cron runs queue scheduled work: due monitors every 10 minutes; canary advance hourly; compliance, drift and threshold proposals daily; red-team posture weekly (off by default). |
+| `AGENTFOX_MONITOR_BATCH_LIMIT` / `_FAILURE_THRESHOLD` | 5 / 3 | Most monitors one `monitors.run` job runs, and failed runs in a row before a `monitor_failing` finding. |
 | `AGENTFOX_JOB_STUCK_AFTER_SECONDS` / `_BACKOFF_BASE_SECONDS` | 900 / 60 | When a running job counts as crashed, and the base of its exponential retry delay. |
 
 ## Providers and integrations
@@ -97,6 +98,14 @@ export.
 | `AGENTFOX_WEBHOOK_SECRET` | unset | Adds `X-Nometria-Signature: sha256=<hex HMAC of the body>` |
 | `AGENTFOX_WEBHOOK_TIMEOUT_SECONDS` | 3.0 | One retry on 5xx or timeout |
 | `AGENTFOX_WEBHOOK_MIN_SEVERITY` | `high` | `critical` \| `high` \| `medium` \| `low` |
+
+## Monitoring connected sources
+
+| Variable | Default | Notes |
+|---|---|---|
+| `AGENTFOX_SLACK_WEBHOOK_URL` | unset | Slack incoming webhook for monitor findings opened, reopened or closed. Needs `AGENTFOX_ALLOW_EGRESS=true` |
+| `AGENTFOX_SLACK_MIN_SEVERITY` | `medium` | `critical` \| `high` \| `medium` \| `low` |
+| `AGENTFOX_GITHUB_WEBHOOK_SECRET` | unset | Verifies `X-Hub-Signature-256` on `/api/integrations/github/webhook`; a connection can carry its own instead |
 
 Nothing is sent unless `AGENTFOX_ALLOW_EGRESS=true`. The body is `{"event":
 "finding.created", "finding": {...}, "org_id", "sent_at"}`. Receivers should de-duplicate on

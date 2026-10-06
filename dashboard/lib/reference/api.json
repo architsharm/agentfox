@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/docs_reference.py",
- "count": 182,
+ "count": 196,
  "routes": [
   {
    "method": "GET",
@@ -1087,6 +1087,114 @@
      "required": true,
      "type": "string"
     },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Stop sending this tenant's alerts to its own Slack channel.",
+   "description": "Stop sending this tenant's alerts to its own Slack channel.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Whether this tenant has its own Slack channel, and whether alerts can leave at all.",
+   "description": "Whether this tenant has its own Slack channel, and whether alerts can leave at all.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Send this tenant's monitor alerts to its own Slack incoming webhook.",
+   "description": "Send this tenant's monitor alerts to its own Slack incoming webhook.\n\nThe URL must be ``https://hooks.slack.com/services/…``; it is stored encrypted.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SlackIn",
+    "fields": [
+     {
+      "name": "url",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "min_severity",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/alerts/slack/test",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Send a test message to every channel this tenant's alerts go to, now.",
+   "description": "Send a test message to every channel this tenant's alerts go to, now.",
+   "params": [
     {
      "name": "authorization",
      "in": "header",
@@ -4248,6 +4356,52 @@
   },
   {
    "method": "POST",
+   "path": "/api/integrations/github/webhook",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "GitHub push webhook: a signed push to a monitored repository queues a rescan.",
+   "description": "GitHub push webhook: a signed push to a monitored repository queues a rescan.\n\n``X-Hub-Signature-256`` is verified first; then each monitor of the pushed\nrepository whose tenant's secret signed the delivery gets a rescan of the commit.\n\nRegister it on the repository (or organisation) with payload URL\n``https://<api host>/api/integrations/github/webhook``, content type\n``application/json``, the ``push`` event, and as secret either the deployment's\n``AGENTFOX_GITHUB_WEBHOOK_SECRET`` or the one ``POST\n/api/integrations/github/webhook-secret`` returned for the connection. A delivery\nis acted on only for the tenants whose secret signed it.",
+   "params": [
+    {
+     "name": "x-github-event",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-hub-signature-256",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/github/webhook-secret",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Create or replace the GitHub connection's push-webhook secret (shown once).",
+   "description": "Create or replace the GitHub connection's push-webhook secret (shown once).\n\nPaste it into the GitHub webhook's \"Secret\" field.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
    "path": "/api/integrations/hosted-api/scan",
    "section": "integrations",
    "audience": "operator",
@@ -4595,8 +4749,8 @@
    "path": "/api/mcp-servers",
    "section": "mcp-servers",
    "audience": "operator",
-   "summary": "Create Mcp",
-   "description": "",
+   "summary": "Register an MCP server, and start monitoring it for tool drift.",
+   "description": "Register an MCP server, and start monitoring it for tool drift.\n\nA remote (Streamable HTTP) server's tool listing is re-read on a schedule; a stdio\nserver's pushed listings are watched.",
    "params": [
     {
      "name": "authorization",
@@ -4834,6 +4988,306 @@
    "params": [
     {
      "name": "entry_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/monitors",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Every monitor in the tenant, with its last result and when it next runs.",
+   "description": "Every monitor in the tenant, with its last result and when it next runs.",
+   "params": [
+    {
+     "name": "kind",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "enabled",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Watch a source by hand. The first run stores a baseline; later runs report changes.",
+   "description": "Watch a source by hand. The first run stores a baseline; later runs report changes.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MonitorIn",
+    "fields": [
+     {
+      "name": "kind",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "target",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Stop watching a source. Its findings are kept.",
+   "description": "Stop watching a source. Its findings are kept.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "One monitor, with the findings it raised that are still open.",
+   "description": "One monitor, with the findings it raised that are still open.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Rename, retune the interval, change config, or pause/resume (``enabled``).",
+   "description": "Rename, retune the interval, change config, or pause/resume (``enabled``).",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MonitorPatch",
+    "fields": [
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/pause",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Stop scheduled runs. Open findings stay open; nothing is closed while paused.",
+   "description": "Stop scheduled runs. Open findings stay open; nothing is closed while paused.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/resume",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Resume scheduled runs from the monitor's next due time.",
+   "description": "Resume scheduled runs from the monitor's next due time.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/run",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Run one monitor now, through the job queue, and return its result.",
+   "description": "Run one monitor now, through the job queue, and return its result.",
+   "params": [
+    {
+     "name": "monitor_id",
      "in": "path",
      "required": true,
      "type": "string"

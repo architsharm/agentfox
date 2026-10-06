@@ -101,7 +101,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-182 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+196 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -155,7 +155,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/findings/{finding_id}` | Get Finding |
 | `PATCH` | `/api/findings/{finding_id}` | Patch Finding |
 | `GET` | `/api/mcp-servers` | List Mcp |
-| `POST` | `/api/mcp-servers` | Create Mcp |
+| `POST` | `/api/mcp-servers` | Register an MCP server, and start monitoring it for tool drift. |
 | `POST` | `/api/mcp-servers/{name}/scan` | Scan Mcp |
 | `POST` | `/api/mcp-servers/{name}/tools` | I-2 — snapshot a listing *and* register each tool in the registry. |
 | `GET` | `/api/tools` | List Tools |
@@ -310,23 +310,37 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agents/{slug}/signing-key` | Key Status |
 | `POST` | `/api/agents/{slug}/signing-key` | Mint (or rotate) an agent's HMAC signing key. Shown once — like an API |
 
-### Jobs and integrations
+### Jobs, monitors and integrations
 
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/agents/{agent_id}/approve` | Approve Agent |
 | `POST` | `/api/agents/{agent_id}/reject` | Reject Agent |
+| `DELETE` | `/api/alerts/slack` | Stop sending this tenant's alerts to its own Slack channel. |
+| `GET` | `/api/alerts/slack` | Whether this tenant has its own Slack channel, and whether alerts can leave at all. |
+| `PUT` | `/api/alerts/slack` | Send this tenant's monitor alerts to its own Slack incoming webhook. |
+| `POST` | `/api/alerts/slack/test` | Send a test message to every channel this tenant's alerts go to, now. |
 | `POST` | `/api/auth/github/provision` | Find-or-create the user behind a GitHub identity, and mint them a token. |
 | `POST` | `/api/integrations/github/connect` | Connect |
 | `GET` | `/api/integrations/github/repos` | List Repos |
 | `POST` | `/api/integrations/github/scan` | Trigger Scan |
 | `GET` | `/api/integrations/github/scans/{scan_id}` | Get Scan |
+| `POST` | `/api/integrations/github/webhook` | GitHub push webhook: a signed push to a monitored repository queues a rescan. |
+| `POST` | `/api/integrations/github/webhook-secret` | Create or replace the GitHub connection's push-webhook secret (shown once). |
 | `POST` | `/api/integrations/hosted-api/scan` | Scan Hosted Api |
 | `GET` | `/api/internal/jobs/run` | The cron entry point. GET because that is what Vercel Cron sends; POST for |
 | `POST` | `/api/internal/jobs/run` | The cron entry point. GET because that is what Vercel Cron sends; POST for |
 | `GET` | `/api/jobs` | Includes dead-lettered jobs by default — that's the point (jobs.py's |
 | `GET` | `/api/jobs/{job_id}` | Get Job |
 | `POST` | `/api/jobs/{job_id}/retry` | Retry Job |
+| `GET` | `/api/monitors` | Every monitor in the tenant, with its last result and when it next runs. |
+| `POST` | `/api/monitors` | Watch a source by hand. The first run stores a baseline; later runs report changes. |
+| `DELETE` | `/api/monitors/{monitor_id}` | Stop watching a source. Its findings are kept. |
+| `GET` | `/api/monitors/{monitor_id}` | One monitor, with the findings it raised that are still open. |
+| `PATCH` | `/api/monitors/{monitor_id}` | Rename, retune the interval, change config, or pause/resume (``enabled``). |
+| `POST` | `/api/monitors/{monitor_id}/pause` | Stop scheduled runs. Open findings stay open; nothing is closed while paused. |
+| `POST` | `/api/monitors/{monitor_id}/resume` | Resume scheduled runs from the monitor's next due time. |
+| `POST` | `/api/monitors/{monitor_id}/run` | Run one monitor now, through the job queue, and return its result. |
 
 ### Playground (unauthenticated, rate-limited)
 
