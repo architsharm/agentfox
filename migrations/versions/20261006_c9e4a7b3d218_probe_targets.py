@@ -14,7 +14,7 @@ create_all can leave a database holding this revision's schema while its recorde
 revision is still the previous one.
 
 Revision ID: c9e4a7b3d218
-Revises: b8d3f6a2c915
+Revises: c3e9a7d15f42
 Create Date: 2026-10-06 00:00:00.000000
 """
 
@@ -26,7 +26,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c9e4a7b3d218"
-down_revision: str | None = "b8d3f6a2c915"
+down_revision: str | None = "c3e9a7d15f42"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
