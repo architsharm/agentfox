@@ -81,6 +81,14 @@ def _decision(command: str) -> str:
         "agentfox policy proposals apply chp_01h2",
         "agentfox policy proposals rollback chp_01h2 --actor a@b.c --reason x",
         "agentfox policy proposals verify chp_01h2 --actor a@b.c --note worse --failed",
+        # Grants are containment: a grant is what lets a refused tool call through.
+        "agentfox permit grant payments-ops payments.transfer --limit amount=500",
+        "agentfox permit revoke cap_01h2",
+        "agentfox capability grant payments-ops payments.transfer",
+        "uv run agentfox capability revoke cap_01h2",
+        "agentfox permit user alice 'crm:*'",
+        "agentfox admin users create ops@example.com --role owner",
+        "curl -X POST localhost:8080/api/identities/idn_1/capabilities -d '{}'",
     ],
 )
 def test_blocking_commands_require_confirmation(command):
@@ -102,6 +110,8 @@ def test_blocking_commands_require_confirmation(command):
         "agentfox declare escalation --agent a --mode observe",
         "agentfox policy proposals list",
         "agentfox report",
+        "agentfox permit list",
+        "agentfox admin users list",
         "agentfox demo-notes.md",
         "git commit -m 'agentfox policy enforce baseline'",
         "echo agentfox seed",
