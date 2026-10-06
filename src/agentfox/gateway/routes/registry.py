@@ -441,10 +441,27 @@ def list_mcp(session: Session = Depends(db), _user: User = Depends(current_user)
 
 @router.post("/mcp-servers", status_code=201)
 def create_mcp(
-    payload: McpIn, session: Session = Depends(db), _user: User = Depends(require("registry"))
+    payload: McpIn, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
+    """Register an MCP server, and start monitoring it for tool drift.
+
+    A remote (Streamable HTTP) server's tool listing is re-read on a schedule; a stdio
+    server's pushed listings are watched."""
     server = upsert_mcp_server(session, **payload.model_dump())
-    return {"id": server.id, "name": server.name}
+    monitor = _monitor_mcp(session, server, user)
+    return {"id": server.id, "name": server.name, "monitor_id": monitor.id if monitor else None}
+
+
+def _monitor_mcp(session: Session, server: McpServer, user: User | None):
+    from agentfox.monitoring.service import safe_ensure_monitor
+
+    return safe_ensure_monitor(
+        session,
+        kind="mcp_server",
+        target=server.name,
+        config={"mcp_server_id": server.id},
+        created_by=(user.email or user.id) if user else "",
+    )
 
 
 class McpScanIn(BaseModel):
@@ -475,7 +492,7 @@ def register_mcp_tools(
     name: str,
     payload: McpRegisterIn,
     session: Session = Depends(db),
-    _user: User = Depends(require("registry")),
+    user: User = Depends(require("registry")),
 ) -> dict[str, Any]:
     """I-2 — snapshot a listing *and* register each tool in the registry.
 
@@ -490,6 +507,7 @@ def register_mcp_tools(
 
     governor = McpGovernor(session=session, agent_slug="", server_name=name)
     report = governor.register_tools(payload.tools, accept_changes=payload.accept_changes)
+    _monitor_mcp(session, governor.server, user)
     held = set(report.get("held", []))
     return {
         **report,

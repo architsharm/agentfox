@@ -35,6 +35,7 @@ from agentfox.gateway.routes import (
     jobs,
     memory,
     messaging,
+    monitors,
     onboarding,
     playground,
     policy,
@@ -292,6 +293,7 @@ def create_app() -> FastAPI:
     app.include_router(entitlement.router)
     app.include_router(integrations.router)
     app.include_router(jobs.router)
+    app.include_router(monitors.router)
     app.include_router(discovery.router)
     app.include_router(memory.router)
     app.include_router(messaging.router)
