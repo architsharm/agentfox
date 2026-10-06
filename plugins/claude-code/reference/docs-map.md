@@ -68,6 +68,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | `benchmarks/REPORT.md`, `benchmarks/*/README.md` (one per benchmark area) | running or changing that benchmark |
 | `benchmarks/injection/data/README.md`, `benchmarks/generalization/data/README.md`, `docs/evaluation/dataset-sourcing.md` | dataset provenance and licensing |
 | `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md` | running or deploying the live demos |
+| `src/agentfox/harnesses/*/fixtures/README.md` | capturing a harness's hook payloads (written by `just new-harness`) |
 | `CONTRIBUTING.md` | setting up to work on the code: `just setup`/`just ci` (the `justfile` mirrors CI), test layout, generated files and their checks, the vendored-wheel rule, branch and docstring conventions |
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant 2.1, verbatim. Reporting contact only; nothing project-specific to read |

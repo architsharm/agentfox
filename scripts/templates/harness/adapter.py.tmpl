@@ -1,0 +1,73 @@
+"""{{display_name}}: its hook contract, as measured rather than as documented.
+
+Scaffolded by `just new-harness {{name}}`. Every capability row below starts as "cannot":
+an adapter claims a power only after a live probe shows the harness honours it, and
+records that probe in the row's `verified`. See `harnesses/claude_code/adapter.py` for a
+finished adapter and `docs/design/structure-proposal.md` §4 for the contract.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any
+
+from agentfox.harnesses.base import (
+    AgentEvent,
+    Decision,
+    EventCaps,
+    FileChange,
+    HookOutput,
+    Scope,
+)
+
+#: Canonical kind -> {{display_name}}'s own event name. Add an event only once a captured
+#: payload for it is in `fixtures/`.
+EVENTS: dict[str, str] = {}
+
+#: Per canonical kind, what a reply can do there. Unprobed means everything False.
+CAPABILITIES: dict[str, EventCaps] = {kind: EventCaps() for kind in EVENTS}
+
+#: Native tool name -> canonical name (`shell`, `file.read`, `file.write`, `web.fetch`,
+#: `mcp:<server>/<tool>`).
+TOOL_MAP: dict[str, str] = {}
+
+#: Native tool name -> declared impact (`read`, `write`, `high_impact`, `irreversible`).
+TOOL_IMPACTS: dict[str, str] = {}
+
+
+class {{class_name}}:
+    """{{display_name}}. Not yet probed."""
+
+    #: What installed hooks call: `agentfox hooks run --harness {{name}}`.
+    name = "{{name}}"
+    display_name = "{{display_name}}"
+    maturity = "sandbox"
+    events: Mapping[str, str] = EVENTS
+    capabilities: Mapping[str, EventCaps] = CAPABILITIES
+    tool_map: Mapping[str, str] = TOOL_MAP
+    tool_impacts: Mapping[str, str] = TOOL_IMPACTS
+
+    def canonical_tool(self, native: str) -> str:
+        return TOOL_MAP.get(native, native)
+
+    def parse(self, raw: Mapping[str, Any]) -> AgentEvent:
+        raise NotImplementedError("map a captured payload in fixtures/ to an AgentEvent")
+
+    def render(self, decision: Decision, event: AgentEvent) -> HookOutput:
+        raise NotImplementedError("render a Decision as the harness's reply; see base.downgrade")
+
+    def install(self, root: Path, scope: Scope, *, agent: str) -> list[FileChange]:
+        raise NotImplementedError("write the harness's hook settings; idempotent, merge-safe")
+
+    def hooked_agents(self, root: Path) -> list[str]:
+        return []
+
+    def mcp_config_paths(self, root: Path) -> list[Path]:
+        return []
+
+    def transcripts(self, base: Path | None = None) -> None:
+        return None
+
+
+ADAPTER = {{class_name}}()

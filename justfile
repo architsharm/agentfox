@@ -77,6 +77,10 @@ wheel-freshness base="origin/main":
 # Everything CI runs except the Docker build.
 ci: lint test check dashboard wheel-freshness
 
+# Scaffold a coding-agent harness adapter: `just new-harness codex "Codex CLI"`.
+new-harness name display="":
+    uv run python scripts/gen/new_harness.py {{name}} {{ if display != "" { "--display-name '" + display + "'" } else { "" } }}
+
 # Rebuild both vendored wheels (api/ and the live demo deploy these, not src/).
 wheels:
     uv build --wheel --out-dir api/vendor
