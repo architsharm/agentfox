@@ -31,9 +31,9 @@ from pathlib import Path
 
 import pytest
 
+from agentfox import harnesses as harness_mod
+from agentfox.harnesses.capability import EVENT_SURFACE, capability_of, describe
 from agentfox.hooks import HookDaemon
-from agentfox.hooks import harness as harness_mod
-from agentfox.hooks.capability import EVENT_SURFACE, capability_of, describe
 from agentfox.hooks.client import guard_content
 from agentfox.hooks.protocol import PROTOCOL_VERSION
 

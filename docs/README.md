@@ -85,5 +85,5 @@ a quoted figure drifts from its source.
 
 | Document | What it is |
 |---|---|
-| [../harness/README.md](../harness/README.md) | The agent harness: skills, commands, subagents, MCP server and safety hooks for driving the product from a coding agent. |
-| [../harness/reference/docs-map.md](../harness/reference/docs-map.md) | Which document an agent should read for which question. Every tracked markdown file must be classified there. |
+| [../plugins/claude-code/README.md](../plugins/claude-code/README.md) | The Claude Code operator plugin: skills, commands, subagents, MCP server and safety hooks for driving the product from a coding agent. Its runtime-neutral parts are in `plugins/shared/`. |
+| [../plugins/shared/reference/docs-map.md](../plugins/shared/reference/docs-map.md) | Which document an agent should read for which question. Every tracked markdown file must be classified there. |

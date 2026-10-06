@@ -82,8 +82,13 @@ restricted-classifiers = ["transformers>=4.44", "torch>=2.4"]
 [project.scripts]
 agentfox = "agentfox.apps.cli.main:main"
 # Kept so an existing install does not lose its command on upgrade. The docs, the
-# harness and the product's own output all say `agentfox`; this is compatibility,
+# plugins and the product's own output all say `agentfox`; this is compatibility,
 # not a second name we advertise.
+
+# Coding-agent harnesses (`agentfox.harnesses`). The built-in adapters register here
+# exactly as an external `agentfox-harness-*` package registers its own.
+[project.entry-points."agentfox.harnesses"]
+claude = "agentfox.harnesses.claude_code:ADAPTER"
 
 [build-system]
 requires = ["hatchling"]
@@ -115,11 +120,11 @@ root_package = "agentfox"
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
-name = "Layers: apps > frameworks, exporters, hooks, fixtures > runtime > capabilities > platform > core"
+name = "Layers: apps > frameworks, exporters, harnesses, hooks, fixtures > runtime > capabilities > platform > core"
 type = "layers"
 layers = [
     "agentfox.apps",
-    "agentfox.frameworks : agentfox.exporters : agentfox.hooks : agentfox.fixtures",
+    "agentfox.frameworks : agentfox.exporters : agentfox.harnesses : agentfox.hooks : agentfox.fixtures",
     "agentfox.runtime",
     "agentfox.capabilities",
     "agentfox.platform",
@@ -146,14 +151,37 @@ forbidden_modules = [
     "agentfox.runtime",
     "agentfox.frameworks",
     "agentfox.exporters",
+    "agentfox.harnesses",
     "agentfox.hooks",
     "agentfox.fixtures",
     "agentfox.apps",
     "agentfox.errors",
 ]
 
+# A harness adapter is reached through the registry (`agentfox.harnesses.get`, `all`,
+# `known`), never by importing it: that is what lets an external adapter, registered
+# by entry point, be a peer of the built-in ones. Only the registry package itself and
+# the hook transport may name an adapter module.
+[[tool.importlinter.contracts]]
+name = "Only harnesses/ and hooks/ import a specific harness adapter"
+type = "forbidden"
+source_modules = [
+    "agentfox.apps",
+    "agentfox.frameworks",
+    "agentfox.exporters",
+    "agentfox.fixtures",
+    "agentfox.runtime",
+    "agentfox.capabilities",
+    "agentfox.platform",
+    "agentfox.core",
+    "agentfox.errors",
+]
+forbidden_modules = ["agentfox.harnesses.claude_code"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `tests/harnesses/conformance.py` is the harness conformance suite, named for what it is.
+python_files = ["test_*.py", "conformance.py"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
 

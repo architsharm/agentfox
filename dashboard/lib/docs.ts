@@ -74,7 +74,7 @@ export const DOC_NAV: DocSection[] = [
     heading: "Operate",
     items: [
       { href: "/docs/self-host", label: "Self-hosting", description: "Docker Compose, Render, or a Python app." },
-      { href: "/docs/harness", label: "Claude Code harness", description: "Skills, slash commands and a read-only MCP server." },
+      { href: "/docs/plugin", label: "Claude Code plugin", description: "Skills, slash commands and a read-only MCP server." },
       { href: "/docs/benchmarks", label: "Benchmarks", description: "What was measured, and where each result stops." },
       { href: "/docs/limits", label: "Limits", description: "What is only as good as your declarations." },
       { href: "/docs/support", label: "Support", description: "What to run before you file an issue." },

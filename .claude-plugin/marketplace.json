@@ -7,8 +7,8 @@
   "plugins": [
     {
       "name": "agentfox",
-      "source": "./harness",
-      "description": "Agent harness for the AgentFox control plane (skills, commands, subagents, safety hooks).",
+      "source": "./plugins/claude-code",
+      "description": "Operator plugin for the AgentFox control plane (skills, commands, subagents, safety hooks).",
       "version": "0.1.0"
     }
   ]

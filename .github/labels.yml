@@ -67,9 +67,9 @@ labels:
     colour: "1d76db"
     description: The agentfox command line and its output.
 
-  - name: "area:harness"
+  - name: "area:plugin"
     colour: "1d76db"
-    description: The Claude Code plugin, skills, subagents and the MCP server.
+    description: The operator plugins (plugins/), skills, subagents and the MCP server.
 
   # --- State ---------------------------------------------------------------
   - name: needs-triage

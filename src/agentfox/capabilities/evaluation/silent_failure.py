@@ -404,7 +404,7 @@ class JsonContractSignal:
 
 
 def _context_text(ctx: ScoreContext) -> str:
-    """Retrieved context for grounding, from wherever the harness put it."""
+    """Retrieved context for grounding, from wherever the eval runner put it."""
     for key in ("retrieved", "context", "documents", "sources"):
         value = ctx.context.get(key)
         if isinstance(value, str) and value.strip():

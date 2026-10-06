@@ -113,7 +113,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | **X-3** Offline-first | ✅ | `platform/providers/echo.py`, every adapter's `available()` | whole suite runs with no key and no weights |
 | **X-4** Deterministic decisions | ✅ | `platform/policy/engine.py`, `Decision.policy_version_ids` | `test_policy_and_identity.py::test_determinism`; `test_enforcement_and_api.py::test_decision_records_every_policy_version_in_force` |
 | **X-5** Everything through the API | ✅ | `dashboard/lib/api.ts` — no DB access from the UI process | dashboard renders solely from `/api` |
-| **X-6** Agent-native operation (harness + MCP) | ✅ | `harness/` (skills, commands, subagents, safety hook), `mcp_server.py` + `apps/cli/mcp_cli.py` (`agentfox mcp serve`, 24 read-only tools, stdlib JSON-RPC) | `test_mcp_server.py`; `test_harness.py` (harness ↔ live CLI drift, hook decisions) |
+| **X-6** Agent-native operation (plugin + MCP) | ✅ | `plugins/` (skills, commands, subagents, safety hook), `mcp_server.py` + `apps/cli/mcp_cli.py` (`agentfox mcp serve`, 24 read-only tools, stdlib JSON-RPC) | `test_mcp_server.py`; `test_plugins.py` (plugin ↔ live CLI drift, shared copies, hook decisions) |
 
 ## Non-functional
 
