@@ -580,10 +580,11 @@ CHAIN INTACT — 52 entries verified (seq 1..52)`}</Output>
         </thead>
         <tbody>
           <tr>
-            <td>The call escalated with &quot;The granting capability requires human approval&quot;, but the grant has no <code>--requires-approval</code>.</td>
+            <td>The call escalated with &quot;arguments [&apos;…&apos;] carry provenance above the capability&apos;s max_taint&quot;, but the grant has no <code>--requires-approval</code>.</td>
             <td>
-              An argument&apos;s provenance is above the grant&apos;s <code>max_taint</code>.{" "}
-              <code>taint.capability.reasons</code> in the response names the argument.
+              An argument came from somewhere above the grant&apos;s <code>max_taint</code>{" "}
+              (a document, a tool result). The reason names the argument and where it came
+              from; pass a trusted value, or raise the grant&apos;s <code>--max-taint</code>.
             </td>
           </tr>
           <tr>

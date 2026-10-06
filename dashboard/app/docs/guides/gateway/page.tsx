@@ -609,7 +609,8 @@ email.send     (no grant)               {"verdict": "block", "reason": "no capab
         ticket id came out of a document, which is above the grant&apos;s{" "}
         <code>max_taint</code> of <code>user</code>, so it needs a person. The reason for that
         is in <code>taint.capability.reasons</code>:{" "}
-        <code>{`arguments ['ticket_id'] carry provenance above the capability's max_taint 'user'`}</code>.
+        <code>{`arguments ['ticket_id'] carry provenance above the capability's max_taint 'user' (ticket_id from retrieved), so a person must approve this call before it runs`}</code>,
+        and it is the escalation&apos;s <code>reason</code> too.
         Optional fields: <code>prior_tools</code> or <code>prior_steps</code> (your own step
         history, for loop detection), <code>session_id</code>.
       </p>

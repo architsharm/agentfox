@@ -91,7 +91,8 @@ rules:
       capability: requires_approval
     effect: escalate
     severity: medium
-    reason: "The granting capability requires human approval for this action."
+    # No fixed reason: a grant that requires approval and an argument above the
+    # grant's max_taint both land here, and only the capability check knows which.
     controls: [NOM-IAM-03]
 
   # --- Intent (NOM-RTG-04) ---------------------------------------------

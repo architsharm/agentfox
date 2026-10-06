@@ -152,6 +152,10 @@ def revoke_credential(session: Session, credential_id: str) -> bool:
 
 
 #: Constraint keys that configure the grant rather than naming an argument path.
+#: Why a call is held when the grant itself asks for a person on every call. A taint
+#: ceiling holds a call for a different reason and says so (`taint_violation`).
+APPROVAL_REQUIRED_REASON = "The granting capability requires human approval for this action."
+
 RESERVED_CONSTRAINTS = frozenset({"requires_verified_state", "dry_run_only"})
 
 
@@ -394,9 +398,14 @@ def check_capability(
             for p, s in argument_taint.items()
             if taint_rank(str(s)) > taint_rank(capability.max_taint)
         ]
+        # The cause is where an argument came from, not the grant: this grant may
+        # require no approval at all. Saying "the granting capability requires
+        # human approval" sent the reader to a grant that asks for nothing (#16).
+        origins = ", ".join(f"{p} from {argument_taint[p]}" for p in offending)
         decision.taint_violation = (
             f"arguments {offending} carry provenance above the capability's "
-            f"max_taint '{capability.max_taint}'"
+            f"max_taint '{capability.max_taint}' ({origins}), so a person must approve "
+            f"this call before it runs"
         )
         decision.granted = True
         decision.requires_approval = True
@@ -406,7 +415,7 @@ def check_capability(
     decision.granted = True
     decision.requires_approval = capability.requires_approval
     if decision.requires_approval:
-        decision.reasons.append(f"capability '{capability.tool_key}' requires human approval")
+        decision.reasons.append(APPROVAL_REQUIRED_REASON)
     return decision
 
 
