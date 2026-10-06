@@ -402,7 +402,7 @@ def list_tools(
 
 @router.post("/tools", status_code=201)
 def create_tool(
-    payload: ToolIn, session: Session = Depends(db), _user: User = Depends(require("registry"))
+    payload: ToolIn, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
     from agentfox.core.models import OUTPUT_TRUST_LEVELS
 
@@ -417,6 +417,7 @@ def create_tool(
         schema=payload.json_schema,
         description=payload.description,
         output_trust=payload.output_trust,
+        actor=user.email or user.id,
     )
     return {"key": tool.key, "impact": tool.impact, "output_trust": tool.output_trust}
 
@@ -424,8 +425,9 @@ def create_tool(
 class McpIn(BaseModel):
     name: str
     url: str = ""
-    transport: str = "stdio"
-    trust_level: str = "untrusted"
+    #: Omitted keeps what an existing server has; a new one gets stdio / untrusted.
+    transport: str | None = None
+    trust_level: str | None = None
     pinned_version: str | None = None
 
 

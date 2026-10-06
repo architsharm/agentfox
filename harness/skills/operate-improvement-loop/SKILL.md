@@ -70,7 +70,9 @@ that kind can only be recommended, never applied.
   `verdict.unblock`, `agent.kill`, `agent.resume`, `compliance.claim`, and the rest).
 - **Automation needs four things at once:** an earned autonomy level (L3 or L4), a kind and
   direction the contract allows, the freeze switch off, and headroom under the tenant's daily
-  cap. L0 observes, L1 recommends, L2 is one-click for a person.
+  cap. L0 observes, L1 recommends, L2 is one-click for a person, and L3 and L4 apply
+  without one. There is no observe stage: an automated tightening is enforced as soon as it
+  applies, unless its diff asks for a canary and the kind can be staged (policy kinds only).
 - **A class that keeps getting rolled back is demoted** one level, never below L1, while it
   is over the rollback budget (5% by default).
 - **Undoing a tightening is a loosening**, so automation may not roll one back either.
