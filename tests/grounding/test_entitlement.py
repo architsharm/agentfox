@@ -185,12 +185,37 @@ def test_withholding_is_recorded_not_silent(estate):
     assert event.principal_subject == "alice@acme.com"
 
 
-def test_nothing_is_recorded_when_nothing_was_withheld(estate):
+def test_a_check_that_withheld_nothing_is_still_recorded(estate):
+    """The ratio's denominator is every access check, not only the ones that withheld
+    something — otherwise one withholding request reads as 100% over-permission (#8)."""
     with session_scope() as session:
-        decision = filter_retrieval(session, _principal("alice@acme.com"), [CHUNKS[0]])
+        clean = filter_retrieval(session, _principal("alice@acme.com"), [CHUNKS[0]])
+        assert record_disclosure(session, clean) is not None
+        partial = filter_retrieval(session, _principal("alice@acme.com"), CHUNKS)
+        record_disclosure(session, partial)
+        report = over_permission_report(session)
+    assert report["requests"] == 2
+    assert report["requests_withholding"] == 1
+    assert report["candidates"] == 5
+    assert report["over_permission"] == round(2 / 5, 4)
+
+
+def test_nothing_is_recorded_when_there_was_nothing_to_check(estate):
+    with session_scope() as session:
+        decision = filter_retrieval(session, _principal("alice@acme.com"), [])
         assert record_disclosure(session, decision) is None
     with session_scope() as session:
         assert session.query(DisclosureEvent).count() == 0
+
+
+def test_the_openfga_hint_names_the_current_variable():
+    import inspect
+
+    from agentfox.grounding.entitlement import OpenFgaEngine
+
+    source = inspect.getsource(OpenFgaEngine.visible)
+    assert "AGENTFOX_ENTITLEMENT_ENGINE" in source
+    assert "NOMETRIA_" not in source
 
 
 def test_the_over_permission_report_works_with_no_entitlement_model(isolated_db):

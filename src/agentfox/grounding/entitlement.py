@@ -194,7 +194,7 @@ class OpenFgaEngine:
     ) -> set[str]:
         raise NotImplementedError(
             "the OpenFGA adapter is a declared seam, not an implementation. "
-            "Configure NOMETRIA_ENTITLEMENT_ENGINE=native, or contribute the adapter."
+            "Configure AGENTFOX_ENTITLEMENT_ENGINE=native, or contribute the adapter."
         )
 
 
@@ -339,8 +339,14 @@ def record_disclosure(
     agent_id: str | None = None,
     stage: str = "pre",
 ) -> DisclosureEvent | None:
-    """Persist the withholding. Nothing is recorded when nothing was withheld."""
-    if not decision.withheld:
+    """Persist the access check, including the ones that withheld nothing.
+
+    The over-permission ratio is withheld / candidates across every check; recording
+    only the checks that withheld something made the denominator exclude every clean
+    request and overstated the ratio. Nothing is recorded when there was nothing to
+    check (no candidate chunks).
+    """
+    if not decision.candidates:
         return None
     event = DisclosureEvent(
         trace_id=trace_id,
@@ -451,11 +457,14 @@ def over_permission_report(session: Session, *, days: int = 7) -> dict[str, Any]
     withheld = sum(e.withheld for e in events)
     reasons: dict[str, int] = {}
     for event in events:
+        if not event.withheld:
+            continue
         for reason, count in (event.reasons_json or {}).items():
             reasons[reason] = reasons.get(reason, 0) + count
     return {
         "window_days": days,
         "requests": len(events),
+        "requests_withholding": sum(1 for e in events if e.withheld),
         "candidates": candidates,
         "withheld": withheld,
         "over_permission": round(withheld / candidates, 4) if candidates else 0.0,

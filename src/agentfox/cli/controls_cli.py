@@ -497,7 +497,9 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
     ratio = report["over_permission"]
     colour = "red" if ratio > 0.2 else "yellow" if ratio else "green"
     console.print(
-        f"[bold]{report['requests']}[/] request(s) · {report['principals']} principal(s) · "
+        f"[bold]{report['requests']}[/] request(s) checked · "
+        f"{report.get('requests_withholding', 0)} withheld something · "
+        f"{report['principals']} principal(s) · "
         f"[{colour}]{ratio:.1%}[/] of retrieved content was withheld"
     )
     for reason, count in report["reasons"].items():
