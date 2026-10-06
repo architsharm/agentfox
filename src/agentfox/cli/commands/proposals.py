@@ -1,4 +1,4 @@
-"""`agentfox proposals` — the governed improvement loop's inbox: review, decide,
+"""`agentfox policy proposals` — the governed improvement loop's inbox: review, decide,
 apply, undo.
 """
 

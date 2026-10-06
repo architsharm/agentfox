@@ -88,7 +88,7 @@ the same four grants as the CrewAI demo's agent:
 |---|---|
 | `lookup_customer` | unrestricted |
 | `search_orders` | unrestricted |
-| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox seed`'s own `payments-ops` agent |
+| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox admin seed`'s own `payments-ops` agent |
 | `send_email` | **requires human approval** — same shape as `payments-ops`'s `email.send` grant |
 
 It is not a superuser. A red-team probe attempting a $50,000 refund, or an
@@ -98,7 +98,7 @@ switched off for the demo.
 ## Step 1 — show the probe library
 
 ```bash
-agentfox redteam probes
+agentfox test probes
 ```
 
 Real output, captured while building this demo:
@@ -301,10 +301,10 @@ Byte-for-byte the same mechanics and the same rules firing as the CrewAI demo's 
 (order IDs and dollar amounts included) — expected, since this script never touches
 the agent framework at all.
 
-## `agentfox redteam run` — an honest read of a real run
+## `agentfox test redteam` — an honest read of a real run
 
 ```bash
-agentfox redteam run support-crew-live-lang
+agentfox test redteam support-crew-live-lang
 ```
 
 Real output, captured while building this demo:
@@ -370,7 +370,7 @@ third-party network calls happen anywhere in this demo.
 ## What I verified myself (and what I didn't)
 
 Everything above that shows real output — the `verify_mechanics.py` run, the
-`agentfox redteam probes` / `redteam run` output, the `agentfox policy list` /
+`agentfox test probes` / `redteam run` output, the `agentfox policy list` /
 `policy enforce baseline` before/after — was actually run, in an isolated scratch
 virtualenv, while building this demo. I additionally confirmed, directly, without
 needing a live key:

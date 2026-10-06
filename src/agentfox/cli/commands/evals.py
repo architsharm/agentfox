@@ -1,4 +1,4 @@
-"""`agentfox eval` — score an agent, gate a build on regression, watch for drift."""
+"""Score an agent, gate a build on regression, watch for drift (`agentfox test`)."""
 
 from __future__ import annotations
 

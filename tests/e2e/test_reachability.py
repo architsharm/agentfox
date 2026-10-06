@@ -48,17 +48,17 @@ def flat(text: str) -> str:
 def test_a_source_can_be_tiered_from_the_command_line(isolated_db):
     result = runner.invoke(
         app,
-        ["sources", "add", "price-book", "--tier", "system_of_record", "--owner", "fin@x.test"],
+        ["declare", "source", "price-book", "--tier", "system_of_record", "--owner", "fin@x.test"],
     )
     assert result.exit_code == 0, result.output
-    listed = runner.invoke(app, ["sources", "list", "--json"])
+    listed = runner.invoke(app, ["declare", "list", "sources", "--json"])
     rows = json.loads(listed.output)
     assert rows[0]["key"] == "price-book"
     assert rows[0]["tier"] == "system_of_record"
 
 
 def test_an_unknown_tier_is_refused_with_the_valid_ones(isolated_db):
-    result = runner.invoke(app, ["sources", "add", "x", "--tier", "trustworthy"])
+    result = runner.invoke(app, ["declare", "source", "x", "--tier", "trustworthy"])
     assert result.exit_code == 1
     assert "system_of_record" in flat(result.output)
 
@@ -76,7 +76,7 @@ def test_a_corpus_can_be_imported_in_one_go(isolated_db, tmp_path):
             ]
         )
     )
-    result = runner.invoke(app, ["sources", "import", str(manifest)])
+    result = runner.invoke(app, ["declare", "import-sources", str(manifest)])
     assert result.exit_code == 0
     assert "3 source(s)" in flat(result.output)
 
@@ -84,12 +84,14 @@ def test_a_corpus_can_be_imported_in_one_go(isolated_db, tmp_path):
 def test_an_sla_without_an_update_time_explains_why_it_reads_stale(isolated_db):
     """Treating unknown age as a breach is deliberate. Not saying so leaves the
     operator wondering why a source they just added is already stale."""
-    result = runner.invoke(app, ["sources", "add", "gl", "--tier", "approved", "--sla-hours", "24"])
+    result = runner.invoke(
+        app, ["declare", "source", "gl", "--tier", "approved", "--sla-hours", "24"]
+    )
     assert "no update time is recorded" in flat(result.output)
 
 
 def test_the_empty_state_says_what_it_means(isolated_db):
-    result = runner.invoke(app, ["sources", "list"])
+    result = runner.invoke(app, ["declare", "list", "sources"])
     assert "No sources registered" in flat(result.output)
     assert "authoritative answer from a confident one" in flat(result.output)
 
@@ -158,8 +160,8 @@ def test_a_knowledge_boundary_can_be_declared_from_the_command_line(ready):
     result = runner.invoke(
         app,
         [
+            "declare",
             "boundary",
-            "set",
             "support-triage",
             "--systems",
             "CRM",
@@ -175,21 +177,21 @@ def test_a_knowledge_boundary_can_be_declared_from_the_command_line(ready):
 
 
 def test_an_unknown_question_type_lists_the_valid_ones(ready):
-    result = runner.invoke(app, ["boundary", "set", "support-triage", "--answerable", "vibes"])
+    result = runner.invoke(app, ["declare", "boundary", "support-triage", "--answerable", "vibes"])
     assert result.exit_code == 1
     assert "prediction" in flat(result.output)
 
 
 def test_a_question_can_be_dry_run_against_the_boundary(ready):
     runner.invoke(
-        app, ["boundary", "set", "support-triage", "--systems", "CRM", "--answerable", "fact"]
+        app, ["declare", "boundary", "support-triage", "--systems", "CRM", "--answerable", "fact"]
     )
     refused = runner.invoke(
-        app, ["boundary", "check", "support-triage", "what will revenue be next year?"]
+        app, ["test", "boundary", "support-triage", "what will revenue be next year?"]
     )
     assert "would abstain" in flat(refused.output)
     allowed = runner.invoke(
-        app, ["boundary", "check", "support-triage", "what was the order status?"]
+        app, ["test", "boundary", "support-triage", "what was the order status?"]
     )
     assert "answerable" in flat(allowed.output)
 
@@ -197,7 +199,7 @@ def test_a_question_can_be_dry_run_against_the_boundary(ready):
 def test_checking_without_a_boundary_says_so_rather_than_passing_silently(ready):
     # support-triage carries a real seeded boundary (NOM-RTG-11); hr-screening
     # deliberately doesn't, so it's the one that still exercises this path.
-    result = runner.invoke(app, ["boundary", "check", "hr-screening", "anything"])
+    result = runner.invoke(app, ["test", "boundary", "hr-screening", "anything"])
     assert "no boundary declared" in flat(result.output)
 
 
@@ -208,7 +210,7 @@ def test_checking_without_a_boundary_says_so_rather_than_passing_silently(ready)
 
 def test_an_escalation_policy_can_be_set_from_the_command_line(ready):
     result = runner.invoke(
-        app, ["escalation", "set", "--agent", "support-triage", "--turn-depth", "4"]
+        app, ["declare", "escalation", "--agent", "support-triage", "--turn-depth", "4"]
     )
     assert result.exit_code == 0, result.output
     assert "escalation policy" in flat(result.output)
@@ -227,14 +229,14 @@ def test_the_missed_escalation_scan_is_read_only_by_default(ready):
             agent_text="I can help here.",
         )
 
-    result = runner.invoke(app, ["escalation", "scan"])
+    result = runner.invoke(app, ["report", "escalations"])
     assert "1 missed" in flat(result.output)
     assert "--apply" in flat(result.output)
 
     with session_scope() as session:
         assert session.query(Finding).filter_by(type="missed_escalation").count() == 0
 
-    runner.invoke(app, ["escalation", "scan", "--apply"])
+    runner.invoke(app, ["report", "escalations", "--apply"])
     with session_scope() as session:
         assert session.query(Finding).filter_by(type="missed_escalation").count() == 1
 

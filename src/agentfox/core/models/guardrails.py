@@ -201,7 +201,7 @@ class SourceRecord(Base, TimestampMixin):
     content_hash: Mapped[str | None] = mapped_column(String(64))
     last_validated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     last_validation_status: Mapped[str | None] = mapped_column(String(24))
-    #: Set only by `agentfox seed` — see Agent.is_seed for why this exists.
+    #: Set only by `agentfox admin seed` — see Agent.is_seed for why this exists.
     is_seed: Mapped[bool] = mapped_column(Boolean, default=False)
 
 

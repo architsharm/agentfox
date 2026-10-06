@@ -1,31 +1,27 @@
 """The visible shape of the CLI: thirteen verbs in six panels.
 
 The commands themselves live in their own modules (``commands/``, ``onboarding.py``,
-``controls_cli.py`` …). This module only decides what ``agentfox --help`` shows and
-under which name. It runs once, after every other module has registered its
-commands, and does three things:
+``controls_cli.py`` …), each registered on the app under a working name. This module
+decides what ``agentfox`` actually exposes and under which name. It runs once, after
+every other module has registered its commands, and does three things:
 
-1. registers the existing callbacks a second time under the new tree
-   (Start · See · Watch · Contain · Prove · Operate);
-2. marks every old group and command ``hidden`` — it still parses and runs, it just
-   no longer crowds the help screen;
-3. swaps the root group for one that adds ``--version``, orders the panels, and prints
-   a one-line "now called …" hint on stderr when someone types an old name.
+1. registers the callbacks under the tree (Start · See · Watch · Contain · Prove ·
+   Operate);
+2. removes every other top-level name, except the two protocol endpoints below;
+3. swaps the root group for one that adds ``--version`` and orders the panels.
 
 Nothing here rewrites a command body, so a change to what a command *does* never
-conflicts with a change to where it *lives*. Commands are looked up by their CLI name
-(``compliance risk``), not by Python symbol, for the same reason.
+conflicts with a change to where it *lives*. Commands are looked up by their working
+CLI name (``compliance risk``), not by Python symbol, for the same reason.
 
-Old paths are a compatibility promise, not a courtesy: ``hooks run``, ``hooks
-daemon`` and ``mcp serve`` are written into users' agent configs as stdio endpoints,
-and scripts in the wild call ``agentfox check --fail``. ``tests/cli/test_cli_layout.py``
-holds the full pre-consolidation command list and fails if any of it stops resolving.
+``hooks run`` and ``mcp serve`` stay reachable at the top level, hidden: installed
+coding-agent hook configs and MCP client configs call them by those paths.
+``tests/cli/test_cli_layout.py`` holds the removed names and fails if one comes back.
 """
 
 from __future__ import annotations
 
 import copy
-import sys
 from typing import Any
 
 import click
@@ -61,37 +57,10 @@ VISIBLE: list[tuple[str, str]] = [
     ("admin", OPERATE),
 ]
 
-# Old top-level name -> where it lives now. Printed (stderr, terminals only) when the
-# old name is used. Names absent from this map are hidden silently.
-RENAMED: dict[str, str] = {
-    "check": "agentfox scan",
-    "quickscan": "agentfox scan --sessions",
-    "quickstart": "agentfox init",
-    "version": "agentfox --version (or `agentfox admin version`)",
-    "seed": "agentfox admin seed",
-    "analyse-action": "agentfox test action",
-    "eval": "agentfox test (drift: `agentfox report drift`)",
-    "audit": "agentfox report verify / agentfox admin checkpoint",
-    "evidence": "agentfox report evidence",
-    "compliance": "agentfox report (catalog upkeep: `agentfox admin catalog`)",
-    "redteam": "agentfox test redteam / agentfox test probes",
-    "tools": "agentfox declare tool / declare triggers / declare list",
-    "access": "agentfox declare scope / declare reference",
-    "db": "agentfox admin db",
-    "auth": "agentfox admin auth",
-    "boundary": "agentfox declare boundary / agentfox test boundary",
-    "sources": "agentfox declare source / declare list sources",
-    "escalation": "agentfox declare escalation / agentfox report escalations",
-    "entitlement": "agentfox permit user / declare principal / report entitlement",
-    "guardrails": "agentfox policy rules",
-    "capability": "agentfox permit",
-    "approvals": "agentfox permit approvals",
-    "proposals": "agentfox policy proposals",
-}
-
-# Protocol endpoints written into users' configs (`hooks run`, `hooks daemon`,
-# `mcp serve`). They are hidden but must stay byte-for-byte quiet: no hint, ever.
-SILENT = {"hooks", "mcp"}
+# Protocol endpoints written into users' configs, kept at their original paths
+# (hidden): `agentfox hooks run` in coding-agent hook configs, `agentfox mcp serve` in
+# MCP client configs.
+PROTOCOL_ENDPOINTS: tuple[tuple[str, str], ...] = (("hooks", "run"), ("mcp", "serve"))
 
 
 # ---------------------------------------------------------------------------
@@ -138,15 +107,8 @@ def _print_version(ctx: click.Context, _param: click.Parameter, value: bool) -> 
     ctx.exit()
 
 
-def _stderr_is_tty() -> bool:
-    try:
-        return sys.stderr.isatty()
-    except (AttributeError, ValueError):
-        return False
-
-
 class RootGroup(TyperGroup):
-    """The `agentfox` group: panel order, `--version`, and rename hints."""
+    """The `agentfox` group: panel order and `--version`."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -168,18 +130,6 @@ class RootGroup(TyperGroup):
         order = {name: i for i, (name, _) in enumerate(VISIBLE)}
         names = super().list_commands(ctx)
         return sorted(names, key=lambda n: order.get(n, len(order)))
-
-    def resolve_command(self, ctx: click.Context, args: list[str]):
-        name, cmd, rest = super().resolve_command(ctx, args)
-        # Only a person at a terminal sees the hint. Scripts, CI and the MCP server's
-        # subprocesses get exactly the output they got before.
-        if name in RENAMED and name not in SILENT and not ctx.resilient_parsing:
-            if _stderr_is_tty():
-                click.echo(
-                    f"note: `agentfox {name}` is now `{RENAMED[name]}` (the old name still works)",
-                    err=True,
-                )
-        return name, cmd, rest
 
 
 # ---------------------------------------------------------------------------
@@ -220,11 +170,6 @@ def _alias(target: typer.Typer, info: CommandInfo, name: str, *, hidden: bool = 
     target.registered_commands.append(clone)
 
 
-def _hide_group(info: TyperInfo) -> None:
-    info.hidden = True
-    info.rich_help_panel = None
-
-
 def _new_group(help: str, cls: type[TyperGroup] | None = None, **kwargs: Any) -> typer.Typer:
     if cls is not None:
         kwargs["cls"] = cls
@@ -246,14 +191,6 @@ def apply_layout(app: typer.Typer) -> None:
     find = lambda *path: _find(app, *path)  # noqa: E731
     panels: dict[str, str] = dict(VISIBLE)
     sub = {info.name: info for info in app.registered_groups}
-
-    # Every pre-existing top-level entry is hidden first; the visible ones are then
-    # switched back on (or replaced) below.
-    for info in app.registered_commands:
-        info.hidden = _command_name(info) not in panels
-    for info in app.registered_groups:
-        if info.name not in panels:
-            _hide_group(info)
 
     # -- See: scan ---------------------------------------------------------------
     # `scan` already existed as a group (`scan mcp`, `scan skills`). It becomes a
@@ -399,16 +336,28 @@ def apply_layout(app: typer.Typer) -> None:
     admin_app.add_typer(mcp_admin, name="mcp")
     app.add_typer(admin_app, name="admin")
 
+    # -- protocol endpoints ----------------------------------------------------------
+    endpoints: list[tuple[str, typer.Typer]] = []
+    for group, command in PROTOCOL_ENDPOINTS:
+        endpoint_app = _new_group(f"Protocol endpoint: `agentfox {group} {command}`.")
+        _alias(endpoint_app, find(group, command), command)
+        endpoints.append((group, endpoint_app))
+
     # -- panels and root -------------------------------------------------------------
+    # Only the visible verbs survive at the top level; every working name the command
+    # modules registered has been re-homed above.
+    app.registered_commands[:] = [
+        info for info in app.registered_commands if _command_name(info) in panels
+    ]
+    app.registered_groups[:] = [info for info in app.registered_groups if info.name in panels]
     for info in app.registered_commands:
-        name = _command_name(info)
-        if name in panels:
-            info.hidden = False
-            info.rich_help_panel = panels[name]
+        info.hidden = False
+        info.rich_help_panel = panels[_command_name(info)]
     for info in app.registered_groups:
-        if info.name in panels:
-            info.hidden = False
-            info.rich_help_panel = panels[info.name]
+        info.hidden = False
+        info.rich_help_panel = panels[info.name]
+    for group, endpoint_app in endpoints:
+        app.add_typer(endpoint_app, name=group, hidden=True)
     app.info.cls = RootGroup
 
 

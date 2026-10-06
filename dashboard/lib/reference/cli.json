@@ -4981,30 +4981,5 @@
     ]
    }
   ]
- },
- "renamed": {
-  "access": "agentfox declare scope / declare reference",
-  "analyse-action": "agentfox test action",
-  "approvals": "agentfox permit approvals",
-  "audit": "agentfox report verify / agentfox admin checkpoint",
-  "auth": "agentfox admin auth",
-  "boundary": "agentfox declare boundary / agentfox test boundary",
-  "capability": "agentfox permit",
-  "check": "agentfox scan",
-  "compliance": "agentfox report (catalog upkeep: `agentfox admin catalog`)",
-  "db": "agentfox admin db",
-  "entitlement": "agentfox permit user / declare principal / report entitlement",
-  "escalation": "agentfox declare escalation / agentfox report escalations",
-  "eval": "agentfox test (drift: `agentfox report drift`)",
-  "evidence": "agentfox report evidence",
-  "guardrails": "agentfox policy rules",
-  "proposals": "agentfox policy proposals",
-  "quickscan": "agentfox scan --sessions",
-  "quickstart": "agentfox init",
-  "redteam": "agentfox test redteam / agentfox test probes",
-  "seed": "agentfox admin seed",
-  "sources": "agentfox declare source / declare list sources",
-  "tools": "agentfox declare tool / declare triggers / declare list",
-  "version": "agentfox --version (or `agentfox admin version`)"
  }
 }

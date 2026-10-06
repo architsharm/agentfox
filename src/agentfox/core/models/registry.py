@@ -62,7 +62,7 @@ class Agent(Base, TimestampMixin):
     data_classes: Mapped[list[str]] = mapped_column(JSON, default=list)
     first_seen_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
-    # Set only by `agentfox seed` — a UX audit found seed/demo agents were
+    # Set only by `agentfox admin seed` — a UX audit found seed/demo agents were
     # indistinguishable from a real customer's own registrations anywhere in the UI.
     is_seed: Mapped[bool] = mapped_column(Boolean, default=False)
 

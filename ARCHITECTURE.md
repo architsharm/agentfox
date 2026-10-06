@@ -276,9 +276,10 @@ website's `dashboard/app/docs/reference/policies/page.tsx`. Tests in `tests/poli
 **Add a CLI command.** Write the command in the module for its group (`cli/commands/<group>.py`
 or the relevant `*_cli.py`) and make sure it is registered in `cli/main.py`. Then place it in
 the visible tree in `cli/layout.py:apply_layout`: commands are found by CLI name and
-re-registered under one of the thirteen visible verbs (`VISIBLE`); old names stay hidden but
-working, and `RENAMED` prints a hint. `tests/cli/test_cli_layout.py` enforces the ceiling and
-the compatibility list. Add a row to `harness/reference/cli.md` (mark it **BLK** if it changes
+re-registered under one of the thirteen visible verbs (`VISIBLE`); a working name that is not
+re-homed there is not reachable. `tests/cli/test_cli_layout.py` enforces the ceiling, the
+removed names, and the two protocol endpoints kept at their old paths (`hooks run`,
+`mcp serve`). Add a row to `harness/reference/cli.md` (mark it **BLK** if it changes
 whether traffic is blocked, and add a pattern to `harness/scripts/guard_blocking_commands.py`),
 then run `scripts/docs_reference.py --write` so the website's CLI reference picks it up.
 

@@ -531,12 +531,14 @@ def test_from_traffic_on_the_command_line(session, packs):
     _traffic(session)
     session.commit()
     runner = CliRunner()
-    out = runner.invoke(app, ["proposals", "from-traffic", "--agent", AGENT, "--since", "7d"])
+    out = runner.invoke(
+        app, ["policy", "proposals", "from-traffic", "--agent", AGENT, "--since", "7d"]
+    )
     assert out.exit_code == 0, out.output
     text = " ".join(out.output.split())
     assert "Let support-bot call issue_refund with amount ≤ 120" in text
     assert "Declare send_email as irreversible" in text
-    bad = runner.invoke(app, ["proposals", "from-traffic", "--since", "whenever"])
+    bad = runner.invoke(app, ["policy", "proposals", "from-traffic", "--since", "whenever"])
     assert bad.exit_code == 2
 
 

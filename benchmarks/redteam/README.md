@@ -13,7 +13,7 @@ one](#adaptive-campaigns--configuration-regression-testing-that-mutates).
 **A different kind of benchmark from most others in this repo.** `benchmarks/REPORT.md`,
 `benchmarks/pii/`, `benchmarks/action_safety/` all score whether a *detector* correctly
 classifies text against a public dataset's own labels. This one asks a different
-question: does the red-team *runner* — `NativeRedTeamRunner`, what `agentfox redteam run`
+question: does the red-team *runner* — `NativeRedTeamRunner`, what `agentfox test redteam`
 actually calls — reach every layer of enforcement it claims to exercise, and does it
 produce an honest recall **and** precision number, not just a one-sided "attacks caught"
 count? Before this round, the answer to both was no, for structural reasons fixed here.
@@ -71,7 +71,7 @@ weakening a real compliance control to make a demo number look cleaner.
 Every one of these was found by actually running the campaign against a live seeded
 agent and reading the real output — not from inspecting the code in the abstract.
 
-1. **The CLI (`agentfox redteam run`) always printed "blocked" for a benign probe**,
+1. **The CLI (`agentfox test redteam`) always printed "blocked" for a benign probe**,
    regardless of its real verdict — `succeeded` is defined to be `False` whenever
    `expect_blocked` is `False`, and the old table rendered off `succeeded` alone. Fixed:
    the table now reads `over_blocked` and `expect_blocked` explicitly, and the summary

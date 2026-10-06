@@ -162,32 +162,6 @@ export function CliIndex() {
 }
 
 /** Old command names that still work, and what they are called now. */
-export function RenamedTable() {
-  const renamed = cli.renamed as Record<string, string>;
-  return (
-    <table className="docs-params">
-      <thead>
-        <tr>
-          <th>Old name (still works)</th>
-          <th>Now</th>
-        </tr>
-      </thead>
-      <tbody>
-        {Object.entries(renamed).map(([old, now]) => (
-          <tr key={old}>
-            <td>
-              <code>agentfox {old}</code>
-            </td>
-            <td>
-              <code>{now}</code>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 const AUDIENCE_LABEL: Record<string, string> = {
   public: "Agent traffic (agent credential)",
   operator: "Operator API (bearer token)",

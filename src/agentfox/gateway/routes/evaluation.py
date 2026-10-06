@@ -487,7 +487,7 @@ def drift(
     """Read-only. Viewing drift used to persist a DriftWindow — and a Finding when
     drifted — on every page load, so the number of drift findings measured how often
     someone looked, not how often the agent drifted. Recording is the scheduled
-    `drift.check` job (or `agentfox eval drift` locally)."""
+    `drift.check` job (or `agentfox report drift` locally)."""
     report = compute_drift(session, agent, scorer, persist=False)
     if report is None:
         return {

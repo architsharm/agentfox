@@ -171,14 +171,39 @@ describe("gateway calls", () => {
 
 describe("command names", () => {
   const cli = JSON.parse(readFileSync(join(ROOT, "lib", "reference", "cli.json"), "utf8")) as {
-    renamed: Record<string, string>;
     root: { commands: { name: string }[] };
   };
   const current = new Set(cli.root.commands.map((c) => c.name));
-  // Old top-level names the CLI no longer has, from the generated reference itself.
-  const retired = Object.keys(cli.renamed).filter((name) => !current.has(name));
+  // Top-level names the CLI removed when it consolidated to thirteen verbs (see
+  // tests/cli/test_cli_layout.py), each mapped to where its commands live now.
+  const removed: Record<string, string> = {
+    check: "agentfox scan",
+    quickscan: "agentfox scan --sessions",
+    quickstart: "agentfox init",
+    version: "agentfox --version",
+    seed: "agentfox admin seed",
+    "analyse-action": "agentfox test action",
+    eval: "agentfox test / agentfox report drift",
+    audit: "agentfox report verify / agentfox admin checkpoint",
+    evidence: "agentfox report evidence",
+    compliance: "agentfox report / agentfox admin catalog",
+    redteam: "agentfox test redteam / agentfox test probes",
+    tools: "agentfox declare tool / declare triggers / declare list",
+    access: "agentfox declare scope / declare reference",
+    db: "agentfox admin db",
+    auth: "agentfox admin auth",
+    boundary: "agentfox declare boundary / agentfox test boundary",
+    sources: "agentfox declare source / declare list sources",
+    escalation: "agentfox declare escalation / agentfox report escalations",
+    entitlement: "agentfox permit user / declare principal / report entitlement",
+    guardrails: "agentfox policy rules",
+    capability: "agentfox permit",
+    approvals: "agentfox permit approvals",
+    proposals: "agentfox policy proposals",
+  };
+  const retired = Object.keys(removed).filter((name) => !current.has(name));
 
-  it("the app never tells anyone to run a command that was renamed", () => {
+  it("the app never tells anyone to run a command that was removed", () => {
     const re = new RegExp(`\\bagentfox (${retired.map((n) => n.replace(/-/g, "\\-")).join("|")})\\b`, "g");
     const offenders: string[] = [];
     // The whole site, docs included: a docs page is where a renamed command is
@@ -188,7 +213,7 @@ describe("command names", () => {
       const src = readFileSync(f, "utf8");
       for (const m of src.matchAll(re)) {
         const line = src.slice(0, m.index).split("\n").length;
-        offenders.push(`${relative(ROOT, f)}:${line}: ${m[0]} → ${cli.renamed[m[1]]}`);
+        offenders.push(`${relative(ROOT, f)}:${line}: ${m[0]} → ${removed[m[1]]}`);
       }
     }
     expect(retired.length).toBeGreaterThan(5);

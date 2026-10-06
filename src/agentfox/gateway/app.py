@@ -63,7 +63,7 @@ def _load_demo_fixtures() -> None:
     """Re-register the offline provider's scripted replies when a seeded DB is present.
 
     Purely a demo affordance, and scoped to exactly that: the scripts live in the
-    `echo` provider's process memory, so a server started after `agentfox seed` would
+    `echo` provider's process memory, so a server started after `agentfox admin seed` would
     otherwise lose them and the walkthrough would not reproduce over HTTP. Guarded on
     the seeded suite existing so a real deployment never picks up fixture text.
     """

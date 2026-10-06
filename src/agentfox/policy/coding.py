@@ -10,12 +10,12 @@ Two ways to stop that: give the rules a condition only a coding agent meets, or
 bind the pack only to agents that are coding agents. The first needs a condition
 type nothing else uses and a signal the agent would have to report about itself.
 The second uses a fact the product already holds, from an action the operator
-already took: the agents that `agentfox hooks install` wired into a coding harness.
+already took: the agents that `agentfox admin hooks install` wired into a coding harness.
 So the pack is bound to exactly those slugs —
 
 * `agentfox init` binds it scoped to the agents named in this repository's
   ``.claude/settings.json`` hook commands, and skips it when there are none;
-* `agentfox hooks install --write` adds the agent it just installed to the scope.
+* `agentfox admin hooks install --write` adds the agent it just installed to the scope.
 
 An agent nobody installed hooks for never matches. An operator who wants it
 everywhere can still say so explicitly with a project pack, which is honoured as

@@ -480,15 +480,15 @@ def test_the_over_permission_endpoint_is_readable_before_any_setup(client):
 
 
 def test_the_cli_explains_the_empty_state(isolated_db):
-    result = runner.invoke(app, ["entitlement", "report"])
+    result = runner.invoke(app, ["report", "entitlement"])
     assert "until the agent is told who's asking" in " ".join(result.output.split())
 
 
 def test_the_cli_registers_principals_and_grants(isolated_db):
-    assert runner.invoke(app, ["entitlement", "grant", "hr/*", "hr-team"]).exit_code == 0
+    assert runner.invoke(app, ["permit", "user", "hr/*", "hr-team"]).exit_code == 0
     assert (
         runner.invoke(
-            app, ["entitlement", "principal", "alice@acme.com", "--groups", "all-staff"]
+            app, ["declare", "principal", "alice@acme.com", "--groups", "all-staff"]
         ).exit_code
         == 0
     )

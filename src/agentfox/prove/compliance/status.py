@@ -421,7 +421,7 @@ _RULE_HANDLERS = {
 }
 
 #: Every ``status_rule.kind`` that ``evaluate_control`` understands. An unknown kind
-#: silently falls back to ``presence``, which is why ``agentfox compliance validate``
+#: silently falls back to ``presence``, which is why ``agentfox admin catalog validate``
 #: checks the catalog against this set.
 RULE_KINDS = frozenset(_RULE_HANDLERS)
 
@@ -489,7 +489,7 @@ def ensure_compliance_computed(session: Session, window_days: int = 30) -> bool:
     """Sync the catalog and compute control status if nobody has, or not recently.
 
     The board said "0% of 43 controls" on any deployment that had simply never run
-    `agentfox compliance compute` — a false statement about the controls, made on
+    `agentfox admin catalog compute` — a false statement about the controls, made on
     the screen an executive reads. Views a person reads call this first. Returns
     whether anything was computed.
     """

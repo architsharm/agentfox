@@ -1,4 +1,4 @@
-"""`agentfox tools` — declare what each tool can do, so containment can reason over it."""
+"""Declare what each tool can do, so containment can reason over it (`agentfox declare tool`)."""
 
 from __future__ import annotations
 

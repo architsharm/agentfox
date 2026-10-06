@@ -138,7 +138,7 @@ def chat(req: ChatRequest) -> dict:
 
 @app.post("/api/redteam")
 def redteam() -> dict:
-    """Runs the same built-in probe suite `agentfox redteam run` does, against this
+    """Runs the same built-in probe suite `agentfox test redteam` does, against this
     demo's seeded agent, and returns the campaign summary as JSON."""
     _ensure_seeded()
     from support_tools import AGENT_SLUG

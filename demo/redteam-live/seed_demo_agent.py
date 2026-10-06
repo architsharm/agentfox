@@ -1,11 +1,11 @@
 """One-time setup for the red-team-live demo agent.
 
 Registers `support-crew-live` and its identity, capability grants and tool
-registrations, following the exact pattern `agentfox seed` and
+registrations, following the exact pattern `agentfox admin seed` and
 `tests/detection/test_composition.py`'s `_governor` fixture already use — `ensure_identity`,
 `grant_capability`, `register_agent`, `McpGovernor.register_tools` — rather than
 inventing a new one. This is deliberately a separate, smaller seed than
-`agentfox seed`'s (which creates three different demo agents plus a full compliance
+`agentfox admin seed`'s (which creates three different demo agents plus a full compliance
 catalog): it only sets up what this specific demo needs, against its own database
 file (see `_env.py`) so it never touches the main dev database.
 
@@ -90,8 +90,8 @@ def main() -> None:
             granted += 1
 
         # The shipped baseline + tool-containment policy packs (observe mode, as
-        # they ship) -- the same packs `agentfox seed` loads -- so
-        # `agentfox redteam run` and the crew's own input/output checks have real
+        # they ship) -- the same packs `agentfox admin seed` loads -- so
+        # `agentfox test redteam` and the crew's own input/output checks have real
         # rules to match against. Loaded here directly, at org scope, because this
         # demo's database is deliberately its own file (see _env.py) rather than
         # sharing the main dev database's seeded state.
@@ -105,8 +105,8 @@ def main() -> None:
     print(f"tools registered  {[d['name'] for d in TOOL_DESCRIPTORS]}")
     print(f"policies loaded   {policy_keys} (mode=observe, as shipped)")
     print()
-    print("Next: `agentfox redteam probes` to see the built-in probe library, then")
-    print(f"`agentfox redteam run {AGENT_SLUG}` to run it against this agent.")
+    print("Next: `agentfox test probes` to see the built-in probe library, then")
+    print(f"`agentfox test redteam {AGENT_SLUG}` to run it against this agent.")
 
 
 if __name__ == "__main__":

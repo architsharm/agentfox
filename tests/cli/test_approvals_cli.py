@@ -71,5 +71,5 @@ def test_an_unknown_approval_is_named(session):
 
 def test_the_top_level_name_works_too(session):
     approval_id = _file(session)
-    result = runner.invoke(app, ["approvals", "approve", approval_id])
+    result = runner.invoke(app, ["permit", "approvals", "approve", approval_id])
     assert result.exit_code == 0, result.output

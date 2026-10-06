@@ -68,7 +68,7 @@ curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' \
 | Canary rollout | `POST /api/policies/{key}/canary/start` `{…, max_block_rate_drop?, min_dwell_seconds?}` (rolls back if the candidate blocks much more *or* much less than stable), `GET …/canary`, `POST …/canary/advance`, `…/canary/rollback` |
 | Tools / MCP | `GET/POST /api/tools`, `GET/POST /api/mcp-servers`, `POST /api/mcp-servers/{name}/scan` |
 | Identity | `GET /api/identities`, `POST /api/identities/{id}/capabilities`, `POST /api/identities/{id}/check`, credentials issue/rotate/revoke |
-| Eval | `GET/POST /api/eval/suites`, `POST /api/eval/suites/{key}/cases`, `…/cases/from-trace?trace_id=`, `POST /api/eval/runs`, `POST /api/eval/gate` (pass `baseline_run_id`; pin a named baseline with `agentfox eval baseline`), `GET /api/eval/drift` (read-only; the daily `drift.check` job records windows and findings), `GET/POST /api/eval/slos` |
+| Eval | `GET/POST /api/eval/suites`, `POST /api/eval/suites/{key}/cases`, `…/cases/from-trace?trace_id=`, `POST /api/eval/runs`, `POST /api/eval/gate` (pass `baseline_run_id`; pin a named baseline with `agentfox test baseline`), `GET /api/eval/drift` (read-only; the daily `drift.check` job records windows and findings), `GET/POST /api/eval/slos` |
 | Red team | `GET /api/redteam/probes`, `GET/POST /api/redteam/campaigns` `{agent, adaptive?, budget?, seed?, include_deployment_probes?}` |
 | Traces / audit | `GET /api/traces`, `GET /api/traces/{id}`, `GET /api/audit/entries`, `POST /api/audit/verify`, `POST /api/audit/checkpoint`, `GET /api/export/siem` |
 | Evidence | `POST /api/evidence` `{agents, controls, period_from, period_to}`, `GET /api/evidence`, `GET /api/evidence/{id}/download` |

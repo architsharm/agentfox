@@ -11,7 +11,7 @@ Base: `http://localhost:8080` (self-host default). All control-plane routes unde
 | Credential | Header | Used by | Scope |
 |---|---|---|---|
 | **Agent key** (`nom_agt_…`) | `Authorization: Bearer <key>` | Agents calling the inline gateway | Bound to one `Identity`; binds the tenant. Optional: unauthenticated inline traffic is served in the default org and recorded as shadow traffic |
-| **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations | Bound to a `User` + role. Mint with `agentfox auth issue` or `POST /api/tokens`; shown once |
+| **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations | Bound to a `User` + role. Mint with `agentfox admin auth issue` or `POST /api/tokens`; shown once |
 | **Session cookie** | `nometria_session` | Dashboard browser sessions | Holds an API token the dashboard forwards as `Bearer` |
 | **Development header** | `X-Nometria-User: <email>` | Local development and tests | Accepted only when `AGENTFOX_AUTH_MODE=development`, or `auto` with a dev/test/local environment. `agentfox admin auth status` reports it |
 | **Service secret** | `X-Nometria-Service-Secret` | Dashboard OAuth provisioning | `POST /api/auth/github/provision` only |
@@ -391,7 +391,7 @@ from the code. Regenerate after changing any route:
 <!-- END GENERATED ROUTES -->
 
 Not implemented, although earlier drafts of this appendix listed them: `/api/users` and
-`/api/roles` (users are provisioned through sign-in and `agentfox auth`), policy
+`/api/roles` (users are provisioned through sign-in and `agentfox admin auth`), policy
 `/versions` and `/bind` (replaced by `POST /api/policies` versioning, `/{key}/mode` and
 canary rollout), `POST /api/traces/{id}/replay` (use `POST /api/policies/simulate`),
 `POST /api/eval/compare`, and `POST /api/compliance/packs/{key}/import`.
@@ -439,4 +439,4 @@ with the reason, rather than storing a preference that silently does nothing —
 - **Idempotency**: `Idempotency-Key` is not implemented. Creation routes that take a natural key (agent slug, policy key, source key) upsert on it.
 - **Versioning**: `/api` is v1 implicitly; breaking changes go to `/api/v2`. `/v1` inline routes track provider compatibility, not our version.
 - **Rate limiting**: `/v1/*` goes through the admission gate (`429` + `Retry-After`); the playground is rate-limited per IP.
-- **Audit**: security-relevant mutations (policy mode changes, kill switch, credential issue/revoke, approvals, token listing) write an `AuditEntry` or system-audit entry; the chain is verifiable with `POST /api/audit/verify` or `agentfox audit verify`.
+- **Audit**: security-relevant mutations (policy mode changes, kill switch, credential issue/revoke, approvals, token listing) write an `AuditEntry` or system-audit entry; the chain is verifiable with `POST /api/audit/verify` or `agentfox report verify`.

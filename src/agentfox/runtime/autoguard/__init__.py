@@ -813,7 +813,7 @@ def _govern_tool_calls(
     mode: an agent nobody has granted any capability to has not had least privilege
     configured, and capability default-deny would refuse every tool it has — so for
     that agent a refusal that is *only* a missing grant is recorded as
-    would-have-blocked rather than raised. The first grant (`agentfox capability
+    would-have-blocked rather than raised. The first grant (`agentfox permit
     grant`) is what turns it on, the same way `agentfox policy enforce` turns on a
     policy. Strict ``"enforce"`` mode raises on it regardless.
     """

@@ -1867,8 +1867,8 @@
    "path": "/api/controls/sync",
    "section": "controls",
    "audience": "operator",
-   "summary": "Load the static control catalog and obligation calendar from YAML into this tenant's control-plane DB. `agentfox compliance sync` does the same thing from the CLI against whatever DB it's pointed at — this is the same idempotent upsert, reachable without shell access to the deployment, so a freshly provisioned org isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it from the product itself.",
-   "description": "Load the static control catalog and obligation calendar from YAML into this\ntenant's control-plane DB. `agentfox compliance sync` does the same thing\nfrom the CLI against whatever DB it's pointed at — this is the same idempotent\nupsert, reachable without shell access to the deployment, so a freshly provisioned\norg isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it\nfrom the product itself.",
+   "summary": "Load the static control catalog and obligation calendar from YAML into this tenant's control-plane DB. `agentfox admin catalog sync` does the same thing from the CLI against whatever DB it's pointed at — this is the same idempotent upsert, reachable without shell access to the deployment, so a freshly provisioned org isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it from the product itself.",
+   "description": "Load the static control catalog and obligation calendar from YAML into this\ntenant's control-plane DB. `agentfox admin catalog sync` does the same thing\nfrom the CLI against whatever DB it's pointed at — this is the same idempotent\nupsert, reachable without shell access to the deployment, so a freshly provisioned\norg isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it\nfrom the product itself.",
    "params": [
     {
      "name": "authorization",
@@ -2762,8 +2762,8 @@
    "path": "/api/eval/drift",
    "section": "eval",
    "audience": "operator",
-   "summary": "Read-only. Viewing drift used to persist a DriftWindow — and a Finding when drifted — on every page load, so the number of drift findings measured how often someone looked, not how often the agent drifted. Recording is the scheduled `drift.check` job (or `agentfox eval drift` locally).",
-   "description": "Read-only. Viewing drift used to persist a DriftWindow — and a Finding when\ndrifted — on every page load, so the number of drift findings measured how often\nsomeone looked, not how often the agent drifted. Recording is the scheduled\n`drift.check` job (or `agentfox eval drift` locally).",
+   "summary": "Read-only. Viewing drift used to persist a DriftWindow — and a Finding when drifted — on every page load, so the number of drift findings measured how often someone looked, not how often the agent drifted. Recording is the scheduled `drift.check` job (or `agentfox report drift` locally).",
+   "description": "Read-only. Viewing drift used to persist a DriftWindow — and a Finding when\ndrifted — on every page load, so the number of drift findings measured how often\nsomeone looked, not how often the agent drifted. Recording is the scheduled\n`drift.check` job (or `agentfox report drift` locally).",
    "params": [
     {
      "name": "agent",

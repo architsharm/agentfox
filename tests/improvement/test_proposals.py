@@ -688,34 +688,59 @@ def test_cli_proposals_group(client):
     runner = CliRunner()
     pid = _api_proposal(to=0.95, scope_level="org")
 
-    listed = runner.invoke(app, ["proposals", "list", "--json"])
+    listed = runner.invoke(app, ["policy", "proposals", "list", "--json"])
     assert listed.exit_code == 0, listed.output
     assert pid in listed.output
-    assert runner.invoke(app, ["proposals", "show", pid]).exit_code == 0
+    assert runner.invoke(app, ["policy", "proposals", "show", pid]).exit_code == 0
 
     first = runner.invoke(
-        app, ["proposals", "approve", pid, "--actor", "marcus@example.com", "--note", "ok"]
+        app,
+        ["policy", "proposals", "approve", pid, "--actor", "marcus@example.com", "--note", "ok"],
     )
     assert first.exit_code == 0 and "awaiting a second approver" in first.output
     same = runner.invoke(
-        app, ["proposals", "approve", pid, "--actor", "marcus@example.com", "--note", "ok"]
+        app,
+        ["policy", "proposals", "approve", pid, "--actor", "marcus@example.com", "--note", "ok"],
     )
     assert same.exit_code == 1 and "different person" in same.output
-    auto = runner.invoke(app, ["proposals", "apply", pid, "--automated"])
+    auto = runner.invoke(app, ["policy", "proposals", "apply", pid, "--automated"])
     assert auto.exit_code == 1
     second = runner.invoke(
-        app, ["proposals", "approve", pid, "--actor", "admin@example.com", "--note", "agreed"]
+        app,
+        ["policy", "proposals", "approve", pid, "--actor", "admin@example.com", "--note", "agreed"],
     )
     assert second.exit_code == 0 and "approved" in second.output
-    applied = runner.invoke(app, ["proposals", "apply", pid, "--actor", "admin@example.com"])
+    applied = runner.invoke(
+        app, ["policy", "proposals", "apply", pid, "--actor", "admin@example.com"]
+    )
     assert applied.exit_code == 0, applied.output
     rolled = runner.invoke(
-        app, ["proposals", "rollback", pid, "--actor", "admin@example.com", "--reason", "undo"]
+        app,
+        [
+            "policy",
+            "proposals",
+            "rollback",
+            pid,
+            "--actor",
+            "admin@example.com",
+            "--reason",
+            "undo",
+        ],
     )
     assert rolled.exit_code == 0 and "rolled_back" in rolled.output
     assert (
         runner.invoke(
-            app, ["proposals", "reject", pid, "--actor", "admin@example.com", "--note", "late"]
+            app,
+            [
+                "policy",
+                "proposals",
+                "reject",
+                pid,
+                "--actor",
+                "admin@example.com",
+                "--note",
+                "late",
+            ],
         ).exit_code
         == 1
     )

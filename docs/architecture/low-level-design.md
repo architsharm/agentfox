@@ -341,8 +341,9 @@ GitHub sign-in retires all but the newest `MAX_LOGIN_SESSIONS` (5) login tokens.
 `main.py` registers every command; `layout.py:apply_layout` re-registers them under the
 visible verbs, grouped into panels (`agentfox --help`): **Start** `init`, `demo` · **See**
 `scan`, `agents` · **Watch** `serve`, `findings` · **Contain** `permit`, `declare`, `policy` ·
-**Prove** `test`, `report` · **Operate** `doctor`, `admin`. Old names stay hidden but
-working, and `RENAMED` prints a hint.
+**Prove** `test`, `report` · **Operate** `doctor`, `admin`. Nothing else is reachable at
+the top level except two hidden protocol endpoints that installed configs call,
+`hooks run` and `mcp serve`.
 
 | Verb | Representative subcommands |
 |---|---|

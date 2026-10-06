@@ -34,7 +34,7 @@ COPY pyproject.toml README.md ./
 # alembic.ini and migrations/ are force-included into the wheel (see
 # pyproject.toml), so the build fails outright without them — "Forced include
 # not found: /app/alembic.ini". They also have to be here on their own merit:
-# this image's own CMD comment sends schema upgrades through `agentfox db
+# this image's own CMD comment sends schema upgrades through `agentfox admin db
 # upgrade`, and until the wheel carried the migration scripts that command
 # could not run inside the container at all.
 #
@@ -114,11 +114,11 @@ USER agentfox
 
 EXPOSE 8080
 
-# Serve, and nothing else. This used to run `agentfox seed` on every boot "so the stack
+# Serve, and nothing else. This used to run `agentfox admin seed` on every boot "so the stack
 # is demonstrable immediately", which wrote demo agents, policies, users and traffic
 # into whatever database the container was pointed at — production included, on every
 # restart. The schema is created on startup (`init_db`); schema *upgrades* on an
-# existing database go through `agentfox db upgrade` (Alembic).
+# existing database go through `agentfox admin db upgrade` (Alembic).
 #
 # The first operator, with no demo data:
 #   docker compose exec gateway agentfox admin users create you@example.com --role owner --token

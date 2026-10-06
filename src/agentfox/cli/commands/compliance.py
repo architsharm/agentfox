@@ -1,4 +1,4 @@
-"""`agentfox compliance` — where this deployment stands against each framework."""
+"""Where this deployment stands against each framework (`agentfox report …`, `admin catalog …`)."""
 
 from __future__ import annotations
 

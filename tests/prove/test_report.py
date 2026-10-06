@@ -193,7 +193,7 @@ def test_board_cli_reports_counts_not_a_bare_ratio():
 
     with session_scope() as session:
         seed(session)
-    result = runner.invoke(app, ["compliance", "board"])
+    result = runner.invoke(app, ["report", "board"])
     assert result.exit_code == 0, result.output
     assert "controls with evidence" in result.output
     assert "0% of" not in result.output

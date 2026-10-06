@@ -1,4 +1,4 @@
-"""`agentfox access` — declare which column decides whose row it is."""
+"""Data-access scope: which column decides whose row it is (`agentfox declare scope`)."""
 
 from __future__ import annotations
 

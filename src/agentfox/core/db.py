@@ -161,7 +161,7 @@ def init_db(stamp: bool = True) -> None:
     """Create the schema directly.
 
     Convenience for tests and first-run local use. **Production upgrades go through
-    Alembic** (`agentfox db upgrade`) — `create_all` cannot evolve an existing schema,
+    Alembic** (`agentfox admin db upgrade`) — `create_all` cannot evolve an existing schema,
     which is the defect PL-2 fixed.
 
     When ``stamp`` is set and Alembic is available, the fresh database is stamped at
@@ -210,7 +210,7 @@ def migration_root() -> tuple[Path, Path] | None:
     Two layouts, because there are two ways to have this package. In the
     repository both sit at the root. Installed from PyPI they are copied into
     the package itself (see the force-include in pyproject.toml) — the root
-    copies are simply not in the wheel, which is why `agentfox db upgrade` used
+    copies are simply not in the wheel, which is why `agentfox admin db upgrade` used
     to die with a raw alembic traceback naming a path inside the user's venv.
     """
     from agentfox.core.config import REPO_ROOT
