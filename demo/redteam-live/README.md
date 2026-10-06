@@ -27,7 +27,7 @@ say).
 
 **Use a separate virtualenv, not the main repo's `.venv`.** `crewai` pulls in
 `litellm` and `anthropic` as real dependencies, and several of the main test
-suite's tests (`tests/runtime/test_autoguard.py`) assert those libraries are *absent*, to
+suite's tests (`tests/frameworks/autoguard/test_autoguard.py`) assert those libraries are *absent*, to
 prove `agentfox.auto()` reports a missing library honestly instead of silently
 hiding it. Installing this demo's requirements into the tracked `.venv` will make
 those tests fail for reasons that have nothing to do with a regression — this was

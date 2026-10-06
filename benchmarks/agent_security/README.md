@@ -168,7 +168,7 @@ same precondition turn-recording already has — no session_id, no extra cost, n
 regression). Regression tests:
 `test_a_payload_split_across_separate_calls_is_caught_by_the_conversation_window`
 and `test_without_a_session_id_the_conversation_window_check_is_skipped_not_broken`
-in `tests/runtime/test_autoguard.py`.
+in `tests/frameworks/autoguard/test_autoguard.py`.
 
 ### The llm-guard comparison here needed a second look
 

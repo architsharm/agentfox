@@ -174,7 +174,7 @@ def test_direct_env_reads_prefer_agentfox_and_keep_the_legacy_name(monkeypatch):
 
 
 def test_auto_agent_name_reads_agentfox_agent_first(monkeypatch):
-    from agentfox.runtime.autoguard import default_agent_slug
+    from agentfox.frameworks.autoguard import default_agent_slug
 
     monkeypatch.setenv("NOMETRIA_AGENT", "old-name")
     assert default_agent_slug() == "old-name"

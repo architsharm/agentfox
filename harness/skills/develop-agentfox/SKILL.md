@@ -15,7 +15,7 @@ uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sq
 ```
 
 **Never `--all-extras` or `--extra all`.** They pull in `anthropic`, `langchain` and `litellm`
-transitively, and `tests/runtime/test_autoguard.py` asserts those are absent. If a cluster of
+transitively, and `tests/frameworks/autoguard/test_autoguard.py` asserts those are absent. If a cluster of
 "missing library" tests fails, run `uv pip list | grep -E 'anthropic|langchain|litellm'`
 before suspecting a regression. Demo and `llm-guard` dependencies go in separate venvs.
 

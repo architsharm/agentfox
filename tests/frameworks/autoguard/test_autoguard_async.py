@@ -16,7 +16,7 @@ import types
 import pytest
 
 from agentfox.core.models import Span
-from agentfox.runtime.autoguard import Blocked, auto, off, state
+from agentfox.frameworks.autoguard import Blocked, auto, off, state
 
 # ---------------------------------------------------------------------------
 # Fakes with the real shapes

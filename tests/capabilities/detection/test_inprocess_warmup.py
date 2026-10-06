@@ -48,7 +48,7 @@ def slow(monkeypatch):
 @pytest.mark.parametrize("entry", ["auto", "sdk", "langgraph"])
 def test_an_enabled_model_detector_is_warmed(slow, entry):
     if entry == "auto":
-        from agentfox.runtime.autoguard import auto, off
+        from agentfox.frameworks.autoguard import auto, off
 
         auto(agent="warm-bot", quiet=True)
         off()

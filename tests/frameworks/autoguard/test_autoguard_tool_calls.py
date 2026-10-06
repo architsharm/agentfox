@@ -25,8 +25,8 @@ import types
 import pytest
 
 from agentfox.core.models import Decision, Span, TaintTag, Tool
+from agentfox.frameworks.autoguard import Blocked, _messages_from, _tool_calls_of, auto, off
 from agentfox.platform.registry.service import impact_source_of
-from agentfox.runtime.autoguard import Blocked, _messages_from, _tool_calls_of, auto, off
 
 CUSTOMER_RECORD = (
     "Customer: Jane Roe, account 4471-2290, address 12 Elm Street Springfield, "

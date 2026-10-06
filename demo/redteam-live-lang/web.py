@@ -35,7 +35,7 @@ from recorded_scenarios import (
 )
 
 from agentfox.core.db import init_db, session_scope
-from agentfox.runtime.autoguard import Blocked
+from agentfox.frameworks.autoguard import Blocked
 
 app = FastAPI(title="AgentFox red-team live demo (LangChain)")
 

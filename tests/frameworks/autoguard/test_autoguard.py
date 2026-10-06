@@ -20,7 +20,7 @@ import types
 import pytest
 
 from agentfox.core.models import Agent, Decision, DetectionFinding, Span, Trace
-from agentfox.runtime.autoguard import (
+from agentfox.frameworks.autoguard import (
     AutoState,
     Blocked,
     _messages_from,
@@ -334,7 +334,7 @@ def test_strict_mode_refuses_an_answer_quoting_a_withheld_chunk(app_db):
     quoting a chunk the principal may not see, recording only a critical finding."""
     from agentfox.capabilities.grounding.entitlement import grant, upsert_principal
     from agentfox.core.db import session_scope
-    from agentfox.runtime.autoguard import Blocked
+    from agentfox.frameworks.autoguard import Blocked
 
     with session_scope() as session:
         grant(session, "kb/*", principal="all-staff")
@@ -449,7 +449,7 @@ def test_a_provider_error_still_reaches_the_caller(app_db):
 def test_a_governance_failure_does_not_take_the_request_down(app_db, fake_openai, monkeypatch):
     """The caller's request is not ours to fail. A broken governance layer degrades to
     ungoverned-but-working, loudly."""
-    import agentfox.runtime.autoguard as autoguard
+    import agentfox.frameworks.autoguard as autoguard
 
     client, _calls = fake_openai
     auto(agent="support-triage", quiet=True)
@@ -523,7 +523,7 @@ def test_patching_twice_is_not_double_patching(app_db, fake_openai):
 def test_our_own_calls_are_not_governed_recursively(app_db, fake_openai):
     """An LLM-as-judge call inside an eval would otherwise be traced as agent traffic
     and charged against the agent's budget."""
-    from agentfox.runtime.autoguard import _IN_AGENTFOX
+    from agentfox.frameworks.autoguard import _IN_AGENTFOX
 
     client, calls = fake_openai
     auto(agent="support-triage", quiet=True)
@@ -787,13 +787,13 @@ def test_litellm_and_langchain_patching_is_reversible(app_db, fake_litellm, fake
 
 
 def test_lc_messages_from_reads_a_bare_string():
-    from agentfox.runtime.autoguard import _lc_messages_from
+    from agentfox.frameworks.autoguard import _lc_messages_from
 
     assert _lc_messages_from("hi") == [{"role": "user", "content": "hi"}]
 
 
 def test_lc_messages_from_maps_message_types_to_roles(fake_langchain):
-    from agentfox.runtime.autoguard import _lc_messages_from
+    from agentfox.frameworks.autoguard import _lc_messages_from
 
     messages_mod, _calls = fake_langchain
     result = _lc_messages_from(
@@ -984,7 +984,7 @@ def _set_fail_mode(monkeypatch, value: str) -> None:
 
 
 def _break_the_database(monkeypatch) -> None:
-    import agentfox.runtime.autoguard as autoguard
+    import agentfox.frameworks.autoguard as autoguard
 
     def explode(*args, **kwargs):
         raise RuntimeError("database on fire")

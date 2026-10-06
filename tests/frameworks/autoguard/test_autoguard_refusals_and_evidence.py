@@ -7,9 +7,9 @@ import sys
 
 import pytest
 
-from agentfox.runtime.autoguard import Blocked, auto, off
-from tests.runtime.test_autoguard import _install_fake_openai
-from tests.runtime.test_autoguard_tool_calls import (
+from agentfox.frameworks.autoguard import Blocked, auto, off
+from tests.frameworks.autoguard.test_autoguard import _install_fake_openai
+from tests.frameworks.autoguard.test_autoguard_tool_calls import (
     TOOLS,
     _bind_shipped_policies,
     _exfiltration_turn,

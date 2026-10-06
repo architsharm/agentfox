@@ -6,7 +6,7 @@
 #
 # Do NOT `uv sync --all-extras` or `pip install crewai` into the main repo's
 # tracked `.venv` — crewai pulls in litellm/anthropic/langchain as transitive
-# dependencies, and several agentfox tests (tests/runtime/test_autoguard.py) assert those
+# dependencies, and several agentfox tests (tests/frameworks/autoguard/test_autoguard.py) assert those
 # libraries are *absent* to prove auto() reports a missing library honestly rather
 # than hiding it. Use a separate virtualenv for this demo. See README.md.
 

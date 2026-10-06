@@ -213,7 +213,7 @@ prove this record hasn't been altered."
 ## 7. `agentfox.auto()` — monkey-patch mechanism
 
 `src/agentfox/__init__.py` lazily re-exports `auto`, `off`, `state`, `Blocked` from
-`agentfox.runtime.autoguard` via module `__getattr__`, so a bare `import agentfox` touches no
+`agentfox.frameworks.autoguard` via module `__getattr__`, so a bare `import agentfox` touches no
 DB and makes no client calls.
 
 `runtime/autoguard/__init__.py`, `auto(agent=None, *, mode="policy", environment=None,

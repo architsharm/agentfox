@@ -322,8 +322,8 @@ def test_the_per_turn_hook_is_on_the_live_sdk_path():
     built, complete and never called. `check_conversation_window` is called from
     `autoguard._govern`'s pre-flight and from the gateway playground route, which is
     why attaching here needed no new wiring — asserted, not assumed."""
+    from agentfox.frameworks import autoguard
     from agentfox.gateway.routes import playground
-    from agentfox.runtime import autoguard
 
     assert "check_conversation_window" in inspect.getsource(autoguard._run_preflight)
     assert "_run_preflight" in inspect.getsource(autoguard._preflight)

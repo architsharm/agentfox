@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from agentfox.capabilities.detection.taint import TaintTracker, _flatten
-from agentfox.runtime.autoguard.shapes import _get, _plain
+from agentfox.frameworks.autoguard.shapes import _get, _plain
 
 log = logging.getLogger("agentfox.runtime.autoguard")
 

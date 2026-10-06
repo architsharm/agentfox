@@ -287,7 +287,7 @@ def fake_openai():
         }
     )
     yield Completions
-    from agentfox.runtime.autoguard import off
+    from agentfox.frameworks.autoguard import off
 
     off()
     for key in [k for k in list(sys.modules) if k.startswith("openai")]:
@@ -305,7 +305,7 @@ def test_the_one_liner_captures_conversation_turns(isolated_db, fake_openai):
     from agentfox.core.db import session_scope
     from agentfox.core.models import ConversationTurn
     from agentfox.fixtures.seed import seed
-    from agentfox.runtime.autoguard import auto
+    from agentfox.frameworks.autoguard import auto
 
     with session_scope() as session:
         seed(session)
@@ -331,7 +331,7 @@ def test_turns_group_into_one_conversation(isolated_db, fake_openai):
     from agentfox.core.db import session_scope
     from agentfox.core.models import ConversationTurn
     from agentfox.fixtures.seed import seed
-    from agentfox.runtime.autoguard import auto
+    from agentfox.frameworks.autoguard import auto
 
     with session_scope() as session:
         seed(session)
@@ -350,10 +350,10 @@ def test_turns_group_into_one_conversation(isolated_db, fake_openai):
 
 def test_turn_capture_never_breaks_the_call(isolated_db, fake_openai, monkeypatch):
     """Observability must not be able to fail the path it is describing."""
-    import agentfox.runtime.autoguard as autoguard
+    import agentfox.frameworks.autoguard as autoguard
     from agentfox.core.db import session_scope
     from agentfox.fixtures.seed import seed
-    from agentfox.runtime.autoguard import auto
+    from agentfox.frameworks.autoguard import auto
 
     with session_scope() as session:
         seed(session)

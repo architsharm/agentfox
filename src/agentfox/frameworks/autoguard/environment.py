@@ -10,7 +10,7 @@ import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from agentfox.runtime.autoguard import PatchResult
+    from agentfox.frameworks.autoguard import PatchResult
 
 
 #: Modules whose presence in `sys.modules` tells us what the app is built on. Reading

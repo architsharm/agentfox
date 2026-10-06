@@ -15,7 +15,7 @@ absent, because the absent one does not stop anyone looking further.
 
 from __future__ import annotations
 
-from agentfox.runtime.autoguard import AutoState
+from agentfox.frameworks.autoguard import AutoState
 
 
 def _state(**kw) -> AutoState:
