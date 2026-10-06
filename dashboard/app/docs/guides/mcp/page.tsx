@@ -87,9 +87,13 @@ export default function Page() {
         <code>scan mcp</code> starts nothing, so it cannot see a server&apos;s tools. Save
         the server&apos;s <code>tools/list</code> result (the <code>{`{"tools": [...]}`}</code>{" "}
         object, the bare array, or the whole JSON-RPC response) and pass it with{" "}
-        <code>--file</code>. Each scan stores a snapshot and its digest (name,
-        description and input schema of every tool), flags instructions hidden in a
-        description, and reports any change since the previous snapshot.
+        <code>--file</code>. Each scan stores a snapshot and its digest, flags
+        instructions hidden in a description, and reports any change since the previous
+        snapshot. What a call is checked against is narrower: each registered tool&apos;s
+        name, description, input schema and its four impact annotations{" "}
+        (<code>readOnlyHint</code>, <code>destructiveHint</code>,{" "}
+        <code>idempotentHint</code>, <code>openWorldHint</code>). A change to any of
+        them is drift.
       </p>
       <Code>{`agentfox scan mcp fetch --file fetch-tools.json`}</Code>
       <Output>{`fetch  .mcp.json
@@ -217,7 +221,7 @@ python call_search.py`}</Code>
   high tools changed since the last scan
   medium no version pinned — its tools can change silently
   mcp-scan: not installed (optional external scanner)
-refused: the tool's schema or description changed after this agent was authorised against it ['mcp.schema_drift']`}</Output>
+refused: the tool's description, schema or impact annotations changed since its definition was reviewed ['mcp.schema_drift']`}</Output>
           <p>
             (<code>call_search.py</code> is the same governor calling only{" "}
             <code>search_issues</code>, without <code>register_tools</code>.) The call is
@@ -232,10 +236,19 @@ refused: the tool's schema or description changed after this agent was authorise
           itself, the new listing is snapshotted and a <code>schema_drift</code> finding is
           raised, but the registered tool keeps its reviewed description and schema, so calls
           stay refused with <code>mcp.schema_drift</code>. The changed tools come back in the
-          result&apos;s <code>held</code> list. To accept the change after reviewing it, call{" "}
-          <code>gov.register_tools(tools, accept_changes=True)</code> or{" "}
-          <code>POST /api/mcp-servers/&#123;name&#125;/tools</code> with{" "}
-          <code>&quot;accept_changes&quot;: true</code>.
+          result&apos;s <code>held</code> list, and each is filed as an{" "}
+          <code>mcp.tool.accept</code> change proposal (ids in <code>proposals</code>).
+        </p>
+        <p>
+          Accepting lifts the block for every agent, so it is a loosening and takes two
+          different people. <code>gov.register_tools(tools, accept_changes=True, actor=&quot;alice@example.com&quot;)</code>{" "}
+          is one named person&apos;s approval; without <code>actor</code> it raises, so an
+          agent cannot approve its own listing. <code>POST /api/mcp-servers/&#123;name&#125;/tools</code>{" "}
+          with <code>&quot;accept_changes&quot;: true</code> records the signed-in
+          person&apos;s approval (it needs the role that approves policy changes). Until
+          a second person approves the proposal, here or with{" "}
+          <code>POST /api/proposals/&#123;id&#125;/decide</code>, the tool stays in{" "}
+          <code>awaiting_second_approver</code> and calls stay refused.
         </p>
       </Callout>
       <p>
@@ -322,7 +335,7 @@ refused: the tool's schema or description changed after this agent was authorise
       <ul>
         <li><strong><code>No MCP servers declared in this directory</code></strong>: run from the directory with the config, or pass <code>--config</code>.</li>
         <li><strong><code>name the server the tool list belongs to</code></strong>: <code>--file</code> needs a server name argument.</li>
-        <li><strong>Every MCP call refused with <code>mcp.schema_drift</code></strong>: the server changed after it was registered. Review the change; once you accept it, re-register the tools with <code>register_tools(tools, accept_changes=True)</code> to make the new listing the reviewed one.</li>
+        <li><strong>Every MCP call refused with <code>mcp.schema_drift</code></strong>: the server changed after it was registered. Review the change, then approve its <code>mcp.tool.accept</code> proposal: <code>register_tools(tools, accept_changes=True, actor=...)</code> is one approval, and the block lifts only after a second, different person approves too.</li>
         <li><strong><code>unknown agent</code> on <code>permit grant</code></strong>: run the agent once so it registers, then grant.</li>
       </ul>
 
