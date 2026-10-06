@@ -182,7 +182,7 @@ export default function Glossary() {
                 applied. A change that loosens a control is never applied
                 automatically, and a loosening at org level needs two different
                 approvers. There is no screen for proposals; they are read and decided
-                with <span className="mono">agentfox proposals</span> or{" "}
+                with <span className="mono">agentfox policy proposals</span> or{" "}
                 <span className="mono">/api/proposals</span>, described on the{" "}
                 <a href="/app/policies">Policies page</a>.
               </td>
@@ -194,7 +194,7 @@ export default function Glossary() {
                 argument values, a ceiling on how untrusted the arguments may be,
                 optionally a required human approval, and an expiry. Default deny: an
                 agent with no grant for a tool cannot call it. Made with{" "}
-                <span className="mono">agentfox capability grant</span>, explained on
+                <span className="mono">agentfox permit grant</span>, explained on
                 the <a href="/app/agents">Agents page</a>.
               </td>
             </tr>
@@ -268,7 +268,7 @@ export default function Glossary() {
                 <span className="mono">high_impact</span> (significant but
                 reversible), <span className="mono">irreversible</span> (cannot be
                 undone — money moved, a message sent, a record deleted). Set with{" "}
-                <span className="mono">agentfox tools declare --impact</span>.
+                <span className="mono">agentfox declare tool --impact</span>.
               </td>
             </tr>
             <tr id="argument-provenance-taint" data-term="argument provenance / taint">

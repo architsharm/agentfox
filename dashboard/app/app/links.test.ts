@@ -168,3 +168,30 @@ describe("gateway calls", () => {
     for (const raw of calls) expect(known(raw.split("?")[0])).toBe(true);
   });
 });
+
+describe("command names", () => {
+  const cli = JSON.parse(readFileSync(join(ROOT, "lib", "reference", "cli.json"), "utf8")) as {
+    renamed: Record<string, string>;
+    root: { commands: { name: string }[] };
+  };
+  const current = new Set(cli.root.commands.map((c) => c.name));
+  // Old top-level names the CLI no longer has, from the generated reference itself.
+  const retired = Object.keys(cli.renamed).filter((name) => !current.has(name));
+
+  it("the app never tells anyone to run a command that was renamed", () => {
+    const re = new RegExp(`\\bagentfox (${retired.map((n) => n.replace(/-/g, "\\-")).join("|")})\\b`, "g");
+    const offenders: string[] = [];
+    // The whole site, docs included: a docs page is where a renamed command is
+    // most likely to be copied from.
+    for (const f of [...walk(APP), ...walk(join(ROOT, "components"))]) {
+      if (!/\.tsx?$/.test(f) || f.includes(".test.")) continue;
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(re)) {
+        const line = src.slice(0, m.index).split("\n").length;
+        offenders.push(`${relative(ROOT, f)}:${line}: ${m[0]} → ${cli.renamed[m[1]]}`);
+      }
+    }
+    expect(retired.length).toBeGreaterThan(5);
+    expect(offenders).toEqual([]);
+  });
+});

@@ -230,7 +230,7 @@ export default async function Agents({
                     {a.status === "draft" && <div><span className="tag warn">draft</span></div>}
                     {a.is_seed && (
                       <div>
-                        <span className="tag" title="Created by `agentfox seed` for demo purposes — not a real registration.">
+                        <span className="tag" title="Created by `agentfox admin seed` for demo purposes — not a real registration.">
                           sample data
                         </span>
                       </div>
@@ -344,7 +344,7 @@ function CapabilityGrants() {
             <tbody>
               <tr>
                 <td className="small">Let an agent call a tool</td>
-                <td className="mono small">agentfox capability grant AGENT TOOL</td>
+                <td className="mono small">agentfox permit grant AGENT TOOL</td>
               </tr>
               <tr>
                 <td className="small">Cap what the arguments may say</td>
@@ -364,11 +364,11 @@ function CapabilityGrants() {
               </tr>
               <tr>
                 <td className="small">See what an agent currently holds</td>
-                <td className="mono small">agentfox capability list AGENT</td>
+                <td className="mono small">agentfox permit list AGENT</td>
               </tr>
               <tr>
                 <td className="small">Take one back</td>
-                <td className="mono small">agentfox capability revoke CAPABILITY_ID</td>
+                <td className="mono small">agentfox permit revoke CAPABILITY_ID</td>
               </tr>
             </tbody>
           </table>

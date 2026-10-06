@@ -4,7 +4,7 @@ import { proxyFormPost } from "@/lib/proxy";
 export const dynamic = "force-dynamic";
 
 /**
- * The CLI (`agentfox redteam run <agent>`) was the only way to trigger this —
+ * The CLI (`agentfox test redteam <agent>`) was the only way to trigger this —
  * fine for someone who has the repo checked out, a dead end for anyone using
  * only the dashboard. Runs synchronously and redirects back with the result.
  */
