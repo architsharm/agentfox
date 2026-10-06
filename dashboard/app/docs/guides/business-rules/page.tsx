@@ -474,9 +474,10 @@ commands.`}</Output>
           the call; see the warning in the walkthrough.
         </li>
         <li>
-          <strong><code>--agent</code> with an unknown agent</strong> stops with{" "}
-          <code>ValueError: unknown agent &apos;research-bot&apos;</code> and a traceback.
-          Nothing is saved.
+          <strong><code>unknown agent &apos;research-bot&apos;</code></strong> from{" "}
+          <code>rules apply --agent</code>: nothing is saved, and the message lists the
+          agents that exist. Register a new one with{" "}
+          <code>agentfox agents register research-bot</code>.
         </li>
         <li>
           <strong><code>unknown rule &apos;…&apos;</code> from <code>test</code></strong> and{" "}
@@ -484,7 +485,9 @@ commands.`}</Output>
           The second one lists the valid kinds.
         </li>
         <li>
-          <strong>Compile folded an unrelated sentence into a ladder.</strong> Check every
+          <strong>A ladder carries a band you did not mean.</strong> Count thresholds
+          (&quot;over 10,000 rows&quot;) become their own <code>count</code> ladder, separate
+          from money ones, but the compiler still guesses the tool and the field. Check every
           band&apos;s <code>reason</code> in <code>--json</code> output before{" "}
           <code>--apply</code>, and prefer writing the YAML yourself for anything that moves
           money.

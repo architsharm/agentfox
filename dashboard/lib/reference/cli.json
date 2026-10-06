@@ -345,6 +345,197 @@
       "commands": []
      },
      {
+      "path": "agents register",
+      "name": "register",
+      "summary": "Register an agent (or update one), so it is owned rather than shadow.",
+      "help": "Register an agent (or update one), so it is owned rather than shadow.\n\nAgents also appear on their first call; registering one up front gives it an\nowner and an environment before it has run, and turns a shadow agent into a\nregistered one. Options left out keep the agent's current values.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "slug",
+        "opts": [
+         "slug"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Agent slug, e.g. support-triage."
+       },
+       {
+        "kind": "option",
+        "name": "name",
+        "opts": [
+         "--name"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Display name. Default: the slug."
+       },
+       {
+        "kind": "option",
+        "name": "owner",
+        "opts": [
+         "--owner"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Owner's email. An agent with no owner is a finding."
+       },
+       {
+        "kind": "option",
+        "name": "team",
+        "opts": [
+         "--team"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Owning team."
+       },
+       {
+        "kind": "option",
+        "name": "env",
+        "opts": [
+         "--env"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Environment it runs in. Default: production, or its current one."
+       },
+       {
+        "kind": "option",
+        "name": "risk_tier",
+        "opts": [
+         "--risk-tier"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "minimal | limited | high | prohibited. Default: limited, or its current one."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "agents budget",
+      "name": "budget",
+      "summary": "Show or set an agent's budget: the caps `budget.exceeded` blocks on.",
+      "help": "Show or set an agent's budget: the caps `budget.exceeded` blocks on.\n\nWith no option it prints the current caps and usage. Each option sets one cap and\nleaves the others as they are; 0 removes that cap. Over a cap, the agent's calls\nare blocked (`budget.exhausted`) until the window rolls over.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "slug",
+        "opts": [
+         "slug"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Agent slug."
+       },
+       {
+        "kind": "option",
+        "name": "max_calls",
+        "opts": [
+         "--max-calls"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Calls per window."
+       },
+       {
+        "kind": "option",
+        "name": "max_tokens",
+        "opts": [
+         "--max-tokens"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Tokens per window."
+       },
+       {
+        "kind": "option",
+        "name": "max_cost_usd",
+        "opts": [
+         "--max-cost-usd"
+        ],
+        "type": "float",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Spend per window, in USD."
+       },
+       {
+        "kind": "option",
+        "name": "max_depth",
+        "opts": [
+         "--max-depth"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Longest tool-call chain in one run."
+       },
+       {
+        "kind": "option",
+        "name": "window",
+        "opts": [
+         "--window"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "minute | hour | day."
+       },
+       {
+        "kind": "option",
+        "name": "clear",
+        "opts": [
+         "--clear"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Remove the agent's budget."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
       "path": "agents lineage",
       "name": "lineage",
       "summary": "Show what an agent reaches — the blast radius.",
@@ -2939,8 +3130,8 @@
      {
       "path": "test gate",
       "name": "gate",
-      "summary": "Run the suite and fail the build on regression.",
-      "help": "Run the suite and fail the build on regression. Exits 1 on failure.",
+      "summary": "Run the suite and fail the build on regression or on any errored case.",
+      "help": "Run the suite and fail the build on regression or on any errored case. Exits 1 on failure.",
       "panel": null,
       "params": [
        {
@@ -3007,6 +3198,32 @@
         "multiple": false,
         "default": null,
         "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "agent",
+        "opts": [
+         "--agent"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Agent to fit the envelope for. Default: the baseline run's agent."
+       },
+       {
+        "kind": "option",
+        "name": "scorers",
+        "opts": [
+         "--scorers"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Comma-separated scorer keys. Default: the baseline run's scorers."
        },
        {
         "kind": "option",
@@ -3139,7 +3356,7 @@
       "path": "test redteam",
       "name": "redteam",
       "summary": "Run adversarial probes against the deployed configuration.",
-      "help": "Run adversarial probes against the deployed configuration.\n\nThis measures whether *this configuration* got weaker, against known attack classes.\nIt is not a robustness certificate, and `--adaptive` does not make it one: every\npublished result says an attacker who adapts eventually gets through.",
+      "help": "Run adversarial probes against the deployed configuration.\n\nThis measures whether *this configuration* got weaker, against known attack classes.\nIt is not a robustness certificate, and `--adaptive` does not make it one: every\npublished result says an attacker who adapts eventually gets through.\n\nExits 1 when any attack got through (unless --allow-escapes). Probes are simulated:\ntheir tool calls are evaluated without writing decisions, so they never show up\nin findings or in what `policy simulate` replays. The campaign itself, and a\nfinding naming the attacks that got through, are recorded.",
       "panel": null,
       "params": [
        {
@@ -3218,8 +3435,21 @@
         "choices": [],
         "required": false,
         "multiple": false,
-        "default": true,
-        "help": "Generate probes from this deployment's own grants, impacts and bound policies."
+        "default": null,
+        "help": "Adaptive mode only: also generate probes from this deployment's own grants, impacts and bound policies (on by default with --adaptive). The static suite always runs the built-in probes alone."
+       },
+       {
+        "kind": "option",
+        "name": "allow_escapes",
+        "opts": [
+         "--allow-escapes"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Exit 0 even when an attack got through. By default an escaped attack exits 1, so the command can gate CI."
        }
       ],
       "default_subcommand": null,

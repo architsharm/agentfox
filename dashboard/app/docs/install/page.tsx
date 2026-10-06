@@ -121,14 +121,15 @@ agentfox --version`}</Code>
       <p>Then check which detectors this process can actually run:</p>
       <Code>{`agentfox doctor`}</Code>
       <Output>{`…
-  ✓    detectors           5 available: injection.heuristic, pii.native, safety.lexicon,
+  ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native
 …`}</Output>
-      <Callout kind="warning" title="Compare the list yourself">
-        The <code>detectors</code> line lists what is <em>available</em>. It does not name a
-        detector you enabled whose extra or weights are missing: enabling{" "}
-        <code>injection.classifier</code> without the <code>classifiers</code> extra prints the
-        same five. Compare the line against your <code>enabled_detectors</code>.
+      <Callout kind="note" title="Enabled but unavailable">
+        The <code>detectors</code> line lists what is enabled <em>and</em> can run. A
+        detector you enabled whose extra or weights are missing turns the line into a
+        warning and is named with the reason: enabling <code>injection.classifier</code>{" "}
+        without the <code>classifiers</code> extra prints{" "}
+        <code>enabled but unavailable: injection.classifier (…)</code>.
       </Callout>
 
       <h2 id="state">Where state lives</h2>
@@ -296,9 +297,10 @@ taint_scope = "session"`}</Code>
   !    data scope          no table row-scoping declared — a query across every customer's rows
                            reads as ordinary. Declare with \`agentfox declare scope <table>
                            --column ...\`.
-  ✓    detectors           5 available: injection.heuristic, pii.native, safety.lexicon,
+  ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native
-  ✓    providers           echo
+  ✓    providers           offline only (echo). No model call can leave this machine — set
+                           AGENTFOX_ALLOW_EGRESS=1 and a key to change that.
   !    detector failure    fail-open: a detector that times out lets the request through and
                            records the gap
   !    answerability       no knowledge boundary declared — nothing stops an agent answering a

@@ -221,7 +221,8 @@ def test_scan_mcp_without_a_file_never_scans_the_seed_fixture():
 def test_scan_mcp_seed_fixture_must_be_asked_for():
     _seed()
     result = runner.invoke(app, ["scan", "mcp", "internal-tools", "--seed-fixture"])
-    assert result.exit_code == 0, result.output
+    # The demo fixture carries a poisoned description, which is critical: exit 1.
+    assert result.exit_code == 1, result.output
     assert "internal-tools" in result.output
 
 

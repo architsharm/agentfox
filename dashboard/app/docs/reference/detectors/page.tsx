@@ -43,7 +43,7 @@ const SURFACES: Row[] = [
 ];
 
 const DEFAULTS: Row[] = [
-  ["injection.heuristic", "Patterns for instruction override, persona and jailbreak, system-prompt extraction, covert instructions, exfiltration, fake role delimiters and system blocks, hidden characters, encoded payloads. Paraphrases and several languages. Re-scans de-obfuscated views.", "input, output, retrieved, tool_result, memory_write, agent_message, reasoning"],
+  ["injection.heuristic", "Patterns for instruction override, persona and jailbreak, system-prompt extraction, covert instructions, exfiltration, fake role delimiters and system blocks, hidden characters, encoded payloads. Paraphrases and several languages. Re-scans de-obfuscated views.", "input, output, retrieved, tool_result, memory_write, agent_message, reasoning, tool_args"],
   ["pii.native", "Regex packs: global (email, IP, card with Luhn, IBAN, date of birth) plus US, UK and EU by default; an India pack exists.", "all nine"],
   ["secrets.native", "API keys (OpenAI, Anthropic, AWS, GitHub, Slack, Google, Stripe, AgentFox), private keys, JWTs, connection strings, high-entropy generic secrets.", "all nine"],
   ["safety.lexicon", "A small lexicon: harm, self-harm, illicit, harassment, extremism.", "input, output, retrieved, tool_result, completion"],
@@ -157,7 +157,7 @@ allow block ['INJECTION.INSTRUCTION_OVERRIDE'] ['injection.adopted_in_reasoning'
 completion:
 escalate escalate [] ['completion.unverified_claim']
 tool_args:
-block block ['PII.EMAIL'] ['capability.denied', 'tool.not_declared']`}</Output>
+block block ['INJECTION.INSTRUCTION_OVERRIDE', 'PII.EMAIL'] ['capability.denied', 'injection.in_tool_arguments']`}</Output>
       <p>Two things in that output are worth knowing:</p>
       <ul>
         <li>
@@ -169,9 +169,9 @@ block block ['PII.EMAIL'] ['capability.denied', 'tool.not_declared']`}</Output>
           in Python, and the rule is satisfied.
         </li>
         <li>
-          No shipped injection detector runs on <code>tool_args</code>: the injection
-          text in the email body was not detected. The call was stopped by default deny
-          and the undeclared-tool rule, not by detection.
+          <code>injection.heuristic</code> runs on <code>tool_args</code> too, so the
+          injection text in the email body fires <code>injection.in_tool_arguments</code>{" "}
+          alongside default deny.
         </li>
       </ul>
 
@@ -195,14 +195,13 @@ block block ['PII.EMAIL'] ['capability.denied', 'tool.not_declared']`}</Output>
 agentfox doctor`}</Code>
       <p>
         <code>agentfox doctor</code> lists the detectors that are both enabled and
-        available. It does not list one you enabled that could not load, so if a
-        detector you asked for is missing from that line, its extra or its weights are
-        missing. <code>GET /api/detectors</code> shows every registered detector with{" "}
+        available as running, and names any you enabled that could not load, with the
+        reason, as a warning. <code>GET /api/detectors</code> shows every registered detector with{" "}
         <code>available</code>, <code>enabled</code>, the reason it is unavailable, and
         its run statistics.
       </p>
-      <Output>{`  ✓    detectors           6 available: injection.heuristic, pii.native, pii.presidio, safety.lexicon, schema.json,
-                           secrets.native`}</Output>
+      <Output>{`  ✓    detectors           6 running: injection.classifier, injection.heuristic, pii.native, safety.lexicon,
+                           schema.json, secrets.native`}</Output>
       <p>
         A paraphrased injection the default heuristic misses, caught once the classifier
         is enabled. A cold model&apos;s first call exceeds its time budget and is recorded

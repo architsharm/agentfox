@@ -513,7 +513,7 @@ held by ['capability.approval_required'] approval apr_01m469peykxwxwh9wm`}</Outp
           <tr><td><code>intent.undeclared_irreversible</code></td><td>escalate</td><td>Irreversible tool and no declared task intent.</td></tr>
           <tr><td><code>tool.not_declared</code></td><td>escalate</td><td>The registry has never heard of the tool.</td></tr>
           <tr><td><code>loop.runaway</code></td><td>block</td><td>The same tool repeated in one run. In an SDK session, the fourth call to the same tool is refused.</td></tr>
-          <tr><td><code>budget.exceeded</code></td><td>block</td><td>The agent&apos;s calls, tokens, spend or depth budget is used up. There is no CLI to set a budget yet.</td></tr>
+          <tr><td><code>budget.exceeded</code></td><td>block</td><td>The agent&apos;s calls, tokens, spend or depth budget is used up. Set one with <code>agentfox agents budget SLUG --max-calls N</code>.</td></tr>
           <tr><td><code>injection.in_tool_arguments</code>, <code>secrets.in_tool_arguments</code></td><td>block</td><td>Instruction-like text or a credential inside the arguments.</td></tr>
           <tr><td><code>action.*</code>, <code>secrets.credential_file</code>, <code>control_plane.tamper</code></td><td>block / escalate</td><td>Shell commands: piped installers, credential files, publishing, infrastructure changes, history rewrites, and commands that would turn AgentFox off. See <Link href="/docs/guides/coding-agents">Coding agents</Link>.</td></tr>
           <tr><td><code>cascade.*</code>, <code>access.*</code></td><td>block / escalate</td><td>A declared trigger graph reaches a destructive tool, loops, or fans out; a SQL query touches a per-principal table without scoping it to the caller, or an undeclared table.</td></tr>

@@ -63,7 +63,7 @@ in CI and under the MCP server it prints nothing extra. `hooks run`, `hooks daem
 | `agentfox demo` | W, F, **BLK** | 13-step offline walkthrough. Promotes `baseline` to enforce for step 8, then restores its previous mode. Writes demo data, so use a scratch DB. |
 | `agentfox scan [PATH=.] [--json] [--limit/-n 15] [--fail] [--submit/--no-submit]` | R (static AST scan, never imports target code) | Same as `scan repo`. `--fail` → exit 1 if any model call is ungoverned. Use in CI. |
 | `agentfox scan --sessions [PATH=.] [--json] [--skip-sessions] [--submit/--no-submit]` | R (reads `~/.claude/projects/**/*.jsonl` unless `--skip-sessions`) | Repo scan + local AI-tool sessions + a live detector check. Always exit 0. Pass `--skip-sessions` unless the user asked for the session scan. |
-| `agentfox scan mcp [SERVER] [--config PATH] [--file tools.json \| --seed-fixture] [--json]` | W | No setup: reads `.mcp.json`, `.cursor/mcp.json` or `claude_desktop_config.json` and registers every declared server. Reports where each is declared, what it can reach, config problems (unpinned, plain-http remote, no auth, literal credentials) and the lethal trifecta across one config. Never starts a server. `--file` adds the server's real `tools/list`. |
+| `agentfox scan mcp [SERVER] [--config PATH] [--file tools.json \| --seed-fixture] [--json]` | W | No setup: reads `.mcp.json`, `.cursor/mcp.json` or `claude_desktop_config.json` and registers every declared server. Reports where each is declared, what it can reach, config problems (unpinned, plain-http remote, no auth, literal credentials) and the lethal trifecta across one config. Never starts a server. `--file` adds the server's real `tools/list` (`{"tools": [...]}`, the bare array, or the JSON-RPC response). Exit 1 on any critical issue (poisoned description, critical config issue, lethal trifecta). |
 | `agentfox scan skills [PATH=.] [--persist]` | R (W with `--persist`) | `SKILL.md` files: planted instructions and declared danger. |
 | `agentfox scan runtime` | W | Shadow/unowned agents, registry drift, identity posture, delegation cycles. |
 | `agentfox serve [--host 127.0.0.1] [--port 8080] [--reload]` | FG | Same as `serve api`. Gateway + API (`/v1/*`, `/api/*`, `/docs`). No `--workers`. |
@@ -81,6 +81,8 @@ anywhere.
 | Command | Effect | Notes |
 |---|---|---|
 | `agents list [--json] [--stopped]` | R\* | Registered + shadow agents. `--stopped`: only quarantined/killed agents, with reason and actor. |
+| `agents register SLUG [--name] [--owner EMAIL] [--team] [--env] [--risk-tier]` | W | Register (or update) an agent so it is owned, not shadow. Options left out keep the current values. Audited. |
+| `agents budget SLUG [--max-calls N] [--max-tokens N] [--max-cost-usd F] [--max-depth N] [--window minute\|hour\|day] [--clear]` | W | No option: show caps and usage. Each option sets one cap (0 removes it); over a cap, `budget.exhausted` blocks until the window rolls. Exit 1 on unknown agent. Audited. |
 | `agents lineage SLUG [--depth 2]` | W | Blast radius: what the agent can reach. |
 | `agents quarantine SLUG [--reason/-r TEXT]` | W, **BLK** | Reversible, audited. Exit 1 on unknown agent. |
 | `agents kill SLUG [--reason/-r TEXT]` | W, **BLK** | Stop now. |
@@ -162,12 +164,12 @@ or superseded. A change that loosens a control is never applied automatically.
 | Command | Effect | Notes |
 |---|---|---|
 | `test suites` | R\* | Registered eval suites. |
-| `test run SUITE [--provider echo] [--model echo-1] [--agent] [--scorers CSV]` | W | |
-| `test gate SUITE [--provider echo] [--model echo-1] [--baseline RUN_ID] [--min-pass-rate F] [--junit PATH] [--sarif PATH]` | W, F | **Exit 1 on regression.** No `--agent`. |
+| `test run SUITE [--provider echo] [--model echo-1] [--agent] [--scorers CSV]` | W | An unknown scorer key exits 1. |
+| `test gate SUITE [--provider echo] [--model echo-1] [--baseline RUN_ID] [--min-pass-rate F] [--agent] [--scorers CSV] [--junit PATH] [--sarif PATH]` | W, F | **Exit 1 on regression or on any errored case.** Scorers and agent default to the baseline run's. |
 | `test baseline RUN_ID [--label main]` | W | |
-| `test online AGENT [--since-days 7] [--rate F]` | W | Scores sampled production traces. |
+| `test online AGENT [--since-days 7] [--rate F]` | W | Scores sampled production traces; reports sampled traces with no recorded output as not scored. |
 | `test probes` | R, offline | 22 built-in probes + wrapped runners. |
-| `test redteam AGENT [--probes CSV] [--adaptive] [--budget N] [--seed N] [--no-deployment-probes]` | W | Probes the agent's real grants and policy bindings. `--adaptive` mutates a blocked probe and retries, and reports a posture delta against the last comparable campaign rather than a pass rate. Never a robustness certificate. Exit 0 always. |
+| `test redteam AGENT [--probes CSV] [--adaptive] [--budget N] [--seed N] [--no-deployment-probes] [--allow-escapes]` | W | Probes the agent's real grants and policy bindings. `--adaptive` mutates a blocked probe and retries, and reports a posture delta against the last comparable campaign rather than a pass rate; deployment probes run only with `--adaptive`. Probe tool calls are not stored as decisions. Never a robustness certificate. Exit 1 when an attack got through, unless `--allow-escapes`. |
 | `test action STATEMENT [--kind sql\|shell\|http] [--method GET] [--dialect postgres] [--environment production]` | R, offline | Exit 1 if critical. Blast radius / reversibility of a SQL/shell/HTTP artefact. |
 | `test boundary AGENT "QUESTION"` | R | Would it abstain, and what would it say? |
 | `test rule KEY "V1,V2,..."` | R | Try values against a business rule. |

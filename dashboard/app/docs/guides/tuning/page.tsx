@@ -60,7 +60,7 @@ export default function Page() {
       <Output>{`Runtime check
   ✓    database            reachable — 5 agent(s), 8 trace(s)
 …
-  ✓    detectors           5 available: injection.heuristic, pii.native, safety.lexicon,
+  ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native
 …
   !    detector failure    fail-open: a detector that times out lets the request through and

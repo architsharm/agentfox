@@ -257,9 +257,8 @@ sqlite:////…/agentfox.core.db
         <Step title="See: scan the repository">
           <Code>{`agentfox scan`}</Code>
           <Output>{`╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────────────────────────╮
-│ agent.py: can read crms (crm_lookup) or can read tickets closes (tickets_close), reads untrusted │
-│ web pages (web_fetch) or reads tickets other people write (tickets_close), and can send email    │
-│ (email_send). An instruction hidden in a web page could send crm data out.                       │
+│ agent.py: can read CRM records (crm_lookup), reads untrusted web pages (web_fetch), and can send │
+│ email (email_send). An instruction hidden in a web page could send CRM data out.                 │
 │                                                                                                  │
 │ Contain it: \`agentfox permit grant <agent> email_send --max-taint user\` (anything derived from   │
 │ untrusted content needs an approval before it reaches email_send), or run with                   │

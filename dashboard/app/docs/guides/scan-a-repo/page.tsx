@@ -88,9 +88,9 @@ def run(message: str) -> str:
       <p>From the repository root:</p>
       <Code>{`agentfox scan`}</Code>
       <Output>{`╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────────────╮
-│ support_triage/agent.py: can read crms (crm_lookup), reads untrusted web pages       │
-│ (web_fetch), and can send email (email_send). An instruction hidden in a web page    │
-│ could send crm data out.                                                             │
+│ support_triage/agent.py: can read CRM records (crm_lookup), reads untrusted web      │
+│ pages (web_fetch), and can send email (email_send). An instruction hidden in a web   │
+│ page could send CRM data out.                                                        │
 │                                                                                      │
 │ Contain it: \`agentfox permit grant <agent> email_send --max-taint user\` (anything    │
 │ derived from untrusted content needs an approval before it reaches email_send), or   │
@@ -343,7 +343,7 @@ support-triage — blast radius 4
       "kind": "lethal_trifecta",
       "file": "support_triage/agent.py",
       "line": 9,
-      "detail": "support_triage/agent.py: can read crms (crm_lookup), reads untrusted web pages (web_fetch), and can send email (email_send). …",
+      "detail": "support_triage/agent.py: can read CRM records (crm_lookup), reads untrusted web pages (web_fetch), and can send email (email_send). …",
       "severity": "critical",
       "capabilities": ["private_data", "untrusted_input", "exfiltration"],
       "evidence": {
@@ -406,8 +406,9 @@ jobs:
           unpinned MCP server or a hard-coded secret does not change the exit code, and an
           agent wrapped in <code>agentfox.auto()</code> still reports its trifecta. To gate on
           those, read <code>scan.json</code>: for example, fail when{" "}
-          <code>lethal_trifectas</code> is non-empty. <code>agentfox scan mcp</code> exits{" "}
-          <code>0</code> even when it reports a critical issue.
+          <code>lethal_trifectas</code> is non-empty. <code>agentfox scan mcp</code>, by
+          contrast, exits <code>1</code> on a critical issue, including a trifecta across
+          the servers in one MCP config.
         </p>
       </Callout>
 

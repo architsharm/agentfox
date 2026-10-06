@@ -549,6 +549,7 @@ class NativeRedTeamRunner:
                     arguments=probe.arguments or {},
                     provenance=probe.provenance,
                     intent=probe.intent,
+                    persist=False,
                 )
                 decision = result.to_json()
             elif probe.kind == "scenario":
@@ -572,6 +573,7 @@ class NativeRedTeamRunner:
                         arguments=step.get("arguments", {}),
                         tracker=tracker,
                         intent=step.get("intent"),
+                        persist=False,
                     )
                     # Assumes each intermediate step is itself allowed — these are
                     # ordinary reads the agent genuinely holds; only the final

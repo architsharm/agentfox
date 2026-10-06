@@ -148,11 +148,23 @@ _REMEDY = {
     "SAFETY": "Content matched the safety lexicon. Review the sample before relaxing anything.",
 }
 
+#: The injection remedy for the user's own message. "Untrusted content" is the
+#: indirect-injection story (a document, a tool result); on the input surface the
+#: instruction came from the person typing, and the fix is a different one.
+_INPUT_INJECTION_REMEDY = (
+    "The instruction arrived in the user's own message (a direct injection attempt). "
+    "Keep the block, or narrow what this agent may do on that user's behalf; if the "
+    "message was legitimate, file it as a false positive rather than relaxing the "
+    "detector."
+)
 
-def _remedy_for(entity_types: list[str]) -> str:
+
+def _remedy_for(entity_types: list[str], surface: str | None = None) -> str:
     for entity in entity_types:
         for prefix, text in _REMEDY.items():
             if entity.upper().startswith(prefix):
+                if prefix == "INJECTION" and surface == "input":
+                    return _INPUT_INJECTION_REMEDY
                 return text
     return (
         "Review the matched span against the rule. If the rule is right and the content "
@@ -275,7 +287,7 @@ def explain(
         rule=rule,
         matches=matches,
         detectors=detectors,
-        remedy=_remedy_for(entity_types),
+        remedy=_remedy_for(entity_types, surface),
         dispute={
             "endpoint": "POST /api/guardrails/feedback",
             "payload": {
@@ -472,6 +484,25 @@ def record_feedback(
             .order_by(DetectionFinding.score.desc())
         )
         entity_type = finding.entity_type if finding else None
+    # The label is about one entity, so its score is that entity's score. The run's
+    # score is the max over everything the detector matched in the request: a label
+    # on a 0.55 PII.EMAIL match in a run that also found a 0.95 PII.SSN used to be
+    # stored at 0.95, and a threshold recommendation fitted to these labels moved
+    # by the wrong entity's confidence.
+    if entity_type and matching:
+        entity_match = session.scalar(
+            select(DetectionFinding)
+            .where(
+                DetectionFinding.detector_run_id.in_([r.id for r in matching]),
+                DetectionFinding.entity_type == entity_type,
+            )
+            .order_by(DetectionFinding.score.desc())
+        )
+        if entity_match is not None:
+            score = entity_match.score
+            detector_key = next(
+                r.detector_key for r in matching if r.id == entity_match.detector_run_id
+            )
 
     existing = session.scalar(
         select(GuardrailFeedback)
@@ -1032,7 +1063,9 @@ def explain_recorded(
         "summary": summary,
         "rule": rule,
         "matches": matches,
-        "remedy": _remedy_for(entity_types) if entity_types else "",
+        "remedy": _remedy_for(entity_types, decision.get("surface", "input"))
+        if entity_types
+        else "",
         "dispute": {
             "endpoint": "POST /api/guardrails/feedback",
             "payload": {

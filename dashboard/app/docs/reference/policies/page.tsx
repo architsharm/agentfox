@@ -260,12 +260,12 @@ tool-containment     v1       enforce  25`}</Output>
         loaded with <code>control_plane.tamper</code> removed or disabled.
       </p>
       <PackTable rules={CONTAINMENT} />
-      <Callout kind="note" title="injection.in_tool_arguments has no detector behind it">
+      <Callout kind="note" title="injection.in_tool_arguments">
         <p>
-          None of the shipped injection detectors runs on the <code>tool_args</code>{" "}
-          surface, so this rule does not fire on its own: an injection string inside
-          tool arguments was detected only as the PII it contained. What contains that
-          call is taint and grants, not this rule.
+          The heuristic injection detector (<code>injection.heuristic</code>) runs on the{" "}
+          <code>tool_args</code> surface, reading the call&apos;s arguments as JSON, so an
+          instruction smuggled into an argument fires this rule. It is a lexical check:
+          taint and grants still contain the call when the wording gets past it.
         </p>
       </Callout>
 

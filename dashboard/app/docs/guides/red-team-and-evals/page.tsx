@@ -122,14 +122,13 @@ benign.order_status_question  low       —      allow    allowed`}</Output>
         </Link>
         .
       </p>
-      <Callout kind="warning" title="Probes leave traces in your data">
+      <Callout kind="note" title="What a campaign stores">
         Tool-call probes run against synthetic tools named <code>redteam.sim.*</code>. Their
-        decisions are stored like any other, so after a campaign{" "}
-        <code>agentfox findings</code> also lists <code>containment</code> findings such as
-        &quot;support-triage tried a destructive or over-broad redteam.sim.list_records
-        call&quot;, and <code>agentfox policy simulate</code> replays those decisions as
-        recorded traffic. Run campaigns against a separate database (
-        <code>AGENTFOX_DATABASE_URL</code>) if you do not want them mixed with production.
+        verdicts are computed on the real enforcement path but not written as decisions,
+        so they never appear as <code>containment</code> findings and{" "}
+        <code>agentfox policy simulate</code> never replays them. What is stored is the
+        campaign, one red-team record per probe, the campaign-level findings above, and
+        the synthetic <code>redteam.sim.*</code> tools and grants the probes run against.
       </Callout>
 
       <h2 id="posture">Adaptive mode and the posture delta</h2>
@@ -140,7 +139,9 @@ benign.order_status_question  low       —      allow    allowed`}</Output>
         mutation chosen from why the previous attempt was blocked, up to{" "}
         <code>--budget</code> attempts per probe (default 3). Adaptive mode also generates
         probes from this deployment&apos;s own grants, tool impact tiers and bound
-        policies; <code>--no-deployment-probes</code> turns that off.{" "}
+        policies; <code>--no-deployment-probes</code> turns that off. The static suite
+        never runs deployment probes, and <code>--deployment-probes</code> without{" "}
+        <code>--adaptive</code> says so instead of silently doing nothing.{" "}
         <code>--seed</code> (default 1337) fixes the mutation program, so the same campaign
         against the same configuration mutates the same probes the same way.
       </p>
@@ -151,9 +152,7 @@ benign.order_status_question  low       —      allow    allowed`}</Output>
 
   No previous adaptive campaign for 'support-triage': this run is the baseline. 7 attack class(es) escape it
 today. Posture change is only meaningful from the second campaign onward.
-  escapes by payload kind: readable {'attempts': 13, 'escapes': 1, 'escape_rate': 0.0769}  requires_decode
-{'attempts': 7, 'escapes': 6, 'escape_rate': 0.8571}  structural {'attempts': 22, 'escapes': 0, 'escape_rate':
-0.0}
+  escapes by payload kind: readable 1/13 (8%)  requires_decode 6/7 (86%)  structural 0/22
   note — baseline, eu-ai-act-high-risk bound in observe mode; probes score the counterfactual verdict, so this
 campaign cannot see that.
 probe                                                severity  OWASP  verdict   result
@@ -204,11 +203,11 @@ today. Posture change is only meaningful from the second campaign onward.`}</Out
         <code>redteam_mutation_class</code> finding naming it. Policies bound in observe
         mode are scored on what they would have done, and the note line says so.
       </p>
-      <Callout kind="note" title="test redteam exits 0">
-        <code>agentfox test redteam</code> exits 0 even when attacks get through, so it
-        does not fail a CI job on its own. Use it in CI for the record (campaigns and
-        findings are stored), and gate on <code>agentfox test gate</code>, or on the
-        findings it raises.
+      <Callout kind="note" title="test redteam exits 1 when an attack gets through">
+        <code>agentfox test redteam</code> exits 1 when any attack got through (a wrongly
+        blocked benign control does not change the exit code), so it can fail a CI job on
+        its own. Pass <code>--allow-escapes</code> to record the campaign and its findings
+        without failing.
       </Callout>
       <InTheApp path="/app/evals#redteam">Evaluation → Red team: run a campaign against an agent</InTheApp>
 
@@ -306,13 +305,15 @@ GATE FAIL
   threshold  silent_failure pass rate 0.0% below floor 50.0%`}</Output>
         </Step>
       </Steps>
-      <Callout kind="warning" title="The gate uses the default scorers">
-        <code>agentfox test gate</code> has no <code>--scorers</code> or{" "}
-        <code>--agent</code> option: it always scores with the four defaults. A baseline
-        pinned from <code>agentfox test run triage-answers --scorers contains,groundedness</code>{" "}
-        is only compared on the scorers both runs share (here,{" "}
-        <code>groundedness</code>); <code>contains</code> is never gated. Pin baselines
-        from a <code>test run</code> without <code>--scorers</code>.
+      <Callout kind="note" title="The gate scores the way the baseline was scored">
+        Without <code>--scorers</code> and <code>--agent</code>,{" "}
+        <code>agentfox test gate</code> reuses the baseline run&apos;s scorers and agent, so a
+        baseline pinned from{" "}
+        <code>agentfox test run triage-answers --scorers contains,groundedness</code> is
+        gated on <code>contains</code> and <code>groundedness</code>. Pass{" "}
+        <code>--scorers</code> or <code>--agent</code> to override them. An unknown scorer
+        key is an error (exit 1) that lists the valid ones, on <code>test run</code> and{" "}
+        <code>test gate</code> alike.
       </Callout>
 
       <h2 id="ci">A GitHub Actions job</h2>
@@ -347,19 +348,13 @@ jobs:
         run: |
           mkdir -p reports
           agentfox test gate support-quality --provider openai --model gpt-4o-mini --junit reports/agentfox-junit.xml --sarif reports/agentfox.sarif
-      - name: Fail if no case was scored
-        if: always()
-        run: |
-          if grep -q 'name="no-scorers"' reports/agentfox-junit.xml; then
-            echo "no case was scored; failing the job"; exit 1
-          fi
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: reports/agentfox.sarif`}</Code>
       <Callout kind="note" title="What was run, and what was not">
         This workflow file was not run on GitHub for this page. The gate command, the two
-        report files and the guard step were run locally against the seeded database with
+        report files were run locally against the seeded database with
         the <code>echo</code> provider; their output is below.
       </Callout>
       <Code>{`agentfox test gate support-quality --junit reports/agentfox-junit.xml --sarif reports/agentfox.sarif`}</Code>
@@ -392,19 +387,18 @@ GATE PASS`}</Output>
           "uri": "evals/"
         },
 …`}</Output>
-      <Callout kind="warning" title="A run where every case errors passes the gate">
-        If the model cannot be reached (egress off, a missing key, an outage), every case
-        errors, no scorer produces a result, and the gate prints <code>GATE PASS</code> and
-        exits 0, even with a baseline or <code>--min-pass-rate</code>:
+      <Callout kind="note" title="An errored case fails the gate">
+        If the model cannot be reached (egress off, a missing key, an outage), the case
+        errors and was never measured. Any errored case fails the gate (exit 1), with or
+        without a baseline, and each one is printed with its error:
         <Output>{`support-quality — 5 cases, 5 errors
+  error case cse_01m47awy0t93yjqj4a: HTTPStatusError: Client error '401 Unauthorized' for url 'https://api.openai.com/v1/chat/completions'
 …
-scorer  mean  min  max  pass rate
-
-GATE PASS`}</Output>
-        The JUnit file then holds a single skipped test case named{" "}
-        <code>no-scorers</code>, which is what the guard step in the workflow checks. A run
-        where only some cases error still passes silently: read the{" "}
-        <code>N errors</code> count in the log.
+GATE FAIL
+  errors     5 case(s) errored and were not measured — an unmeasured case is not a pass`}</Output>
+        The JUnit file counts them in <code>errors=&quot;5&quot;</code> and holds one test
+        case per errored eval case with an <code>&lt;error&gt;</code> element carrying the
+        message; the SARIF file has a <code>case_error</code> result for each.
       </Callout>
 
       <h2 id="online">Production sampling and drift</h2>
@@ -479,12 +473,12 @@ radius, and the calling agent declares environment 'production'`}</Output>
         <code>postgres</code>. Without sqlglot installed, every SQL statement is refused
         rather than waved through:
       </p>
-      <Output>{`unknown · blast radius unknown · reversible · 0 target(s): —
+      <Output>{`unknown · blast radius unknown · reversibility unknown (not analysed) · 0 target(s): —
   critical analysis.unavailable — sqlglot is not installed, so this statement cannot be analysed.
-Install agentfox or the action is refused — an unanalysable statement is not a safe statement.`}</Output>
+Run \`pip install 'agentfox[sql]'\`, or the action is refused — an unanalysable statement is not a
+safe statement.`}</Output>
       <p>
-        The package to install is <code>agentfox[sql]</code>; the message prints it without
-        the brackets. The same analysis runs on live tool calls; see{" "}
+        The same analysis runs on live tool calls; see{" "}
         <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>.
       </p>
 
