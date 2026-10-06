@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.models import McpToolSnapshot, Tool, Trace
 from agentfox.detection import TaintTracker
+from agentfox.errors import AgentFoxError
 from agentfox.prove.findings import raise_finding
 from agentfox.registry.service import (
     record_edge,
@@ -60,8 +61,12 @@ _WRITE_HINTS = ("create", "update", "delete", "write", "send", "post", "put", "e
 _IRREVERSIBLE_HINTS = ("delete", "drop", "purge", "send", "transfer", "deploy", "revoke")
 
 
-class McpCallBlocked(RuntimeError):
-    """Raised when a governed MCP call is refused. Carries the decision."""
+class McpCallBlocked(AgentFoxError, RuntimeError):
+    """Raised when a governed MCP call is refused. Carries the decision.
+
+    An `agentfox.errors.AgentFoxError` like every other refusal, and still a
+    ``RuntimeError`` so ``except RuntimeError`` keeps catching it.
+    """
 
     def __init__(self, result: EnforcementResult) -> None:
         super().__init__(result.reason or "MCP call blocked by policy")
