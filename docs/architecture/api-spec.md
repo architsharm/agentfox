@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/api_routes.py --write -->
 
-197 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+207 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -235,6 +235,15 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/eval/suites/{key}` | Get Suite |
 | `POST` | `/api/eval/suites/{key}/cases` | Add Case |
 | `POST` | `/api/eval/suites/{key}/cases/from-trace` | P4-6 — promote a production failure into a regression test. |
+| `GET` | `/api/probes/targets` | List Targets |
+| `POST` | `/api/probes/targets` | Register a target. It is created disabled; nothing is sent until opt-in. |
+| `GET` | `/api/probes/targets/{target_id}` | Get Target |
+| `PATCH` | `/api/probes/targets/{target_id}` | Update Target |
+| `GET` | `/api/probes/targets/{target_id}/campaigns` | Campaigns |
+| `POST` | `/api/probes/targets/{target_id}/opt-in` | Opt In |
+| `POST` | `/api/probes/targets/{target_id}/opt-out` | Opt Out |
+| `POST` | `/api/probes/targets/{target_id}/run` | Probe the target now. Same consent and caps as a scheduled run, and refused |
+| `GET` | `/api/probes/warning` | What a person must read before enabling probes, plus the probe library, the |
 | `GET` | `/api/redteam/campaigns` | List Campaigns |
 | `POST` | `/api/redteam/campaigns` | Enqueues through jobs_db (PL-5) and processes within this same request |
 | `GET` | `/api/redteam/probes` | List Probes |
@@ -355,6 +364,12 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/playground/sessions/{session_id}/enforce` | Flip the baseline policy observe -> enforce (or back) for this sandbox only. |
 | `GET` | `/api/playground/sessions/{session_id}/state` | Everything the live sidebar needs: recent traces (decisions + detector runs |
 | `POST` | `/api/playground/sessions/{session_id}/tool-call` | Try a tool call directly, with no model in the loop. |
+
+### Public showcase (unauthenticated, cached, rate-limited)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/public/showcase` | AgentFox probing its own demo agent: recent runs, attacks attempted, contained |
 
 ### Other
 

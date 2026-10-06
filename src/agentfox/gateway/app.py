@@ -40,6 +40,7 @@ from agentfox.gateway.routes import (
     playground,
     policy,
     posture,
+    probes,
     proposals,
     provenance,
     registry,
@@ -320,6 +321,11 @@ def create_app() -> FastAPI:
     # with. It writes one row to the one table that holds no tenant's data, and calls
     # nothing — see waitlist.py's module docstring for what keeps a public write safe.
     app.include_router(waitlist.router)
+    app.include_router(probes.router)
+    # Unauthenticated and read-only: the marketing site's /live page. It reads only the
+    # showcase tenant, returns counts rather than content, and is cached and rate
+    # limited — see probes.py and evaluation/showcase.py.
+    app.include_router(probes.public_router)
 
     def _health_payload() -> dict[str, Any]:
         degradation = service_health()

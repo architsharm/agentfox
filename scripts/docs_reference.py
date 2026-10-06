@@ -132,7 +132,11 @@ def build_cli() -> dict[str, Any]:
 def _audience(path: str) -> str:
     if path.startswith("/v1/") or path in ("/health", "/metrics"):
         return "public"
-    if path.startswith("/api/playground") or path == "/api/waitlist":
+    if (
+        path.startswith("/api/playground")
+        or path.startswith("/api/public/")
+        or path == "/api/waitlist"
+    ):
         return "public-unauthenticated"
     if path.startswith("/api/internal/"):
         return "internal"

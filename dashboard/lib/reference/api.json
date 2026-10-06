@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/docs_reference.py",
- "count": 197,
+ "count": 207,
  "routes": [
   {
    "method": "GET",
@@ -4518,7 +4518,7 @@
    "section": "internal",
    "audience": "internal",
    "summary": "The cron entry point. GET because that is what Vercel Cron sends; POST for anything else that drives it.",
-   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
+   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n0. With `settings.showcase_enabled`, make sure the public showcase tenant and its\n   opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants\n   the scheduling pass below finds.\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
    "params": [
     {
      "name": "limit",
@@ -4541,7 +4541,7 @@
    "section": "internal",
    "audience": "internal",
    "summary": "The cron entry point. GET because that is what Vercel Cron sends; POST for anything else that drives it.",
-   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
+   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n0. With `settings.showcase_enabled`, make sure the public showcase tenant and its\n   opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants\n   the scheduling pass below finds.\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
    "params": [
     {
      "name": "limit",
@@ -6174,6 +6174,399 @@
   },
   {
    "method": "GET",
+   "path": "/api/probes/targets",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "List Targets",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Register a target. It is created disabled; nothing is sent until opt-in.",
+   "description": "Register a target. It is created disabled; nothing is sent until opt-in.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TargetCreate",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "adapter",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "model",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_header",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "forbidden_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "leak_markers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_probes_per_run",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "rate_limit_per_minute",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets/{target_id}",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Get Target",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/probes/targets/{target_id}",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Update Target",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TargetUpdate",
+    "fields": [
+     {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "forbidden_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "leak_markers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_probes_per_run",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "rate_limit_per_minute",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets/{target_id}/campaigns",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Campaigns",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/opt-in",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Opt In",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "OptIn",
+    "fields": [
+     {
+      "name": "acknowledgement",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/opt-out",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Opt Out",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/run",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Probe the target now. Same consent and caps as a scheduled run, and refused within `MIN_MANUAL_GAP_SECONDS` of the previous run.",
+   "description": "Probe the target now. Same consent and caps as a scheduled run, and refused\nwithin `MIN_MANUAL_GAP_SECONDS` of the previous run.",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/warning",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "What a person must read before enabling probes, plus the probe library, the hard caps and the adapter contract a target endpoint has to speak.",
+   "description": "What a person must read before enabling probes, plus the probe library, the\nhard caps and the adapter contract a target endpoint has to speak.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/proposals",
    "section": "proposals",
    "audience": "operator",
@@ -6433,6 +6826,16 @@
      "type": null
     }
    ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/public/showcase",
+   "section": "public",
+   "audience": "public-unauthenticated",
+   "summary": "AgentFox probing its own demo agent: recent runs, attacks attempted, contained and escaped, findings opened and closed. Unauthenticated and read-only; returns ``{\"enabled\": false}`` on a deployment that does not run the showcase.",
+   "description": "AgentFox probing its own demo agent: recent runs, attacks attempted, contained\nand escaped, findings opened and closed. Unauthenticated and read-only; returns\n``{\"enabled\": false}`` on a deployment that does not run the showcase.",
+   "params": [],
    "body": null
   },
   {

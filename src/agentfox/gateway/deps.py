@@ -58,6 +58,9 @@ WRITE_ROLES: dict[str, set[str]] = {
     "monitors": {"owner", "admin", "security", "developer"},
     # Where alerts about the tenant's findings are sent outside the deployment.
     "alerts": {"owner", "admin", "security"},
+    # Enabling live probes points adversarial traffic at a running agent; the opt-in
+    # is recorded with the caller's name, and it is a security call to make.
+    "probes": {"owner", "admin", "security"},
 }
 
 ALL_ROLES = {"owner", "admin", "security", "compliance", "developer", "auditor"}

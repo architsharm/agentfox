@@ -30,6 +30,10 @@ kind                   what it does
 ``monitors.run``       Runs every due monitor of connected sources (GitHub repos,
                        hosted-API specs, MCP servers), or one (``monitor_id``,
                        ``ref``, ``trigger``) — see ``agentfox.monitoring``.
+``probes.run``         Sends the live probe library to every *opted-in* probe target
+                       in the tenant that is due (``evaluation.live_probes``), records
+                       a campaign per target and opens/closes ``live_probe_escape``
+                       findings. A no-op in a tenant with no opted-in target.
 =====================  ===========================================================
 
 Handlers take a session already bound to the job's tenant (see
@@ -255,6 +259,19 @@ def redteam_posture(session: Session, payload: dict[str, Any]) -> dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
+# probes.run
+# ---------------------------------------------------------------------------
+
+
+def run_live_probes(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Probe every opted-in, due target in the tenant. Consent is per target and
+    checked inside `run_target`; a tenant without one does nothing here."""
+    from agentfox.evaluation.live_probes import run_due
+
+    return run_due(session, payload)
+
+
+# ---------------------------------------------------------------------------
 # tuning.propose
 # ---------------------------------------------------------------------------
 
@@ -314,6 +331,7 @@ HANDLERS = {
     "drift.check": check_drift,
     "redteam.posture": redteam_posture,
     "monitors.run": run_monitors,
+    "probes.run": run_live_probes,
 }
 
 

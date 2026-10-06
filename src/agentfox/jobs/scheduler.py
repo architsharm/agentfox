@@ -145,6 +145,13 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         {"budget": 3, "seed": 1337},
         "adaptive red-team posture per agent; expensive, opt-in",
     ),
+    DefaultSchedule(
+        "probes.run",
+        HOUR,
+        True,
+        {},
+        "probe opted-in deployed agents that are due; sends nothing without an opt-in",
+    ),
 )
 
 
