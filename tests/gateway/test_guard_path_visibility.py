@@ -168,11 +168,7 @@ def test_the_red_team_runner_still_leaves_no_trace(seeded, enforcer):
 def test_a_redact_verdict_returns_the_rewritten_text(client):
     """A guard endpoint that says "redact" and hands back nothing leaves every caller
     to mask the content themselves from spans (#17). The rewrite is in `content`."""
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     text = "Reach Jane at jane.doe@example.com today."
     body = _guard(client, text, surface="output").json()
     assert body["verdict"] == "redact", body
