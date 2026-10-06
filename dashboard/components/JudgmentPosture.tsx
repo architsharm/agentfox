@@ -191,7 +191,7 @@ export function JudgmentPosture({ posture }: { posture?: Posture | null }) {
 
       <p className="small muted">
         Change these on{" "}
-        <Link href="/app/settings/judgment">Settings → Judgment posture</Link>. A
+        <Link href="/app/policies?tab=judgment">Policies → Judgment posture</Link>. A
         self-hosted model on loopback counts as <span className="mono">local_llm</span> and
         does not egress.
       </p>

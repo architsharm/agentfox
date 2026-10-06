@@ -88,7 +88,7 @@ export default async function Agents({
             href: "/app/agents",
             ...(inv.unowned ? { tone: "warn" as const } : {}),
           },
-          { n: inv.tools, label: "tools", href: "/app/policies?tab=tools" },
+          { n: inv.tools, label: "tools", href: "#tools" },
           { n: inv.lineage_edges, label: "lineage edges", href: "/app/traces" },
         ]}
       />
@@ -306,7 +306,7 @@ function CapabilityGrants() {
           the foot of a page somebody opened to look at their agents. The claim is
           the part that has to be visible; the mechanism is the part you read once.
           So the claim stays and the rest is behind the button. */}
-      <h2>What an agent is allowed to do</h2>
+      <h2 id="tools">What an agent is allowed to do</h2>
       <p className="sub">
         The table above is what these agents have been <em>seen</em> calling. What
         they are <em>permitted</em> to call is a separate declaration — a capability

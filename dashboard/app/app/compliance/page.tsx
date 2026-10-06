@@ -624,7 +624,7 @@ async function BoardTab() {
     <>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", marginTop: 16 }}>
         <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
-          For day-to-day monitoring use <Link href="/">Overview</Link>: this snapshot
+          For day-to-day monitoring use <Link href="/app">Overview</Link>: this snapshot
           does not update itself. Generated {v.generated_at?.slice(0, 19)}.
           {v.seed_agents > 0 && (
             <>

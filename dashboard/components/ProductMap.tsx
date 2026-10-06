@@ -9,7 +9,7 @@ const AREAS: {
 }[] = [
   {
     name: "Overview",
-    href: "/",
+    href: "/app",
     answers: "What needs a person right now, most severe first.",
     doThere:
       "Start a working session here. Every row links through to the finding, approval or conversation it is about.",
