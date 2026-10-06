@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.auth import issue_token
 from agentfox.apps.gateway.deps import (
     current_user,
     db,
@@ -43,6 +42,7 @@ from agentfox.platform.identity import (
     revoke_credential,
     rotate_credential,
 )
+from agentfox.platform.identity.operators import issue_token
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger.findings import STATUSES as FINDING_STATUSES
 from agentfox.platform.registry.control import UnknownAgent, all_controls, set_state

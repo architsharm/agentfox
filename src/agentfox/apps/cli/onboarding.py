@@ -502,7 +502,7 @@ def doctor(
 
     # Authentication first: it is the check most likely to be wrong and most costly
     # when it is, and a deployment that fails it does not need to read the rest.
-    from agentfox.apps.gateway.auth import header_identity_allowed
+    from agentfox.platform.identity.operators import header_identity_allowed
 
     if header_identity_allowed():
         add(

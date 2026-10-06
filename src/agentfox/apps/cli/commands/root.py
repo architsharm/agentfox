@@ -129,7 +129,7 @@ def serve(
     console.print(f"  [dim]inline:  POST http://{host}:{port}/v1/chat/completions[/]")
     console.print(f"  [dim]api:     http://{host}:{port}/api/agents[/]")
     console.print(f"  [dim]docs:    http://{host}:{port}/docs[/]")
-    from agentfox.apps.gateway.auth import auth_posture
+    from agentfox.platform.identity.operators import auth_posture
 
     posture = auth_posture()
     if posture.startswith("DEVELOPMENT"):

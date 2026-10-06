@@ -15,16 +15,11 @@ from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.auth import (
-    AuthenticationRequired,
-    authenticate,
-    header_identity_allowed,
-    resolve_agent,
-    resolve_token,
-)
+from agentfox.apps.gateway.auth import AuthenticationRequired, authenticate, resolve_agent
 from agentfox.core.db import get_session
 from agentfox.core.models import Agent, Identity, User
 from agentfox.core.tenancy import bind_session
+from agentfox.platform.identity.operators import header_identity_allowed, resolve_token
 
 log = logging.getLogger(__name__)
 

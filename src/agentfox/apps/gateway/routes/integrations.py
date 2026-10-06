@@ -37,7 +37,6 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.auth import issue_token, resolve_token_record, revoke_token
 from agentfox.apps.gateway.deps import current_user, db, require
 from agentfox.capabilities.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
 from agentfox.capabilities.discovery.repo import ScanReport
@@ -63,6 +62,7 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.platform.identity.operators import issue_token, resolve_token_record, revoke_token
 from agentfox.platform.ledger import chain
 from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.platform.registry.service import propose_from_scan, register_agent, slugify

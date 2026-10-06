@@ -144,7 +144,7 @@ class User(Base, TimestampMixin):
     rejected the insert.
 
     The lookup this affects is the development identity header, which resolves a user
-    by email before any tenant is known. `gateway/auth.py` resolves that ambiguity
+    by email before any tenant is known. `apps/gateway/auth.py` resolves that ambiguity
     explicitly rather than relying on the index to make it impossible.
     """
 

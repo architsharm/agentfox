@@ -19,18 +19,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from agentfox.apps.gateway.app import create_app
-from agentfox.apps.gateway.auth import (
+from agentfox.apps.gateway.auth import AuthenticationRequired, authenticate
+from agentfox.core.db import session_scope
+from agentfox.core.models import Agent, ApiToken, Trace, User, utcnow
+from agentfox.core.tenancy import system_scope, tenant
+from agentfox.platform.identity.operators import (
     API_KEY_PREFIX,
-    AuthenticationRequired,
-    authenticate,
     header_identity_allowed,
     issue_token,
     resolve_token,
     revoke_token,
 )
-from agentfox.core.db import session_scope
-from agentfox.core.models import Agent, ApiToken, Trace, User, utcnow
-from agentfox.core.tenancy import system_scope, tenant
 
 
 @pytest.fixture

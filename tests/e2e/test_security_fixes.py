@@ -73,8 +73,8 @@ def token_mode(monkeypatch):
 
 
 def _operator_token(email: str = "admin@example.com") -> str:
-    from agentfox.apps.gateway.auth import issue_token
     from agentfox.core.models import User
+    from agentfox.platform.identity.operators import issue_token
 
     with system_scope("test setup"), session_scope() as s:
         user = s.scalars(select(User).where(User.email == email)).first()

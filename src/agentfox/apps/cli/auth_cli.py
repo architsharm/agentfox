@@ -35,9 +35,9 @@ def issue(
     """Mint an API token. The value is shown once and cannot be retrieved again."""
     from sqlalchemy import select
 
-    from agentfox.apps.gateway.auth import issue_token
     from agentfox.core.models import User
     from agentfox.core.tenancy import bind_session, system_scope
+    from agentfox.platform.identity.operators import issue_token
 
     with system_scope("issuing an operator token"), _session() as session:
         user = session.scalar(select(User).where(User.email == email))
@@ -164,9 +164,9 @@ def revoke(
     token_id: str = typer.Argument(..., help="Token id from `agentfox admin auth tokens`."),
 ) -> None:
     """Revoke a token immediately."""
-    from agentfox.apps.gateway.auth import revoke_token
     from agentfox.core.models import ApiToken
     from agentfox.core.tenancy import bind_session, system_scope
+    from agentfox.platform.identity.operators import revoke_token
 
     with system_scope("revoking an operator token"), _session() as session:
         token = session.get(ApiToken, token_id)
@@ -185,8 +185,8 @@ def revoke(
 
 def status() -> None:
     """How this deployment authenticates, and whether that is what you intended."""
-    from agentfox.apps.gateway.auth import header_identity_allowed
     from agentfox.core.config import get_settings
+    from agentfox.platform.identity.operators import header_identity_allowed
 
     settings = get_settings()
     allowed = header_identity_allowed()
@@ -239,7 +239,7 @@ def create_user(
 
     Then `agentfox admin auth issue EMAIL` mints their API token (or pass --token).
     """
-    from agentfox.apps.gateway.auth import OperatorExists, create_operator, issue_token
+    from agentfox.platform.identity.operators import OperatorExists, create_operator, issue_token
 
     with _session() as session:
         try:

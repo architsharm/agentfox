@@ -93,7 +93,8 @@ def test_an_unrecognised_environment_is_production(monkeypatch):
 
 
 def test_cli_imports_of_the_gateway_do_not_trip_the_startup_guard(production, monkeypatch):
-    """`agentfox admin auth issue` imports gateway.auth; only *serving* refuses."""
+    """Importing the auth modules (the CLI mints tokens through identity.operators)
+    never trips the startup guard; only *serving* refuses."""
     import importlib
     import sys
 
@@ -103,6 +104,7 @@ def test_cli_imports_of_the_gateway_do_not_trip_the_startup_guard(production, mo
     ]:
         monkeypatch.delitem(sys.modules, name)
     importlib.import_module("agentfox.apps.gateway.auth")
+    importlib.import_module("agentfox.platform.identity.operators")
 
 
 def test_provision_refuses_the_published_secret_even_past_startup(ready, production, monkeypatch):

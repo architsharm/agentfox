@@ -95,7 +95,7 @@ async def lifespan(app: FastAPI):
         settings.default_policy_mode,
         settings.allow_egress,
     )
-    from agentfox.apps.gateway.auth import auth_posture
+    from agentfox.platform.identity.operators import auth_posture
 
     posture = auth_posture()
     (log.warning if posture.startswith("DEVELOPMENT") else log.info)("auth: %s", posture)
