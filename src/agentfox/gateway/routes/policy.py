@@ -31,6 +31,8 @@ from agentfox.policy import (
     effective_for,
     history,
     lint_all,
+    lint_documents,
+    lint_summary,
     policies_in_force,
     record_simulation,
     rollback_canary,
@@ -253,8 +255,18 @@ def validate_policy(payload: PolicyIn) -> dict[str, Any]:
         doc = PolicyDocument.from_yaml(payload.body)
     except Exception as exc:
         return {"valid": False, "error": str(exc)}
+    # The same full lint `policy validate FILE` runs: a rule that can never fire, or
+    # one naming an unknown value, is not a valid policy (#50, X5).
+    lint = lint_summary(lint_documents([doc]))
+    if not lint["passed"]:
+        return {
+            "valid": False,
+            "error": "; ".join(f["message"] for f in lint["blocking"]),
+            "lint": lint,
+        }
     return {
         "valid": True,
+        "lint": lint,
         "key": doc.key,
         "rules": len(doc.rules),
         "mode": doc.mode,

@@ -115,9 +115,9 @@ anywhere.
 | Command | Effect | Notes |
 |---|---|---|
 | `policy list` · `policy packs` | R\* | Latest version, mode, rule count · the bundled packs. |
-| `policy lint` | R\* | The whole hierarchy. Exit 1 on critical/high findings. |
+| `policy lint [FILE...]` | R\* | The whole bound hierarchy, or the given files. Exit 1 on critical/high findings. |
 | `policy effective [--agent] [--team] [--user] [--environment ENV]` | R\* | Which rules are in force and where each came from. `--environment` defaults to `NOMETRIA_ENVIRONMENT`. |
-| `policy validate FILE` | R, offline | One file: parse + compile to Rego without saving. Exit 1 if invalid. **Always run before simulate.** |
+| `policy validate FILE` | R, offline | One file: parse, full lint (unreachable rules, unknown enum values) and compile to Rego, without saving. Exit 1 if invalid or on critical/high findings. **Always run before simulate.** |
 | `policy simulate --file/-f FILE [--agent] [--since-days 30] [--limit 1000]` | W (records the simulation) | Replays recorded decisions. **Exit 1 if the candidate would newly block production traffic.** |
 | `policy enforce KEY` | W, **BLK** | The step that starts blocking. Audited. |
 | `policy observe KEY` | W, **BLK** | Demote back to observe. |

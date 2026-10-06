@@ -357,6 +357,28 @@ def _unreachable(rule: Rule) -> str | None:
     return None
 
 
+def _unknown_values(rule: Rule) -> list[str]:
+    """Values a rule names that no request can ever carry, field by field.
+
+    A rule whose *every* value is unknown is reported as `unreachable`; this catches
+    the rest — `surface: [input, toolargs]` still fires on input, but `toolargs` is
+    a typo that silently drops the tool-argument surface the author meant.
+    """
+    out: list[str] = []
+    for field_name, allowed in _ENUMERABLE_CONDITIONS.items():
+        value = getattr(rule.when, field_name, None)
+        if not value:
+            continue
+        values = value if isinstance(value, list) else [value]
+        unknown = [v for v in values if v not in allowed]
+        if unknown and len(unknown) < len(values):
+            out.append(
+                f"`{field_name}` names unknown value(s) {', '.join(sorted(map(str, unknown)))}; "
+                f"known: {', '.join(allowed)}"
+            )
+    return out
+
+
 def lint_policy(layers: list[PolicyLayer]) -> list[LintFinding]:
     """Catch the misconfigurations that hierarchy makes possible.
 
@@ -398,6 +420,17 @@ def lint_policy(layers: list[PolicyLayer]) -> list[LintFinding]:
                         "high",
                         rule.id,
                         f"'{rule.id}' can never fire: {dead}",
+                        layer.level,
+                    )
+                )
+
+            for problem in _unknown_values(rule):
+                findings.append(
+                    LintFinding(
+                        "unknown-value",
+                        "high",
+                        rule.id,
+                        f"'{rule.id}': {problem}",
                         layer.level,
                     )
                 )
@@ -471,6 +504,15 @@ def lint_policy(layers: list[PolicyLayer]) -> list[LintFinding]:
             overridable[rule.id] = bool(getattr(rule, "overridable", False))
 
     return findings
+
+
+def lint_documents(documents: list[PolicyDocument]) -> list[LintFinding]:
+    """Lint policy files that are not bound: each one as an org-level layer, in order.
+
+    What `policy validate FILE` and `policy lint FILE...` run — the same checks as
+    the bound hierarchy gets, so a file that passes here passes there.
+    """
+    return lint_policy([PolicyLayer(document=doc) for doc in documents])
 
 
 def lint_summary(findings: list[LintFinding]) -> dict[str, Any]:

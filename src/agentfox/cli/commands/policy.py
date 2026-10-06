@@ -110,18 +110,45 @@ def policy_list() -> None:
 
 
 @policy_app.command("lint")
-def policy_lint() -> None:
-    """Lint the policy hierarchy. Exits 1 on critical or high findings.
+def policy_lint(
+    files: list[Path] | None = typer.Argument(
+        None,
+        help="Policy files to lint, as org-level layers in the order given. "
+        "Without files, lints every bound policy layer.",
+    ),
+) -> None:
+    """Lint the policy hierarchy, or policy files. Exits 1 on critical or high findings.
 
     This is the half of hierarchical policy that produces the 87% misconfiguration
     reduction — composition without a linter just moves the confusion somewhere
-    harder to see.
+    harder to see. Pass files to check them before they are loaded, e.g. in CI.
     """
-    from agentfox.policy import lint_all
+    from agentfox.policy import lint_all, lint_documents, lint_summary
 
-    with _session() as session:
-        report = lint_all(session)
+    if files:
+        report = lint_summary(lint_documents([_read_policy_file(path) for path in files]))
+    else:
+        with _session() as session:
+            report = lint_all(session)
+    _print_lint(report)
+    if not report["passed"]:
+        console.print("\n[bold red]LINT FAIL[/] — critical/high findings block the build")
+        raise typer.Exit(1)
+    if report["findings"]:
+        console.print("\n[green]LINT PASS[/] [dim](advisory findings only)[/]")
 
+
+def _read_policy_file(path: Path):
+    from agentfox.policy import PolicyDocument
+
+    try:
+        return PolicyDocument.from_yaml(path.read_text())
+    except Exception as exc:
+        console.print(f"[red]invalid:[/] {path}: {' '.join(str(exc).split())}")
+        raise typer.Exit(1) from exc
+
+
+def _print_lint(report: dict) -> None:
     if not report["findings"]:
         console.print("[green]no policy issues[/]")
         return
@@ -141,11 +168,6 @@ def policy_lint() -> None:
         )
     console.print(table)
     console.print(f"  [dim]{report['counts']}[/]")
-
-    if not report["passed"]:
-        console.print("\n[bold red]LINT FAIL[/] — critical/high findings block the build")
-        raise typer.Exit(1)
-    console.print("\n[green]LINT PASS[/] [dim](advisory findings only)[/]")
 
 
 @policy_app.command("effective")
@@ -305,16 +327,24 @@ def _set_mode(key: str, mode: str) -> None:
 
 @policy_app.command("validate")
 def policy_validate(file: Path) -> None:
-    """Lint and compile a policy without saving it."""
-    from agentfox.policy import PolicyDocument, compile_to_rego
+    """Check, lint and compile a policy file without saving it.
 
-    try:
-        doc = PolicyDocument.from_yaml(file.read_text())
-    except Exception as exc:
-        console.print(f"[red]invalid:[/] {exc}")
-        raise typer.Exit(1) from exc
+    Runs the full lint (`policy lint FILE`), so a rule that can never fire or a
+    condition naming an unknown value (`surface: [toolargs]`) fails validation.
+    Exits 1 on a parse error or a critical/high finding.
+    """
+    from agentfox.policy import compile_to_rego, lint_documents, lint_summary
+
+    doc = _read_policy_file(file)
+    report = lint_summary(lint_documents([doc]))
+    if not report["passed"]:
+        console.print(f"[red]invalid:[/] {doc.key} — {len(report['blocking'])} blocking finding(s)")
+        _print_lint(report)
+        raise typer.Exit(1)
     console.print(
         f"[green]valid[/] — {doc.key} v{doc.version}, {len(doc.rules)} rules, mode={doc.mode}"
     )
     console.print(f"  controls: {sorted({c for r in doc.rules for c in r.controls})}")
     console.print(f"  [dim]compiles to {len(compile_to_rego(doc).splitlines())} lines of Rego[/]")
+    if report["findings"]:
+        _print_lint(report)

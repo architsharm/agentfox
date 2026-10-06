@@ -353,12 +353,15 @@ agentfox policy lint`}</Code>
 no policy issues`}</Output>
       <p>
         <code>policy validate FILE</code> checks one file offline: the schema, the
-        effects and operators, and that it compiles. <code>policy lint</code> takes no
-        file: it lints every bound pack and every hierarchy layer together, so run it
-        after <code>init</code>. Lint catches what validation cannot: a rule whose
-        conditions can never be true, duplicate ids, over-broad globs, rules with no
-        conditions, and illegal loosening. It exits 1 on critical or high findings, so
-        it can gate a pull request:
+        effects and operators, that it compiles, and the full lint. <code>policy lint
+        FILE…</code> lints files before they are loaded; with no file it lints every
+        bound pack and every hierarchy layer together, so run it after{" "}
+        <code>init</code> too. Lint catches a rule whose conditions can never be true, a
+        condition naming a value no request carries (<code>surface: [input,
+        toolargs]</code> still fires on input, but <code>toolargs</code> is a typo),
+        duplicate ids, over-broad globs, rules with no conditions, and illegal
+        loosening. Both exit 1 on critical or high findings, so either can gate a pull
+        request:
       </p>
       <Code lang="yaml" title=".agentfox/policies/typos.yaml">{`key: typos
 name: A pack with mistakes
@@ -374,9 +377,9 @@ rules:
       tool: "*"
     effect: escalate`}</Code>
       <Output>{`$ agentfox policy validate .agentfox/policies/typos.yaml
-valid — typos v1, 2 rules, mode=observe
+invalid: typos — 1 blocking finding(s)
 …
-$ agentfox policy lint
+$ agentfox policy lint .agentfox/policies/typos.yaml
 severity  code             rule              level  message
 high      unreachable      pii.reply         org    'pii.reply' can never fire: every value in \`surface\` is unknown
                                                     (outputs);
