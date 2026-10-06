@@ -33,6 +33,7 @@ import functools
 import logging
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -267,6 +268,12 @@ class AgentFox:
         self.timeout = timeout
         # Stored as `_session`: `session` is the context-manager method above.
         self._session = session
+        # The `with fox.session(...)` block this thread or task is inside, so a
+        # `@fox.tool` function called there joins it (#44). Per client: a session
+        # of another AgentFox (another agent) is not this one's.
+        self._active: ContextVar[AgentSession | None] = ContextVar(
+            f"agentfox_session_{id(self)}", default=None
+        )
 
     @contextmanager
     def _db(self) -> Iterator[Session]:
@@ -291,7 +298,15 @@ class AgentFox:
             session_id=session_id,
             _client=self,
         )
-        yield agent_session
+        token = self._active.set(agent_session)
+        try:
+            yield agent_session
+        finally:
+            self._active.reset(token)
+
+    def current_session(self) -> AgentSession | None:
+        """The `with fox.session(...)` block the caller is inside, if any."""
+        return self._active.get()
 
     # -- decorators -------------------------------------------------------
     def tool(
@@ -307,6 +322,10 @@ class AgentFox:
         why argument-level constraints and provenance work without the caller doing
         anything special.
 
+        Called inside ``with fox.session(intent=...)``, the call joins that session —
+        its intent, taint marks and the tools already called (#44). Outside one it
+        runs in a session of its own. ``session=`` binds it to one explicitly.
+
         ``impact`` is a declaration, and is written to the tool registry: every
         impact-based containment rule reads `Tool.impact`, so an impact that lived
         only on this wrapper was one no policy ever saw.
@@ -321,7 +340,11 @@ class AgentFox:
                 nonlocal declared
                 if not declared:  # the database was not there at import time
                     declared = self._declare_tool(key, impact, description)
-                target = session or getattr(wrapper, "_nometria_session", None)
+                target = (
+                    session
+                    or getattr(wrapper, "_nometria_session", None)
+                    or self._active.get()
+                )
                 if target is None:
                     with self.session() as ad_hoc:
                         ad_hoc.guard_tool(key, dict(kwargs))

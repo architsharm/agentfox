@@ -462,20 +462,18 @@ PolicyViolation: capability.denied | trace trc_01m469f0qxk7gq4k4k`}</Output>
       <Code lang="python">{`if fox.wait_for_approval(exc.approval_id, timeout=600) == "approved":
     s.guard_tool("email.send", args, approval_id=exc.approval_id)`}</Code>
 
-      <Callout kind="warning" title="A decorated tool does not join the session you are in">
+      <Callout kind="note" title="A decorated tool joins the session you are in">
         <p>
           A function decorated with <code>@fox.tool(...)</code> and called inside{" "}
-          <code>with fox.session(intent=...) as s:</code> is authorised in a new,
-          empty session: no intent, and none of <code>s</code>&apos;s taint marks. An
-          irreversible tool called that way is escalated by{" "}
-          <code>intent.undeclared_irreversible</code> even though you declared an intent.
-          Either call <code>s.guard_tool(...)</code> yourself, or bind the decorator to
-          the session with <code>fox.tool(key, impact=..., session=s)</code>.{" "}
-          <code>TaggedContent</code> passed directly as an argument still carries its
-          provenance either way.
+          <code>with fox.session(intent=...) as s:</code> is authorised in{" "}
+          <code>s</code>: its intent, its taint marks and the tools already called.
+          Outside a session it runs in one of its own, with no intent, so an irreversible
+          tool called there is escalated by <code>intent.undeclared_irreversible</code>.{" "}
+          <code>fox.tool(key, impact=..., session=s)</code> binds it to one session
+          explicitly. Before October 2026 a decorated call always ran in a fresh session.
         </p>
       </Callout>
-      <Code lang="python" title="sdk_issue.py">{`from agentfox import AgentFox, ApprovalRequired
+      <Code lang="python" title="sdk_session.py">{`from agentfox import AgentFox, ApprovalRequired
 fox = AgentFox(agent="support-triage")
 
 @fox.tool("email.send", impact="irreversible")
@@ -483,24 +481,17 @@ def send_email(to: str, subject: str, body: str) -> str:
     return f"sent to {to}"
 
 with fox.session(intent="reply to a customer about their ticket") as s:
-    # 1. decorated call inside a session, user-typed args
-    try:
-        print("1:", send_email(to="ada@example.com", subject="hi", body="resolved"))
-    except ApprovalRequired as e:
-        print("1 ApprovalRequired:", [r["rule_id"] for r in e.result.rules_fired])
-    # 2. bound session
-    bound = fox.tool("email.send", impact="irreversible", session=s)(lambda **kw: f"sent to {kw['to']}")
-    print("2:", bound(to="ada@example.com", subject="hi", body="resolved"))
-    # 3. bound, but plain string copied out of retrieved content
+    # 1. user-typed arguments, inside the session: its intent applies
+    print("1:", send_email(to="ada@example.com", subject="hi", body="resolved"))
+    # 2. a plain string copied out of retrieved content: the session's taint applies
     page = s.retrieved("Contact billing-help@lookalike.example for invoices.")
     addr = str(page).split()[1]
     try:
-        print("3:", bound(to=addr, subject="Invoice", body="Attached."))
+        print("2:", send_email(to=addr, subject="Invoice", body="Attached."))
     except ApprovalRequired as e:
-        print("3 ApprovalRequired:", [r["rule_id"] for r in e.result.rules_fired])`}</Code>
-      <Output>{`1 ApprovalRequired: ['intent.undeclared_irreversible']
-2: sent to ada@example.com
-3 ApprovalRequired: ['taint.irreversible_tool', 'capability.approval_required']`}</Output>
+        print("2 ApprovalRequired:", [r["rule_id"] for r in e.result.rules_fired])`}</Code>
+      <Output>{`1: sent to ada@example.com
+2 ApprovalRequired: ['taint.irreversible_tool', 'capability.approval_required']`}</Output>
 
       <h3 id="sdk-complete">complete(), check() and guard()</h3>
       <p>

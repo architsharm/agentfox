@@ -485,11 +485,13 @@ held by ['capability.approval_required'] approval apr_01m469peykxwxwh9wm`}</Outp
         without it the first call prints <code>refused by [&apos;capability.denied&apos;]</code>.)
         The decorator declares the tool&apos;s impact and checks each call&apos;s keyword
         arguments before the body runs. Called outside a session, each call is checked in
-        a fresh session that knows nothing about what the run read, so inside a run, check
-        with <code>s.guard_tool</code> as shown. The second call was escalated because a{" "}
-        <code>retrieved</code> argument is above the grant&apos;s default ceiling of{" "}
-        <code>user</code>; the decision&apos;s reason reads &quot;The granting capability
-        requires human approval for this action.&quot;
+        a fresh session that knows nothing about what the run read; called inside{" "}
+        <code>with fox.session(...)</code>, it joins that session. The second call was
+        escalated because a <code>retrieved</code> argument is above the grant&apos;s default
+        ceiling of <code>user</code>; the decision&apos;s reason names the argument:{" "}
+        &quot;arguments [&apos;resolution&apos;] carry provenance above the capability&apos;s
+        max_taint &apos;user&apos; (resolution from retrieved), so a person must approve this
+        call before it runs&quot;.
       </p>
 
       <h2 id="rules">What each containment rule does</h2>
