@@ -1,7 +1,7 @@
 """The docs site's generated reference is current, and every command it prints runs.
 
 scripts/gen/docs_reference.py renders the CLI and HTTP reference into
-dashboard/lib/reference/*.json from the live code, and resolves every `agentfox ...`
+dashboard/lib/generated/reference/*.json from the live code, and resolves every `agentfox ...`
 inside a code block under dashboard/app/docs against the click tree. A renamed
 command or a removed flag fails here instead of on the website.
 """
