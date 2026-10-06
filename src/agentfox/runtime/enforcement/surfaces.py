@@ -6,6 +6,7 @@ completions, reasoning, files and inter-agent messages, each a thin call into
 from __future__ import annotations
 
 import datetime as dt
+import uuid
 from typing import Any
 
 from sqlalchemy import select
@@ -415,7 +416,19 @@ class _SurfacesMixin:
         """
         agent, identity, _ = self.resolve(sender_slug, None)
         agent_card_match = agent is not None and bool(agent.registered)
-        nonce = nonce or ""
+        # #18: replay protection is `(sender, nonce)` uniqueness, so it only exists
+        # when the sender sends a nonce. A missing nonce used to be stored as "",
+        # which made a sender's second nonce-less message collide with its first and
+        # be blocked as a replay. Without a nonce there is nothing to protect with:
+        # the replay check is skipped and the gap is declared on the decision
+        # (`agent_message.no_nonce`, `replay_protected: false`) — the same "declare
+        # the gap, don't hide it" treatment an unsigned message gets. Requiring a
+        # nonce would refuse every legitimate sender that does not send one; senders
+        # that need replay protection send a nonce (and sign it).
+        replay_protected = bool(nonce)
+        signed_nonce = nonce or ""
+        # The log row still needs a unique key; a random one can never collide.
+        stored_nonce = nonce or f"none:{uuid.uuid4().hex}"
 
         replayed = False
         if persist:
@@ -429,7 +442,7 @@ class _SurfacesMixin:
                         AgentMessageLog(
                             sender_slug=sender_slug,
                             recipient_slug=recipient_slug,
-                            nonce=nonce,
+                            nonce=stored_nonce,
                             signed=signature is not None,
                             agent_card_match=agent_card_match,
                             trace_id=trace.id if trace else None,
@@ -455,7 +468,7 @@ class _SurfacesMixin:
                     signature_valid = verify_message(
                         raw_key,
                         sender=sender_slug,
-                        nonce=nonce,
+                        nonce=signed_nonce,
                         payload=content,
                         timestamp=timestamp or 0.0,
                         signature=signature,
@@ -463,6 +476,58 @@ class _SurfacesMixin:
                     )
                 except DecryptionFailed:
                     signature_valid = False
+
+        # #19/X3: these are decided *before* `evaluate`, and handed to it, so the
+        # Decision row and the audit chain record the verdict the caller gets. They
+        # used to be applied to the result afterwards, leaving a blocked replay in
+        # the audit chain as `decision.allow`.
+        forced: list[dict[str, Any]] = []
+        extra_taint: dict[str, Any] = {"replay_protected": replay_protected}
+        replay_reason = f"replayed message: (sender='{sender_slug}', nonce) was already seen"
+        if replayed:
+            forced.append(
+                _fired_rule("agent_message.replay", "block", replay_reason, controls=["NOM-IAM-08"])
+            )
+        elif not agent_card_match:
+            forced.append(
+                _fired_rule(
+                    "agent_message.agent_card_mismatch",
+                    "escalate",
+                    f"sender '{sender_slug}' is not a registered agent — "
+                    "its agent-card cannot be verified",
+                    controls=["NOM-IAM-08"],
+                )
+            )
+        elif signature_valid is False:
+            forced.append(
+                _fired_rule(
+                    "agent_message.bad_signature",
+                    "block",
+                    "signature did not verify against the sender's registered signing key",
+                    controls=["NOM-IAM-08"],
+                )
+            )
+        elif signature is None:
+            extra_taint["unsigned"] = True
+            forced.append(
+                _fired_rule(
+                    "agent_message.unsigned",
+                    "observe",
+                    "message arrived unsigned — either the transport is not "
+                    "AgentFox's own, or the sender has no registered signing key",
+                    controls=["NOM-IAM-08"],
+                )
+            )
+        if not replay_protected:
+            forced.append(
+                _fired_rule(
+                    "agent_message.no_nonce",
+                    "observe",
+                    "message carried no nonce, so replay protection was not applied — "
+                    "send a unique nonce per message to have repeats refused",
+                    controls=["NOM-IAM-08"],
+                )
+            )
 
         result = self.evaluate(
             agent=agent,
@@ -472,56 +537,19 @@ class _SurfacesMixin:
             trace=trace,
             taint_source="subagent",
             persist=persist,
+            forced_rules=forced,
+            extra_taint=extra_taint,
         )
-
         if replayed:
-            result.verdict = "block"
-            result.effective_verdict = "block"
-            result.reason = f"replayed message: (sender='{sender_slug}', nonce) was already seen"
-            result.rules_fired.append(
-                _fired_rule("agent_message.replay", "block", result.reason, controls=["NOM-IAM-08"])
-            )
-        elif not agent_card_match:
-            effect = "escalate" if result.verdict == "allow" else result.verdict
-            result.verdict = effect
-            result.effective_verdict = effect
-            result.rules_fired.append(
-                _fired_rule(
-                    "agent_message.agent_card_mismatch",
-                    effect,
-                    f"sender '{sender_slug}' is not a registered agent — "
-                    "its agent-card cannot be verified",
-                    controls=["NOM-IAM-08"],
-                )
-            )
-        elif signature_valid is False:
-            effect = "block" if result.verdict != "block" else result.verdict
-            result.verdict = effect
-            result.effective_verdict = effect
-            result.rules_fired.append(
-                _fired_rule(
-                    "agent_message.bad_signature",
-                    effect,
-                    "signature did not verify against the sender's registered signing key",
-                    controls=["NOM-IAM-08"],
-                )
-            )
-        elif signature is None:
-            result.taint["unsigned"] = True
-            result.rules_fired.append(
-                _fired_rule(
-                    "agent_message.unsigned",
-                    "observe",
-                    "message arrived unsigned — either the transport is not "
-                    "AgentFox's own, or the sender has no registered signing key",
-                    controls=["NOM-IAM-08"],
-                )
-            )
+            result.reason = replay_reason
 
         if persist:
             log_row = self.session.scalar(
                 select(AgentMessageLog)
-                .where(AgentMessageLog.sender_slug == sender_slug, AgentMessageLog.nonce == nonce)
+                .where(
+                    AgentMessageLog.sender_slug == sender_slug,
+                    AgentMessageLog.nonce == stored_nonce,
+                )
                 .order_by(AgentMessageLog.created_at.desc())
             )
             if log_row is not None:

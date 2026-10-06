@@ -171,6 +171,8 @@ class Enforcer(
         conversation_window: list[str] | None = None,
         completion: dict[str, Any] | None = None,
         persist: bool = True,
+        forced_rules: list[dict[str, Any]] | None = None,
+        extra_taint: dict[str, Any] | None = None,
     ) -> EnforcementResult:
         """One decision on one surface. The single point every guarantee flows through.
 
@@ -178,6 +180,13 @@ class Enforcer(
         message: it is the recent user turns, oldest first, ending with this one,
         supplied by `check_conversation_window`. It exists so F9.4's trajectory check
         can run through the same channel as every other check rather than beside it.
+
+        `forced_rules` are synthetic rules a surface decided before calling this — an
+        agent message's replay or bad-signature refusal, say. They are applied (by
+        lattice maximum, whatever the packs' mode) *before* the decision is persisted
+        and audited, so the record says what the caller is told. An effect outside
+        the lattice (``observe``) is recorded and changes nothing. `extra_taint` is
+        merged into the recorded taint summary.
         """
         started = time.perf_counter()
         agent_slug = agent.slug if agent else None
@@ -654,6 +663,17 @@ class Enforcer(
                     mode=decision.mode,
                 )
             )
+
+        for forced in forced_rules or []:
+            rank = _RANK.get(str(forced.get("effect")))
+            if rank is not None:
+                if rank > _RANK.get(verdict, 0):
+                    verdict = str(forced["effect"])
+                if rank > _RANK.get(effective, 0):
+                    effective = str(forced["effect"])
+            rules_fired.append(forced)
+        if extra_taint:
+            taint_summary.update(extra_taint)
 
         latency_ms = (time.perf_counter() - started) * 1000
         reason = "; ".join(r.get("reason", "") for r in rules_fired if r.get("reason")) or (
