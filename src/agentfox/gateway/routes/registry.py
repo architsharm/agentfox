@@ -26,6 +26,7 @@ from agentfox.core.models import (
 )
 from agentfox.gateway.auth import issue_token
 from agentfox.gateway.deps import (
+    WRITE_ROLES,
     current_user,
     db,
     get_agent_or_404,
@@ -489,9 +490,12 @@ def scan_mcp(
 
 
 class McpRegisterIn(McpScanIn):
-    #: The caller's statement that a changed listing has been reviewed. Without it a
-    #: tool already registered keeps its reviewed listing and calls stay refused.
+    #: The signed-in person's approval of each held tool's new definition. Accepting
+    #: lifts the rug-pull block, an org-level loosening: it is an ``mcp.tool.accept``
+    #: change proposal, and applies once a second, different person has approved it.
     accept_changes: bool = False
+    #: Why the new definitions are acceptable; recorded with the approval.
+    note: str | None = None
 
 
 @router.post("/mcp-servers/{name}/tools")
@@ -508,12 +512,32 @@ def register_mcp_tools(
     it the rug-pull check has no baseline.
 
     A changed listing for an already-registered tool is held (reported in ``held``,
-    not registered) unless ``accept_changes`` is true.
+    not registered) and filed as a change proposal (``proposals``). With
+    ``accept_changes`` the signed-in person approves those proposals, which takes the
+    same role as approving any proposal (``policy_production``); a held tool is
+    re-recorded once two different people have approved it.
     """
+    from agentfox.improvement.proposals import ProposalError
     from agentfox.integrations.mcp import McpGovernor
 
+    if payload.accept_changes:
+        approvers = WRITE_ROLES["policy_production"]
+        if user.role not in approvers:
+            raise HTTPException(
+                403,
+                f"role '{user.role}' may not accept a changed MCP listing; accepting is a "
+                f"change-proposal approval. Permitted: {sorted(approvers)}.",
+            )
     governor = McpGovernor(session=session, agent_slug="", server_name=name)
-    report = governor.register_tools(payload.tools, accept_changes=payload.accept_changes)
+    try:
+        report = governor.register_tools(
+            payload.tools,
+            accept_changes=payload.accept_changes,
+            actor=user.email or user.id,
+            note=payload.note,
+        )
+    except ProposalError as exc:
+        raise HTTPException(400, str(exc)) from exc
     _monitor_mcp(session, governor.server, user)
     held = set(report.get("held", []))
     return {

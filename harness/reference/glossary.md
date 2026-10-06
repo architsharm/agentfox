@@ -23,7 +23,7 @@ verified_against: branch claude/improvement-loop-phase0, 2026-09-20
 | **echo provider** | Offline fake model. It makes everything demonstrable with no key and no network. |
 | **proposal** | A change to governance configuration the improvement loop wants to make, carrying its evidence, its proof and every decision taken on it. The loop changes nothing any other way. |
 | **direction** | Whether a change **tightens**, **loosens** or is **neutral**. Computed by the applier from the diff and the live configuration, never taken from whoever filed it. A loosening is never applied automatically. |
-| **autonomy level** | L0 observe, L1 recommend, L2 one-click, L3 auto-apply in observe, L4 autonomous hygiene. Only L3 and L4 act without a person, and a class over its rollback budget drops one level. |
+| **autonomy level** | L0 observe, L1 recommend, L2 one-click, L3 auto-apply, L4 autonomous hygiene. Only L3 and L4 act without a person, only for a change that does not loosen, and a class over its rollback budget drops one level. L3 does not stage the change in observe mode; a kind that stages (a policy canary) does so itself. |
 | **canary** | A change live for a cohort only, with a health gate that rolls it back if the candidate blocks much more, or much less, than stable. |
 | **freeze** | `NOMETRIA_IMPROVEMENT_FROZEN=true`: the loop still files proposals, but nothing is applied automatically. |
 

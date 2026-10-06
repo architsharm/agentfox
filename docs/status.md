@@ -14,8 +14,8 @@ there. Probes are shallow by design: they prove a capability is *wired*, not tha
 | **Partial** | 16 ◐ |
 | **Absent** | 0 ✗ |
 | **Weighted coverage** | **81%** *(partial counts half)* |
-| **Tests** | 3234 |
-| **Lines** | 129,169 (src + tests) |
+| **Tests** | 3247 |
+| **Lines** | 129,848 (src + tests) |
 | **Failure modes covered** | **96%** — 54 of 57 outright, 2 partial |
 | **Injection recall, regression corpus** | **100%** — 33/33 adversarial, 0 false positive(s) on 18 benign. Our own test strings, so a regression check, not a recall estimate; held-out and external numbers are in benchmarks/REPORT.md |
 
@@ -34,11 +34,11 @@ in [design/traceability.md](design/traceability.md).
 | `P7` | 7 Answerability | Knowledge boundary, forced abstention | ✅ built | 141 |  |
 | `P8` | 8 Provenance | Source tiers, freshness, citation binding | ◐ partial | 96 | catalog ingestion (P8-9: DataHub/OpenMetadata/Unity) absent |
 | `P14` | 14 Context Integrity | Ingestion and retrieval quality gates | ◐ partial | 27 | gates the ingestion and assembly path. Semantic chunk-boundary repair and automatic re-extraction of a corrupt document are not built — a finding is reported and the decision to drop the document belongs to the operator |
-| `P4` | 4 Evaluation | Eval runner, CI gating, drift, silent failure, red team | ◐ partial | 85 | Ragas scorers (I-8) and model-based groundedness (via ModelProvider.judge()) run from the runner alongside the lexical scorer, and a gate fails on an errored case rather than skipping it. Red-team probe calls leave no decisions or findings in the production tables. An annotation queue for human review of borderline eval results is not built |
+| `P4` | 4 Evaluation | Eval runner, CI gating, drift, silent failure, red team | ◐ partial | 86 | Ragas scorers (I-8) and model-based groundedness (via ModelProvider.judge()) run from the runner alongside the lexical scorer, and a gate fails on an errored case rather than skipping it. Red-team probe calls leave no decisions or findings in the production tables. An annotation queue for human review of borderline eval results is not built |
 | `P4-13` | 4 Evaluation | Live probing of deployed agents (P4-13) and the public showcase (P4-14) | ✅ built | 35 | sends a fixed probe library to an agent's own endpoint only after a recorded opt-in, scores it on observed behaviour (a reversed canary, forbidden tools, leak markers) and opens a finding when a contained attack escapes. The probe set is fixed rather than adaptive, and an http target must speak the small JSON contract the adapter sends. The public showcase is off unless AGENTFOX_SHOWCASE_ENABLED is set |
 | `P13` | 13 Failure Attribution | Failure attribution across handoffs | ◐ partial | 26 | attributes a failure to the step that originated the value and measures what each handoff dropped. Both work on constraints that were written down — an expectation the human held and never typed is invisible here, and no trace analysis recovers it |
 | `P11` | 11 Escalation | Escalation policy and missed-escalation detection | ✅ built | 29 |  |
-| `P5` | 5 Audit | Traces, hash chain, evidence packages, SIEM | ✅ built | 78 |  |
+| `P5` | 5 Audit | Traces, hash chain, evidence packages, SIEM | ✅ built | 79 |  |
 | `P6` | 6 Compliance | Control catalog, computed status, risk, obligations | ◐ partial | 54 | dynamic risk scoring and workflow engine absent (Gartner criteria) |
 | `P15` | 15 Cost & Reliability | Circuit breaker, fallback, caps, backpressure | ✅ built | 45 | AdmissionController (P15-6) was fully built and tested but had zero callers on the live request path; a gateway middleware now gates every /v1/* request through it before routing, shedding by priority under saturation and leaving the /api/* control plane out of scope for the same budget. Caps elsewhere (budgets, breaker thresholds) remain hard stops, not queued backpressure |
 | `PL-1` | Platform | Streaming with inline enforcement | ✅ built | 24 |  |
@@ -58,7 +58,7 @@ in [design/traceability.md](design/traceability.md).
 | `X-4` | Adoption | Protective controls reachable without writing code | ✅ built | 14 |  |
 | `X-3` | Adoption | Control-plane onboarding and attention-first home | ✅ built | 10 |  |
 | `I-1` | Integration | LangGraph-native SDK | ✅ built | 15 |  |
-| `I-2` | Integration | MCP inline governance | ✅ built | 51 |  |
+| `I-2` | Integration | MCP inline governance | ✅ built | 52 |  |
 | `I-3` | Integration | FastAPI middleware and dependency | ✅ built | 7 |  |
 | `I-4` | Integration | LangSmith correlation | ✅ built | 7 |  |
 | `I-5` | Integration | OpenTelemetry | ✅ built | 7 |  |

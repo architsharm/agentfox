@@ -59,8 +59,11 @@ NEUTRAL = "neutral"
 DIRECTIONS = (TIGHTENS, LOOSENS, NEUTRAL)
 
 AUTONOMY_LEVELS = ("L0", "L1", "L2", "L3", "L4")
-#: L0 observe · L1 recommend · L2 one-click (human approves) · L3 auto-apply in observe ·
-#: L4 autonomous hygiene. Only L3 and L4 ever apply without a person deciding.
+#: L0 observe · L1 recommend · L2 one-click (human approves) · L3 auto-apply ·
+#: L4 autonomous hygiene. Only L3 and L4 ever apply without a person deciding, and only
+#: a change that does not loosen (`may_apply_automatically`). Nothing here puts an
+#: automated change in observe mode first: a kind that should be staged says so in its
+#: diff (``stage: canary``), and its applier stages it.
 AUTO_APPLY_LEVELS = frozenset({"L3", "L4"})
 
 SCOPE_LEVELS = ("org", "team", "agent", "user")

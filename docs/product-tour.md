@@ -90,8 +90,16 @@ tool node. Escalation maps to LangGraph's own `interrupt()` — one pause mechan
 `.claude.json`, `claude_desktop_config.json`, or `--config PATH`) without starting any of them, and
 reports what each can reach, whether it is pinned, and whether a remote one carries auth; give it the
 server's `tools/list` output with `--file` and it checks every tool description too. At call time the governor compares
-the tool's digest against the one in force when the agent was authorised against it — the rug pull, a
-server that passed review on Monday and changed on Thursday, which no scan can catch. An undeclared
+the tool's current listing with its registered record: the org-wide definition someone reviewed, not
+a copy pinned to each agent's grant. That catches the rug pull, a server that passed review on Monday
+and changed on Thursday, which no scan can catch. The digest covers the name, description, input
+schema and the impact annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
+`openWorldHint`); a change to any of them, or a tool the server stops listing, refuses the call with
+`mcp.schema_drift` and records the decision. A changed `title` or `outputSchema` raises a
+`schema_drift` finding but does not hold the call. Accepting a changed definition lifts the block, so
+it is a change proposal (`mcp.tool.accept`) that two different people approve, recorded in the audit
+chain. A tool the server adds later is registered; if a wildcard grant such as `mcp:server/*` already
+covers it, a `mcp_tool_added_under_wildcard` finding says so. An undeclared
 tool becomes a discovery finding rather than an invisible call, and results are evaluated on the
 `tool_result` surface with the taint propagated, so an argument later derived from an MCP result
 cannot exceed the ceiling for tool-sourced data.
