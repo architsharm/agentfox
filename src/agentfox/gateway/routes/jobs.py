@@ -34,7 +34,8 @@ from agentfox.jobs import scheduler
 from agentfox.jobs import store as jobs_db
 
 # Imported for its side effect: registers the eval.run, compliance.recompute,
-# canary.advance, drift.check and redteam.posture handlers wherever this router loads.
+# canary.advance, drift.check, redteam.posture and monitors.run handlers wherever this
+# router loads.
 _REGISTERED_KINDS = tuple(job_handlers.HANDLERS)
 
 router = APIRouter(prefix="/api", tags=["jobs"])
@@ -139,13 +140,4 @@ def run_pending_jobs(limit: int = 50, session: Session = Depends(db)) -> dict[st
        elapsed, across every tenant — the one place that's correct, since nothing
        about a cron trigger belongs to a single tenant's request.
     """
-    scheduled = scheduler.schedule_all_tenants(session)
-    recovered = jobs_db.recover_stuck(session, org_id=None)
-    finished = jobs_db.run_pending(session, org_id=None, limit=limit)
-    return {
-        "processed": finished,
-        "recovered": recovered,
-        "scheduled": sum(scheduled.values()),
-        "scheduled_by_tenant": scheduled,
-        "scheduler_enabled": get_settings().scheduler_enabled,
-    }
+    return scheduler.run_due(session, limit=limit)

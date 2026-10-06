@@ -130,6 +130,12 @@ export default function Page() {
         <strong>reconnect</strong> link re-runs the GitHub grant.
       </p>
       <p>
+        A scanned repository is then monitored: it is scanned again every six hours (and on
+        every push once the GitHub webhook is registered), and what changed becomes a
+        finding. The scan response&apos;s summary carries the <code>monitor_id</code>. See{" "}
+        <Link href="/docs/guides/monitoring">Monitor connected sources</Link>.
+      </p>
+      <p>
         The scope GitHub is asked for is <code>repo</code>, which includes private
         repositories. That is what lets the scan download one.
       </p>
@@ -143,6 +149,9 @@ export default function Page() {
         the spec document, never the API itself, turns each operation into a tool, and
         proposes one draft agent named after the host and one observe-mode policy. With no
         spec URL, the endpoint is still registered as a draft agent with no known operations.
+        With one, the spec is then fetched again every six hours and new operations, new
+        destructive ones above all, become findings (the summary&apos;s{" "}
+        <code>monitor_id</code>).
       </p>
       <p>
         The spec URL must be <code>http</code> or <code>https</code> and resolve to a public

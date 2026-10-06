@@ -118,13 +118,16 @@ from agentfox.core.models.public import (
     WaitlistSignup,
 )
 from agentfox.core.models.registry import (
+    MONITOR_KINDS,
     OUTPUT_TRUST_LEVELS,
     Agent,
     AgentControl,
+    AlertChannel,
     Finding,
     LineageEdge,
     McpServer,
     McpToolSnapshot,
+    Monitor,
     Tool,
 )
 
@@ -134,6 +137,7 @@ __all__ = [
     "AgentControl",
     "AgentMessageLog",
     "AgentSigningKey",
+    "AlertChannel",
     "ApiToken",
     "ApprovalRequest",
     "AuditCheckpoint",
@@ -176,7 +180,9 @@ __all__ = [
     "LineageEdge",
     "McpServer",
     "McpToolSnapshot",
+    "MONITOR_KINDS",
     "MemoryEntry",
+    "Monitor",
     "OUTPUT_TRUST_LEVELS",
     "Obligation",
     "PROPOSAL_OPEN_FINGERPRINT",

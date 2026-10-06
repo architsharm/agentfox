@@ -27,6 +27,9 @@ kind                   what it does
 ``redteam.posture``    Runs an adaptive red-team campaign against every active agent
                        (``budget``, ``seed``). Expensive and finding-producing, so its
                        default schedule is created disabled.
+``monitors.run``       Runs every due monitor of connected sources (GitHub repos,
+                       hosted-API specs, MCP servers), or one (``monitor_id``,
+                       ``ref``, ``trigger``) — see ``agentfox.monitoring``.
 =====================  ===========================================================
 
 Handlers take a session already bound to the job's tenant (see
@@ -289,6 +292,18 @@ def scan_escalations(session: Session, payload: dict[str, Any]) -> dict[str, Any
     return scheduled_scan(session, since_hours=int(payload.get("since_hours", 24)))
 
 
+# ---------------------------------------------------------------------------
+# monitors.run
+# ---------------------------------------------------------------------------
+
+
+def run_monitors(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Re-check connected sources: every due monitor, or the one ``monitor_id`` names."""
+    from agentfox.monitoring.service import handle_job
+
+    return handle_job(session, payload)
+
+
 HANDLERS = {
     "escalation.scan": scan_escalations,
     "tuning.propose": propose_threshold_changes,
@@ -298,6 +313,7 @@ HANDLERS = {
     "canary.advance": advance_canaries,
     "drift.check": check_drift,
     "redteam.posture": redteam_posture,
+    "monitors.run": run_monitors,
 }
 
 

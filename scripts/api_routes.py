@@ -85,7 +85,17 @@ SECTIONS: list[tuple[str, tuple[str, ...]]] = [
         ("/api/answerability", "/api/sources", "/api/entitlement", "/api/escalation"),
     ),
     ("Memory and inter-agent messaging (P16, P17)", ("/api/memory", "/api/agent-messages")),
-    ("Jobs and integrations", ("/api/jobs", "/api/internal", "/api/integrations", "/api/auth")),
+    (
+        "Jobs, monitors and integrations",
+        (
+            "/api/jobs",
+            "/api/internal",
+            "/api/monitors",
+            "/api/alerts",
+            "/api/integrations",
+            "/api/auth",
+        ),
+    ),
     ("Playground (unauthenticated, rate-limited)", ("/api/playground",)),
 ]
 
@@ -103,7 +113,7 @@ def _section_for(path: str) -> str:
     if path.endswith("/signing-key"):
         return "Memory and inter-agent messaging (P16, P17)"
     if path.startswith("/api/agents/") and path.endswith(("/approve", "/reject")):
-        return "Jobs and integrations"
+        return "Jobs, monitors and integrations"
     for title, prefixes in SECTIONS:
         if path.startswith(prefixes):
             return title

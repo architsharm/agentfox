@@ -215,3 +215,65 @@ class Finding(Base, TimestampMixin):
     fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
     occurrences: Mapped[int] = mapped_column(Integer, default=1)
     last_seen_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+#: Values of `Monitor.kind` the platform knows how to run. Other kinds can be
+#: registered at import time (`agentfox.monitoring.register_kind`).
+MONITOR_KINDS = ("github_repo", "hosted_api", "mcp_server")
+
+
+class Monitor(Base, TimestampMixin):
+    """Something connected that AgentFox re-checks on its own, on a schedule.
+
+    Created when a GitHub repository is connected and scanned, a hosted API's spec is
+    scanned, or an MCP server is registered — or by hand. The `monitors.run` job runs
+    every enabled monitor whose `next_run_at` has passed, diffs the result against
+    `baseline_json` (the previous run's snapshot), raises findings for what appeared
+    and closes the ones whose condition cleared. See `agentfox.monitoring`.
+    """
+
+    __tablename__ = "monitors"
+    __table_args__ = (
+        UniqueConstraint("org_id", "kind", "target", name="ux_monitors_org_kind_target"),
+        Index("ix_monitors_due", "enabled", "next_run_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("mon"))
+    #: github_repo | hosted_api | mcp_server (see MONITOR_KINDS).
+    kind: Mapped[str] = mapped_column(String(32), index=True)
+    #: What is watched: `owner/repo`, a spec URL, an MCP server name.
+    target: Mapped[str] = mapped_column(String(500))
+    name: Mapped[str] = mapped_column(String(200), default="")
+    #: Kind-specific settings: a branch or ref, the endpoint a spec describes, ids.
+    config_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    interval_seconds: Mapped[int] = mapped_column(Integer, default=6 * 3600)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: pending | baseline | ok | changed | failed — the outcome of the last run.
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    last_run_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    next_run_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    #: What the last run found: counts, what changed, findings opened and closed.
+    last_result_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    #: The snapshot the next run is compared with. Empty until the first run.
+    baseline_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str] = mapped_column(String(120), default="")
+
+
+class AlertChannel(Base, TimestampMixin):
+    """Where a tenant wants monitor alerts sent, beyond the deployment-wide webhook.
+
+    One row per tenant per kind. Only `slack` today: an incoming-webhook URL, stored
+    encrypted (it is a bearer credential for the channel).
+    """
+
+    __tablename__ = "alert_channels"
+    __table_args__ = (UniqueConstraint("org_id", "kind", name="ux_alert_channels_org_kind"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("alc"))
+    kind: Mapped[str] = mapped_column(String(16), default="slack")
+    url_encrypted: Mapped[str] = mapped_column(Text, default="")
+    min_severity: Mapped[str] = mapped_column(String(16), default="medium")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String(120), default="")

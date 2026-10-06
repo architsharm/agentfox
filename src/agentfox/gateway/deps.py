@@ -53,6 +53,11 @@ WRITE_ROLES: dict[str, set[str]] = {
     # sends a support ticket to a third party is not a developer's call to make, for
     # the same reason silencing a detector is not.
     "judgment_posture": {"owner", "admin", "security"},
+    # Adding, pausing or running a monitor of a connected source: the same people who
+    # can connect the source or scan it in the first place.
+    "monitors": {"owner", "admin", "security", "developer"},
+    # Where alerts about the tenant's findings are sent outside the deployment.
+    "alerts": {"owner", "admin", "security"},
 }
 
 ALL_ROLES = {"owner", "admin", "security", "compliance", "developer", "auditor"}

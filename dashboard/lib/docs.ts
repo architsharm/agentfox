@@ -26,6 +26,7 @@ export const DOC_NAV: DocSection[] = [
     heading: "Guides",
     items: [
       { href: "/docs/guides/scan-a-repo", label: "Audit a repository", description: "Inventory, the lethal trifecta, and a CI gate." },
+      { href: "/docs/guides/monitoring", label: "Monitor connected sources", description: "Rescan repos, APIs and MCP servers on a schedule and on push." },
       { href: "/docs/guides/python-auto", label: "One line in Python", description: "agentfox.auto(): observe, then enforce." },
       { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", description: "Declarations, grants, provenance, learned permissions." },
       { href: "/docs/guides/langgraph", label: "LangGraph", description: "Guard the retrieval, model and tool nodes." },

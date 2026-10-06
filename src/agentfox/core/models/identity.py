@@ -186,6 +186,10 @@ class GithubConnection(Base, TimestampMixin):
     github_login: Mapped[str] = mapped_column(String(200), default="")
     access_token_encrypted: Mapped[str] = mapped_column(Text)
     connected_by_user_id: Mapped[str] = mapped_column(String(40), ForeignKey("users.id"))
+    #: Secret GitHub signs push deliveries with (`X-Hub-Signature-256`), encrypted.
+    #: Null means this connection has no webhook secret of its own; the deployment-wide
+    #: `github_webhook_secret` setting may still verify its deliveries.
+    webhook_secret_encrypted: Mapped[str | None] = mapped_column(Text)
 
 
 class ScanRun(Base, TimestampMixin):

@@ -22,9 +22,9 @@ have; it just clears the review flag.
 
 from __future__ import annotations
 
+import json
 import logging
 import secrets
-import tarfile
 import tempfile
 from pathlib import Path
 from typing import Annotated, Any
@@ -32,9 +32,9 @@ from urllib.parse import urlparse
 
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentfox.core import ids
@@ -43,9 +43,11 @@ from agentfox.core.config import (
     get_settings,
     is_development,
 )
+from agentfox.core.crypto import EncryptionNotConfigured, decrypt_secret, encrypt_secret
 from agentfox.core.models import (
     ApiToken,
     GithubConnection,
+    Monitor,
     Policy,
     PolicyVersion,
     ScanRun,
@@ -58,6 +60,9 @@ from agentfox.discovery.repo import ScanReport
 from agentfox.discovery.repo import scan as discovery_scan
 from agentfox.gateway.auth import issue_token, resolve_token_record, revoke_token
 from agentfox.gateway.deps import current_user, db, require
+from agentfox.monitoring import github as gh
+from agentfox.monitoring.service import request_run, safe_ensure_monitor
+from agentfox.monitoring.snapshots import api_snapshot, repo_snapshot
 from agentfox.policy import PolicyDocument, save_policy
 from agentfox.prove.audit import chain
 from agentfox.registry.service import propose_from_scan, register_agent, slugify
@@ -66,11 +71,7 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["integrations"])
 
-_GITHUB_API = "https://api.github.com"
-#: Above this, extraction stops — a resource-exhaustion guard on server-supplied
-#: archive content, not a code-execution one (nothing here ever imports the repo).
-_MAX_EXTRACTED_BYTES = 80 * 1024 * 1024
-_MAX_MEMBER_BYTES = 8 * 1024 * 1024
+_GITHUB_API = gh.GITHUB_API
 
 
 # ---------------------------------------------------------------------------
@@ -383,41 +384,14 @@ class ScanIn(BaseModel):
 
 
 def _download_and_extract(repo_full_name: str, ref: str, token: str, dest: Path) -> Path:
-    url = f"{_GITHUB_API}/repos/{repo_full_name}/tarball"
-    if ref:
-        url = f"{url}/{ref}"
-    with httpx.stream(
-        "GET",
-        url,
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
-        follow_redirects=True,
-        timeout=60.0,
-    ) as resp:
-        resp.raise_for_status()
-        archive = dest / "repo.tar.gz"
-        total = 0
-        with archive.open("wb") as f:
-            for chunk in resp.iter_bytes():
-                total += len(chunk)
-                if total > _MAX_EXTRACTED_BYTES:
-                    raise HTTPException(413, "repository archive is too large to scan")
-                f.write(chunk)
-
-    extracted = dest / "src"
-    extracted.mkdir()
-    with tarfile.open(archive) as tar:
-        for member in tar.getmembers():
-            if member.size > _MAX_MEMBER_BYTES or not member.isfile() and not member.isdir():
-                continue
-            # GitHub's archive nests everything under one `{owner}-{repo}-{sha}/`
-            # directory — strip it so scanned paths read as real repo-relative paths.
-            parts = Path(member.name).parts
-            if len(parts) < 2:
-                continue
-            member.name = str(Path(*parts[1:]))
-            tar.extract(member, extracted, filter="data")
-    archive.unlink()
-    return extracted
+    """Download and unpack a repository (`monitoring.github`, shared with the
+    `github_repo` monitor so a scheduled rescan reads it the way this scan did)."""
+    try:
+        return gh.download_and_extract(repo_full_name, ref, token, dest)
+    except gh.RepoFetchError as exc:
+        if exc.too_large:
+            raise HTTPException(413, str(exc)) from exc
+        raise HTTPException(502, str(exc)) from exc
 
 
 @router.post("/api/integrations/github/scan")
@@ -472,9 +446,23 @@ def trigger_scan(
         author=user.email or user.id,
     )
 
+    # From now on this repository is re-scanned on a schedule (and on push, once the
+    # webhook is registered), diffed against what this scan saw.
+    monitor = None
+    if not report.inconclusive:
+        monitor = safe_ensure_monitor(
+            session,
+            kind="github_repo",
+            target=payload.repo_full_name,
+            config={"connection_id": conn.id, **({"ref": payload.ref} if payload.ref else {})},
+            baseline=repo_snapshot(report),
+            created_by=user.email or user.id,
+        )
+
     run.status = "completed"
     run.completed_at = utcnow()
     run.summary_json = {
+        "monitor_id": monitor.id if monitor else None,
         "files_scanned": report.files_scanned,
         # A repository this scanner cannot read produces an empty `sites` that looks
         # exactly like a clean one. These two say which it was: `code_files_scanned`
@@ -521,6 +509,192 @@ def get_scan(
 
 
 # ---------------------------------------------------------------------------
+# Push webhook — a push to a monitored repository's default branch queues an
+# immediate rescan of exactly that commit, instead of waiting for the schedule.
+# ---------------------------------------------------------------------------
+
+#: GitHub caps a delivery at 25 MB; a push payload is far smaller. Past this the body
+#: is refused before it is parsed.
+_MAX_WEBHOOK_BYTES = 5 * 1024 * 1024
+
+
+async def _raw_body(request: Request) -> bytes:
+    return await request.body()
+
+
+def _connection_secret(session: Session, org_id: str, connection_id: str | None) -> str | None:
+    """The webhook secret of the tenant's connection, read inside the caller's system
+    scope (so filtered by org explicitly)."""
+    query = select(GithubConnection).where(GithubConnection.org_id == org_id)
+    if connection_id:
+        query = query.where(GithubConnection.id == connection_id)
+    conn = session.scalar(query.order_by(GithubConnection.created_at.desc()))
+    if conn is None or not conn.webhook_secret_encrypted:
+        return None
+    try:
+        return decrypt_secret(conn.webhook_secret_encrypted)
+    except Exception:  # noqa: BLE001 - an unreadable secret verifies nothing
+        log.warning("github webhook: connection %s secret could not be decrypted", conn.id)
+        return None
+
+
+def _run_queued_job(job_id: str, org_id: str) -> None:
+    """Run a queued rescan after the response is sent. Best effort: on a platform that
+    freezes the process after responding, the cron runner picks the job up instead."""
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Job
+    from agentfox.jobs import store as jobs_db
+
+    try:
+        with session_scope() as background:
+            bind_session(background, org_id)
+            job = background.get(Job, job_id)
+            if job is not None:
+                jobs_db.run_job(background, job)
+    except Exception:  # noqa: BLE001 - the job row records its own failure
+        log.warning("github webhook: rescan job %s could not run inline", job_id, exc_info=True)
+
+
+@router.post("/api/integrations/github/webhook", status_code=202)
+def github_webhook(
+    background: BackgroundTasks,
+    body: bytes = Depends(_raw_body),
+    session: Session = Depends(db),
+    x_github_event: Annotated[str | None, Header()] = None,
+    x_hub_signature_256: Annotated[str | None, Header()] = None,
+) -> dict[str, Any]:
+    """GitHub push webhook: a signed push to a monitored repository queues a rescan.
+
+    ``X-Hub-Signature-256`` is verified first; then each monitor of the pushed
+    repository whose tenant's secret signed the delivery gets a rescan of the commit.
+
+    Register it on the repository (or organisation) with payload URL
+    ``https://<api host>/api/integrations/github/webhook``, content type
+    ``application/json``, the ``push`` event, and as secret either the deployment's
+    ``AGENTFOX_GITHUB_WEBHOOK_SECRET`` or the one ``POST
+    /api/integrations/github/webhook-secret`` returned for the connection. A delivery
+    is acted on only for the tenants whose secret signed it.
+    """
+    if len(body) > _MAX_WEBHOOK_BYTES:
+        raise HTTPException(413, "webhook payload too large")
+    try:
+        event = json.loads(body or b"{}")
+    except ValueError as exc:
+        raise HTTPException(400, "webhook body is not JSON") from exc
+    if not isinstance(event, dict):
+        raise HTTPException(400, "webhook body is not a JSON object")
+    repository = event.get("repository") if isinstance(event.get("repository"), dict) else {}
+    full_name = str(repository.get("full_name") or "")
+
+    global_secret = get_settings().github_webhook_secret or ""
+    global_ok = gh.verify_signature(global_secret, body, x_hub_signature_256)
+    verified: list[Monitor] = []
+    any_secret = bool(global_secret)
+    with system_scope("github webhook: finding the monitors of a pushed repository", routine=True):
+        candidates = (
+            list(
+                session.scalars(
+                    select(Monitor).where(
+                        Monitor.kind == "github_repo",
+                        func.lower(Monitor.target) == full_name.lower(),
+                    )
+                )
+            )
+            if full_name
+            else []
+        )
+        for monitor in candidates:
+            secret = _connection_secret(
+                session, monitor.org_id, (monitor.config_json or {}).get("connection_id")
+            )
+            any_secret = any_secret or bool(secret)
+            if global_ok or (secret and gh.verify_signature(secret, body, x_hub_signature_256)):
+                verified.append(monitor)
+    if not any_secret:
+        raise HTTPException(
+            503,
+            "no GitHub webhook secret is configured (AGENTFOX_GITHUB_WEBHOOK_SECRET, or "
+            "POST /api/integrations/github/webhook-secret) — deliveries are refused",
+        )
+    if not global_ok and not verified:
+        raise HTTPException(401, "invalid or missing X-Hub-Signature-256")
+
+    kind = (x_github_event or "").lower()
+    if kind == "ping":
+        return {"accepted": True, "event": "ping", "monitors": len(verified)}
+    if kind != "push":
+        return {"accepted": False, "event": kind, "reason": "only push events trigger a rescan"}
+    if event.get("deleted"):
+        return {"accepted": False, "event": kind, "reason": "a branch deletion is not a change"}
+
+    pushed_branch = str(event.get("ref") or "").removeprefix("refs/heads/")
+    default_branch = str(repository.get("default_branch") or "")
+    commit = str(event.get("after") or "") or None
+    queued: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for monitor in verified:
+        bind_session(session, monitor.org_id)
+        config = monitor.config_json or {}
+        watched = str(config.get("branch") or config.get("ref") or default_branch)
+        if not monitor.enabled:
+            skipped.append({"monitor_id": monitor.id, "reason": "paused"})
+            continue
+        if pushed_branch != watched:
+            skipped.append(
+                {
+                    "monitor_id": monitor.id,
+                    "reason": f"push to '{pushed_branch}', watching '{watched}'",
+                }
+            )
+            continue
+        job = request_run(session, monitor, trigger="push", ref=commit, requested_by="github:push")
+        queued.append({"monitor_id": monitor.id, "job_id": job.id, "org_id": monitor.org_id})
+    session.commit()
+    for item in queued:
+        background.add_task(_run_queued_job, item["job_id"], item["org_id"])
+    return {
+        "accepted": bool(queued),
+        "event": kind,
+        "commit": commit,
+        "queued": [{"monitor_id": q["monitor_id"], "job_id": q["job_id"]} for q in queued],
+        "skipped": skipped,
+    }
+
+
+@router.post("/api/integrations/github/webhook-secret")
+def rotate_webhook_secret(
+    session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Create or replace the GitHub connection's push-webhook secret (shown once).
+
+    Paste it into the GitHub webhook's "Secret" field."""
+    conn = _get_connection(session)
+    if conn is None:
+        raise HTTPException(404, "no GitHub account connected")
+    raw = secrets.token_urlsafe(32)
+    try:
+        conn.webhook_secret_encrypted = encrypt_secret(raw)
+    except EncryptionNotConfigured as exc:
+        raise HTTPException(503, str(exc)) from exc
+    session.flush()
+    chain.append(
+        session,
+        "integration.github.webhook_secret_rotated",
+        actor_type="user",
+        actor_id=user.email or user.id,
+        subject_type="github_connection",
+        subject_id=conn.id,
+    )
+    session.commit()
+    return {
+        "secret": raw,
+        "payload_path": "/api/integrations/github/webhook",
+        "content_type": "application/json",
+        "events": ["push"],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Hosted-API connect — the second onboarding path, for a team whose AI system is a
 # live endpoint they call rather than code they'd hand over. No source access and
 # no stored credential: we fetch the *spec document* once (never an operation on
@@ -553,6 +727,7 @@ def scan_hosted_api(
     session.add(run)
     session.flush()
 
+    spec: dict[str, Any] | None = None
     if payload.openapi_spec_url:
         try:
             spec = fetch_spec(payload.openapi_spec_url)
@@ -608,9 +783,22 @@ def scan_hosted_api(
         policy.source_scan_run_id = run.id
         created_policies.append(policy.key)
 
+    monitor = None
+    if payload.openapi_spec_url and isinstance(spec, dict):
+        monitor = safe_ensure_monitor(
+            session,
+            kind="hosted_api",
+            target=payload.openapi_spec_url,
+            name=host,
+            config={"endpoint_url": payload.endpoint_url, "agent": slug},
+            baseline=api_snapshot(spec),
+            created_by=user.email or user.id,
+        )
+
     run.status = "completed"
     run.completed_at = utcnow()
     run.summary_json = {
+        "monitor_id": monitor.id if monitor else None,
         "endpoint_url": payload.endpoint_url,
         "sites": report.by_kind(),
         "agents_proposed": [agent.slug],
