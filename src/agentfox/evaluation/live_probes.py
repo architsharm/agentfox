@@ -14,7 +14,9 @@ that is running:
 
 * **Opt-in, on the record.** A `ProbeTarget` is created disabled. Only
   :func:`opt_in` enables it, and it records who, when, and the warning text they
-  acknowledged (:data:`OPT_IN_WARNING`) on the target and on the audit chain.
+  acknowledged (:data:`OPT_IN_WARNING`) on the target and on the audit chain. It also
+  creates the target's ``deployed_agent`` monitor (`monitoring.service`), which runs
+  it on schedule and alerts on its findings; the `probes.run` job is the fallback.
   Changing the URL clears the opt-in, because the consent was for that host.
 * **Only the registered host.** The http adapter sends to the host recorded at
   opt-in and nowhere else, through `core.outbound.guarded_post`: the address is
@@ -678,7 +680,27 @@ def opt_in(
         target,
         {"host": target.registered_host, "adapter": target.adapter, "warning": OPT_IN_WARNING},
     )
+    _ensure_monitor(session, target, actor)
     return target
+
+
+def _ensure_monitor(session: Session, target: ProbeTarget, actor: str) -> None:
+    """Watch an opted-in target as a ``deployed_agent`` monitor, so a probe that gets
+    through is alerted like any other monitored change (`monitoring.service`). The
+    `probes.run` job stays as the fallback; both share ``next_due_at``, so a target is
+    probed at most once per window. A monitor that cannot be created never fails the
+    opt-in."""
+    from agentfox.monitoring.service import safe_ensure_monitor
+
+    safe_ensure_monitor(
+        session,
+        kind="deployed_agent",
+        target=target.id,
+        name=target.name,
+        config={"probe_target_id": target.id, "agent": target.agent_slug},
+        interval_seconds=max(MIN_INTERVAL_SECONDS, int(target.interval_seconds or 0)),
+        created_by=actor,
+    )
 
 
 def opt_out(session: Session, target: ProbeTarget, *, actor: str) -> ProbeTarget:

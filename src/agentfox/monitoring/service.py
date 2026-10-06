@@ -20,6 +20,10 @@ and never replaces the baseline: "could not look" is not "nothing there". After
 `monitor_failure_threshold` failures in a row it raises one `monitor_failing` finding,
 closed by the next successful run.
 
+A ``deployed_agent`` monitor's target is a `ProbeTarget` id: each run sends the live
+probe library to that agent (`evaluation.live_probes.run_target`), so a probe that gets
+through alerts like any other monitored change. Opting a target in creates it.
+
 Findings opened, reopened and closed by a run reach the deployment's finding webhook
 like any other finding (`core.webhooks`) and, when configured, Slack
 (`monitoring.alerts`).
@@ -36,6 +40,7 @@ import hashlib
 import json
 import logging
 import tempfile
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -51,6 +56,7 @@ from agentfox.core.models import (
     McpServer,
     McpToolSnapshot,
     Monitor,
+    ProbeTarget,
     ScanRun,
     utcnow,
 )
@@ -746,6 +752,93 @@ def _run_mcp_server(session: Session, monitor: Monitor, ctx: RunContext) -> RunO
     return RunOutcome(snapshot, None, summary, status=status, touched=touched)
 
 
+#: How a deployed_agent run waits between probes. A module attribute so tests can
+#: replace it; looked up at call time.
+def _probe_sleep(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def _run_deployed_agent(session: Session, monitor: Monitor, ctx: RunContext) -> RunOutcome:
+    """Send the live probe library to an opted-in probe target (`ProbeTarget` id).
+
+    The `probes.run` job can probe the same target, so both go through one clock: the
+    target's own ``next_due_at``, which every run moves at least
+    `live_probes.MIN_INTERVAL_SECONDS` ahead. A scheduled run before it is due sends
+    nothing; a manual one is held to `live_probes.MIN_MANUAL_GAP_SECONDS`, as the
+    "run now" route is. The monitor's own next run is moved to the target's.
+    """
+    from agentfox.evaluation import live_probes
+
+    target_id = (monitor.config_json or {}).get("probe_target_id") or monitor.target
+    target = session.get(ProbeTarget, target_id)
+    if target is None:
+        raise MonitorError(f"no probe target '{target_id}' exists any more")
+    if not get_settings().live_probes_enabled:
+        return RunOutcome(
+            None,
+            None,
+            {"skipped": "live probes are disabled on this deployment"},
+            status=INCONCLUSIVE,
+        )
+    if not target.enabled or not target.opted_in_by:
+        return RunOutcome(
+            None, None, {"skipped": "the probe target is not opted in"}, status=INCONCLUSIVE
+        )
+
+    now = _aware(ctx.now) or utcnow()
+    if ctx.trigger == "manual":
+        last = _aware(target.last_run_at)
+        gate = last + dt.timedelta(seconds=live_probes.MIN_MANUAL_GAP_SECONDS) if last else None
+    else:
+        gate = _aware(target.next_due_at)
+    if gate is not None and now < gate:
+        if ctx.trigger != "manual":
+            monitor.next_run_at = gate
+        return RunOutcome(
+            None,
+            None,
+            {"skipped": "probed recently; not due yet", "next_due_at": gate.isoformat()},
+            status=monitor.status if monitor.status != PENDING else BASELINE,
+        )
+
+    campaign = live_probes.run_target(
+        session,
+        target,
+        now=now,
+        sleep=_probe_sleep,
+        actor_type=AUTOMATION_ACTOR_TYPE,
+        actor_id=ACTOR,
+    )
+    if target.next_due_at is not None:
+        monitor.next_run_at = target.next_due_at
+    summary = dict(campaign.summary_json or {})
+    found = summary.get("findings") or {}
+    touched: list[tuple[Finding, str]] = []
+    for finding_id in found.get("opened") or []:
+        finding = session.get(Finding, finding_id)
+        if finding is not None:
+            recurred = (finding.evidence_json or {}).get(findings_mod.RECURRENCES_KEY)
+            touched.append((finding, "finding.reopened" if recurred else "finding.created"))
+    for finding_id in found.get("closed") or []:
+        finding = session.get(Finding, finding_id)
+        if finding is not None:
+            touched.append((finding, "finding.resolved"))
+    result = {
+        "campaign_id": campaign.id,
+        "agent": target.agent_slug,
+        "attacks_attempted": summary.get("attacks_attempted"),
+        "contained": summary.get("contained"),
+        "escaped": summary.get("escaped"),
+        "errors": summary.get("errors"),
+        "direction": (summary.get("posture") or {}).get("direction"),
+        "headline": summary.get("headline"),
+        "findings": found,
+    }
+    snapshot = {"type": "deployed_agent", "campaign_id": campaign.id}
+    status = BASELINE if not monitor.baseline_json and not touched else None
+    return RunOutcome(snapshot, None, result, status=status, touched=touched)
+
+
 register_kind(
     "github_repo",
     _run_github_repo,
@@ -763,4 +856,10 @@ register_kind(
     _run_mcp_server,
     default_interval=HOUR,
     description="read a remote MCP server's tool listing and check it for drift",
+)
+register_kind(
+    "deployed_agent",
+    _run_deployed_agent,
+    default_interval=24 * HOUR,
+    description="send the live probe library to an opted-in deployed agent",
 )

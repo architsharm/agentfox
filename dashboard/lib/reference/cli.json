@@ -347,7 +347,7 @@
           "required": true,
           "multiple": false,
           "default": null,
-          "help": "github_repo, hosted_api or mcp_server."
+          "help": "github_repo, hosted_api, mcp_server or deployed_agent."
          },
          {
           "kind": "argument",
@@ -360,7 +360,7 @@
           "required": true,
           "multiple": false,
           "default": null,
-          "help": "owner/repo, the spec URL, or the MCP server name."
+          "help": "owner/repo, the spec URL, the MCP server name, or a probe target id."
          },
          {
           "kind": "option",

@@ -219,7 +219,7 @@ class Finding(Base, TimestampMixin):
 
 #: Values of `Monitor.kind` the platform knows how to run. Other kinds can be
 #: registered at import time (`agentfox.monitoring.register_kind`).
-MONITOR_KINDS = ("github_repo", "hosted_api", "mcp_server")
+MONITOR_KINDS = ("github_repo", "hosted_api", "mcp_server", "deployed_agent")
 
 
 class Monitor(Base, TimestampMixin):
@@ -239,9 +239,9 @@ class Monitor(Base, TimestampMixin):
     )
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("mon"))
-    #: github_repo | hosted_api | mcp_server (see MONITOR_KINDS).
+    #: github_repo | hosted_api | mcp_server | deployed_agent (see MONITOR_KINDS).
     kind: Mapped[str] = mapped_column(String(32), index=True)
-    #: What is watched: `owner/repo`, a spec URL, an MCP server name.
+    #: What is watched: `owner/repo`, a spec URL, an MCP server name, a probe target id.
     target: Mapped[str] = mapped_column(String(500))
     name: Mapped[str] = mapped_column(String(200), default="")
     #: Kind-specific settings: a branch or ref, the endpoint a spec describes, ids.

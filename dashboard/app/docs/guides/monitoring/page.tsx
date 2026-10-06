@@ -75,6 +75,11 @@ export default function Page() {
             <td>A remote Streamable HTTP server: reads its <code>tools/list</code> and checks it for drift and hidden instructions. A stdio server is never started; its pushed listings are watched.</td>
             <td>1 hour</td>
           </tr>
+          <tr>
+            <td><code>deployed_agent</code></td>
+            <td>Sends the live probe library to a probe target someone opted in, and opens a finding when an attack that was contained gets through. Created by the opt-in; the target is never probed more than once in its interval.</td>
+            <td>The target&apos;s own interval (at least 1 hour)</td>
+          </tr>
         </tbody>
       </table>
       <p>

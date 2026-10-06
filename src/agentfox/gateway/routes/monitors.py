@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import AlertChannel, McpServer, Monitor, User
+from agentfox.core.models import AlertChannel, McpServer, Monitor, ProbeTarget, User
 from agentfox.gateway.deps import current_user, db, require
 from agentfox.jobs import store as jobs_db
 from agentfox.monitoring import alerts
@@ -70,6 +70,15 @@ def _validate_target(session: Session, kind: str, target: str) -> dict[str, Any]
                 404, f"no MCP server named '{target}' is registered (POST /api/mcp-servers)"
             )
         return {"mcp_server_id": server.id}
+    if kind == "deployed_agent":
+        target_row = session.get(ProbeTarget, target)
+        if target_row is None:
+            raise HTTPException(404, f"no probe target '{target}' (POST /api/probes/targets)")
+        if not target_row.enabled or not target_row.opted_in_by:
+            raise HTTPException(
+                409, f"opt the probe target in first: POST /api/probes/targets/{target}/opt-in"
+            )
+        return {"probe_target_id": target_row.id, "agent": target_row.agent_slug}
     return {}
 
 

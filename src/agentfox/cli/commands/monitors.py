@@ -110,8 +110,10 @@ def list_monitors(as_json: bool = typer.Option(False, "--json", help="Print JSON
 
 @monitors_app.command("add")
 def add_monitor(
-    kind: str = typer.Argument(..., help="github_repo, hosted_api or mcp_server."),
-    target: str = typer.Argument(..., help="owner/repo, the spec URL, or the MCP server name."),
+    kind: str = typer.Argument(..., help="github_repo, hosted_api, mcp_server or deployed_agent."),
+    target: str = typer.Argument(
+        ..., help="owner/repo, the spec URL, the MCP server name, or a probe target id."
+    ),
     every: str = typer.Option("", "--every", help="Interval, e.g. 30m, 6h, 1d. Default per kind."),
     name: str = typer.Option("", "--name", help="A label for lists and alerts."),
 ) -> None:
