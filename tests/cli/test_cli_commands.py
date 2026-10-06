@@ -464,3 +464,36 @@ def test_declare_boundary_mode_only_keeps_the_rest_of_the_boundary():
         assert boundary.coverage_months == 24
         assert boundary.out_of_scope_topics == ["payroll"]
         assert boundary.answerable_types == ["fact", "procedure"]
+
+
+# ---------------------------------------------------------------------------
+# report signoff writes the same audit entry as the web app (#39)
+# ---------------------------------------------------------------------------
+
+
+def test_report_signoff_appends_to_the_audit_chain():
+    from sqlalchemy import select
+
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import AuditEntry, FrameworkMapping
+
+    _seed()
+    with session_scope() as session:
+        mapping = session.scalars(select(FrameworkMapping)).first()
+        control, framework = mapping.control_key, mapping.framework
+
+    result = runner.invoke(
+        app,
+        ["report", "signoff", control, "--framework", framework, "--reviewer", "dpo@acme.com"],
+    )
+    assert result.exit_code == 0, result.output
+    with session_scope() as session:
+        entries = list(
+            session.scalars(
+                select(AuditEntry).where(AuditEntry.action == "compliance.mapping_reviewed")
+            )
+        )
+    assert len(entries) == 1
+    assert entries[0].subject_id == control
+    assert entries[0].payload_json["reviewer"] == "dpo@acme.com"
+    assert entries[0].payload_json["framework"] == framework
