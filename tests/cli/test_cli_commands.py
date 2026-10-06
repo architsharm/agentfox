@@ -423,3 +423,44 @@ def test_compliance_validate_reports_unparseable_yaml(compliance_dir):
     result = runner.invoke(app, ["compliance", "validate"])
     assert result.exit_code == 1
     assert "does not parse" in flat(result.output)
+
+
+# ---------------------------------------------------------------------------
+# declare boundary --mode enforce keeps what was declared before (#7)
+# ---------------------------------------------------------------------------
+
+
+def test_declare_boundary_mode_only_keeps_the_rest_of_the_boundary():
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+    from agentfox.grounding.answerability import get_boundary
+
+    _seed()
+    first = runner.invoke(
+        app,
+        [
+            "declare",
+            "boundary",
+            "support-triage",
+            "--systems",
+            "CRM,order-db",
+            "--coverage-months",
+            "24",
+            "--out-of-scope",
+            "payroll",
+            "--answerable",
+            "fact,procedure",
+        ],
+    )
+    assert first.exit_code == 0, first.output
+    second = runner.invoke(app, ["declare", "boundary", "support-triage", "--mode", "enforce"])
+    assert second.exit_code == 0, second.output
+
+    with session_scope() as session:
+        agent = session.query(Agent).filter_by(slug="support-triage").one()
+        boundary = get_boundary(session, agent.id)
+        assert boundary.mode == "enforce"
+        assert boundary.systems_of_record == ["CRM", "order-db"]
+        assert boundary.coverage_months == 24
+        assert boundary.out_of_scope_topics == ["payroll"]
+        assert boundary.answerable_types == ["fact", "procedure"]

@@ -51,29 +51,48 @@ TIER_COLOUR = {
 
 def boundary_set(
     agent: str = typer.Argument(..., help="Agent slug."),
-    systems: str = typer.Option("", "--systems", help="Comma-separated systems of record."),
-    months: int | None = typer.Option(None, "--coverage-months", help="Rolling window."),
-    answerable: str = typer.Option(
-        "fact,aggregate,procedure", "--answerable", help="Question types this agent may answer."
+    systems: str | None = typer.Option(
+        None, "--systems", help="Comma-separated systems of record."
     ),
-    out_of_scope: str = typer.Option("", "--out-of-scope", help="Comma-separated topics."),
-    mode: str = typer.Option("observe", "--mode", help="observe | enforce"),
+    months: int | None = typer.Option(None, "--coverage-months", help="Rolling window."),
+    answerable: str | None = typer.Option(
+        None,
+        "--answerable",
+        help="Question types this agent may answer (default fact,aggregate,procedure).",
+    ),
+    out_of_scope: str | None = typer.Option(
+        None, "--out-of-scope", help="Comma-separated topics."
+    ),
+    mode: str | None = typer.Option(
+        None, "--mode", help="observe | enforce (a new boundary starts in observe)"
+    ),
 ) -> None:
     """Declare what an agent is allowed to answer from.
 
     Until this exists nothing stops the agent inventing an answer to a question it has
     no data for, which is the single failure most likely to reach a customer.
+
+    Re-running it changes only the options you pass, so `--mode enforce` on its own
+    switches enforcement on and keeps the systems, coverage and topics already declared.
     """
     from sqlalchemy import select
 
     from agentfox.core.models import Agent
     from agentfox.grounding.answerability import QUESTION_TYPES, declare_boundary
 
-    types = [t.strip() for t in answerable.split(",") if t.strip()]
-    unknown = set(types) - set(QUESTION_TYPES)
+    def _split(value: str | None) -> list[str] | None:
+        if value is None:
+            return None
+        return [v.strip() for v in value.split(",") if v.strip()]
+
+    types = _split(answerable)
+    unknown = set(types or ()) - set(QUESTION_TYPES)
     if unknown:
         console.print(f"[red]unknown question type(s): {sorted(unknown)}[/]")
         console.print(f"[dim]choose from: {', '.join(QUESTION_TYPES)}[/]")
+        raise typer.Exit(1)
+    if mode is not None and mode not in ("observe", "enforce"):
+        console.print(f"[red]unknown mode {mode!r}[/] [dim](observe | enforce)[/]")
         raise typer.Exit(1)
 
     with _session() as session:
@@ -81,21 +100,28 @@ def boundary_set(
         if record is None:
             print_unknown_agent(console, session, agent)
             raise typer.Exit(1)
-        declare_boundary(
+        boundary = declare_boundary(
             session,
             agent_id=record.id,
-            systems_of_record=[s.strip() for s in systems.split(",") if s.strip()],
+            systems_of_record=_split(systems),
             coverage_months=months,
             answerable_types=types,
-            out_of_scope_topics=[t.strip() for t in out_of_scope.split(",") if t.strip()],
+            out_of_scope_topics=_split(out_of_scope),
             mode=mode,
         )
+        stored_types = list(boundary.answerable_types or [])
+        stored_months = boundary.coverage_months
+        stored_systems = list(boundary.systems_of_record or [])
+        stored_mode = boundary.mode
 
     console.print(f"[green]✓[/] boundary declared for [bold]{agent}[/]")
-    console.print(f"  answerable: {', '.join(types)}")
-    if months:
-        console.print(f"  coverage:   last {months} months")
-    if mode == "observe":
+    console.print(f"  answerable: {', '.join(stored_types)}")
+    if stored_systems:
+        console.print(f"  systems:    {', '.join(stored_systems)}")
+    if stored_months:
+        console.print(f"  coverage:   last {stored_months} months")
+    console.print(f"  mode:       {stored_mode}")
+    if stored_mode == "observe":
         console.print(
             "  [dim]observe mode — refusals are recorded, not applied. "
             "Re-run with --mode enforce when the dry runs look right.[/]"
