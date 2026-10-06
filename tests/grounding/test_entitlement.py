@@ -185,12 +185,37 @@ def test_withholding_is_recorded_not_silent(estate):
     assert event.principal_subject == "alice@acme.com"
 
 
-def test_nothing_is_recorded_when_nothing_was_withheld(estate):
+def test_a_check_that_withheld_nothing_is_still_recorded(estate):
+    """The ratio's denominator is every access check, not only the ones that withheld
+    something — otherwise one withholding request reads as 100% over-permission (#8)."""
     with session_scope() as session:
-        decision = filter_retrieval(session, _principal("alice@acme.com"), [CHUNKS[0]])
+        clean = filter_retrieval(session, _principal("alice@acme.com"), [CHUNKS[0]])
+        assert record_disclosure(session, clean) is not None
+        partial = filter_retrieval(session, _principal("alice@acme.com"), CHUNKS)
+        record_disclosure(session, partial)
+        report = over_permission_report(session)
+    assert report["requests"] == 2
+    assert report["requests_withholding"] == 1
+    assert report["candidates"] == 5
+    assert report["over_permission"] == round(2 / 5, 4)
+
+
+def test_nothing_is_recorded_when_there_was_nothing_to_check(estate):
+    with session_scope() as session:
+        decision = filter_retrieval(session, _principal("alice@acme.com"), [])
         assert record_disclosure(session, decision) is None
     with session_scope() as session:
         assert session.query(DisclosureEvent).count() == 0
+
+
+def test_the_openfga_hint_names_the_current_variable():
+    import inspect
+
+    from agentfox.grounding.entitlement import OpenFgaEngine
+
+    source = inspect.getsource(OpenFgaEngine.visible)
+    assert "AGENTFOX_ENTITLEMENT_ENGINE" in source
+    assert "NOMETRIA_" not in source
 
 
 def test_the_over_permission_report_works_with_no_entitlement_model(isolated_db):
@@ -295,6 +320,70 @@ def test_quoting_a_withheld_chunk_in_the_answer_is_critical(seeded, enforcer):
     assert result.taint["disclosure"]["withheld"] == 1
     findings = seeded.query(Finding).filter_by(type="entitlement_disclosure").all()
     assert findings and findings[0].severity == "critical"
+
+
+def _leak(seeded, enforcer):
+    from agentfox.core.models import Agent
+
+    agent = seeded.query(Agent).filter_by(slug="support-triage").one()
+    grant(seeded, "kb/*", principal="all-staff")
+    principal = upsert_principal(seeded, "alice@acme.com", groups=["all-staff"])
+    enforcer.evidence = {
+        "principal": principal,
+        "chunks": [
+            {"source": "kb/faq", "text": "Refunds within 30 days."},
+            {"source": "hr/salaries", "text": "Head of Eng earns 210,000 per year."},
+        ],
+    }
+    return enforcer.evaluate(
+        agent=agent,
+        identity=None,
+        content="Sure. Head of Eng earns 210,000 per year.",
+        surface="output",
+    )
+
+
+def test_quoting_a_withheld_chunk_is_blocked_when_the_decision_enforces(seeded, enforcer):
+    """#4: the output-side check was detective only — an enforcing deployment still
+    returned an answer quoting a chunk the asker may not see, with only a finding."""
+    from agentfox.policy.store import set_mode
+
+    set_mode(seeded, "baseline", "enforce")
+    result = _leak(seeded, enforcer)
+    assert result.verdict == "block"
+    assert any(r["rule_id"] == "entitlement.disclosure" for r in result.rules_fired)
+
+
+def test_quoting_a_withheld_chunk_is_would_block_in_observe(seeded, enforcer):
+    from agentfox.core.models import Policy
+    from agentfox.policy.store import set_mode
+
+    for policy in seeded.query(Policy).all():
+        set_mode(seeded, policy.key, "observe")
+    result = _leak(seeded, enforcer)
+    assert result.effective_verdict == "block"
+    assert result.verdict != "block", (result.mode, result.rules_fired)
+
+
+def test_an_answer_from_entitled_chunks_is_not_blocked(seeded, enforcer):
+    from agentfox.core.models import Agent
+    from agentfox.policy.store import set_mode
+
+    set_mode(seeded, "baseline", "enforce")
+    agent = seeded.query(Agent).filter_by(slug="support-triage").one()
+    grant(seeded, "kb/*", principal="all-staff")
+    enforcer.evidence = {
+        "principal": upsert_principal(seeded, "alice@acme.com", groups=["all-staff"]),
+        "chunks": [
+            {"source": "kb/faq", "text": "Refunds within 30 days."},
+            {"source": "hr/salaries", "text": "Head of Eng earns 210,000 per year."},
+        ],
+    }
+    result = enforcer.evaluate(
+        agent=agent, identity=None, content="Refunds within 30 days.", surface="output"
+    )
+    assert result.verdict == "allow"
+    assert not any(r["rule_id"] == "entitlement.disclosure" for r in result.rules_fired)
 
 
 def test_no_principal_supplied_means_no_disclosure_checks(seeded, enforcer):

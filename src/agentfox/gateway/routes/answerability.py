@@ -62,6 +62,7 @@ def write_boundary(
         out_of_scope_topics=payload.out_of_scope_topics,
         freshness_hours=payload.freshness_hours,
         mode=payload.mode,
+        replace=True,
     )
     return _boundary_json(boundary, payload.agent)
 

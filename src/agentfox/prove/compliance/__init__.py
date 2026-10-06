@@ -13,6 +13,7 @@ from agentfox.prove.compliance.catalog import (
     framework_coverage,
     load_catalog,
     review_mapping,
+    sign_off_mapping,
     sync_catalog,
     sync_obligations,
 )
@@ -49,6 +50,7 @@ __all__ = [
     "posture",
     "register",
     "review_mapping",
+    "sign_off_mapping",
     "risk",
     "status",
     "sync_catalog",

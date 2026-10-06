@@ -290,47 +290,49 @@ curl -s localhost:8080/api/guardrails/recommendations`}</Code>
         <Link href={cli("policy-proposals-from-labels")}>
           <code>agentfox policy proposals from-labels</code>
         </Link>{" "}
-        files a rule cut-off proposal for every live rule that covers the labelled entity
-        types. It applies nothing (it also runs daily as a scheduled job).
+        files a rule cut-off proposal for each live rule that covers the labelled entity
+        types and fired on the labelled decisions. It applies nothing (it also runs daily as
+        a scheduled job).
       </p>
+      <ul>
+        <li>
+          <strong>Scoped to where the labels came from.</strong> Labels from research-bot
+          alone propose a change for research-bot alone (<code>scope agent:research-bot</code>
+          ): applied, the rule is split so research-bot gets the new cut-off and every other
+          agent keeps the old one. A proposal is org-wide only when the labels cover every
+          agent the rule governs, or name no agent.
+        </li>
+        <li>
+          <strong>Proven when filed.</strong> Each proposal carries a replay proof: the
+          labelled detections replayed against the proposed cut-off, plus how many recorded,
+          unlabelled detections would stop firing. When every false positive stops firing and
+          every true positive still fires, the proposal is <code>proven</code> and can be
+          approved. A cut-off that would lose a true positive stays <code>proposed</code>{" "}
+          and cannot be.
+        </li>
+        <li>
+          <strong>Withdrawn when the labels move.</strong> An open proposal the current
+          labels no longer support is superseded on the next run.
+        </li>
+      </ul>
       <Code>{`agentfox policy proposals from-labels
 agentfox policy proposals list --kind policy.rule_min_score`}</Code>
-      <Output>{`filed 6, refreshed 0, superseded 0
-id                      status    kind                   direction  autonomy  scope  title
-chp_01m469z80ex0fb2qg4  proposed  policy.rule_min_score  loosens    L1        org:*  Raise tool-containment/injection.in_tool_arguments min_score
-chp_01m469z80c47yt51qx  proposed  policy.rule_min_score  loosens    L1        org:*  Raise eu-ai-act-high-risk/eu.art15.injection_resistance min_
-chp_01m469z809agvma0ke  proposed  policy.rule_min_score  loosens    L1        org:*  Raise baseline/injection.adopted_in_reasoning min_score 0.4
-chp_01m469z807y7ek9bdp  proposed  policy.rule_min_score  loosens    L1        org:*  Raise baseline/injection.memory_and_agent_message min_score
-chp_01m469z805e1a6ff0c  proposed  policy.rule_min_score  loosens    L1        org:*  Raise baseline/injection.indirect min_score 0.6 → 0.81
-chp_01m469z8006hkndwe5  proposed  policy.rule_min_score  loosens    L1        org:*  Raise baseline/injection.direct min_score 0.7 → 0.81`}</Output>
+      <Output>{`filed 1, refreshed 0, superseded 0
+id                      status  kind                   direction  autonomy  scope               title
+chp_…                   proven  policy.rule_min_score  loosens    L1        agent:research-bot  Raise baseline/injection.direct min_score 0.7 → 0.81 for research-bot`}</Output>
+      <p>Read it with <code>show --json</code>; the proof is what you are approving:</p>
+      <Output>{`"diff":  {"policy": "baseline", "rule_id": "injection.direct", "detector_key": "injection.heuristic",
+          "from": 0.7, "to": 0.81, "stage": "canary", "agents": ["research-bot"]},
+"proof": {"method": "replay of the labelled detections against the proposed cut-off",
+          "false_positives": 5, "false_positives_no_longer_firing": 5,
+          "true_positives": 3, "true_positives_still_firing": 3, "true_positives_lost": 0,
+          "recorded_detections_that_would_stop_firing": 6, "passed": true, …}`}</Output>
       <p>
-        Eight labels on research-bot&apos;s <em>input</em> produced six org-wide proposals,
-        including ones that would raise the bar for injection in tool results, retrieved
-        documents and tool arguments for every agent. Only the last one matches what was
-        labelled. Read each with <code>show</code>:
+        <code>recorded_detections_that_would_stop_firing</code> counts recorded detections
+        in scope, labelled or not, between the old and new cut-off. Six against five labelled
+        false positives means one detection nobody labelled would also stop firing; find it
+        with a simulation (below) before approving.
       </p>
-      <Code>{`agentfox policy proposals show chp_01m469z8006hkndwe5`}</Code>
-      <Output>{`╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ Raise baseline/injection.direct min_score 0.7 → 0.81                                                               │
-│ status     proposed                                                                                                │
-│ kind       policy.rule_min_score (loosens, L1)                                                                     │
-│ scope      org:*                                                                                                   │
-│ target     policy:baseline                                                                                         │
-│ proposed   agentfox-improver                                                                                       │
-│ decided    -                                                                                                       │
-│ rationale  all 5 reported false positives score at or below 0.80, and every labelled true positive scores above it │
-╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-{
-  "diff": {
-    "policy": "baseline",
-    "rule_id": "injection.direct",
-    "detector_key": "injection.heuristic",
-    "from": 0.7,
-    "to": 0.81,
-    "stage": "canary"
-  },
-  "proof": {}
-}`}</Output>
       <p>
         The lifecycle is proposed → proven → approved → applied (or canary, when the diff
         says <code>stage: canary</code>) → verified, or rejected / rolled back, with{" "}
@@ -349,24 +351,10 @@ chp_01m469z8006hkndwe5  proposed  policy.rule_min_score  loosens    L1        or
         <Link href={cli("policy-proposals-verify")}>
           <code>verify</code>
         </Link>
-        . Loosening at org scope needs two different approvers.
+        . Loosening at org scope needs two different approvers; an agent-scoped one needs
+        one.
       </p>
-      <Code>{`agentfox policy proposals approve chp_01m469z8006hkndwe5 --actor marcus@example.com --note "five formatting requests labelled"`}</Code>
-      <Output>{`refused: cannot approve proposal chp_01m469z8006hkndwe5: it has not been proven yet`}</Output>
-      <Callout kind="warning" title="Threshold proposals cannot be approved yet">
-        A proposal can only be approved once a proof is attached, and nothing attaches one
-        to a <code>from-labels</code> proposal, so it stays <code>proposed</code>. Treat it
-        as a pointer: make the change yourself, simulate it and canary it as below, and
-        close the proposal with{" "}
-        <Link href={cli("policy-proposals-reject")}>
-          <code>agentfox policy proposals reject</code>
-        </Link>
-        . (Proposals from{" "}
-        <Link href="/docs/guides/contain-tool-calls">
-          <code>from-traffic</code>
-        </Link>{" "}
-        do carry a proof and go through the full lifecycle.)
-      </Callout>
+      <Code>{`agentfox policy proposals approve chp_… --actor marcus@example.com --note "five formatting requests labelled"`}</Code>
 
       <h2 id="simulate">Simulate the change</h2>
       <p>
@@ -426,11 +414,11 @@ curl -s localhost:8080/api/guardrails/recommendations`}</Code>
     ]
 }`}</Output>
       <p>
-        No cut-off separates these. Running <code>from-labels</code> again files nothing,
-        but it does not withdraw the six proposals already open, so reject them:
+        No cut-off separates these. Running <code>from-labels</code> again files nothing and
+        supersedes the open proposal, because the labels no longer support it:
       </p>
-      <Code>{`agentfox policy proposals reject chp_01m469z8006hkndwe5 --actor marcus@example.com --note "DAN scores 0.80 too; no clean cut-off"`}</Code>
-      <Output>{`chp_01m469z8006hkndwe5 → rejected`}</Output>
+      <Code>{`agentfox policy proposals from-labels`}</Code>
+      <Output>{`filed 0, refreshed 0, superseded 1`}</Output>
 
       <h2 id="suppress">Suppress narrowly</h2>
       <p>

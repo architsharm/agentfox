@@ -476,3 +476,20 @@ def test_a_single_polled_approval_expires_without_the_bulk_list_route(client, se
 
     body = client.get(f"/api/approvals/{request.id}", headers=headers).json()
     assert body["status"] == "expired"
+
+
+def test_the_rego_header_names_the_stored_version_not_the_yaml_one(client):
+    """#51b: the header cited the YAML's `version`, not the version in the store."""
+    from agentfox.core.db import session_scope
+    from tests.conftest import as_user
+
+    with session_scope() as s:
+        save_policy(s, PolicyDocument.from_yaml(POLICY), author="a")
+        edited = PolicyDocument.from_yaml(POLICY)
+        edited.rules[0].reason = "edited"
+        _policy, v2 = save_policy(s, edited, author="a")
+        stored = v2.version
+    assert stored > 1
+    body = client.get("/api/policies/test/rego", headers=as_user("admin@example.com")).json()
+    assert body["version"] == stored
+    assert f"policy 'test' v{stored}." in body["rego"].splitlines()[0]

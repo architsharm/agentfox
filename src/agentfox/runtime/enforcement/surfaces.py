@@ -47,12 +47,20 @@ class _SurfacesMixin:
         the live path passes one, which is what puts a governed request on the Traces
         page and into the control telemetry.
         """
-        agent = self.session.scalar(select(Agent).where(Agent.slug == agent_slug))
-        identity = (
-            self.session.scalar(select(Identity).where(Identity.agent_id == agent.id))
-            if agent
-            else None
-        )
+        if persist:
+            # The live path — SDK `check()`, `/v1/guard/*`: an unknown slug is shadow
+            # traffic and is registered as such, the same as every other guard. Looked
+            # up without registering, a finding about it was filed under `agent:None`.
+            agent, identity, _shadow = self.resolve(agent_slug)
+        else:
+            # A dry run (red team, MCP preview) is not something an agent did and must
+            # not create one.
+            agent = self.session.scalar(select(Agent).where(Agent.slug == agent_slug))
+            identity = (
+                self.session.scalar(select(Identity).where(Identity.agent_id == agent.id))
+                if agent
+                else None
+            )
         tracker = TaintTracker()
         tracker.mark("$.content", taint_source, content)
         result = self.evaluate(

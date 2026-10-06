@@ -88,7 +88,7 @@ const EU: PackRule[] = [
   { id: "eu.art15.no_degraded_enforcement", effect: "block", severity: "high", what: "A high-risk agent served while detectors were degraded." },
   { id: "eu.art15.injection_resistance", effect: "block", severity: "critical", what: "Injection against a high-risk agent, at 0.5." },
   { id: "eu.art10.special_category_data", effect: "block", severity: "critical", what: "Personal data in a high-risk agent's prompt." },
-  { id: "eu.art50.impersonation", effect: "escalate", severity: "medium", what: "Review of output for the disclosure duty. It keys off the harassment detector, a weak proxy, which is why it escalates." },
+  { id: "eu.art50.impersonation", effect: "escalate", severity: "medium", what: "Review of an answer that claims to be a person (\"I'm a real person\", \"I am not a bot\"): the disclosure.claims_human risk. Lexical, so it escalates rather than blocks." },
   { id: "eu.art5.prohibited_tier", effect: "block", severity: "critical", what: "An agent classified prohibited is refused on every call." },
 ];
 

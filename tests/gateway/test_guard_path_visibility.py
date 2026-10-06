@@ -163,3 +163,25 @@ def test_the_red_team_runner_still_leaves_no_trace(seeded, enforcer):
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     enforcer.check_content(agent_slug=agent.slug, content=INDIRECT_INJECTION, surface="input")
     assert seeded.scalar(select(func.count()).select_from(Trace)) == 0
+
+
+def test_a_redact_verdict_returns_the_rewritten_text(client):
+    """A guard endpoint that says "redact" and hands back nothing leaves every caller
+    to mask the content themselves from spans (#17). The rewrite is in `content`."""
+    client.post(
+        "/api/policies/baseline/mode",
+        json={"mode": "enforce"},
+        headers=as_user("admin@example.com"),
+    )
+    text = "Reach Jane at jane.doe@example.com today."
+    body = _guard(client, text, surface="output").json()
+    assert body["verdict"] == "redact", body
+    assert body["content"] is not None
+    assert "jane.doe@example.com" not in body["content"]
+    assert body["content"] == "Reach Jane at [REDACTED:PII.EMAIL] today."
+
+
+def test_an_allowed_request_has_no_rewritten_content(client):
+    body = _guard(client, "Where is my order #44812?").json()
+    assert body["verdict"] == "allow"
+    assert body["content"] is None

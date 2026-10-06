@@ -35,6 +35,10 @@ kind                    interval   enabled   why
 ``grants.propose``      1 day      yes       Learned permissions: files ``tool.declare`` and
                                              ``capability.grant`` proposals from observed
                                              tool calls. Files only; a person approves.
+``escalation.scan``     1 hour     yes       Missed-escalation pass over the last 24 hours:
+                                             findings for every agent, retroactive hand-offs
+                                             where the escalation policy enforces, overdue
+                                             hand-offs marked breached.
 ``redteam.posture``     7 days     no        Adaptive red-team campaign per active agent. Off
                                              by default: it is the most expensive job and
                                              files findings, so a tenant opts in.
@@ -109,6 +113,13 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         True,
         {"days": 30},
         "file tool declarations and grants learned from observed tool calls; a person decides each",
+    ),
+    DefaultSchedule(
+        "escalation.scan",
+        HOUR,
+        True,
+        {"since_hours": 24},
+        "missed escalations and SLA breaches; hand-offs only where the policy enforces",
     ),
     DefaultSchedule(
         "redteam.posture",

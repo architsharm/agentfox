@@ -109,7 +109,7 @@ anywhere.
 | `declare boundary AGENT [--systems CSV] [--coverage-months N] [--answerable CSV] [--out-of-scope CSV] [--mode observe\|enforce]` | W (**BLK** with `--mode enforce`) | What the agent may answer from. |
 | `declare source KEY [--tier/-t unverified] [--owner] [--domain] [--sla-hours N] [--updated ISO\|now] [--title]` | W | Tiers: `system_of_record`, `approved`, `unverified`, `external`. |
 | `declare import-sources FILE.json` | W | Bulk `declare source`. |
-| `declare escalation [--agent] [--turn-depth N] [--repeated-failure N] [--sla-minutes 60] [--owner support] [--mode observe]` | W | When a conversation must reach a human. |
+| `declare escalation [--agent] [--turn-depth N] [--repeated-failure N] [--sla-minutes 60] [--owner support] [--mode observe]` | W | When a conversation must reach a human. `--mode enforce` hands a conversation off on the turn it qualifies; observe records missed ones as findings (hourly `escalation.scan` job). |
 | `declare principal SUBJECT [--groups/-g CSV] [--clearances CSV] [--residency] [--display]` | W | The human an agent acts for. |
 | `declare list [tools\|sources] [--json]` | R\* | Declared tools (impact, triggers) and sources (tier, freshness). `--json` needs a kind. |
 
@@ -210,7 +210,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin checkpoint` | W | Signed checkpoint over the audit chain head. |
 | `admin seed [--show-keys]` | W | Demo agents, policies, controls, eval suite. Agent keys are masked unless `--show-keys`; they're only created on first seed. |
 | `admin version` | R | Versions of every component that participates in a decision. |
-| `admin hooks install --agent SLUG [--harness claude] [--path .] [--write]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. |
+| `admin hooks install --agent SLUG [--harness claude] [--path .] [--write] [--env ENV] [--grant/--no-grant]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. `--write` also registers the agent (development unless `--env`), declares the harness's built-in tools and grants them (`--no-grant` to skip). |
 | `admin hooks status` | R | Is the daemon up, and does a deny on this harness actually stop anything? |
 | `admin hooks daemon [--socket PATH]` · `admin hooks run --harness H [--agent]` | FG · stdio | The warm process and the per-call hook. Installed configs call `agentfox hooks run`, which keeps working. |
 | `admin mcp tools` | R | Lists the MCP server's tools with one-line descriptions. |

@@ -327,3 +327,80 @@ def test_shipped_verifier_reads_the_key_under_either_prefix(seeded, tmp_path, va
     bad = run("wrong-key")
     assert bad.returncode == 1
     assert "checkpoint_signature" in bad.stdout
+
+
+def test_a_scoped_package_leaves_other_agents_out_of_every_file(seeded, enforcer, tmp_path):
+    """#66: agent scope filtered agents and traces only; findings, approvals, eval runs
+    and audit entries for every other agent shipped in a package scoped to one."""
+    from agentfox.core.models import Agent, ApprovalRequest, EvalRun
+    from agentfox.prove.findings import raise_finding
+
+    agents = {a.slug: a for a in seeded.query(Agent).all()}
+    other = next(slug for slug in agents if slug != "support-triage")
+    for slug in ("support-triage", other):
+        enforcer.run_completion(
+            agent_slug=slug, messages=[{"role": "user", "content": "hello"}], model="echo-1"
+        )
+        raise_finding(
+            seeded,
+            type=f"test_{slug}",
+            severity="low",
+            title=f"finding about {slug}",
+            subject_type="agent",
+            subject_id=agents[slug].id,
+        )
+        seeded.add(ApprovalRequest(agent_id=agents[slug].id, tool_key=f"{slug}.tool"))
+        seeded.add(EvalRun(suite_id="s", target_json={"agent": slug}))
+        chain.append(
+            seeded,
+            "test.agent_event",
+            subject_type="agent",
+            subject_id=agents[slug].id,
+            payload={"note": f"about {slug}"},
+        )
+    seeded.flush()
+
+    package = evidence.build(
+        seeded,
+        agents=["support-triage"],
+        period_from=dt.datetime.now(dt.UTC) - dt.timedelta(hours=1),
+    )
+    extract = tmp_path / "pkg"
+    with zipfile.ZipFile(package.path) as zf:
+        zf.extractall(extract)
+
+    def load(name):
+        return json.loads((extract / name).read_text())
+
+    triage_id = agents["support-triage"].id
+    assert {f["title"] for f in load("findings.json") if f["type"].startswith("test_")} == {
+        "finding about support-triage"
+    }
+    assert {a["tool"] for a in load("approvals.json")} == {"support-triage.tool"}
+    assert {r["target"]["agent"] for r in load("eval_runs.json")} == {"support-triage"}
+    decisions = load("decisions.json")
+    assert decisions
+    traces = {t["trace"]["id"] if "trace" in t else t.get("id") for t in load("traces.json")}
+    assert all(d["trace_id"] in traces for d in decisions)
+
+    entries = load("audit_entries.json")
+    raw = (extract / "audit_entries.json").read_text()
+    assert f"about {other}" not in raw
+    assert "about support-triage" in raw
+    withheld = [e for e in entries if e.get("payload_withheld")]
+    assert withheld and all(e["payload"] is None for e in withheld)
+    assert any(e["subject_id"] == triage_id for e in entries)
+
+    # The chain still verifies with other agents' payloads withheld.
+    ok = subprocess.run(
+        [sys.executable, "verify_chain.py"], cwd=extract, capture_output=True, text=True
+    )
+    assert ok.returncode == 0, ok.stdout + ok.stderr
+
+    # And the withheld flag cannot be used to hide an edited payload.
+    withheld[0]["payload"] = {"forged": True}
+    (extract / "audit_entries.json").write_text(json.dumps(entries))
+    bad = subprocess.run(
+        [sys.executable, "verify_chain.py"], cwd=extract, capture_output=True, text=True
+    )
+    assert bad.returncode == 1

@@ -423,3 +423,103 @@ def test_compliance_validate_reports_unparseable_yaml(compliance_dir):
     result = runner.invoke(app, ["compliance", "validate"])
     assert result.exit_code == 1
     assert "does not parse" in flat(result.output)
+
+
+# ---------------------------------------------------------------------------
+# declare boundary --mode enforce keeps what was declared before (#7)
+# ---------------------------------------------------------------------------
+
+
+def test_declare_boundary_mode_only_keeps_the_rest_of_the_boundary():
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+    from agentfox.grounding.answerability import get_boundary
+
+    _seed()
+    first = runner.invoke(
+        app,
+        [
+            "declare",
+            "boundary",
+            "support-triage",
+            "--systems",
+            "CRM,order-db",
+            "--coverage-months",
+            "24",
+            "--out-of-scope",
+            "payroll",
+            "--answerable",
+            "fact,procedure",
+        ],
+    )
+    assert first.exit_code == 0, first.output
+    second = runner.invoke(app, ["declare", "boundary", "support-triage", "--mode", "enforce"])
+    assert second.exit_code == 0, second.output
+
+    with session_scope() as session:
+        agent = session.query(Agent).filter_by(slug="support-triage").one()
+        boundary = get_boundary(session, agent.id)
+        assert boundary.mode == "enforce"
+        assert boundary.systems_of_record == ["CRM", "order-db"]
+        assert boundary.coverage_months == 24
+        assert boundary.out_of_scope_topics == ["payroll"]
+        assert boundary.answerable_types == ["fact", "procedure"]
+
+
+# ---------------------------------------------------------------------------
+# report signoff writes the same audit entry as the web app (#39)
+# ---------------------------------------------------------------------------
+
+
+def test_report_signoff_appends_to_the_audit_chain():
+    from sqlalchemy import select
+
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import AuditEntry, FrameworkMapping
+
+    _seed()
+    with session_scope() as session:
+        mapping = session.scalars(select(FrameworkMapping)).first()
+        control, framework = mapping.control_key, mapping.framework
+
+    result = runner.invoke(
+        app,
+        ["report", "signoff", control, "--framework", framework, "--reviewer", "dpo@acme.com"],
+    )
+    assert result.exit_code == 0, result.output
+    with session_scope() as session:
+        entries = list(
+            session.scalars(
+                select(AuditEntry).where(AuditEntry.action == "compliance.mapping_reviewed")
+            )
+        )
+    assert len(entries) == 1
+    assert entries[0].subject_id == control
+    assert entries[0].payload_json["reviewer"] == "dpo@acme.com"
+    assert entries[0].payload_json["framework"] == framework
+
+
+# ---------------------------------------------------------------------------
+# init --demo / admin seed say what they load (#75)
+# ---------------------------------------------------------------------------
+
+
+def test_init_demo_and_seed_do_not_claim_traffic_they_did_not_record(tmp_path):
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Trace
+
+    result = runner.invoke(app, ["init", "--demo", "--path", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    with session_scope() as session:
+        assert session.query(Trace).count() == 0
+    assert "agentfox demo" in flat(result.output)
+
+    for args in (["init", "--help"], ["admin", "seed", "--help"]):
+        help_text = flat(runner.invoke(app, args).output).lower()
+        assert "sample traffic." not in help_text
+        assert "traffic already recorded" not in help_text
+
+    seeded = runner.invoke(app, ["admin", "seed"])
+    assert seeded.exit_code == 0, seeded.output
+    assert "seeded traffic" not in seeded.output
+    assert "agentfox demo" in flat(seeded.output)

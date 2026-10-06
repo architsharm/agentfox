@@ -606,4 +606,8 @@ def get_rego(
         .order_by(PolicyVersion.version.desc())
     ).first()
     doc = PolicyDocument.model_validate(latest.compiled_json)
-    return {"key": key, "version": latest.version, "rego": compile_to_rego(doc)}
+    return {
+        "key": key,
+        "version": latest.version,
+        "rego": compile_to_rego(doc, version=latest.version),
+    }

@@ -566,6 +566,7 @@ retry-after: 1
   -d '{"agent":"support-triage","content":"Reach Jane at jane.doe@example.com today."}'`}</Code>
       <Output>{`{
   "verdict": "redact",
+  "content": "Reach Jane at [REDACTED:PII.EMAIL] today.",
   "applied_verdict": "redact",
   "effective_verdict": "redact",
   "mode": "enforce",
@@ -578,12 +579,12 @@ retry-after: 1
   "explanation": {"matches": [{"detector": "pii.native", "entity_type": "PII.EMAIL", "span": [14, 34], "score": 0.9, …}], …},
   …
 }`}</Output>
-      <Callout kind="warning" title="The guard endpoints do not return rewritten text">
-        A <code>redact</code> or <code>tokenize</code> verdict from{" "}
-        <code>/v1/guard/input</code> or <code>/output</code> tells you what to do; it does not
-        hand back the redacted string. Use the character ranges in{" "}
-        <code>explanation.matches[].span</code> to mask the content yourself, or use the proxy,
-        which does rewrite it (<code>Reply to [REDACTED:PII.EMAIL] about ticket 4411.</code>).
+      <Callout kind="note" title="Use the rewritten text in content">
+        When the applied verdict is <code>redact</code>, <code>mask</code> or{" "}
+        <code>tokenize</code>, <code>content</code> holds the rewritten string; send that
+        on instead of the original. On every other verdict <code>content</code> is{" "}
+        <code>null</code>. In observe mode nothing is rewritten, so <code>content</code> stays{" "}
+        <code>null</code> even when <code>effective_verdict</code> is <code>redact</code>.
       </Callout>
       <p>
         Body fields: <code>agent</code>, <code>content</code>, and optionally{" "}

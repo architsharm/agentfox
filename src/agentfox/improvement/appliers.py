@@ -284,6 +284,71 @@ def _rule(doc, rule_id: str):
     return rule
 
 
+#: How a scoped change records which agents a rule is limited to, in the rule's
+#: ``when.expr``. The engine evaluates it; `rule_agent_restriction` reads it back.
+_AGENT_IN = "agent in "
+_AGENT_NOT_IN = "agent not in "
+
+
+def _agents_literal(agents: list[str]) -> str:
+    return "(" + ", ".join(repr(a) for a in sorted(agents)) + ",)"
+
+
+def _parse_agents(text: str) -> set[str]:
+    import ast
+
+    try:
+        value = ast.literal_eval(text.strip())
+    except (ValueError, SyntaxError):
+        return set()
+    return {str(v) for v in value} if isinstance(value, tuple | list | set) else set()
+
+
+def rule_agent_restriction(rule) -> tuple[set[str] | None, set[str]]:
+    """(agents the rule is limited to or None, agents it excludes), as written by a
+    scoped ``policy.rule_min_score`` change into the rule's ``expr``."""
+    import re
+
+    allow: set[str] | None = None
+    deny: set[str] = set()
+    for negated, literal in re.findall(r"agent (not )?in (\([^()]*\))", rule.when.expr or ""):
+        if negated:
+            deny |= _parse_agents(literal)
+        else:
+            allow = (allow or set()) | _parse_agents(literal)
+    return allow, deny
+
+
+def _and_expr(existing: str | None, clause: str) -> str:
+    return f"({existing}) and {clause}" if existing else clause
+
+
+def split_rule_for_agents(doc, rule_id: str, agents: list[str], target: float):
+    """Scope a cut-off change to some agents without touching the others.
+
+    The rule keeps its cut-off for everyone else (``agent not in (...)`` is added to
+    its ``expr``), and a copy limited to those agents carries the new one. Rules match
+    on AND, so the two together fire exactly where the original did, except for the
+    named agents' detections between the old and new cut-off. Returns the copy.
+    """
+    rule = _rule(doc, rule_id)
+    clone = rule.model_copy(deep=True)
+    clone.id = f"{rule.id}.for.{'.'.join(sorted(agents))}"
+    if any(r.id == clone.id for r in doc.rules):
+        raise ApplierError(
+            f"policy '{doc.key}' already has '{clone.id}'; retune that rule directly"
+        )
+    clone.when.expr = _and_expr(rule.when.expr, _AGENT_IN + _agents_literal(agents))
+    clone.when.detection.min_score = target
+    clone.description = (
+        f"{rule.description or rule.id} — cut-off raised for {', '.join(sorted(agents))} "
+        "from their labelled false positives"
+    ).strip()
+    rule.when.expr = _and_expr(rule.when.expr, _AGENT_NOT_IN + _agents_literal(agents))
+    doc.rules.insert(doc.rules.index(rule) + 1, clone)
+    return clone
+
+
 def min_score_direction(effect: str, current: float, target: float) -> str:
     """Raising ``min_score`` makes a rule fire on fewer detections.
 
@@ -327,7 +392,12 @@ def _policy_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> 
     if math.isclose(current, target):
         raise ApplierError(f"rule '{rule_id}' already has min_score {target}; nothing to change")
 
-    rule.when.detection.min_score = target
+    scoped = [str(a) for a in (diff.get("agents") or [])]
+    if scoped:
+        # Only the agents the labels came from get the new cut-off.
+        split_rule_for_agents(doc, rule_id, scoped, target)
+    else:
+        rule.when.detection.min_score = target
     doc.scope = binding.scope_json or doc.scope
     _policy_row, new_version = save_policy(
         session,
@@ -348,6 +418,7 @@ def _policy_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> 
         "prior_version": prior.version,
         "new_version_id": new_version.id,
         "new_version": new_version.version,
+        "agents": scoped or ["*"],
         "staged": None,
     }
     if diff.get("stage") == "canary":

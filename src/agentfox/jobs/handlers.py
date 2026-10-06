@@ -21,6 +21,9 @@ kind                   what it does
                        agent with enough online samples. This is where drift
                        windows and drift findings are written now that
                        ``GET /api/eval/drift`` is read-only.
+``escalation.scan``    The missed-escalation second pass (``since_hours``): findings
+                       for every agent, retroactive hand-offs where the escalation
+                       policy's mode is ``enforce``, and SLA breaches marked.
 ``redteam.posture``    Runs an adaptive red-team campaign against every active agent
                        (``budget``, ``seed``). Expensive and finding-producing, so its
                        default schedule is created disabled.
@@ -274,7 +277,20 @@ def propose_from_traffic(session: Session, payload: dict[str, Any]) -> dict[str,
     ).to_json()
 
 
+# ---------------------------------------------------------------------------
+# escalation.scan
+# ---------------------------------------------------------------------------
+
+
+def scan_escalations(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Missed escalations, false resolutions and SLA breaches, on a schedule."""
+    from agentfox.containment.escalation import scheduled_scan
+
+    return scheduled_scan(session, since_hours=int(payload.get("since_hours", 24)))
+
+
 HANDLERS = {
+    "escalation.scan": scan_escalations,
     "tuning.propose": propose_threshold_changes,
     "grants.propose": propose_from_traffic,
     "eval.run": run_eval,

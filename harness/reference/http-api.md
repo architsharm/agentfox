@@ -36,7 +36,7 @@ auditor). Reads need any operator.
 | `POST /v1/guard/memory_write` | Govern a write to agent memory. |
 | `POST /v1/guard/agent_message` | Govern an inter-agent message (signature, nonce, freshness). |
 | `POST /v1/mcp/call` | Govern a call to an MCP server tool. Body `{server, tool, arguments, provenance, result?}`. |
-| `POST /v1/traces` | OTLP/JSON trace ingest; reports shadow agents. |
+| `POST /v1/traces` | OTLP/HTTP trace ingest (protobuf or JSON, optionally gzip); reports shadow agents. |
 
 Proxy request headers: `X-Nometria-Agent`, `-Session`, `-Environment`, `-Intent`,
 `-Trust` (JSON map of message index → source, e.g. `{"2":"retrieved"}`), `-Provider`,

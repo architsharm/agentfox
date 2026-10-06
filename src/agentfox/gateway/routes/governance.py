@@ -47,7 +47,7 @@ from agentfox.prove.compliance import (
     latest_statuses,
     obligation_calendar,
     posture,
-    review_mapping,
+    sign_off_mapping,
 )
 from agentfox.prove.compliance import (
     register as risk_register,
@@ -540,17 +540,13 @@ def mark_reviewed(
     payload: ReviewIn, session: Session = Depends(db), user: User = Depends(require("compliance"))
 ) -> dict[str, Any]:
     """Step 3 of the mapping review gate (Appendix B §B.6)."""
-    count = review_mapping(
-        session, payload.control_key, payload.framework, user.email, payload.reference
-    )
-    chain.append(
+    count = sign_off_mapping(
         session,
-        "compliance.mapping_reviewed",
-        actor_type="user",
+        payload.control_key,
+        payload.framework,
+        user.email,
+        payload.reference,
         actor_id=user.email or user.id,
-        subject_type="control",
-        subject_id=payload.control_key,
-        payload=payload.model_dump(),
     )
     return {"reviewed": count, "reviewer": user.email}
 

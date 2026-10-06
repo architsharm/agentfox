@@ -139,7 +139,8 @@ def init(
     demo: bool = typer.Option(
         False,
         "--demo",
-        help="Also load the demo fixtures: three agents, an eval suite and sample traffic.",
+        help="Also load the demo fixtures: three agents and an eval suite. No traffic is "
+        "recorded; run `agentfox demo` afterwards for sample traces and findings.",
     ),
 ) -> None:
     """Set everything up. Idempotent, offline, and safe to run twice.
@@ -222,6 +223,10 @@ def init(
         with session_scope() as session:
             seed(session)
         console.print("  [green]✓[/] demo fixtures loaded")
+        console.print(
+            "    [dim]agents, policies and an eval suite; no traffic yet. "
+            "`agentfox demo` sends sample requests through them.[/]"
+        )
 
     _print_next_steps(
         [

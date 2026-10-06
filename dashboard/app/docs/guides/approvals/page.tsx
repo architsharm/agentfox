@@ -302,13 +302,24 @@ decision: denied`}</Output>
           <Output>{`✓ escalation policy for support-triage
   owner support · SLA 30 min · observe mode
   conditions: confidence_below, explicit_request, regulated_topics,
-repeated_abstention, repeated_failure, sentiment_below, turn_depth`}</Output>
+repeated_abstention, repeated_failure, sentiment_below, turn_depth
+  observe: nothing is handed off for you; the hourly scan records missed
+escalations as findings. --mode enforce queues hand-offs.`}</Output>
           <p>
             Omit <code>--agent</code> to set the default for every agent. Conditions you do
             not name keep their defaults: an explicit request always qualifies, sentiment at
             or below -0.6, regulated topics (legal, medical, financial advice, complaint,
             discrimination), confidence below 0.35, two abstentions, eight turns.{" "}
             <code>--sla-minutes</code> is how long a hand-off may wait before it is breached.
+          </p>
+          <p>
+            <code>--mode</code> decides what AgentFox does about it. In <code>observe</code>{" "}
+            (the default) nothing is queued for you: the scheduled <code>escalation.scan</code>{" "}
+            job (hourly, over the last 24 hours) raises a <code>missed_escalation</code>{" "}
+            finding for each conversation that qualified. In <code>enforce</code>, a
+            conversation is handed off on the turn that first qualifies, and the same job
+            queues a retroactive hand-off for any it finds. Scheduled jobs run when the cron
+            calls <code>/api/internal/jobs/run</code>.
           </p>
         </Step>
 
@@ -334,7 +345,8 @@ done`}</Code>
   conv-1001 3 turns · qualified at turn 2 · explicit_request, sentiment
 
   Read-only. Re-run with --apply to raise findings and retroactive hand-offs so
-the people still waiting are actually queued.`}</Output>
+the people still waiting are actually queued. The scheduled escalation.scan job
+does this hourly where the policy's mode is enforce.`}</Output>
           <p>
             Turns are counted from 0, so &quot;turn 2&quot; is the third message. The
             report is read-only. <code>--apply</code> raises a{" "}
@@ -377,10 +389,9 @@ agentfox report escalations`}</Code>
   -H "Authorization: Bearer $AGENTFOX_API_TOKEN"`}</Code>
           <p>
             A pending hand-off past its <code>due_at</code> is marked breached and raises a{" "}
-            <code>handoff_sla_breach</code> finding when{" "}
-            <code>POST /api/escalation/scan</code> runs. Nothing runs that scan on a
-            schedule and <code>report escalations --apply</code> does not check SLAs, so call
-            it from your own cron if you rely on the SLA.
+            <code>handoff_sla_breach</code> finding whenever the scan acts: the hourly{" "}
+            <code>escalation.scan</code> job, <code>report escalations --apply</code>, or{" "}
+            <code>POST /api/escalation/scan</code>.
           </p>
           <InTheApp path="/app/approvals?tab=escalation">Approvals → Escalation: missed escalations and the hand-off queue</InTheApp>
         </Step>
@@ -402,9 +413,10 @@ agentfox report escalations`}</Code>
       <Callout kind="note">
         Detection is lexical (phrases like &quot;speak to a manager&quot;,
         &quot;ridiculous&quot;, &quot;lawyer&quot;), not a model, and it runs after the
-        conversation rather than during it. Nothing here stops the agent mid-conversation.
-        The <code>--mode</code> option of <code>declare escalation</code> is stored but does
-        not change behaviour today.
+        conversation rather than during it. Nothing here stops the agent mid-conversation:
+        in <code>enforce</code> mode the hand-off is queued, and{" "}
+        <code>POST /api/escalation/turns</code> returns its <code>handoff_id</code>, but your
+        agent has to stop answering and tell the user.
       </Callout>
 
       <h2>Quarantine, kill and resume</h2>
