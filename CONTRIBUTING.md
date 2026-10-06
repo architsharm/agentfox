@@ -11,7 +11,7 @@ You need [uv](https://docs.astral.sh/uv/), Node 20 for the dashboard, and option
 ```bash
 git clone https://github.com/architsharm/agentfox.git && cd agentfox
 just setup        # uv sync with exactly the extras CI uses
-just test-fast    # the unit tests; `just test` for everything
+just test-fast tests/policy   # the tests for what you changed; `just test` for everything
 ```
 
 Do not install with `--all-extras`: it pulls transitive versions of anthropic, langchain and
@@ -58,7 +58,9 @@ and its source is `dashboard/app/docs/`.
 ## Tests
 
 `tests/` mirrors `src/agentfox/`: a change to `src/agentfox/policy/engine.py` is tested in
-`tests/policy/`. Two directories are different:
+`tests/policy/`, so `just test-fast tests/policy` is the inner loop. The whole suite is about
+2,800 tests and takes most of 20 minutes on a laptop, because every test builds its own
+database; run it (`just test`) before you push. Two directories are different:
 
 - `tests/e2e/` runs the request path end to end across packages: the gateway API (through
   the `client` fixture, FastAPI's test client), RBAC, the SDK and security regressions.
