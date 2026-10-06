@@ -80,9 +80,9 @@ def _spans(service: str):
         return [
             (span.name, span.status, span.duration_ms, dict(span.attributes_json))
             for span in s.scalars(
-                select(Span).join(Trace, Span.trace_id == Trace.id).where(
-                    Trace.agent_slug == service
-                )
+                select(Span)
+                .join(Trace, Span.trace_id == Trace.id)
+                .where(Trace.agent_slug == service)
             )
         ]
 

@@ -101,7 +101,7 @@ def _decompress(body: bytes, content_encoding: str | None) -> bytes:
             415, f"unsupported Content-Encoding '{encoding}'; send gzip, deflate or none"
         )
     # wbits 47 accepts gzip and zlib headers alike; raw deflate needs -15.
-    for wbits in ((47,) if encoding == "gzip" else (47, -15)):
+    for wbits in (47,) if encoding == "gzip" else (47, -15):
         inflater = zlib.decompressobj(wbits)
         try:
             out = inflater.decompress(body, MAX_OTLP_BODY_BYTES + 1)
