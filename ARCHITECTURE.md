@@ -165,8 +165,9 @@ job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlint
   L5  apps/          cli/  gateway/  mcp_server.py  report/  jobs.py  showcase.py
         │
   L4  frameworks/    sdk/  autoguard/  langgraph.py  fastapi.py  mcp.py      (ingress)
+      harnesses/     base.py  claude_code/  (coding agents we govern)        (ingress)
+      hooks/         protocol  client  daemon  run  (harness-neutral transport)
       exporters/     correlation.py  otel.py  siem.py  prometheus.py         (egress)
-      hooks/         coding-agent hooks (Claude Code)
       fixtures/      the demo world
         │
   L3  runtime/       enforcement/ (the Enforcer), availability, reliability, agent loop
@@ -196,7 +197,7 @@ job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlint
 | `capabilities/grounding/` | What an answer may say: answerability and abstention, provenance and source authority, entitlement filtering, commitments, numeric/temporal integrity, context integrity, tool contracts, sycophancy. | `answerability.py`, `entitlement.py` |
 | `capabilities/containment/` | What an agent may do beyond the grant: control-flow integrity, data-access scoping, effects that outlive a call, inter-agent message signing, escalation governance, containment findings. | `findings.py`, `control_flow.py` |
 | `capabilities/business/` | Business rules as guardrails: threshold ladders, compiling written policy into rules, merging rules from many authors, the guardrail catalogue. | `ladder.py`, `compile.py` |
-| `capabilities/discovery/` | Static scanning: repositories, OpenAPI specs, local coding-assistant sessions, skill files, exposure (the lethal trifecta), threat coverage. | `repo.py`, `exposure.py` |
+| `capabilities/discovery/` | Static scanning: repositories, OpenAPI specs, skill files, exposure (the lethal trifecta) and the MCP client config files it reads (`exposure.KNOWN_MCP_CONFIGS`), threat coverage. Each harness adapter scans its own local session transcripts into `sessions.py:SessionScanReport`. | `repo.py`, `exposure.py` |
 | `capabilities/evaluation/` | Eval runner and scorers, CI gating, drift, silent-failure sampling, red team (native probes, adaptive campaigns, Garak/PyRIT adapters), live probes of deployed agents, Ragas. | `runner.py`, `gating.py`, `redteam.py`, `live_probes.py` |
 | `capabilities/improvement/` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. | `contract.py`, `proposals.py`, `traffic.py` |
 | `capabilities/monitoring/` | Continuous monitoring of connected sources: run, diff against the last snapshot, raise and close findings, Slack alerts; GitHub push webhooks queue a rescan. | `service.py`, `snapshots.py`, `alerts.py` |
@@ -204,7 +205,8 @@ job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlint
 | `runtime/` | The request path. `enforcement/` is the `Enforcer` split into mixins (`enforcer`, `tool_calls`, `surfaces`, `completion`, `streaming`, `checks`, `limits`, `findings`, `rules`, `result`); plus availability (fail modes, admission), reliability (breaker, fallback), loop governance, and `trace_exporters.py`, the exporters it tells about each trace. | `enforcement/__init__.py` docstring, `enforcement/enforcer.py:evaluate` |
 | `frameworks/` | Ingress for application frameworks, each mapping its calls onto the `Enforcer`: `autoguard/` is `auto()`, `sdk/` the explicit SDK (`AgentFox`, `@fox.tool(impact=…)`), the LangGraph guard (`AgentFoxGuard`), FastAPI middleware, the MCP governor (`McpGovernor`). | `autoguard/__init__.py:auto`, `sdk/__init__.py`, `mcp.py` |
 | `exporters/` | Egress: LangSmith/Langfuse trace correlation (`correlation.py:TraceCorrelation`, which the runtime emits to), OTLP ingest and export, SIEM, Prometheus. | `correlation.py`, `otel.py` |
-| `hooks/` | Coding-agent hooks (Claude Code): a thin per-call client, a warm daemon on a Unix socket that calls the `Enforcer`, the harness contract, and the per-event capability table. | `daemon.py`, `client.py`, `capability.py` |
+| `harnesses/` | The coding agents AgentFox governs, one adapter each behind `base.py:HarnessAdapter`: parse a hook payload into an `AgentEvent`, render a `Decision` (allow, deny, ask, modify, context) into the exact stdout and exit code, install the hooks, find hooked agents, MCP configs and transcripts. Each adapter declares a per-event capability matrix (`EventCaps`) with its evidence; a decision the harness cannot honour is downgraded on purpose and recorded (`base.downgrade`). The registry (`get`, `known`, `all`) loads adapters from the `agentfox.harnesses` entry-point group. Claude Code is `claude_code/`, with payloads captured from the real tool in `fixtures/`. | `__init__.py`, `base.py`, `claude_code/adapter.py` |
+| `hooks/` | The harness-neutral hook transport: a thin per-call client, a warm daemon on a Unix socket that calls the `Enforcer`, and `run.py` (`agentfox hooks run`), which goes through the harness registry. | `run.py`, `daemon.py`, `client.py` |
 | `fixtures/` | The deterministic demo world (agents, tools, grants, policies, an eval suite) that `agentfox demo`, the playground and the tests seed. | `seed.py:seed` |
 | `apps/gateway/` | The FastAPI app (`agentfox.apps.gateway.app:app`): inline `/v1/*` enforcement and the `/api/*` control plane the dashboard calls; request authentication, RBAC, playground sandboxes. One router per file in `routes/`. | `app.py:create_app`, `routes/inline.py`, `deps.py` |
 | `apps/cli/` | The `agentfox` binary (Typer, `agentfox.apps.cli.main:main`). Command bodies live in `commands/` and the `*_cli.py` modules; `layout.py` decides the visible tree. | `main.py`, `layout.py`, `commands/` |
@@ -215,10 +217,10 @@ Outside the package:
 
 | Path | What it is |
 |---|---|
-| `tests/` | Mirrors the package (`tests/runtime/`, `tests/platform/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, harness, vendored wheels, install layout). |
+| `tests/` | Mirrors the package (`tests/runtime/`, `tests/platform/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, plugins, vendored wheels, install layout); `tests/harnesses/conformance.py` runs every registered harness adapter against its captured fixtures. |
 | `dashboard/` | The Next.js 15 app: the signed-in product (`app/app/`), the marketing site, and the website docs (`app/docs/`, sidebar in `lib/docs.ts`). It is a client of the gateway API with no back channel. Tests with vitest. |
 | `benchmarks/` | Every published number: one directory per area with its runner, results and README; `claims.yaml` binds quoted numbers to result files. |
-| `harness/` | AgentFox packaged for coding agents: skills, slash commands, subagents, MCP config, reference files checked against the live CLI. Contract in `harness/STRUCTURE.md`. |
+| `plugins/` | AgentFox packaged for an operator's coding agent (to *use* AgentFox, as opposed to `src/agentfox/harnesses/`, which *governs* one). `shared/` holds the runtime-neutral AGENTS.md, skills and reference files checked against the live CLI; `claude-code/` is the Claude Code plugin (manifest, slash commands, subagents, safety hook, MCP config) with committed copies of `shared/`. Contract in `plugins/STRUCTURE.md`. |
 | `docs/` | Design and contributor docs; index in [docs/README.md](docs/README.md). User docs are on the website. |
 | `scripts/` | Generators and checks: `claims.py`, `docs_reference.py`, `api_routes.py`, `coverage.py`, `rebuild_vendored_wheels.py`, `quickscan.sh`. |
 | `migrations/` | Alembic revisions (also shipped inside the wheel as `agentfox/_migrations`). |
@@ -241,6 +243,8 @@ Outside the package:
   named in `runtime/trace_exporters.py:TRACE_EXPORTERS` about each trace.
 - `apps/cli` never imports `apps/gateway`: operator tokens live in
   `platform/identity/operators.py`, which both use.
+- Nothing outside `harnesses/` and `hooks/` imports a specific harness adapter
+  (`agentfox.harnesses.claude_code`); everyone asks the registry (`harnesses.get`, `all`).
 
 Three edges are known exceptions, listed by name in `pyproject.toml` with what removes
 each: `platform/policy/hierarchy.py` reads `EU_CLASSES` from `capabilities/compliance`
@@ -300,8 +304,10 @@ Change a number by re-running the benchmark, never by editing prose.
 --write`), the route tables in `docs/architecture/api-spec.md` (`scripts/api_routes.py
 --write`), `dashboard/lib/reference/*.json` (`scripts/docs_reference.py --write`, which also
 checks every `agentfox …` command shown on a docs page), `docs/design/coverage-map.md`
-(`scripts/probe/run.py`). `harness/scripts/check_harness.py` checks the harness against the
-live CLI and that every tracked `.md` file is classified in `harness/reference/docs-map.md`.
+(`scripts/probe/run.py`). `scripts/check_plugins.py` checks the plugins against the live CLI,
+that the Claude Code plugin's copies of `plugins/shared/` match their originals (`--write`
+refreshes them), and that every tracked `.md` file is classified in
+`plugins/shared/reference/docs-map.md`.
 
 **Vendored wheels are the deploy.** `api/vendor/` and `demo/redteam-live-lang/vendor/` hold
 built wheels. A change under `src/agentfox/` must rebuild both in the same commit; the
@@ -320,7 +326,7 @@ through `detection:` conditions; no new rule kind is needed. Tests go in `tests/
 **Add a policy condition (rule kind).** Add the field to `Condition` and, if it needs new
 input, to `PolicyInput` (`platform/policy/model.py`); match it in `NativePolicyEngine._matches`
 (`platform/policy/engine.py`) and translate it in `_rego_conditions` (`platform/policy/opa.py`); populate the
-input in `Enforcer.evaluate`. Document it in `harness/reference/policy-schema.md` and the
+input in `Enforcer.evaluate`. Document it in `plugins/shared/reference/policy-schema.md` and the
 website's `dashboard/app/docs/reference/policies/page.tsx`. Tests in `tests/platform/policy/`.
 
 **Add a CLI command.** Write the command in the module for its group (`apps/cli/commands/<group>.py`
@@ -329,15 +335,15 @@ the visible tree in `apps/cli/layout.py:apply_layout`: commands are found by CLI
 re-registered under one of the thirteen visible verbs (`VISIBLE`); a working name that is not
 re-homed there is not reachable. `tests/apps/cli/test_cli_layout.py` enforces the ceiling, the
 removed names, and the two protocol endpoints kept at their old paths (`hooks run`,
-`mcp serve`). Add a row to `harness/reference/cli.md` (mark it **BLK** if it changes
-whether traffic is blocked, and add a pattern to `harness/scripts/guard_blocking_commands.py`),
+`mcp serve`). Add a row to `plugins/shared/reference/cli.md` (mark it **BLK** if it changes
+whether traffic is blocked, and add a pattern to `plugins/claude-code/scripts/guard_blocking_commands.py`),
 then run `scripts/docs_reference.py --write` so the website's CLI reference picks it up.
 
 **Add an HTTP route.** Add it to the router for its family in `apps/gateway/routes/` (use
 `deps.db`, and `agent_credential` for `/v1/*` or `current_user`/`require(...)` for `/api/*`).
 A new router must be included in `apps/gateway/app.py:create_app`. Regenerate
 `scripts/api_routes.py --write` and `scripts/docs_reference.py --write`, and update
-`harness/reference/http-api.md`. If the route is a privileged operator action, record it
+`plugins/shared/reference/http-api.md`. If the route is a privileged operator action, record it
 (see the audit invariant). Tests in `tests/apps/gateway/` or `tests/e2e/`.
 
 **Add a website docs page.** Create `dashboard/app/docs/<section>/<slug>/page.tsx` using the
@@ -353,8 +359,29 @@ pointing at the result file and every place that quotes it, and run `scripts/cla
 --check`. Read [docs/evaluation/evidence-standards.md](docs/evaluation/evidence-standards.md)
 before writing the headline.
 
-**Add a markdown doc.** Classify it in `harness/reference/docs-map.md` and list it in
-[docs/README.md](docs/README.md); `check_harness.py` fails otherwise.
+**Add a markdown doc.** Classify it in `plugins/shared/reference/docs-map.md` and list it in
+[docs/README.md](docs/README.md); `check_plugins.py` fails otherwise.
+
+**Add a harness** (a coding agent to govern). One folder, `src/agentfox/harnesses/<name>/`,
+beside `claude_code/`:
+
+1. `adapter.py`: a class satisfying `harnesses/base.py:HarnessAdapter` and a module-level
+   `ADAPTER`. Map the harness's event names to the canonical kinds (`events`), declare an
+   `EventCaps` per event with the evidence for each claim (`Verified`: SOURCE, VENDOR_DOCS or
+   LIVE_PROBE, and the version), and render each `Decision` in the shape that event really
+   accepts, calling `base.downgrade` first. An event nobody has probed has no `verified` row.
+2. `tools.py`: native tool name → canonical name (`tool_map`) and built-in tool impacts.
+3. `install.py`: where the harness reads hooks, and an idempotent merge into that file.
+4. `fixtures/<kind>.json`: hook payloads **captured from the real tool**, never written by
+   hand, with `<kind>.expected.json` beside each (the parsed event, and the exact stdout and
+   exit code for each decision).
+5. Register it: `[project.entry-points."agentfox.harnesses"]` in `pyproject.toml`, and the
+   `BUILTIN` table in `harnesses/__init__.py` for source checkouts. An external package
+   registers the same entry point and nothing else.
+6. `pytest tests/harnesses` — the conformance suite picks the adapter up from the registry.
+
+Nothing outside `harnesses/` and `hooks/` imports the new folder; callers go through the
+registry, and `lint-imports` fails otherwise.
 
 ## Known rough edges
 

@@ -286,7 +286,7 @@ agentfox: this tool call was NOT checked. Nothing was blocked and nothing was re
 
       <NextSteps
         items={[
-          { href: "/docs/harness", label: "Claude Code harness", why: "skills, slash commands and the read-only MCP server" },
+          { href: "/docs/plugin", label: "Claude Code plugin", why: "skills, slash commands and the read-only MCP server" },
           { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "grants and the containment rules in full" },
           { href: "/docs/guides/mcp", label: "MCP servers", why: "scan the MCP servers your sessions load" },
           { href: "/docs/reference/cli#cmd-admin-hooks-install", label: "agentfox admin hooks reference", why: "every flag" },

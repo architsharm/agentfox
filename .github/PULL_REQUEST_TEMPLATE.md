@@ -13,7 +13,7 @@ pytest -q
 python scripts/api_routes.py --check
 python scripts/docs_reference.py --check
 python scripts/claims.py --check
-python harness/scripts/check_harness.py
+python scripts/check_plugins.py
 ```
 
 - [ ] `ruff check` and `ruff format --check` pass at CI's pinned version.
@@ -23,7 +23,8 @@ python harness/scripts/check_harness.py
       `--write`, if the CLI, the API or a docs page changed.
 - [ ] `scripts/claims.py --check` passes. If a published number moved, the benchmark was
       re-run and its result file is in this PR. Numbers are not edited by hand.
-- [ ] `harness/scripts/check_harness.py` passes, if `harness/` or the CLI changed.
+- [ ] `scripts/check_plugins.py` passes, if `plugins/` or the CLI changed (`--write`
+      refreshes the Claude Code plugin's copies of `plugins/shared/`).
 - [ ] If `src/agentfox/` changed, the vendored wheels in `api/vendor/` and
       `demo/redteam-live-lang/vendor/` were rebuilt in the same commit. The pre-commit
       hook does this for you (`uvx pre-commit install`); CI fails the push otherwise,

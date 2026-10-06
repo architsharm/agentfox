@@ -315,7 +315,7 @@ refused: the tool's schema or description changed after this agent was authorise
       <Output>{`{"jsonrpc": "2.0", "id": 2, "result": {"content": [{"type": "text", "text": "{\\n  \\"command\\": \\"agentfox findings --json --limit 2\\",\\n  \\"exit_code\\": 0, …`}</Output>
       <p>
         The same server, with skills and slash commands, ships as the{" "}
-        <Link href="/docs/harness">Claude Code harness</Link>.
+        <Link href="/docs/plugin">Claude Code plugin</Link>.
       </p>
 
       <h2>Troubleshooting</h2>

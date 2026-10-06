@@ -142,7 +142,7 @@ promote it when its decisions look right:
 agentfox policy enforce coding-agent
 ```
 
-[`harness/`](../harness/) additionally packages the product as Claude Code skills, slash commands,
+[`plugins/claude-code/`](../plugins/claude-code/) additionally packages the product as a Claude Code plugin: skills, slash commands,
 subagents and an MCP server:
 
 ```bash
@@ -402,7 +402,7 @@ so it runs end to end with no model and no API key. Point it at a model when you
 Settings are `AGENTFOX_*` environment variables. The pre-rename `NOMETRIA_*` names still work, so
 an existing deployment does not need to change; where both are set, `AGENTFOX_*` wins. The full
 list, including the few still read only under the old name, is
-[harness/reference/config.md](../harness/reference/config.md).
+[plugins/shared/reference/config.md](../plugins/shared/reference/config.md).
 
 **Two secrets are required outside development.** With `AGENTFOX_ENVIRONMENT` set to anything but
 `development`, `dev`, `test`, `testing` or `local`, the gateway refuses to start until
