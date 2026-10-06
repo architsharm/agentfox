@@ -615,7 +615,7 @@ def test_a_streamed_tool_call_is_assembled_and_governed(fake_openai):
 
 
 def test_the_sdk_decorator_writes_its_impact_to_the_registry():
-    from agentfox.sdk import AgentFox
+    from agentfox.frameworks.sdk import AgentFox
 
     fox = AgentFox(agent="support-bot")
 

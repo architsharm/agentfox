@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from agentfox.sdk import AgentFox
+from agentfox.frameworks.sdk import AgentFox
 
 CLAIM = "Your refund has been processed."
 

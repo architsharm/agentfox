@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.sdk import AgentFox, ApprovalRequired
+from agentfox.frameworks.sdk import AgentFox, ApprovalRequired
 
 
 def test_a_taint_ceiling_escalation_names_the_argument_not_the_grant(seeded):

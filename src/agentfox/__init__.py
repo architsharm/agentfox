@@ -24,7 +24,7 @@ _LAZY = {
     "off": ("agentfox.runtime.autoguard", "off"),
     "state": ("agentfox.runtime.autoguard", "state"),
     "Blocked": ("agentfox.runtime.autoguard", "Blocked"),
-    "AgentFox": ("agentfox.sdk", "AgentFox"),
+    "AgentFox": ("agentfox.frameworks.sdk", "AgentFox"),
     "AgentFoxError": ("agentfox.errors", "AgentFoxError"),
     "PolicyViolation": ("agentfox.errors", "PolicyViolation"),
     "ApprovalRequired": ("agentfox.errors", "ApprovalRequired"),

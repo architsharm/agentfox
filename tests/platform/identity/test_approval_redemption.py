@@ -14,8 +14,8 @@ import pytest
 from sqlalchemy import select
 
 from agentfox.core.models import Agent, ApprovalRequest, Identity, utcnow
+from agentfox.frameworks.sdk import AgentFox, ApprovalRequired, PolicyViolation
 from agentfox.platform.identity import issue_credential, redeem_approval, resolve_approval
-from agentfox.sdk import AgentFox, ApprovalRequired, PolicyViolation
 from tests.conftest import as_user
 
 EMAIL = {"to": "customer@example.com", "body": "your receipt"}

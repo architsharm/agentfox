@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.sdk import AgentFox, ApprovalRequired
+from agentfox.frameworks.sdk import AgentFox, ApprovalRequired
 
 
 @pytest.fixture

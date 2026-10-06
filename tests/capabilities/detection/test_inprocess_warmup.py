@@ -53,7 +53,7 @@ def test_an_enabled_model_detector_is_warmed(slow, entry):
         auto(agent="warm-bot", quiet=True)
         off()
     elif entry == "sdk":
-        from agentfox.sdk import AgentFox
+        from agentfox.frameworks.sdk import AgentFox
 
         AgentFox("warm-bot")
     else:
@@ -69,7 +69,7 @@ def test_nothing_is_started_for_the_default_detectors():
 
 
 def test_a_remote_client_does_not_warm(slow):
-    from agentfox.sdk import AgentFox
+    from agentfox.frameworks.sdk import AgentFox
 
     AgentFox("warm-bot", base_url="http://gateway.invalid")
     assert not slow.warmed.wait(0.2)

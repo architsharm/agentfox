@@ -12,7 +12,7 @@ from tests.conftest import INDIRECT_INJECTION
 
 
 def test_check_registers_an_unknown_agent_as_shadow_and_files_findings_under_it(seeded):
-    from agentfox.sdk import AgentFox
+    from agentfox.frameworks.sdk import AgentFox
 
     fox = AgentFox(agent="never-registered-bot", session=seeded)
     fox.check(INDIRECT_INJECTION)

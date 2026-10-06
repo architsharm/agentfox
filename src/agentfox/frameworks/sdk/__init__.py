@@ -7,7 +7,7 @@ structure — which is what makes taint tracking precise rather than inferred.
 Two modes, both drop-in:
 
     # 1. Local — enforcement in-process, no server required
-    from agentfox.sdk import AgentFox
+    from agentfox.frameworks.sdk import AgentFox
     nom = AgentFox(agent="support-triage")
 
     @nom.tool("payments.transfer", impact="irreversible")
