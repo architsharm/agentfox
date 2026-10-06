@@ -131,8 +131,9 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 { "verdict": "escalate", "approval_id": "apr_01m376q43zby33tbsp" }
 ```
 
-Flip `"to"` to `"user"` and the same call returns `allow`. Full surface:
-[Appendix C](docs/architecture/api-spec.md).
+Flip `"to"` to `"user"` and the same call returns `allow`. Once a person approves it
+(`agentfox permit approvals approve apr_…`), the same call with `"approval_id"` added runs, once.
+Full surface: [Appendix C](docs/architecture/api-spec.md).
 
 </details>
 
@@ -146,11 +147,11 @@ guard = AgentFoxGuard(agent="support-triage", intent="answer a refund question")
 
 builder.add_node("retrieve", guard.retrieval_node(fetch_docs))   # indirect injection blocked
 builder.add_node("model",    guard.model_node(call_model))        # in + out enforced, traced
-builder.add_node("pay",      guard.tool_node(transfer, tool="payments.transfer"))
+builder.add_node("pay",      guard.tool_node(transfer, tool="payments.transfer"))  # the model's call, checked
 ```
 
-Trace identity lives in graph state, so it survives checkpointing and resumption. Escalation maps to
-LangGraph's own `interrupt()` — one pause mechanism, not two.
+Trace identity and retrieval taint live in graph state, so they survive checkpointing and reach the
+tool node. Escalation maps to LangGraph's own `interrupt()` — one pause mechanism, not two.
 
 </details>
 

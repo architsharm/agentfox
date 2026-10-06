@@ -89,6 +89,7 @@ from typing import Any
 from agentfox.core.config import get_settings
 from agentfox.core.db import init_db, session_scope
 from agentfox.detection.taint import TaintTracker
+from agentfox.errors import AgentFoxError
 from agentfox.prove.audit.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
@@ -359,8 +360,11 @@ def _record_turn(
         log.debug("agentfox: turn capture skipped: %s", exc)
 
 
-class Blocked(RuntimeError):
+class Blocked(AgentFoxError, RuntimeError):
     """Raised when a governed call is refused in-process.
+
+    An `agentfox.errors.AgentFoxError`, so one ``except`` covers it and the SDK's and
+    LangGraph's exceptions; still a ``RuntimeError`` for code written before that.
 
     When it is raised depends on the `auto()` mode (see the module docstring);
     ``.result`` is the `EnforcementResult` that refused it. When what was refused is

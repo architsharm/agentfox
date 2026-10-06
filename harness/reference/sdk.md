@@ -77,7 +77,9 @@ builder.add_node("pay",      guard.tool_node(transfer, tool="payments.transfer")
 ```
 
 Governance state lives under the `"__nometria__"` state key, so it survives checkpointing.
-Escalation calls LangGraph's `interrupt()`; blocks raise `PolicyViolation`.
+`tool_node` authorises the model's latest call to that tool in `state["messages"]` (or
+`arguments=`), with taint from earlier retrieval nodes. Escalation calls LangGraph's `interrupt()`;
+blocks raise `agentfox.PolicyViolation` (all refusals are `agentfox.AgentFoxError`).
 
 ## 4. FastAPI
 

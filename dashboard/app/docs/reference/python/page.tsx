@@ -583,18 +583,13 @@ PolicyViolation: capability.denied`}</Output>
           </tr>
           <tr>
             <td><code>agentfox.PolicyViolation</code></td>
-            <td><code>AgentFox</code>, <code>AgentSession</code></td>
+            <td><code>AgentFox</code>, <code>AgentSession</code>, <code>AgentFoxGuard</code> nodes</td>
             <td><code>result</code>, <code>trace_id</code>, <code>decision_id</code>, <code>rules_fired</code>, <code>entities</code></td>
           </tr>
           <tr>
             <td><code>agentfox.ApprovalRequired</code></td>
-            <td><code>AgentFox</code>, <code>AgentSession</code></td>
+            <td><code>AgentFox</code>, <code>AgentSession</code>, <code>AgentFoxGuard</code> nodes without <code>interrupt()</code></td>
             <td><code>result</code>, <code>approval_id</code>, <code>trace_id</code></td>
-          </tr>
-          <tr>
-            <td><code>agentfox.integrations.langgraph.PolicyViolation</code>, <code>.ApprovalRequired</code></td>
-            <td><code>AgentFoxGuard</code> nodes</td>
-            <td>Same attributes as the SDK&apos;s</td>
           </tr>
           <tr>
             <td><code>agentfox.integrations.McpCallBlocked</code> (a <code>RuntimeError</code>)</td>
@@ -608,14 +603,14 @@ PolicyViolation: capability.denied`}</Output>
           </tr>
         </tbody>
       </table>
-      <Callout kind="warning" title="Two classes named PolicyViolation">
-        <p>
-          The LangGraph integration defines its own <code>PolicyViolation</code> and{" "}
-          <code>ApprovalRequired</code>. <code>except agentfox.PolicyViolation</code>{" "}
-          does not catch what an <code>AgentFoxGuard</code> node raises. Import them from{" "}
-          <code>agentfox.integrations.langgraph</code>.
-        </p>
-      </Callout>
+      <p>
+        <code>Blocked</code>, <code>PolicyViolation</code> and <code>ApprovalRequired</code>{" "}
+        all derive from <code>agentfox.AgentFoxError</code> (defined in{" "}
+        <code>agentfox.errors</code>), so <code>except agentfox.AgentFoxError</code> catches
+        any refusal. The LangGraph integration raises the SDK&apos;s classes; before October
+        2026 it had look-alikes of its own that <code>except agentfox.PolicyViolation</code>{" "}
+        did not catch.
+      </p>
       <p>
         <code>result</code> is an <code>EnforcementResult</code>. The fields you will
         read: <code>verdict</code> and <code>effective_verdict</code> (one of{" "}
@@ -653,11 +648,163 @@ guard.tool_node(fn=None, *, tool: str, provenance=None)`}</Code>
           written back into the node&apos;s return value.
         </li>
         <li>
-          <code>tool_node</code> authorises the tool before the node body runs. A denied
-          call never executes.
+          <code>tool_node</code> authorises the tool before the node body runs, with the
+          arguments of the model&apos;s latest call to it in <code>state[&quot;messages&quot;]</code>{" "}
+          (or <code>arguments=</code>, or the node&apos;s keyword arguments). A denied call
+          never executes. An argument copied out of what a retrieval node returned is
+          tainted <code>retrieved</code>.
         </li>
         <li>
-          Governance state (trace id, last verdict, tools called) is written under the{" "}
+          Governance state (trace id, last verdict, what was retrieved, tools called) is written under the{" "}
+          <code>&quot;__nometria__&quot;</code> key of the graph state, so it survives a
+          checkpoint. Add that key to your state schema.
+        </li>
+        <li>
+          An escalation calls LangGraph&apos;s <code>interrupt()</code> when LangGraph is
+          installed, and raises <code>ApprovalRequired</code> when it is not. With{" "}
+          <code>raise_on_escalate=False</code> an escalation neither pauses nor raises:
+          the node runs, and only the recorded decision says it escalated.
+        </li>
+      </ul>
+      <p>
+        LangGraph itself is optional (<code>pip install &quot;agentfox[langgraph]&quot;</code>):
+        the wrappers are plain functions of the state. This example calls them directly,
+        without a graph, which is how it was verified. <code>tickets.close</code> is
+        declared and granted to <code>research-bot</code>; <code>billing.export</code> is
+        not granted.
+      </p>
+      <Code lang="python" title="lg_nodes.py">{`from agentfox import PolicyViolation
+from agentfox.integrations.langgraph import AgentFoxGuard, STATE_KEY
+
+guard = AgentFoxGuard(agent="research-bot", intent="summarise the support knowledge base")
+
+@guard.retrieval_node
+def retrieve(state):
+    return {"docs": ["Refund policy: refunds within 30 days."]}
+
+@guard.model_node
+def call_model(state):
+    return {"messages": [*state["messages"], {"role": "assistant", "content": "Refunds are accepted within 30 days."}]}
+
+@guard.tool_node(tool="tickets.close")
+def close_ticket(state):
+    return {"closed": True}
+
+state = {"messages": [{"role": "user", "content": "What is the refund window?"}]}
+print("retrieve ->", sorted(retrieve(state)[STATE_KEY]))
+out = call_model(state)
+print("model ->", out["messages"][-1]["content"], "| governance:", sorted(out[STATE_KEY]))
+
+# The model asks for the tool; the tool node authorises those arguments.
+asked = {"role": "assistant", "content": "", "tool_calls": [
+    {"id": "c1", "type": "function",
+     "function": {"name": "tickets.close", "arguments": '{"ticket_id": "T-1042"}'}}]}
+done = close_ticket({**out, "messages": [*out["messages"], asked]})
+print("tool ->", done["closed"], done[STATE_KEY]["steps"][-1]["arguments"])
+
+@guard.tool_node(tool="billing.export", arguments=lambda state: {"month": "2026-09"})
+def export(state):
+    return {"exported": True}
+try:
+    export(state)
+except PolicyViolation as exc:
+    print("PolicyViolation:", exc.rules_fired[0]["rule_id"])`}</Code>
+      <Output>{`retrieve -> ['retrieved']
+model -> Refunds are accepted within 30 days. | governance: ['last_verdict', 'trace_id']
+tool -> True {'ticket_id': 'T-1042'}
+PolicyViolation: capability.denied`}</Output>
+      <p>
+        This was run against <code>agentfox serve --port 18731</code> on a local
+        development deployment, where the gateway accepted calls without a key. A
+        deployment with authentication on needs <code>api_key=</code>.
+      </p>
+
+      <h2 id="exceptions">Exceptions and the decision object</h2>
+      <table>
+        <thead>
+          <tr><th>Exception</th><th>Raised by</th><th>Attributes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>agentfox.Blocked</code> (a <code>RuntimeError</code>)</td>
+            <td>Calls patched by <code>auto()</code></td>
+            <td><code>result</code> (the decision); <code>tool_call</code> with <code>name</code>, <code>arguments</code> and <code>call_id</code> when a tool call was refused, else <code>None</code></td>
+          </tr>
+          <tr>
+            <td><code>agentfox.PolicyViolation</code></td>
+            <td><code>AgentFox</code>, <code>AgentSession</code>, <code>AgentFoxGuard</code> nodes</td>
+            <td><code>result</code>, <code>trace_id</code>, <code>decision_id</code>, <code>rules_fired</code>, <code>entities</code></td>
+          </tr>
+          <tr>
+            <td><code>agentfox.ApprovalRequired</code></td>
+            <td><code>AgentFox</code>, <code>AgentSession</code>, <code>AgentFoxGuard</code> nodes without <code>interrupt()</code></td>
+            <td><code>result</code>, <code>approval_id</code>, <code>trace_id</code></td>
+          </tr>
+          <tr>
+            <td><code>agentfox.integrations.McpCallBlocked</code> (a <code>RuntimeError</code>)</td>
+            <td><code>McpGovernor.call(..., raise_on_block=True)</code></td>
+            <td><code>result</code></td>
+          </tr>
+          <tr>
+            <td><code>fastapi.HTTPException</code> (403)</td>
+            <td>The <code>guard()</code> dependency</td>
+            <td><code>detail</code> with <code>type</code>, <code>message</code>, <code>trace_id</code>, <code>decision_id</code>, <code>explanation</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <code>Blocked</code>, <code>PolicyViolation</code> and <code>ApprovalRequired</code>{" "}
+        all derive from <code>agentfox.AgentFoxError</code> (defined in{" "}
+        <code>agentfox.errors</code>), so <code>except agentfox.AgentFoxError</code> catches
+        any refusal. The LangGraph integration raises the SDK&apos;s classes; before October
+        2026 it had look-alikes of its own that <code>except agentfox.PolicyViolation</code>{" "}
+        did not catch.
+      </p>
+      <p>
+        <code>result</code> is an <code>EnforcementResult</code>. The fields you will
+        read: <code>verdict</code> and <code>effective_verdict</code> (one of{" "}
+        <code>allow</code>, <code>tokenize</code>, <code>mask</code>, <code>redact</code>,{" "}
+        <code>abstain</code>, <code>escalate</code>, <code>block</code>),{" "}
+        <code>mode</code>, <code>reason</code>, <code>rules_fired</code> (a list of dicts
+        with <code>rule_id</code>, <code>effect</code>, <code>reason</code>,{" "}
+        <code>severity</code>, <code>mode</code>), <code>entities</code>,{" "}
+        <code>degraded</code>, <code>content</code> (the redacted text when the verdict
+        redacts), <code>explanation</code>, <code>trace_id</code>,{" "}
+        <code>decision_id</code>, <code>approval_id</code>. The properties{" "}
+        <code>blocked</code> and <code>escalated</code> test the applied verdict, and{" "}
+        <code>to_json()</code> gives the dict form.
+      </p>
+
+      <h2 id="integrations">Integrations</h2>
+
+      <h3 id="langgraph">LangGraph: AgentFoxGuard</h3>
+      <Code lang="python">{`from agentfox.integrations.langgraph import AgentFoxGuard
+
+AgentFoxGuard(agent: str, *, environment: str = "production", intent: str | None = None,
+              session: Any = None, raise_on_escalate: bool = True)
+guard.retrieval_node(fn=None, *, source="retrieved")
+guard.model_node(fn=None, *, messages_key="messages", schema=None)
+guard.tool_node(fn=None, *, tool: str, provenance=None)`}</Code>
+      <ul>
+        <li>
+          <code>retrieval_node</code> runs the node, then checks everything it returned
+          on the <code>retrieved</code> surface. An enforced block raises{" "}
+          <code>PolicyViolation</code>.
+        </li>
+        <li>
+          <code>model_node</code> checks the messages under <code>messages_key</code>{" "}
+          before the node runs, and the text it returns afterwards. Redacted output is
+          written back into the node&apos;s return value.
+        </li>
+        <li>
+          <code>tool_node</code> authorises the tool before the node body runs, with the
+          arguments of the model&apos;s latest call to it in <code>state[&quot;messages&quot;]</code>{" "}
+          (or <code>arguments=</code>, or the node&apos;s keyword arguments). A denied call
+          never executes. An argument copied out of what a retrieval node returned is
+          tainted <code>retrieved</code>.
+        </li>
+        <li>
+          Governance state (trace id, last verdict, what was retrieved, tools called) is written under the{" "}
           <code>&quot;__nometria__&quot;</code> key of the graph state, so it survives a
           checkpoint. Add that key to your state schema.
         </li>
@@ -708,17 +855,6 @@ except PolicyViolation as exc:
 model -> Refunds are accepted within 30 days. | governance: ['last_verdict', 'trace_id']
 tool -> {'closed': True, '__nometria__': {'tools_called': ['tickets.close'], 'steps': [{'tool': 'tickets.close', 'arguments': {}, 'observation': {'closed': True}}]}}
 PolicyViolation: capability.denied`}</Output>
-      <Callout kind="warning" title="tool_node sees no arguments in a graph">
-        <p>
-          <code>tool_node</code> authorises the keyword arguments the node is called
-          with. LangGraph calls a node with the state only, so the recorded arguments are{" "}
-          <code>{"{}"}</code> (visible above): grants, impact and the agent&apos;s
-          intent apply, but argument limits, argument provenance and argument-level rules
-          have nothing to check. When the arguments matter, call{" "}
-          <code>AgentFox(...).session()</code> and <code>guard_tool(tool, arguments)</code>{" "}
-          inside the node with the real arguments.
-        </p>
-      </Callout>
       <p>
         The full walkthrough is in the <Link href="/docs/guides/langgraph">LangGraph guide</Link>.
       </p>

@@ -38,9 +38,10 @@ export default function Page() {
       <Code>{`pip install "agentfox[langgraph]"
 agentfox init`}</Code>
       <p>
-        Run <code>agentfox init</code> first. <code>AgentFoxGuard</code> does not create the
-        database; a graph run against an empty state directory fails with{" "}
-        <code>sqlite3.OperationalError: no such table: agents</code>.
+        <code>agentfox init</code> loads the shipped policy packs, including{" "}
+        <code>tool-containment</code> in enforce. <code>AgentFoxGuard</code> creates the
+        database on first use if it is not there, so a graph also runs without it, under
+        the observe-only fallback.
       </p>
 
       <h2>Worked example</h2>
@@ -91,6 +92,8 @@ def model(state: State) -> dict:
     return {"messages": [{"role": "assistant", "content": f"From the KB: {state['docs']}"}]}
 
 
+# Authorises the arguments of the model's latest tickets.create tool call in
+# state["messages"] (or pass arguments=lambda state: {...}).
 @guard.tool_node(tool="tickets.create")
 def file_ticket(state: State) -> dict:
     print("  ticket filed")
@@ -106,7 +109,7 @@ builder.add_edge("retrieve", "model")
 builder.add_edge("model", "file_ticket")
 builder.add_edge("file_ticket", END)
 graph = builder.compile(checkpointer=InMemorySaver())  # interrupt() needs a checkpointer`}</Code>
-      <Code lang="python" title="run.py">{`from agentfox.integrations.langgraph import PolicyViolation
+      <Code lang="python" title="run.py">{`from agentfox import PolicyViolation
 from graph import STATE_KEY, graph
 
 for n, question in enumerate(["What is the refund policy?", "Tell me about evil"]):
@@ -214,8 +217,16 @@ resumed: Ticket filed.`}</Output>
             <td>Block raises <code>PolicyViolation</code>; escalate calls <code>interrupt()</code>.</td>
           </tr>
           <tr>
-            <td><code>guard.tool_node(tool=&quot;key&quot;, provenance=…)</code></td>
-            <td>Grant, impact, intent, loop and approval rules for the named tool, before the body runs.</td>
+            <td><code>guard.tool_node(tool=&quot;key&quot;, provenance=…, arguments=…)</code></td>
+            <td>
+              Grant, argument limits, argument provenance, impact, intent, loop and approval
+              rules for the named tool, before the body runs. The arguments are, first that
+              applies: <code>arguments=</code> (a function of the state, or a list of state
+              keys); the keyword arguments the node was called with; the latest tool call for
+              that tool in <code>state[&quot;messages&quot;]</code> (LangChain{" "}
+              <code>AIMessage.tool_calls</code> or OpenAI-shaped dicts). An argument copied
+              out of what a retrieval node returned is tainted <code>retrieved</code>.
+            </td>
             <td>Block raises <code>PolicyViolation</code>; escalate calls <code>interrupt()</code>.</td>
           </tr>
         </tbody>
@@ -225,40 +236,33 @@ resumed: Ticket filed.`}</Output>
         session=None, raise_on_escalate=True)</code>. With{" "}
         <code>raise_on_escalate=False</code> an escalation does not pause the graph. If{" "}
         <code>langgraph</code> is not importable, an escalation raises{" "}
-        <code>ApprovalRequired</code> instead of interrupting. Both exceptions come from{" "}
-        <code>agentfox.integrations.langgraph</code>.
+        <code>ApprovalRequired</code> instead of interrupting. Both are the same classes
+        the SDK raises, <code>agentfox.PolicyViolation</code> and{" "}
+        <code>agentfox.ApprovalRequired</code>, and both are{" "}
+        <code>agentfox.AgentFoxError</code>s (still importable from{" "}
+        <code>agentfox.integrations.langgraph</code>).
       </p>
 
       <h2>The governance key in your state</h2>
       <p>
-        The guard returns its bookkeeping (trace id, last verdict, the tools called and each
-        step) under the state key <code>__nometria__</code> (exported as{" "}
-        <code>STATE_KEY</code>). Declare it in your state with a merging reducer, as in{" "}
+        The guard returns its bookkeeping (trace id, last verdict, what retrieval nodes
+        read, the tools called and each step) under the state key <code>__nometria__</code>{" "}
+        (exported as <code>STATE_KEY</code>). Declare it in your state, as in{" "}
         <code>graph.py</code>:
       </p>
       <ul>
-        <li>Not declared: LangGraph drops it silently. The run still works, but the trace id and the loop history are lost between nodes.</li>
-        <li>Declared as a plain <code>dict</code>: each node replaces it, so the tool node&apos;s update overwrites the model node&apos;s trace id.</li>
+        <li>Not declared: LangGraph drops it silently. The run still works, but the trace id, retrieval taint and the loop history are lost between nodes.</li>
+        <li>Declared as a plain <code>dict</code> works too: each node writes the whole of it back, carrying what earlier nodes wrote.</li>
       </ul>
 
-      <Callout kind="warning" title="Tool nodes are checked without their arguments">
-        <p>
-          LangGraph calls a node with the graph state, not with keyword arguments, so{" "}
-          <code>tool_node</code> authorises the call with an empty argument set. Argument
-          limits on a grant (<code>--limit</code>) and argument provenance therefore do not
-          apply in a real graph, and a grant with a limit refuses every call (the missing
-          argument fails it). Taint from a retrieval node is not carried into the tool node
-          either; only a static <code>provenance=</code> mapping is. When the arguments
-          matter, check the call inside the node with an{" "}
-          <Link href="/docs/guides/contain-tool-calls#sdk">SDK session</Link>&apos;s{" "}
-          <code>guard_tool(tool, arguments)</code>, or let <code>auto()</code> govern the
-          tool calls in the model&apos;s response.
-        </p>
-      </Callout>
+      <p>
+        A tool node that finds no tool call for its tool in the state and was given no{" "}
+        <code>arguments=</code> is authorised with none, and logs a warning saying so.
+      </p>
 
       <h2>Troubleshooting</h2>
       <ul>
-        <li><strong><code>no such table: agents</code></strong>: run <code>agentfox init</code>.</li>
+        <li><strong>A grant&apos;s <code>--limit</code> refuses with &quot;this call passed None&quot;</strong>: the tool node found no arguments. Pass <code>arguments=</code>, or put the model&apos;s tool call in <code>state[&quot;messages&quot;]</code>.</li>
         <li><strong>A node refused with <code>capability.denied</code></strong>: grant the tool to the agent; the first run registers the agent so the grant can name it.</li>
         <li><strong>A paused run cannot be resumed</strong>: compile the graph with a checkpointer (<code>InMemorySaver</code> for tests) and pass the same <code>thread_id</code>.</li>
         <li><strong>Trace id missing from the result</strong>: declare <code>__nometria__</code> in the state, with a merging reducer.</li>
@@ -266,7 +270,6 @@ resumed: Ticket filed.`}</Output>
 
       <h2>Limits</h2>
       <ul>
-        <li>Tool nodes are checked without arguments (above).</li>
         <li>Resuming an interrupt does not re-check the approval (above).</li>
         <li>Only the node boundaries you wrap are governed. A model or tool called from inside an unwrapped node is visible only through <code>auto()</code>.</li>
       </ul>

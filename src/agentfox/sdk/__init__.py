@@ -42,32 +42,14 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.db import session_scope
 from agentfox.detection import TaintTracker
+
+# One class each, shared with the LangGraph integration and under `AgentFoxError`
+# (#46): see `agentfox.errors`.
+from agentfox.errors import AgentFoxError, ApprovalRequired, PolicyViolation
 from agentfox.integrations.correlation import refs_from_env
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 
 log = logging.getLogger(__name__)
-
-
-class PolicyViolation(Exception):
-    """Raised when enforcement blocks. Carries the full decision, never just a message."""
-
-    def __init__(self, result: EnforcementResult) -> None:
-        super().__init__(result.reason or "blocked by policy")
-        self.result = result
-        self.trace_id = result.trace_id
-        self.decision_id = result.decision_id
-        self.rules_fired = result.rules_fired
-        self.entities = result.entities
-
-
-class ApprovalRequired(Exception):
-    """Raised when a decision escalates to a human (P2-3)."""
-
-    def __init__(self, result: EnforcementResult) -> None:
-        super().__init__(result.reason or "human approval required")
-        self.result = result
-        self.approval_id = result.approval_id
-        self.trace_id = result.trace_id
 
 
 @dataclass
@@ -341,9 +323,7 @@ class AgentFox:
                 if not declared:  # the database was not there at import time
                     declared = self._declare_tool(key, impact, description)
                 target = (
-                    session
-                    or getattr(wrapper, "_nometria_session", None)
-                    or self._active.get()
+                    session or getattr(wrapper, "_nometria_session", None) or self._active.get()
                 )
                 if target is None:
                     with self.session() as ad_hoc:
@@ -619,6 +599,7 @@ class AgentFox:
 
 
 __all__ = [
+    "AgentFoxError",
     "AgentSession",
     "ApprovalRequired",
     "AgentFox",
