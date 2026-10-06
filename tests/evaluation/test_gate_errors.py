@@ -128,3 +128,35 @@ def test_cli_run_refuses_an_unknown_scorer(seeded):
         assert result.exit_code == 1, result.output
         assert "unknown scorer" in result.output
         assert "groundedness" in result.output  # names the valid ones
+
+
+def test_online_sampling_reports_traces_it_could_not_score(seeded):
+    """`test online --rate 1.0` sampled every trace and scored only those with a
+    recorded LLM output, saying nothing about the rest."""
+    from agentfox.core.models import Span, Trace
+    from agentfox.evaluation import sample_production
+
+    agent = "online-skip-agent"
+    with_output = Trace(agent_slug=agent, intent="refund?")
+    without_output = Trace(agent_slug=agent, intent="guard only")
+    seeded.add_all([with_output, without_output])
+    seeded.flush()
+    seeded.add(
+        Span(
+            trace_id=with_output.id,
+            kind="llm",
+            attributes_json={"agentfox.output": "Refunds are issued within 30 days."},
+        )
+    )
+    seeded.flush()
+
+    run = sample_production(seeded, agent, rate=1.0)
+    assert run.summary_json["population"] == 2
+    assert run.summary_json["sampled"] == 1
+    assert run.summary_json["skipped_no_output"] == 1
+    assert run.summary_json["skipped_trace_ids"] == [without_output.id]
+
+    seeded.commit()
+    result = runner.invoke(app, ["test", "online", agent, "--rate", "1.0"])
+    assert result.exit_code == 0, result.output
+    assert "1 sampled trace(s) not scored" in " ".join(result.output.split())

@@ -299,4 +299,10 @@ def eval_online(agent: str, since_days: int = 7, rate: float | None = None) -> N
         f"{summary.get('population')} traces "
         f"(rate {summary.get('sample_rate')})"
     )
+    skipped = summary.get("skipped_no_output") or 0
+    if skipped:
+        console.print(
+            f"  [yellow]{skipped} sampled trace(s) not scored[/] — no LLM span recorded an "
+            "output (agentfox.output), so there was nothing to score."
+        )
     _print_eval_summary(f"online:{agent}", summary)
