@@ -572,7 +572,7 @@ retry-after: 1
   "explanation": {"matches": [{"detector": "pii.native", "entity_type": "PII.EMAIL", "span": [14, 34], "score": 0.9, …}], …},
   …
 }`}</Output>
-      <Callout kind="info" title="Use the rewritten text in content">
+      <Callout kind="note" title="Use the rewritten text in content">
         When the applied verdict is <code>redact</code>, <code>mask</code> or{" "}
         <code>tokenize</code>, <code>content</code> holds the rewritten string; send that
         on instead of the original. On every other verdict <code>content</code> is{" "}

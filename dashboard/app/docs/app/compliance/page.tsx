@@ -152,7 +152,7 @@ chain_verification.json  verify_chain.py  README.txt  manifest.json`}</Output>
       <Output>{`note: AGENTFOX_AUDIT_KEY not set - checkpoint signatures not verified
 entries checked: 95 (seq 1..95)
 CHAIN INTACT`}</Output>
-      <Callout kind="info" title="What the agent field narrows">
+      <Callout kind="note" title="What the agent field narrows">
         Naming agents limits the inventory, traces, decisions, findings, approvals and eval
         runs to those agents. The audit chain still covers the whole period, because a gap
         would read as a deletion; entries about other agents ship with their payload and

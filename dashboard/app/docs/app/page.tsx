@@ -77,7 +77,7 @@ agentfox demo`}</Code>
 …
   ✓ wrote agentfox.toml
   ✓ demo fixtures loaded
-    agents, policies and an eval suite; no traffic yet. `agentfox demo` sends sample requests through them.
+    agents, policies and an eval suite; no traffic yet. \`agentfox demo\` sends sample requests through them.
 …
 ╭───────────────────────────────────────────────╮
 │ Walkthrough complete.                         │
