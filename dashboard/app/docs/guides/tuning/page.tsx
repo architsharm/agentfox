@@ -385,11 +385,13 @@ chp_01m469z8006hkndwe5  proposed  policy.rule_min_score  loosens    L1        or
   newly blocked    0
   newly escalated  0
   newly allowed    6
+    would allow research-bot input  — was block; no longer fires: injection.direct
+    …
 
 No production traffic would newly block.`}</Output>
       <p>
-        Six, not five. The CLI lists only newly blocked decisions;{" "}
-        <code>POST /api/policies/simulate</code> returns all of them:
+        Six, not five. The CLI lists each changed decision (up to ten of each kind);{" "}
+        <code>POST /api/policies/simulate</code> returns all of them as JSON:
       </p>
       <Code>{`curl -s -X POST localhost:8080/api/policies/simulate -H "Content-Type: application/json" \\
   -d '{"body": "<baseline.yaml as a string>", "agent": "research-bot", "persist": false}'`}</Code>

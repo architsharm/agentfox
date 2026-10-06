@@ -173,17 +173,19 @@ agentfox policy simulate -f support-triage-pii.yaml --agent support-triage`}</Co
   controls: []
   compiles to 33 lines of Rego
 support-triage-pii simulated against 7 decisions
-  unchanged        5
+  unchanged        7
   newly blocked    0
   newly escalated  0
-  newly allowed    2
+  newly allowed    0
 
 No production traffic would newly block.`}</Output>
           <p>
             The editor shows the same result as &quot;Safe to promote — replayed 7 recent
-            decision(s): 0 newly blocked, 0 newly escalated, 2 newly allowed, 5 unchanged.&quot;
-            &quot;Newly allowed&quot; counts decisions this policy, replayed on its own, would not
-            have blocked; other policies still apply in production.{" "}
+            decision(s): 0 newly blocked, 0 newly escalated, 0 newly allowed, 7 unchanged.&quot;
+            Each recorded decision is replayed with the candidate in place of its own pack
+            (whichever version of it was in force then); rules that fired from other packs
+            still count, so a change in the counts is a change in the whole outcome. Newly
+            blocked, escalated and allowed decisions are each listed.{" "}
             <code>policy simulate</code> exits non-zero when anything would be newly blocked, so
             it can gate a pull request.
           </p>

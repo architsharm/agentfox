@@ -17,10 +17,11 @@ import datetime as dt
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
+import yaml
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Decision, SimulationRun, Trace
+from agentfox.core.models import Agent, Decision, Policy, PolicyVersion, SimulationRun, Trace
 from agentfox.policy.engine import NativePolicyEngine
 from agentfox.policy.model import EFFECT_RANK, PolicyDecision, PolicyDocument, PolicyInput
 from agentfox.policy.taint_view import policy_taint
@@ -62,11 +63,13 @@ def _policy_input_from_decision(session: Session, decision: Decision) -> PolicyI
     over them isolates the policy change as the only variable.
     """
     trace = session.get(Trace, decision.trace_id) if decision.trace_id else None
+    agent = session.get(Agent, decision.agent_id) if decision.agent_id else None
     taint = dict(decision.taint_summary_json or {})
     return PolicyInput(
-        agent_slug=trace.agent_slug if trace else None,
+        # A decision recorded without a trace (a bare `check()`) still names its agent.
+        agent_slug=trace.agent_slug if trace else (agent.slug if agent else None),
         risk_tier=(taint.get("risk_tier") or "limited"),
-        environment=trace.environment if trace else "production",
+        environment=trace.environment if trace else (agent.environment if agent else "production"),
         surface=decision.surface,
         tool_key=decision.tool_key,
         tool_impact=str(taint.get("tool_impact", "read")),
@@ -96,6 +99,13 @@ def simulate(
     ``force_enforce`` evaluates the candidate as if it were enforcing, because the
     question a reviewer is asking is "if I turn this on, what happens?" — comparing
     two observe-mode policies would always show no blocks.
+
+    The candidate is replayed *in place of* its own pack, beside everything else
+    that was in force for each decision: rules that fired from other packs, and
+    the platform's own refusals (capability default-deny, critical action risks,
+    business ladders), still stand. Evaluating the candidate alone reported every
+    block another pack made as "newly allowed". Only the rules of the candidate's
+    own key — whichever version of it was in force — are replaced.
     """
     engine = NativePolicyEngine()
     doc = candidate.model_copy(deep=True)
@@ -105,24 +115,38 @@ def simulate(
     query = select(Decision).order_by(Decision.created_at.desc()).limit(limit)
     if since is not None:
         query = query.where(Decision.created_at >= since)
+    if agent_slug:
+        # Matched on the decision's own agent as well as its trace: a decision
+        # recorded without a trace (a bare `check()`) was dropped by a trace-only
+        # filter. Filtered in the query, so `limit` counts this agent's decisions.
+        agent_ids = [a.id for a in session.scalars(select(Agent).where(Agent.slug == agent_slug))]
+        trace_ids = select(Trace.id).where(Trace.agent_slug == agent_slug)
+        query = query.where(or_(Decision.agent_id.in_(agent_ids), Decision.trace_id.in_(trace_ids)))
     decisions = list(session.scalars(query))
 
-    if agent_slug:
-        trace_ids = {
-            t.id for t in session.scalars(select(Trace).where(Trace.agent_slug == agent_slug))
-        }
-        decisions = [d for d in decisions if d.trace_id in trace_ids]
-
+    own_rules = _OwnRules(session, candidate.key)
     diff = SimulationDiff()
     for decision in decisions:
         diff.replayed += 1
         pinput = _policy_input_from_decision(session, decision)
-        new: PolicyDecision = engine.evaluate(doc, pinput)
+        in_scope = doc.matches_scope(pinput.agent_slug, pinput.environment)
+        new: PolicyDecision = (
+            engine.evaluate(doc, pinput) if in_scope else PolicyDecision(mode=doc.mode)
+        )
 
         # Compare against the *effective* historical verdict, not the observed one:
         # in observe mode the recorded verdict is always "allow", which would make
         # every enforcing rule look like a new block.
         old_effective = _effective_of(decision)
+        replaced = own_rules.rule_ids(decision)
+        kept = [r for r in (decision.rules_fired_json or []) if r.get("rule_id") not in replaced]
+        new_effective = effective_verdict_of(new.effective_verdict, kept)
+        fired_before = {
+            str(r.get("rule_id"))
+            for r in (decision.rules_fired_json or [])
+            if r.get("rule_id") in replaced
+        }
+        fired_now = [r.rule_id for r in new.rules_fired]
         record = {
             "decision_id": decision.id,
             "trace_id": decision.trace_id,
@@ -130,23 +154,56 @@ def simulate(
             "surface": decision.surface,
             "tool": decision.tool_key,
             "was": old_effective,
-            "now": new.effective_verdict,
-            "rules": [r.rule_id for r in new.rules_fired],
+            "now": new_effective,
+            "rules": fired_now,
             "reasons": [r.reason for r in new.rules_fired][:3],
+            # The candidate pack's rules that fired before and do not now.
+            "no_longer_fires": sorted(fired_before - set(fired_now)),
         }
 
-        if new.effective_verdict == old_effective:
+        if new_effective == old_effective:
             diff.unchanged += 1
-        elif new.effective_verdict == "block":
+        elif new_effective == "block":
             diff.newly_blocked.append(record)
-        elif new.effective_verdict == "escalate":
+        elif new_effective == "escalate":
             diff.newly_escalated.append(record)
-        elif old_effective in ("block", "escalate") and new.effective_verdict == "allow":
+        elif old_effective in ("block", "escalate"):
             diff.newly_allowed.append(record)
         else:
             diff.unchanged += 1
 
     return diff
+
+
+class _OwnRules:
+    """Which rule ids, on a recorded decision, came from the candidate's own pack.
+
+    Read from the versions recorded on the decision (`policy_version_ids`), so a
+    decision made under v3 has v3's rules replaced, not today's.
+    """
+
+    def __init__(self, session: Session, key: str) -> None:
+        self.session = session
+        policy = session.scalar(select(Policy).where(Policy.key == key))
+        self.policy_id = policy.id if policy is not None else None
+        self._cache: dict[str, set[str]] = {}
+
+    def rule_ids(self, decision: Decision) -> set[str]:
+        if self.policy_id is None:
+            return set()
+        out: set[str] = set()
+        for version_id in decision.policy_version_ids or [decision.policy_version_id]:
+            if not version_id:
+                continue
+            if version_id not in self._cache:
+                version = self.session.get(PolicyVersion, version_id)
+                ids: set[str] = set()
+                if version is not None and version.policy_id == self.policy_id:
+                    body = version.compiled_json or yaml.safe_load(version.body) or {}
+                    ids = {str(rule.get("id")) for rule in body.get("rules", [])}
+                self._cache[version_id] = ids
+            out |= self._cache[version_id]
+        return out
 
 
 def _effective_of(decision: Decision) -> str:

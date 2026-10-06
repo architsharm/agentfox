@@ -232,11 +232,22 @@ def policy_simulate(
     console.print(f"  newly blocked    [red]{len(diff.newly_blocked)}[/]")
     console.print(f"  newly escalated  [yellow]{len(diff.newly_escalated)}[/]")
     console.print(f"  newly allowed    [green]{len(diff.newly_allowed)}[/]")
-    for record in diff.newly_blocked[:10]:
-        console.print(
-            f"    [red]would block[/] {record['agent']} {record['surface']} "
-            f"{record['tool'] or ''} — {(record['reasons'] or [''])[0][:80]}"
-        )
+    for label, colour, records in (
+        ("would block", "red", diff.newly_blocked),
+        ("would escalate", "yellow", diff.newly_escalated),
+        ("would allow", "green", diff.newly_allowed),
+    ):
+        for record in records[:10]:
+            why = (record["reasons"] or [""])[0] or (
+                f"was {record['was']}; no longer fires: "
+                + (", ".join(record.get("no_longer_fires") or []) or "—")
+            )
+            console.print(
+                f"    [{colour}]{label}[/] {record['agent'] or '—'} {record['surface']} "
+                f"{record['tool'] or ''} — {why[:80]}"
+            )
+        if len(records) > 10:
+            console.print(f"    [dim]… and {len(records) - 10} more {label}[/]")
     if diff.risky:
         console.print(
             "\n[bold red]This change would block production traffic. "
