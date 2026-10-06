@@ -1,6 +1,6 @@
 # One-click self-host: the whole control plane, on your own Render account.
 #
-# This is the blueprint the README's "Deploy to Render" button uses, and it has to
+# This is the blueprint the "Deploy to Render" button uses (docs/product-tour.md), and it has to
 # live at the repository root because that is the only path Render's one-click URL
 # looks at. deploy/render.yaml is a different thing and stays where it is: it
 # deploys ONLY the dashboard, pointed at our hosted API, which is how

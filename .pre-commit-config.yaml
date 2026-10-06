@@ -1,5 +1,5 @@
 # Install once with `pre-commit install` (after `pip install pre-commit`, or
-# `uvx pre-commit install`). See README.md's "Quick start (development)" section.
+# `uvx pre-commit install`). See CONTRIBUTING.md, "Vendored wheels".
 repos:
   - repo: local
     hooks:

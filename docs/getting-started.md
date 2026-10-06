@@ -143,8 +143,8 @@ agentfox demo
 
 Thirteen steps in about five seconds, against a seeded environment of three agents. The step to
 read closely is step 3, where the injection has already succeeded and the transfer is refused
-anyway. The README walks through the output:
-[what the demo actually prints](../README.md#what-the-demo-actually-prints).
+anyway. The product tour walks through the output:
+[what the demo prints](product-tour.md#what-the-demo-prints).
 
 The demo promotes the baseline policy to enforce at step 8 and restores it to observe when it
 finishes, so it leaves the database in the state it found it.
