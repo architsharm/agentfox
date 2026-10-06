@@ -264,7 +264,7 @@ export function JudgmentPostureForm({
             ) : (
               <>
                 Egress is switched off at the deployment level (
-                <span className="mono">NOMETRIA_ALLOW_EGRESS</span>). {ceiling.explains}
+                <span className="mono">AGENTFOX_ALLOW_EGRESS</span>). {ceiling.explains}
               </>
             )}
           </div>

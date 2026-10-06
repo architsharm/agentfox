@@ -658,7 +658,7 @@ curl -s -X POST localhost:8080/api/policies/baseline/canary/start \\
         <code>local</code> or <code>local_llm</code>. An admin can narrow the tiers per
         workspace (<code>PUT /api/judgment/posture</code>) but never widen past the
         deployment:
-        <Output>{`{"detail":"tier(s) jev send the payload to a third party, and this deployment has egress switched off (NOMETRIA_ALLOW_EGRESS). That is set by whoever runs the process, not from here."}`}</Output>
+        <Output>{`{"detail":"tier(s) jev send the payload to a third party, and this deployment has egress switched off (AGENTFOX_ALLOW_EGRESS). That is set by whoever runs the process, not from here."}`}</Output>
       </Callout>
 
       <h2>Troubleshooting</h2>

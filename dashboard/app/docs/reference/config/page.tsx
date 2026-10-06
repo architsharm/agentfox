@@ -812,7 +812,7 @@ export default function Page() {
         <code>webhook_min_severity</code>) stop startup on a typo rather than falling back.
         Settings are read once per process.
       </p>
-      <Code>{`export NOMETRIA_FAIL_MODE=closed
+      <Code>{`export AGENTFOX_FAIL_MODE=closed
 export AGENTFOX_ENABLED_DETECTORS='["pii.native","secrets.native"]'
 python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail_mode, s.enabled_detectors)"`}</Code>
       <Output>{`closed ['pii.native', 'secrets.native']`}</Output>

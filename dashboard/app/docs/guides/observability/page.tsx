@@ -70,7 +70,7 @@ agentfox admin auth status`}</Code>
 │ Anyone who can reach this port is any user they name. That is fine for local     │
 │ work and unacceptable anywhere else.                                             │
 │                                                                                  │
-│ Set NOMETRIA_ENVIRONMENT=production, or NOMETRIA_AUTH_MODE=token, to require API │
+│ Set AGENTFOX_ENVIRONMENT=production, or AGENTFOX_AUTH_MODE=token, to require API │
 │ tokens.                                                                          │
 ╰──────────────────────────────────────────────────────────────────────────────────╯`}</Output>
       <p>
@@ -735,7 +735,7 @@ accepted finding.created high Ungoverned agent 'triage-experimental' observed in
           <strong>No webhook arrives.</strong> Egress is off. <code>send_test_event()</code>{" "}
           says so:{" "}
           <code>
-            (False, &apos;egress is disabled (NOMETRIA_ALLOW_EGRESS=false); nothing sent&apos;)
+            (False, &apos;egress is disabled (AGENTFOX_ALLOW_EGRESS=false); nothing sent&apos;)
           </code>
           . The message uses the older variable name; <code>AGENTFOX_ALLOW_EGRESS</code> is the
           one to set. Also check the finding&apos;s severity against{" "}
