@@ -79,7 +79,7 @@ const FINDINGS: Row[] = [
   ["unowned_agent", "A registered agent with no owner.", "Assign one."],
   ["registry_drift", "Runtime behaviour differs from what was declared.", "Update the declaration, or investigate."],
   ["undeclared_mcp_tool", "An agent called an MCP tool nobody registered.", "Review the tool and declare it."],
-  ["mcp_schema_drift", "An MCP tool changed after the agent was authorised against it; the call was blocked.", "Treat as suspicious; re-review the server."],
+  ["mcp_schema_drift", "An MCP tool's description, schema or impact annotations changed since its definition was reviewed; the call was blocked.", "Treat as suspicious; re-review the server."],
   ["mcp_tool_added_under_wildcard", "A server you registered started listing a new tool, and a wildcard grant such as mcp:server/* already allows it, so the grant was made before anyone saw this tool. The evidence names the grants.", "Review the tool; narrow the wildcard or declare the tool explicitly."],
   ["schema_drift, tool_poisoning, unpinned_server", "From scanning an MCP server: a listing changed, a description reads like an instruction, a server version is not pinned.", "agentfox scan mcp SERVER --file tools.json"],
   ["control_flow", "A tool call that exists because of untrusted content, not the user's request, even with clean arguments.", "Treat as an injected step; read what the agent saw just before."],

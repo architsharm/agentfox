@@ -259,11 +259,10 @@ agentfox policy proposals from-traffic --agent claude-dev`}</Code>
           If the hook cannot reach the daemon it allows the call and says so on stderr; the
           exit code is <code>0</code>:
         </p>
-        <Output>{`agentfox: hook could not reach the daemon — no AgentFox daemon at …/run/agentfoxd.sock (Connection refused). Start one with \`agentfox daemon\`.
+        <Output>{`agentfox: hook could not reach the daemon — no AgentFox daemon at …/run/agentfoxd.sock (Connection refused). Start one with \`agentfox admin hooks daemon\`.
 agentfox: this tool call was NOT checked. Nothing was blocked and nothing was recorded.`}</Output>
         <p>
-          The command it suggests is <code>agentfox admin hooks daemon</code>. Use{" "}
-          <code>agentfox admin hooks status</code> to check the daemon is up before you rely
+          Use <code>agentfox admin hooks status</code> to check the daemon is up before you rely
           on it.
         </p>
       </Callout>
@@ -286,7 +285,7 @@ agentfox: this tool call was NOT checked. Nothing was blocked and nothing was re
 
       <NextSteps
         items={[
-          { href: "/docs/harness", label: "Claude Code harness", why: "skills, slash commands and the read-only MCP server" },
+          { href: "/docs/plugin", label: "Claude Code plugin", why: "skills, slash commands and the read-only MCP server" },
           { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "grants and the containment rules in full" },
           { href: "/docs/guides/mcp", label: "MCP servers", why: "scan the MCP servers your sessions load" },
           { href: "/docs/reference/cli#cmd-admin-hooks-install", label: "agentfox admin hooks reference", why: "every flag" },

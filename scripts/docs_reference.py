@@ -9,8 +9,8 @@
 The docs pages render the JSON; nobody types a flag table by hand, so the reference
 cannot drift from the CLI it describes. The same check walks every `<code>` and
 `<Code>` block under dashboard/app/docs and resolves each invocation against the live
-click tree, with the harness checker's resolver, so a renamed command fails CI here
-the way it already does for the harness markdown.
+click tree, with the plugin checker's resolver, so a renamed command fails CI here
+the way it already does for the plugin markdown.
 """
 
 from __future__ import annotations
@@ -251,15 +251,15 @@ def _fragments(tsx: str) -> list[str]:
 
 def check_pages() -> list[str]:
     spec = importlib.util.spec_from_file_location(
-        "check_harness", REPO / "harness" / "scripts" / "check_harness.py"
+        "check_plugins", REPO / "scripts" / "check_plugins.py"
     )
-    harness = importlib.util.module_from_spec(spec)
+    checker = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
-    spec.loader.exec_module(harness)
+    spec.loader.exec_module(checker)
     for page in sorted(DOCS.rglob("*.tsx")):
         for line in _fragments(page.read_text()):
-            harness._check_fragment(page, line)
-    return list(harness.errors)
+            checker._check_fragment(page, line)
+    return list(checker.errors)
 
 
 # ---------------------------------------------------------------------------

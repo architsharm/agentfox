@@ -56,60 +56,22 @@ def hooks_run(
     Measured against a warm daemon, the round trip is about 6ms; the same work
     without one is 3.9 seconds, because `import agentfox` is.
     """
-    import json as _json
+    from agentfox.hooks.run import run
 
-    from agentfox.hooks import DaemonUnavailable, client
-    from agentfox.hooks import harness as harness_mod
-
-    raw = sys.stdin.read()
-    try:
-        payload = _json.loads(raw or "{}")
-    except _json.JSONDecodeError as exc:
-        # Exit 0: a hook that cannot parse its input must not take the agent
-        # down with it. It says so on stderr, where the harness shows it.
-        print(f"agentfox: could not parse the hook payload: {exc}", file=sys.stderr)
-        raise typer.Exit(0) from exc
-
-    try:
-        call = harness_mod.parse(harness, payload)
-    except harness_mod.UnknownHarness as exc:
-        print(f"agentfox: {exc}", file=sys.stderr)
-        raise typer.Exit(0) from exc
-
-    slug = agent or call.session_id or "unknown"
-    try:
-        if call.checks_content:
-            # PostToolUse and UserPromptSubmit carry text, not a call to
-            # authorise. Same daemon, same policy set, different surface —
-            # which is what makes nine surfaces a real claim at a hook rather
-            # than an architecture diagram.
-            if not call.content.strip():
-                # Nothing to check. Say nothing rather than run the engine over
-                # an empty string and record a decision about it.
-                print("{}")
-                return
-            verdict = client.guard_content(
-                agent=slug,
-                surface=call.surface,
-                content=call.content,
-                tool=call.tool,
-            )
-        else:
-            verdict = client.guard_tool_call(
-                agent=slug,
-                tool=call.tool,
-                arguments=call.arguments,
-            )
-    except DaemonUnavailable as exc:
-        client.report_unavailable(exc)
-        raise typer.Exit(0) from exc
-
-    print(_json.dumps(harness_mod.render(harness, call, verdict)))
+    out = run(harness, agent, sys.stdin.read())
+    if out.stderr:
+        print(out.stderr, file=sys.stderr)
+    if out.stdout:
+        print(out.stdout)
+    if out.exit_code:
+        raise typer.Exit(out.exit_code)
 
 
 @hooks_app.command("install")
 def hooks_install(
-    harness: str = typer.Option("claude", "--harness"),
+    harness: str | None = typer.Option(
+        None, "--harness", help="Which harness to install for. Default: the only one registered."
+    ),
     agent: str = typer.Option(..., "--agent", help="Agent slug these calls are governed as."),
     path: Path = typer.Option(Path("."), "--path", help="Project to install into."),
     write: bool = typer.Option(False, "--write", help="Actually write the settings file."),
@@ -138,32 +100,29 @@ def hooks_install(
     """
     import json as _json
 
-    from agentfox.hooks import capability
-    from agentfox.hooks import harness as harness_mod
+    from agentfox import harnesses
+    from agentfox.harnesses import capability
 
-    if harness not in harness_mod.known_harnesses():
-        known = ", ".join(harness_mod.known_harnesses())
+    if harness is None:
+        # No default named here: with one adapter registered there is nothing to
+        # choose, and with more the operator has to say which agent they run.
+        if len(harnesses.known()) != 1:
+            console.print(f"[red]pass --harness[/] — known: {', '.join(harnesses.known())}")
+            raise typer.Exit(1)
+        harness = harnesses.known()[0]
+    try:
+        adapter = harnesses.get(harness)
+    except harnesses.UnknownHarness:
+        known = ", ".join(harnesses.known())
         console.print(f"[red]no adapter for {harness!r}[/] — known: {known}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
-    settings = path / ".claude" / "settings.json"
-    command = f"agentfox hooks run --harness {harness} --agent {agent}"
-    # Three events, because one event is one surface. PreToolUse sees
-    # arguments, PostToolUse sees results — the canonical indirect-injection
-    # vector, and the one a tool-call-only hook is blind to — and
-    # UserPromptSubmit sees the turn. `matcher` is a tool-name filter and the
-    # two non-tool events do not take one.
-    events = _hook_events(harness)
-    block = {
-        "hooks": {
-            event: [
-                {"matcher": "*", "hooks": [{"type": "command", "command": command}]}
-                if event.endswith("ToolUse")
-                else {"hooks": [{"type": "command", "command": command}]}
-            ]
-            for event in events
-        }
-    }
+    # One block per event, because one event is one surface. On Claude Code:
+    # PreToolUse sees arguments, PostToolUse sees results — the canonical
+    # indirect-injection vector, and the one a tool-call-only hook is blind to —
+    # and UserPromptSubmit sees the turn. The adapter decides the file and its shape.
+    settings, block = adapter.preview(path, "project", agent=agent)
+    events = list(adapter.events.values())
 
     console.print(f"  [bold]{settings}[/]")
     console.print(f"[dim]{_json.dumps(block, indent=2)}[/]")
@@ -196,7 +155,7 @@ def hooks_install(
     # The working baseline. Without it the hook refused everything: the agent was
     # a production shadow with no grants, so `ls` hit capability default-deny and
     # every shell command `action.production_irreversible`.
-    from agentfox.hooks.baseline import install_baseline
+    from agentfox.harnesses.baseline import install_baseline
 
     with _session() as session:
         baseline = install_baseline(
@@ -228,29 +187,23 @@ def hooks_install(
         "from what the agent was seen to call.[/]"
     )
 
-    settings.parent.mkdir(parents=True, exist_ok=True)
-    existing = {}
-    if settings.exists():
-        try:
-            existing = _json.loads(settings.read_text())
-        except _json.JSONDecodeError:
-            console.print(f"[red]{settings} is not valid JSON[/] — not overwriting it.")
-            raise typer.Exit(1) from None
-    added = []
-    for event, entries in block["hooks"].items():
-        hooks = existing.setdefault("hooks", {}).setdefault(event, [])
-        if any(command in _json.dumps(entry) for entry in hooks):
-            continue
-        hooks.extend(entries)
-        added.append(event)
+    from agentfox.harnesses.base import InstallError
+
+    try:
+        changes = adapter.install(path, "project", agent=agent)
+    except InstallError:
+        console.print(f"[red]{settings} is not valid JSON[/] — not overwriting it.")
+        raise typer.Exit(1) from None
     # Before the early return, so re-running install on an existing hook also
     # repairs a pack binding an older version left wildcarded.
     _enable_coding_pack(agent)
+    added = [change for change in changes if change.action != "unchanged"]
     if not added:
         console.print("\n  [dim]already installed.[/]")
         return
-    settings.write_text(_json.dumps(existing, indent=2) + "\n")
-    console.print(f"\n  [green]written[/] {settings} [dim]({', '.join(added)})[/]")
+    for change in added:
+        change.apply()
+        console.print(f"\n  [green]written[/] {change.path} [dim]({', '.join(change.events)})[/]")
 
 
 def _enable_coding_pack(agent: str) -> None:
@@ -266,20 +219,6 @@ def _enable_coding_pack(agent: str) -> None:
         )
 
 
-def _hook_events(harness: str) -> list[str]:
-    """Which events we have an adapter for, in the order they fire.
-
-    Read off the capability table rather than hard-coded, so an event nobody
-    has established anything about cannot be installed by accident — and so
-    adding one is a row plus an adapter branch, not an edit here.
-    """
-    from agentfox.hooks.capability import EVENT_SURFACE
-
-    order = {"UserPromptSubmit": 0, "PreToolUse": 1, "PostToolUse": 2}
-    events = [event for (h, event) in EVENT_SURFACE if h == harness]
-    return sorted(events, key=lambda e: (order.get(e, 99), e))
-
-
 def client_daemon_running() -> bool:
     from agentfox.hooks import ping
 
@@ -289,7 +228,8 @@ def client_daemon_running() -> bool:
 @hooks_app.command("status")
 def hooks_status() -> None:
     """Is the daemon up, and does a deny on this harness actually stop anything?"""
-    from agentfox.hooks import capability, ping, socket_path
+    from agentfox.harnesses import capability
+    from agentfox.hooks import ping, socket_path
 
     path = socket_path()
     up = ping()

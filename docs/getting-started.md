@@ -522,7 +522,7 @@ seen what it will do.
   including where it loses.
 - **[How to read our numbers](evaluation/evidence-standards.md)**: read this before quoting any benchmark
   result anywhere.
-- **[`harness/`](../harness/README.md)**: drive all of the above from Claude Code or another coding
+- **[`plugins/claude-code/`](../plugins/claude-code/README.md)**: drive all of the above from Claude Code or another coding
   agent, if you would rather not learn the command list.
 - **[Appendix E](architecture/threat-model.md)**: the threat model, including threats to AgentFox
   itself.

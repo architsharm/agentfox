@@ -23,8 +23,8 @@ from __future__ import annotations
 
 import pytest
 
-from agentfox.hooks import harness as H
-from agentfox.hooks.capability import CAN_REWRITE_INPUT, capability_of
+from agentfox import harnesses as H
+from agentfox.harnesses.capability import CAN_REWRITE_INPUT, capability_of
 
 #: The payload shape recorded from a live session, field for field.
 LIVE_PAYLOAD = {
@@ -169,6 +169,6 @@ def test_rewriting_is_recorded_separately_from_blocking():
 def test_no_other_harness_is_claimed():
     """One harness has been probed. The rest are absent, and absent means
     unverified rather than a gap to fill with plausible values."""
-    from agentfox.hooks.capability import CAPABILITY
+    from agentfox.harnesses.capability import CAPABILITY
 
     assert {harness for harness, _event in CAPABILITY} == {"claude"}

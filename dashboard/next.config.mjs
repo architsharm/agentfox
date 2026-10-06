@@ -28,6 +28,9 @@ const nextConfig = {
       ["/docs/test", "/docs/guides/red-team-and-evals"],
       ["/docs/evidence", "/docs/guides/audit-evidence"],
       ["/docs/compliance", "/docs/guides/audit-evidence"],
+      // The operator plugin was called "the harness" until "harness" came to mean a
+      // coding agent AgentFox governs.
+      ["/docs/harness", "/docs/plugin"],
     ].map(([source, destination]) => ({ source, destination, permanent: true }));
   },
 };

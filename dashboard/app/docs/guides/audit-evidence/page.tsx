@@ -345,10 +345,14 @@ CHAIN INVALID - 1 break(s):
   seq 25  checkpoint_signature: checkpoint signature mismatch`}</Output>
 
       <Callout kind="warning" title="Set your own signing key before the first checkpoint">
-        Out of the box, checkpoints are signed with a built-in development key, and{" "}
-        <code>agentfox doctor</code> does not warn about it. Anyone who knows that default
-        can forge a checkpoint. Set <code>AGENTFOX_AUDIT_SIGNING_KEY</code> from your secret
-        store before you write checkpoints you intend to show anyone. Checkpoints signed
+        Out of the box, checkpoints are signed with a built-in development key, and anyone
+        who knows that default can forge a checkpoint. Outside development (any{" "}
+        <code>AGENTFOX_ENVIRONMENT</code> other than <code>development</code>,{" "}
+        <code>dev</code>, <code>local</code> or <code>test</code>) the gateway refuses to
+        start with it, and <code>agentfox doctor</code> reports it as bad. In development,
+        the default, it is still allowed, so a local install signs with the published key.
+        Set <code>AGENTFOX_AUDIT_SIGNING_KEY</code> from your secret store before you write
+        checkpoints you intend to show anyone. Checkpoints signed
         under an earlier key stop verifying once you change it; there is no key rotation.
       </Callout>
 

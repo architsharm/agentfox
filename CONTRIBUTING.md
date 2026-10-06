@@ -37,7 +37,7 @@ rule. If it passes locally, the pull request will pass, except for the Docker bu
 | `just test` | `uv run pytest -q` |
 | `just test-fast` | `uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo` |
 | `just lint` | `uvx ruff@0.15.7 check .`, `uvx ruff@0.15.7 format --check .` (`just fmt` applies them) and the import contracts, `PYTHONPATH=src uvx --from import-linter==2.15 lint-imports` |
-| `just check` | `check_harness.py`, `api_routes.py --check`, `docs_reference.py --check`, `claims.py --check` |
+| `just check` | `check_plugins.py`, `api_routes.py --check`, `docs_reference.py --check`, `claims.py --check` |
 | `just regen` | rewrites the generated files those checks compare against |
 | `just dashboard` | `npm ci`, `npm test` and `tsc --noEmit` in `dashboard/` |
 | `just wheels` | rebuilds `api/vendor/` and `demo/redteam-live-lang/vendor/` |
@@ -69,6 +69,7 @@ needs to import:
 | A check, a scan, an analysis: a detector, a grounding or containment check, an eval, a monitor | `capabilities/<capability>/` | `core`, `platform`, other capabilities |
 | Part of how a call is decided | `runtime/` | everything below |
 | A way in from an application framework (an SDK, a middleware, a governor) | `frameworks/` | everything below |
+| A coding agent AgentFox governs through its hooks | `harnesses/<name>/` (see below) | everything below; nothing else imports it |
 | A way out to another system (traces, metrics, a SIEM) | `exporters/` | everything below |
 | A command, a route, a report, a job handler: anything that wires capabilities to a user | `apps/` | everything |
 
@@ -77,6 +78,27 @@ tested in `tests/capabilities/grounding/`. If a new import would point up a laye
 code is in the wrong place, or it needs a hook the lower layer calls (see
 `runtime/trace_exporters.py`); adding an `ignore_imports` entry to `pyproject.toml`
 needs a reason and a TODO saying what removes it.
+
+### Add a harness
+
+A harness is a coding agent AgentFox governs through its hooks (Claude Code today). It is
+one folder, `src/agentfox/harnesses/<name>/`, and touches nothing else in `src/`:
+
+1. **`adapter.py`** implements `harnesses/base.py:HarnessAdapter` and exposes `ADAPTER`:
+   `parse` (raw payload → `AgentEvent`), `render` (`Decision` → exact stdout, stderr and exit
+   code, after `base.downgrade`), `install`, `hooked_agents`, `mcp_config_paths`,
+   `transcripts`. Its capability matrix says, per event, what a reply can do there, with the
+   evidence and harness version for each claim. Leave a claim out rather than guess it.
+2. **`tools.py`**: the harness's tool names → canonical names, and its built-in tools'
+   impacts. **`install.py`**: where it reads hooks, merged idempotently.
+3. **`fixtures/<kind>.json`**: hook payloads captured from the real tool (a temporary hook
+   that writes its stdin to a file is enough), never hand-written; `<kind>.expected.json`
+   beside each records the parsed event and the exact output per decision.
+4. **Register** the entry point under `[project.entry-points."agentfox.harnesses"]` in
+   `pyproject.toml`, and in `BUILTIN` in `harnesses/__init__.py` for source checkouts.
+5. **Run `pytest tests/harnesses`.** The conformance suite finds the adapter in the registry
+   and checks parsing, rendering, the capability matrix against `render`, and install
+   idempotence and merging.
 
 ## Tests
 
@@ -88,7 +110,9 @@ database; run it (`just test`) before you push. Two directories are different:
 - `tests/e2e/` runs the request path end to end across packages: the gateway API (through
   the `client` fixture, FastAPI's test client), RBAC, the SDK and security regressions.
 - `tests/repo/` tests the repository rather than the package: published claims, the docs
-  site, the harness, the vendored wheels, the installed layout.
+  site, the plugins, the vendored wheels, the installed layout.
+- `tests/harnesses/conformance.py` is the harness conformance suite: every adapter in the
+  registry, against the payloads captured in its `fixtures/`.
 
 Every test gets its own on-disk SQLite database, with egress off and a fixed signing key
 (`tests/conftest.py`). The suite needs no network, no API key and no model weights: the
@@ -116,10 +140,13 @@ Two more checks bind prose to evidence:
   benchmark figure to the result file it came from. Change a number by re-running the
   benchmark and committing the result; `claims.py --check` confirms the prose agrees. A
   figure in the README, `benchmarks/`, `docs/` or on the website must be bound.
-- **The harness and the docs map.** `harness/scripts/check_harness.py` checks that every
-  command and path the agent harness names exists, and that every tracked `.md` file is
-  classified in [`harness/reference/docs-map.md`](harness/reference/docs-map.md). A new doc
-  gets a row there and in [docs/README.md](docs/README.md).
+- **The plugins and the docs map.** `scripts/check_plugins.py` checks that every command
+  and path the operator plugins name exists, that every tracked `.md` file is classified in
+  [`plugins/shared/reference/docs-map.md`](plugins/shared/reference/docs-map.md), and that
+  the Claude Code plugin's copies of `plugins/shared/` (AGENTS.md, skills, reference) match
+  their originals. Edit `plugins/shared/`, then `uv run python scripts/check_plugins.py
+  --write` refreshes the copies. A new doc gets a row in the docs map and in
+  [docs/README.md](docs/README.md).
 
 If one of these fails, the document is wrong, not the check.
 

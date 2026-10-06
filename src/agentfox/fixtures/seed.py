@@ -302,7 +302,8 @@ def seed(
     summary["obligations"] = sync_obligations(session)
 
     if with_policies:
-        from agentfox.platform.policy.coding import hooked_agents, scope_coding_pack
+        from agentfox.harnesses import hooked_agents
+        from agentfox.platform.policy.coding import scope_coding_pack
 
         # Demo agents are not coding agents; the coding pack binds only to agents
         # this directory has installed coding-harness hooks for (policy/coding.py).

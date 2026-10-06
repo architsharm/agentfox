@@ -51,6 +51,17 @@ the file it came from.
 
 ### Changed
 
+- The Claude Code operator plugin moved from `harness/` to `plugins/claude-code/`, and its
+  runtime-neutral parts (`AGENTS.md`, `skills/`, `reference/`) to `plugins/shared/`. The
+  marketplace entry now points at `./plugins/claude-code`; the install command
+  (`claude plugin install agentfox@agentfox`) is unchanged. A local clone uses
+  `claude --plugin-dir ./plugins/claude-code`. The maintainer command
+  `/agentfox:harness-check` is now `/agentfox:plugin-check`, the drift checker is
+  `scripts/check_plugins.py`, and the docs page is `/docs/plugin` (`/docs/harness`
+  redirects).
+- Coding-agent harnesses are adapters behind one interface, `agentfox.harnesses`
+  (registered through the `agentfox.harnesses` entry-point group). Claude Code is the only
+  one; installed hooks (`agentfox hooks run --harness claude`) behave exactly as before.
 - Accepting a changed MCP tool listing is now a two-person change. A changed definition is
   held and filed as an `mcp.tool.accept` change proposal; `McpGovernor.register_tools(...,
   accept_changes=True)` now requires `actor=` (the reviewer) and raises `ValueError`

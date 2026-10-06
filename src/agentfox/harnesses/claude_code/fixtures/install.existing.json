@@ -1,0 +1,3 @@
+{
+  ".claude/settings.json": "{\n  \"permissions\": {\n    \"allow\": [\n      \"Bash(git status:*)\",\n      \"Read\"\n    ],\n    \"deny\": [\n      \"Bash(curl:*)\"\n    ]\n  },\n  \"env\": {\n    \"EXAMPLE_FLAG\": \"1\"\n  },\n  \"hooks\": {\n    \"PreToolUse\": [\n      {\n        \"matcher\": \"Write|Edit\",\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"npx prettier --check .\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"say done\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
+}

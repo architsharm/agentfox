@@ -12,11 +12,11 @@ import json
 from typer.testing import CliRunner
 
 from agentfox.core.models import Finding
+from agentfox.harnesses import hooked_agents
 from agentfox.platform.policy import active_policies, load_available, save_policy
 from agentfox.platform.policy.coding import (
     CODING_PACK,
     enable_for_agent,
-    hooked_agents,
     retire_tool_wildcard,
     scope_coding_pack,
 )

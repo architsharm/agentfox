@@ -1,0 +1,40 @@
+# AgentFox governance gate — copy to .github/workflows/agentfox-governance.yml
+# Every step is offline by default (echo provider, SQLite, no egress).
+name: agentfox-governance
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    env:
+      NOMETRIA_DATABASE_URL: sqlite:///${{ github.workspace }}/.agentfox-ci.db
+      NOMETRIA_ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install agentfox
+        run: pip install "git+https://github.com/architsharm/agentfox.git"
+      - name: Initialise (offline, idempotent)
+        run: agentfox init --env test
+      - name: Every model call is governed
+        run: agentfox scan . --fail
+      - name: Policy hierarchy has no critical/high lint findings
+        run: agentfox policy lint
+      - name: Business guardrails don't conflict
+        run: agentfox policy rules check
+      # Eval gate: needs a suite with cases in this DB. For a hosted control plane, point
+      # NOMETRIA_DATABASE_URL at it (read-only CI credentials) and pass --baseline <run_id>.
+      - name: Eval regression gate
+        run: |
+          agentfox admin seed > /dev/null  # demo suite `support-quality`; replace with your own suite setup
+          agentfox test gate support-quality --junit reports/eval.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agentfox-eval
+          path: reports/

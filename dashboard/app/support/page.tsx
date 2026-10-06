@@ -36,7 +36,7 @@ const SECURITY_MD = `${REPO}/blob/main/SECURITY.md`;
 const DISCUSSIONS = `${REPO}/discussions`;
 const NEW_ISSUE = `${REPO}/issues/new/choose`;
 const GETTING_STARTED = `${REPO}/blob/main/docs/getting-started.md`;
-const HARNESS = `${REPO}/tree/main/harness`;
+const PLUGIN = `${REPO}/tree/main/plugins/claude-code`;
 
 function Out({ href, children }: { href: string; children: React.ReactNode }) {
   return (
@@ -150,7 +150,7 @@ const DOCS: { title: string; body: React.ReactNode }[] = [
     title: "Let a coding agent drive it",
     body: (
       <>
-        The <Out href={HARNESS}>harness</Out> packages the product as skills, commands, subagents
+        The <Out href={PLUGIN}>Claude Code plugin</Out> packages the product as skills, commands, subagents
         and safety hooks, so an agent can do the setup without learning 13 CLI commands and their subcommands.
       </>
     ),

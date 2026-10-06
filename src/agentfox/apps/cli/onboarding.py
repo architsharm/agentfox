@@ -180,12 +180,9 @@ def init(
     from agentfox.capabilities.compliance import load_catalog, sync_catalog
     from agentfox.core.config import get_settings
     from agentfox.core.db import init_db, session_scope
+    from agentfox.harnesses import hooked_agents
     from agentfox.platform.policy import load_available, save_policy
-    from agentfox.platform.policy.coding import (
-        hooked_agents,
-        retire_tool_wildcard,
-        scope_coding_pack,
-    )
+    from agentfox.platform.policy.coding import retire_tool_wildcard, scope_coding_pack
 
     if not Path(path).is_dir():
         # Checked first, so a typo does not leave a half-initialised database behind

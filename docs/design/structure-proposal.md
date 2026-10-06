@@ -1,9 +1,9 @@
 # Code structure proposal: harnesses, capability packs, and a layout newcomers can follow
 
-Status: decided 2026-10-06 (section 9). The fix branches this waited on (security, policy,
-approvals, gates-detection, grounding, webapp, monitor-sources, monitor-probes,
-contributor-guide) have merged. Section 10 records what is already done and what remains per
-phase.
+Status: decided 2026-10-06 (section 9); phases 0-2 are done. The fix branches this waited on
+(security, policy, approvals, gates-detection, grounding, webapp, monitor-sources,
+monitor-probes, contributor-guide) have merged. Section 10 records what is already done and
+what remains per phase.
 
 Evidence comes from an import and file analysis of `main` @ 3b326f5 and a survey of how
 other projects handle the same two problems (sources at the end).
@@ -309,7 +309,7 @@ proves the business-pack story.
     business, discovery, evaluation, improvement, monitoring, compliance) < `runtime/` <
     `frameworks/`, `exporters/`, `hooks/`, `fixtures/` < `apps/` (cli, gateway,
     mcp_server, report, the job handlers, the showcase). `prove/` and `integrations/` are
-    split across those homes; `harness/` and `hooks/` are unchanged until phase 2.
+    split across those homes; `harness/` and `hooks/` were left for phase 2.
   - The cycles in section 3 are broken: `core/seed.py` is `fixtures/`; the constants are
     `core/vocab.py`; trace correlation is an exporter the runtime tells about each trace
     (`runtime/trace_exporters.py`); `infer_impact` is one function in
@@ -320,6 +320,37 @@ proves the business-pack story.
     lint job and `just lint`. Three edges are named exceptions: `EU_CLASSES`
     (policy -> compliance, until the EU AI Act pack in phase 4) and evaluation's
     in-process red-team runner and live-probe adapter (-> runtime).
+- Phase 2 (harness SPI):
+  - `src/agentfox/harnesses/` (L4): `base.py` holds the `HarnessAdapter` protocol (`parse`,
+    `render`, `install`, `hooked_agents`, `mcp_config_paths`, `transcripts`, plus a
+    `preview` for the install dry run), `AgentEvent`, `Decision` (allow, deny, ask, modify,
+    context), `EventCaps` and `downgrade`, which steps a decision the harness cannot honour
+    down on purpose and records it on the applied decision. The registry (`get`, `known`,
+    `all`) reads the `agentfox.harnesses` entry-point group, with a built-in fallback for
+    source checkouts; a built-in name cannot be taken by another package.
+  - Every Claude-specific constant and branch is in `harnesses/claude_code/`: the wire
+    contract and the probed capability rows (was `hooks/harness.py`, `hooks/capability.py`),
+    the built-in tools and their impacts and canonical names, the settings path, schema,
+    event order and merge (was the `hooks install` command), `hooked_agents` (was
+    `policy/coding.py`) and the transcript scanner (was `discovery/sessions.py`).
+    `hooks/` keeps the transport, plus `run.py`, which goes through the registry. The
+    default `--harness` is "the only one registered".
+  - MCP config discovery stays in discovery, as one neutral table
+    (`exposure.KNOWN_MCP_CONFIGS`, Cursor and Claude Code rows included): finding MCP servers
+    is not harness governance, and `capabilities/monitoring` (L2) scans connected repos and
+    cannot import L4. The Claude Code adapter's `mcp_config_paths` selects its rows from it.
+  - `tests/harnesses/conformance.py` runs every registered adapter against
+    `fixtures/<kind>.json` (captured payloads) and `<kind>.expected.json`. Outputs were
+    checked byte for byte against the pre-refactor adapter: no behaviour change.
+  - import-linter: `harnesses` is in L4, and nothing outside `harnesses/` and `hooks/`
+    imports `agentfox.harnesses.claude_code`.
+  - `harness/` is `plugins/claude-code/`; `AGENTS.md`, `skills/` and `reference/` live in
+    `plugins/shared/`. A Claude Code plugin cannot load components outside its own
+    directory, and symlinks are dereferenced only for a git-hosted marketplace, so the
+    plugin carries committed copies that `scripts/check_plugins.py` (was
+    `harness/scripts/check_harness.py`) writes with `--write` and fails on in CI. The docs
+    page moved to `/docs/plugin`, with a permanent redirect from `/docs/harness`. The
+    evaluation code no longer calls its runner a harness.
 
 **Remaining, per phase:**
 
@@ -327,7 +358,7 @@ proves the business-pack story.
 |---|---|
 | 0. Hygiene | Done |
 | 1. Layers | Done, except the three import-linter exceptions named above. Intra-layer cycles remain between `capabilities/detection` and `capabilities/judgment` (the judgment detector, and egress redaction through detection's PII detector) and between `capabilities/evaluation` and `capabilities/monitoring` (opting a probe target in creates its monitor) |
-| 2. Harness SPI | All of it, including the `harness/` → `plugins/claude-code/` rename |
+| 2. Harness SPI | Done. `agentfox hooks capture` and the `just new-harness` scaffolder (section 7) are not built; a PostToolUse fixture should be re-captured verbatim at the next probe |
 | 3. Second harness | Deferred (section 9) |
 | 4. Packs | All of it |
 | 5. Repo outside src | All of it except the `justfile` itself (the scaffolder recipes remain); wheels deferred (section 9) |

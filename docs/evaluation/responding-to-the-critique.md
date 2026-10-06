@@ -64,7 +64,7 @@ because they raise cost and buy time.
 
 **"Just hire someone who understands this deeply."** Good advice that does not scale to twenty product teams,
 and it is also the advice of someone who sells training and advisory services. The expertise has to be
-encoded in the platform, which is what our [agent harness](../../harness/README.md) is for.
+encoded in the platform, which is what our [operator plugin](../../plugins/claude-code/README.md) is for.
 
 ---
 

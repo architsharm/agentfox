@@ -13,8 +13,8 @@ The second uses a fact the product already holds, from an action the operator
 already took: the agents that `agentfox admin hooks install` wired into a coding harness.
 So the pack is bound to exactly those slugs —
 
-* `agentfox init` binds it scoped to the agents named in this repository's
-  ``.claude/settings.json`` hook commands, and skips it when there are none;
+* `agentfox init` binds it scoped to the agents named in this repository's harness
+  hook commands (`agentfox.harnesses.hooked_agents`), and skips it when there are none;
 * `agentfox admin hooks install --write` adds the agent it just installed to the scope.
 
 An agent nobody installed hooks for never matches. An operator who wants it
@@ -24,8 +24,6 @@ written — only the shipped wildcard is narrowed.
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
@@ -34,28 +32,6 @@ from sqlalchemy.orm import Session
 from agentfox.platform.policy.model import PolicyDocument
 
 CODING_PACK = "coding-agent"
-
-#: Files `hooks install` writes, relative to the project root.
-HOOK_SETTINGS = (".claude/settings.json", ".claude/settings.local.json")
-
-#: The command `hooks install` writes: ``agentfox hooks run --harness X --agent Y``.
-_HOOK_COMMAND = re.compile(r"agentfox hooks run\b[^\"\n]*?--agent[ =]([A-Za-z0-9_.:@/-]+)")
-
-
-def hooked_agents(root: Path | None = None) -> list[str]:
-    """Agent slugs this project's coding-harness hooks govern, if any."""
-    root = Path(root or Path.cwd())
-    slugs: set[str] = set()
-    for rel in HOOK_SETTINGS:
-        path = root / rel
-        if not path.is_file():
-            continue
-        try:
-            text = path.read_text(errors="ignore")
-        except OSError:
-            continue
-        slugs.update(_HOOK_COMMAND.findall(text))
-    return sorted(slugs)
 
 
 def _is_wildcard(scope: dict[str, Any] | None) -> bool:
@@ -178,9 +154,7 @@ def enable_for_agent(session: Session, slug: str, *, author: str = "hooks instal
 
 __all__ = [
     "CODING_PACK",
-    "HOOK_SETTINGS",
     "enable_for_agent",
-    "hooked_agents",
     "retire_tool_wildcard",
     "scope_coding_pack",
 ]
