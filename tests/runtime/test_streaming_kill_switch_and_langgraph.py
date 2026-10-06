@@ -23,7 +23,7 @@ from agentfox.policy import set_mode
 from agentfox.providers import CompletionRequest, get_provider, script
 from agentfox.registry.control import UnknownAgent, kill, quarantine, resume, state_of
 from agentfox.runtime.enforcement import Enforcer
-from tests.conftest import INDIRECT_INJECTION, SECRET_TEXT, as_user
+from tests.conftest import INDIRECT_INJECTION, SECRET_TEXT, as_user, promote
 
 # ---------------------------------------------------------------------------
 # PL-1 · Streaming
@@ -166,11 +166,7 @@ def test_gateway_honours_stream_flag(client):
 
 
 def test_gateway_stream_block_emits_error_then_done(client):
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     with client.stream(
         "POST",
         "/v1/chat/completions",

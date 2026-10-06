@@ -141,12 +141,15 @@ support-triage   production  limited  yes         priya@exampl…  langgraph
         <Link href="/docs/app/policies#editor">the policy editor</Link>.
       </p>
       <Code>{`agentfox policy effective --agent payments-ops`}</Code>
-      <Output>{`effective policy in development — mode enforce, default allow
-  layers: org:*(extend), org:*(extend), org:*(extend)
+      <Output>{`effective policy in development — default allow
+  layers:
+    org:*(extend)  baseline  observe
+    org:*(extend)  eu-ai-act-high-risk  observe
+    org:*(extend)  tool-containment  enforce
 
-rule                                 effect    from   overrides
-access.undeclared_table              escalate  org:*  —
-access.unscoped_table                block     org:*  —
+rule                                 effect    mode     from   overrides
+access.undeclared_table              escalate  enforce  org:*  —
+access.unscoped_table                block     enforce  org:*  —
 …`}</Output>
 
       <h3 id="boundary">Knowledge boundary</h3>

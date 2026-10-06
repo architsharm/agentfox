@@ -29,7 +29,7 @@ from agentfox.detection.composition import check_composed_escalation
 from agentfox.detection.tuning import LatencyLedger, active_suppressions, explain, filter_suppressed
 from agentfox.grounding.context_integrity import assemble_context
 from agentfox.identity import check_capability, request_approval, verify_credential
-from agentfox.policy import PolicyInput, active_policies, combine, get_engine
+from agentfox.policy import PolicyInput, combine, get_engine, policies_in_force
 from agentfox.policy.taint_view import policy_taint
 from agentfox.prove.audit import chain
 from agentfox.prove.audit.trace import (
@@ -58,6 +58,16 @@ from agentfox.runtime.enforcement.rules import (
 from agentfox.runtime.enforcement.streaming import _StreamingMixin
 from agentfox.runtime.enforcement.surfaces import _SurfacesMixin
 from agentfox.runtime.enforcement.tool_calls import _ToolCallMixin
+
+
+def _relies_on_detections(doc: Any, surface: str) -> bool:
+    """Does this pack have an enabled detection rule that applies on ``surface``?"""
+    return any(
+        rule.enabled
+        and rule.when.detection is not None
+        and (not rule.when.surface or surface in rule.when.surface)
+        for rule in doc.rules
+    )
 
 
 class Enforcer(
@@ -166,6 +176,8 @@ class Enforcer(
         conversation_window: list[str] | None = None,
         completion: dict[str, Any] | None = None,
         persist: bool = True,
+        forced_rules: list[dict[str, Any]] | None = None,
+        extra_taint: dict[str, Any] | None = None,
     ) -> EnforcementResult:
         """One decision on one surface. The single point every guarantee flows through.
 
@@ -173,6 +185,13 @@ class Enforcer(
         message: it is the recent user turns, oldest first, ending with this one,
         supplied by `check_conversation_window`. It exists so F9.4's trajectory check
         can run through the same channel as every other check rather than beside it.
+
+        `forced_rules` are synthetic rules a surface decided before calling this — an
+        agent message's replay or bad-signature refusal, say. They are applied (by
+        lattice maximum, whatever the packs' mode) *before* the decision is persisted
+        and audited, so the record says what the caller is told. An effect outside
+        the lattice (``observe``) is recorded and changes nothing. `extra_taint` is
+        merged into the recorded taint summary.
         """
         # PL-3: a killed or quarantined agent is refused on every surface, before
         # anything else runs. The check used to live only on the completion
@@ -300,7 +319,8 @@ class Enforcer(
         # compose by different algebras: rules take the lattice maximum, ladders select
         # exactly one band. Security dominates the combination, so a band that says
         # auto-approve can never loosen a rule that says block.
-        ladder_decision = self._business_ladders(agent, surface, tool_key, arguments)
+        ladder_decisions = self._business_ladders(agent, surface, tool_key, arguments)
+        ladder_decision = ladder_decisions[0] if ladder_decisions else None
 
         # --- P9 action assurance ------------------------------------------
         # Argument-level containment governs *the call*; this governs *the artefact*.
@@ -385,7 +405,17 @@ class Enforcer(
             completion=completion or {},
         )
 
-        bound = active_policies(self.session, agent_slug, environment)
+        # P12: the hierarchy decides what is in force for this subject — the same
+        # resolution `policy effective` prints — so a team-scoped `restrict` binds
+        # only that team's agents and a granted `override` really loosens.
+        bound = policies_in_force(
+            self.session,
+            agent_slug,
+            environment,
+            # "" rather than None: the agent is known and has no team, so there is
+            # nothing to look up.
+            team=(agent.owner_team or "") if agent else None,
+        )
         # Nothing bound is not the same as nothing to check.
         #
         # A database that has never been initialised holds no policies, so every
@@ -586,14 +616,37 @@ class Enforcer(
 
         # P3-7: a degraded pipeline means reduced coverage. Fail-closed converts that
         # into a block; fail-open accepts it and records the gap.
-        if pipeline_result.degraded and self.settings.fail_mode == "closed" and mode == "enforce":
+        #
+        # Two sources, the stricter wins (#42): the deployment-wide `fail_mode`, for
+        # an enforcing decision, and each pack's own `fail_mode` — which used to be
+        # stored and never read. A pack fails closed only where its coverage
+        # actually depended on the detectors: it is enforcing, says `closed`, and
+        # has an enabled detection rule for this surface.
+        closed_packs = (
+            [
+                doc.key
+                for doc, _version, _decision in evaluated
+                if doc.mode == "enforce"
+                and doc.fail_mode == "closed"
+                and _relies_on_detections(doc, surface)
+            ]
+            if pipeline_result.degraded
+            else []
+        )
+        deployment_closed = self.settings.fail_mode == "closed" and mode == "enforce"
+        if pipeline_result.degraded and (deployment_closed or closed_packs):
             verdict = "block"
             effective = "block"
+            source = (
+                f"policy {', '.join(closed_packs)} declares fail_mode=closed"
+                if closed_packs and not deployment_closed
+                else "fail_mode=closed"
+            )
             rules_fired.append(
                 _fired_rule(
                     "pipeline.fail_closed",
                     "block",
-                    f"detectors degraded ({pipeline_result.degraded}) and fail_mode=closed",
+                    f"detectors degraded ({pipeline_result.degraded}) and {source}",
                     severity="medium",
                     controls=["NOM-RTG-06"],
                 )
@@ -602,23 +655,41 @@ class Enforcer(
         # The ladder outcome joins here rather than in the rule list, so that its
         # `verify` and `allow` outcomes cannot be swept into the lattice maximum and
         # silently promoted or ignored.
-        if ladder_decision is not None and ladder_decision.outcome != "allow":
-            combined = combine_business(effective, ladder_decision)
-            if combined.verdict != effective:
-                effective = combined.verdict
-                if mode == "enforce":
-                    verdict = combined.verdict
+        #
+        # Each ladder's own `mode` decides whether its outcome is applied (#1). The
+        # policy packs' mode used to decide it, so an observe ladder escalated as soon
+        # as an enforcing pack governed the call, and an enforce ladder was only
+        # recorded when nothing else enforced. Every ladder raises the effective
+        # verdict (what enforcement would do); only enforcing ladders raise the
+        # applied one.
+        for decision in ladder_decisions:
+            if decision.outcome == "allow":
+                continue
+            effective = combine_business(effective, decision).verdict
+            if decision.mode == "enforce":
+                verdict = combine_business(verdict, decision).verdict
             rules_fired.append(
                 _fired_rule(
-                    f"business.{ladder_decision.ladder_key}",
-                    ladder_decision.outcome,
-                    ladder_decision.reason,
+                    f"business.{decision.ladder_key}",
+                    decision.outcome,
+                    decision.reason,
                     severity="medium",
                     controls=["NOM-GOV-07"],
-                    evidence=ladder_decision.to_json(),
-                    mode=mode,
+                    evidence=decision.to_json(),
+                    mode=decision.mode,
                 )
             )
+
+        for forced in forced_rules or []:
+            rank = _RANK.get(str(forced.get("effect")))
+            if rank is not None:
+                if rank > _RANK.get(verdict, 0):
+                    verdict = str(forced["effect"])
+                if rank > _RANK.get(effective, 0):
+                    effective = str(forced["effect"])
+            rules_fired.append(forced)
+        if extra_taint:
+            taint_summary.update(extra_taint)
 
         latency_ms = (time.perf_counter() - started) * 1000
         reason = "; ".join(r.get("reason", "") for r in rules_fired if r.get("reason")) or (

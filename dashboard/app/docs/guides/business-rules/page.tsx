@@ -162,7 +162,8 @@ bands:
             matters. See <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>.
           </p>
           <Code>{`agentfox declare tool billing.credit --impact write --description "Credit a customer account"
-agentfox permit grant billing-ops billing.credit --yes`}</Code>
+agentfox permit grant billing-ops billing.credit --yes
+agentfox policy rules apply credit-ladder.yaml --mode enforce`}</Code>
           <Code lang="python" title="credit_agent.py">{`from agentfox import AgentFox, ApprovalRequired, PolicyViolation
 
 nom = AgentFox(agent="billing-ops")
@@ -186,14 +187,14 @@ for amount in (25, 120, 900, 8000):
             <code>business.&lt;key&gt;</code>, and its <code>evidence</code> is the full ladder
             decision.
           </p>
-          <Callout kind="warning" title="What decides whether the outcome is applied">
-            The outcome is applied when the policy governing the call is in enforce mode. After{" "}
-            <code>agentfox init</code>, <code>tool-containment</code> enforces, so the run above
-            applied every band even though the ladder says <code>mode: observe</code>. With no
-            enforcing policy, the outcome is only recorded as the effective verdict, even for a
-            ladder applied with <code>--mode enforce</code>. The ladder&apos;s own{" "}
-            <code>mode</code> is stored and shown, but it does not currently change the result.
-            Run <code>agentfox policy list</code> to see what enforces.
+          <Callout kind="note" title="What decides whether the outcome is applied">
+            The ladder&apos;s own <code>mode</code>. The run above applied the ladder with{" "}
+            <code>--mode enforce</code>, so every band was applied. In <code>observe</code>{" "}
+            (the default) the outcome is recorded as the effective verdict and in the
+            decision&apos;s fired rules, with <code>mode: observe</code>, and the call
+            proceeds, whatever mode the policy packs are in. A ladder never loosens a
+            security verdict: a block from a policy stands even under an{" "}
+            <code>allow</code> band.
           </Callout>
         </Step>
 

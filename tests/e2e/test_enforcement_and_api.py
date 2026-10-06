@@ -15,7 +15,7 @@ from agentfox.core.models import (
 )
 from agentfox.identity import ensure_identity, grant_capability
 from agentfox.policy import set_mode
-from tests.conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user
+from tests.conftest import INDIRECT_INJECTION, PII_TEXT, SECRET_TEXT, as_user, promote
 
 # ---------------------------------------------------------------------------
 # The request path (PRD §9.3)
@@ -400,11 +400,7 @@ def test_anthropic_compatible_proxy(client):
 
 
 def test_blocked_request_returns_a_readable_error(client):
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     response = client.post(
         "/v1/chat/completions",
         json={
@@ -733,7 +729,7 @@ def test_policy_canary_lifecycle_via_api(client):
     body = "key: canary-api\nmode: enforce\ndefault_effect: allow\nrules: []\n"
     client.post(
         "/api/policies",
-        json={"body": body, "mode": "enforce"},
+        json={"body": body},
         headers=as_user("marcus@example.com"),
     )
     body2 = (
@@ -742,7 +738,7 @@ def test_policy_canary_lifecycle_via_api(client):
     )
     client.post(
         "/api/policies",
-        json={"body": body2, "mode": "enforce"},
+        json={"body": body2},
         headers=as_user("marcus@example.com"),
     )
 
@@ -780,7 +776,7 @@ def test_only_production_roles_can_start_a_canary(client):
     body = "key: canary-rbac\nmode: enforce\ndefault_effect: allow\nrules: []\n"
     client.post(
         "/api/policies",
-        json={"body": body, "mode": "enforce"},
+        json={"body": body},
         headers=as_user("marcus@example.com"),
     )
     body2 = (
@@ -789,7 +785,7 @@ def test_only_production_roles_can_start_a_canary(client):
     )
     client.post(
         "/api/policies",
-        json={"body": body2, "mode": "enforce"},
+        json={"body": body2},
         headers=as_user("marcus@example.com"),
     )
     response = client.post(
@@ -1316,11 +1312,7 @@ def test_the_alias_headers_are_exposed_across_origins(client):
 
 
 def test_a_block_body_says_which_verdict_took_effect(client):
-    client.post(
-        "/api/policies/baseline/mode",
-        json={"mode": "enforce"},
-        headers=as_user("admin@example.com"),
-    )
+    promote(client, "baseline")
     response = client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": INDIRECT_INJECTION}]},

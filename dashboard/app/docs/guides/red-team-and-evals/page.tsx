@@ -519,10 +519,10 @@ agentfox policy simulate --file no-email-input.yaml --agent research-bot`}</Code
   controls: []
   compiles to 33 lines of Rego
 research-no-email simulated against 144 decisions
-  unchanged        106
+  unchanged        143
   newly blocked    1
   newly escalated  0
-  newly allowed    37
+  newly allowed    0
     would block research-bot input  — The research bot does not take personal contact details.
 
 This change would block production traffic. Review before promoting to enforce.`}</Output>
@@ -533,16 +533,16 @@ This change would block production traffic. Review before promoting to enforce.`
         </Link>
         , which exits 1 on a rule hidden by another or one that can never match.
       </p>
-      <Callout kind="warning" title="Read “newly allowed” carefully">
-        The candidate is evaluated on its own and compared with the verdict every policy
-        together reached at the time. The 37 &quot;newly allowed&quot; decisions are
-        injection blocks from <code>baseline</code>, which this one-rule candidate does not
-        contain; they would not become allowed. To see what editing an existing policy
-        would do, simulate the whole edited policy under its own key, as{" "}
-        <Link href="/docs/guides/tuning#simulate">Tune detectors</Link> does. Decisions
-        recorded without a trace (direct <code>AgentFox.check()</code> calls) are skipped
-        when you pass <code>--agent</code>, and red-team probe decisions are replayed as if
-        they were traffic.
+      <Callout kind="note" title="What the counts compare">
+        Each recorded decision is replayed with the candidate in place of its own pack
+        (whichever version of it was in force then); rules that fired from other packs,
+        such as the injection blocks from <code>baseline</code>, still count. A
+        brand-new one-rule pack therefore only ever adds blocks. To see what editing an
+        existing policy would do, simulate the edited policy under its own key, as{" "}
+        <Link href="/docs/guides/tuning#simulate">Tune detectors</Link> does.{" "}
+        <code>--agent</code> matches the decision&apos;s agent, so decisions recorded
+        without a trace (direct <code>AgentFox.check()</code> calls) are included.
+        Red-team probe decisions are replayed as if they were traffic.
       </Callout>
       <p>
         Once a simulation is clean, promote with{" "}

@@ -194,7 +194,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/policies/{key}/canary/advance` | Check the candidate cohort's health and advance, hold, or auto-roll-back. |
 | `POST` | `/api/policies/{key}/canary/rollback` | Rollback Policy Canary |
 | `POST` | `/api/policies/{key}/canary/start` | Start Policy Canary |
-| `POST` | `/api/policies/{key}/mode` | Change Mode |
+| `POST` | `/api/policies/{key}/mode` | Promote or demote a policy, optionally making a saved version live. |
 | `GET` | `/api/policies/{key}/rego` | Get Rego |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |

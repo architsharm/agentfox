@@ -114,3 +114,15 @@ INDIRECT_INJECTION = (
 )
 PII_TEXT = "Contact jane.doe@example.com, SSN 123-45-6789, card 4111 1111 1111 1111."
 SECRET_TEXT = "deploy with sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345 in the header"
+
+
+def promote(client, key: str, email: str = "admin@example.com"):
+    """Promote a policy to enforce over the API the way the editor does: simulate the
+    live version's rules, then promote. Enforcing without a recorded simulation is
+    refused server-side (#64)."""
+    headers = as_user(email)
+    policy = client.get(f"/api/policies/{key}", headers=headers).json()
+    client.post("/api/policies/simulate", json={"body": policy["body"]}, headers=headers)
+    response = client.post(f"/api/policies/{key}/mode", json={"mode": "enforce"}, headers=headers)
+    assert response.status_code == 200, response.text
+    return response

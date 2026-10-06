@@ -132,7 +132,7 @@ export default function Page() {
           <tr><td><code>version</code></td><td>integer</td><td><code>1</code></td><td>The first stored version number. Saving a changed body stores a new immutable version; decisions record the version in force.</td></tr>
           <tr><td><code>mode</code></td><td><code>observe</code> | <code>enforce</code></td><td><code>observe</code></td><td>The mode the pack is bound in when first loaded. Afterwards the binding decides (<code>agentfox policy enforce</code> / <code>observe</code>).</td></tr>
           <tr><td><code>default_effect</code></td><td>an effect</td><td><code>allow</code></td><td>The verdict when no rule fires.</td></tr>
-          <tr><td><code>fail_mode</code></td><td><code>open</code> | <code>closed</code></td><td><code>open</code></td><td>Accepted and stored, but not read at runtime: see <a href="#fail-mode">fail_mode</a>.</td></tr>
+          <tr><td><code>fail_mode</code></td><td><code>open</code> | <code>closed</code></td><td><code>open</code></td><td>What a detector timeout or error does to this pack&apos;s checks: see <a href="#fail-mode">fail_mode</a>.</td></tr>
           <tr><td><code>scope</code></td><td><code>{"{agents: [globs], environments: [names]}"}</code></td><td><code>{"{}"}</code></td><td>Which agents and environments the pack applies to at runtime. Empty means all.</td></tr>
           <tr><td><code>rules</code></td><td>list</td><td><code>[]</code></td><td>The rules.</td></tr>
         </tbody>
@@ -353,12 +353,15 @@ agentfox policy lint`}</Code>
 no policy issues`}</Output>
       <p>
         <code>policy validate FILE</code> checks one file offline: the schema, the
-        effects and operators, and that it compiles. <code>policy lint</code> takes no
-        file: it lints every bound pack and every hierarchy layer together, so run it
-        after <code>init</code>. Lint catches what validation cannot: a rule whose
-        conditions can never be true, duplicate ids, over-broad globs, rules with no
-        conditions, and illegal loosening. It exits 1 on critical or high findings, so
-        it can gate a pull request:
+        effects and operators, that it compiles, and the full lint. <code>policy lint
+        FILE…</code> lints files before they are loaded; with no file it lints every
+        bound pack and every hierarchy layer together, so run it after{" "}
+        <code>init</code> too. Lint catches a rule whose conditions can never be true, a
+        condition naming a value no request carries (<code>surface: [input,
+        toolargs]</code> still fires on input, but <code>toolargs</code> is a typo),
+        duplicate ids, over-broad globs, rules with no conditions, and illegal
+        loosening. Both exit 1 on critical or high findings, so either can gate a pull
+        request:
       </p>
       <Code lang="yaml" title=".agentfox/policies/typos.yaml">{`key: typos
 name: A pack with mistakes
@@ -374,9 +377,9 @@ rules:
       tool: "*"
     effect: escalate`}</Code>
       <Output>{`$ agentfox policy validate .agentfox/policies/typos.yaml
-valid — typos v1, 2 rules, mode=observe
+invalid: typos — 1 blocking finding(s)
 …
-$ agentfox policy lint
+$ agentfox policy lint .agentfox/policies/typos.yaml
 severity  code             rule              level  message
 high      unreachable      pii.reply         org    'pii.reply' can never fire: every value in \`surface\` is unknown
                                                     (outputs);
@@ -442,19 +445,23 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         and says which layer each rule came from:
       </p>
       <Code>{`agentfox policy effective --agent support-triage`}</Code>
-      <Output>{`effective policy in development — mode enforce, default allow
-  layers: org:*(extend), org:*(extend), org:*(extend), org:*(extend)
+      <Output>{`effective policy in development — default allow
+  layers:
+    org:*(extend)  baseline  observe
+    org:*(extend)  eu-ai-act-high-risk  observe
+    org:*(extend)  support-desk  enforce
+    org:*(extend)  tool-containment  enforce
 
-rule                                 effect    from   overrides
-access.undeclared_table              escalate  org:*  —
-access.unscoped_table                block     org:*  —
+rule                                 effect    mode     from   overrides
+access.undeclared_table              escalate  enforce  org:*  —
+access.unscoped_table                block     enforce  org:*  —
 …
-billing.large_export                 block     org:*  —
+billing.large_export                 block     enforce  org:*  —
 …`}</Output>
       <p>
-        The single <code>mode</code> on the first line is <code>enforce</code> if any
-        layer enforces; it does not mean every rule listed is enforcing. Use{" "}
-        <code>agentfox policy list</code> for each pack&apos;s own mode.
+        Each layer is listed with its own mode, and each rule with the mode it is
+        applied under: <code>enforce</code> rules block, <code>observe</code> rules are
+        recorded as the effective verdict only.
       </p>
 
       <h2 id="hierarchy">Hierarchy: org, team, agent, user</h2>
@@ -493,11 +500,15 @@ for f, level, scope, compose in [("finance-team.yaml", "team", "finance", "restr
 201 {'key': 'payments-ops-exceptions', 'version': 1, 'version_id': 'pvr_01m469r2q1s0kh1bq6'}`}</Output>
       <Code>{`agentfox policy effective --agent payments-ops --team finance
 agentfox policy lint`}</Code>
-      <Output>{`effective policy in development — mode enforce, default allow
-  layers: org:*(extend), org:*(extend), org:*(extend), team:finance(restrict), agent:payments-ops(override)
+      <Output>{`effective policy in development — default allow
+  layers:
+    org:*(extend)  baseline  observe
+    …
+    team:finance(restrict)  finance-team  observe
+    agent:payments-ops(override)  payments-ops-exceptions  observe
 …
-injection.direct                     block     org:*         —
-pii.outbound_redact                  block     team:finance  org:*
+injection.direct                     block     observe  org:*         —
+pii.outbound_redact                  block     observe  team:finance  org:*
 …
 rejected layer rules
   injection.direct at agent:payments-ops — cannot loosen 'block' (from org) to 'allow' — the upstream rule is not marked
@@ -509,28 +520,50 @@ critical  illegal-loosening  injection.direct  agent  weakens 'block' from org:*
   {'critical': 1}
 
 LINT FAIL — critical/high findings block the build`}</Output>
-      <Callout kind="warning" title="Runtime enforcement ignores the hierarchy placement">
-        <p>
-          <code>policy effective</code> and <code>policy lint</code> honour levels and
-          compose modes. The runtime enforcer does not: it evaluates every bound pack
-          whose own <code>scope</code> matches the agent and environment, and takes the
-          strongest effect. In the example above, the <code>team:finance</code> layer
-          also blocked PII in <code>support-triage</code>&apos;s replies, which is not
-          in that team. To limit a pack at runtime, set its <code>scope.agents</code>{" "}
-          and <code>scope.environments</code>. Because the strongest effect wins, an{" "}
-          <code>allow</code> rule never loosens anything at runtime either.
-        </p>
-      </Callout>
+      <h3 id="hierarchy-runtime">What the runtime enforces</h3>
+      <p>
+        The enforcer resolves the hierarchy the same way <code>policy effective</code>{" "}
+        does, for each request:
+      </p>
+      <ul>
+        <li>
+          A layer applies only to the subject its level and <code>scope_id</code> name.
+          An agent&apos;s team is its <code>owner_team</code> (set with{" "}
+          <code>PATCH /api/agents/{"{slug}"}</code> or when registering it); an agent with
+          no team gets only <code>team</code> layers scoped to <code>*</code>. In the
+          example above, <code>team:finance</code> does not apply to{" "}
+          <code>support-triage</code>.
+        </li>
+        <li>
+          A rule rejected as an illegal loosening is not enforced; the broader rule
+          stands. A granted <code>override</code> replaces the broader rule, so an{" "}
+          <code>allow</code> there really loosens it.
+        </li>
+        <li>
+          A rule that a narrower layer tightened stays in force beside the tighter one,
+          each under its own pack&apos;s mode. A team that trials a stricter rule in
+          observe does not switch off the org&apos;s enforced rule.
+        </li>
+        <li>
+          <code>user</code> layers scoped to a specific user apply only where the caller
+          identifies the user, which the runtime does not do today; a{" "}
+          <code>user</code> layer scoped to <code>*</code> applies to everyone.
+        </li>
+      </ul>
 
       <h2 id="fail-mode">fail_mode and the enforcement budget</h2>
       <p>
-        What happens when a detector times out or errors is decided by the
-        deployment-wide setting <code>fail_mode</code> (<code>AGENTFOX_FAIL_MODE</code>,
-        or <code>fail_mode</code> in <code>agentfox.toml</code>), not by the{" "}
-        <code>fail_mode</code> field of a pack, which is stored but not read. With{" "}
-        <code>open</code> (the default) the call proceeds and the gap is recorded; with{" "}
-        <code>closed</code> a degraded call is blocked as{" "}
-        <code>pipeline.fail_closed</code> when the decision is enforcing. Details and an
+        What happens when a detector times out or errors is decided by two settings,
+        and the stricter wins: the deployment-wide <code>fail_mode</code> (
+        <code>AGENTFOX_FAIL_MODE</code>, or <code>fail_mode</code> in{" "}
+        <code>agentfox.toml</code>) and each pack&apos;s own <code>fail_mode</code>. With{" "}
+        <code>open</code> (the default) the call proceeds and the gap is recorded. A
+        degraded call is blocked as <code>pipeline.fail_closed</code> when the
+        deployment says <code>closed</code> and the decision is enforcing, or when a pack
+        that is bound in enforce says <code>closed</code> and has an enabled detection
+        rule on the surface being checked (its coverage depended on the detectors that
+        did not finish). <code>tool-containment</code> and{" "}
+        <code>eu-ai-act-high-risk</code> ship with <code>closed</code>. Details and an
         example are in <Link href="/docs/reference/detectors#budget">Detectors: budget and failure</Link>.
       </p>
 
@@ -664,8 +697,7 @@ fired contains out if {
       <h2 id="limits">Limits</h2>
       <ul>
         <li>Rules see what the detectors and the registry give them. A wrong impact declaration or a missed detection is not fixed by a better rule.</li>
-        <li>Hierarchy levels are honoured by <code>effective</code> and <code>lint</code>, not by runtime enforcement (above).</li>
-        <li>A pack&apos;s <code>fail_mode</code> field has no runtime effect.</li>
+        <li>The runtime does not know the end user, so <code>user</code> layers scoped to one user never apply at runtime (above).</li>
         <li>The <code>completion</code> surface needs the caller to report facts; over HTTP there is no field for them, so <code>completion_requires</code> rules always see them as unmet there.</li>
       </ul>
 

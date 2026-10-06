@@ -633,12 +633,15 @@ email.send     (no grant)               {"verdict": "block", "reason": "no capab
         <code>recipient</code>, <code>content</code>, and <code>nonce</code>,{" "}
         <code>timestamp</code> and <code>signature</code> for replay and tamper checks.
       </p>
-      <Callout kind="warning" title="Send a unique nonce with every agent message">
-        A message sent without a <code>nonce</code> counts as nonce-less, and the second
-        nonce-less message from the same sender is refused as a replay:{" "}
-        <code>{`replayed message: (sender='payments-ops', nonce) was already seen`}</code>. With
-        a fresh <code>nonce</code> and a <code>timestamp</code> on each message, both go
-        through.
+      <Callout kind="note" title="Send a unique nonce with every agent message">
+        Replay protection refuses a repeated <code>(sender, nonce)</code>:{" "}
+        <code>{`replayed message: (sender='payments-ops', nonce) was already seen`}</code>. A
+        message with no <code>nonce</code> cannot be checked for replay, so it is not
+        refused as one; the decision records <code>agent_message.no_nonce</code> and{" "}
+        <code>replay_protected: false</code> instead. Send a fresh <code>nonce</code> and a{" "}
+        <code>timestamp</code> (and sign them) on every message you need protected. The
+        verdict recorded in the audit chain is the one returned, including replay,
+        unregistered-sender and bad-signature refusals.
       </Callout>
       <p>
         <code>/v1/mcp/call</code> governs a call to a tool on an MCP server. The gateway does

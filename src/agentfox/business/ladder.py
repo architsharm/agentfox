@@ -188,6 +188,9 @@ class LadderDecision:
     #: Set when the ladder could not decide — a missing field, a bad unit. Never
     #: silently allows: an undecidable ladder escalates.
     undecidable: str = ""
+    #: The ladder's own mode. `observe` records the outcome and applies nothing;
+    #: `enforce` applies it. The governing policy pack's mode does not decide this.
+    mode: str = "observe"
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -200,6 +203,7 @@ class LadderDecision:
             "reason": self.reason,
             "approver_role": self.approver_role,
             "undecidable": self.undecidable,
+            "mode": self.mode,
             "verify": self.verify.model_dump() if self.verify else None,
         }
 
@@ -254,7 +258,11 @@ def evaluate(ladder: Ladder, request: dict[str, Any]) -> LadderDecision:
     evaluate is not a threshold that was satisfied, and defaulting to allow would make
     a missing field the cheapest way past a control.
     """
-    decision = LadderDecision(ladder_key=ladder.key, unit=ladder.unit)
+    decision = LadderDecision(
+        ladder_key=ladder.key,
+        unit=ladder.unit,
+        mode="enforce" if ladder.mode == "enforce" else "observe",
+    )
     raw = _read_path(request, ladder.field_path)
     if raw is None:
         decision.undecidable = f"'{ladder.field_path}' is not present in the request"

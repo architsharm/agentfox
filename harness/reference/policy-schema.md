@@ -22,7 +22,7 @@ engine evaluates them by default (`NOMETRIA_POLICY_ENGINE=opa` switches to OPA).
 | `version` | int | 1 |
 | `mode` | `observe` \| `enforce` | `observe` |
 | `default_effect` | an effect | `allow` |
-| `fail_mode` | `open` \| `closed` — what a detector error or timeout does | `open` |
+| `fail_mode` | `open` \| `closed` — what a detector error or timeout does. `closed` blocks a degraded call when the pack is enforcing and has a detection rule on that surface; the deployment-wide `fail_mode` also applies (stricter wins) | `open` |
 | `scope` | e.g. `{agents: ["support-*"], environments: ["production"]}` | `{}` |
 | `rules` | list of rules | `[]` |
 

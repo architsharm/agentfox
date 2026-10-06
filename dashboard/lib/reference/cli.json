@@ -1590,10 +1590,24 @@
      {
       "path": "policy lint",
       "name": "lint",
-      "summary": "Lint the policy hierarchy.",
-      "help": "Lint the policy hierarchy. Exits 1 on critical or high findings.\n\nThis is the half of hierarchical policy that produces the 87% misconfiguration\nreduction — composition without a linter just moves the confusion somewhere\nharder to see.",
+      "summary": "Lint the policy hierarchy, or policy files.",
+      "help": "Lint the policy hierarchy, or policy files. Exits 1 on critical or high findings.\n\nThis is the half of hierarchical policy that produces the 87% misconfiguration\nreduction — composition without a linter just moves the confusion somewhere\nharder to see. Pass files to check them before they are loaded, e.g. in CI.",
       "panel": null,
-      "params": [],
+      "params": [
+       {
+        "kind": "argument",
+        "name": "files",
+        "opts": [
+         "files"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Policy files to lint, as org-level layers in the order given. Without files, lints every bound policy layer."
+       }
+      ],
       "default_subcommand": null,
       "commands": []
      },
@@ -1775,8 +1789,8 @@
      {
       "path": "policy validate",
       "name": "validate",
-      "summary": "Lint and compile a policy without saving it.",
-      "help": "Lint and compile a policy without saving it.",
+      "summary": "Check, lint and compile a policy file without saving it.",
+      "help": "Check, lint and compile a policy file without saving it.\n\nRuns the full lint (`policy lint FILE`), so a rule that can never fire or a\ncondition naming an unknown value (`surface: [toolargs]`) fails validation.\nExits 1 on a parse error or a critical/high finding.",
       "panel": null,
       "params": [
        {

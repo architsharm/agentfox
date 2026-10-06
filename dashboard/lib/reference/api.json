@@ -5543,8 +5543,8 @@
    "path": "/api/policies/{key}/mode",
    "section": "policies",
    "audience": "operator",
-   "summary": "Change Mode",
-   "description": "",
+   "summary": "Promote or demote a policy, optionally making a saved version live.",
+   "description": "Promote or demote a policy, optionally making a saved version live.\n\nPromoting to ``enforce`` requires a recorded simulation of exactly the rules\nbeing enforced (``POST /api/policies/simulate`` with that version's body) —\nthe server-side half of the editor's simulate-before-promote gate (#64).\nDemoting to ``observe`` never needs one: it can only stop blocking.",
    "params": [
     {
      "name": "key",
@@ -5572,6 +5572,30 @@
       "name": "mode",
       "type": "string",
       "required": true,
+      "description": ""
+     },
+     {
+      "name": "version",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "scope_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "compose",
+      "type": "string",
+      "required": false,
       "description": ""
      }
     ]

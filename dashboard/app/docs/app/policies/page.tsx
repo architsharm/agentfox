@@ -111,11 +111,16 @@ tool-containment       v1       enforce  25`}</Output>
         </li>
         <li>
           <strong>Validate</strong> runs the same check the engine runs at enforcement time (
-          <code>POST /api/policies/validate</code>) and reports rule count, mode and controls.
+          <code>POST /api/policies/validate</code>) and reports the rule count and controls. It
+          also runs the lint, so a rule that can never fire, or an unknown value such as{" "}
+          <code>surface: [toolargs]</code>, is reported as invalid.
         </li>
         <li>
           <strong>Save new version</strong> stores an immutable new version (
-          <code>POST /api/policies</code>) and reloads.
+          <code>POST /api/policies</code>) and reloads. It never changes what is in force:
+          the live version and its mode stay as they are, whatever <code>mode:</code> the YAML
+          says, and the header shows the new one as saved, not live. A policy saved for the
+          first time goes live in observe, which records and blocks nothing.
         </li>
         <li>
           <strong>Simulate against recent traffic</strong> replays recorded decisions against
@@ -123,22 +128,25 @@ tool-containment       v1       enforce  25`}</Output>
           would be newly blocked, newly escalated, newly allowed, or unchanged.
         </li>
         <li>
-          <strong>Set observe</strong> and <strong>Promote to enforce</strong> change the mode (
-          <code>POST /api/policies/&#123;key&#125;/mode</code>).
+          <strong>Promote to enforce</strong> makes the newest saved version live in enforce;{" "}
+          <strong>Make vN live in observe</strong> (shown when a saved version is not live) makes
+          it live in observe; <strong>Set observe</strong> demotes the live version (
+          <code>POST /api/policies/&#123;key&#125;/mode</code>, with <code>version</code> when a
+          saved version is being made live).
         </li>
       </ul>
-      <Callout kind="warning" title="What the simulate gate does and does not cover">
+      <Callout kind="note" title="The simulate gate">
         <p>
           <strong>Promote to enforce</strong> refuses to act until you have run Simulate on the
           exact text in the editor; change one character and you must simulate again. Then it
           asks for confirmation, quoting what the simulation found.
         </p>
         <p>
-          That gate is on the button only. <strong>Save new version</strong> binds the version
-          at the <code>mode:</code> written in its YAML. Save YAML that says{" "}
-          <code>mode: enforce</code> and it enforces at once, unsimulated; save YAML that says{" "}
-          <code>mode: observe</code> (as the starter template does) over an enforcing policy and
-          it drops back to observe. Check the mode line before you save.
+          The server enforces the same rule: <code>POST /api/policies/&#123;key&#125;/mode</code>{" "}
+          with <code>mode: enforce</code> answers 409 unless a simulation of exactly that
+          version&apos;s rules has been recorded. Saving cannot enforce or demote anything, so
+          promotion is the only way a policy&apos;s mode changes. Demoting to observe never
+          needs a simulation.
         </p>
       </Callout>
 
@@ -173,17 +181,19 @@ agentfox policy simulate -f support-triage-pii.yaml --agent support-triage`}</Co
   controls: []
   compiles to 33 lines of Rego
 support-triage-pii simulated against 7 decisions
-  unchanged        5
+  unchanged        7
   newly blocked    0
   newly escalated  0
-  newly allowed    2
+  newly allowed    0
 
 No production traffic would newly block.`}</Output>
           <p>
             The editor shows the same result as &quot;Safe to promote — replayed 7 recent
-            decision(s): 0 newly blocked, 0 newly escalated, 2 newly allowed, 5 unchanged.&quot;
-            &quot;Newly allowed&quot; counts decisions this policy, replayed on its own, would not
-            have blocked; other policies still apply in production.{" "}
+            decision(s): 0 newly blocked, 0 newly escalated, 0 newly allowed, 7 unchanged.&quot;
+            Each recorded decision is replayed with the candidate in place of its own pack
+            (whichever version of it was in force then); rules that fired from other packs
+            still count, so a change in the counts is a change in the whole outcome. Newly
+            blocked, escalated and allowed decisions are each listed.{" "}
             <code>policy simulate</code> exits non-zero when anything would be newly blocked, so
             it can gate a pull request.
           </p>
@@ -193,7 +203,7 @@ No production traffic would newly block.`}</Output>
             Set <strong>Where does this apply?</strong> to <code>agent</code> /{" "}
             <code>support-triage</code> / <code>extend</code>, press{" "}
             <strong>Save new version</strong>, then <strong>Simulate</strong> and{" "}
-            <strong>Promote to enforce</strong>. From the CLI, the promotion is:
+            <strong>Promote to enforce</strong>. From the CLI, promoting the live version is:
           </p>
           <Code>{`agentfox policy enforce support-triage-pii`}</Code>
         </Step>
