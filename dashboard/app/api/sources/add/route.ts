@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/api";
-import { connectionBody } from "@/lib/sourceConnection";
+import { SESSION_COOKIE } from "@/lib/product/api";
+import { connectionBody } from "@/lib/product/sourceConnection";
 
 const API_BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
 

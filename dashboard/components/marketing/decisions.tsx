@@ -278,7 +278,7 @@ const DECISIONS: Decision[] = [ALLOW, ESCALATE, BLOCK, RECORD];
 
 /*
  * The hero's card. This is the playground's first preset verbatim
- * (dashboard/components/Playground.tsx:134-140): support-triage was granted
+ * (dashboard/components/marketing/Playground.tsx:134-140): support-triage was granted
  * kb.search, crm.lookup and tickets.* and nothing else (seed.py:161-165), so a
  * transfer is refused without anything having to recognise the attack.
  */

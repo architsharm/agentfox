@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-import { PRODUCT } from "@/lib/nav";
+import { PRODUCT } from "@/lib/marketing/nav";
 
 /**
  * The routing grid on /product.
  *
- * Built from `lib/nav.ts`, so the hub and the header menu cannot describe
+ * Built from `lib/marketing/nav.ts`, so the hub and the header menu cannot describe
  * the same page differently — which they did within a day of the pages
  * existing, because the hub had its own copy of the words.
  *

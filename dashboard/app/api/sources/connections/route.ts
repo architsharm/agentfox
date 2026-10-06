@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
-import { connectionBody } from "@/lib/sourceConnection";
+import { proxyCustomBody } from "@/lib/product/proxy";
+import { connectionBody } from "@/lib/product/sourceConnection";
 
 /**
  * Connect (or reconnect) an already-registered source. Kept separate from

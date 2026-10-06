@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { MarketingNav } from "@/components/marketing/nav";
 import { CTA, Footer } from "@/components/marketing/sections";
-import { PRODUCT } from "@/lib/nav";
+import { PRODUCT } from "@/lib/marketing/nav";
 
 /**
  * One shape for every "what it does" page.
@@ -45,7 +45,7 @@ export type CapabilityPageProps = {
   steps: Step[];
   /** What this does not do. Required. */
   gaps: { title: string; body: ReactNode };
-  /** Paths into lib/nav's PRODUCT group; the label and note are read from there. */
+  /** Paths into lib/marketing/nav's PRODUCT group; the label and note are read from there. */
   related: string[];
 };
 

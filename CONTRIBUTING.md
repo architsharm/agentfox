@@ -133,9 +133,10 @@ edit the output by hand.
 | File | Regenerate | Checked by |
 |---|---|---|
 | route tables in `docs/architecture/api-spec.md` | `uv run python scripts/gen/api_routes.py --write` | `api_routes.py --check` |
-| `dashboard/lib/reference/cli.json`, `api.json` | `uv run python scripts/gen/docs_reference.py --write` | `docs_reference.py --check`, which also resolves every `agentfox …` command shown on a docs page |
+| `dashboard/lib/generated/reference/cli.json`, `api.json` | `uv run python scripts/gen/docs_reference.py --write` | `docs_reference.py --check`, which also resolves every `agentfox …` command shown on a docs page |
 | `docs/status.md` | `uv run python scripts/gen/coverage.py --write` | regenerated, not checked |
 | `docs/design/coverage-map.md` | `uv run python scripts/probe/run.py --md > docs/design/coverage-map.md` | regenerated, not checked |
+| `dashboard/lib/generated/coverage.json` | `uv run python scripts/probe/run.py --json > dashboard/lib/generated/coverage.json` | `tests/repo/test_coverage_page_data.py` (every taxonomy scenario is published) |
 
 Two more checks bind prose to evidence:
 

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyJson } from "@/lib/proxy";
+import { proxyJson } from "@/lib/product/proxy";
 
 /**
  * A raw token is only ever returned once — that has to reach the browser as a

@@ -2105,7 +2105,7 @@ input[type="checkbox"], input[type="radio"] {
   color: var(--muted);
 }
 
-/* A mapped control, as a chip. See components/ui.tsx: the title that used to sit
+/* A mapped control, as a chip. See components/ui/index.tsx: the title that used to sit
    beside the code arrived truncated mid-word in every Findings row, so it is the
    tooltip now and the code — the part people quote — is what shows. */
 .ctrl-chip {
@@ -2191,7 +2191,7 @@ td .mono { overflow-wrap: anywhere; }
   max-width: var(--measure);
 }
 
-/* Tool-call arguments as pairs. See components/ui.tsx: JSON.stringify in a 260px
+/* Tool-call arguments as pairs. See components/ui/index.tsx: JSON.stringify in a 260px
    cell was breaking destination account numbers across two lines on the one page
    whose entire purpose is a human checking that value before approving. */
 .args { margin: 0; display: grid; gap: 7px; min-width: 16ch; }
@@ -2217,7 +2217,7 @@ td .mono { overflow-wrap: anywhere; }
 }
 
 /* Every rule that fired, not the first one truncated with the rest behind a
-   hover. See ReasonCell in app/app/approvals/page.tsx. */
+   hover. See ReasonCell in app/(product)/app/approvals/page.tsx. */
 .reasons { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
 .reasons li {
   position: relative;
@@ -2240,7 +2240,7 @@ td .mono { overflow-wrap: anywhere; }
 .reasons li:only-child::before { display: none; }
 
 /* --- A breakdown of one total, to scale ------------------------------------
- * See StatusBar in components/ui.tsx. Six tiles that are parts of one whole
+ * See StatusBar in components/ui/index.tsx. Six tiles that are parts of one whole
  * tell you the counts and hide the proportion; a bar tells you both. */
 .sbar-wrap { display: grid; gap: 12px; }
 .sbar { display: flex; height: 26px; gap: 2px; border-radius: var(--r-1); overflow: hidden; }
@@ -2673,7 +2673,7 @@ td .mono { overflow-wrap: anywhere; }
 .queue-clear .qc-links { margin: 0; font-size: var(--t-micro); }
 
 /* The draft status of the framework mappings, as a line rather than a warning
-   panel. See components/ui.tsx DraftCaveat: a box the reader meets on every
+   panel. See components/ui/index.tsx DraftCaveat: a box the reader meets on every
    load is a box they stop reading, and a shouted disclaimer reads as less
    confident rather than more careful. */
 .draft-note {
@@ -2755,7 +2755,7 @@ td .mono { overflow-wrap: anywhere; }
 
 /* --- Agent map ------------------------------------------------------------- */
 /*
- * The observed reach of one agent, drawn. See components/AgentMap.tsx: the same
+ * The observed reach of one agent, drawn. See components/product/AgentMap.tsx: the same
  * data was a four-column table, which answers "is there an edge" and not "how
  * far does this reach, and is any of it a surprise".
  */
@@ -2861,7 +2861,7 @@ td .mono { overflow-wrap: anywhere; }
 
 /* --- Verdict ---------------------------------------------------------------
  *
- * The decision, in the hero's vocabulary. See components/ui.tsx: a verdict was
+ * The decision, in the hero's vocabulary. See components/ui/index.tsx: a verdict was
  * a coloured pill, the same shape this product uses for a tier, a status, a
  * mode and a framework — so in a table of fifty rows the one column carrying
  * the actual decision looked like every other chip on the page.

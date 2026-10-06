@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import type { NavGroup } from "@/lib/nav";
+import type { NavGroup } from "@/lib/marketing/nav";
 
 /**
  * The header dropdown.

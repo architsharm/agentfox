@@ -52,7 +52,7 @@ const BEATS: Beat[] = [
             heuristic, 66.7% with the opt-in classifier ensemble. The adaptive attacker
             getting 73% through within 50 attempts was measured on the default stack
             (benchmarks/adaptive/README.md), so it is paired with the default figure.
-            The benchmark page cites the same numbers, at app/benchmark/page.tsx. */}
+            The benchmark page cites the same numbers, at app/(marketing)/benchmark/page.tsx. */}
         <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)" }}>
           Most tools try to recognise the malicious text. We do that too, and we publish
           how well it works: our default detector catches 26.7% of

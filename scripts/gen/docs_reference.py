@@ -1,6 +1,7 @@
 """Generate the docs site's CLI and HTTP reference from the code, and check the docs.
 
-    python scripts/gen/docs_reference.py --write   # regenerate dashboard/lib/reference/*.json
+    python scripts/gen/docs_reference.py --write   # regenerate dashboard/lib/generated/
+                                                # reference/*.json
     python scripts/gen/docs_reference.py --check   # exit 1 if they are stale, or if any
                                                 # `agentfox ...` printed on a docs page
                                                 # names a command or option that does
@@ -28,7 +29,7 @@ from typing import Any
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
-OUT = REPO / "dashboard" / "lib" / "reference"
+OUT = REPO / "dashboard" / "lib" / "generated" / "reference"
 DOCS = REPO / "dashboard" / "app" / "docs"
 
 

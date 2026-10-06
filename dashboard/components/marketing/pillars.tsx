@@ -48,7 +48,7 @@ import {
  *   - control count and framework keys ....... src/agentfox/compliance_data/controls.yaml
  *   - every CLI command shown ................ README.md "Commands"
  *
- * Figures appear only where README.md or app/benchmark/page.tsx already publishes them,
+ * Figures appear only where README.md or app/(marketing)/benchmark/page.tsx already publishes them,
  * and each one carries a source comment at the point of use.
  *
  * Only marketing.css classes and its --mk-* tokens are used. No colour is hardcoded, so

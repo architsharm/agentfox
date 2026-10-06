@@ -52,6 +52,8 @@ commit; `scripts/check/plugins.py` fails if a repo `.md` file is unclassified.
 |---|---|
 | `docs/status.md` | `uv run python scripts/gen/coverage.py --write` |
 | `docs/design/coverage-map.md` | `uv run python scripts/probe/run.py --md > docs/design/coverage-map.md` |
+| `dashboard/lib/generated/reference/*.json` | `uv run python scripts/gen/docs_reference.py --write` |
+| `dashboard/lib/generated/coverage.json` | `uv run python scripts/probe/run.py --json > dashboard/lib/generated/coverage.json` |
 
 Quote coverage numbers only from these, and only after regenerating.
 
