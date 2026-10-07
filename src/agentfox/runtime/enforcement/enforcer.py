@@ -39,6 +39,7 @@ from agentfox.capabilities.detection.tuning import (
 from agentfox.capabilities.grounding.context_integrity import assemble_context
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Decision, Identity, Tool, Trace, as_aware, utcnow
+from agentfox.platform import checks as check_registry
 from agentfox.platform.identity import (
     check_capability,
     redeem_approval,
@@ -64,8 +65,8 @@ from agentfox.platform.policy import (
 )
 from agentfox.platform.policy.taint_view import policy_taint
 from agentfox.platform.registry.service import observe_agent
+from agentfox.runtime.checks import checks_for
 from agentfox.runtime.enforcement.approvals import held_call
-from agentfox.runtime.enforcement.checks import _ChecksMixin
 from agentfox.runtime.enforcement.completion import _CompletionMixin
 from agentfox.runtime.enforcement.findings import _FindingsMixin
 from agentfox.runtime.enforcement.limits import _LimitsMixin
@@ -168,7 +169,6 @@ class Enforcer(
     _ToolCallMixin,
     _CompletionMixin,
     _StreamingMixin,
-    _ChecksMixin,
     _LimitsMixin,
     _FindingsMixin,
 ):
@@ -336,10 +336,7 @@ class Enforcer(
         self._run_detectors(call)
         self._check_capability(call)
         self._run_content_checks(call)
-        # Business ladders are evaluated separately from policy and combined
-        # afterwards (`_apply_ladders`), because the two compose by different
-        # algebras: rules take the lattice maximum, ladders select exactly one band.
-        call.ladder_decisions = self._business_ladders(agent, surface, tool_key, arguments)
+        call.ladder_decisions = self._business_ladders(call)
         self._analyse_action(call)
         # --- budgets & loop containment ---------------------
         call.budget = self._budget_state(
@@ -439,52 +436,54 @@ class Enforcer(
             )
             call.capability = decision.to_json()
 
-    def _run_content_checks(self, call: _Evaluation) -> None:
-        """Evidence integrity, disclosure, and the risk-raising checks, in one channel."""
-        agent, surface, content, intent = call.agent, call.surface, call.content, call.intent
-        # --- evidence integrity (output surface only) ----------------
-        # Groundedness asks whether the claim is supported by the text. It does not
-        # ask whether the text was authoritative, nor whether 5 + 3 = 9.
-        # Both are properties of the answer's relationship to its evidence, so they
-        # run here, where the evidence is in hand.
-        evidence = self._evidence_checks(agent, surface, content, intent)
-        disclosure = self._disclosure_checks(agent, surface, content, call.trace_id)
-        if disclosure:
-            merged_issues = [
-                *evidence.get("evidence_issues", []),
-                *disclosure.pop("evidence_issues", []),
-            ]
-            evidence.update(disclosure)
-            if merged_issues:
-                evidence["evidence_issues"] = merged_issues
+    def _check_context(self, call: _Evaluation) -> check_registry.CheckContext:
+        """What a registered check may read about this call."""
+        return check_registry.CheckContext(
+            session=self.session,
+            settings=self.settings,
+            agent=call.agent,
+            surface=call.surface,
+            content=call.content,
+            intent=call.intent,
+            evidence=self.evidence,
+            trace_id=call.trace_id,
+            tool_key=call.tool_key,
+            arguments=call.arguments,
+            memory_entry=call.memory_entry,
+            conversation_window=call.conversation_window,
+            pipeline=self.pipeline,
+        )
 
-        # --- commitments / context integrity ---------------------------
-        # Same channel as the two checks above, deliberately: one `evidence` dict that
-        # lands in `taint_summary`, one `evidence_issues` list that becomes `Finding`
-        # rows, one `rules_fired`. The only thing these add is `risks`, which join
-        # `action["risks"]` below — the list the policy engine's `action_risk` condition
-        # already reasons over, so a policy author can act on them without a schema
-        # change. Nothing here sets a verdict on its own.
-        pending_risks: list[dict[str, Any]] = []
-        for extra in (
-            self._commitment_checks(agent, surface, content, intent),
-            self._context_checks(surface, content, call.memory_entry),
-            self._control_flow_checks(surface, call.tool_key),
-            self._sycophancy_checks(surface, content, intent),
-            self._trajectory_checks(surface, call.conversation_window),
-        ):
-            if not extra:
-                continue
-            extra_issues = extra.pop("evidence_issues", [])
-            pending_risks.extend(extra.pop("risks", []))
-            evidence.update(extra)
-            if extra_issues:
-                evidence["evidence_issues"] = [
-                    *evidence.get("evidence_issues", []),
-                    *extra_issues,
-                ]
-        call.evidence = evidence
-        call.pending_risks = pending_risks
+    def _run_content_checks(self, call: _Evaluation) -> None:
+        """Every registered content check for this surface, in order, in one channel.
+
+        The checks come from the registry (`platform/checks.py`), where the
+        capabilities that own them register them: evidence integrity, disclosure,
+        commitments, context integrity, control flow, sycophancy and trajectory are
+        the built-in ones, in that order. They share one channel, deliberately: one
+        `evidence` dict that lands in `taint_summary`, one `evidence_issues` list that
+        becomes `Finding` rows, one `rules_fired`. The `risks` they return join
+        `action["risks"]` (`_analyse_action`), which the policy engine's
+        `action_risk` condition already reasons over, so a policy author can act on
+        them without a schema change. Nothing here sets a verdict on its own.
+        """
+        context = self._check_context(call)
+        call.evidence, call.pending_risks = check_registry.merge_content(
+            check_registry.run(c, context) for c in checks_for(call.surface)
+        )
+
+    def _business_ladders(self, call: _Evaluation) -> list[Any]:
+        """The decisions of every registered ladder check for this call.
+
+        Ladders are evaluated separately from policy and combined afterwards
+        (`_apply_ladders`), because the two compose by different algebras: rules
+        take the lattice maximum, ladders select exactly one band.
+        """
+        context = self._check_context(call)
+        decisions: list[Any] = []
+        for ladder_check in checks_for(call.surface, kind="ladder"):
+            decisions.extend(check_registry.run(ladder_check, context) or [])
+        return decisions
 
     def _analyse_action(self, call: _Evaluation) -> None:
         """What the call's arguments would do, and the risks that follow from it."""

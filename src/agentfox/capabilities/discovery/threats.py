@@ -47,7 +47,6 @@ import yaml
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agentfox.core.config import get_settings
 from agentfox.core.models import (
     Control,
     ControlStatus,
@@ -56,6 +55,7 @@ from agentfox.core.models import (
     RedTeamFinding,
     utcnow,
 )
+from agentfox.platform.packs import control_files
 
 log = logging.getLogger(__name__)
 
@@ -66,16 +66,32 @@ log = logging.getLogger(__name__)
 SCORED_INTENTS = frozenset({"runtime", "partial"})
 
 
+def threats_paths(directory: Path | None = None) -> list[Path]:
+    """The ``threats.yaml`` files: the compliance packs', or `compliance_dir`'s."""
+    return control_files("threats.yaml", directory)
+
+
 def threats_path(directory: Path | None = None) -> Path:
-    return (directory or get_settings().compliance_dir) / "threats.yaml"
+    paths = threats_paths(directory)
+    return paths[0] if paths else Path("threats.yaml")
 
 
 def load_threats(directory: Path | None = None) -> dict[str, Any]:
-    path = threats_path(directory)
-    if not path.exists():
-        log.warning("no threat catalogue at %s; coverage will be empty", path)
+    """The threat catalogues, merged across packs (a catalogue's first declaration wins)."""
+    paths = [path for path in threats_paths(directory) if path.exists()]
+    if not paths:
+        log.warning("no threat catalogue at %s; coverage will be empty", threats_path(directory))
         return {"version": "unknown", "catalogues": {}}
-    return yaml.safe_load(path.read_text()) or {}
+    documents = [yaml.safe_load(path.read_text()) or {} for path in paths]
+    if len(documents) == 1:
+        return documents[0]
+    merged = {k: v for k, v in documents[0].items() if k != "catalogues"}
+    catalogues: dict[str, Any] = {}
+    for document in documents:
+        for name, value in (document.get("catalogues") or {}).items():
+            catalogues.setdefault(name, value)
+    merged["catalogues"] = catalogues
+    return merged
 
 
 # ---------------------------------------------------------------------------

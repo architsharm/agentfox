@@ -13,6 +13,19 @@ the file it came from.
 
 ### Added
 
+- **Capability packs.** A business use case or framework is one directory with a
+  `pack.yaml` (id, version, maturity, owners, compliance mappings, vocabulary) and its
+  policies, controls, ladder templates, red-team probes, optional checks, golden cases
+  and fixtures. Built in: `baseline`, `tool-containment`, `coding-agent`, `eu-ai-act`,
+  `compliance/catalog`, `payments/refunds`, `customer-support`. Your own load from
+  `.agentfox/packs/` or an `agentfox.packs` entry point; only `stable` packs load unless
+  `pack_maturity` (`AGENTFOX_PACK_MATURITY`) says otherwise.
+- `agentfox policy packs list|show|test|validate|new`. Bare `agentfox policy packs` still
+  prints the policy files on disk (now also `policy packs files`).
+- A finding-type registry: `GET /api/findings/types` and `agentfox findings --types` list
+  every type with its title, usual severity, meaning and owner; packs declare their own.
+- A check registry: request-path checks register with `@check` from the capability
+  that owns them, an `agentfox.checks` entry point or a pack.
 - `mcp_tool_added_under_wildcard` finding (high): a registered MCP server added a tool
   that an existing wildcard grant already allows.
 
@@ -50,6 +63,15 @@ the file it came from.
   | `mcp tools` | `admin mcp tools` |
 
 ### Changed
+
+- The shipped policies and the control catalog moved from `policies_data/` and
+  `compliance_data/` into the capability packs (`packs/<id>/policies/`,
+  `packs/compliance/catalog/controls/`). `compliance_dir` and `policies_dir` still
+  override them, and are now unset by default. `agentfox policy packs` and
+  `agentfox admin catalog validate` print the new paths.
+- The dashboard's finding labels come from the registry. `budget_breach` now reads
+  "Detector over budget" (it is a detector's latency budget); it read "Budget
+  exceeded", which describes `budget_exhausted`.
 
 - The Claude Code operator plugin moved from `harness/` to `plugins/claude-code/`, and its
   runtime-neutral parts (`AGENTS.md`, `skills/`, `reference/`) to `plugins/shared/`. The

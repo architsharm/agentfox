@@ -23,6 +23,7 @@ import time
 
 import pytest
 
+from agentfox.capabilities.detection.checks import trajectory_check, window_detector_scores
 from agentfox.capabilities.detection.trajectory import (
     ENTITY,
     RISK_CODE,
@@ -32,6 +33,7 @@ from agentfox.capabilities.detection.trajectory import (
     slope,
     topic_drift,
 )
+from agentfox.platform.checks import CheckContext
 from agentfox.platform.policy import PolicyDocument, save_policy
 
 # --- Corpora ---------------------------------------------------------------
@@ -440,6 +442,21 @@ def _median_ms(call, batches: int = 7, per_batch: int = 20) -> float:
     return statistics.median(samples)
 
 
+def _trajectory(enforcer, window):
+    """The registered trajectory check, on the input surface, for this window."""
+    return trajectory_check(
+        CheckContext(
+            session=enforcer.session,
+            settings=enforcer.settings,
+            agent=None,
+            surface="input",
+            content=window[-1],
+            conversation_window=window,
+            pipeline=enforcer.pipeline,
+        )
+    )
+
+
 def test_the_added_cost_is_the_pipeline_runs_and_little_else(enforcer):
     """The check is obliged to run the real pipeline once per window turn —
     F9.4's sub-threshold component — and the claim is that everything *else* it
@@ -459,11 +476,11 @@ def test_the_added_cost_is_the_pipeline_runs_and_little_else(enforcer):
     of the work it already has to do.
     """
     window = CRESCENDO_DELETE
-    enforcer._trajectory_checks("input", window)  # warm the pipeline and the regexes
-    enforcer._window_detector_scores(window)
+    _trajectory(enforcer, window)  # warm the pipeline and the regexes
+    window_detector_scores(enforcer.pipeline, window)
 
-    baseline = _median_ms(lambda: enforcer._window_detector_scores(window))
-    total = _median_ms(lambda: enforcer._trajectory_checks("input", window))
+    baseline = _median_ms(lambda: window_detector_scores(enforcer.pipeline, window))
+    total = _median_ms(lambda: _trajectory(enforcer, window))
 
     assert baseline > 0, "baseline measured as zero — the timer is not working"
     overhead = total / baseline
@@ -489,9 +506,9 @@ def test_an_oversized_turn_is_capped_not_scanned_whole(enforcer):
     assert len(huge[0]) > 250_000
     assert len(huge[0]) / len(ordinary[0]) > 4_000
 
-    enforcer._trajectory_checks("input", huge)  # warm
-    small = _median_ms(lambda: enforcer._trajectory_checks("input", ordinary), per_batch=5)
-    large = _median_ms(lambda: enforcer._trajectory_checks("input", huge), per_batch=5)
+    _trajectory(enforcer, huge)  # warm
+    small = _median_ms(lambda: _trajectory(enforcer, ordinary), per_batch=5)
+    large = _median_ms(lambda: _trajectory(enforcer, huge), per_batch=5)
 
     assert small > 0, "baseline measured as zero — the timer is not working"
     ratio = large / small

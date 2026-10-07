@@ -362,7 +362,7 @@ chp_…                   proven  policy.rule_min_score  loosens    L1        ag
         the whole edited policy. Simulating the full policy under its own key is what makes
         the diff mean something.
       </p>
-      <Code>{`diff src/agentfox/policies_data/baseline.yaml baseline.yaml`}</Code>
+      <Code>{`diff src/agentfox/packs/baseline/policies/baseline.yaml baseline.yaml`}</Code>
       <Output>{`33c33
 <       detection: {entity_prefix: INJECTION, min_score: 0.7}
 ---

@@ -123,13 +123,19 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
 def compliance_validate() -> None:
     """Check the control catalog and obligation calendar are internally consistent.
 
-    Read-only and offline: parses controls.yaml and obligations.yaml under the
-    configured compliance directory and never touches the database. Exits 1 on any
+    Read-only and offline: parses the compliance packs' controls.yaml and
+    obligations.yaml (or those under `compliance_dir`, when it is set) and never
+    touches the database. Exits 1 on any
     problem, so it can gate a catalog change the way `policy lint` gates a policy.
     """
     import yaml
 
-    from agentfox.capabilities.compliance.catalog import catalog_path, obligations_path
+    from agentfox.capabilities.compliance.catalog import (
+        catalog_path,
+        catalog_paths,
+        merge_catalogs,
+        obligations_paths,
+    )
     from agentfox.capabilities.compliance.status import RULE_KINDS
 
     problems: list[str] = []
@@ -148,8 +154,8 @@ def compliance_validate() -> None:
             return {}
         return data
 
-    catalog_file = catalog_path()
-    catalog = _load(catalog_file)
+    catalog_files = catalog_paths() or [catalog_path()]
+    catalog = merge_catalogs([_load(path) for path in catalog_files])
     frameworks = catalog.get("frameworks") or {}
     if not isinstance(frameworks, dict) or not frameworks:
         if catalog:
@@ -206,8 +212,11 @@ def compliance_validate() -> None:
         if framework not in known:
             problems.append(f"gaps: undeclared framework {framework!r}")
 
-    obligations_file = obligations_path()
-    obligations = _load(obligations_file).get("obligations") or []
+    obligations = [
+        spec
+        for path in obligations_paths() or [Path("obligations.yaml")]
+        for spec in _load(path).get("obligations") or []
+    ]
     for index, spec in enumerate(obligations):
         if not isinstance(spec, dict):
             problems.append(f"obligations[{index}]: not a mapping")
@@ -225,7 +234,8 @@ def compliance_validate() -> None:
     # file carries one catalog-wide status, which is what a fresh sync starts from.
     reviewed = mappings if review_status == "reviewed" else 0
     console.print(
-        f"[bold]control catalog[/] v{catalog.get('version', '?')}  [dim]{catalog_file}[/]"
+        f"[bold]control catalog[/] v{catalog.get('version', '?')}  "
+        f"[dim]{', '.join(str(path) for path in catalog_files)}[/]"
     )
     console.print(f"  controls     {len(controls)}")
     console.print(f"  frameworks   {len(known)}")

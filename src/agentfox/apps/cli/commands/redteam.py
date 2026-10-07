@@ -176,13 +176,13 @@ def _escape_cells(by_class: dict) -> list[str]:
 
 @redteam_app.command("probes")
 def redteam_probes() -> None:
-    """List the built-in probe suite and available wrapped runners."""
-    from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, available_runners
+    """List the probe suite (built in, and from capability packs) and the wrapped runners."""
+    from agentfox.capabilities.evaluation.redteam import available_probes, available_runners
 
     table = Table(box=None, pad_edge=False)
     for column in ("probe", "category", "surface", "severity", "OWASP", "ATLAS"):
         table.add_column(column, style="bold" if column == "probe" else None)
-    for probe in BUILTIN_PROBES:
+    for probe in available_probes():
         table.add_row(
             probe.key,
             probe.category,

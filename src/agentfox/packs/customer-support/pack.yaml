@@ -1,0 +1,15 @@
+# The support desk: its tools (knowledge base, CRM, tickets, email) with their
+# declared impact, the triage agent and its least-privilege grants.
+id: customer-support
+version: 1.0.0
+maturity: stable
+requires_core: ">=0.3"
+title: Customer support
+description: >
+  Support-desk tools with declared impact and triggers (a ticket update that sends
+  mail), the triage agent and its grants, and golden cases for the containment they
+  rely on.
+owners: [agentfox-maintainers]
+tags: [customer-support, tickets, crm]
+compliance:
+  controls: [NOM-IAM-02, NOM-RTG-04, NOM-DSC-04]

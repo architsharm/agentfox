@@ -31,6 +31,11 @@ import os
 # wrapping the tests read is unchanged.
 os.environ["TERM"] = "dumb"
 
+# Every finding the suite raises must be of a registered type
+# (`platform/ledger/finding_types.py`). Production only warns; here it is an error, so
+# a new finding type without a registry entry fails the test that raises it.
+os.environ["AGENTFOX_STRICT_FINDING_TYPES"] = "1"
+
 from collections.abc import Iterator
 
 import pytest

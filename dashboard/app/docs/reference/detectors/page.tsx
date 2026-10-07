@@ -95,7 +95,7 @@ const FINDINGS: Row[] = [
   ["missed_escalation, incomplete_handoff, handoff_sla_breach", "A person should have been involved and was not, or not in time.", "Fix the escalation policy."],
   ["orphaned_identity, stale_identity, over_privileged", "An agent identity with no owner, unused, or holding a * grant.", "Revoke or narrow grants."],
   ["redteam, redteam_over_block, redteam_mutation_class, redteam_posture_regression", "A probe got through, a benign probe was blocked, a mutation class worked, or the deployment got weaker than the last campaign.", "Tighten or loosen the rule concerned."],
-  ["regression, drift, over_refusal", "Eval quality moved against the baseline.", "Compare with the baseline run."],
+  ["drift, over_refusal", "Eval quality moved against the baseline.", "Compare with the baseline run."],
   ["false_resolution", "A finding marked resolved recurred.", "Reopen and fix the cause."],
 ];
 
@@ -415,6 +415,12 @@ agentfox findings --json --limit 1`}</Code>
       </p>
 
       <h3 id="finding-types">Finding types</h3>
+      <p>
+        Every finding type is registered, with the label the web app shows, its usual
+        severity and what raises it; a capability pack can add its own. The full list is{" "}
+        <code>agentfox findings --types</code> (<code>--json</code> adds what each means) or{" "}
+        <code>GET /api/findings/types</code>. The common ones, and the first thing to do:
+      </p>
       <Table head={["Type", "Meaning", "First move"]} rows={FINDINGS} />
 
       <h2 id="numbers">How good is detection</h2>

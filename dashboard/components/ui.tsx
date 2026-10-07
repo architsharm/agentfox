@@ -1,6 +1,7 @@
 /** Shared presentational pieces. */
 
 import Link from "next/link";
+import findingTypes from "@/lib/reference/finding-types.json";
 import { InfoTip } from "./InfoTip";
 
 export { InfoTip } from "./InfoTip";
@@ -257,44 +258,15 @@ export function Severity({ value }: { value: string }) {
  * A finding's raw `type` ("redteam", "shadow_agent", "mcp_schema_drift", ...) is an
  * internal slug, not a sentence a reader has met before — shown bare, a queue of
  * findings reads as jargon with no way to tell at a glance what kind of problem
- * each row is. This maps every type this product raises to a short plain-English
- * label and, optionally, a one-line "what this means" — falling back to a
- * humanized version of the slug for anything not explicitly listed, so nothing
- * ever renders as raw underscored jargon with zero explanation.
+ * each row is. Each type's short label and one-line "what this means" come from the
+ * finding-type registry (`src/agentfox/platform/ledger/finding_types.py`), generated
+ * into `lib/reference/finding-types.json` by `scripts/docs_reference.py --write`, so
+ * the dashboard cannot drift from the types the product raises. A type the file does
+ * not know (a project pack's own) falls back to a humanized slug.
  */
-const FINDING_TYPE_INFO: Record<string, { label: string; blurb?: string }> = {
-  guardrail_detection: { label: "Guardrail catch", blurb: "A detector caught something in a request or response and it changed the outcome — see the masked excerpt below." },
-  containment: { label: "Contained action", blurb: "A tool call was stopped or held by a permission, data-provenance or blast-radius rule — not by a content detector. The title says which, and whether it was enforced or only observed." },
-  redteam: { label: "Security test", blurb: "Simulated attacks got through without being blocked." },
-  // Was absent, so it rendered through the humanize fallback as the bare slug
-  // "redteam over block" — which reads as a typo rather than as a category.
-  redteam_over_block: { label: "Over-blocking", blurb: "The agent refused legitimate requests from the test's control group — a guardrail that blocks real work gets switched off." },
-  shadow_agent: { label: "Unregistered agent", blurb: "This agent is sending traffic but was never registered." },
-  unowned_agent: { label: "No owner", blurb: "No one is accountable for this agent's decisions." },
-  missed_escalation: { label: "Missed hand-off", blurb: "A conversation should have gone to a human and didn't." },
-  handoff_sla_breach: { label: "Hand-off overdue", blurb: "A human hand-off has gone unacknowledged past its deadline." },
-  incomplete_handoff: { label: "Incomplete hand-off", blurb: "Context the next step needed was missing when work was handed off." },
-  false_resolution: { label: "False resolution", blurb: "Marked resolved without actually resolving the user's issue." },
-  boundary_breach: { label: "Answered outside its boundary", blurb: "The agent answered beyond the knowledge boundary it declared." },
-  budget_breach: { label: "Budget exceeded", blurb: "This agent has exceeded its configured cost or call budget." },
-  budget_exhausted: { label: "Budget exhausted", blurb: "This agent has used up its configured cost or call budget." },
-  agent_stopped: { label: "Agent stopped", blurb: "Traffic was halted by a kill switch or quarantine." },
-  registry_drift: { label: "Registry drift", blurb: "What this agent actually calls no longer matches what it declared." },
-  undeclared_mcp_tool: { label: "Undeclared tool use", blurb: "The agent called a tool it never declared using." },
-  mcp_schema_drift: { label: "Tool contract changed", blurb: "A tool's schema changed after approval — possible tampering." },
-  over_refusal: { label: "Over-refusal", blurb: "The agent is refusing requests it should be able to answer." },
-  drift: { label: "Model drift", blurb: "This model's outputs have measurably changed from its baseline." },
-  entitlement_disclosure: { label: "Disclosure risk", blurb: "May have disclosed something the requester wasn't entitled to see." },
-  aggregation_disclosure: { label: "Disclosure risk", blurb: "Combined otherwise-safe facts into something the requester shouldn't see." },
-  inference_disclosure: { label: "Disclosure risk", blurb: "Let the requester infer something they weren't entitled to know." },
-  fabricated_citation: { label: "Fabricated citation", blurb: "Cited a source that doesn't say what it claims, or doesn't exist." },
-  integrity_error: { label: "Data integrity error", blurb: "A numeric, temporal, or identity error was detected in the output." },
-  schema_drift: { label: "Schema drift", blurb: "A data source's structure changed unexpectedly." },
-  source_authority: { label: "Untrusted source", blurb: "Used a source below the trust tier this required." },
-  source_conflict: { label: "Conflicting sources", blurb: "Two sources disagreed and the conflict wasn't surfaced." },
-  tool_poisoning: { label: "Tool poisoning", blurb: "A tool's behavior changed in a way that looks like tampering." },
-  unpinned_server: { label: "Unpinned MCP server", blurb: "Not pinned to a known-good version." },
-};
+const FINDING_TYPE_INFO: Record<string, { label: string; blurb?: string }> = Object.fromEntries(
+  findingTypes.types.map((t) => [t.type, { label: t.title, blurb: t.description }]),
+);
 
 export function findingTypeInfo(type: string): { label: string; blurb?: string } {
   return FINDING_TYPE_INFO[type] || { label: type.replace(/_/g, " ") };

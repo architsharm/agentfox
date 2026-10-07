@@ -29,8 +29,10 @@ The package, by stage:
 * ``surfaces``   — content, conversation window, memory, completion, reasoning,
   file and inter-agent message surfaces
 * ``tool_calls`` — the tool-call guard and the risks ``evaluate()`` reads for it
-* ``checks``     — evidence, disclosure, sycophancy, commitment, trajectory and
-  context-integrity checks
+* ``runtime/checks.py`` (beside this package) names the modules whose registered
+  checks ``evaluate()`` runs: evidence, disclosure, commitment, context integrity,
+  control flow, sycophancy and trajectory, then the business ladders. The checks live
+  in the capabilities that own them (``platform/checks.py`` is the registry)
 * ``completion`` — preflight, the provider call, post-flight and correlation
 * ``streaming``  — the streaming completion path
 * ``limits``     — kill switch and spend budgets

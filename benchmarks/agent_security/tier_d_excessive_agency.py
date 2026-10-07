@@ -18,7 +18,7 @@ all (confirmed by reading it: it only calls `Enforcer.check_content`).
 
 Scenarios use the actual shipped seed data (`agentfox.fixtures.seed.seed`) — real agents
 (`support-triage`, `payments-ops`), real capability grants, real shipped policies
-(`policies_data/tool-containment.yaml`, `mode: enforce`) — not synthetic fixtures
+(`packs/tool-containment/policies/tool-containment.yaml`, `mode: enforce`) — not synthetic fixtures
 invented for this benchmark. `support-triage` is granted `kb.search`, `crm.lookup`,
 `tickets.*`; it was never granted anything payments- or email-related, so an
 attempt on either is a genuine capability escalation, not a contrived edge case.

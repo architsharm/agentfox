@@ -29,7 +29,7 @@ from agentfox.capabilities.evaluation import (
     to_sarif,
 )
 from agentfox.capabilities.evaluation.adapters import available_runners, get_runner
-from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES
+from agentfox.capabilities.evaluation.redteam import available_probes
 from agentfox.capabilities.evaluation.runner import NativeEvalRunner, fit_envelope
 from agentfox.capabilities.evaluation.scorers import get_scorer
 from agentfox.core.models import (
@@ -712,7 +712,7 @@ def list_probes(_user: User = Depends(current_user)) -> dict[str, Any]:
                 "surface": p.surface,
                 "description": p.description,
             }
-            for p in BUILTIN_PROBES
+            for p in available_probes()
         ],
         "runners": rt_runners(),
     }

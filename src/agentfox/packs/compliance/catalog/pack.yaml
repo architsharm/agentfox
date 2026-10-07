@@ -1,0 +1,28 @@
+# The control catalog: every NOM-* control with its status rule and its mappings to
+# seven frameworks, the dated obligation calendar, and the threat catalogues (OWASP,
+# ATLAS) coverage is measured against.
+#
+# One pack, not one per framework: almost every control maps to several frameworks
+# (NOM-DSC-01 alone cites the EU AI Act, NIST AI RMF, ISO 42001, SOC 2 and OWASP
+# Agentic), so a per-framework split would copy each control into up to seven packs
+# and let the copies drift. Status is computed per control, once.
+id: compliance/catalog
+version: 0.1.0
+maturity: stable
+requires_core: ">=0.3"
+title: Control catalog
+description: >
+  The NOM-* controls and their draft mappings to the EU AI Act, NIST AI RMF, ISO/IEC
+  42001, SOC 2, OWASP LLM Top 10, OWASP Agentic Threats and MITRE ATLAS; obligations;
+  threat catalogues.
+owners: [agentfox-maintainers]
+tags: [compliance, controls, frameworks]
+compliance:
+  frameworks:
+    eu-ai-act: []
+    nist-ai-rmf: []
+    iso-42001: []
+    soc2: []
+    owasp-llm: []
+    owasp-agentic: []
+    mitre-atlas: []

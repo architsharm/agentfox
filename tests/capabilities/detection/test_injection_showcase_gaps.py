@@ -14,7 +14,7 @@ as many benign negatives as positives: over-blocking is what gets a guardrail sw
 off, so the negatives carry the same weight.
 
 Positives must clear the baseline policy's direct-input block threshold (0.7,
-`policies_data/baseline.yaml`, rule ``injection.direct``) on the *input* surface, the
+`packs/baseline/policies/baseline.yaml`, rule ``injection.direct``) on the *input* surface, the
 least suspicious one. Negatives must raise nothing at all, on the input surface and on
 ``tool_result``, where the detector is most suspicious.
 """

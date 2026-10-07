@@ -1,5 +1,8 @@
 """Generate the docs site's CLI and HTTP reference from the code, and check the docs.
 
+Also the finding-type labels the dashboard shows (`finding-types.json`, from
+`agentfox.platform.ledger.finding_types` and the built-in packs' `finding_types`).
+
     python scripts/docs_reference.py --write   # regenerate dashboard/lib/reference/*.json
     python scripts/docs_reference.py --check   # exit 1 if they are stale, or if any
                                                 # `agentfox ...` printed on a docs page
@@ -265,6 +268,24 @@ def check_pages() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def build_finding_types() -> dict[str, Any]:
+    """Every built-in finding type and every built-in pack's, for the dashboard's labels.
+
+    Built-in only, so the file does not depend on the directory it is generated from.
+    """
+    from agentfox.platform.ledger.finding_types import BUILTIN
+    from agentfox.platform.packs import builtin_packs
+
+    types = [entry.to_json() for entry in BUILTIN]
+    seen = {row["type"] for row in types}
+    for pack in builtin_packs():
+        for spec in pack.manifest.finding_types:
+            if spec.type not in seen:
+                seen.add(spec.type)
+                types.append({**spec.model_dump(), "owner": f"pack:{pack.id}"})
+    return {"types": types}
+
+
 def _dump(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=1, sort_keys=False, ensure_ascii=False) + "\n"
 
@@ -276,7 +297,11 @@ def main() -> int:
     group.add_argument("--check", action="store_true")
     args = parser.parse_args()
 
-    outputs = {OUT / "cli.json": _dump(build_cli()), OUT / "api.json": _dump(build_api())}
+    outputs = {
+        OUT / "cli.json": _dump(build_cli()),
+        OUT / "api.json": _dump(build_api()),
+        OUT / "finding-types.json": _dump(build_finding_types()),
+    }
     if args.write:
         OUT.mkdir(parents=True, exist_ok=True)
         for path, text in outputs.items():

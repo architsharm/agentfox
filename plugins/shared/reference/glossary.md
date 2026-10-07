@@ -37,7 +37,7 @@ verified_against: branch claude/improvement-loop-phase0, 2026-09-20
 | `X-<n>` | Cross-cutting principles (X-3 offline install, X-5 dashboard is only an API client) | `docs/design/PRD.md` |
 | `NFR-<n>` | Non-functional requirements (NFR-1 latency, NFR-9 offline) | `docs/design/PRD.md` |
 | `F<fam>.<mode>` | Failure modes F1.1–F9.5 (F1 answerability … F8 context integrity) | `docs/design/failure-modes.md` |
-| `NOM-<FAM>-NN` | Controls: DSC, IAM, RTG, EVL, AUD, GOV | `src/agentfox/compliance_data/controls.yaml`, Appendix B |
+| `NOM-<FAM>-NN` | Controls: DSC, IAM, RTG, EVL, AUD, GOV | `src/agentfox/packs/compliance/catalog/controls/controls.yaml`, Appendix B |
 | `R<n>` | PRD risks | `docs/design/PRD.md` §10 |
 | Tier 0–3, Tranche 0–4 | Gap-analysis severity tiers, roadmap tranches | `docs/design/gap-analysis.md`, `docs/design/PRD.md` §9 |
 

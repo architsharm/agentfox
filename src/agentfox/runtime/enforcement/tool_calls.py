@@ -1,5 +1,5 @@
-"""The tool-call path: the guard itself, the verified-state gate, and the business
-ladders and cascade/data-access risks `evaluate()` reads on a tool call.
+"""The tool-call path: the guard itself, the verified-state gate, and the
+cascade/data-access risks `evaluate()` reads on a tool call.
 """
 
 from __future__ import annotations
@@ -11,16 +11,12 @@ from typing import Any
 
 from sqlalchemy import select
 
-from agentfox.capabilities.business.graph import BUSINESS_RANK
-from agentfox.capabilities.business.ladder import LadderDecision
-from agentfox.capabilities.business.ladder import evaluate as evaluate_ladder
-from agentfox.capabilities.business.store import load_ladders
 from agentfox.capabilities.containment.data_access import ReferenceTable, ScopeRule
 from agentfox.capabilities.containment.data_access import analyse_access as analyse_data_access
 from agentfox.capabilities.containment.effects import cascade_risk
 from agentfox.capabilities.detection import TaintTracker
 from agentfox.capabilities.detection.actions import find_sql_argument
-from agentfox.core.models import AccessScopeRule, Agent, TaintTag, Tool, Trace
+from agentfox.core.models import AccessScopeRule, TaintTag, Tool, Trace
 from agentfox.core.vocab import taint_rank
 from agentfox.platform.registry.service import record_edge
 from agentfox.runtime.enforcement.result import EnforcementResult
@@ -204,46 +200,6 @@ class _ToolCallMixin:
             severity="critical",
             controls=["NOM-RTG-09", "NOM-IAM-03"],
         )
-
-    def _business_ladders(
-        self,
-        agent: Agent | None,
-        surface: str,
-        tool_key: str | None,
-        arguments: dict[str, Any] | None,
-    ) -> list[LadderDecision]:
-        """Evaluate the business ladders that apply to this call.
-
-        Only on the tool-argument surface: a ladder bands a number the caller is about
-        to act on, and there is no such number on an input or an output. When several
-        apply, the strictest wins and the disagreement is a lint finding rather than a
-        silent precedence rule — two authors disagreeing is a fact about the
-        organisation, not a merge conflict.
-
-        Every deciding ladder is returned, strictest first, because each carries its
-        own mode: the strictest *enforcing* ladder is what is applied, and an
-        observe ladder stricter than it is only recorded.
-        """
-        if surface != "tool_args" or not arguments:
-            return []
-        try:
-            ladders = load_ladders(
-                self.session, tool=tool_key, agent_id=agent.id if agent else None
-            )
-        except Exception as exc:  # pragma: no cover - storage must not break the path
-            log.warning("business ladders unavailable: %s", exc)
-            return []
-        if not ladders:
-            return []
-
-        request = {"arguments": arguments, "tool": tool_key}
-        decisions = [
-            evaluate_ladder(ladder, request)
-            for ladder in ladders
-            if ladder.tool in (None, tool_key)
-        ]
-        decisions = [d for d in decisions if d.matched or d.undecidable]
-        return sorted(decisions, key=lambda d: BUSINESS_RANK.get(d.outcome, 0), reverse=True)
 
     def _cascade_and_access_risks(
         self, tool_key: str | None, arguments: dict[str, Any] | None

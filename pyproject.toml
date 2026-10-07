@@ -120,20 +120,19 @@ root_package = "agentfox"
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
-name = "Layers: apps > frameworks, exporters, harnesses, hooks, fixtures > runtime > capabilities > platform > core"
+name = "Layers: apps > frameworks, exporters, harnesses, hooks, fixtures > runtime > capabilities, packs > platform > core"
 type = "layers"
 layers = [
     "agentfox.apps",
     "agentfox.frameworks : agentfox.exporters : agentfox.harnesses : agentfox.hooks : agentfox.fixtures",
     "agentfox.runtime",
-    "agentfox.capabilities",
+    # Capability packs sit beside the capabilities: data, plus optional checks that
+    # may import what a capability may import.
+    "agentfox.capabilities | agentfox.packs",
     "agentfox.platform",
     "agentfox.core",
 ]
 ignore_imports = [
-    # TODO(phase 4): EU_CLASSES moves into the EU AI Act pack, and policy stops
-    # reading the risk classes from compliance.
-    "agentfox.platform.policy.hierarchy -> agentfox.capabilities.compliance.risk",
     # TODO: the in-process red-team runner and the live-probe adapter drive the
     # Enforcer to measure it. Inject the enforcer (or move these runners above the
     # runtime) so evaluation no longer imports it.
@@ -156,6 +155,7 @@ forbidden_modules = [
     "agentfox.fixtures",
     "agentfox.apps",
     "agentfox.errors",
+    "agentfox.packs",
 ]
 
 # A harness adapter is reached through the registry (`agentfox.harnesses.get`, `all`,
@@ -177,6 +177,41 @@ source_modules = [
     "agentfox.errors",
 ]
 forbidden_modules = ["agentfox.harnesses.claude_code"]
+
+# The Enforcer runs the checks it finds in the registry (`platform/checks.py`); it
+# names the modules that register the built-in ones (`runtime/checks.py`) and never
+# imports them, so a check is added by registering it, not by editing the runtime.
+[[tool.importlinter.contracts]]
+name = "The runtime reaches checks through the registry, not by import"
+type = "forbidden"
+source_modules = ["agentfox.runtime"]
+forbidden_modules = [
+    "agentfox.capabilities.grounding.checks",
+    "agentfox.capabilities.containment.checks",
+    "agentfox.capabilities.detection.checks",
+    "agentfox.capabilities.business.checks",
+]
+
+# A capability pack is data read by the loader (`platform/packs`), and its optional
+# checks are imported by file path. Nothing imports `agentfox.packs` as a module, so a
+# pack can be added, replaced or disabled without an edit anywhere else.
+[[tool.importlinter.contracts]]
+name = "Nothing imports a capability pack"
+type = "forbidden"
+source_modules = [
+    "agentfox.apps",
+    "agentfox.frameworks",
+    "agentfox.exporters",
+    "agentfox.harnesses",
+    "agentfox.hooks",
+    "agentfox.fixtures",
+    "agentfox.runtime",
+    "agentfox.capabilities",
+    "agentfox.platform",
+    "agentfox.core",
+    "agentfox.errors",
+]
+forbidden_modules = ["agentfox.packs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -36,6 +36,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agentfox.capabilities.business.ladder import KNOWN_UNITS, Ladder
+from agentfox.platform.packs import merged_mapping
 
 # --- Lexicon ---------------------------------------------------------------
 
@@ -157,36 +158,25 @@ _OUTCOME_WORDS: list[tuple[tuple[str, ...], str]] = [
     (("redact", "mask", "remove", "strip"), "redact"),
 ]
 
-#: Role words to an approver role. Deliberately small — a wrong guess here is a rule
-#: that routes an approval to the wrong queue, so anything unrecognised is a question.
-_ROLES = {
-    "finance": "finance",
-    "financial": "finance",
-    "accounting": "finance",
-    "manager": "manager",
-    "management": None,
-    "supervisor": "manager",
-    "legal": "legal",
-    "compliance": "compliance",
-    "security": "security",
-    "support": "support",
-    "customer support": "support",
-    "hr": "hr",
-    "human resources": "hr",
-}
 
-#: Domain words to the tool a rule most likely governs. Used only as a suggestion —
-#: an unresolved tool is a question, never a guess that silently governs nothing.
-_TOOL_HINTS = {
-    "refund": "payments.refund",
-    "transfer": "payments.transfer",
-    "payment": "payments.transfer",
-    "discount": "billing.discount",
-    "credit": "billing.credit",
-    "delete": "db.query",
-    "email": "email.send",
-    "export": "data.export",
-}
+def _roles() -> dict[str, str | None]:
+    """Role words to an approver role, from the capability packs' ``vocabulary.roles``.
+
+    Deliberately small — a wrong guess here is a rule that routes an approval to the
+    wrong queue, so anything unrecognised is a question. A word mapped to nothing
+    (``management``) is recognised and still asked about.
+    """
+    return merged_mapping("roles")
+
+
+def _tool_hints() -> dict[str, str]:
+    """Domain words to the tool a rule most likely governs (``vocabulary.tool_hints``).
+
+    Used only as a suggestion — an unresolved tool is a question, never a guess that
+    silently governs nothing. Order matters: the first word found in a sentence wins.
+    """
+    return merged_mapping("tool_hints")
+
 
 #: A number followed by a thing being counted: "10,000 rows", "500 records". Such a
 #: threshold is a count, not an amount of money, and needs no unit question. Nouns
@@ -402,9 +392,10 @@ def _outcome(text: str) -> str | None:
 def _role(text: str) -> tuple[str | None, str | None]:
     """Return (role, ambiguous_word). A recognised-but-unmapped word is a question."""
     lowered = text.lower()
-    for word in sorted(_ROLES, key=len, reverse=True):
+    roles = _roles()
+    for word in sorted(roles, key=len, reverse=True):
         if re.search(rf"\b{re.escape(word)}\b", lowered):
-            mapped = _ROLES[word]
+            mapped = roles[word]
             return (mapped, None) if mapped else (None, word)
     return None, None
 
@@ -433,7 +424,7 @@ def _tool(text: str) -> str | None:
     explicit = re.search(r"\b([a-z_]+\.[a-z_]+)\b", lowered)
     if explicit:
         return explicit.group(1)
-    for word, tool in _TOOL_HINTS.items():
+    for word, tool in _tool_hints().items():
         if word in lowered:
             return tool
     return None
@@ -825,7 +816,7 @@ def _extract_entitlement(sentence: str, lowered: str) -> _Extraction | None:
                 source="",
                 why="the audience decides who this rule lets through, and "
                 "guessing it wrong either leaks or blocks everyone",
-                options=sorted({r for r in _ROLES.values() if r}),
+                options=sorted({r for r in _roles().values() if r}),
             )
         )
     definition: dict[str, Any] = {
@@ -880,7 +871,7 @@ def _extract_escalation(sentence: str, lowered: str) -> _Extraction | None:
                 question=f"Which approver role is '{ambiguous}'?",
                 source="",
                 why="escalation has to name a queue that exists, or it lands nowhere",
-                options=sorted({r for r in _ROLES.values() if r}),
+                options=sorted({r for r in _roles().values() if r}),
             )
         )
     return _Extraction(definition, assumptions, review, 0.85)
@@ -1123,7 +1114,7 @@ def _build_ladders(clauses: list[_Clause], result: Compilation, key_prefix: str)
                 source=source_fragments[0],
                 why="a ladder with no tool would band every call that happens to carry "
                 "a matching field",
-                options=sorted(set(_TOOL_HINTS.values())),
+                options=sorted(set(_tool_hints().values())),
                 covers=source_sentences,
             )
         )
@@ -1227,7 +1218,7 @@ def _build_ladders(clauses: list[_Clause], result: Compilation, key_prefix: str)
                 question=f"Which approver role is '{ambiguous_roles[0]}'?",
                 source=next(c.source for c in clauses if c.ambiguous_role),
                 why="routing an approval to the wrong queue is worse than not routing it",
-                options=sorted({v for v in _ROLES.values() if v}),
+                options=sorted({v for v in _roles().values() if v}),
                 covers=source_sentences,
                 blocking=False,
             )

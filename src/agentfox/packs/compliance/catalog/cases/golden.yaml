@@ -1,0 +1,18 @@
+# Golden mappings for the control catalog, run by
+# `agentfox policy packs test compliance/catalog`. Each names frameworks a control must
+# still map to; dropping one is a change a reviewer should see fail.
+cases:
+  - name: the agent inventory maps to the EU AI Act, NIST, ISO 42001 and SOC 2
+    kind: control
+    control: NOM-DSC-01
+    expect: {frameworks: [eu-ai-act, nist-ai-rmf, iso-42001, soc2]}
+
+  - name: least privilege maps to the EU AI Act and SOC 2
+    kind: control
+    control: NOM-IAM-02
+    expect: {frameworks: [eu-ai-act, soc2]}
+
+  - name: prompt-injection defence maps to OWASP LLM and MITRE ATLAS
+    kind: control
+    control: NOM-RTG-01
+    expect: {frameworks: [owasp-llm, mitre-atlas]}

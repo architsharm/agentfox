@@ -20,15 +20,19 @@ leaving it off:
 
 from __future__ import annotations
 
+import importlib
 import json
 import pathlib
 import time
 
 import pytest
 
+from agentfox.capabilities.grounding.checks import commitment_check, context_check
 from agentfox.core.models import Agent, Finding
+from agentfox.platform.checks import CheckContext
 from agentfox.platform.policy import PolicyDocument, save_policy
 from agentfox.runtime import enforcement
+from agentfox.runtime.checks import BUILTIN_CHECK_MODULES
 from agentfox.runtime.enforcement import Enforcer
 
 
@@ -247,9 +251,12 @@ def test_fairness_probe_is_deliberately_not_on_the_per_request_path(enforcer, ag
     per-request could only ever return `underpowered` while implying a check had run."""
     result = enforcer.evaluate(agent=agent, identity=None, content=ORDINARY, surface="output")
     assert "fairness" not in result.taint
-    # The enforcer is a package; every stage of the request path is a module in it.
+    # The enforcer is a package; every stage of the request path is a module in it,
+    # and the checks it runs are the modules the runtime names.
     package = pathlib.Path(enforcement.__file__).parent
-    for module in package.glob("*.py"):
+    modules = [*package.glob("*.py")]
+    modules += [pathlib.Path(importlib.import_module(m).__file__) for m in BUILTIN_CHECK_MODULES]
+    for module in modules:
         assert "fairness_probe(" not in module.read_text(), module.name
 
 
@@ -524,6 +531,18 @@ def test_the_same_policy_leaves_ordinary_answers_alone(seeded, enforcer, agent):
 # --- Latency ---------------------------------------------------------------
 
 
+def _context(enforcer, surface, content):
+    return CheckContext(
+        session=enforcer.session,
+        settings=enforcer.settings,
+        agent=None,
+        surface=surface,
+        content=content,
+        evidence=enforcer.evidence,
+        pipeline=enforcer.pipeline,
+    )
+
+
 def test_the_added_work_is_bounded_on_oversized_content(enforcer):
     """These checks are deterministic and local, but they are linear in what they read:
     unbounded, a 405KB retrieved payload costs ~170ms against a 300ms budget. The scan
@@ -534,8 +553,8 @@ def test_the_added_work_is_bounded_on_oversized_content(enforcer):
 
     started = time.perf_counter()
     for _ in range(5):
-        enforcer._commitment_checks(None, "output", huge, None)
-        enforcer._context_checks("retrieved", huge, None)
+        commitment_check(_context(enforcer, "output", huge))
+        context_check(_context(enforcer, "retrieved", huge))
     elapsed_ms = ((time.perf_counter() - started) / 5) * 1000
     assert elapsed_ms < 60, f"F6+F8 cost {elapsed_ms:.1f}ms on a 400KB payload"
 

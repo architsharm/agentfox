@@ -10,15 +10,15 @@ did.
 asked the simpler question: can this rule's own conditions ever be true?
 
 Writing the check found two answers of "no" in our own shipped code, which is
-the argument for having it. One was a typo-class drift in `_FALLBACK_FOR_TIER`
-— see `test_the_prohibited_tier_reaches_the_eu_pack` below.
+the argument for having it. One was a typo-class drift in the fallback tiers —
+see `test_the_prohibited_tier_reaches_the_eu_pack` below.
 """
 
 from __future__ import annotations
 
-from agentfox.capabilities.compliance.risk import EU_CLASSES
 from agentfox.core.config import get_settings
 from agentfox.core.vocab import SURFACES
+from agentfox.platform.packs import builtin_pack
 from agentfox.platform.policy.hierarchy import PolicyLayer, lint_policy
 from agentfox.platform.policy.model import Condition, PolicyDocument, Rule
 from agentfox.platform.policy.store import load_from_dir
@@ -105,15 +105,18 @@ def test_every_shipped_pack_is_clean():
 
 
 def test_the_prohibited_tier_reaches_the_eu_pack():
-    """`_FALLBACK_FOR_TIER` was keyed on "unacceptable", which nothing emits.
+    """The fallback tiers were once keyed on "unacceptable", which nothing emits.
 
-    The classifier's vocabulary is `EU_CLASSES` — prohibited, high, limited,
-    minimal — so the branch meant to cover the most serious tier was dead, and
-    an agent classified as a *prohibited practice* fell through to
-    `_FALLBACK_DEFAULT`: the weakest of the three packs, on the deployment that
-    most needed the strongest.
+    The classifier's vocabulary is the EU AI Act pack's risk classes — prohibited,
+    high, limited, minimal — so the branch meant to cover the most serious tier was
+    dead, and an agent classified as a *prohibited practice* fell through to the
+    default: the weakest of the three packs, on the deployment that most needed the
+    strongest.
     """
-    assert "prohibited" in EU_CLASSES and "unacceptable" not in EU_CLASSES
+    eu = builtin_pack("eu-ai-act").manifest
+    classes = eu.vocabulary["condition_values"]["risk_tier"]
+    assert "prohibited" in classes and "unacceptable" not in classes
+    assert set(eu.fallback.risk_tiers) <= set(classes)
     assert [d.key for d in _fallback_policies("prohibited")] == [
         "baseline",
         "eu-ai-act-high-risk",
@@ -123,7 +126,10 @@ def test_the_prohibited_tier_reaches_the_eu_pack():
 def test_the_lint_enums_come_from_the_source_of_truth():
     """If either list were retyped here it would drift, which is the failure
     this module is about."""
-    from agentfox.platform.policy.hierarchy import _ENUMERABLE_CONDITIONS
+    from agentfox.platform.policy.hierarchy import enumerable_conditions
 
-    assert _ENUMERABLE_CONDITIONS["risk_tier"] is EU_CLASSES
-    assert _ENUMERABLE_CONDITIONS["surface"] is SURFACES
+    eu = builtin_pack("eu-ai-act").manifest
+    assert enumerable_conditions()["risk_tier"] == tuple(
+        eu.vocabulary["condition_values"]["risk_tier"]
+    )
+    assert enumerable_conditions()["surface"] is SURFACES

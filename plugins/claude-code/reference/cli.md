@@ -69,6 +69,7 @@ configs). They are the same commands as `admin hooks run` and `serve mcp`.
 | `agentfox serve [--host 127.0.0.1] [--port 8080] [--reload]` | FG | Same as `serve api`. Gateway + API (`/v1/*`, `/api/*`, `/docs`). No `--workers`. |
 | `agentfox serve mcp` | FG (stdio) | MCP server over stdin/stdout for Claude Code, Cursor and other clients. 27 read-only tools; nothing that changes enforcement. |
 | `agentfox findings [--severity/-s S] [--limit/-n 20] [--json]` | R\* | Newest first. |
+| `agentfox findings --types [--json]` | R, offline | Every finding type: label, usual severity, owner; `--json` adds what each means. Packs add their own. |
 | `agentfox doctor [--json]` | R\* | Exit 1 if any check is bad, with or without `--json`. |
 | `agentfox --version` | R | Version string. `admin version` lists every component that takes part in a decision. |
 
@@ -119,7 +120,10 @@ anywhere.
 
 | Command | Effect | Notes |
 |---|---|---|
-| `policy list` · `policy packs` | R\* | Latest version, mode, rule count · the bundled packs. |
+| `policy list` · `policy packs` | R\* | Latest version, mode, rule count · the policy files on disk and where each came from (same as `policy packs files`). |
+| `policy packs list [--all] [--json]` · `policy packs show ID [--json]` | R, offline | Capability packs (built in, installed, the project's `.agentfox/packs/`), whether each loads, what each ships. |
+| `policy packs test [ID...] [--json]` · `policy packs validate [ID\|DIR...] [--json] [--schema]` | R, offline | Run packs' golden cases · check pack.yaml, policies (lint), ladders, probes, controls, checks and cases. Exit 1 on a failure. |
+| `policy packs new ID [--into .agentfox/packs] [--builtin]` | W (files) | Scaffold a pack from the template; it validates as created. |
 | `policy lint [FILE...]` | R\* | The whole bound hierarchy, or the given files. Exit 1 on critical/high findings. |
 | `policy effective [--agent] [--team] [--user] [--environment ENV]` | R\* | Which rules are in force and where each came from. `--environment` defaults to `NOMETRIA_ENVIRONMENT`. |
 | `policy validate FILE` | R, offline | One file: parse, full lint (unreachable rules, unknown enum values) and compile to Rego, without saving. Exit 1 if invalid or on critical/high findings. **Always run before simulate.** |
