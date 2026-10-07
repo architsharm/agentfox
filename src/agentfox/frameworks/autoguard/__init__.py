@@ -914,7 +914,7 @@ def _evaluate_output(
     state = call.state
     # The only place on this path that writes a kind="llm" span with the raw
     # response text — the shape sample_production() (online eval) scores.
-    # Mirrors enforcement.py's _finish_completion(), the gateway path's equivalent.
+    # Mirrors enforcement/completion.py's _finish_completion(), the gateway path's equivalent.
     add_span(
         session,
         call.trace_id,
@@ -1259,12 +1259,12 @@ def _patch_attr(
             f"this {library} version has no {detail}; leaving it alone rather than guessing",
             version,
         )
-    if getattr(current, "__nometria__", False):
+    if getattr(current, "__agentfox__", False):
         return PatchResult(label, True, "already patched", version)
     had_own = attr in getattr(owner, "__dict__", {})
     governed = build(current)
-    governed.__nometria__ = True
-    governed.__nometria_original__ = current
+    governed.__agentfox__ = True
+    governed.__agentfox_original__ = current
     setattr(owner, attr, governed)
     _PATCHED[label] = (owner, attr, had_own)
     return PatchResult(label, True, detail, version)
@@ -1526,7 +1526,7 @@ def off() -> list[str]:
     for label, (owner, attr, had_own) in list(_PATCHED.items()):
         try:
             current = getattr(owner, attr, None)
-            original = getattr(current, "__nometria_original__", None)
+            original = getattr(current, "__agentfox_original__", None)
             if original is not None:
                 if had_own:
                     setattr(owner, attr, original)

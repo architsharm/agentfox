@@ -281,7 +281,7 @@ def loop_governor(seeded):
     or block a call — isolates the loop-governance signal from every other rule
     in tool-containment.yaml (`taint.irreversible_tool`,
     `intent.undeclared_irreversible`) that would otherwise short-circuit the call
-    before it reaches `_prior_steps.append(...)` (integrations/mcp.py)."""
+    before it reaches `_prior_steps.append(...)` (frameworks/mcp.py)."""
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
     identity = ensure_identity(seeded, agent)
     tools = [
@@ -303,8 +303,8 @@ def loop_governor(seeded):
 def test_three_identical_calls_trip_the_real_loop_governor(seeded, loop_governor):
     """agent_loop.LoopBudget's own default (max_repeats=2) trips on the 3rd
     identical call. The wiring point being tested is McpGovernor tracking real
-    step history (integrations/mcp.py's `_prior_steps`) and Enforcer replaying it
-    through `agent_loop.govern_loop` (enforcement.py's `_budget_state`) — not just
+    step history (frameworks/mcp.py's `_prior_steps`) and Enforcer replaying it
+    through `agent_loop.govern_loop` (enforcement/limits.py's `_budget_state`) — not just
     the old naive `prior_tools.count(tool_key) >= 3` counter it replaced."""
     for _ in range(2):
         outcome = loop_governor.call("tool_a", {"q": "x"}, transport=lambda t, a: "ok")
@@ -373,7 +373,7 @@ def test_governed_mcp_call_over_the_gateway(client):
     response = client.post(
         "/v1/mcp/call",
         json={"server": SERVER, "tool": "search_docs", "arguments": {"q": "x"}},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     # No capability was granted over the API, so the call is denied — which is the
     # correct default and proves the route is governed rather than a passthrough.

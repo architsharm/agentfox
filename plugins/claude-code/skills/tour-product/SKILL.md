@@ -15,8 +15,8 @@ database, and nothing leaves the machine.
 ## 1. Set up an isolated scratch environment
 
 ```bash
-export NOMETRIA_DATABASE_URL=sqlite:////tmp/nometria-tour.db
-export NOMETRIA_EVIDENCE_DIR=/tmp/nometria-tour-evidence
+export AGENTFOX_DATABASE_URL=sqlite:////tmp/agentfox-tour.db
+export AGENTFOX_EVIDENCE_DIR=/tmp/agentfox-tour-evidence
 agentfox admin version
 ```
 
@@ -78,7 +78,7 @@ For the UI, the operate-deployment skill starts the gateway and dashboard.
 
 Tell the user:
 
-- **What is theirs to keep:** nothing yet. The scratch DB is at `/tmp/nometria-tour.db`, and
+- **What is theirs to keep:** nothing yet. The scratch DB is at `/tmp/agentfox-tour.db`, and
   deleting it undoes the tour.
 - **The next step:** the onboard-codebase skill (`/agentfox:start`), which governs their
   real code in observe mode.

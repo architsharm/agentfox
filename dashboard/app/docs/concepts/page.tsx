@@ -496,7 +496,7 @@ tool-containment     v1       enforce  25`}</Output>
         </p>
         <p>
           <b>Intent</b> is the agent&apos;s task in a sentence, declared with{" "}
-          <code>auto(intent=…)</code> or the <code>X-Nometria-Intent</code> header. An
+          <code>auto(intent=…)</code> or the <code>X-AgentFox-Intent</code> header. An
           irreversible call with no declared intent is escalated by{" "}
           <code>intent.undeclared_irreversible</code>.
         </p>
@@ -555,7 +555,7 @@ tool-containment     v1       enforce  25`}</Output>
           <code>block</code> or <code>escalate</code> on a tool call raises{" "}
           <code>agentfox.Blocked</code>. In observe mode two verdicts are recorded: the one
           applied, and the one the policy would have applied (
-          <code>x-nometria-verdict</code> and <code>x-nometria-effective-verdict</code> on a
+          <code>x-agentfox-verdict</code> and <code>x-agentfox-effective-verdict</code> on a
           proxied call). The gap between them is what you watch before enforcing.
         </p>
       </Def>
@@ -570,7 +570,7 @@ tool-containment     v1       enforce  25`}</Output>
           A <b>trace</b> (<code>trc_…</code>) is one request end to end: the input guard, the
           model call, the output guard, each tool call, with timings. The decisions hang off
           it. <code>agentfox.auto()</code> creates one per model call; the gateway returns its
-          id in <code>x-nometria-trace</code>.
+          id in <code>x-agentfox-trace</code>.
         </p>
         <p>
           Checks run on nine surfaces: <code>input</code>, <code>output</code>,{" "}

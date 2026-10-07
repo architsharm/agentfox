@@ -268,7 +268,7 @@ def observe_agent(
     # Debounced, not unconditional: a single governed call can resolve the same
     # agent from more than one DB session in quick succession (e.g. autoguard's
     # pre-flight check opens its own session independently of whatever session a
-    # caller already has open around the whole call — see autoguard.py's
+    # caller already has open around the whole call — see frameworks/autoguard's
     # `_govern`). Writing `last_seen_at` from both stalls one session behind the
     # other's uncommitted row lock — on Postgres, with no lock_timeout configured,
     # that's an unbounded hang, not a slow query. Found live: a deployed demo

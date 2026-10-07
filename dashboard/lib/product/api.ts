@@ -8,8 +8,9 @@
  */
 
 import { cookies } from "next/headers";
+import { apiBase, env } from "@/lib/env";
 
-const BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const BASE = apiBase();
 
 // In MVP self-host there is no IdP wired (PRD §6.3); the control plane accepts a
 // development identity header when AGENTFOX_ENVIRONMENT is a dev environment, or a
@@ -17,8 +18,8 @@ const BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "ht
 // because the value of a demo of a governance product is undercut by the demo itself
 // running with authentication turned off — a live deployment sets AGENTFOX_API_TOKEN
 // and gets the real path; local dev with no token set keeps working exactly as before.
-const USER = process.env.AGENTFOX_USER || process.env.NOMETRIA_USER || "admin@example.com";
-const TOKEN = process.env.AGENTFOX_API_TOKEN || process.env.NOMETRIA_API_TOKEN;
+const USER = env("USER") || "admin@example.com";
+const TOKEN = env("API_TOKEN");
 //: This is the P2-4 SSO seam, connected: app/api/auth/github/callback/route.ts mints
 //: a real per-user token on sign-in and sets it here. Checked ahead of the static
 //: env var, so a signed-in user's own token — not a shared service token — is what
@@ -39,7 +40,7 @@ async function authHeaders(): Promise<Record<string, string>> {
   const sessionToken = (await cookies()).get(SESSION_COOKIE)?.value;
   if (sessionToken) return { Authorization: `Bearer ${sessionToken}` };
   if (TOKEN) return { Authorization: `Bearer ${TOKEN}` };
-  return { "X-Nometria-User": USER };
+  return { "X-AgentFox-User": USER };
 }
 
 export async function api<T = any>(path: string, init?: RequestInit): Promise<T> {

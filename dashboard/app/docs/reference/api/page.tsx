@@ -33,7 +33,7 @@ export default function Page() {
       </p>
       <Code title="Check a tool call before running it">{`curl -s http://localhost:8080/v1/guard/tool_call \\
   -H "Content-Type: application/json" \\
-  -H "X-Nometria-Agent: support-triage" \\
+  -H "X-AgentFox-Agent: support-triage" \\
   -d '{"agent": "support-triage", "tool": "tickets.close",
        "arguments": {"ticket_id": "T-1042"},
        "provenance": {"ticket_id": "user"},
@@ -60,9 +60,10 @@ export default function Page() {
 
       <Callout kind="note">
         <p>
-          Header names still carry the old product name (<code>X-Nometria-Agent</code>,{" "}
-          <code>X-Nometria-Verdict</code>). They are the wire protocol, and renaming them
-          would break existing clients.
+          Headers are <code>X-AgentFox-*</code>. The pre-rename <code>X-Nometria-*</code>{" "}
+          request headers are still accepted, for clients not yet updated; where a request
+          carries both, <code>X-AgentFox-*</code> wins. Responses carry only{" "}
+          <code>X-AgentFox-*</code>.
         </p>
       </Callout>
 

@@ -204,8 +204,8 @@ def no_timing_flake(monkeypatch):
     pipeline's clock."""
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_DETECTOR_TIMEOUT_MS", "60000")
-    monkeypatch.setenv("NOMETRIA_ENFORCEMENT_BUDGET_MS", "60000")
+    monkeypatch.setenv("AGENTFOX_DETECTOR_TIMEOUT_MS", "60000")
+    monkeypatch.setenv("AGENTFOX_ENFORCEMENT_BUDGET_MS", "60000")
     reset_settings_cache()
     yield
     reset_settings_cache()

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiBase } from "@/lib/env";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/product/api";
 import { connectionBody } from "@/lib/product/sourceConnection";
 
-const API_BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const API_BASE = apiBase();
 
 /**
  * The single-flow "add a source" form posts here instead of chaining a plain

@@ -146,7 +146,7 @@ def test_a_fresh_database_is_created(tmp_path, monkeypatch):
     from agentfox.core import db
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", f"sqlite:///{tmp_path / 'fresh.db'}")
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{tmp_path / 'fresh.db'}")
     reset_settings_cache()
     db.reset_engine()
 

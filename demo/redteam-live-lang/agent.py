@@ -74,9 +74,9 @@ tools to call. Set ONE of these environment variables before running it:
   export ANTHROPIC_API_KEY=sk-ant-...     # preferred, uses Claude
   export OPENAI_API_KEY=sk-...            # fallback, uses GPT-4o-mini
 
-Optionally pin the exact model with NOMETRIA_DEMO_MODEL, e.g.:
+Optionally pin the exact model with AGENTFOX_DEMO_MODEL, e.g.:
 
-  export NOMETRIA_DEMO_MODEL=claude-3-5-sonnet-20241022
+  export AGENTFOX_DEMO_MODEL=claude-3-5-sonnet-20241022
 
 Nothing was called — no network request was made. See
 demo/redteam-live-lang/README.md for full setup instructions.

@@ -353,7 +353,7 @@ def test_a_database_that_has_not_run_the_migration_still_serves_tool_calls(tmp_p
     from agentfox.core.db import init_db, reset_engine, upgrade_db
 
     url = f"sqlite:///{tmp_path / 'pre.db'}"
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", url)
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", url)
     reset_settings_cache()
     reset_engine()
     try:

@@ -56,7 +56,7 @@ def _decision(command: str) -> str:
         "uv run --project /r agentfox policy observe baseline",
         "python -m agentfox.apps.cli.main agents kill payments-ops",
         "cd /x && agentfox agents quarantine s -r incident",
-        "NOMETRIA_DATABASE_URL=sqlite:////tmp/x.db agentfox demo",
+        "AGENTFOX_DATABASE_URL=sqlite:////tmp/x.db agentfox demo",
         "plugins/claude-code/scripts/agentfox.sh seed",
         "agentfox db downgrade base",
         "agentfox guardrails apply rule.yaml --mode enforce",

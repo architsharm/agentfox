@@ -10,6 +10,7 @@
  * number: the feed answered with data, the gateway says the showcase is not running,
  * or the gateway could not be reached.
  */
+import { apiBase } from "@/lib/env";
 
 export type ShowcaseRun = {
   id: string;
@@ -87,11 +88,7 @@ export type ShowcaseFeed =
 export const REVALIDATE_SECONDS = 300;
 
 export function showcaseUrl(): string {
-  const base = (
-    process.env.AGENTFOX_API_URL ||
-    process.env.NOMETRIA_API_URL ||
-    "http://127.0.0.1:8080"
-  ).replace(/\/+$/, "");
+  const base = apiBase().replace(/\/+$/, "");
   return `${base}/api/public/showcase`;
 }
 

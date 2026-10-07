@@ -63,12 +63,12 @@ def _drain(monkeypatch):
 
 
 def configure(monkeypatch, url, *, egress=True, secret=SECRET, min_severity=None):
-    monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "true" if egress else "false")
-    monkeypatch.setenv("NOMETRIA_WEBHOOK_URL", url)
-    monkeypatch.setenv("NOMETRIA_WEBHOOK_SECRET", secret)
-    monkeypatch.setenv("NOMETRIA_WEBHOOK_TIMEOUT_SECONDS", "1")
+    monkeypatch.setenv("AGENTFOX_ALLOW_EGRESS", "true" if egress else "false")
+    monkeypatch.setenv("AGENTFOX_WEBHOOK_URL", url)
+    monkeypatch.setenv("AGENTFOX_WEBHOOK_SECRET", secret)
+    monkeypatch.setenv("AGENTFOX_WEBHOOK_TIMEOUT_SECONDS", "1")
     if min_severity:
-        monkeypatch.setenv("NOMETRIA_WEBHOOK_MIN_SEVERITY", min_severity)
+        monkeypatch.setenv("AGENTFOX_WEBHOOK_MIN_SEVERITY", min_severity)
     reset_settings_cache()
 
 
@@ -107,9 +107,9 @@ def test_committed_high_finding_is_delivered_once_and_signed(monkeypatch, receiv
 
     assert headers["content-type"] == "application/json"
     assert headers["user-agent"].startswith("agentfox/")
-    assert headers["x-nometria-timestamp"].isdigit()
+    assert headers["x-agentfox-timestamp"].isdigit()
     expected = hmac.new(SECRET.encode(), request["raw"], hashlib.sha256).hexdigest()
-    assert headers["x-nometria-signature"] == f"sha256={expected}"
+    assert headers["x-agentfox-signature"] == f"sha256={expected}"
 
 
 def test_below_threshold_is_not_sent(monkeypatch, receiver):
@@ -131,7 +131,7 @@ def test_min_severity_is_configurable(monkeypatch, receiver):
 
 
 def test_invalid_min_severity_is_rejected(monkeypatch):
-    monkeypatch.setenv("NOMETRIA_WEBHOOK_MIN_SEVERITY", "urgent")
+    monkeypatch.setenv("AGENTFOX_WEBHOOK_MIN_SEVERITY", "urgent")
     with pytest.raises(Exception, match="webhook_min_severity"):
         Settings()
 
@@ -201,7 +201,7 @@ def test_5xx_is_retried_once_with_the_same_delivery(monkeypatch, receiver):
     assert webhooks.wait_for_delivery(5)
     assert len(receiver.received) == 2
     first, second = ({k.lower(): v for k, v in r["headers"].items()} for r in receiver.received)
-    assert first["x-nometria-delivery"] == second["x-nometria-delivery"]
+    assert first["x-agentfox-delivery"] == second["x-agentfox-delivery"]
     assert receiver.received[0]["raw"] == receiver.received[1]["raw"]
 
 
@@ -217,8 +217,8 @@ def test_commit_does_not_wait_on_the_network(monkeypatch, receiver):
 
 
 def test_no_url_configured_sends_nothing(monkeypatch, receiver):
-    monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "true")
-    monkeypatch.delenv("NOMETRIA_WEBHOOK_URL", raising=False)
+    monkeypatch.setenv("AGENTFOX_ALLOW_EGRESS", "true")
+    monkeypatch.delenv("AGENTFOX_WEBHOOK_URL", raising=False)
     reset_settings_cache()
     with session_scope() as s:
         s.add(make_finding(severity="critical"))

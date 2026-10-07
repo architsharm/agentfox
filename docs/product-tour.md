@@ -66,7 +66,7 @@ Flip `"to"` to `"user"` and the same call returns `allow`. Once a person approve
 (`agentfox permit approvals approve apr_…`), the same call with `"approval_id"` added runs, once;
 a second retry with the same id is held again. A proxied model call that is held returns HTTP 428
 with the `approval_id` in its body, so the OpenAI and Anthropic SDKs raise it as an error; resend it
-with `X-Nometria-Approval: <id>` once approved. Full surface:
+with `X-AgentFox-Approval: <id>` once approved. Full surface:
 [Appendix C](architecture/api-spec.md).
 
 ### LangGraph
@@ -399,9 +399,9 @@ Everything runs on your own infrastructure. There is no licence check, no phone-
 default egress: a fresh install ships with `AGENTFOX_ALLOW_EGRESS=false` and the `echo` provider,
 so it runs end to end with no model and no API key. Point it at a model when you want one.
 
-Settings are `AGENTFOX_*` environment variables. The pre-rename `NOMETRIA_*` names still work, so
-an existing deployment does not need to change; where both are set, `AGENTFOX_*` wins. The full
-list, including the few still read only under the old name, is
+Settings are `AGENTFOX_*` environment variables. The pre-rename `NOMETRIA_*` names are still read
+as a deprecated fallback, with a startup warning naming each one; where both are set,
+`AGENTFOX_*` wins. The full list is
 [plugins/shared/reference/config.md](../plugins/shared/reference/config.md).
 
 **Two secrets are required outside development.** With `AGENTFOX_ENVIRONMENT` set to anything but
@@ -425,7 +425,7 @@ The public `/live` showcase is off unless `AGENTFOX_SHOWCASE_ENABLED=true`; only
 deployment behind the website runs it.
 
 Set `AGENTFOX_CONSOLE_URL` to wherever your dashboard is reachable and every governed response
-carries an `explain_url` — and an `X-Nometria-Explain` header — pointing at the decision it
+carries an `explain_url` — and an `X-AgentFox-Explain` header — pointing at the decision it
 describes, so a block in a log is one click from the reason for it. It is left empty by default
 and never inferred from the request: behind a proxy the `Host` header is whatever the proxy sent,
 and a link to somewhere that does not exist is worse than no link.

@@ -267,8 +267,8 @@ def test_check_default_run_does_not_prompt_on_a_non_tty(isolated_db, project, mo
 
 
 def test_check_submit_sends_the_redacted_payload(isolated_db, project, monkeypatch):
-    monkeypatch.setenv("NOMETRIA_API_URL", "https://plane.example.internal")
-    monkeypatch.setenv("NOMETRIA_API_TOKEN", "nom_usr_test")
+    monkeypatch.setenv("AGENTFOX_API_URL", "https://plane.example.internal")
+    monkeypatch.setenv("AGENTFOX_API_TOKEN", "nom_usr_test")
     captured = {}
 
     class _FakeResponse:

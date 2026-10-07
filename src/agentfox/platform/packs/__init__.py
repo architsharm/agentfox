@@ -4,7 +4,7 @@ A pack bundles what a use case needs — policies, compliance controls, business
 templates, red-team probes, optional checks, golden cases and demo fixtures — behind a
 ``pack.yaml`` (`model.PackManifest`). `loader` finds packs (built in, installed by
 entry point, in the project) and decides which load. Validating and testing a pack is
-`agentfox policy packs validate|test` (`apps/packs.py`).
+`agentfox policy packs validate|test` (`apps/cli/commands/packs.py`).
 """
 
 from agentfox.platform.packs.loader import (

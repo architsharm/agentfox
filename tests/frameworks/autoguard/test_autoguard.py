@@ -253,7 +253,7 @@ def test_the_governed_call_leaves_a_trace_and_decisions(app_db, fake_openai):
 def test_the_governed_call_writes_an_llm_span_with_the_output_text(app_db, fake_openai):
     """`sample_production()` (P4-2 online eval) finds a trace's output by looking for
     a `kind="llm"` span with `attributes["agentfox.output"]` set — the same shape
-    `enforcement.py`'s `_finish_completion()` writes for the native gateway path. This
+    `enforcement/completion.py`'s `_finish_completion()` writes for the native gateway path. This
     patched-library path used to skip writing that span entirely: every trace it
     produced had `guardrail`-kind spans (from tool governance) but never an `llm`-kind
     one, so `sample_production()` silently dropped every one of its traces (`output`
@@ -594,12 +594,12 @@ def test_state_is_returned_so_it_can_be_asserted_on(app_db, fake_openai):
 
 
 def test_the_agent_name_is_guessed_from_the_environment(monkeypatch):
-    monkeypatch.setenv("NOMETRIA_AGENT", "billing-copilot")
+    monkeypatch.setenv("AGENTFOX_AGENT", "billing-copilot")
     assert default_agent_slug() == "billing-copilot"
 
 
 def test_conventional_service_names_are_honoured(monkeypatch):
-    monkeypatch.delenv("NOMETRIA_AGENT", raising=False)
+    monkeypatch.delenv("AGENTFOX_AGENT", raising=False)
     monkeypatch.setenv("OTEL_SERVICE_NAME", "checkout-agent")
     assert default_agent_slug() == "checkout-agent"
 
@@ -607,7 +607,7 @@ def test_conventional_service_names_are_honoured(monkeypatch):
 def test_there_is_always_a_fallback_name(monkeypatch):
     """A wrong-but-stable guess beats a required argument: the developer can rename it
     later, and until then their traffic is attributed to something."""
-    for var in ("NOMETRIA_AGENT", "OTEL_SERVICE_NAME", "SERVICE_NAME", "APP_NAME", "K_SERVICE"):
+    for var in ("AGENTFOX_AGENT", "OTEL_SERVICE_NAME", "SERVICE_NAME", "APP_NAME", "K_SERVICE"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr("sys.argv", ["python"])
     assert default_agent_slug() == "default-agent"
@@ -979,7 +979,7 @@ def test_a_second_auto_changes_the_mode_of_the_existing_patches(init_db_only, fa
 def _set_fail_mode(monkeypatch, value: str) -> None:
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", value)
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", value)
     reset_settings_cache()
 
 

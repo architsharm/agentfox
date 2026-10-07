@@ -102,7 +102,7 @@ An escalation files an `ApprovalRequest` (`request_approval`) bound to the agent
 - An approval restarts its clock on approval: it stays redeemable for `REDEEM_WINDOW_MINUTES`
   (30). Unanswered approvals expire (`expire_stale_approvals`) and expiry denies.
 
-A retry presents the approval: `X-Nometria-Approval` on the proxy routes, `approval_id` in the
+A retry presents the approval: `X-AgentFox-Approval` on the proxy routes, `approval_id` in the
 `/v1/guard/*` body, or the SDK's `wait_for_approval`, which polls `GET /api/approvals/{id}` with
 the agent's own key (an agent may read only its own approvals). Inside `evaluate()`, only when
 the call would otherwise escalate, `redeem_approval` checks that the approval is `approved`,
@@ -326,7 +326,7 @@ does. The hierarchy is enforced at runtime: `evaluate()` resolves the same layer
 - Builds **one** FastAPI app serving `/v1/*` (inline) and `/api/*` (control plane), stateless
   so it scales out for throughput.
 - Middleware: CORS (localhost:3000 plus an optional playground origin); for `/v1/*` only,
-  `degradation_gate` (applies the fail mode, returns 503 or stamps `X-Nometria-Degraded`) and
+  `degradation_gate` (applies the fail mode, returns 503 or stamps `X-AgentFox-Degraded`) and
   `admission_gate` (load shedding, 429 with `Retry-After`).
 - The lifespan warms detectors (`warm_all`).
 - Routers, one per file in `routes/`: `inline`, `registry`, `policy`, `evaluation`,

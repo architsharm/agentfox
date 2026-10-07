@@ -73,7 +73,7 @@ configs). They are the same commands as `admin hooks run` and `serve mcp`.
 | `agentfox doctor [--json]` | R\* | Exit 1 if any check is bad, with or without `--json`. |
 | `agentfox --version` | R | Version string. `admin version` lists every component that takes part in a decision. |
 
-`--submit` POSTs a redacted summary to `$NOMETRIA_API_URL/api/discovery/submit`. Never
+`--submit` POSTs a redacted summary to `$AGENTFOX_API_URL/api/discovery/submit`. Never
 pass it without the user's explicit consent — it is the only path that sends scan data
 anywhere.
 
@@ -125,7 +125,7 @@ anywhere.
 | `policy packs test [ID...] [--json]` · `policy packs validate [ID\|DIR...] [--json] [--schema]` | R, offline | Run packs' golden cases · check pack.yaml, policies (lint), ladders, probes, controls, checks and cases. Exit 1 on a failure. |
 | `policy packs new ID [--into .agentfox/packs] [--builtin]` | W (files) | Scaffold a pack from the template; it validates as created. |
 | `policy lint [FILE...]` | R\* | The whole bound hierarchy, or the given files. Exit 1 on critical/high findings. |
-| `policy effective [--agent] [--team] [--user] [--environment ENV]` | R\* | Which rules are in force and where each came from. `--environment` defaults to `NOMETRIA_ENVIRONMENT`. |
+| `policy effective [--agent] [--team] [--user] [--environment ENV]` | R\* | Which rules are in force and where each came from. `--environment` defaults to `AGENTFOX_ENVIRONMENT`. |
 | `policy validate FILE` | R, offline | One file: parse, full lint (unreachable rules, unknown enum values) and compile to Rego, without saving. Exit 1 if invalid or on critical/high findings. **Always run before simulate.** |
 | `policy simulate --file/-f FILE [--agent] [--since-days 30] [--limit 1000]` | W (records the simulation) | Replays recorded decisions. **Exit 1 if the candidate would newly block production traffic.** |
 | `policy enforce KEY` | W, **BLK** | The step that starts blocking. Audited. |
@@ -205,7 +205,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 
 | Command | Effect | Notes |
 |---|---|---|
-| `admin auth status` | R | Is the dev `X-Nometria-User` header accepted here? It must not be in production. |
+| `admin auth status` | R | Is the dev `X-AgentFox-User` header accepted here? It must not be in production. |
 | `admin auth issue EMAIL [--name/-n] [--days 365]` | W | **Shows the token once.** Never paste it into chat logs or files. |
 | `admin auth tokens [--json]` · `admin auth revoke TOKEN_ID` | W (audit entry) · W | |
 | `admin users create EMAIL [--role owner] [--name/-n] [--org] [--token]` · `admin users list [--json]` | W (audit entry) · R | First operator on a fresh install, no demo data. `--token` shows a token once. |

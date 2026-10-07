@@ -180,7 +180,7 @@ for admission/budget enforcement accuracy."
 **Dashboard tech stack**: Next.js 15 (App Router), React 19, TypeScript 5.7. No CSS
 framework and no client-state library — plain CSS and hand-built components
 (`dashboard/components/`). Server Components fetch server-to-server against
-`AGENTFOX_API_URL` (`NOMETRIA_API_URL` is still read as a fallback); the one deliberate client-side exception is the unauthenticated
+`AGENTFOX_API_URL`; the one deliberate client-side exception is the unauthenticated
 `/playground` route, which calls the gateway directly from the visitor's browser.
 
 ---
@@ -248,7 +248,7 @@ its canonicalised arguments, or for a held message its content digest. The proxy
 **428** with the approval id; the agent (or the SDK's `wait_for_approval`) polls the approval
 with its own key, and a person decides it in the dashboard or with `agentfox permit approvals`.
 Approving is refused while the agent is killed or quarantined. The retry presents the approval
-(`X-Nometria-Approval`, or `approval_id` on `/v1/guard/*`), and `evaluate()` redeems it only for
+(`X-AgentFox-Approval`, or `approval_id` on `/v1/guard/*`), and `evaluate()` redeems it only for
 the same agent, tool and arguments, unexpired, and only once: the approval moves to `used` in a
 conditional update, so two racing retries cannot both spend it. Anything else escalates again.
 An unanswered approval expires, and expiry denies.
@@ -258,7 +258,7 @@ An unanswered approval expires, and expiry denies.
 | What fails | Handling |
 |---|---|
 | A detector times out or errors | Recorded on its `detector_runs` row; the decision is taken under the fail mode, and a long-lasting degradation converts to closed (`runtime/availability.py`) |
-| A dependency is down for `/v1/*` | `degradation_gate`: 503 under `fail_mode=closed`, otherwise served and stamped `X-Nometria-Degraded` |
+| A dependency is down for `/v1/*` | `degradation_gate`: 503 under `fail_mode=closed`, otherwise served and stamped `X-AgentFox-Degraded` |
 | A bound policy version no longer validates | Loaded through `platform/policy/store.py:load_version_document`; a missing protected rule is restored from the shipped pack, anything else raises `UnloadablePolicyVersion`. The other packs still run, and a `policy.unloadable` rule is recorded: an observe-bound pack never blocks, an enforce-bound one blocks if the deployment or the pack says `closed` |
 | A tenant-isolation, entitlement, data-access or audit-chain check cannot run | Never fails open (`NEVER_OPEN` in `runtime/availability.py`) |
 | The process is started outside development with published secrets | Refuses to start (`InsecureConfigurationError`), see §10 |

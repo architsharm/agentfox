@@ -13,7 +13,7 @@ def test_a_database_before_the_monitor_migration_still_serves_github_connections
     from agentfox.core.db import downgrade_db, init_db, reset_engine, upgrade_db
 
     url = f"sqlite:///{tmp_path / 'pre.db'}"
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", url)
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", url)
     reset_settings_cache()
     reset_engine()
     try:

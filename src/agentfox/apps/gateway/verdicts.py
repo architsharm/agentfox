@@ -23,7 +23,7 @@ So every gateway response adds two aliases next to the existing keys:
 
 The old keys stay, with the same values, so nothing that reads them breaks. This
 renames nothing and decides nothing: it only adds names to the wire format the gateway
-emits. ``enforcement.py`` is untouched, so the SDK, the CLI, the audit chain and the
+emits. ``runtime/enforcement/`` is untouched, so the SDK, the CLI, the audit chain and the
 stored decision rows keep the field names they already have.
 """
 
@@ -60,11 +60,11 @@ def with_verdict_aliases(payload: dict[str, Any]) -> dict[str, Any]:
 def verdict_headers(result: Any) -> dict[str, str]:
     """The alias headers, matching :data:`ALIASES`.
 
-    Returned separately from the existing ``X-Nometria-Verdict`` /
-    ``X-Nometria-Effective-Verdict`` pair so that pair keeps its exact current value
+    Returned separately from the existing ``X-AgentFox-Verdict`` /
+    ``X-AgentFox-Effective-Verdict`` pair so that pair keeps its exact current value
     for anything already reading it.
     """
     return {
-        "X-Nometria-Applied-Verdict": getattr(result, "verdict", "") or "",
-        "X-Nometria-Would-Be-Verdict": getattr(result, "effective_verdict", "") or "",
+        "X-AgentFox-Applied-Verdict": getattr(result, "verdict", "") or "",
+        "X-AgentFox-Would-Be-Verdict": getattr(result, "effective_verdict", "") or "",
     }

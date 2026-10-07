@@ -41,13 +41,13 @@ from pathlib import Path
 from typing import Any
 
 # Bind the throwaway database BEFORE importing anything that reads settings. Without this
-# the benchmark inherits whatever `NOMETRIA_DATABASE_URL` happens to be set — in practice
+# the benchmark inherits whatever `AGENTFOX_DATABASE_URL` happens to be set — in practice
 # the repo's own `agentfox.db` — so it would seed, mutate and quarantine agents in a real
 # database while `wipe_db` deleted a /tmp file that was never used. Caught in a sibling
 # benchmark, where exactly that silently corrupted a result.
-DB_PATH = Path(tempfile.gettempdir()) / "nometria_agentdojo_e2e.db"
-os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
-os.environ.setdefault("NOMETRIA_CONFIG", "none")
+DB_PATH = Path(tempfile.gettempdir()) / "agentfox_agentdojo_e2e.db"
+os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
+os.environ.setdefault("AGENTFOX_CONFIG", "none")
 
 from agentfox.core import db  # noqa: E402
 from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402

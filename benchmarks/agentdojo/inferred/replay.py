@@ -30,8 +30,8 @@ from pathlib import Path
 
 SCRATCH = Path(tempfile.gettempdir())
 DB_PATH = SCRATCH / os.environ.get("REPLAY_DB", "agentfox_agentdojo_inferred.db")
-os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
-os.environ.setdefault("NOMETRIA_CONFIG", "none")
+os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
+os.environ.setdefault("AGENTFOX_CONFIG", "none")
 
 from agentfox.capabilities.detection.taint import TaintTracker  # noqa: E402
 from agentfox.core import db  # noqa: E402

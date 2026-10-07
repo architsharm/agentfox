@@ -61,11 +61,11 @@ def _why_header_refused() -> str:
     if mode != "auto":
         return (
             f"this deployment sets auth_mode='{settings.auth_mode}', so API tokens are "
-            "required and the X-Nometria-User header is not accepted."
+            "required and the X-AgentFox-User header is not accepted."
         )
     return (
         f"this deployment runs in environment '{settings.environment}', which is not a "
-        "development environment, so the X-Nometria-User header is not accepted."
+        "development environment, so the X-AgentFox-User header is not accepted."
     )
 
 
@@ -80,7 +80,7 @@ def auth_posture() -> str:
         return (
             f"DEVELOPMENT auth (environment={settings.environment}, "
             f"auth_mode={settings.auth_mode}): /api requests without a token act as the "
-            "user named in X-Nometria-User, or admin@example.com — anyone who can reach "
+            "user named in X-AgentFox-User, or admin@example.com — anyone who can reach "
             "this port is that user. Never expose it."
         )
     return (

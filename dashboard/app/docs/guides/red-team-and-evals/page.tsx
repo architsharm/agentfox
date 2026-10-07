@@ -229,24 +229,24 @@ support-quality  Support answer quality  5`}</Output>
         <code>eval</code> permission), or promote a recorded trace into a case:
       </p>
       <Code>{`curl -s -X POST localhost:8080/api/eval/suites \\
-  -H "Content-Type: application/json" -H "X-Nometria-User: priya@example.com" \\
+  -H "Content-Type: application/json" -H "X-AgentFox-User: priya@example.com" \\
   -d '{"key": "triage-answers", "name": "Ticket triage answers"}'
 
 curl -s -X POST localhost:8080/api/eval/suites/triage-answers/cases \\
-  -H "Content-Type: application/json" -H "X-Nometria-User: priya@example.com" \\
+  -H "Content-Type: application/json" -H "X-AgentFox-User: priya@example.com" \\
   -d '{"input": {"prompt": "Which queue handles login failures?"},
        "expected": {"contains": ["identity"]},
        "context": {"retrieved": "Login failures go to the identity queue."}}'
 
 # a production failure becomes a regression case
 curl -s -X POST "localhost:8080/api/eval/suites/triage-answers/cases/from-trace?trace_id=trc_01m469dmyy3gcykfr2" \\
-  -H "X-Nometria-User: priya@example.com"`}</Code>
+  -H "X-AgentFox-User: priya@example.com"`}</Code>
       <Output>{`{"id":"evl_01m46a4ehnwpg095e6","key":"triage-answers"}
 {"id":"cse_01m46a4ej29qxvk32z"}
 {"id":"cse_01m46a4w7kbbej751a","suite":"triage-answers","source_trace_id":"trc_01m469dmyy3gcykfr2"}`}</Output>
       <p>
         (These ran against <code>agentfox serve</code> in development auth mode, where the{" "}
-        <code>X-Nometria-User</code> header names the caller. Elsewhere, send a token.)
+        <code>X-AgentFox-User</code> header names the caller. Elsewhere, send a token.)
       </p>
 
       <Steps>

@@ -88,7 +88,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "auth_mode",
         "env": "AGENTFOX_AUTH_MODE",
         "def": "auto",
-        "what": "auto follows environment; development accepts the X-Nometria-User header; token requires API tokens; oidc is reserved. Check with agentfox admin auth status."
+        "what": "auto follows environment; development accepts the X-AgentFox-User header; token requires API tokens; oidc is reserved. Check with agentfox admin auth status."
       },
       {
         "key": "service_auth_secret",
@@ -706,7 +706,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "webhook_secret",
         "env": "AGENTFOX_WEBHOOK_SECRET",
         "def": "unset",
-        "what": "Adds X-Nometria-Signature: sha256=<HMAC of the body>."
+        "what": "Adds X-AgentFox-Signature: sha256=<HMAC of the body>."
       },
       {
         "key": "webhook_timeout_seconds",
@@ -848,13 +848,16 @@ export default function Page() {
           <code>AGENTFOX_&lt;KEY&gt;</code> in the environment.
         </li>
         <li>
-          <code>NOMETRIA_&lt;KEY&gt;</code>, the pre-rename name, still read so existing
-          deployments keep working. Where both are set, <code>AGENTFOX_</code> wins.
+          <code>NOMETRIA_&lt;KEY&gt;</code>, the pre-rename name: deprecated, still read so
+          existing deployments keep working, with one startup warning naming each one in
+          use. <code>agentfox doctor</code> lists every one still set. Where both are set,{" "}
+          <code>AGENTFOX_</code> wins.
         </li>
         <li>
           The <code>[agentfox]</code> table of the file named by <code>AGENTFOX_CONFIG</code>,
-          or of <code>./agentfox.toml</code> in the working directory. A file with an old{" "}
-          <code>[nometria]</code> table is still read, with a warning.
+          or of <code>./agentfox.toml</code> in the working directory. A pre-rename{" "}
+          <code>nometria.toml</code> or <code>[nometria]</code> table is still read, with the
+          same warning.
         </li>
         <li>The default in the tables below.</li>
       </ol>
@@ -930,7 +933,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         <thead>
           <tr>
             <th>Variable</th>
-            <th>Also read</th>
+            <th>Deprecated name, still read</th>
             <th>What it does</th>
           </tr>
         </thead>
@@ -950,8 +953,8 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
       <h2 id="dashboard">Dashboard</h2>
       <p>
         The web app is a separate Next.js process with its own variables. Each{" "}
-        <code>AGENTFOX_</code> name below falls back to its <code>NOMETRIA_</code> spelling
-        (for example <code>NOMETRIA_API_URL</code>) when unset. They are read at request time,
+        <code>AGENTFOX_</code> name below falls back to its <code>AGENTFOX_</code> spelling
+        (for example <code>AGENTFOX_API_URL</code>) when unset. They are read at request time,
         so one image can point at any gateway.
       </p>
       <table>

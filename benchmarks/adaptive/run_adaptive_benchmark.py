@@ -59,7 +59,7 @@ BENCHMARK_DIR = Path(__file__).parent
 DB_PATH = Path("/tmp/agentfox_adaptive_benchmark.db")
 
 # Set before agentfox is imported, so the benchmark never touches the repo database.
-os.environ.setdefault("NOMETRIA_DATABASE_URL", f"sqlite:///{DB_PATH}")
+os.environ.setdefault("AGENTFOX_DATABASE_URL", f"sqlite:///{DB_PATH}")
 
 from agentfox.core import db  # noqa: E402
 from agentfox.core.config import get_settings  # noqa: E402

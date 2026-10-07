@@ -28,6 +28,9 @@ the file it came from.
   that owns them, an `agentfox.checks` entry point or a pack.
 - `mcp_tool_added_under_wildcard` finding (high): a registered MCP server added a tool
   that an existing wildcard grant already allows.
+- `agentfox doctor` has a `legacy names` line listing every pre-rename `NOMETRIA_*`
+  variable still set (in use, or set but not read) and any `nometria.toml` / `[nometria]`
+  config in use.
 
 ### Removed
 
@@ -64,6 +67,22 @@ the file it came from.
 
 ### Changed
 
+- **Nometria to AgentFox, environment and headers (stage A).** Everything the product
+  writes and documents is now `AGENTFOX_*`, `agentfox.toml` / `[agentfox]` and
+  `X-AgentFox-*`: the gateway's response headers (`X-AgentFox-Trace`, `-Verdict`,
+  `-Effective-Verdict`, `-Applied-Verdict`, `-Would-Be-Verdict`, `-Decision`, `-Mode`,
+  `-Latency-Ms`, `-Explain`, `-Streaming`, `-Degraded`), the finding webhook's
+  (`X-AgentFox-Event`, `-Delivery`, `-Timestamp`, `-Signature`: **update a webhook
+  receiver that verifies `X-Nometria-Signature`**), the FastAPI middleware's, and what the
+  SDK, the CLI and the dashboard send. The pre-rename names still work as input:
+  `NOMETRIA_*` variables, `NOMETRIA_CONFIG`, `nometria.toml` and a `[nometria]` table are
+  read below the new names, and `x-nometria-*` request headers are accepted, with
+  `x-agentfox-*` winning when a request carries both. The process logs one startup
+  warning naming each legacy setting in use; the dashboard warns once per legacy
+  variable. `render.yaml`, `deploy/`, the docs and the plugins use only the new names.
+  The self-host blueprint now prompts for `AGENTFOX_AUDIT_SIGNING_KEY` instead of
+  generating it, so a blueprint sync can never rotate an existing deployment's key.
+  Renaming the hosted deployment: `docs/deployment/vercel-env-rename.md`.
 - The shipped policies and the control catalog moved from `policies_data/` and
   `compliance_data/` into the capability packs (`packs/<id>/policies/`,
   `packs/compliance/catalog/controls/`). `compliance_dir` and `policies_dir` still

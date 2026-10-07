@@ -17,13 +17,11 @@ import sys
 # that merely mentions "policy enforce" is not mistaken for running it.
 #   agentfox …  |  uv run [--project X] agentfox …  |  python -m agentfox.apps.cli.main …
 #   …/scripts/agentfox.sh …   (optionally preceded by VAR=value assignments)
-# `nometria` is still matched as well: the console script keeps it as a compatibility
-# alias, so a blocking command must prompt whichever of the two names an agent types.
 _PREFIX = (
     r"^(?:\w+=\S*\s+)*"
-    r"(?:(?:uv\s+run(?:\s+--\S+(?:\s+(?!agentfox\b|nometria\b)\S+)?)*\s+)"
+    r"(?:(?:uv\s+run(?:\s+--\S+(?:\s+(?!agentfox\b)\S+)?)*\s+)"
     r"|(?:\S*python[\d.]*\s+-m\s+))?"
-    r"(?:\S*/)?(?:agentfox|nometria)(?:(?:\.apps)?\.cli\.main|\.sh)?\s+"
+    r"(?:\S*/)?agentfox(?:(?:\.apps)?\.cli\.main|\.sh)?\s+"
 )
 _END = r"(?=\s|$)"
 
@@ -62,7 +60,7 @@ CLI_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         r"demo" + _END,
         "runs the demo, which writes demo agents and data and briefly enforces `baseline` "
-        "in whatever DB NOMETRIA_DATABASE_URL points at. Use a scratch DB.",
+        "in whatever DB AGENTFOX_DATABASE_URL points at. Use a scratch DB.",
     ),
     (
         r"(?:admin\s+)?seed" + _END,

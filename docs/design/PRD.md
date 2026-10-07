@@ -127,7 +127,7 @@ harness failing if any claim disagrees with what happens.
 with **every detector disabled**, 8 of 8 attack scenarios are still contained, and on AgentDojo,
 with argument provenance inferred from the real tool outputs, 588 of 588 attack pairs are
 contained at session-level taint, at a cost of 24 of 97 benign tasks running without escalation. We separately publish our own adaptive-attack
-success rate against our detectors (**73% at 50 attempts**), because a vendor that only
+success rate against our detectors (**71% at 50 attempts**), because a vendor that only
 publishes the flattering half of that pair should not be believed. See
 [`benchmarks/containment/`](../../benchmarks/containment/README.md),
 [`benchmarks/agentdojo/`](../../benchmarks/agentdojo/README.md) and

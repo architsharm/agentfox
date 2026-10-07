@@ -1,6 +1,6 @@
 """Principal resolution — who is calling, and which tenant they speak for.
 
-The control plane never trusts an unverified ``X-Nometria-User`` header on its own:
+The control plane never trusts an unverified ``X-AgentFox-User`` header on its own:
 if it did, anyone who could reach the port would be any user they named, with write
 access to policy, controls and the kill switch. Confining that header to development
 is enforced at runtime, not by convention.
@@ -155,7 +155,7 @@ def authenticate(
     user = operators[0] if operators else None
     if user is None or not user.active:
         raise AuthenticationRequired(
-            f"unknown user '{email}'. Send X-Nometria-User or a nom_api_ bearer token."
+            f"unknown user '{email}'. Send X-AgentFox-User or a nom_api_ bearer token."
         )
     log.debug("development identity header accepted for %s", email)
     bind_session(session, user.org_id)

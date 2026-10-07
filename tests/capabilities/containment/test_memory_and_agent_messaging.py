@@ -17,7 +17,7 @@ def encryption_key(monkeypatch):
 
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv("AGENTFOX_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
     reset_settings_cache()
     yield
     reset_settings_cache()

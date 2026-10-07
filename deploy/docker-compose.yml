@@ -33,8 +33,9 @@
 # then open http://localhost:3000/login → "Self-hosted? Sign in with an API token" and
 # paste the token. For demo data instead: `... exec gateway agentfox admin seed`.
 #
-# Settings are read as AGENTFOX_*. The pre-rename NOMETRIA_* names still work as a
-# fallback, so an existing deployment's environment does not need to change.
+# Settings are read as AGENTFOX_*. The pre-rename NOMETRIA_* names are still read
+# as a deprecated fallback, with a startup warning naming each one; rename them in
+# your .env, since a later release stops reading them.
 #
 #   control plane   http://localhost:3000
 #   API + gateway   http://localhost:8080
@@ -164,7 +165,7 @@ services:
       # browser*, not from this container — it needs an address the browser can
       # reach (the published host port), not the internal Docker DNS name above.
       # Same value as the published `gateway` port mapping below.
-      NOMETRIA_PLAYGROUND_API_URL: http://localhost:8080
+      AGENTFOX_PLAYGROUND_API_URL: http://localhost:8080
     ports:
       - "3000:3000"
     depends_on:

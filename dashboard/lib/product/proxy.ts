@@ -12,7 +12,7 @@
  * object first instead of forwarding form fields verbatim.
  *
  * Deliberately session-cookie-only, unlike `lib/product/api.ts`'s `authHeaders()` (used by
- * server-rendered *reads*), which also falls back to `NOMETRIA_API_TOKEN` or a
+ * server-rendered *reads*), which also falls back to `AGENTFOX_API_TOKEN` or a
  * static dev-identity header so local dev/demo pages work with no auth wired up at
  * all. Every route here is a *mutation* — approve, deny, revoke, delete, save — and
  * this is an audit/governance product: attributing a mutation to a synthetic
@@ -22,10 +22,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { apiBase } from "@/lib/env";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "./api";
 
-const API_BASE = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const API_BASE = apiBase();
 
 type ForwardOpts = {
   /** Present -> redirect-shaped response; absent -> JSON response. */

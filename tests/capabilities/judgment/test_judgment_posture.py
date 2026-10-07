@@ -28,7 +28,7 @@ from tests.conftest import as_user
 @pytest.fixture
 def egress_on(monkeypatch):
     """A deployment whose operator has permitted egress."""
-    monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "true")
+    monkeypatch.setenv("AGENTFOX_ALLOW_EGRESS", "true")
     reset_settings_cache()
     yield
     reset_settings_cache()
@@ -138,7 +138,7 @@ def test_revoking_egress_narrows_rows_written_while_it_was_allowed(session, egre
     reset_settings_cache()
     import os
 
-    os.environ.pop("NOMETRIA_ALLOW_EGRESS", None)
+    os.environ.pop("AGENTFOX_ALLOW_EGRESS", None)
     reset_settings_cache()
 
     narrowed = P.load(session)
@@ -374,7 +374,7 @@ def test_one_tenants_posture_is_not_another_tenants(monkeypatch):
     from agentfox.core.db import session_scope
     from agentfox.core.tenancy import tenant
 
-    monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "true")
+    monkeypatch.setenv("AGENTFOX_ALLOW_EGRESS", "true")
     reset_settings_cache()
     try:
         with tenant("org_acme"), session_scope() as s:

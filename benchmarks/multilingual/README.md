@@ -3,7 +3,7 @@
 **Everything in this repo is benchmarked in English. This one asks what happens in the other six.**
 
 ```bash
-PYTHONPATH=src NOMETRIA_CONFIG=none \
+PYTHONPATH=src AGENTFOX_CONFIG=none \
   python -m benchmarks.multilingual.run_multilingual_parity
 ```
 

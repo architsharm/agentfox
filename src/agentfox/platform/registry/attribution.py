@@ -106,7 +106,7 @@ URGENCY = "urgency"
 IDENTIFIER = "identifier"
 APPROVAL = "approval"
 #: A structured constraint pulled from a granted Capability's own constraints_json
-#: (models.py's Capability), not from instruction prose — see
+#: (core/models/identity.py's Capability), not from instruction prose — see
 #: handoff_fidelity's capability_constraints parameter.
 CAPABILITY = "capability"
 

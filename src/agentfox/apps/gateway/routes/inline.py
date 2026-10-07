@@ -11,10 +11,10 @@ a human-readable reason. Never block without an auditable reason.
 **Two verdicts, and which one to gate on.** Every enforcement body and every set of
 response headers here carries both:
 
-* ``verdict`` / ``applied_verdict`` (``X-Nometria-Verdict``,
-  ``X-Nometria-Applied-Verdict``) — what actually happened to this request.
-* ``effective_verdict`` / ``would_be_verdict`` (``X-Nometria-Effective-Verdict``,
-  ``X-Nometria-Would-Be-Verdict``) — the counterfactual: what the bound policy asserts
+* ``verdict`` / ``applied_verdict`` (``X-AgentFox-Verdict``,
+  ``X-AgentFox-Applied-Verdict``) — what actually happened to this request.
+* ``effective_verdict`` / ``would_be_verdict`` (``X-AgentFox-Effective-Verdict``,
+  ``X-AgentFox-Would-Be-Verdict``) — the counterfactual: what the bound policy asserts
   should happen. In observe mode this is the verdict that did *not* take effect.
 
 Gate on the applied one. Gating on the counterfactual means refusing traffic this
@@ -61,7 +61,7 @@ def _record_turn(
     """Record this turn so escalation governance works over HTTP.
 
     Escalation governance reads recorded conversation turns. Without this, only the
-    SDK's `agentfox.auto()` monkeypatch (autoguard.py's `_record_turn`) would record
+    SDK's `agentfox.auto()` monkeypatch (autoguard's `_record_turn`) would record
     them, and a team integrating via this HTTP gateway directly — not the Python SDK —
     would get no escalation tracking at all. Never breaks the caller's request.
     """
@@ -196,7 +196,7 @@ def _blocked_response(result, status: int = 403) -> JSONResponse:
 #: fail far from the cause. 428 is an error to every client (the
 #: OpenAI and Anthropic SDKs raise `APIStatusError` and do not retry it) and says
 #: what is true: the request may go ahead once a condition, a person's approval,
-#: holds — retried with that approval in `X-Nometria-Approval`.
+#: holds — retried with that approval in `X-AgentFox-Approval`.
 HELD_STATUS = 428
 
 
@@ -206,7 +206,7 @@ def _held_response(result, *, poll: bool = True) -> JSONResponse:
     message = (
         f"held for human approval ({result.approval_id}): {result.reason or 'approval required'}. "
         f"Once it is approved, send the same request again with the header "
-        f"'X-Nometria-Approval: {result.approval_id}'."
+        f"'X-AgentFox-Approval: {result.approval_id}'."
     )
     held = {
         "status": "awaiting_approval",
@@ -225,7 +225,7 @@ def _held_response(result, *, poll: bool = True) -> JSONResponse:
                 "message": message,
                 **held,
                 "poll": poll_path,
-                "retry_header": "X-Nometria-Approval",
+                "retry_header": "X-AgentFox-Approval",
                 "decision_id": result.decision_id,
                 "verdict": result.verdict,
                 "effective_verdict": result.effective_verdict,
@@ -242,21 +242,21 @@ def _held_response(result, *, poll: bool = True) -> JSONResponse:
 def _headers(result) -> dict[str, str]:
     """Governance headers, with both namings of the two verdicts.
 
-    `X-Nometria-Verdict` and `X-Nometria-Effective-Verdict` keep exactly the values
-    they had. `X-Nometria-Applied-Verdict` and `X-Nometria-Would-Be-Verdict` repeat
+    `X-AgentFox-Verdict` and `X-AgentFox-Effective-Verdict` keep exactly the values
+    they had. `X-AgentFox-Applied-Verdict` and `X-AgentFox-Would-Be-Verdict` repeat
     them under names that say which one took effect.
     """
     return {
-        "X-Nometria-Trace": result.trace_id or "",
-        "X-Nometria-Verdict": result.verdict,
-        "X-Nometria-Effective-Verdict": result.effective_verdict,
+        "X-AgentFox-Trace": result.trace_id or "",
+        "X-AgentFox-Verdict": result.verdict,
+        "X-AgentFox-Effective-Verdict": result.effective_verdict,
         **verdict_headers(result),
-        "X-Nometria-Decision": result.decision_id or "",
-        "X-Nometria-Mode": result.mode,
-        "X-Nometria-Latency-Ms": f"{result.latency_ms:.2f}",
+        "X-AgentFox-Decision": result.decision_id or "",
+        "X-AgentFox-Mode": result.mode,
+        "X-AgentFox-Latency-Ms": f"{result.latency_ms:.2f}",
         # In the headers too, because the response body of a streamed completion is
         # a sequence of SSE frames and the engineer debugging one is reading curl -i.
-        **({"X-Nometria-Explain": url} if (url := _explain_url(result)) else {}),
+        **({"X-AgentFox-Explain": url} if (url := _explain_url(result)) else {}),
     }
 
 
@@ -264,7 +264,7 @@ def _headers(result) -> dict[str, str]:
 # Loop governance across the proxy's tool loop
 # ---------------------------------------------------------------------------
 #
-# `enforcement.py::_budget_state` calls `agent_loop.py` to score the *one* decision in
+# `enforcement/limits.py::_budget_state` calls `agent_loop.py` to score the *one* decision in
 # front of it, and a `/v1/guard/tool_call` caller threads its own step history in
 # through `prior_steps`. The drop-in proxy has to govern across turns as well: an
 # agent alternating A-B-A-B forever through `/v1/chat/completions` is otherwise
@@ -344,7 +344,7 @@ def _tool_steps(messages: list[dict[str, Any]]) -> list[Step]:
 
 def _loop_budget() -> LoopBudget:
     """The deployment's declared `AGENTFOX_LOOP_*` budgets — the same ones
-    `enforcement.py::_budget_state` reads, so the proxy and the direct guard endpoint
+    `enforcement/limits.py::_budget_state` reads, so the proxy and the direct guard endpoint
     cannot disagree about what a runaway loop is."""
     settings = get_settings()
     return LoopBudget(
@@ -619,8 +619,8 @@ def _stream_headers(trace_hint: str = "") -> dict[str, str]:
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
         "X-Accel-Buffering": "no",
-        "X-Nometria-Streaming": "enforced",
-        "X-Nometria-Trace": trace_hint,
+        "X-AgentFox-Streaming": "enforced",
+        "X-AgentFox-Trace": trace_hint,
     }
 
 
@@ -629,14 +629,14 @@ async def chat_completions(
     request: Request,
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
-    x_nometria_agent: Annotated[str | None, Header()] = None,
-    x_nometria_session: Annotated[str | None, Header()] = None,
-    x_nometria_environment: Annotated[str | None, Header()] = None,
-    x_nometria_intent: Annotated[str | None, Header()] = None,
-    x_nometria_trust: Annotated[str | None, Header()] = None,
-    x_nometria_provider: Annotated[str | None, Header()] = None,
-    x_nometria_stream_mode: Annotated[str | None, Header()] = None,
-    x_nometria_approval: Annotated[str | None, Header()] = None,
+    x_agentfox_agent: Annotated[str | None, Header()] = None,
+    x_agentfox_session: Annotated[str | None, Header()] = None,
+    x_agentfox_environment: Annotated[str | None, Header()] = None,
+    x_agentfox_intent: Annotated[str | None, Header()] = None,
+    x_agentfox_trust: Annotated[str | None, Header()] = None,
+    x_agentfox_provider: Annotated[str | None, Header()] = None,
+    x_agentfox_stream_mode: Annotated[str | None, Header()] = None,
+    x_agentfox_approval: Annotated[str | None, Header()] = None,
 ) -> Any:
     body = await request.json()
     enforcer = Enforcer(session)
@@ -646,8 +646,8 @@ async def chat_completions(
     # runaway loop that escapes by setting `"stream": true` is not governed.
     refusal = _govern_tool_loop(
         session,
-        agent_slug=x_nometria_agent,
-        session_id=x_nometria_session,
+        agent_slug=x_agentfox_agent,
+        session_id=x_agentfox_session,
         messages=body.get("messages", []),
     )
     if refusal is not None:
@@ -658,21 +658,21 @@ async def chat_completions(
         # non-streaming body would break every streaming client without telling it
         # anything.
         events = enforcer.run_completion_stream(
-            agent_slug=x_nometria_agent,
+            agent_slug=x_agentfox_agent,
             messages=body.get("messages", []),
             model=body.get("model", "default"),
-            provider=x_nometria_provider,
+            provider=x_agentfox_provider,
             credential=credential,
-            environment=x_nometria_environment or "production",
-            session_id=x_nometria_session,
-            intent=x_nometria_intent,
-            trust_map=_trust_map(x_nometria_trust),
+            environment=x_agentfox_environment or "production",
+            session_id=x_agentfox_session,
+            intent=x_agentfox_intent,
+            trust_map=_trust_map(x_agentfox_trust),
             correlation=dict(request.headers),
             temperature=float(body.get("temperature", 0.0)),
             max_tokens=body.get("max_tokens"),
-            mode=x_nometria_stream_mode,
+            mode=x_agentfox_stream_mode,
             evidence=evidence,
-            approval_id=x_nometria_approval,
+            approval_id=x_agentfox_approval,
         )
         return StreamingResponse(
             _stream_openai(events, body.get("model", "")),
@@ -681,20 +681,20 @@ async def chat_completions(
         )
 
     result, response = enforcer.run_completion(
-        agent_slug=x_nometria_agent,
+        agent_slug=x_agentfox_agent,
         messages=body.get("messages", []),
         model=body.get("model", "default"),
-        provider=x_nometria_provider,
+        provider=x_agentfox_provider,
         credential=credential,
-        environment=x_nometria_environment or "production",
-        session_id=x_nometria_session,
-        intent=x_nometria_intent,
-        trust_map=_trust_map(x_nometria_trust),
+        environment=x_agentfox_environment or "production",
+        session_id=x_agentfox_session,
+        intent=x_agentfox_intent,
+        trust_map=_trust_map(x_agentfox_trust),
         correlation=dict(request.headers),
         temperature=float(body.get("temperature", 0.0)),
         max_tokens=body.get("max_tokens"),
         evidence=evidence,
-        approval_id=x_nometria_approval,
+        approval_id=x_agentfox_approval,
     )
     if result.blocked:
         return _blocked_response(result)
@@ -702,8 +702,8 @@ async def chat_completions(
         return _held_response(result)
     _record_turn(
         session,
-        agent_slug=x_nometria_agent,
-        session_id=x_nometria_session,
+        agent_slug=x_agentfox_agent,
+        session_id=x_agentfox_session,
         trace_id=result.trace_id,
         messages=body.get("messages", []),
         answer=response.text,
@@ -716,14 +716,14 @@ async def messages(
     request: Request,
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
-    x_nometria_agent: Annotated[str | None, Header()] = None,
-    x_nometria_session: Annotated[str | None, Header()] = None,
-    x_nometria_environment: Annotated[str | None, Header()] = None,
-    x_nometria_intent: Annotated[str | None, Header()] = None,
-    x_nometria_trust: Annotated[str | None, Header()] = None,
-    x_nometria_provider: Annotated[str | None, Header()] = None,
-    x_nometria_stream_mode: Annotated[str | None, Header()] = None,
-    x_nometria_approval: Annotated[str | None, Header()] = None,
+    x_agentfox_agent: Annotated[str | None, Header()] = None,
+    x_agentfox_session: Annotated[str | None, Header()] = None,
+    x_agentfox_environment: Annotated[str | None, Header()] = None,
+    x_agentfox_intent: Annotated[str | None, Header()] = None,
+    x_agentfox_trust: Annotated[str | None, Header()] = None,
+    x_agentfox_provider: Annotated[str | None, Header()] = None,
+    x_agentfox_stream_mode: Annotated[str | None, Header()] = None,
+    x_agentfox_approval: Annotated[str | None, Header()] = None,
 ) -> Any:
     body = await request.json()
     payload = list(body.get("messages", []))
@@ -735,8 +735,8 @@ async def messages(
 
     refusal = _govern_tool_loop(
         session,
-        agent_slug=x_nometria_agent,
-        session_id=x_nometria_session,
+        agent_slug=x_agentfox_agent,
+        session_id=x_agentfox_session,
         messages=payload,
     )
     if refusal is not None:
@@ -744,21 +744,21 @@ async def messages(
 
     if body.get("stream"):
         events = enforcer.run_completion_stream(
-            agent_slug=x_nometria_agent,
+            agent_slug=x_agentfox_agent,
             messages=payload,
             model=body.get("model", "default"),
-            provider=x_nometria_provider,
+            provider=x_agentfox_provider,
             credential=credential,
-            environment=x_nometria_environment or "production",
-            session_id=x_nometria_session,
-            intent=x_nometria_intent,
-            trust_map=_trust_map(x_nometria_trust),
+            environment=x_agentfox_environment or "production",
+            session_id=x_agentfox_session,
+            intent=x_agentfox_intent,
+            trust_map=_trust_map(x_agentfox_trust),
             correlation=dict(request.headers),
             temperature=float(body.get("temperature", 0.0)),
             max_tokens=body.get("max_tokens"),
-            mode=x_nometria_stream_mode,
+            mode=x_agentfox_stream_mode,
             evidence=evidence,
-            approval_id=x_nometria_approval,
+            approval_id=x_agentfox_approval,
         )
         return StreamingResponse(
             _stream_anthropic(events, body.get("model", "")),
@@ -767,20 +767,20 @@ async def messages(
         )
 
     result, response = enforcer.run_completion(
-        agent_slug=x_nometria_agent,
+        agent_slug=x_agentfox_agent,
         messages=payload,
         model=body.get("model", "default"),
-        provider=x_nometria_provider,
+        provider=x_agentfox_provider,
         credential=credential,
-        environment=x_nometria_environment or "production",
-        session_id=x_nometria_session,
-        intent=x_nometria_intent,
-        trust_map=_trust_map(x_nometria_trust),
+        environment=x_agentfox_environment or "production",
+        session_id=x_agentfox_session,
+        intent=x_agentfox_intent,
+        trust_map=_trust_map(x_agentfox_trust),
         correlation=dict(request.headers),
         temperature=float(body.get("temperature", 0.0)),
         max_tokens=body.get("max_tokens"),
         evidence=evidence,
-        approval_id=x_nometria_approval,
+        approval_id=x_agentfox_approval,
     )
     if result.blocked:
         return _blocked_response(result)
@@ -788,8 +788,8 @@ async def messages(
         return _held_response(result)
     _record_turn(
         session,
-        agent_slug=x_nometria_agent,
-        session_id=x_nometria_session,
+        agent_slug=x_agentfox_agent,
+        session_id=x_agentfox_session,
         trace_id=result.trace_id,
         messages=payload,
         answer=response.text,
@@ -820,8 +820,8 @@ def mcp_call(
     payload: McpCallRequest,
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
-    x_nometria_agent: Annotated[str | None, Header()] = None,
-    x_nometria_intent: Annotated[str | None, Header()] = None,
+    x_agentfox_agent: Annotated[str | None, Header()] = None,
+    x_agentfox_intent: Annotated[str | None, Header()] = None,
 ) -> Any:
     """Govern one MCP call for callers that are not in-process Python.
 
@@ -833,10 +833,10 @@ def mcp_call(
 
     governor = McpGovernor(
         session=session,
-        agent_slug=x_nometria_agent or "",
+        agent_slug=x_agentfox_agent or "",
         server_name=payload.server,
         credential=credential,
-        intent=x_nometria_intent,
+        intent=x_agentfox_intent,
     )
     outcome = governor.call(
         payload.tool,
@@ -903,7 +903,7 @@ def guard_content(
 ) -> dict[str, Any]:
     """Enforce on content without proxying.
 
-    The route's first line is kept short because `scripts/api_routes.py` uses it as
+    The route's first line is kept short because `scripts/gen/api_routes.py` uses it as
     this operation's label in the API route table.
 
     `verdict`/`applied_verdict` is what happened; `effective_verdict`/

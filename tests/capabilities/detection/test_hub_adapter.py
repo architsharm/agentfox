@@ -197,7 +197,7 @@ def test_guardrails_telemetry_is_switched_off_before_a_validator_loads(monkeypat
     host, and `RC.enable_metrics` defaults to True with no environment override.
 
     This product's first README line is that it runs offline with no egress, and
-    `NOMETRIA_ALLOW_EGRESS` defaults to false. A control plane that quietly
+    `AGENTFOX_ALLOW_EGRESS` defaults to false. A control plane that quietly
     reports to a third party the moment somebody switches on a PII check is
     breaking its own promise, so this is not optional and not behind a setting.
     """

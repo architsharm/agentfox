@@ -76,7 +76,7 @@ class TaintTracker:
     ) -> None:
         """Tag a chat message array.
 
-        ``declared`` is the caller's ``X-Nometria-Trust`` map (index -> source).
+        ``declared`` is the caller's ``X-AgentFox-Trust`` map (index -> source).
         Anything not declared is inferred from role: ``system`` is trusted, ``user``
         is user-tainted, ``tool`` output is tool_result-tainted.
         """

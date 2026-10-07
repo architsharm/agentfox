@@ -93,7 +93,7 @@ class _SurfacesMixin:
         splitting", OWASP LLM01; see also Microsoft's "Crescendo" multi-turn
         jailbreak, arXiv:2404.01833, which escalates gradually rather than splitting
         a single payload but defeats per-message evaluation the same way). Found by
-        actually checking: neither `autoguard.py`'s `_govern` (joins one call's own
+        actually checking: neither autoguard's `_govern` (joins one call's own
         `messages` array, but never a previous *separate* call) nor the gateway's
         `preflight` (loops per-message, never joins) re-evaluates content against
         conversation history.
@@ -336,7 +336,7 @@ class _SurfacesMixin:
         old and specific: a resume whose white-on-white text tells the
         screening agent to rank the candidate first.
 
-        So the file is split by `guardrails.files.normalise` and the hidden
+        So the file is split by `detection.files.normalise` and the hidden
         layers are checked **separately from the visible ones**, with the
         hidden result taking precedence. The same sentence in the body is a
         sentence somebody wrote; in `docProps` it is a sentence nobody was

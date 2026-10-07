@@ -4,7 +4,7 @@ Three things are tested here, and the second matters as much as the first:
 
 1. The mechanism measures what it claims to — the slope of a risk-adjacent score,
    not the content of any single turn.
-2. It is **reachable from the live path**. `docs/failure-modes.md` exists largely
+2. It is **reachable from the live path**. `docs/design/failure-modes.md` exists largely
    because F6 and F8 were built, complete and never called; a trajectory scorer
    that only its own tests invoke would be that failure repeated, so the wiring is
    asserted rather than assumed.
@@ -320,7 +320,7 @@ def test_the_scorer_is_reached_from_the_conversation_window_check(enforcer, sess
 
 
 def test_the_per_turn_hook_is_on_the_live_sdk_path():
-    """The failure `docs/failure-modes.md` was written to catch is a module that is
+    """The failure `docs/design/failure-modes.md` was written to catch is a module that is
     built, complete and never called. `check_conversation_window` is called from
     `autoguard._govern`'s pre-flight and from the gateway playground route, which is
     why attaching here needed no new wiring — asserted, not assumed."""

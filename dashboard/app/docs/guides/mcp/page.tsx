@@ -268,7 +268,7 @@ refused: the tool's description, schema or impact annotations changed since its 
       </p>
       <Code>{`curl -s -X POST localhost:8080/v1/mcp/call \\
   -H 'content-type: application/json' \\
-  -H 'X-Nometria-Agent: research-bot' \\
+  -H 'X-AgentFox-Agent: research-bot' \\
   -d '{"server": "jira", "tool": "search", "arguments": {"jql": "status = Open"},
        "result": {"content": [{"type": "text", "text": "OPS-12 Login fails on Safari"}]}}'`}</Code>
       <Output>{`{
@@ -295,7 +295,7 @@ refused: the tool's description, schema or impact annotations changed since its 
         ]`}</Output>
       <p>
         (Verified against <code>agentfox serve api --port 18731</code> with a grant for{" "}
-        <code>mcp:jira/search</code>.) Pass the task in <code>X-Nometria-Intent</code> and an
+        <code>mcp:jira/search</code>.) Pass the task in <code>X-AgentFox-Intent</code> and an
         agent key as <code>Authorization: Bearer nom_agt_…</code>.
       </p>
       <Callout kind="warning" title="Over HTTP the call has already happened">

@@ -1,6 +1,6 @@
 # Appendix D — Data Model
 
-Companion to [the PRD](../design/PRD.md). Implemented in `src/agentfox/core/models/` (SQLAlchemy 2.0), with schema changes as Alembic revisions in `migrations/versions/`. SQLite by default (zero-infra, offline — NFR-9); Postgres via `AGENTFOX_DATABASE_URL` (`NOMETRIA_DATABASE_URL` still works).
+Companion to [the PRD](../design/PRD.md). Implemented in `src/agentfox/core/models/` (SQLAlchemy 2.0), with schema changes as Alembic revisions in `migrations/versions/`. SQLite by default (zero-infra, offline — NFR-9); Postgres via `AGENTFOX_DATABASE_URL`.
 
 All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, and `org_id` — multi-tenancy is enforced structurally at the session level (`core/tenancy.py`), not just schema-present; see [../design/gap-analysis.md](../design/gap-analysis.md) Tier 1 §1.2. This appendix lists the key tables and columns; the models are the complete list.
 
