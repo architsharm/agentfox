@@ -6,7 +6,7 @@ audience: maintainers of this repo (human or agent)
 
 # Plugin structure
 
-The product has 43 markdown docs, a 17-group CLI, an HTTP API with 150+ routes and six SDK
+The product has 43 markdown docs, a CLI of 13 commands, an HTTP API with 200+ routes and six SDK
 surfaces. Nobody, human or agent, should need all of that at once. The operator plugins are
 a **layered set of markdown files**. Each layer answers one kind of question, and each fact
 has exactly one home.
@@ -77,7 +77,7 @@ never copies them.
 6. **Generated docs are regenerated, never edited.** `docs/status.md` and
    `docs/design/coverage-map.md` have commands in `reference/docs-map.md`.
 7. **Same-commit rule.** A change to `src/agentfox/apps/cli/`, `config.py`, `apps/gateway/routes/`,
-   `platform/policy/model.py` or `policies_data/` updates the matching `reference/` file in the same
+   `platform/policy/model.py` or `packs/*/policies/` updates the matching `reference/` file in the same
    commit. Fixing a bug in `known-issues.md` deletes its entry in the same commit.
 8. **Every repo `.md` is classified.** A new doc anywhere in the repo gets a row in
    `reference/docs-map.md`.

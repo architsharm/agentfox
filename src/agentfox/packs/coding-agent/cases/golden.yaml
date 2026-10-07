@@ -1,0 +1,26 @@
+# Golden events for coding agents, run by `agentfox policy packs test coding-agent`.
+cases:
+  - name: an injection in a fetched page is blocked before the agent reads it
+    event:
+      surface: tool_result
+      tool_key: web.fetch
+      detections: [{entity_type: INJECTION.INSTRUCTION_OVERRIDE, score: 0.8}]
+    expect: {verdict: block, rules: [code.injection_in_fetched_content]}
+
+  - name: a secret in a command's output is blocked
+    event:
+      surface: tool_result
+      tool_key: shell
+      detections: [{entity_type: SECRET.AWS_ACCESS_KEY, score: 0.95}]
+    expect: {verdict: block, rules: [code.secret_in_fetched_content]}
+
+  - name: personal data leaving through a tool call is held
+    event:
+      surface: tool_args
+      tool_key: web.fetch
+      detections: [{entity_type: PII.EMAIL, score: 0.9}]
+    expect: {verdict: escalate, rules: [code.pii_out_of_a_developer_machine]}
+
+  - name: an ordinary shell command passes
+    event: {surface: tool_args, tool_key: shell, arguments: {command: ls -la}}
+    expect: {verdict: allow}

@@ -33,8 +33,8 @@ import fnmatch
 from dataclasses import dataclass, field
 from typing import Any
 
-from agentfox.capabilities.compliance.risk import EU_CLASSES
 from agentfox.core.vocab import EFFECT_RANK, SURFACES
+from agentfox.platform.packs import condition_values
 from agentfox.platform.policy.model import PolicyDocument, Rule
 
 #: Broadest to narrowest. Order is load-bearing: later levels win ties.
@@ -307,24 +307,40 @@ class LintFinding:
         }
 
 
-#: Values a condition field may take. A rule naming anything else can never
-#: match, so it is a rule that reports as enforced and enforces nothing.
-#:
-#: Only fields whose full set of legal values is knowable from here are listed.
-#: `action_risk` deliberately is not: risk codes are emitted from several
-#: modules and a rule may glob over them, so a whitelist would be a second
-#: place to keep in step and would flag working rules as dead — which is worse
-#: than the problem it set out to solve.
-_ENUMERABLE_CONDITIONS: dict[str, tuple[str, ...]] = {
-    "surface": SURFACES,
-    "action_operation": ("read", "write", "destructive", "admin", "unknown"),
-    # From `compliance.risk.EU_CLASSES`, imported rather than retyped — a
-    # second copy of this list is what the check exists to catch.
-    "risk_tier": EU_CLASSES,
-    # `high_impact` sits between write and irreversible; `seed.py` and the
-    # onboarding summary both use it.
-    "tool_impact": ("read", "write", "high_impact", "irreversible"),
-}
+# Values a condition field may take (`enumerable_conditions`). A rule naming
+# anything else can never match, so it is a rule that reports as enforced and
+# enforces nothing.
+#
+# Only fields whose full set of legal values is knowable are listed. `action_risk`
+# deliberately is not: risk codes are emitted from several modules and a rule may
+# glob over them, so a whitelist would be a second place to keep in step and would
+# flag working rules as dead — which is worse than the problem it set out to solve.
+
+#: How a tool call's statement is classified (`capabilities/detection/actions.py`).
+_ACTION_OPERATIONS = ("read", "write", "destructive", "admin", "unknown")
+#: `high_impact` sits between write and irreversible; `seed.py` and the onboarding
+#: summary both use it.
+_TOOL_IMPACTS = ("read", "write", "high_impact", "irreversible")
+
+
+def enumerable_conditions() -> dict[str, tuple[str, ...]]:
+    """Values each enumerable condition field may take, field by field.
+
+    `risk_tier` is the vocabulary the capability packs declare
+    (``vocabulary.condition_values.risk_tier``; the EU AI Act pack's classes, which
+    are what the classifier emits), read rather than retyped: a second copy of that
+    list is what this check exists to catch. With no pack declaring it, the field is
+    not checked.
+    """
+    risk_tiers = condition_values("risk_tier")
+    out: dict[str, tuple[str, ...]] = {
+        "surface": SURFACES,
+        "action_operation": _ACTION_OPERATIONS,
+    }
+    if risk_tiers:
+        out["risk_tier"] = risk_tiers
+    out["tool_impact"] = _TOOL_IMPACTS
+    return out
 
 
 def _unreachable(rule: Rule) -> str | None:
@@ -337,7 +353,7 @@ def _unreachable(rule: Rule) -> str | None:
     equivalent: `lint_policy` caught duplicate ids and shadowing, and nothing
     asked whether a rule's own conditions could ever be true.
     """
-    for field_name, allowed in _ENUMERABLE_CONDITIONS.items():
+    for field_name, allowed in enumerable_conditions().items():
         value = getattr(rule.when, field_name, None)
         if not value:
             continue
@@ -368,7 +384,7 @@ def _unknown_values(rule: Rule) -> list[str]:
     a typo that silently drops the tool-argument surface the author meant.
     """
     out: list[str] = []
-    for field_name, allowed in _ENUMERABLE_CONDITIONS.items():
+    for field_name, allowed in enumerable_conditions().items():
         value = getattr(rule.when, field_name, None)
         if not value:
             continue

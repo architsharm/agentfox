@@ -1,0 +1,23 @@
+# A capability pack: one business use case or framework as one directory.
+# Schema: `agentfox policy packs validate --schema`. Check: `agentfox policy packs validate __ID__`.
+id: __ID__
+version: 0.1.0
+# New packs start incubating and load only with `pack_maturity = "incubating"`. Make it
+# stable once it has cases, a README and an owner who will answer for it.
+maturity: incubating
+requires_core: ">=0.3"
+title: __TITLE__
+description: >
+  What this pack governs, in one or two sentences.
+owners: [your-team]
+tags: []
+compliance:
+  controls: []
+requires_detectors: []
+# Words this pack teaches the product, e.g. the policy compiler's tool_hints and roles:
+# vocabulary:
+#   tool_hints: {chargeback: payments.dispute}
+#   roles: {disputes: finance}
+# Finding types the pack's checks raise:
+# finding_types:
+#   - {type: example_problem, title: Example problem, severity: medium, description: What it means.}

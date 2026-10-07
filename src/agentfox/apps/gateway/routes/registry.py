@@ -618,6 +618,19 @@ def list_findings(
     }
 
 
+@router.get("/findings/types")
+def list_finding_types(_user: User = Depends(current_user)) -> dict[str, Any]:
+    """Every finding type: its title, default severity, what it means and who raises it.
+
+    The registry the queue's labels come from (`platform/ledger/finding_types.py`),
+    including the types the loaded capability packs declare. Declared before
+    `/findings/{finding_id}` so ``types`` is not read as an id.
+    """
+    from agentfox.platform.ledger.finding_types import all_types
+
+    return {"types": [entry.to_json() for entry in all_types()]}
+
+
 @router.get("/findings/{finding_id}")
 def get_finding(
     finding_id: str, session: Session = Depends(db), _user: User = Depends(current_user)

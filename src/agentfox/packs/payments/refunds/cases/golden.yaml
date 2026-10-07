@@ -1,0 +1,45 @@
+# Golden cases for payments/refunds, run by `agentfox policy packs test payments/refunds`.
+cases:
+  - name: a small refund is approved automatically
+    kind: ladder
+    ladder: refund-approval
+    request: {arguments: {amount: 5}}
+    expect: {outcome: allow}
+
+  - name: ten dollars is still in the automatic band
+    kind: ladder
+    ladder: refund-approval
+    request: {arguments: {amount: 10}}
+    expect: {outcome: allow}
+
+  - name: a mid-sized refund runs the verification check
+    kind: ladder
+    ladder: refund-approval
+    request: {arguments: {amount: 50}}
+    expect: {outcome: verify}
+
+  - name: a large refund goes to finance
+    kind: ladder
+    ladder: refund-approval
+    request: {arguments: {amount: 500}}
+    expect: {outcome: escalate}
+
+  - name: a written refund rule compiles to the refund tool and the finance queue
+    kind: compile
+    text: Refunds over $100 need finance approval.
+    expect: {tool: payments.refund, approver_role: finance}
+
+  - name: a written transfer rule compiles to the transfer tool and a manager
+    kind: compile
+    text: Wire transfers above 5000 EUR require manager sign-off.
+    expect: {tool: payments.transfer, approver_role: manager}
+
+  - name: a transfer whose recipient came from a document needs a person
+    policies: [tool-containment]
+    event:
+      surface: tool_args
+      tool_key: payments.transfer
+      tool_impact: irreversible
+      intent: pay the supplier
+      taint: {max_source: user, arguments: {to: retrieved}}
+    expect: {verdict: escalate, rules: [taint.irreversible_tool]}

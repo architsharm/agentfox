@@ -10,66 +10,13 @@ from rich.table import Table
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
 from agentfox.apps.cli.commands._shared import _session, console
+from agentfox.apps.cli.commands.packs import packs_app
 
 policy_app = typer.Typer(
     help="Write the rules, try them against recorded traffic, then turn them on.",
     no_args_is_help=True,
 )
-
-
-@policy_app.command("packs")
-def policy_packs() -> None:
-    """Policy packs on disk, and where each came from.
-
-    `policy list` reads the database: what is installed and what mode it is in.
-    This reads the filesystem and answers the question an operator has about a
-    policy they did not write — which file is this, and did something override
-    it. A project pack replacing a shipped one is invisible in `policy list`,
-    because by then they are the same row.
-    """
-    from agentfox.platform.policy import PolicyPackError, pack_sources, project_policy_dir
-
-    try:
-        rows = pack_sources()
-    except PolicyPackError as exc:
-        console.print(f"[red]a policy pack could not be read[/]\n  {exc}")
-        raise typer.Exit(1) from exc
-    if not rows:
-        console.print("[dim]no policy packs found — this is a broken install.[/]")
-        raise typer.Exit(1)
-
-    table = Table(box=None, pad_edge=False)
-    for column in ("pack", "origin", "mode", "rules", "file"):
-        table.add_column(column, style="bold" if column == "pack" else None)
-    for row in rows:
-        origin = row["origin"]
-        table.add_row(
-            row["key"],
-            f"[cyan]{origin}[/]" if origin == "project" else f"[dim]{origin}[/]",
-            row["mode"],
-            row["rules"],
-            f"[dim]{row['path']}[/]",
-        )
-    console.print(table)
-
-    overrides = [r for r in rows if r["overrides"]]
-    for row in overrides:
-        console.print(
-            f"  [yellow]{row['key']}[/] replaces the shipped pack at [dim]{row['overrides']}[/]"
-        )
-
-    project = project_policy_dir()
-    if not project.exists():
-        console.print(
-            f"\n[dim]Put your own packs in {PROJECT_DIR_HINT} and they travel with the "
-            "repository — `agentfox init` installs them alongside the shipped ones.[/]"
-        )
-
-
-#: Written out rather than interpolated from `project_policy_dir()`, which is
-#: absolute: the hint is about what to create, and an absolute path from
-#: whatever directory the operator happened to be in reads as a demand.
-PROJECT_DIR_HINT = ".agentfox/policies/"
+policy_app.add_typer(packs_app, name="packs")
 
 
 @policy_app.command("list")

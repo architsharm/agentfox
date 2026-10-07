@@ -621,7 +621,7 @@ def analyse_shell(command: str) -> ActionAnalysis:
                 # claim. A destructive command harms the business; this one harms
                 # the ability to see that it happened, which is why it is called
                 # out separately and why the rule matching it cannot be disabled
-                # (see policies_data/tool-containment.yaml).
+                # (see packs/tool-containment/policies/tool-containment.yaml).
                 analysis.operation = DESTRUCTIVE
                 analysis.reversible = False
                 analysis.blast_radius = "catastrophic"

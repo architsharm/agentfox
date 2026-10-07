@@ -29,52 +29,20 @@ from agentfox.core.models import (
     Tool,
     utcnow,
 )
+from agentfox.platform.packs import merged_mapping, vocabulary
 
-EU_CLASSES = ("prohibited", "high", "limited", "minimal")
 
-#: Annex III-flavoured domain cues. Deliberately conservative and advisory.
-_HIGH_RISK_CUES = {
-    "employment": [
-        "hiring",
-        "recruit",
-        "candidate",
-        "cv",
-        "resume",
-        "performance review",
-        "promotion",
-        "termination",
-    ],
-    "credit": ["credit", "loan", "underwrit", "lending", "creditworthiness", "mortgage"],
-    "essential_services": ["benefit", "welfare", "insurance", "eligibility", "housing"],
-    "education": ["exam", "grading", "admission", "student assessment"],
-    "law_enforcement": ["criminal", "policing", "suspect", "recidivism"],
-    "migration": ["visa", "asylum", "immigration", "border"],
-    "biometric": ["biometric", "facial recognition", "emotion recognition"],
-    "critical_infrastructure": ["safety component", "traffic", "water supply", "power grid"],
-    # Bare "triage" was too generic — it substring-matches "support-triage" and any
-    # other customer-service/IT-ticket agent whose purpose or slug just says
-    # "triages tickets", producing a false Annex III "medical" classification with
-    # nothing medical about the agent. Scoped to phrases that only occur in a
-    # clinical context.
-    "medical": [
-        "diagnos",
-        "clinical triage",
-        "patient triage",
-        "triage nurse",
-        "clinical",
-        "patient care",
-        "medical device",
-    ],
-}
+def _cues() -> tuple[list[str], dict[str, list[str]]]:
+    """The prohibited-practice and Annex III cues, from the capability packs.
 
-_PROHIBITED_CUES = [
-    "social scoring",
-    "subliminal manipulation",
-    "exploit vulnerabilit",
-    "real-time remote biometric identification",
-    "emotion recognition in the workplace",
-    "predictive policing based on profiling",
-]
+    The EU AI Act pack ships them (``vocabulary.prohibited_cues`` and
+    ``vocabulary.annex_iii_cues``); a pack that adds cues adds to them, and the first
+    pack to name an Annex III domain owns its cue list.
+    """
+    prohibited: list[str] = []
+    for _pack, cues in vocabulary("prohibited_cues"):
+        prohibited.extend(c for c in cues or [] if c not in prohibited)
+    return prohibited, merged_mapping("annex_iii_cues")
 
 
 def classify(session: Session, agent: Agent) -> dict[str, Any]:
@@ -85,14 +53,15 @@ def classify(session: Session, agent: Agent) -> dict[str, Any]:
 
     signals: list[str] = []
     proposed = "minimal"
+    prohibited_cues, high_risk_cues = _cues()
 
-    for cue in _PROHIBITED_CUES:
+    for cue in prohibited_cues:
         if cue in haystack:
             signals.append(f"purpose text matches a prohibited-practice cue: '{cue}'")
             proposed = "prohibited"
 
     if proposed != "prohibited":
-        for domain, cues in _HIGH_RISK_CUES.items():
+        for domain, cues in high_risk_cues.items():
             if any(cue in haystack for cue in cues):
                 signals.append(f"purpose text suggests an Annex III domain: {domain}")
                 proposed = "high"

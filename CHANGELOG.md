@@ -11,6 +11,24 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+
+- **Capability packs.** A business use case or framework is one directory with a
+  `pack.yaml` (id, version, maturity, owners, compliance mappings, vocabulary) and its
+  policies, controls, ladder templates, red-team probes, optional checks, golden cases
+  and fixtures. Built in: `baseline`, `tool-containment`, `coding-agent`, `eu-ai-act`,
+  `compliance/catalog`, `payments/refunds`, `customer-support`. Your own load from
+  `.agentfox/packs/` or an `agentfox.packs` entry point; only `stable` packs load unless
+  `pack_maturity` (`AGENTFOX_PACK_MATURITY`) says otherwise.
+- `agentfox policy packs list|show|test|validate|new`. Bare `agentfox policy packs` still
+  prints the policy files on disk (now also `policy packs files`).
+- A finding-type registry: `GET /api/findings/types` and `agentfox findings --types` list
+  every type with its title, usual severity, meaning and owner; packs declare their own.
+- A check registry: request-path checks register with `@check` from the capability
+  that owns them, an `agentfox.checks` entry point or a pack.
+- `mcp_tool_added_under_wildcard` finding (high): a registered MCP server added a tool
+  that an existing wildcard grant already allows.
+
 ### Removed
 
 - The `nometria` Python package shim and the `nometria` console script. Import from `agentfox` (e.g. `agentfox.frameworks.langgraph`) and run `agentfox`. The `NOMETRIA_*` environment variables, `nometria.toml` and `x-nometria-*` headers are still read.
@@ -46,6 +64,15 @@ the file it came from.
 
 ### Changed
 
+- The shipped policies and the control catalog moved from `policies_data/` and
+  `compliance_data/` into the capability packs (`packs/<id>/policies/`,
+  `packs/compliance/catalog/controls/`). `compliance_dir` and `policies_dir` still
+  override them, and are now unset by default. `agentfox policy packs` and
+  `agentfox admin catalog validate` print the new paths.
+- The dashboard's finding labels come from the registry. `budget_breach` now reads
+  "Detector over budget" (it is a detector's latency budget); it read "Budget
+  exceeded", which describes `budget_exhausted`.
+
 - The Claude Code operator plugin moved from `harness/` to `plugins/claude-code/`, and its
   runtime-neutral parts (`AGENTS.md`, `skills/`, `reference/`) to `plugins/shared/`. The
   marketplace entry now points at `./plugins/claude-code`; the install command
@@ -57,7 +84,13 @@ the file it came from.
 - Coding-agent harnesses are adapters behind one interface, `agentfox.harnesses`
   (registered through the `agentfox.harnesses` entry-point group). Claude Code is the only
   one; installed hooks (`agentfox hooks run --harness claude`) behave exactly as before.
-
+- Accepting a changed MCP tool listing is now a two-person change. A changed definition is
+  held and filed as an `mcp.tool.accept` change proposal; `McpGovernor.register_tools(...,
+  accept_changes=True)` now requires `actor=` (the reviewer) and raises `ValueError`
+  without one, and the change applies only when a second, different person approves.
+  `POST /api/mcp-servers/{name}/tools` with `accept_changes` counts as the signed-in
+  person's approval and needs the role that approves policy proposals. The result carries
+  `held`, `accepted`, `awaiting_second_approver` and `proposals`.
 - `McpCallBlocked`, raised by the MCP governor, is now an `agentfox.AgentFoxError` like
   every other refusal. It is still a `RuntimeError`.
 

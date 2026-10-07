@@ -31,7 +31,7 @@ import type { CSSProperties, ReactNode } from "react";
  *                                     they chain correctly rather than being filler
  *   - observe / enforce verdicts .... Playground.tsx turn rendering + agentReply()
  *   - the scripted reply ............ src/agentfox/platform/providers/echo.py _synthesise()
- *   - injection.direct reason ....... src/agentfox/policies_data/baseline.yaml
+ *   - injection.direct reason ....... src/agentfox/packs/baseline/policies/baseline.yaml
  *
  * Only marketing.css classes and its tokens are used. No colour is hardcoded, so
  * light and dark both work without a second palette.

@@ -71,7 +71,7 @@ const ALLOW: Decision = {
       label: "Rule",
       value: "default_effect: allow",
       mono: true,
-      note: "nothing fired", // policies_data/tool-containment.yaml:17
+      note: "nothing fired", // packs/tool-containment/policies/tool-containment.yaml:17
     },
     {
       label: "Reason",
@@ -107,7 +107,7 @@ const ESCALATE: Decision = {
     { label: "Rule", value: "taint.irreversible_tool", mono: true }, // tool-containment.yaml:24
     {
       label: "Reason",
-      // policies_data/tool-containment.yaml:34-36, verbatim.
+      // packs/tool-containment/policies/tool-containment.yaml:34-36, verbatim.
       value:
         "Irreversible tool invoked with arguments originating in untrusted content (retrieved document, tool result or sub-agent output). Human approval required.",
     },
@@ -299,7 +299,7 @@ const HERO: Decision = {
     { label: "Rule", value: "capability.denied", mono: true }, // tool-containment.yaml:62
     {
       label: "Reason",
-      // policies_data/tool-containment.yaml:68, verbatim.
+      // packs/tool-containment/policies/tool-containment.yaml:68, verbatim.
       value: "No capability grants this agent the requested tool and action (default deny).",
     },
   ],

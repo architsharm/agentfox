@@ -63,14 +63,20 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
       {
         "key": "compliance_dir",
         "env": "AGENTFOX_COMPLIANCE_DIR",
-        "def": "inside the installed package",
-        "what": "The control catalog shipped inside the package. Change only to load your own catalog."
+        "def": "unset: the compliance packs",
+        "what": "A directory to read controls.yaml, obligations.yaml and threats.yaml from instead of the capability packs. Set only to load your own catalog."
       },
       {
         "key": "policies_dir",
         "env": "AGENTFOX_POLICIES_DIR",
-        "def": "inside the installed package",
-        "what": "The policy packs shipped inside the package."
+        "def": "unset: the built-in packs",
+        "what": "A directory to read the shipped policy files from instead of the built-in capability packs."
+      },
+      {
+        "key": "pack_maturity",
+        "env": "AGENTFOX_PACK_MATURITY",
+        "def": "stable",
+        "what": "Which capability packs load: stable, incubating (stable and incubating) or sandbox (all). See agentfox policy packs list --all."
       }
     ]
   },

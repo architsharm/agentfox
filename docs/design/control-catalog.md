@@ -2,7 +2,7 @@
 
 Companion to [PRD §13](PRD.md#13-compliance-framework-coverage) and requirement **P6-2**. This is the "map once, satisfy many" content set: 43 platform controls with 317 mappings across seven frameworks.
 
-The machine-readable form is `src/agentfox/compliance_data/controls.yaml` (controls, framework list and mappings) plus `src/agentfox/compliance_data/obligations.yaml` (the dated obligation calendar), loaded by the compliance engine. **This document is the human-readable source of truth; the YAML carries the same content and must stay in sync.** `agentfox admin catalog validate` checks the YAML's internal consistency: unique keys, known frameworks and status rules, and that the obligation calendar parses.
+The machine-readable form is `src/agentfox/packs/compliance/catalog/controls/controls.yaml` (controls, framework list and mappings) plus `src/agentfox/packs/compliance/catalog/controls/obligations.yaml` (the dated obligation calendar), loaded by the compliance engine. **This document is the human-readable source of truth; the YAML carries the same content and must stay in sync.** `agentfox admin catalog validate` checks the YAML's internal consistency: unique keys, known frameworks and status rules, and that the obligation calendar parses.
 
 > ⚠️ **Status of these mappings.** They are *informed engineering drafts* produced from the framework texts, intended to make the product's control story concrete and testable. They are **not legal advice and have not been reviewed by compliance counsel or a certification body.** Before any mapping is shown to a customer's auditor it must go through the review gate in §B.6. This caveat ships in the product UI too, on every framework view.
 

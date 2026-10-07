@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 207,
+ "count": 208,
  "routes": [
   {
    "method": "GET",
@@ -3564,6 +3564,29 @@
      "required": false,
      "type": "integer"
     },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/findings/types",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "Every finding type: its title, default severity, what it means and who raises it.",
+   "description": "Every finding type: its title, default severity, what it means and who raises it.\n\nThe registry the queue's labels come from (`platform/ledger/finding_types.py`),\nincluding the types the loaded capability packs declare. Declared before\n`/findings/{finding_id}` so ``types`` is not read as an id.",
+   "params": [
     {
      "name": "authorization",
      "in": "header",

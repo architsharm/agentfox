@@ -26,8 +26,8 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.config import get_settings
 from agentfox.core.models import Control, FrameworkMapping, Obligation, utcnow
+from agentfox.platform.packs import control_files
 
 FRAMEWORK_TITLES = {
     "eu-ai-act": "EU AI Act",
@@ -40,19 +40,77 @@ FRAMEWORK_TITLES = {
 }
 
 
+def catalog_paths(directory: Path | None = None) -> list[Path]:
+    """The ``controls.yaml`` files the catalog is read from: the compliance packs'.
+
+    `Settings.compliance_dir` (or ``directory``) replaces them with one directory.
+    """
+    return control_files("controls.yaml", directory)
+
+
 def catalog_path(directory: Path | None = None) -> Path:
-    return (directory or get_settings().compliance_dir) / "controls.yaml"
+    """The first catalog file; the one a single-pack deployment has."""
+    paths = catalog_paths(directory)
+    return paths[0] if paths else Path("controls.yaml")
+
+
+def obligations_paths(directory: Path | None = None) -> list[Path]:
+    return control_files("obligations.yaml", directory)
 
 
 def obligations_path(directory: Path | None = None) -> Path:
-    return (directory or get_settings().compliance_dir) / "obligations.yaml"
+    paths = obligations_paths(directory)
+    return paths[0] if paths else Path("obligations.yaml")
+
+
+def merge_catalogs(documents: list[dict[str, Any]]) -> dict[str, Any]:
+    """Several packs' catalogs as one: controls and gaps concatenated, frameworks merged.
+
+    The first document's version and review status stand for the whole; a framework
+    or control key declared twice keeps its first declaration.
+    """
+    if len(documents) == 1:
+        return documents[0]
+    merged: dict[str, Any] = {}
+    controls: list[Any] = []
+    keys: set[Any] = set()
+    frameworks: dict[str, Any] = {}
+    gaps: dict[str, Any] = {}
+    for document in documents:
+        for name, value in document.items():
+            if name not in ("controls", "frameworks", "gaps"):
+                merged.setdefault(name, value)
+        for spec in document.get("controls") or []:
+            key = spec.get("key") if isinstance(spec, dict) else None
+            if key is not None and key in keys:
+                continue
+            keys.add(key)
+            controls.append(spec)
+        for name, value in (document.get("frameworks") or {}).items():
+            frameworks.setdefault(name, value)
+        for name, value in (document.get("gaps") or {}).items():
+            gaps.setdefault(name, value)
+    merged["frameworks"] = frameworks
+    merged["controls"] = controls
+    if gaps:
+        merged["gaps"] = gaps
+    return merged
 
 
 def load_catalog(directory: Path | None = None) -> dict[str, Any]:
-    path = catalog_path(directory)
-    if not path.exists():
+    paths = [path for path in catalog_paths(directory) if path.exists()]
+    if not paths:
         return {"version": "unknown", "controls": [], "frameworks": {}, "gaps": {}}
-    return yaml.safe_load(path.read_text()) or {}
+    return merge_catalogs([yaml.safe_load(path.read_text()) or {} for path in paths])
+
+
+def load_obligations(directory: Path | None = None) -> list[dict[str, Any]]:
+    """Every obligation the compliance packs declare, in pack order."""
+    out: list[dict[str, Any]] = []
+    for path in obligations_paths(directory):
+        if path.exists():
+            out.extend((yaml.safe_load(path.read_text()) or {}).get("obligations") or [])
+    return out
 
 
 def sync_catalog(session: Session, directory: Path | None = None) -> dict[str, Any]:
@@ -128,12 +186,10 @@ def sync_catalog(session: Session, directory: Path | None = None) -> dict[str, A
 
 
 def sync_obligations(session: Session, directory: Path | None = None) -> int:
-    path = obligations_path(directory)
-    if not path.exists():
+    if not any(path.exists() for path in obligations_paths(directory)):
         return 0
-    data = yaml.safe_load(path.read_text()) or {}
     count = 0
-    for spec in data.get("obligations") or []:
+    for spec in load_obligations(directory):
         reference = spec["reference"]
         framework = spec["framework"]
         obligation = session.scalar(

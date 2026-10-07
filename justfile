@@ -98,3 +98,13 @@ serve *args:
 demo:
     AGENTFOX_DATABASE_URL="sqlite:///${TMPDIR:-/tmp}/agentfox-demo.db" uv run agentfox init
     AGENTFOX_DATABASE_URL="sqlite:///${TMPDIR:-/tmp}/agentfox-demo.db" uv run agentfox demo
+
+# Scaffold a built-in capability pack from src/agentfox/packs/_template:
+# `just new-pack payments/chargebacks`.
+new-pack id:
+    uv run agentfox policy packs new {{id}} --builtin
+
+# Validate a capability pack and run its golden cases: `just test-pack payments/refunds`.
+# With no id, every pack.
+test-pack *ids:
+    uv run agentfox policy packs validate {{ids}}

@@ -1,5 +1,5 @@
 # Candidate policy — start here, then: validate → lint → simulate → (user decides) enforce.
-# Schema: plugins/shared/reference/policy-schema.md. Real examples: src/agentfox/policies_data/.
+# Schema: plugins/shared/reference/policy-schema.md. Real examples: src/agentfox/packs/*/policies/.
 key: support-refunds                 # unique; becomes the name in `policy list`
 name: Support refunds
 description: >

@@ -239,15 +239,33 @@ shell.run PolicyViolation [('shell.destructive', 'enforce')]`}</Output>
       <Code>{`agentfox policy packs
 agentfox policy list`}</Code>
       <Output>{`pack                 origin   mode     rules  file
-baseline             shipped  observe  13     …/agentfox/policies_data/baseline.yaml
-coding-agent         shipped  observe  5      …/agentfox/policies_data/coding-agent.yaml
-eu-ai-act-high-risk  shipped  observe  7      …/agentfox/policies_data/eu-ai-act-high-risk.yaml
-tool-containment     shipped  enforce  25     …/agentfox/policies_data/tool-containment.yaml
+baseline             shipped  observe  13     …/agentfox/packs/baseline/policies/baseline.yaml
+coding-agent         shipped  observe  5      …/agentfox/packs/coding-agent/policies/coding-agent.yaml
+eu-ai-act-high-risk  shipped  observe  7      …/agentfox/packs/eu-ai-act/policies/eu-ai-act-high-risk.yaml
+tool-containment     shipped  enforce  25     …/agentfox/packs/tool-containment/policies/tool-containment.yaml
 
 policy               version  mode     rules
 baseline             v1       observe  13
 eu-ai-act-high-risk  v1       observe  7
 tool-containment     v1       enforce  25`}</Output>
+
+      <h3 id="capability-packs">Capability packs</h3>
+      <p>
+        Each shipped policy file lives in a capability pack: a directory with a{" "}
+        <code>pack.yaml</code> (id, version, maturity, owners, compliance mappings,
+        vocabulary) and the policies, controls, business-ladder templates, red-team probes,
+        golden cases and fixtures one use case needs. Besides these four, AgentFox ships{" "}
+        <code>eu-ai-act</code> (which carries <code>eu-ai-act-high-risk</code> and the risk
+        classes), <code>compliance/catalog</code> (the control catalog),{" "}
+        <code>payments/refunds</code> and <code>customer-support</code>. Your own go in{" "}
+        <code>.agentfox/packs/</code>; only <code>stable</code> packs load unless{" "}
+        <code>pack_maturity</code> says otherwise.
+      </p>
+      <Code>{`agentfox policy packs list
+agentfox policy packs show payments/refunds
+agentfox policy packs test
+agentfox policy packs new payments/chargebacks
+agentfox policy packs validate .agentfox/packs/payments/chargebacks`}</Code>
 
       <h3 id="pack-baseline">baseline: content guardrails (observe)</h3>
       <p>Detection-driven rules on every surface. Ships in observe: read what it would have done, then promote it.</p>

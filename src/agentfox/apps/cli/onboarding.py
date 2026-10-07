@@ -215,41 +215,40 @@ def init(
             f"[dim]v{catalog.get('version')} ({catalog.get('review_status')})[/]"
         )
 
-        if settings.policies_dir.exists():
-            # The project's own packs too, not just the shipped ones: a team
-            # that keeps policy in `.agentfox/policies/` expects `init` to
-            # install it, and a pack the loader can see but `init` ignores is
-            # a policy that silently does nothing.
-            # The coding-agent pack only for agents a coding harness runs: see
-            # policy/coding.py for why a wildcard binding was the wrong default.
-            documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
-            if coding_agents == []:
-                retire_tool_wildcard(session)
-            for document in documents:
-                save_policy(session, document, author="init", notes="loaded by agentfox init")
-            # Say the truth per pack: a blanket "observe mode" was wrong the moment one
-            # shipped pack (tool-containment) declared enforce.
-            console.print(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
-            for document in sorted(documents, key=lambda d: d.key):
-                colour = "red" if document.mode == "enforce" else "yellow"
-                meaning = _MODE_MEANING.get(document.mode, "")
-                console.print(
-                    f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]"
-                )
-            if coding_agents:
-                console.print(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
-            elif coding_agents == []:
-                console.print(
-                    "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
-                    "`agentfox admin hooks install --agent <slug> --write` turns it on for that "
-                    "agent.[/]"
-                )
-            enforcing = [d.key for d in documents if d.mode == "enforce"]
-            if enforcing:
-                console.print(
-                    f"      [dim]{', '.join(enforcing)} blocks from the start — "
-                    "demote with `agentfox policy observe <key>`.[/]"
-                )
+        # The project's own packs too, not just the shipped ones: a team
+        # that keeps policy in `.agentfox/policies/` expects `init` to
+        # install it, and a pack the loader can see but `init` ignores is
+        # a policy that silently does nothing.
+        # The coding-agent pack only for agents a coding harness runs: see
+        # policy/coding.py for why a wildcard binding was the wrong default.
+        documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
+        if coding_agents == []:
+            retire_tool_wildcard(session)
+        for document in documents:
+            save_policy(session, document, author="init", notes="loaded by agentfox init")
+        # Say the truth per pack: a blanket "observe mode" was wrong the moment one
+        # shipped pack (tool-containment) declared enforce.
+        console.print(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
+        for document in sorted(documents, key=lambda d: d.key):
+            colour = "red" if document.mode == "enforce" else "yellow"
+            meaning = _MODE_MEANING.get(document.mode, "")
+            console.print(
+                f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]"
+            )
+        if coding_agents:
+            console.print(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
+        elif coding_agents == []:
+            console.print(
+                "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
+                "`agentfox admin hooks install --agent <slug> --write` turns it on for that "
+                "agent.[/]"
+            )
+        enforcing = [d.key for d in documents if d.mode == "enforce"]
+        if enforcing:
+            console.print(
+                f"      [dim]{', '.join(enforcing)} blocks from the start — "
+                "demote with `agentfox policy observe <key>`.[/]"
+            )
 
     config_path = Path(path) / "agentfox.toml"
     if config_path.exists():
@@ -674,6 +673,31 @@ def doctor(
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
+def _finding_types(as_json: bool) -> None:
+    """The finding-type registry (`platform/ledger/finding_types.py`), packs' types included."""
+    from rich.table import Table
+
+    from agentfox.platform.ledger.finding_types import all_types
+
+    entries = all_types()
+    if as_json:
+        console.print_json(json.dumps([entry.to_json() for entry in entries]))
+        return
+    table = Table(box=None, pad_edge=False)
+    for column in ("type", "severity", "owner", "title"):
+        table.add_column(column, style="bold" if column == "type" else None)
+    for entry in entries:
+        colour = SEVERITY_COLOUR.get(entry.severity, "dim")
+        table.add_row(
+            entry.type,
+            f"[{colour}]{entry.severity}[/]",
+            f"[dim]{entry.owner}[/]",
+            entry.title,
+        )
+    console.print(table)
+    console.print("\n[dim]`agentfox findings --types --json` adds what each one means.[/]")
+
+
 def findings_cmd(
     severity: str | None = typer.Option(
         None,
@@ -687,16 +711,25 @@ def findings_cmd(
         "--json",
         help="Full records for scripts: whole ids, fingerprints, subjects and timestamps.",
     ),
+    types: bool = typer.Option(
+        False,
+        "--types",
+        help="List every finding type instead: what each means, its usual severity, who raises it.",
+    ),
 ) -> None:
     """What the platform found. The list `agentfox.auto()` tells you to read.
 
     Ordered worst first, then most recently seen. A finding that keeps happening is
     one row with a count, not one row per occurrence, so the length of this list is
-    the number of distinct problems.
+    the number of distinct problems. `--types` lists the kinds of finding there are.
     """
     from sqlalchemy import case, func, select
 
     from agentfox.core.models import Finding
+
+    if types:
+        _finding_types(as_json)
+        return
 
     if severity and severity not in SEVERITY_RANK:
         console.print(

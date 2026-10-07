@@ -96,7 +96,7 @@ package split; [ARCHITECTURE.md](../../ARCHITECTURE.md)'s code map is current.
 | FR | Status | Implementation | Control | Test |
 |---|---|---|---|---|
 | **P6-1** Policy-as-code engine | ✅ native + OPA | `platform/policy/model.py`, `platform/policy/engine.py`, `platform/policy/opa.py`, `platform/policy/store.py` | NOM-GOV-01 | `test_policy_and_identity.py::test_strongest_effect_wins`, `::test_policy_versions_are_immutable`, `::test_rego_compilation_produces_a_module` |
-| **P6-2** Control catalog & framework mapping | ✅ 43 controls × 7 frameworks | `compliance_data/controls.yaml`, `compliance/catalog.py`; `agentfox admin catalog validate` | NOM-GOV-02 | `test_registry_and_compliance.py::test_catalog_syncs_all_controls`, `::test_review_status_survives_resync` |
+| **P6-2** Control catalog & framework mapping | ✅ 43 controls × 7 frameworks | `packs/compliance/catalog/controls/controls.yaml`, `compliance/catalog.py`; `agentfox admin catalog validate` | NOM-GOV-02 | `test_registry_and_compliance.py::test_catalog_syncs_all_controls`, `::test_review_status_survives_resync` |
 | **P6-3** Risk register & assessment | ✅ | `compliance/risk.py::classify, assess, register` | NOM-GOV-03 | `::test_classification_proposes_high_risk_for_hiring_agent`, `::test_ungated_irreversible_tool_raises_the_proposal` |
 | **P6-4** Continuous compliance monitoring | ✅ | `compliance/status.py` — nine rule kinds | NOM-GOV-04 | `::test_status_is_computed_not_attested`, `::test_broken_chain_makes_the_audit_control_fail_hard` |
 | **P6-5** Obligation calendar | ✅ | `compliance/obligations.yaml`, `compliance/risk.py::obligation_calendar` | NOM-GOV-05 | `::test_obligation_calendar_scopes_agents` |

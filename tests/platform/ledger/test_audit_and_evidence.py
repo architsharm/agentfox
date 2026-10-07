@@ -334,11 +334,15 @@ def test_a_scoped_package_leaves_other_agents_out_of_every_file(seeded, enforcer
     """#66: agent scope filtered agents and traces only; findings, approvals, eval runs
     and audit entries for every other agent shipped in a package scoped to one."""
     from agentfox.core.models import Agent, ApprovalRequest, EvalRun
+    from agentfox.platform.ledger import finding_types
     from agentfox.platform.ledger.findings import raise_finding
 
     agents = {a.slug: a for a in seeded.query(Agent).all()}
     other = next(slug for slug in agents if slug != "support-triage")
     for slug in ("support-triage", other):
+        finding_types.register(
+            finding_types.FindingType(f"test_{slug}", f"Test {slug}", "low", "A fixture.", "tests")
+        )
         enforcer.run_completion(
             agent_slug=slug, messages=[{"role": "user", "content": "hello"}], model="echo-1"
         )

@@ -33,7 +33,7 @@ import {
  *   - SECRET.* entity types .................. src/agentfox/capabilities/detection/detectors/secrets.py
  *   - normalisation views .................... src/agentfox/capabilities/detection/normalize.py
  *   - per-detector budget, degrade-not-skip .. src/agentfox/capabilities/detection/pipeline.py
- *   - baseline / tool-containment rule ids ... src/agentfox/policies_data/*.yaml
+ *   - baseline / tool-containment rule ids ... src/agentfox/packs/<pack>/policies/*.yaml
  *   - capability.* and taint.* verdicts ...... src/agentfox/runtime/enforcement/
  *   - the provenance ladder .................. src/agentfox/capabilities/detection/taint.py, README "Commands"
  *   - impact tiers ........................... dashboard/app/glossary/page.tsx
@@ -45,7 +45,7 @@ import {
  *   - adaptive campaign scope ................ src/agentfox/capabilities/evaluation/adaptive.py
  *   - chain digests and verify() ............. src/agentfox/platform/ledger/chain.py
  *   - computed compliance status ............. src/agentfox/capabilities/compliance/status.py
- *   - control count and framework keys ....... src/agentfox/compliance_data/controls.yaml
+ *   - control count and framework keys ....... src/agentfox/packs/compliance/catalog/controls/controls.yaml
  *   - every CLI command shown ................ README.md "Commands"
  *
  * Figures appear only where README.md or app/(marketing)/benchmark/page.tsx already publishes them,
@@ -181,7 +181,7 @@ export function Pillars() {
 
 const GUARDRAIL_ITEMS: Item[] = [
   {
-    // Rule ids from src/agentfox/policies_data/baseline.yaml.
+    // Rule ids from src/agentfox/packs/baseline/policies/baseline.yaml.
     label: "injection.direct · injection.indirect",
     body: "Injection in a user message, a retrieved document or a tool result.",
   },
@@ -249,7 +249,7 @@ export function Guardrails() {
 
 const CONTAINMENT_ITEMS: Item[] = [
   {
-    // src/agentfox/policies_data/tool-containment.yaml
+    // src/agentfox/packs/tool-containment/policies/tool-containment.yaml
     label: "taint.irreversible_tool",
     body: "An irreversible tool with arguments from untrusted content stops for a human.",
   },
@@ -412,7 +412,7 @@ const ASSURANCE_ITEMS: Item[] = [
     body: "Re-derives the hash chain and exits 1 if it is broken. There is no update or delete path for an audit entry.",
   },
   {
-    // compliance/status.py, compliance_data/controls.yaml.
+    // compliance/status.py, packs/compliance/catalog/controls/controls.yaml.
     label: "43 controls, seven frameworks",
     body: "Status is computed from execution data, not a form. A control whose evidence source produces nothing reads not_implemented.",
   },

@@ -10,7 +10,7 @@ description: Guides writing or changing an AgentFox policy safely. It drafts YAM
 
 Policies are declarative YAML compiled to Rego, and they are versioned and audited. The
 schema is in [reference/policy-schema.md](../../reference/policy-schema.md). The three shipped
-packs in `src/agentfox/policies_data/` are the best examples: `baseline`,
+packs in `src/agentfox/packs/*/policies/` are the best examples: `baseline`,
 `tool-containment` and `eu-ai-act-high-risk`.
 
 **For a business threshold** (amount bands, approvals by value, spend budgets), use the

@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
 from agentfox.core.models import Agent, Policy, PolicyBinding, PolicyVersion, utcnow
+from agentfox.platform.packs import ORIGIN_BUILTIN, ORIGIN_PROJECT, load_packs, shipped_packs
 from agentfox.platform.policy.canary import active_canary, pick_version_id
 from agentfox.platform.policy.engine import NativePolicyEngine, PolicyEngine
 from agentfox.platform.policy.hierarchy import (
@@ -137,12 +138,22 @@ def _stored_payload(version: PolicyVersion) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _shipped_files() -> list[Path]:
+    """The shipped policy files: the built-in capability packs' ``policies/``.
+
+    `Settings.policies_dir`, when set, replaces them with the files in that directory.
+    Never the project's or an installed package's: what "shipped" means must not depend
+    on the working directory or the environment.
+    """
+    override = get_settings().policies_dir
+    if override is not None:
+        return sorted(override.glob("*.y*ml")) if override.exists() else []
+    return [path for pack in shipped_packs() for path in pack.files("policies")]
+
+
 def _shipped_pack(key: str) -> PolicyDocument | None:
     """The shipped definition of ``key``, read the way `load_from_dir` reads it."""
-    directory = get_settings().policies_dir
-    if not directory.exists():
-        return None
-    for path in sorted(directory.glob("*.y*ml")):
+    for path in _shipped_files():
         try:
             doc = _read_pack(path)
         except PolicyPackError:
@@ -213,13 +224,40 @@ def project_policy_dir(root: Path | None = None) -> Path:
 
 
 def load_from_dir(directory: Path | None = None) -> list[PolicyDocument]:
-    directory = directory or get_settings().policies_dir
+    """The policy files in ``directory``, or the shipped ones when it is None."""
+    if directory is None:
+        return [_read_pack(path) for path in _shipped_files()]
     out: list[PolicyDocument] = []
     if not directory.exists():
         return out
     for path in sorted(directory.glob("*.y*ml")):
         out.append(_read_pack(path))
     return out
+
+
+def _available_files(root: Path | None = None) -> list[tuple[str, Path]]:
+    """Every policy file this deployment can bind, as ``(origin, path)``, in load order.
+
+    The capability packs that load (`platform/packs`), in id order: built-in ones are
+    ``shipped``, packs installed by entry point ``installed``, the project's own packs
+    ``project``. Then the project's loose policy files in `PROJECT_POLICY_DIR`, which
+    are also ``project``.
+    """
+    override = get_settings().policies_dir
+    rows: list[tuple[str, Path]] = []
+    if override is not None:
+        rows.extend(("shipped", path) for path in _shipped_files())
+    for pack in load_packs(root):
+        if pack.origin == ORIGIN_BUILTIN and override is not None:
+            continue
+        origin = {ORIGIN_BUILTIN: "shipped", ORIGIN_PROJECT: "project"}.get(
+            pack.origin, "installed"
+        )
+        rows.extend((origin, path) for path in pack.files("policies"))
+    directory = project_policy_dir(root)
+    if directory.exists():
+        rows.extend(("project", path) for path in sorted(directory.glob("*.y*ml")))
+    return rows
 
 
 def load_available(root: Path | None = None) -> list[PolicyDocument]:
@@ -233,10 +271,11 @@ def load_available(root: Path | None = None) -> list[PolicyDocument]:
     cannot quietly drop `control_plane.tamper` by shipping a thinner
     `tool-containment`.
     """
-    shipped = {doc.key: doc for doc in load_from_dir()}
-    for doc in load_from_dir(project_policy_dir(root)):
-        shipped[doc.key] = doc
-    return list(shipped.values())
+    available: dict[str, PolicyDocument] = {}
+    for _origin, path in _available_files(root):
+        doc = _read_pack(path)
+        available[doc.key] = doc
+    return list(available.values())
 
 
 def pack_sources(root: Path | None = None) -> list[dict[str, str]]:
@@ -248,26 +287,20 @@ def pack_sources(root: Path | None = None) -> list[dict[str, str]]:
     """
     rows: list[dict[str, str]] = []
     seen: dict[str, int] = {}
-    for origin, directory in (
-        ("shipped", get_settings().policies_dir),
-        ("project", project_policy_dir(root)),
-    ):
-        if not directory.exists():
-            continue
-        for path in sorted(directory.glob("*.y*ml")):
-            doc = _read_pack(path)
-            row = {
-                "key": doc.key,
-                "origin": origin,
-                "path": str(path),
-                "mode": doc.mode,
-                "rules": str(len(doc.rules)),
-                "overrides": "",
-            }
-            if doc.key in seen:
-                row["overrides"] = rows[seen[doc.key]]["path"]
-            seen[doc.key] = len(rows)
-            rows.append(row)
+    for origin, path in _available_files(root):
+        doc = _read_pack(path)
+        row = {
+            "key": doc.key,
+            "origin": origin,
+            "path": str(path),
+            "mode": doc.mode,
+            "rules": str(len(doc.rules)),
+            "overrides": "",
+        }
+        if doc.key in seen:
+            row["overrides"] = rows[seen[doc.key]]["path"]
+        seen[doc.key] = len(rows)
+        rows.append(row)
     return rows
 
 

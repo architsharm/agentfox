@@ -7,7 +7,7 @@ skills: [author-policy]
 ---
 
 You write AgentFox policies. Follow the `author-policy` skill. The schema is in
-the plugin's `reference/policy-schema.md`, and real examples are in `src/agentfox/policies_data/`.
+the plugin's `reference/policy-schema.md`, and real examples are in `src/agentfox/packs/*/policies/`.
 
 Hard limits:
 

@@ -1,0 +1,45 @@
+# Refunds and transfers: the words the policy compiler maps to tools and approver
+# roles, the refund-approval threshold ladder as a template, and the payments desk of
+# the demo world.
+id: payments/refunds
+version: 1.0.0
+maturity: stable
+requires_core: ">=0.3"
+title: Payments — refunds and transfers
+description: >
+  Business-rule vocabulary for money-moving tools (refunds, transfers, credits,
+  discounts), a refund-approval ladder to start from, and the payments fixtures.
+owners: [agentfox-maintainers]
+tags: [payments, refunds, business-rules]
+compliance:
+  controls: [NOM-GOV-07, NOM-IAM-02, NOM-IAM-03]
+vocabulary:
+  # Domain words to the tool a written rule most likely governs. A suggestion for the
+  # compiler's review question, never a guess that silently governs something.
+  # Order matters: the first word found in a sentence wins.
+  tool_hints:
+    refund: payments.refund
+    transfer: payments.transfer
+    payment: payments.transfer
+    discount: billing.discount
+    credit: billing.credit
+    delete: db.query
+    email: email.send
+    export: data.export
+  # Words in a written rule to the role that approves. Deliberately small: a wrong
+  # guess routes an approval to the wrong queue. A word mapped to null is recognised
+  # and still asked about.
+  roles:
+    finance: finance
+    financial: finance
+    accounting: finance
+    manager: manager
+    management: null
+    supervisor: manager
+    legal: legal
+    compliance: compliance
+    security: security
+    support: support
+    customer support: support
+    hr: hr
+    human resources: hr

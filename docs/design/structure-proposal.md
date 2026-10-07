@@ -1,6 +1,6 @@
 # Code structure proposal: harnesses, capability packs, and a layout newcomers can follow
 
-Status: decided 2026-10-06 (section 9); phases 0-2 and 5 are done. The fix branches this waited on
+Status: decided 2026-10-06 (section 9); phases 0-2, 4 and 5 are done; phase 3 is deferred. The fix branches this waited on
 (security, policy, approvals, gates-detection, grounding, webapp, monitor-sources,
 monitor-probes, contributor-guide) have merged. Section 10 records what is already done and
 what remains per phase.
@@ -317,9 +317,9 @@ proves the business-pack story.
     so the CLI does not import the gateway; detection no longer imports grounding or
     containment; the ledger no longer imports detection.
   - import-linter enforces the layers and "core imports nothing outside core" in CI's
-    lint job and `just lint`. Three edges are named exceptions: `EU_CLASSES`
-    (policy -> compliance, until the EU AI Act pack in phase 4) and evaluation's
-    in-process red-team runner and live-probe adapter (-> runtime).
+    lint job and `just lint`. Three edges were named exceptions: `EU_CLASSES`
+    (policy -> compliance; removed in phase 4) and evaluation's in-process red-team
+    runner and live-probe adapter (-> runtime).
 - Phase 2 (harness SPI):
   - `src/agentfox/harnesses/` (L4): `base.py` holds the `HarnessAdapter` protocol (`parse`,
     `render`, `install`, `hooked_agents`, `mcp_config_paths`, `transcripts`, plus a
@@ -347,7 +347,7 @@ proves the business-pack story.
   - `harness/` is `plugins/claude-code/`; `AGENTS.md`, `skills/` and `reference/` live in
     `plugins/shared/`. A Claude Code plugin cannot load components outside its own
     directory, and symlinks are dereferenced only for a git-hosted marketplace, so the
-    plugin carries committed copies that `scripts/check_plugins.py` (was
+    plugin carries committed copies that `scripts/check/plugins.py` (was
     `harness/scripts/check_harness.py`) writes with `--write` and fails on in CI. The docs
     page moved to `/docs/plugin`, with a permanent redirect from `/docs/harness`. The
     evaluation code no longer calls its runner a harness.
@@ -383,16 +383,61 @@ proves the business-pack story.
   - **Docs and commands.** `docs/adr/` with ADR 0001; `just new-harness <name>` scaffolds an
     adapter from `scripts/templates/harness/`.
 
+- Phase 4 (packs):
+  - **Check registry.** `platform/checks.py` holds `@check(key, surfaces=, order=, kind=)`,
+    `CheckContext` (session, settings, agent, surface, content, intent, the caller's
+    evidence, trace, tool and arguments, memory entry, conversation window, pipeline) and
+    `merge_content`. The seven content checks moved out of the runtime into the
+    capabilities that own them (`grounding/checks.py`: evidence 10, disclosure 20,
+    commitments 30, context 40, sycophancy 60; `containment/checks.py`: control flow 50;
+    `detection/checks.py`: trajectory 70), and the business ladders are a `ladder`
+    check (`business/checks.py`). `runtime/checks.py:BUILTIN_CHECK_MODULES` names those
+    modules and the Enforcer iterates the registry; an import-linter contract forbids
+    the runtime importing them. `agentfox.checks` entry points and packs' `checks/*.py`
+    add more; those cannot fail a request.
+  - **Finding-type registry.** `platform/ledger/finding_types.py`: 61 built-in types
+    (title, default severity, description, owner), plus what packs declare.
+    `raise_finding` warns on an unregistered type and refuses it under
+    `AGENTFOX_STRICT_FINDING_TYPES`, which the test suite sets; a static test reads
+    `src` for every type literal. `GET /api/findings/types`, `agentfox findings
+    --types`, and the dashboard's labels are generated from it
+    (`dashboard/lib/reference/finding-types.json`).
+  - **Pack format and loader.** `platform/packs` (`PackManifest`, a pydantic model whose
+    JSON Schema `agentfox policy packs validate --schema` prints), discovery from
+    `src/agentfox/packs/`, the `agentfox.packs` entry-point group and
+    `<project>/.agentfox/packs/`, the `pack_maturity` setting (stable by default) and
+    `requires_core`. The policy store, the control catalog, obligations, the threat
+    catalogue, the red team (`probes/`), the policy compiler (`vocabulary`), the
+    fallback policies (`fallback`), policy lint (`condition_values`) and EU AI Act
+    classification (`annex_iii_cues`, `prohibited_cues`) read from packs.
+  - **First packs.** `baseline`, `tool-containment`, `coding-agent` (their policies),
+    `eu-ai-act` (its policy, the risk classes, the classification cues, the tiers its
+    policy protects as a fallback), `compliance/catalog` (controls, obligations, threats
+    as one pack: most controls map to several frameworks, so a per-framework split would
+    copy them), `payments/refunds` (the compiler's tool and role vocabulary, the
+    refund-approval ladder template, the payments desk of the demo world),
+    `customer-support` (the support desk of the demo world). Each has `cases/`. The
+    commitment patterns stayed in grounding (they are not refund-specific) and no
+    built-in red-team probe moved (none is domain-specific).
+  - **CLI and scaffolding.** `agentfox policy packs` (bare: the policy-file table, as
+    before) `list|show|test|validate|new`; `just new-pack <id>` and `just test-pack`
+    over `src/agentfox/packs/_template/`.
+  - **import-linter.** `agentfox.packs` is in the capabilities layer and nothing imports
+    it; the `EU_CLASSES` exception is gone.
+  - Behaviour: the same decisions, audit entries and findings for a recorded request
+    set (seed world, demo, content checks, ladders, red-team campaigns, catalog). The
+    dashboard's `budget_breach` label was corrected.
+
 **Remaining, per phase:**
 
 | Phase | Remaining |
 |---|---|
 | 0. Hygiene | Done |
-| 1. Layers | Done, except the three import-linter exceptions named above. Intra-layer cycles remain between `capabilities/detection` and `capabilities/judgment` (the judgment detector, and egress redaction through detection's PII detector) and between `capabilities/evaluation` and `capabilities/monitoring` (opting a probe target in creates its monitor) |
+| 1. Layers | Done, except the two import-linter exceptions named above (evaluation -> runtime). Intra-layer cycles remain between `capabilities/detection` and `capabilities/judgment` (the judgment detector, and egress redaction through detection's PII detector) and between `capabilities/evaluation` and `capabilities/monitoring` (opting a probe target in creates its monitor) |
 | 2. Harness SPI | Done. `agentfox hooks capture` is not built (`just new-harness` was added in phase 5); a PostToolUse fixture should be re-captured verbatim at the next probe |
 | 3. Second harness | Deferred (section 9) |
-| 4. Packs | All of it |
-| 5. Repo outside src | Done, except: building wheels at deploy time (deferred, section 9); `just new-pack` (phase 4); `docs/getting-started.md` and `docs/product-tour.md` are user docs still in `docs/` (fold into the website docs, then delete); three comments and one data string in `src/` still cite pre-phase-5 paths (`scripts/api_routes.py` in `apps/gateway/app.py` and `routes/inline.py`, `benchmarks/agentdojo_e2e/` in `discovery/exposure.py`, `benchmarks/data_generalization/` in `detection/data/injection_corpus.json`), left so this phase needed no wheel rebuild |
+| 4. Packs | Done. Remaining: compliance packs per framework if a framework ever ships controls of its own, packs' fixtures beyond the demo world's two desks (the HR screening agent has no pack), CODEOWNERS generated from pack owners, and a check registry entry for the action analysis and cascade/data-access risks, which still run in the runtime |
+| 5. Repo outside src | Done, except: building wheels at deploy time (deferred, section 9); `docs/getting-started.md` and `docs/product-tour.md` are user docs still in `docs/` (fold into the website docs, then delete); three comments and one data string in `src/` still cite pre-phase-5 paths (`scripts/api_routes.py` in `apps/gateway/app.py` and `routes/inline.py`, `benchmarks/agentdojo_e2e/` in `discovery/exposure.py`, `benchmarks/data_generalization/` in `detection/data/injection_corpus.json`), left so this phase needed no wheel rebuild |
 | 6. Capability-owned models and routers | All of it (optional) |
 
 ## Sources (from the research pass)

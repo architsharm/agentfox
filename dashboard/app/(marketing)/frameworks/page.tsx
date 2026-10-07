@@ -11,7 +11,7 @@ export const metadata: Metadata = publicPageMetadata({
 });
 
 /**
- * Counted from `compliance_data/controls.yaml` rather than typed. The four
+ * Counted from `packs/compliance/catalog/controls/controls.yaml` rather than typed. The four
  * at 43 are the frameworks every control maps to; the three below it are
  * threat catalogues, which cover the attack surface rather than the
  * management system, so a lower number is the right number and not a gap.

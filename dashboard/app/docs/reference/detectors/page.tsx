@@ -80,6 +80,7 @@ const FINDINGS: Row[] = [
   ["registry_drift", "Runtime behaviour differs from what was declared.", "Update the declaration, or investigate."],
   ["undeclared_mcp_tool", "An agent called an MCP tool nobody registered.", "Review the tool and declare it."],
   ["mcp_schema_drift", "An MCP tool's description, schema or impact annotations changed since its definition was reviewed; the call was blocked.", "Treat as suspicious; re-review the server."],
+  ["mcp_tool_added_under_wildcard", "A server you registered started listing a new tool, and a wildcard grant such as mcp:server/* already allows it, so the grant was made before anyone saw this tool. The evidence names the grants.", "Review the tool; narrow the wildcard or declare the tool explicitly."],
   ["schema_drift, tool_poisoning, unpinned_server", "From scanning an MCP server: a listing changed, a description reads like an instruction, a server version is not pinned.", "agentfox scan mcp SERVER --file tools.json"],
   ["control_flow", "A tool call that exists because of untrusted content, not the user's request, even with clean arguments.", "Treat as an injected step; read what the agent saw just before."],
   ["sycophancy", "The answer adopted a false premise the user stated, against the grounded record you supplied.", "Check the record; the answer is wrong."],
@@ -94,7 +95,7 @@ const FINDINGS: Row[] = [
   ["missed_escalation, incomplete_handoff, handoff_sla_breach", "A person should have been involved and was not, or not in time.", "Fix the escalation policy."],
   ["orphaned_identity, stale_identity, over_privileged", "An agent identity with no owner, unused, or holding a * grant.", "Revoke or narrow grants."],
   ["redteam, redteam_over_block, redteam_mutation_class, redteam_posture_regression", "A probe got through, a benign probe was blocked, a mutation class worked, or the deployment got weaker than the last campaign.", "Tighten or loosen the rule concerned."],
-  ["regression, drift, over_refusal", "Eval quality moved against the baseline.", "Compare with the baseline run."],
+  ["drift, over_refusal", "Eval quality moved against the baseline.", "Compare with the baseline run."],
   ["false_resolution", "A finding marked resolved recurred.", "Reopen and fix the cause."],
 ];
 
@@ -414,6 +415,12 @@ agentfox findings --json --limit 1`}</Code>
       </p>
 
       <h3 id="finding-types">Finding types</h3>
+      <p>
+        Every finding type is registered, with the label the web app shows, its usual
+        severity and what raises it; a capability pack can add its own. The full list is{" "}
+        <code>agentfox findings --types</code> (<code>--json</code> adds what each means) or{" "}
+        <code>GET /api/findings/types</code>. The common ones, and the first thing to do:
+      </p>
       <Table head={["Type", "Meaning", "First move"]} rows={FINDINGS} />
 
       <h2 id="numbers">How good is detection</h2>

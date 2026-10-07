@@ -1183,7 +1183,7 @@ type ControlRow = {
  * ILLUSTRATIVE: the four posture counts and the numbers embedded in each rationale are
  * a chosen tenant, since a control status is computed from a live database.
  *
- * Real: the catalogue version and review status (src/agentfox/compliance_data/controls.yaml:14-15),
+ * Real: the catalogue version and review status (src/agentfox/packs/compliance/catalog/controls/controls.yaml:14-15),
  * the framework keys (controls.yaml:16-24), the control count (43 entries in that file),
  * every control key and title, the status vocabulary (compliance/status.py:43), the
  * rationale sentence each rule handler emits (status.py:155-390) and the posture line
@@ -1240,7 +1240,7 @@ const CONTROLS: ControlRow[] = [
   },
 ];
 
-/** compliance_data/controls.yaml:16-24 */
+/** packs/compliance/catalog/controls/controls.yaml:16-24 */
 const FRAMEWORKS: { key: string; name: string }[] = [
   { key: "eu-ai-act", name: "EU Artificial Intelligence Act" },
   { key: "nist-ai-rmf", name: "NIST AI Risk Management Framework 1.0" },

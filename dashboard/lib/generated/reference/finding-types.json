@@ -1,0 +1,431 @@
+{
+ "types": [
+  {
+   "type": "guardrail_detection",
+   "title": "Guardrail catch",
+   "severity": "high",
+   "description": "A detector caught something in a request or response and it changed the outcome — see the masked excerpt below.",
+   "owner": "detection"
+  },
+  {
+   "type": "trajectory_drift",
+   "title": "Escalating conversation",
+   "severity": "high",
+   "description": "The conversation as a whole is escalating towards something the single turns do not show.",
+   "owner": "detection"
+  },
+  {
+   "type": "budget_breach",
+   "title": "Detector over budget",
+   "severity": "medium",
+   "description": "A detector was skipped or timed out against its latency budget, so this agent's calls ran with less coverage.",
+   "owner": "platform.ledger"
+  },
+  {
+   "type": "budget_exhausted",
+   "title": "Budget exhausted",
+   "severity": "high",
+   "description": "This agent has used up its configured cost or call budget.",
+   "owner": "runtime"
+  },
+  {
+   "type": "agent_loop_stopped",
+   "title": "Loop stopped",
+   "severity": "high",
+   "description": "The proxy stopped a tool-calling run that kept repeating the same call.",
+   "owner": "runtime"
+  },
+  {
+   "type": "boundary_breach",
+   "title": "Answered outside its boundary",
+   "severity": "medium",
+   "description": "The agent answered beyond the knowledge boundary it declared.",
+   "owner": "grounding"
+  },
+  {
+   "type": "containment",
+   "title": "Contained action",
+   "severity": "high",
+   "description": "A tool call was stopped or held by a permission, data-provenance or blast-radius rule — not by a content detector. The title says which, and whether it was enforced or only observed.",
+   "owner": "containment"
+  },
+  {
+   "type": "control_flow",
+   "title": "Injected step",
+   "severity": "high",
+   "description": "A tool call that exists because of untrusted content the agent read, not the user's request, even with clean arguments.",
+   "owner": "containment"
+  },
+  {
+   "type": "missed_escalation",
+   "title": "Missed hand-off",
+   "severity": "high",
+   "description": "A conversation should have gone to a human and didn't.",
+   "owner": "containment"
+  },
+  {
+   "type": "handoff_sla_breach",
+   "title": "Hand-off overdue",
+   "severity": "high",
+   "description": "A human hand-off has gone unacknowledged past its deadline.",
+   "owner": "containment"
+  },
+  {
+   "type": "incomplete_handoff",
+   "title": "Incomplete hand-off",
+   "severity": "medium",
+   "description": "Context the next step needed was missing when work was handed off.",
+   "owner": "containment"
+  },
+  {
+   "type": "false_resolution",
+   "title": "False resolution",
+   "severity": "high",
+   "description": "Marked resolved without actually resolving the user's issue.",
+   "owner": "containment"
+  },
+  {
+   "type": "source_authority",
+   "title": "Untrusted source",
+   "severity": "medium",
+   "description": "Used a source below the trust tier this required.",
+   "owner": "grounding"
+  },
+  {
+   "type": "fabricated_citation",
+   "title": "Fabricated citation",
+   "severity": "high",
+   "description": "Cited a source that doesn't say what it claims, or doesn't exist.",
+   "owner": "grounding"
+  },
+  {
+   "type": "source_conflict",
+   "title": "Conflicting sources",
+   "severity": "medium",
+   "description": "Two sources disagreed and the conflict wasn't surfaced.",
+   "owner": "grounding"
+  },
+  {
+   "type": "integrity_error",
+   "title": "Data integrity error",
+   "severity": "medium",
+   "description": "A numeric, temporal, or identity error was detected in the output.",
+   "owner": "grounding"
+  },
+  {
+   "type": "entitlement_disclosure",
+   "title": "Disclosure risk",
+   "severity": "critical",
+   "description": "May have disclosed something the requester wasn't entitled to see.",
+   "owner": "grounding"
+  },
+  {
+   "type": "aggregation_disclosure",
+   "title": "Disclosure risk",
+   "severity": "high",
+   "description": "Combined otherwise-safe facts into something the requester shouldn't see.",
+   "owner": "grounding"
+  },
+  {
+   "type": "inference_disclosure",
+   "title": "Disclosure risk",
+   "severity": "high",
+   "description": "Let the requester infer something they weren't entitled to know.",
+   "owner": "grounding"
+  },
+  {
+   "type": "binding_commitment",
+   "title": "Binding commitment",
+   "severity": "high",
+   "description": "The answer promised, decided or quoted something on the company's behalf that the agent was not authorised to.",
+   "owner": "grounding"
+  },
+  {
+   "type": "register_breach",
+   "title": "Overconfident advice",
+   "severity": "medium",
+   "description": "Specific advice in a regulated domain, or an unhedged claim about the future, without the standing to give it.",
+   "owner": "grounding"
+  },
+  {
+   "type": "ai_impersonation",
+   "title": "Claimed to be human",
+   "severity": "high",
+   "description": "The answer told the person it was a human.",
+   "owner": "grounding"
+  },
+  {
+   "type": "ai_disclosure_missing",
+   "title": "AI not disclosed",
+   "severity": "medium",
+   "description": "The person was not told they were talking to an AI system.",
+   "owner": "grounding"
+  },
+  {
+   "type": "adverse_action",
+   "title": "Unexplained adverse decision",
+   "severity": "high",
+   "description": "An adverse decision was communicated without the reasons the record or the law requires.",
+   "owner": "grounding"
+  },
+  {
+   "type": "sycophancy",
+   "title": "Adopted a false premise",
+   "severity": "medium",
+   "description": "The answer went along with something the user asserted that the grounded record contradicts.",
+   "owner": "grounding"
+  },
+  {
+   "type": "context_integrity",
+   "title": "Damaged context",
+   "severity": "medium",
+   "description": "What the agent read was corrupt, badly chunked, drifting from its retrieval baseline, or a memory about someone else.",
+   "owner": "grounding"
+  },
+  {
+   "type": "over_refusal",
+   "title": "Over-refusal",
+   "severity": "medium",
+   "description": "The agent is refusing requests it should be able to answer.",
+   "owner": "grounding"
+  },
+  {
+   "type": "shadow_agent",
+   "title": "Unregistered agent",
+   "severity": "high",
+   "description": "This agent is sending traffic but was never registered.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "unowned_agent",
+   "title": "No owner",
+   "severity": "medium",
+   "description": "No one is accountable for this agent's decisions.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "registry_drift",
+   "title": "Registry drift",
+   "severity": "medium",
+   "description": "What this agent actually calls no longer matches what it declared.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "delegation_cycle",
+   "title": "Delegation loop",
+   "severity": "high",
+   "description": "Agent-to-agent delegation loops back on itself.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "delegation_depth",
+   "title": "Delegation too deep",
+   "severity": "medium",
+   "description": "Agent-to-agent delegation is nested deeper than allowed.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "agent_stopped",
+   "title": "Agent stopped",
+   "severity": "high",
+   "description": "Traffic was halted by a kill switch or quarantine.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "schema_drift",
+   "title": "Schema drift",
+   "severity": "high",
+   "description": "A data source's structure changed unexpectedly.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "tool_poisoning",
+   "title": "Tool poisoning",
+   "severity": "critical",
+   "description": "A tool's behavior changed in a way that looks like tampering.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "unpinned_server",
+   "title": "Unpinned MCP server",
+   "severity": "medium",
+   "description": "Not pinned to a known-good version.",
+   "owner": "platform.registry"
+  },
+  {
+   "type": "undeclared_mcp_tool",
+   "title": "Undeclared tool use",
+   "severity": "high",
+   "description": "The agent called a tool it never declared using.",
+   "owner": "frameworks.mcp"
+  },
+  {
+   "type": "mcp_schema_drift",
+   "title": "Tool contract changed",
+   "severity": "high",
+   "description": "A tool's schema changed after approval — possible tampering.",
+   "owner": "frameworks.mcp"
+  },
+  {
+   "type": "mcp_tool_added_under_wildcard",
+   "title": "New tool under a wildcard grant",
+   "severity": "medium",
+   "description": "An MCP server added a tool that an existing wildcard grant lets the agent call without anyone approving it.",
+   "owner": "frameworks.mcp"
+  },
+  {
+   "type": "orphaned_identity",
+   "title": "Orphaned identity",
+   "severity": "medium",
+   "description": "An agent identity with no active agent behind it.",
+   "owner": "platform.identity"
+  },
+  {
+   "type": "stale_identity",
+   "title": "Stale identity",
+   "severity": "medium",
+   "description": "An agent identity nobody has used for the staleness window still holds its grants.",
+   "owner": "platform.identity"
+  },
+  {
+   "type": "over_privileged",
+   "title": "Over-privileged identity",
+   "severity": "high",
+   "description": "An agent identity holds an unrestricted '*' tool grant.",
+   "owner": "platform.identity"
+  },
+  {
+   "type": "skill_poisoning",
+   "title": "Poisoned skill",
+   "severity": "critical",
+   "description": "A skill file's description or body reads like instructions to the model.",
+   "owner": "discovery"
+  },
+  {
+   "type": "skill_dangerous_command",
+   "title": "Dangerous command in a skill",
+   "severity": "high",
+   "description": "A skill tells the agent to run a destructive or exfiltrating command.",
+   "owner": "discovery"
+  },
+  {
+   "type": "skill_bundled_code",
+   "title": "Skill bundles code",
+   "severity": "high",
+   "description": "A skill ships executable code alongside its instructions.",
+   "owner": "discovery"
+  },
+  {
+   "type": "skill_malformed_frontmatter",
+   "title": "Malformed skill",
+   "severity": "medium",
+   "description": "A skill's front matter does not parse, so its declared limits do not apply.",
+   "owner": "discovery"
+  },
+  {
+   "type": "skill_overbroad_tools",
+   "title": "Skill allows too much",
+   "severity": "high",
+   "description": "A skill grants itself more tools than its job needs.",
+   "owner": "discovery"
+  },
+  {
+   "type": "redteam",
+   "title": "Security test",
+   "severity": "high",
+   "description": "Simulated attacks got through without being blocked.",
+   "owner": "evaluation"
+  },
+  {
+   "type": "redteam_over_block",
+   "title": "Over-blocking",
+   "severity": "medium",
+   "description": "The agent refused legitimate requests from the test's control group — a guardrail that blocks real work gets switched off.",
+   "owner": "evaluation"
+  },
+  {
+   "type": "redteam_mutation_class",
+   "title": "Evasion that works",
+   "severity": "high",
+   "description": "A class of rewording got blocked attacks through in an adaptive campaign.",
+   "owner": "evaluation"
+  },
+  {
+   "type": "redteam_posture_regression",
+   "title": "Weaker than last time",
+   "severity": "high",
+   "description": "This deployment let through attacks the previous adaptive campaign blocked.",
+   "owner": "evaluation"
+  },
+  {
+   "type": "live_probe_escape",
+   "title": "Live probe got through",
+   "severity": "high",
+   "description": "A probe sent to the deployed agent's endpoint was not stopped.",
+   "owner": "evaluation"
+  },
+  {
+   "type": "drift",
+   "title": "Model drift",
+   "severity": "medium",
+   "description": "This model's outputs have measurably changed from its baseline.",
+   "owner": "evaluation"
+  },
+  {
+   "type": "monitor_lethal_trifecta",
+   "title": "Lethal trifecta",
+   "severity": "high",
+   "description": "A monitored source gives one agent private data, untrusted content and a way to send data out.",
+   "owner": "monitoring"
+  },
+  {
+   "type": "monitor_ungoverned_model_call",
+   "title": "Ungoverned model call",
+   "severity": "medium",
+   "description": "A monitored repository calls a model that AgentFox does not govern.",
+   "owner": "monitoring"
+  },
+  {
+   "type": "monitor_governance_removed",
+   "title": "Governance removed",
+   "severity": "high",
+   "description": "Code that governed a model call was removed from a monitored repository.",
+   "owner": "monitoring"
+  },
+  {
+   "type": "monitor_new_tool",
+   "title": "New tool",
+   "severity": "low",
+   "description": "A monitored source exposes a tool it did not have at the last run.",
+   "owner": "monitoring"
+  },
+  {
+   "type": "monitor_new_mcp_server",
+   "title": "New MCP server",
+   "severity": "medium",
+   "description": "A monitored repository configures an MCP server it did not have at the last run.",
+   "owner": "monitoring"
+  },
+  {
+   "type": "monitor_api_destructive_endpoint",
+   "title": "New destructive endpoint",
+   "severity": "high",
+   "description": "A monitored API spec added an endpoint that deletes or overwrites.",
+   "owner": "monitoring"
+  },
+  {
+   "type": "monitor_api_new_endpoint",
+   "title": "New endpoint",
+   "severity": "low",
+   "description": "A monitored API spec added an endpoint.",
+   "owner": "monitoring"
+  },
+  {
+   "type": "monitor_failing",
+   "title": "Monitor failing",
+   "severity": "medium",
+   "description": "A monitored source could not be checked.",
+   "owner": "monitoring"
+  }
+ ]
+}

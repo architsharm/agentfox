@@ -10,7 +10,7 @@ verified_against: commit 6863b8b, 2026-09-15 — template validated with `agentf
 
 Policies are YAML. They compile to Rego (`GET /api/policies/{key}/rego`), and the native
 engine evaluates them by default (`NOMETRIA_POLICY_ENGINE=opa` switches to OPA). Examples:
-`src/agentfox/policies_data/` and
+`src/agentfox/packs/*/policies/` and
 `plugins/shared/skills/author-policy/templates/candidate-policy.yaml`.
 
 ## Document

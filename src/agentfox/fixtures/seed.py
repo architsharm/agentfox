@@ -41,6 +41,7 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.platform.identity import ensure_identity, grant_capability, issue_credential
+from agentfox.platform.packs import builtin_pack
 from agentfox.platform.policy import load_available, save_policy
 from agentfox.platform.providers import script
 from agentfox.platform.registry.service import (
@@ -51,65 +52,19 @@ from agentfox.platform.registry.service import (
 )
 
 # ---------------------------------------------------------------------------
-# Tools — `impact` is the axis every containment rule reasons over
+# Tools, agents and grants — `impact` is the axis every containment rule reasons over
 # ---------------------------------------------------------------------------
 
+#: The packs whose `fixtures/world.yaml` make up the demo world, in seed order.
+_WORLD_PACKS = ("customer-support", "payments/refunds")
+# The support desk and the payments desk come from their capability packs'
+# `fixtures/world.yaml` (customer-support, payments/refunds); the HR screening agent
+# has no pack yet and is declared here. Read from the built-in packs whatever the
+# project or the maturity setting says, so the demo world is the same everywhere.
+_WORLDS = [builtin_pack(pack_id).fixture("world") for pack_id in _WORLD_PACKS]
+
 TOOLS: list[dict[str, Any]] = [
-    {
-        "key": "kb.search",
-        "name": "Knowledge base search",
-        "impact": "read",
-        "description": "Search the internal support knowledge base.",
-    },
-    {
-        "key": "crm.lookup",
-        "name": "CRM customer lookup",
-        "impact": "read",
-        "description": "Look up a customer record by id or email.",
-    },
-    {
-        "key": "tickets.create",
-        "name": "Create support ticket",
-        "impact": "write",
-        "description": "Open a support ticket on behalf of a customer.",
-    },
-    {
-        "key": "tickets.update",
-        "name": "Update support ticket",
-        "impact": "write",
-        "description": "Update an existing ticket.",
-        # A status change fires the helpdesk's own notification webhook, which
-        # sends mail nobody asked this call to send. Looks like a plain write; the
-        # declared trigger is what lets cascade_risk() see the irreversible tail.
-        "triggers": ["email.send"],
-    },
-    {
-        "key": "email.send",
-        "name": "Send email",
-        "impact": "irreversible",
-        "description": "Send an email to an external recipient. Cannot be recalled.",
-    },
-    {
-        "key": "payments.transfer",
-        "name": "Transfer funds",
-        "impact": "irreversible",
-        "description": "Move money between accounts. Irreversible once settled.",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "amount": {"type": "number", "minimum": 0},
-                "currency": {"type": "string", "enum": ["USD", "EUR", "GBP"]},
-                "to": {"type": "string"},
-            },
-            "required": ["amount", "currency", "to"],
-        },
-    },
-    {
-        "key": "payments.refund",
-        "name": "Issue refund",
-        "impact": "high_impact",
-        "description": "Refund a charge to the original payment method.",
-    },
+    *(tool for world in _WORLDS for tool in world["tools"]),
     {
         "key": "hr.score_candidate",
         "name": "Score candidate",
@@ -119,32 +74,7 @@ TOOLS: list[dict[str, Any]] = [
 ]
 
 AGENTS: list[dict[str, Any]] = [
-    {
-        "slug": "support-triage",
-        "name": "Support Triage Agent",
-        "purpose": "Chat assistant that triages inbound customer support conversations, "
-        "searches the knowledge base and opens tickets.",
-        "owner_email": "priya@example.com",
-        "owner_team": "Platform Engineering",
-        "risk_tier": "limited",
-        "framework": "langgraph",
-        "declared_models": ["echo-1"],
-        "declared_tools": ["kb.search", "crm.lookup", "tickets.create", "tickets.update"],
-        "data_classes": ["pii"],
-    },
-    {
-        "slug": "payments-ops",
-        "name": "Payments Operations Agent",
-        "purpose": "Handles refund and transfer requests for the finance operations team. "
-        "Processes creditworthiness and lending exceptions.",
-        "owner_email": "marcus@example.com",
-        "owner_team": "Finance Systems",
-        "risk_tier": "high",
-        "framework": "claude-agent-sdk",
-        "declared_models": ["echo-1"],
-        "declared_tools": ["crm.lookup", "payments.refund", "payments.transfer", "email.send"],
-        "data_classes": ["pii", "financial", "pci"],
-    },
+    *(agent for world in _WORLDS for agent in world["agents"]),
     {
         # Deliberately left unowned so NOM-DSC-03 has something real to report.
         "slug": "hr-screening",
@@ -159,30 +89,9 @@ AGENTS: list[dict[str, Any]] = [
     },
 ]
 
-# Capabilities: least privilege, expressed per agent. Note that payments-ops is
-# permitted to transfer only small amounts, only in USD, and only when the arguments
-# did not come from untrusted content.
+# Capabilities: least privilege, expressed per agent (each pack's `capabilities`).
 CAPABILITIES: dict[str, list[dict[str, Any]]] = {
-    "support-triage": [
-        {"tool_key": "kb.search", "max_taint": "retrieved"},
-        {"tool_key": "crm.lookup", "max_taint": "user"},
-        {"tool_key": "tickets.*", "max_taint": "user"},
-    ],
-    "payments-ops": [
-        {"tool_key": "crm.lookup", "max_taint": "user"},
-        {
-            "tool_key": "payments.refund",
-            "max_taint": "user",
-            "constraints": {"amount": {"lte": 500}},
-        },
-        {
-            "tool_key": "payments.transfer",
-            "max_taint": "user",
-            "requires_approval": False,
-            "constraints": {"amount": {"lt": 1000}, "currency": {"in": ["USD"]}},
-        },
-        {"tool_key": "email.send", "max_taint": "user", "requires_approval": True},
-    ],
+    **{slug: grants for world in _WORLDS for slug, grants in world["capabilities"].items()},
     "hr-screening": [
         {"tool_key": "hr.score_candidate", "max_taint": "user"},
     ],
