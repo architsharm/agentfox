@@ -100,7 +100,13 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "token_encryption_key",
         "env": "AGENTFOX_TOKEN_ENCRYPTION_KEY",
         "def": "unset",
-        "what": "Fernet key that encrypts stored GitHub access tokens. Unset: connecting GitHub fails closed."
+        "what": "Fernet key that encrypts every secret stored at rest: GitHub tokens, source credentials, alert URLs, probe auth headers, agent signing keys. Unset: those features fail closed."
+      },
+      {
+        "key": "token_encryption_key_previous",
+        "env": "AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS",
+        "def": "unset",
+        "what": "Retired encryption keys, comma-separated. They still decrypt and never encrypt; agentfox admin keys rotate moves everything to the current key, then remove them."
       },
       {
         "key": "cron_secret",
@@ -557,6 +563,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_AUDIT_SIGNING_KEY",
         "def": "dev-insecure-checkpoint-key",
         "what": "Signs audit-chain checkpoints. Keep it outside the database. Outside development the gateway refuses to start while it is the published default."
+      },
+      {
+        "key": "audit_signing_key_previous",
+        "env": "AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS",
+        "def": "unset",
+        "what": "Retired signing keys, comma-separated. Checkpoints they signed still verify; agentfox admin keys rotate verifies the chain and re-signs them with the current key, then remove them."
       },
       {
         "key": "audit_checkpoint_interval",

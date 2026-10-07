@@ -1,197 +1,300 @@
-# Renaming the Vercel environment from `NOMETRIA_*` to `AGENTFOX_*`
+# Moving production from `NOMETRIA_*` to `AGENTFOX_*`
 
-The product reads `AGENTFOX_*` first and the pre-rename `NOMETRIA_*` second. That
-fallback (stage A, branch `claude/agentfox-rename`) is what keeps production up while
-the variables below are renamed by hand. Stage B (branch `claude/agentfox-rename-final`)
-deletes the fallback, so **do not merge stage B until every project below shows no
-legacy variables in use.**
+The hosted deployment still holds its secrets only under the pre-rename `NOMETRIA_*`
+names. They are Sensitive variables in Vercel, so nobody can read or rename them. This
+procedure replaces them with **fresh** values under the `AGENTFOX_*` names. The data
+the old keys protect moves to the new keys while both are set. Then the old names are
+deleted, and rename stage B (`claude/agentfox-rename-final`) can merge.
 
-Nothing here needs a secret value to be read out or pasted anywhere but the Vercel
-project it already lives in. Where a step says "same value", copy it inside Vercel.
+What makes this work:
 
-## Order
+- The release on `claude/key-rotation` reads `AGENTFOX_*` first and `NOMETRIA_*` second.
+  It also contains a one-time bridge in `core/config.py`. When `AGENTFOX_TOKEN_ENCRYPTION_KEY`
+  and `NOMETRIA_TOKEN_ENCRYPTION_KEY` are both set and differ, the `NOMETRIA_` value
+  becomes the *previous* encryption key. `AUDIT_SIGNING_KEY` works the same way. Old
+  data stays readable, and new data uses the new key.
+- The job runner then rotates by itself. It re-encrypts every stored secret and re-signs
+  the audit checkpoints with the new keys
+  ([key-rotation.md](key-rotation.md) explains how).
+- `/api/version` reports `key_rotation` states (never keys), so you can confirm from
+  outside that nothing still needs an old key before you delete it.
+- `SERVICE_AUTH_SECRET` and `CRON_SECRET` protect no stored data. The new values simply
+  take precedence.
 
-1. Merge stage A to `main` (with its rebuilt `api/vendor` and
-   `demo/redteam-live-lang/vendor` wheels) and let all three projects redeploy.
-   Nothing changes yet: every `NOMETRIA_*` variable keeps working.
-2. For each project below, **add** each `AGENTFOX_*` variable with the same value as its
-   `NOMETRIA_*` twin, in the same environments. Do not delete anything yet.
-3. **Redeploy** each project (Deployments → latest → Redeploy). Vercel only applies
-   environment changes to new deployments.
-4. **Confirm nothing legacy is in use:**
-   - Runtime logs (Deployments → the new deployment → Logs, after one request so the
-     function has started): there must be no line starting
-     `Deprecated pre-rename (Nometria) settings in use:` (gateway, demo) and no
-     `NOMETRIA_… is deprecated` (dashboard). If there is, it names the variable.
-   - Or locally, against a checkout with the same environment: `agentfox doctor`
-     shows `legacy names … ok`. Its `warn` line separates names *in use* from names
-     *set but not read* (shadowed by a new twin, or never read, like the Neon
-     integration's own variables).
-   - Names only, no values: `vercel env ls production | grep NOMETRIA_` and
-     `vercel env ls preview | grep NOMETRIA_`.
-5. **Delete** the old `NOMETRIA_*` variables (and switch the Neon integration prefix,
-   below), redeploy, and check step 4 again — now `vercel env ls` should list none.
-6. **Merge stage B.**
+Projects involved:
 
-Rolling back at any point before step 6 is just re-adding the old variable: stage A
-reads it again on the next deploy.
-
-### Values that must be copied, never regenerated
-
-- `TOKEN_ENCRYPTION_KEY`: a new value makes every stored GitHub access token and source
-  credential undecryptable.
-- `AUDIT_SIGNING_KEY`: a new value means checkpoints signed before the change no longer
-  verify.
-- `SERVICE_AUTH_SECRET`: must be byte-identical on `guardrails-api` and
-  `guardrails-dashboard` (and the Render dashboard, if it is still running). A new value
-  is acceptable only if it is changed on all of them in the same step.
-
-If one of these was created as a **Sensitive** variable, Vercel will not show its value.
-Use Edit on the existing variable to change only its *name* to the `AGENTFOX_*` one, if
-your Vercel UI allows that, and redeploy (stage A is already reading `AGENTFOX_*` first,
-so this is safe in one step). If neither copying nor renaming is possible, leave the old
-variable in place and do not merge stage B until you have the value from wherever it was
-generated.
-
-## guardrails-api (Root Directory `api/`)
-
-The gateway reads every setting as `AGENTFOX_<NAME>` (`src/agentfox/core/config.py`,
-`Settings`), so the rule is mechanical: **every `NOMETRIA_<NAME>` becomes
-`AGENTFOX_<NAME>`**, except the Neon integration's own variables (next section). The
-ones this project is known to set:
-
-| Add | Same value as | Environments |
+| Project | What | URL |
 |---|---|---|
-| `AGENTFOX_SERVICE_AUTH_SECRET` | `NOMETRIA_SERVICE_AUTH_SECRET` | Production, Preview (wherever the old one is) |
-| `AGENTFOX_AUDIT_SIGNING_KEY` | `NOMETRIA_AUDIT_SIGNING_KEY` | Production, Preview |
-| `AGENTFOX_TOKEN_ENCRYPTION_KEY` | `NOMETRIA_TOKEN_ENCRYPTION_KEY` | Production, Preview |
-| `AGENTFOX_DATABASE_URL` | `NOMETRIA_DATABASE_URL` | Production, Preview |
-| `AGENTFOX_ENVIRONMENT` | `NOMETRIA_ENVIRONMENT` | Production, Preview |
-| `AGENTFOX_AUTH_MODE` | `NOMETRIA_AUTH_MODE` | Production, Preview |
-| `AGENTFOX_EVIDENCE_DIR` | `NOMETRIA_EVIDENCE_DIR` | Production, Preview |
-| `AGENTFOX_CRON_SECRET` | `NOMETRIA_CRON_SECRET` | Production (Vercel Cron only runs there) |
-| `AGENTFOX_PLAYGROUND_CORS_ORIGIN` | `NOMETRIA_PLAYGROUND_CORS_ORIGIN` | Production, Preview |
+| `guardrails-api` (Vercel, Root Directory `api/`) | the gateway | `https://guardrails-api.vercel.app` |
+| `guardrails-dashboard` (Vercel) | the dashboard | `https://guardrails-nometria.vercel.app` |
+| `guardrails-redteam-lang` (Vercel, Root Directory `demo/redteam-live-lang/`) | the red-team demo, with its own database | |
+| GitHub `architsharm/agentfox` | `.github/workflows/monitors.yml` calls the job runner every 30 minutes | |
 
-"Environments" means: give the new variable exactly the environments the old one has
-(the Environments column of `vercel env ls`, or the project's Settings → Environment
-Variables page). Production is required for every row; add Preview wherever the old one is in
-Preview, or preview deployments lose the setting at stage B.
+Do the steps in order. Nothing is deleted until step 8, and up to then a rollback means
+removing the `AGENTFOX_*` variable you added and redeploying.
 
-Any other `NOMETRIA_<NAME>` the list shows (for example `NOMETRIA_ALLOW_EGRESS`,
-`NOMETRIA_SHOWCASE_ENABLED`, `NOMETRIA_GITHUB_WEBHOOK_SECRET`,
-`NOMETRIA_ANTHROPIC_API_KEY`, `NOMETRIA_DEFAULT_PROVIDER`) follows the same rule.
-`CRON_SECRET` (no prefix) is Vercel's own and stays as it is.
+## 1. Generate the values
 
-### The Neon integration (`NOMETRIA_DATABASE_*`)
+```bash
+TOKEN_KEY=$(openssl rand -base64 32 | tr '+/' '-_')   # AGENTFOX_TOKEN_ENCRYPTION_KEY
+AUDIT_KEY=$(openssl rand -hex 32)                     # AGENTFOX_AUDIT_SIGNING_KEY
+SERVICE_SECRET=$(openssl rand -hex 32)                # AGENTFOX_SERVICE_AUTH_SECRET
+CRON_KEY=$(openssl rand -hex 32)                      # AGENTFOX_CRON_SECRET
+```
 
-The Neon integration was connected with the custom prefix `NOMETRIA_DATABASE`, so it
-generates `NOMETRIA_DATABASE_DATABASE_URL`, `NOMETRIA_DATABASE_POSTGRES_URL`,
-`NOMETRIA_DATABASE_PGHOST` and the rest (prefix + Neon's own names).
+Three of these are `openssl rand -hex 32`. The encryption key is the exception: it must
+be a Fernet key (32 bytes, url-safe base64, 44 characters ending in `=`). A 64-character
+hex string is rejected by `cryptography`, and every encrypt and decrypt would fail. If
+that happens, `/api/version` shows `"token_encryption": "misconfigured"` and
+`agentfox doctor` names the variable. Keep all four values in your password manager:
+the signing key in particular is needed to verify evidence packages later.
 
-**The gateway reads none of them.** The only database variable `core/config.py` reads is
-`<PREFIX>DATABASE_URL`, i.e. `AGENTFOX_DATABASE_URL` (falling back to
-`NOMETRIA_DATABASE_URL`), and it must carry the `postgresql+psycopg://` scheme, since the
-deployment installs psycopg 3. That is the hand-set variable in the table above; it is not
-one the integration creates. So for this project:
+Generate a **separate** set for the red-team demo in step 4. It has its own database and
+must not share keys with the gateway.
 
-- Required: `AGENTFOX_DATABASE_URL`, same value as `NOMETRIA_DATABASE_URL`.
-- Optional, for a clean `vercel env ls`: change the integration's prefix. Vercel →
-  Storage → the database → Projects → `guardrails-api` → disconnect, then Connect Project
-  again with the custom prefix `AGENTFOX_DATABASE` and the same environments. This only
-  rewrites the generated variables (`AGENTFOX_DATABASE_POSTGRES_URL`, …); it does not
-  touch the database or its credentials, and the gateway does not read them either way.
-  Note the new prefix makes Neon generate `AGENTFOX_DATABASE_DATABASE_URL`, not
-  `AGENTFOX_DATABASE_URL`, so it does not replace the hand-set variable.
-- Leaving the integration on the old prefix is harmless to the gateway: those names are
-  reported by `agentfox doctor` as "set but not read" and never in the startup warning.
-  Stage B does not depend on them.
+## 2. guardrails-api
 
-## guardrails-dashboard
+Vercel → `guardrails-api` → Settings → Environment Variables. Add each variable below
+for **Production**, and also for **Preview** if the old `NOMETRIA_` twin is set for
+Preview. Mark the secrets Sensitive. Leave every `NOMETRIA_*` variable in place.
 
-The dashboard reads (`dashboard/lib/env.ts`, `AGENTFOX_<NAME>` then `NOMETRIA_<NAME>`):
+| Variable | Value | Sensitive |
+|---|---|---|
+| `AGENTFOX_TOKEN_ENCRYPTION_KEY` | `$TOKEN_KEY` | yes |
+| `AGENTFOX_AUDIT_SIGNING_KEY` | `$AUDIT_KEY` | yes |
+| `AGENTFOX_SERVICE_AUTH_SECRET` | `$SERVICE_SECRET` (the same value on `guardrails-dashboard`, step 4) | yes |
+| `AGENTFOX_CRON_SECRET` | `$CRON_KEY` | yes |
+| `AGENTFOX_DATABASE_URL` | Neon console → the `guardrails-api` database → Connect → connection string, with `postgresql://` replaced by `postgresql+psycopg://`. Keep the query string (`?sslmode=require…`). | yes |
+| `AGENTFOX_ENVIRONMENT` | `production` | no |
+| `AGENTFOX_AUTH_MODE` | `token` | no |
+| `AGENTFOX_EVIDENCE_DIR` | `/tmp/agentfox-evidence` | no |
 
-| Add | Same value as | Environments | Read by |
-|---|---|---|---|
-| `AGENTFOX_API_URL` | `NOMETRIA_API_URL` | Production, Preview | every server-side call to the gateway |
-| `AGENTFOX_SERVICE_AUTH_SECRET` | `NOMETRIA_SERVICE_AUTH_SECRET` | Production, Preview | GitHub sign-in; must equal the API's |
-| `AGENTFOX_PLAYGROUND_API_URL` | `NOMETRIA_PLAYGROUND_API_URL` | if set | the public playground page |
-| `AGENTFOX_SITE_URL` | `NOMETRIA_SITE_URL` | if set | canonical URL in page metadata |
-| `AGENTFOX_SELF_HOSTED` | `NOMETRIA_SELF_HOSTED` | if set | "run `agentfox serve`" hints |
-| `AGENTFOX_API_TOKEN` | `NOMETRIA_API_TOKEN` | if set | static token for server-side reads |
-| `AGENTFOX_USER` | `NOMETRIA_USER` | if set | development identity header only |
+Also check Vercel's own **`CRON_SECRET`** (no prefix). Vercel Cron sends it as
+`Authorization: Bearer …`, and the gateway accepts it as well as `AGENTFOX_CRON_SECRET`.
+If it exists, leave it. If it does not, add it with the value `$CRON_KEY`; without it,
+Vercel's own cron, and its Run button in step 6, gets a 401.
 
-`GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` have no prefix and stay as they are.
+Copy any other `NOMETRIA_<NAME>` the project has to `AGENTFOX_<NAME>`, for example
+`PLAYGROUND_CORS_ORIGIN`, `ALLOW_EGRESS`, `SHOWCASE_ENABLED`, `DEFAULT_PROVIDER`. Plain
+values can be revealed in the UI. If one of them is Sensitive (for example
+`GITHUB_WEBHOOK_SECRET` or a model API key), issue a new value at its source and set
+that. For the GitHub webhook secret, the source is the repository's webhook settings.
 
-After stage A the dashboard sends `X-AgentFox-User` and `X-AgentFox-Service-Secret`. The
-gateway in the same commit accepts both spellings, so deploy order between the two
-projects does not matter as long as both run stage A or later.
+From the CLI instead (production only; it prompts or reads the value from stdin):
 
-If the Render dashboard (`nometria-dashboard`, `deploy/render.yaml`) is still running, it
-needs the same three: `AGENTFOX_API_URL`, `AGENTFOX_SERVICE_AUTH_SECRET` (same value as
-the API's), and, as before, `GITHUB_CLIENT_*`. Render secrets are `sync: false`, so add
-them in the Render dashboard; a blueprint sync does not.
+```bash
+mkdir -p ~/tmp/vercel-api && cd ~/tmp/vercel-api && vercel link --yes --project guardrails-api
+printf '%s' "$TOKEN_KEY"      | vercel env add AGENTFOX_TOKEN_ENCRYPTION_KEY production
+printf '%s' "$AUDIT_KEY"      | vercel env add AGENTFOX_AUDIT_SIGNING_KEY production
+printf '%s' "$SERVICE_SECRET" | vercel env add AGENTFOX_SERVICE_AUTH_SECRET production
+printf '%s' "$CRON_KEY"       | vercel env add AGENTFOX_CRON_SECRET production
+printf '%s' 'postgresql+psycopg://…?sslmode=require' | vercel env add AGENTFOX_DATABASE_URL production
+printf '%s' production              | vercel env add AGENTFOX_ENVIRONMENT production
+printf '%s' token                   | vercel env add AGENTFOX_AUTH_MODE production
+printf '%s' /tmp/agentfox-evidence  | vercel env add AGENTFOX_EVIDENCE_DIR production
+vercel env ls production            # names only; nothing prints a value
+```
 
-## guardrails-redteam-lang (Root Directory `demo/redteam-live-lang/`)
+### Why these plain values
 
-This project runs the same `agentfox` package (from its own vendored wheel), so the
-gateway rule applies: every `NOMETRIA_<NAME>` becomes `AGENTFOX_<NAME>` with the same
-value and environments. Per `demo/redteam-live-lang/README.md` it sets the service auth
-secret, token encryption key, audit signing key, evidence dir, environment and auth mode:
+- **`AGENTFOX_ENVIRONMENT=production`.** Production refuses the published development
+  secrets (`assert_production_secrets` in `core/config.py` runs in `create_app`), and
+  that check only applies outside `development`/`dev`/`test`/`testing`/`local`. The live
+  gateway does not reveal the exact name. Its 401 comes from the explicit-`auth_mode`
+  branch, which prints the mode and not the environment. In the code, any non-development
+  name behaves identically: `is_development` and `header_identity_allowed` only test
+  membership in that set. So `production` is correct whatever the old value was. To see
+  the old value, open `NOMETRIA_ENVIRONMENT` in the same settings page; it is a plain
+  variable unless someone marked it Sensitive.
+- **`AGENTFOX_AUTH_MODE=token`.** Observed directly. An unauthenticated
+  `curl https://guardrails-api.vercel.app/api/agents` returns 401 with *"this deployment
+  sets auth_mode='token', so API tokens are required and the X-AgentFox-User header is
+  not accepted"*. That sentence is only produced when `auth_mode` is set explicitly to
+  that value (`platform/identity/operators.py`, `_why_header_refused`).
+- **`AGENTFOX_EVIDENCE_DIR=/tmp/agentfox-evidence`.** A Vercel function can only write
+  under `/tmp`. Without this setting, an installed wheel writes evidence under
+  `~/.agentfox/var/evidence` (`state_root()` in `core/config.py`), which is not writable
+  there. `/tmp` is per instance and temporary, which is acceptable: a package is built
+  and downloaded in the same flow. The live value cannot be seen from outside. To find
+  the directory production actually used, run this in the Neon SQL editor:
+  `select path from evidence_packages order by built_at desc limit 3;`. If it shows a
+  different `/tmp/…` directory, use that.
 
-| Add | Same value as |
+## 3. GitHub Actions secret
+
+```bash
+gh secret set AGENTFOX_CRON_SECRET --repo architsharm/agentfox --body "$CRON_KEY"
+gh secret list --repo architsharm/agentfox     # AGENTFOX_API_URL must be there too
+```
+
+If `AGENTFOX_API_URL` is missing:
+`gh secret set AGENTFOX_API_URL --repo architsharm/agentfox --body https://guardrails-api.vercel.app`.
+Delete any leftover `NOMETRIA_*` secret, which nothing reads:
+`gh secret delete NOMETRIA_CRON_SECRET --repo architsharm/agentfox`.
+
+## 4. The dashboard and the red-team demo
+
+### guardrails-dashboard
+
+| Variable | Value |
 |---|---|
-| `AGENTFOX_SERVICE_AUTH_SECRET` | `NOMETRIA_SERVICE_AUTH_SECRET` |
-| `AGENTFOX_TOKEN_ENCRYPTION_KEY` | `NOMETRIA_TOKEN_ENCRYPTION_KEY` |
-| `AGENTFOX_AUDIT_SIGNING_KEY` | `NOMETRIA_AUDIT_SIGNING_KEY` |
-| `AGENTFOX_EVIDENCE_DIR` | `NOMETRIA_EVIDENCE_DIR` |
-| `AGENTFOX_ENVIRONMENT` | `NOMETRIA_ENVIRONMENT` |
-| `AGENTFOX_AUTH_MODE` | `NOMETRIA_AUTH_MODE` |
-| `AGENTFOX_DEMO_MODEL` | `NOMETRIA_DEMO_MODEL` (only if set) |
+| `AGENTFOX_API_URL` | `https://guardrails-api.vercel.app` |
+| `AGENTFOX_SERVICE_AUTH_SECRET` | `$SERVICE_SECRET`, the same value as the API |
+| `AGENTFOX_API_TOKEN` | a newly issued token (below) |
+| any other `NOMETRIA_<NAME>` (`PLAYGROUND_API_URL`, `SITE_URL`, `SELF_HOSTED`, `USER`) | the same value, as `AGENTFOX_<NAME>` |
 
-These are this project's own values, not the API's. `ANTHROPIC_API_KEY` /
-`OPENAI_API_KEY` have no prefix and stay.
+`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` have no prefix and stay as they are.
 
-**The Neon integration here *is* read.** `demo/kit/env.py` derives the database URL from
-the integration's `<prefix>_POSTGRES_URL` (stage A looks for `AGENTFOX_DATABASE_POSTGRES_URL`,
-`AGENTFOX_DATABASE_DATABASE_URL`, then the `NOMETRIA_DATABASE_*` pair), so for this project
-the prefix change is required before stage B: Vercel → Storage → the demo's database →
-Projects → `guardrails-redteam-lang` → disconnect, then Connect Project with the custom
-prefix `AGENTFOX_DATABASE`, same environments, and redeploy. Do not create an
-`AGENTFOX_DATABASE_URL` by hand here: if one is set, the kit uses it as-is, and it would
-need the `postgresql+psycopg://` scheme.
+Issue the token from a checkout, against the production database. Export the **new**
+signing key too. The command writes an audit entry, and if that entry lands on a
+checkpoint, it must be signed with the production key and not the development default:
 
-## GitHub Actions secrets
+```bash
+export AGENTFOX_DATABASE_URL='postgresql+psycopg://…?sslmode=require'   # as in step 2
+export AGENTFOX_AUDIT_SIGNING_KEY="$AUDIT_KEY"
+uv run agentfox admin users list                       # pick an owner's email
+uv run agentfox admin auth issue <owner-email> --name dashboard --days 365
+```
 
-`.github/workflows/monitors.yml` calls the job runner every 30 minutes with two
-repository secrets (Settings → Secrets and variables → Actions). They already use the
-new names; check they exist (`gh secret list`):
+The token is printed once (`nom_api_…`). Paste it into `AGENTFOX_API_TOKEN` as a
+Sensitive variable. You can revoke the old one later with
+`uv run agentfox admin auth tokens` and `uv run agentfox admin auth revoke <id>`.
 
-| Secret | Value |
+If the Render dashboard (`nometria-dashboard`) is ever brought back, it needs the same
+three variables.
+
+### guardrails-redteam-lang
+
+Generate a separate set (step 1) and add:
+
+| Variable | Value |
 |---|---|
-| `AGENTFOX_API_URL` | the API's base URL, e.g. `https://guardrails-api.vercel.app` |
-| `AGENTFOX_CRON_SECRET` | the same value as the API's `AGENTFOX_CRON_SECRET` (or Vercel's `CRON_SECRET`) |
+| `AGENTFOX_TOKEN_ENCRYPTION_KEY` | a new Fernet key (`openssl rand -base64 32 \| tr '+/' '-_'`) |
+| `AGENTFOX_AUDIT_SIGNING_KEY` | `openssl rand -hex 32` |
+| `AGENTFOX_SERVICE_AUTH_SECRET` | `openssl rand -hex 32` |
+| `AGENTFOX_ENVIRONMENT` | `production`, or the revealed value of `NOMETRIA_ENVIRONMENT` |
+| `AGENTFOX_AUTH_MODE` | `token`, or the revealed value of `NOMETRIA_AUTH_MODE` |
+| `AGENTFOX_EVIDENCE_DIR` | `/tmp/agentfox-evidence`, or the revealed value of `NOMETRIA_EVIDENCE_DIR` |
+| `AGENTFOX_DEMO_MODEL` | the value of `NOMETRIA_DEMO_MODEL`, only if set |
 
-Without them the workflow logs "not set; nothing to run" and exits successfully, so a
-missing secret is silent: look at a recent run of *Run monitors*. If either still exists
-under a `NOMETRIA_` name, add it under the new name and delete the old one; nothing reads
-it. No other workflow uses a project secret (`ci`, `release` and `publish-images` use only
-`GITHUB_TOKEN`).
+`AGENTFOX_ORG_ID` is already renamed. `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` have no
+prefix and stay.
+
+Then reconnect the database under the new prefix: Vercel → Storage → the demo's Neon
+database → Projects → `guardrails-redteam-lang` → Disconnect, then Connect Project with
+custom prefix **`AGENTFOX_DATABASE`** and the same environments. This only renames the
+generated variables (`AGENTFOX_DATABASE_POSTGRES_URL`, …). `demo/kit/env.py` reads that
+name first. Do not create `AGENTFOX_DATABASE_URL` by hand here.
+
+The demo has no job runner. Its cold start (`web.py`, `_rotate_keys_if_configured`)
+runs the rotation itself, while the bridge sees both names.
+
+## 5. Merge `claude/key-rotation` and let it deploy
+
+Merge the PR. Both vendored wheels (`api/vendor`, `demo/redteam-live-lang/vendor`) are
+rebuilt on that branch, and all three projects redeploy from `main`. The redeploy is
+also what applies the variables from steps 2 to 4: Vercel only reads environment
+changes into new deployments. After it:
+
+```bash
+curl -s https://guardrails-api.vercel.app/health | jq .status          # "ok"
+curl -s https://guardrails-api.vercel.app/api/version | jq .key_rotation
+# {"token_encryption": "pending", "audit_signing": "pending"}   data still on the old keys
+# ("complete" already, if there was nothing encrypted or checkpointed)
+```
+
+If the gateway does not come up, the runtime log names the problem. It refuses to
+start on a published secret. A `misconfigured` encryption key means it is not a
+Fernet key; regenerate it as in step 1.
+
+## 6. Run the rotation
+
+Any job-runner call does it. Use whichever is quickest:
+
+```bash
+gh workflow run monitors.yml --repo architsharm/agentfox
+gh run watch --repo architsharm/agentfox    # the log shows the runner's JSON response
+```
+
+or Vercel → `guardrails-api` → Settings → Cron Jobs → `/api/internal/jobs/run` → Run, or
+directly:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $CRON_KEY" \
+  https://guardrails-api.vercel.app/api/internal/jobs/run | jq .key_rotation
+```
+
+`key_rotation` in that response is the job's outcome, in counts and states only, for
+example `{"status": "done", "token_encryption": "complete", "audit_signing":
+"complete", "reencrypted": 3, "undecryptable": 0, "resigned": 12, "chains_not_rotated": 0}`.
+It is `null` when there was nothing to do, or when a rotation with the same keys
+already ran in the last hour. A rotation that could not finish is retried hourly, or
+on the next call after any key changes.
+
+For the red-team demo, open its URL once after the deploy so a cold start runs.
+
+## 7. Confirm
+
+```bash
+curl -s https://guardrails-api.vercel.app/api/version | jq .key_rotation
+# {"token_encryption": "complete", "audit_signing": "complete"}
+```
+
+The answer is cached for a minute. Do not continue while either value says `pending`.
+In that case, look at `undecryptable` and `chains_not_rotated` in step 6's output:
+
+- `undecryptable > 0`: some value was not encrypted with `NOMETRIA_TOKEN_ENCRYPTION_KEY`
+  either. It is left untouched. Reconnect that integration after step 8; that
+  overwrites the value.
+- `chains_not_rotated > 0`: a tenant's chain did not verify, so its checkpoints were not
+  re-signed. The most likely cause is a checkpoint signed with the development default
+  by a local CLI. Add `AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS=dev-insecure-checkpoint-key`,
+  redeploy, run step 6 again, and remove that variable once the state reads `complete`.
+  [key-rotation.md](key-rotation.md#when-rotation-cannot-finish) has the details.
+
+## 8. Delete every `NOMETRIA_*` variable
+
+On each project:
+
+```bash
+cd ~/tmp/vercel-api   # linked in step 2; `vercel link --yes --project <name>` for the others
+vercel env ls production | grep NOMETRIA_
+vercel env rm NOMETRIA_TOKEN_ENCRYPTION_KEY production --yes   # repeat for every name listed
+vercel env ls preview | grep NOMETRIA_                          # and remove those too
+```
+
+If `guardrails-api` still has the Neon integration on the `NOMETRIA_DATABASE` prefix,
+reconnect it with prefix `AGENTFOX_DATABASE`, as for the demo. The gateway reads only
+`AGENTFOX_DATABASE_URL` from step 2, so this only clears the names.
+
+Redeploy all three projects, then:
+
+```bash
+curl -s https://guardrails-api.vercel.app/api/version | jq .key_rotation
+# {"token_encryption": "not_configured", "audit_signing": "not_configured"}
+```
+
+`not_configured` here means no previous key is set any more: everything is on the
+new keys. Sign in to the dashboard once to confirm the GitHub flow, which uses the new
+service secret. Then open a connected repository, which decrypts its token with the
+new key.
+
+## 9. Merge stage B
+
+`claude/agentfox-rename-final` removes every `NOMETRIA_*` fallback and this bridge. It
+keeps the permanent `*_PREVIOUS` key rotation. Merge it once step 8 shows no
+`NOMETRIA_` names on any project.
 
 ## Checklist
 
-- [ ] Stage A merged; three projects redeployed from it.
-- [ ] guardrails-api: `AGENTFOX_*` added for every `NOMETRIA_*` (table above, plus any
-      extra the list shows), same environments, `TOKEN_ENCRYPTION_KEY` and
-      `AUDIT_SIGNING_KEY` copied, not regenerated.
+- [ ] Four values generated; the encryption key is a Fernet key.
+- [ ] guardrails-api: the eight `AGENTFOX_*` variables set, `CRON_SECRET` present, other
+      `NOMETRIA_<NAME>` copied.
+- [ ] GitHub: `AGENTFOX_CRON_SECRET` updated, `AGENTFOX_API_URL` present.
 - [ ] guardrails-dashboard: `AGENTFOX_API_URL`, `AGENTFOX_SERVICE_AUTH_SECRET` (same as the
-      API's) and any optional ones set.
-- [ ] guardrails-redteam-lang: `AGENTFOX_*` added; Neon integration reconnected with prefix
-      `AGENTFOX_DATABASE`.
-- [ ] Render dashboard (if running): `AGENTFOX_API_URL`, `AGENTFOX_SERVICE_AUTH_SECRET`.
-- [ ] All redeployed; no `Deprecated pre-rename` / `is deprecated` lines in runtime logs.
-- [ ] Old `NOMETRIA_*` variables deleted (optionally the API's Neon prefix changed);
-      redeployed; `vercel env ls production | grep NOMETRIA_` and the same for preview
-      print nothing (or only the API's untouched Neon variables, if you kept them).
-- [ ] GitHub Actions: `AGENTFOX_API_URL` and `AGENTFOX_CRON_SECRET` present; last *Run
-      monitors* run actually called the runner.
-- [ ] Merge stage B.
+      API), new `AGENTFOX_API_TOKEN`.
+- [ ] guardrails-redteam-lang: its own fresh values; Neon reconnected as `AGENTFOX_DATABASE`.
+- [ ] `claude/key-rotation` merged and deployed; `/health` ok.
+- [ ] Rotation run; `/api/version` → `complete`, `complete`.
+- [ ] Every `NOMETRIA_*` deleted; redeployed; `/api/version` → `not_configured`, `not_configured`.
+- [ ] Stage B merged.

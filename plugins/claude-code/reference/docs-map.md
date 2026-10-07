@@ -43,7 +43,8 @@ commit; `scripts/check/plugins.py` fails if a repo `.md` file is unclassified.
 | `docs/README.md` | the index of docs/: what each document is for and who it is for | Start here when you do not know which document answers a question |
 | `docs/getting-started.md` | a linear first hour for a new user, ending with their own agent governed | Written for a newcomer, not for an agent; each step says what it proves |
 | `docs/deployment/systemd.md` | running the Python gateway as a reboot-persistent systemd user service, with separate database, evidence and signing-key storage | Self-hosters on Linux |
-| `docs/deployment/vercel-env-rename.md` | the per-project checklist for renaming the hosted Vercel variables from `NOMETRIA_*` to `AGENTFOX_*`, and the order before the legacy fallback is removed | The hosted deployment's owner; one-off |
+| `docs/deployment/key-rotation.md` | rotating the token encryption and audit signing keys: `*_PREVIOUS` settings, `agentfox admin keys rotate`/`status`, the automatic `keys.rotate` job, what to do when rotation cannot finish | Anyone running a deployment |
+| `docs/deployment/vercel-env-rename.md` | the exact procedure for moving the hosted Vercel projects from `NOMETRIA_*` secrets to fresh `AGENTFOX_*` ones through key rotation, and the order before the legacy fallback is removed | The hosted deployment's owner; one-off |
 | `docs/evaluation/evidence-standards.md` | how to read any number in this repo, and the limits that apply before it | Read before quoting a benchmark |
 | `benchmarks/README.md` | which benchmark proves which claim | Index; quote numbers from the linked methodology only |
 | `THIRD_PARTY_NOTICES.md` | attribution obligations | Update when adding a dependency |

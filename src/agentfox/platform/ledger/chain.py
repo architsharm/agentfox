@@ -25,7 +25,7 @@ import datetime as dt
 import hashlib
 import hmac
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -33,6 +33,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
+from agentfox.core.crypto import key_fingerprint
 from agentfox.core.models import AuditCheckpoint, AuditEntry, utcnow
 
 #: prev_digest of the first entry. Fixed so an empty chain still verifies.
@@ -212,16 +213,55 @@ def attribution(*, automated: bool, actor: str | None = None) -> dict[str, str]:
 
 
 def sign(digest: str, key: str | None = None) -> str:
+    """Sign with ``key``, or the current `audit_signing_key`. Never a previous key."""
     key = key or get_settings().audit_signing_key
     return hmac.new(key.encode(), digest.encode(), hashlib.sha256).hexdigest()
 
 
-def write_checkpoint(session: Session, entry: AuditEntry, key_id: str = "local") -> AuditCheckpoint:
+def signing_keys() -> list[str]:
+    """Every key a checkpoint may verify under: the current one, then each previous
+    one (`AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS`)."""
+    settings = get_settings()
+    return [settings.audit_signing_key, *settings.audit_signing_previous_keys]
+
+
+def _as_keys(signing_key: str | Sequence[str] | None) -> list[str]:
+    if signing_key is None:
+        return signing_keys()
+    if isinstance(signing_key, str):
+        return [signing_key]
+    return [k for k in signing_key if k]
+
+
+def checkpoint_signer(checkpoint: dict[str, Any], keys: Sequence[str]) -> str | None:
+    """The key in ``keys`` that produced this checkpoint's signature, or ``None``.
+
+    The checkpoint's ``key_id`` (a :func:`~agentfox.core.crypto.key_fingerprint`) is
+    only a hint for which key to try first — it is not signed, so it decides nothing.
+    """
+    hint = str(checkpoint.get("key_id") or "")
+    ordered = sorted(keys, key=lambda k: key_fingerprint(k) != hint)
+    given = str(checkpoint.get("signature", ""))
+    for key in ordered:
+        if hmac.compare_digest(sign(checkpoint["digest"], key), given):
+            return key
+    return None
+
+
+def write_checkpoint(
+    session: Session, entry: AuditEntry, key_id: str | None = None
+) -> AuditCheckpoint:
+    """Sign ``entry``'s digest with the current key. ``key_id`` defaults to that key's
+    fingerprint, so a verifier knows which configured key to check it against."""
+    key = get_settings().audit_signing_key
     checkpoint = AuditCheckpoint(
+        # The entry's chain, explicitly: inside `system_scope` the session's bound
+        # tenant may be a different one, and the stamp on flush would use that.
+        org_id=entry.org_id,
         seq=entry.seq,
         digest=entry.digest,
-        signature=sign(entry.digest),
-        key_id=key_id,
+        signature=sign(entry.digest, key),
+        key_id=key_id or key_fingerprint(key),
     )
     session.add(checkpoint)
     session.flush()
@@ -298,10 +338,14 @@ def entry_to_row(entry: AuditEntry) -> dict[str, Any]:
 def verify(
     rows: Iterable[dict[str, Any]],
     checkpoints: Iterable[dict[str, Any]] | None = None,
-    signing_key: str | None = None,
+    signing_key: str | Sequence[str] | None = None,
     expect_genesis: bool = True,
 ) -> VerificationResult:
     """Verify an exported chain. No database access, no shared state.
+
+    ``signing_key`` is one key or several: a checkpoint is genuine if it verifies
+    under any of them, which is what lets a chain that spans a key rotation verify.
+    ``None`` means the configured keys (current, then previous).
 
     Detects:
       * **mutation**  — recomputed payload/entry digest differs
@@ -366,11 +410,11 @@ def verify(
         prev_digest = row["digest"]
 
     by_seq = {int(r["seq"]): r for r in ordered}
+    keys = _as_keys(signing_key)
     for checkpoint in checkpoints or []:
         result.checkpoints_checked += 1
         seq = int(checkpoint["seq"])
-        expected_signature = sign(checkpoint["digest"], signing_key)
-        if not hmac.compare_digest(expected_signature, str(checkpoint.get("signature", ""))):
+        if checkpoint_signer(checkpoint, keys) is None:
             result.checkpoint_failures.append(
                 {"seq": seq, "reason": "signature mismatch — checkpoint forged or key changed"}
             )

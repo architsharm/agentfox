@@ -31,7 +31,6 @@ from typing import Annotated, Any
 from urllib.parse import urlparse
 
 import httpx
-from cryptography.fernet import Fernet, InvalidToken
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -50,7 +49,12 @@ from agentfox.core.config import (
     get_settings,
     is_development,
 )
-from agentfox.core.crypto import EncryptionNotConfigured, decrypt_secret, encrypt_secret
+from agentfox.core.crypto import (
+    DecryptionFailed,
+    EncryptionNotConfigured,
+    decrypt_secret,
+    encrypt_secret,
+)
 from agentfox.core.models import (
     ApiToken,
     GithubConnection,
@@ -79,26 +83,31 @@ _GITHUB_API = gh.GITHUB_API
 # ---------------------------------------------------------------------------
 
 
-def _fernet() -> Fernet:
-    key = get_settings().token_encryption_key
-    if not key:
+def _encrypt(raw: str) -> str:
+    """The shared `core.crypto` primitive, with this route's HTTP errors: the GitHub
+    connect flow fails closed (503) rather than storing an access token unencrypted."""
+    try:
+        return encrypt_secret(raw)
+    except EncryptionNotConfigured as exc:
         raise HTTPException(
             503,
             "GitHub connect is not configured on this deployment "
             "(AGENTFOX_TOKEN_ENCRYPTION_KEY is unset) — fails closed rather than "
             "storing an access token unencrypted.",
-        )
-    return Fernet(key.encode() if isinstance(key, str) else key)
-
-
-def _encrypt(raw: str) -> str:
-    return _fernet().encrypt(raw.encode()).decode()
+        ) from exc
 
 
 def _decrypt(blob: str) -> str:
+    """Current key first, then any previous key (`AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS`)."""
     try:
-        return _fernet().decrypt(blob.encode()).decode()
-    except InvalidToken as exc:
+        return decrypt_secret(blob)
+    except EncryptionNotConfigured as exc:
+        raise HTTPException(
+            503,
+            "GitHub connect is not configured on this deployment "
+            "(AGENTFOX_TOKEN_ENCRYPTION_KEY is unset).",
+        ) from exc
+    except DecryptionFailed as exc:
         raise HTTPException(500, "stored GitHub token could not be decrypted") from exc
 
 

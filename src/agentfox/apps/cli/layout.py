@@ -313,8 +313,8 @@ def apply_layout(app: typer.Typer) -> None:
 
     # -- Operate: admin ------------------------------------------------------------
     admin_app = _new_group(
-        "Run the deployment: operators, tokens, schema, scheduled jobs, catalog upkeep, hooks, "
-        "seed data."
+        "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog "
+        "upkeep, hooks, seed data."
     )
     admin_app.add_typer(sub["auth"].typer_instance, name="auth")
     admin_app.add_typer(sub["users"].typer_instance, name="users")
@@ -331,6 +331,9 @@ def apply_layout(app: typer.Typer) -> None:
     from agentfox.apps.cli.commands.monitors import jobs_app
 
     admin_app.add_typer(jobs_app, name="jobs")
+    from agentfox.apps.cli.commands.keys import keys_app
+
+    admin_app.add_typer(keys_app, name="keys")
     mcp_admin = _new_group("Inspect the MCP server. To run it: `agentfox serve mcp`.")
     _alias(mcp_admin, find("mcp", "tools"), "tools")
     admin_app.add_typer(mcp_admin, name="mcp")

@@ -29,6 +29,10 @@ kind                   what it does
 ``monitors.run``       Runs every due monitor of connected sources (GitHub repos,
                        hosted-API specs, MCP servers), or one (``monitor_id``,
                        ``ref``, ``trigger``) — see ``agentfox.capabilities.monitoring``.
+``keys.rotate``        Re-encrypts stored secrets and re-signs audit checkpoints under
+                       the current keys (``platform.keys.rotation``). Deployment-wide;
+                       the job runner enqueues it while a previous key still protects
+                       something.
 ``probes.run``         Sends the live probe library to every *opted-in* probe target
                        in the tenant that is due (``evaluation.live_probes``), records
                        a campaign per target and opens/closes ``live_probe_escape``
@@ -320,6 +324,22 @@ def run_monitors(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     return handle_job(session, payload)
 
 
+# ---------------------------------------------------------------------------
+# keys.rotate
+# ---------------------------------------------------------------------------
+
+
+def rotate_keys(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Move encrypted values and audit checkpoints off every previous key."""
+    from agentfox.platform.keys.rotation import rotate
+
+    return rotate(
+        session,
+        actor_type=str(payload.get("actor_type") or "system"),
+        actor_id=str(payload.get("requested_by") or "key-rotation"),
+    )
+
+
 HANDLERS = {
     "escalation.scan": scan_escalations,
     "tuning.propose": propose_threshold_changes,
@@ -331,6 +351,7 @@ HANDLERS = {
     "redteam.posture": redteam_posture,
     "monitors.run": run_monitors,
     "probes.run": run_live_probes,
+    "keys.rotate": rotate_keys,
 }
 
 

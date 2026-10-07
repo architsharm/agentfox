@@ -533,6 +533,39 @@ def doctor(
     else:
         add("ok", "secrets", "service secret and audit signing key are set")
 
+    # Key rotation: a previous key is a temporary state, and this line says whether it
+    # is still needed. Fingerprints only; a key value is never printed.
+    from agentfox.core.crypto import InvalidEncryptionKey, keyring
+
+    if settings.token_encryption_key:
+        try:
+            keyring()
+        except InvalidEncryptionKey as exc:
+            add("bad", "encryption key", str(exc))
+    try:
+        from agentfox.platform.keys.rotation import status_summary
+
+        rotation = status_summary(fresh=True)
+    except Exception as exc:  # noqa: BLE001 - doctor reports, it does not crash
+        rotation = {}
+        add("warn", "key rotation", f"could not be checked: {type(exc).__name__}")
+    if rotation:
+        detail = ", ".join(f"{k.replace('_', ' ')}: {v}" for k, v in rotation.items())
+        states = set(rotation.values())
+        if "misconfigured" in states:
+            add("bad", "key rotation", detail + " — `agentfox admin keys status` says why")
+        elif "pending" in states:
+            add(
+                "warn",
+                "key rotation",
+                detail + " — data is still on a previous key. Run `agentfox admin keys "
+                "rotate` (the job runner also does it); keep the previous key until done.",
+            )
+        elif "complete" in states:
+            add("ok", "key rotation", detail + " — the previous keys can now be removed")
+        else:
+            add("ok", "key rotation", "no previous key configured; nothing to rotate")
+
     # The pre-rename names still work, which is exactly why nobody notices them. This
     # line is the checklist item to clear before that fallback is removed: it names
     # every NOMETRIA_* still set, including ones nothing reads (a Neon integration's

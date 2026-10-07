@@ -210,6 +210,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin auth tokens [--json]` · `admin auth revoke TOKEN_ID` | W (audit entry) · W | |
 | `admin users create EMAIL [--role owner] [--name/-n] [--org] [--token]` · `admin users list [--json]` | W (audit entry) · R | First operator on a fresh install, no demo data. `--token` shows a token once. |
 | `admin db upgrade [--revision head]` · `admin db current` · `admin db downgrade REVISION` | W · R · W (**destructive**) | Needs a source checkout (`alembic.ini`, `migrations/`). |
+| `admin keys status [--json]` · `admin keys rotate [--dry-run] [--json]` | R · W | Key rotation: fingerprints in use and what still needs an `AGENTFOX_*_KEY_PREVIOUS`; `rotate` re-encrypts stored secrets and re-signs checkpoints under the current keys. Never prints a key. Exit 1 if a value or checkpoint is under no configured key. |
 | `admin catalog validate` | R, offline | Catalog consistency: unique keys, known frameworks and rule kinds, obligations parse. Exit 1 on problems. |
 | `admin catalog sync` | W | Load control catalog + obligations from YAML. |
 | `admin catalog compute [--window-days 30]` | W | Recompute control status from telemetry. |

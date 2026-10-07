@@ -15,7 +15,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import PrivateAttr, field_validator
+from pydantic import PrivateAttr, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     EnvSettingsSource,
@@ -580,9 +580,13 @@ class Settings(BaseSettings):
     # mint a token" call before any user token exists — it authenticates with this
     # shared secret instead. Must match the dashboard's own copy of the same value.
     service_auth_secret: str = DEFAULT_SERVICE_AUTH_SECRET
-    # Fernet key encrypting stored GitHub access tokens at rest. `None` means "not
-    # configured" — connecting a repo fails closed rather than storing a raw token.
+    # Fernet key encrypting every secret held at rest (core/crypto.py). `None` means
+    # "not configured" — connecting a repo fails closed rather than storing a raw token.
     token_encryption_key: str | None = None
+    # Retired encryption keys, comma-separated. Still accepted for decryption, never
+    # used to encrypt, until `agentfox admin keys rotate` (or the `keys.rotate` job)
+    # has re-encrypted everything under `token_encryption_key`. Then remove them.
+    token_encryption_key_previous: str | None = None
 
     # --- Deferred job queue ----------------------------------------
     # POST /api/internal/jobs/run is the cron backstop for a job stuck in
@@ -675,6 +679,10 @@ class Settings(BaseSettings):
 
     # --- Audit (Pillar 5) ------------------------------------------------
     audit_signing_key: str = DEFAULT_AUDIT_SIGNING_KEY
+    # Retired signing keys, comma-separated. Checkpoints signed with one still verify;
+    # new checkpoints are always signed with `audit_signing_key`. Key rotation
+    # re-signs the old checkpoints (after verifying the chain), so these can go.
+    audit_signing_key_previous: str | None = None
     audit_checkpoint_interval: int = 100
     # The audit log must not become a new PII liability.
     redact_at_capture: bool = True
@@ -700,6 +708,45 @@ class Settings(BaseSettings):
     @property
     def restricted_models_allowed(self) -> bool:
         return self.accept_restricted_model_licenses
+
+    @property
+    def token_encryption_previous_keys(self) -> list[str]:
+        """Each retired encryption key, in order, without blanks, duplicates or the
+        current key."""
+        return split_keys(self.token_encryption_key_previous, exclude=self.token_encryption_key)
+
+    @property
+    def audit_signing_previous_keys(self) -> list[str]:
+        """Each retired audit signing key, in order, without blanks, duplicates or the
+        current key."""
+        return split_keys(self.audit_signing_key_previous, exclude=self.audit_signing_key)
+
+    # --- ONE-TIME NOMETRIA BRIDGE ----------------------------------------------
+    # Exists only in the release that migrates production off the pre-rename names;
+    # the next release (rename stage B) deletes this method and LEGACY_* with it.
+    # When both AGENTFOX_<KEY> and NOMETRIA_<KEY> are set and differ, the operator has
+    # put a fresh key under the new name: the old value becomes a previous key, so
+    # the data it protects stays readable until key rotation has moved it over.
+    @model_validator(mode="after")
+    def _nometria_keys_become_previous(self) -> Settings:
+        for field in ("token_encryption_key", "audit_signing_key"):
+            new = os.environ.get(ENV_PREFIX + field.upper())
+            old = os.environ.get(LEGACY_ENV_PREFIX + field.upper())
+            if new and old and new != old:
+                previous = f"{field}_previous"
+                setattr(self, previous, ",".join(filter(None, [getattr(self, previous), old])))
+        return self
+
+
+def split_keys(raw: str | None, *, exclude: str | None = None) -> list[str]:
+    """A comma-separated key list, trimmed, in order, without blanks, duplicates or
+    ``exclude`` (the current key, which is never also a previous one)."""
+    out: list[str] = []
+    for part in (raw or "").split(","):
+        key = part.strip()
+        if key and key != exclude and key not in out:
+            out.append(key)
+    return out
 
 
 def _toml_source(

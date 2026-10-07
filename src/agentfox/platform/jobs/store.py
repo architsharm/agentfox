@@ -68,6 +68,10 @@ def register(kind: str, handler: Callable[[Session, dict[str, Any]], dict[str, A
     _HANDLERS[kind] = handler
 
 
+def is_registered(kind: str) -> bool:
+    return kind in _HANDLERS
+
+
 def enqueue(
     session: Session,
     kind: str,
