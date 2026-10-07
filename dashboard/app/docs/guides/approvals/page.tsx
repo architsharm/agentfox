@@ -211,7 +211,7 @@ curl -s http://localhost:8080/api/approvals/apr_01m46jnb2j2zszsbsm \\
             or with different arguments, escalates as before and files a new approval; the
             reason says why the approval presented was not used. It never turns a block into
             an allow. Through the proxy, send the same request with the header{" "}
-            <code>X-Nometria-Approval: apr_…</code>.
+            <code>X-AgentFox-Approval: apr_…</code>.
           </p>
         </Step>
       </Steps>
@@ -326,15 +326,15 @@ escalations as findings. --mode enforce queues hand-offs.`}</Output>
         <Step title="Record conversations">
           <p>
             Turns are recorded by <code>agentfox.auto()</code>, and by the gateway proxy for
-            any request with an <code>X-Nometria-Session</code> header. Three turns of one
+            any request with an <code>X-AgentFox-Session</code> header. Three turns of one
             conversation and one of another:
           </p>
           <Code>{`for msg in "My invoice for September is wrong." \\
            "It is still wrong, the total doubled." \\
            "This is ridiculous. I want to speak to a manager."; do
   curl -s -o /dev/null http://localhost:8080/v1/chat/completions \\
-    -H 'Content-Type: application/json' -H 'X-Nometria-Agent: support-triage' \\
-    -H 'X-Nometria-Session: conv-1001' \\
+    -H 'Content-Type: application/json' -H 'X-AgentFox-Agent: support-triage' \\
+    -H 'X-AgentFox-Session: conv-1001' \\
     -d "{\\"model\\":\\"gpt-4o-mini\\",\\"messages\\":[{\\"role\\":\\"user\\",\\"content\\":\\"$msg\\"}]}"
 done`}</Code>
         </Step>
@@ -436,8 +436,8 @@ support-triage  quarantined  INC-212: exporting         cli  2026-10-05T15:12:55
                              nobody asked about`}</Output>
       <p>The next model call through the proxy is refused before it reaches the model:</p>
       <Output>{`HTTP/1.1 403 Forbidden
-x-nometria-verdict: block
-x-nometria-mode: enforce
+x-agentfox-verdict: block
+x-agentfox-mode: enforce
 {"type": "agentfox_policy_violation", "message": "Agent is quarantined: INC-212: exporting invoices for accounts nobody asked about (by cli)", "verdict": "block", "trace_id": "trc_01m46a06mnmr02yhr7"} ['agent.quarantined']`}</Output>
 
       <h3>What a stopped agent can and cannot still do</h3>
@@ -637,7 +637,7 @@ CHAIN INTACT — 52 entries verified (seq 1..52)`}</Output>
           <tr>
             <td><code>report escalations</code> says 0 conversations.</td>
             <td>
-              No turns were recorded. Send <code>X-Nometria-Session</code> through the proxy,
+              No turns were recorded. Send <code>X-AgentFox-Session</code> through the proxy,
               use <code>agentfox.auto()</code>, or post turns to{" "}
               <code>/api/escalation/turns</code>.
             </td>

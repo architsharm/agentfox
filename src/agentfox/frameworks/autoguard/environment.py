@@ -9,6 +9,8 @@ import os
 import sys
 from typing import TYPE_CHECKING
 
+from agentfox.core.config import env
+
 if TYPE_CHECKING:
     from agentfox.frameworks.autoguard import PatchResult
 
@@ -85,9 +87,10 @@ def default_agent_slug() -> str:
     than a required argument — the developer can rename the agent in the registry
     later, and until then their traffic is at least attributed to *something*.
     """
+    explicit = env("AGENT")  # AGENTFOX_AGENT, or the deprecated NOMETRIA_AGENT
+    if explicit:
+        return explicit
     for var in (
-        "AGENTFOX_AGENT",
-        "NOMETRIA_AGENT",
         "OTEL_SERVICE_NAME",
         "SERVICE_NAME",
         "APP_NAME",

@@ -64,7 +64,7 @@ export default function Page() {
       <Code>{`agentfox serve api --port 8080
 agentfox admin auth status`}</Code>
       <Output>{`╭─ Authentication: development mode ───────────────────────────────────────────────╮
-│ The X-Nometria-User header is accepted.                                          │
+│ The X-AgentFox-User header is accepted.                                          │
 │                                                                                  │
 │ environment = development · auth_mode = auto                                     │
 │ Anyone who can reach this port is any user they name. That is fine for local     │
@@ -74,7 +74,7 @@ agentfox admin auth status`}</Code>
 │ tokens.                                                                          │
 ╰──────────────────────────────────────────────────────────────────────────────────╯`}</Output>
       <p>
-        In development mode, an <code>X-Nometria-User: you@example.com</code> header is
+        In development mode, an <code>X-AgentFox-User: you@example.com</code> header is
         enough for <code>/api/*</code>. With <code>AGENTFOX_AUTH_MODE=token</code> (or{" "}
         <code>AGENTFOX_ENVIRONMENT=production</code>) that header is refused and you send{" "}
         <code>Authorization: Bearer nom_api_…</code>, a token from{" "}
@@ -269,12 +269,12 @@ provider.shutdown()`}</Code>
         <tbody>
           <tr>
             <td>Langfuse</td>
-            <td><code>langfuse-trace-id</code>, <code>x-langfuse-trace-id</code>, <code>x-nometria-langfuse-trace</code></td>
+            <td><code>langfuse-trace-id</code>, <code>x-langfuse-trace-id</code>, <code>x-agentfox-langfuse-trace</code></td>
             <td><code>langfuse-observation-id</code>, <code>x-langfuse-observation-id</code></td>
           </tr>
           <tr>
             <td>LangSmith</td>
-            <td><code>langsmith-trace-id</code>, <code>x-langsmith-trace-id</code>, <code>x-nometria-langsmith-trace</code></td>
+            <td><code>langsmith-trace-id</code>, <code>x-langsmith-trace-id</code>, <code>x-agentfox-langsmith-trace</code></td>
             <td><code>langsmith-run-id</code>, <code>x-langsmith-run-id</code></td>
           </tr>
           <tr>
@@ -293,14 +293,14 @@ provider.shutdown()`}</Code>
         <Step title="Send a call with the join key">
           <Code>{`curl -s -X POST http://127.0.0.1:8080/v1/chat/completions \\
   -H 'Content-Type: application/json' \\
-  -H 'X-Nometria-Agent: support-triage' \\
+  -H 'X-AgentFox-Agent: support-triage' \\
   -H 'langfuse-trace-id: lf-7d1c2e90' \\
   -H 'langfuse-observation-id: obs-55a1' \\
   -H 'traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01' \\
   -d '{"model":"echo-1","messages":[{"role":"user","content":"Summarise ticket 4182"}]}'`}</Code>
           <p>
-            The response carries <code>x-nometria-trace: trc_01m469nhx6q4d17k22</code> and{" "}
-            <code>x-nometria-verdict: allow</code>.
+            The response carries <code>x-agentfox-trace: trc_01m469nhx6q4d17k22</code> and{" "}
+            <code>x-agentfox-verdict: allow</code>.
           </p>
         </Step>
         <Step title="Resolve their id to the decision">
@@ -313,7 +313,7 @@ provider.shutdown()`}</Code>
             or the run/observation id.
           </p>
           <Code>{`curl -s "http://127.0.0.1:8080/api/traces/resolve?system=langfuse&external_id=obs-55a1" \\
-  -H 'X-Nometria-User: priya@example.com' | python3 -m json.tool`}</Code>
+  -H 'X-AgentFox-User: priya@example.com' | python3 -m json.tool`}</Code>
           <Output>{`{
     "matches": [
         {
@@ -571,10 +571,10 @@ Content-Length: 107
 Host: 127.0.0.1:18449
 Content-Type: application/json
 User-Agent: agentfox/0.3.1
-X-Nometria-Event: webhook.test
-X-Nometria-Delivery: 0b73737568964955a66901e87c890733
-X-Nometria-Timestamp: 1791212816
-X-Nometria-Signature: sha256=0f5cc905c3c7fea77d4dd355f611cebfa15c66a8f13f679260a92adddd6422b6
+X-AgentFox-Event: webhook.test
+X-AgentFox-Delivery: 0b73737568964955a66901e87c890733
+X-AgentFox-Timestamp: 1791212816
+X-AgentFox-Signature: sha256=0f5cc905c3c7fea77d4dd355f611cebfa15c66a8f13f679260a92adddd6422b6
 Connection: close
 
 {"event":"webhook.test","finding":null,"org_id":"org_default","sent_at":"2026-10-05T15:06:56.357567+00:00"}`}</Output>
@@ -598,9 +598,9 @@ Connection: close
         Compute the HMAC over the bytes you received, before parsing them; compare in
         constant time; then reject stale and repeated deliveries. Check freshness with{" "}
         <code>sent_at</code> inside the body, which the signature covers. The{" "}
-        <code>X-Nometria-Timestamp</code> header is not signed, so anyone replaying a captured
+        <code>X-AgentFox-Timestamp</code> header is not signed, so anyone replaying a captured
         request can change it. A retry reuses the same body, signature and{" "}
-        <code>X-Nometria-Delivery</code> id, so de-duplicate on that id. This receiver uses
+        <code>X-AgentFox-Delivery</code> id, so de-duplicate on that id. This receiver uses
         only the standard library:
       </p>
       <Code lang="python" title="receiver.py">{`import datetime as dt
@@ -618,14 +618,14 @@ seen_deliveries = set()  # use a shared store (Redis, a table) in production
 def verify(raw_body: bytes, headers) -> dict:
     """Return the event if the request is authentic and fresh; raise otherwise."""
     expected = "sha256=" + hmac.new(SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(headers.get("X-Nometria-Signature", ""), expected):
+    if not hmac.compare_digest(headers.get("X-AgentFox-Signature", ""), expected):
         raise ValueError("bad signature")
     event = json.loads(raw_body)
-    # sent_at is inside the signed body; the X-Nometria-Timestamp header is not signed.
+    # sent_at is inside the signed body; the X-AgentFox-Timestamp header is not signed.
     sent_at = dt.datetime.fromisoformat(event["sent_at"])
     if abs(dt.datetime.now(dt.timezone.utc) - sent_at) > MAX_AGE:
         raise ValueError("stale delivery")
-    delivery = headers.get("X-Nometria-Delivery")
+    delivery = headers.get("X-AgentFox-Delivery")
     if delivery in seen_deliveries:
         raise ValueError("duplicate delivery")
     seen_deliveries.add(delivery)
@@ -722,7 +722,7 @@ accepted finding.created high Ungoverned agent 'triage-experimental' observed in
           <strong>
             <code>/api/*</code> returns 401.
           </strong>{" "}
-          Token mode is on and the request sent <code>X-Nometria-User</code>. Send{" "}
+          Token mode is on and the request sent <code>X-AgentFox-User</code>. Send{" "}
           <code>Authorization: Bearer nom_api_…</code>; check with{" "}
           <code>agentfox admin auth status</code>.
         </li>

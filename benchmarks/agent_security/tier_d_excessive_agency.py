@@ -168,9 +168,9 @@ def main() -> None:
     wipe_db(db_path)
     import os
 
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{db_path}"
-    os.environ.setdefault("NOMETRIA_AUDIT_SIGNING_KEY", "benchmark-key")
-    os.environ.setdefault("NOMETRIA_ALLOW_EGRESS", "false")
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ.setdefault("AGENTFOX_AUDIT_SIGNING_KEY", "benchmark-key")
+    os.environ.setdefault("AGENTFOX_ALLOW_EGRESS", "false")
     reset_settings_cache()
     get_settings()
     db.init_db()

@@ -27,7 +27,7 @@
     "path": "init",
     "name": "init",
     "summary": "Set everything up.",
-    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, each in the mode it declares (baseline and\neu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for\nagents this repo's coding-harness hooks govern), and writes a\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables (or the legacy NOMETRIA_* names)\noverride that file.",
+    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, each in the mode it declares (baseline and\neu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for\nagents this repo's coding-harness hooks govern), and writes a\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
     "panel": "Start",
     "params": [
      {

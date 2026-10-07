@@ -83,7 +83,7 @@ def test_an_approval_cannot_be_granted_while_the_agent_is_stopped(client):
     response = client.post(
         f"/api/approvals/{approval_id}/approve",
         json={"rationale": "looks fine"},
-        headers={"X-Nometria-User": "admin@example.com"},
+        headers={"X-AgentFox-User": "admin@example.com"},
     )
     assert response.status_code == 409, response.text
     assert "quarantined" in response.json()["detail"]
@@ -97,7 +97,7 @@ def test_an_approval_can_still_be_denied_while_the_agent_is_stopped(client):
     response = client.post(
         f"/api/approvals/{approval_id}/deny",
         json={"rationale": "incident"},
-        headers={"X-Nometria-User": "admin@example.com"},
+        headers={"X-AgentFox-User": "admin@example.com"},
     )
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "denied"
@@ -110,7 +110,7 @@ def test_an_approval_can_be_granted_once_resumed(client):
     response = client.post(
         f"/api/approvals/{approval_id}/approve",
         json={"rationale": "resolved"},
-        headers={"X-Nometria-User": "admin@example.com"},
+        headers={"X-AgentFox-User": "admin@example.com"},
     )
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "approved"

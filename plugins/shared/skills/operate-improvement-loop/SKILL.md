@@ -104,11 +104,11 @@ agentfox policy proposals apply <id> --actor "you@example.com"
 Only an `approved` proposal applies. If the diff asks for staging, apply starts a canary
 instead of going live and the status becomes `canary`:
 
-- The canary holds for `NOMETRIA_CANARY_MIN_DWELL_SECONDS` (an hour by default) between
+- The canary holds for `AGENTFOX_CANARY_MIN_DWELL_SECONDS` (an hour by default) between
   steps, driven by the hourly `canary.advance` job. On a once-a-day cron each step takes at
   least a day.
 - The health gate rolls the change back if the candidate blocks much **more** than stable, and
-  also if it blocks much **less** (`NOMETRIA_CANARY_MAX_BLOCK_RATE_DROP`). A deliberate
+  also if it blocks much **less** (`AGENTFOX_CANARY_MAX_BLOCK_RATE_DROP`). A deliberate
   loosening has to raise that bound when the canary starts.
 - Running apply again on a finished canary settles it: completed becomes `applied`, a gated
   rollback becomes `rolled_back`. While it is still rolling, the command refuses and changes
@@ -149,10 +149,10 @@ The same work runs daily as the `tuning.propose` job.
 
 ## 9. The kill switch
 
-`NOMETRIA_IMPROVEMENT_FROZEN=true` stops every automated apply. Proposals are still filed and
+`AGENTFOX_IMPROVEMENT_FROZEN=true` stops every automated apply. Proposals are still filed and
 evidence is still gathered, so nothing is lost while the loop is off. Two limits to state
 plainly: it does not stop a person applying a proposal, and it does not pause a canary that
-is already rolling, which has to be rolled back explicitly. `NOMETRIA_SCHEDULER_ENABLED=false`
+is already rolling, which has to be rolled back explicitly. `AGENTFOX_SCHEDULER_ENABLED=false`
 is the wider switch, stopping cron from queuing scheduled work at all. Turning the freeze back
 off restores automatic applies, so treat that as the user's decision.
 

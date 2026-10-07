@@ -26,7 +26,7 @@ agentfox report verify
 agentfox admin checkpoint
 ```
 
-In production, `NOMETRIA_AUDIT_SIGNING_KEY` must not be the dev default. Check this with
+In production, `AGENTFOX_AUDIT_SIGNING_KEY` must not be the dev default. Check this with
 **operate-deployment**'s hardening list.
 
 ## 2. Bring control status up to date
@@ -100,7 +100,7 @@ Unzip into a temp directory and run the bundled verifier. It needs nothing but P
 python verify_chain.py            # exit 0 = intact, 1 = tampered
 ```
 
-With `AGENTFOX_AUDIT_KEY` (or the older `NOMETRIA_AUDIT_KEY`) set, it also checks checkpoint
+With `AGENTFOX_AUDIT_KEY` set, it also checks checkpoint
 signatures. Tell the auditor they
 can run it themselves, because that's the point of it.
 

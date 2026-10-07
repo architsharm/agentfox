@@ -8,7 +8,7 @@ from it. That is a deliberate fit for a stateless serverless function — there 
 guarantee two requests in the same conversation land on the same warm instance, so
 any server-held-history design would silently lose turns. The governed state that
 actually matters (capability grants, taint marks, audit trail, order/customer
-records) lives in Postgres via `NOMETRIA_DATABASE_URL`, not in this file.
+records) lives in Postgres via `AGENTFOX_DATABASE_URL`, not in this file.
 
 Local dev:  uvicorn web:app --reload --port 8000
 Deployed:   this module's `app` is Vercel's entrypoint (see vercel.json).

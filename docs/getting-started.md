@@ -328,27 +328,27 @@ client's `base_url` at `http://localhost:8080/v1` and change nothing else. The r
 decision in headers:
 
 ```
-x-nometria-trace: trc_01m48c2p7k1fan1r6r
-x-nometria-verdict: allow
-x-nometria-effective-verdict: allow
-x-nometria-applied-verdict: allow
-x-nometria-would-be-verdict: allow
-x-nometria-decision: dec_01m48c2p81b1tgqnvx
-x-nometria-mode: enforce
-x-nometria-latency-ms: 4.97
+x-agentfox-trace: trc_01m48c2p7k1fan1r6r
+x-agentfox-verdict: allow
+x-agentfox-effective-verdict: allow
+x-agentfox-applied-verdict: allow
+x-agentfox-would-be-verdict: allow
+x-agentfox-decision: dec_01m48c2p81b1tgqnvx
+x-agentfox-mode: enforce
+x-agentfox-latency-ms: 4.97
 ```
 
-`x-nometria-verdict` is what happened. `x-nometria-effective-verdict` is what the policy would have
+`x-agentfox-verdict` is what happened. `x-agentfox-effective-verdict` is what the policy would have
 done regardless of mode (`applied` and `would-be` repeat the two under clearer names). In observe
 mode they differ, and that gap is the thing you watch before turning enforcement on.
 
 A proxied call held for a person returns HTTP **428**, which the OpenAI and Anthropic SDKs raise as
 an error rather than parse as a completion. The body carries the `approval_id`; once it is approved,
-send the same request again with the header `X-Nometria-Approval: <id>`.
+send the same request again with the header `X-AgentFox-Approval: <id>`.
 
-Useful request headers: `X-Nometria-Agent` (the agent slug), `X-Nometria-Session` (correlates calls
-into one execution path), `X-Nometria-Intent` (the declared task, used by intent-based containment),
-and `X-Nometria-Trust` (a JSON map marking message indices as untrusted, e.g.
+Useful request headers: `X-AgentFox-Agent` (the agent slug), `X-AgentFox-Session` (correlates calls
+into one execution path), `X-AgentFox-Intent` (the declared task, used by intent-based containment),
+and `X-AgentFox-Trust` (a JSON map marking message indices as untrusted, e.g.
 `{"2":"retrieved"}`). Full surface: [Appendix C](architecture/api-spec.md).
 
 **If you are in Python instead**, the whole of 5d is one line at your entry point:
@@ -385,7 +385,7 @@ curl -H "Authorization: Bearer nom_api_..." http://localhost:8080/api/findings
 data (`agentfox admin seed` also creates operators, but writes demo agents and traffic too). Token
 values are shown once, hashed at rest with argon2id, and carry an
 expiry. `agentfox admin auth status` tells you whether this deployment is actually requiring them: in a
-development environment it accepts an `X-Nometria-User` header instead, which is fine locally and
+development environment it accepts an `X-AgentFox-User` header instead, which is fine locally and
 unacceptable anywhere else.
 
 Outside development (`AGENTFOX_ENVIRONMENT` set to anything but `development`, `dev`, `test`,
@@ -420,7 +420,7 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
   ✓    enforcement         17 of 22 decisions enforced
   !    authentication      DEVELOPMENT auth is active (environment=development, auth_mode=auto):
                            an /api request with no token acts as the user named in
-                           X-Nometria-User, or as admin@example.com (an owner, once seeded) —
+                           X-AgentFox-User, or as admin@example.com (an owner, once seeded) —
                            anyone who can reach this port is any user they name. Fine locally,
                            unacceptable anywhere else.
   ✓    secrets             development: the published default secrets are allowed here, and

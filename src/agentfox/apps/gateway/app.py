@@ -48,6 +48,7 @@ from agentfox.capabilities.compliance.catalog import load_catalog
 from agentfox.capabilities.detection import all_detectors, available_detectors
 from agentfox.core.config import assert_production_secrets, get_settings
 from agentfox.core.db import init_db
+from agentfox.core.headers import normalize_asgi_headers
 from agentfox.platform.providers import all_providers, available_providers
 from agentfox.runtime.availability import (
     check_services,
@@ -57,6 +58,25 @@ from agentfox.runtime.availability import (
 )
 
 log = logging.getLogger(__name__)
+
+
+class LegacyHeaderMiddleware:
+    """Accept the pre-rename ``x-agentfox-*`` request headers as ``x-agentfox-*``.
+
+    Pure ASGI rather than ``@app.middleware("http")``: the rewrite has to land in the
+    ``scope`` that routing and ``Header()`` parameters read, before any of them run.
+    The new spelling wins when a request carries both (`agentfox.core.headers`).
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope.get("type") in ("http", "websocket"):
+            headers = normalize_asgi_headers(scope.get("headers") or [])
+            if headers is not scope.get("headers"):
+                scope = {**scope, "headers": headers}
+        await self.app(scope, receive, send)
 
 
 def _load_demo_fixtures() -> None:
@@ -183,17 +203,17 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=[
-            "X-Nometria-Trace",
-            "X-Nometria-Verdict",
-            "X-Nometria-Effective-Verdict",
+            "X-AgentFox-Trace",
+            "X-AgentFox-Verdict",
+            "X-AgentFox-Effective-Verdict",
             # Same two values under names that say which one took effect:
             # applied = what happened, would-be = the counterfactual. See
             # gateway/verdicts.py.
-            "X-Nometria-Applied-Verdict",
-            "X-Nometria-Would-Be-Verdict",
-            "X-Nometria-Decision",
-            "X-Nometria-Mode",
-            "X-Nometria-Latency-Ms",
+            "X-AgentFox-Applied-Verdict",
+            "X-AgentFox-Would-Be-Verdict",
+            "X-AgentFox-Decision",
+            "X-AgentFox-Mode",
+            "X-AgentFox-Latency-Ms",
         ],
     )
 
@@ -244,7 +264,7 @@ def create_app() -> FastAPI:
                 },
                 headers={
                     "Retry-After": "5",
-                    "X-Nometria-Degraded": ",".join(sorted({e.control for e in blocking})),
+                    "X-AgentFox-Degraded": ",".join(sorted({e.control for e in blocking})),
                 },
             )
 
@@ -253,7 +273,7 @@ def create_app() -> FastAPI:
             # The request was served without a dependency the governance layer needed.
             # A caller that gets a 200 back deserves to know that much without going
             # and reading someone else's logs.
-            response.headers["X-Nometria-Degraded"] = ",".join(sorted({e.control for e in events}))
+            response.headers["X-AgentFox-Degraded"] = ",".join(sorted({e.control for e in events}))
         return response
 
     @app.middleware("http")
@@ -271,7 +291,7 @@ def create_app() -> FastAPI:
             return await call_next(request)
 
         controller = get_admission_controller()
-        priority = request.headers.get("X-Nometria-Priority", "normal")
+        priority = request.headers.get("X-AgentFox-Priority", "normal")
         admission = controller.admit(scope="inline", priority=priority)
         if not admission.admitted:
             return JSONResponse(
@@ -547,6 +567,9 @@ def create_app() -> FastAPI:
             ),
         }
 
+    # Added last, so it is the outermost layer: every middleware and route above sees
+    # only x-agentfox-* request headers, whichever spelling the client sent.
+    app.add_middleware(LegacyHeaderMiddleware)
     return app
 
 

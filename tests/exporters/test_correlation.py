@@ -230,10 +230,10 @@ def governed(client):
     response = client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": "hello"}]},
-        headers={"X-Nometria-Agent": "support-triage", "langfuse-trace-id": "lf-api"},
+        headers={"X-AgentFox-Agent": "support-triage", "langfuse-trace-id": "lf-api"},
     )
     assert response.status_code == 200
-    return response.headers["X-Nometria-Trace"]
+    return response.headers["X-AgentFox-Trace"]
 
 
 def test_gateway_captures_headers_from_the_live_proxy(client, governed):

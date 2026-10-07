@@ -13,12 +13,13 @@
  * consumer of this module runs on the server, so a plain server variable read at
  * request time is both sufficient and repointable.
  */
+import { env } from "@/lib/env";
 
 /** Production host. The custom domain, replacing guardrails-agentfox.vercel.app. */
 const FALLBACK_SITE_URL = "https://useagentfox.com";
 
 /** No trailing slash, so `new URL(path, SITE_URL)` and template literals agree. */
-export const SITE_URL = (process.env.AGENTFOX_SITE_URL || process.env.NOMETRIA_SITE_URL || FALLBACK_SITE_URL).replace(/\/+$/, "");
+export const SITE_URL = (env("SITE_URL") || FALLBACK_SITE_URL).replace(/\/+$/, "");
 
 export const SITE_NAME = "AgentFox";
 

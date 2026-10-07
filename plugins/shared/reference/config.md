@@ -2,7 +2,7 @@
 title: AgentFox configuration (environment variables)
 layer: reference
 audience: agents, operators
-source_of_truth: src/agentfox/core/config.py (Settings, env_prefix AGENTFOX_, legacy NOMETRIA_)
+source_of_truth: src/agentfox/core/config.py (Settings, env_prefix AGENTFOX_, deprecated NOMETRIA_)
 verified_against: commit 6863b8b, 2026-09-15
 ---
 
@@ -11,15 +11,17 @@ verified_against: commit 6863b8b, 2026-09-15
 Sources, highest precedence first:
 
 1. `AGENTFOX_*` environment variables
-2. `NOMETRIA_*` environment variables, the pre-rename names, still read so existing
-   deployments keep working; where both are set, `AGENTFOX_*` wins
-3. the `[agentfox]` table of a TOML file
+2. `NOMETRIA_*` environment variables, the pre-rename names: deprecated, still read so
+   existing deployments keep working, with one startup warning naming each one in use
+   (`agentfox doctor` lists every one still set); where both are set, `AGENTFOX_*` wins
+3. the `[agentfox]` table of a TOML file (a pre-rename `nometria.toml` or `[nometria]`
+   table is still read, with the same warning)
 4. built-in defaults
 
-Every variable below is listed under its `AGENTFOX_` name. Three are read only under the old
-name: `NOMETRIA_AGENT`, `NOMETRIA_AUDIT_KEY` and `NOMETRIA_MCP_LOG_LEVEL`. The dashboard reads
-only `NOMETRIA_API_URL`, `NOMETRIA_API_TOKEN`, `NOMETRIA_USER`, `NOMETRIA_PLAYGROUND_API_URL`,
-`NOMETRIA_SERVICE_AUTH_SECRET`, `NOMETRIA_SITE_URL` and `NOMETRIA_SELF_HOSTED`.
+Every variable below is listed under its `AGENTFOX_` name. The dashboard reads only
+`AGENTFOX_API_URL`, `AGENTFOX_API_TOKEN`, `AGENTFOX_USER`, `AGENTFOX_PLAYGROUND_API_URL`,
+`AGENTFOX_SERVICE_AUTH_SECRET`, `AGENTFOX_SITE_URL` and `AGENTFOX_SELF_HOSTED` (and their
+deprecated `NOMETRIA_*` twins, with a warning).
 
 The file is `$AGENTFOX_CONFIG` if set, which must exist. Otherwise it's `./agentfox.toml` in
 the working directory, if present. `AGENTFOX_CONFIG=none` turns file loading off, which is
@@ -38,7 +40,7 @@ Settings are cached per process, so restart after changing them.
 |---|---|---|
 | `AGENTFOX_DATABASE_URL` | `sqlite:///<repo-root>/agentfox.db` | **Point this at a scratch file for demos and experiments.** Postgres (`postgresql+psycopg://…`, `[postgres]` extra) for anything real. |
 | `AGENTFOX_ENVIRONMENT` | `development` | Also decides whether the dev auth header is accepted. |
-| `AGENTFOX_AUTH_MODE` | `auto` | `auto` \| `development` \| `token` \| `oidc`. Production must not accept `X-Nometria-User`; check with `agentfox admin auth status`. |
+| `AGENTFOX_AUTH_MODE` | `auto` | `auto` \| `development` \| `token` \| `oidc`. Production must not accept `X-AgentFox-User`; check with `agentfox admin auth status`. |
 | `AGENTFOX_DEFAULT_POLICY_MODE` | `observe` | `observe` records, `enforce` blocks. |
 | `AGENTFOX_FAIL_MODE` | `open` | What happens when a detector errors/times out. `closed` for high-risk agents. |
 | `AGENTFOX_ALLOW_EGRESS` | `false` | Must be true for any real model provider or network fetch. |
@@ -95,7 +97,7 @@ export.
 | Variable | Default | Notes |
 |---|---|---|
 | `AGENTFOX_WEBHOOK_URL` | unset | http(s). Each new finding at or above the minimum severity is POSTed after its transaction commits |
-| `AGENTFOX_WEBHOOK_SECRET` | unset | Adds `X-Nometria-Signature: sha256=<hex HMAC of the body>` |
+| `AGENTFOX_WEBHOOK_SECRET` | unset | Adds `X-AgentFox-Signature: sha256=<hex HMAC of the body>` |
 | `AGENTFOX_WEBHOOK_TIMEOUT_SECONDS` | 3.0 | One retry on 5xx or timeout |
 | `AGENTFOX_WEBHOOK_MIN_SEVERITY` | `high` | `critical` \| `high` \| `medium` \| `low` |
 
@@ -109,18 +111,18 @@ export.
 
 Nothing is sent unless `AGENTFOX_ALLOW_EGRESS=true`. The body is `{"event":
 "finding.created", "finding": {...}, "org_id", "sent_at"}`. Receivers should de-duplicate on
-`X-Nometria-Delivery`. Delivery is best-effort from a background thread: there is no durable
+`X-AgentFox-Delivery`. Delivery is best-effort from a background thread: there is no durable
 outbox, and a serverless process may freeze before sending.
 
 ## Read outside `Settings`
 
 | Variable | Used by |
 |---|---|
-| `AGENTFOX_AGENT` (legacy `NOMETRIA_AGENT`) | `agentfox.auto()` agent slug. Fallbacks: `OTEL_SERVICE_NAME`, `SERVICE_NAME`, `APP_NAME`, `K_SERVICE`, script name, `default-agent`. |
+| `AGENTFOX_AGENT` | `agentfox.auto()` agent slug. Fallbacks: `OTEL_SERVICE_NAME`, `SERVICE_NAME`, `APP_NAME`, `K_SERVICE`, script name, `default-agent`. |
 | `AGENTFOX_CONFIG` | Path to the TOML config file, or `none`. |
 | `AGENTFOX_API_URL`, `AGENTFOX_API_TOKEN`, `AGENTFOX_USER` | `check/quickscan --submit` only. |
-| `AGENTFOX_AUDIT_KEY` (legacy `NOMETRIA_AUDIT_KEY`; falls back to `*_AUDIT_SIGNING_KEY`) | The `verify_chain.py` bundled in evidence packages (checkpoint signatures). |
-| `AGENTFOX_MCP_LOG_LEVEL` (legacy `NOMETRIA_MCP_LOG_LEVEL`) | The stdio MCP server's log level. Default `WARNING`. |
+| `AGENTFOX_AUDIT_KEY` (falls back to `AGENTFOX_AUDIT_SIGNING_KEY`) | The `verify_chain.py` bundled in evidence packages (checkpoint signatures). |
+| `AGENTFOX_MCP_LOG_LEVEL` | The stdio MCP server's log level. Default `WARNING`. |
 
 ## Optional extras (`pip install "agentfox[...]"`)
 

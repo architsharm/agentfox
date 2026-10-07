@@ -28,9 +28,9 @@ sys.path.insert(0, str(ROOT / "src"))
 _TMP = tempfile.mkdtemp(prefix="agentfox-probe-")
 import os  # noqa: E402
 
-os.environ.setdefault("NOMETRIA_DATABASE_URL", f"sqlite:///{_TMP}/probe.db")
-os.environ.setdefault("NOMETRIA_EVIDENCE_DIR", f"{_TMP}/evidence")
-os.environ.setdefault("NOMETRIA_ALLOW_EGRESS", "false")
+os.environ.setdefault("AGENTFOX_DATABASE_URL", f"sqlite:///{_TMP}/probe.db")
+os.environ.setdefault("AGENTFOX_EVIDENCE_DIR", f"{_TMP}/evidence")
+os.environ.setdefault("AGENTFOX_ALLOW_EGRESS", "false")
 
 from scripts.probe.taxonomy import ORIGINS, SCENARIOS, Scenario, by_layer  # noqa: E402
 
@@ -1383,7 +1383,7 @@ def probe_agent_message_security() -> Result:
     from agentfox.core.models import Agent
     from agentfox.runtime.enforcement import Enforcer
 
-    os.environ.setdefault("NOMETRIA_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    os.environ.setdefault("AGENTFOX_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
     reset_settings_cache()
     with _seeded_session() as s:
         forged = Enforcer(s).guard_agent_message(

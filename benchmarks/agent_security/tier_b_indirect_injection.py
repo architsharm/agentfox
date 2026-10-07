@@ -56,14 +56,14 @@ def load_cases() -> list[dict]:
     return json.loads(DATA_PATH.read_text())
 
 
-def score_nometria(cases: list[dict]) -> list[dict]:
+def score_agentfox(cases: list[dict]) -> list[dict]:
     """Route each case through the real `McpGovernor` post-call gate
     (`surface=tool_result`), the same evaluation a live MCP integration runs."""
     db_path = RESULTS_DIR / "tier_b.db"
     wipe_db(db_path)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{db_path}"
-    os.environ.setdefault("NOMETRIA_AUDIT_SIGNING_KEY", "benchmark-key")
-    os.environ.setdefault("NOMETRIA_ALLOW_EGRESS", "false")
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ.setdefault("AGENTFOX_AUDIT_SIGNING_KEY", "benchmark-key")
+    os.environ.setdefault("AGENTFOX_ALLOW_EGRESS", "false")
     # Score with the full opt-in detection stack, not just the always-on default —
     # this is meant to reflect the platform's real ceiling, the same reasoning the
     # primary injection benchmark uses for its `heuristic_classifier_similarity`
@@ -167,7 +167,7 @@ def run_mcp_e2e_scenario() -> dict:
     that only trusts user-provided input."""
     db_path = RESULTS_DIR / "tier_b_e2e.db"
     wipe_db(db_path)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{db_path}"
     reset_settings_cache()
     get_settings()
     db.init_db()
@@ -205,7 +205,7 @@ def run_mcp_e2e_scenario() -> dict:
 
 def main() -> None:
     cases = load_cases()
-    agentfox_results = score_nometria(cases)
+    agentfox_results = score_agentfox(cases)
     llm_guard_results = score_llm_guard(cases)
     e2e = run_mcp_e2e_scenario()
 

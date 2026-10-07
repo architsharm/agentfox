@@ -77,7 +77,7 @@ def current_user(
     request: Request,
     session: Session = Depends(get_session),
     authorization: Annotated[str | None, Header()] = None,
-    x_nometria_user: Annotated[str | None, Header()] = None,
+    x_agentfox_user: Annotated[str | None, Header()] = None,
 ) -> User:
     """Resolve the control-plane caller and bind their tenant.
 
@@ -87,7 +87,7 @@ def current_user(
     stop it being live in production.
     """
     try:
-        user = authenticate(session, authorization=authorization, header_user=x_nometria_user)
+        user = authenticate(session, authorization=authorization, header_user=x_agentfox_user)
     except AuthenticationRequired as exc:
         raise HTTPException(status_code=401, detail=exc.detail) from exc
     request.state.user = user
@@ -187,7 +187,7 @@ def operator_or_agent(
     request: Request,
     session: Session = Depends(get_session),
     authorization: Annotated[str | None, Header()] = None,
-    x_nometria_user: Annotated[str | None, Header()] = None,
+    x_agentfox_user: Annotated[str | None, Header()] = None,
 ) -> User | Identity:
     """An operator, or an agent presenting its own key (``nom_agt_…``).
 
@@ -206,7 +206,7 @@ def operator_or_agent(
             request.state.org_id = org_id
             activate_posture(session)
             return identity
-    return current_user(request, session, authorization, x_nometria_user)
+    return current_user(request, session, authorization, x_agentfox_user)
 
 
 def ingest_credential(

@@ -43,7 +43,7 @@ def _aware(value):
 
 
 @pytest.mark.parametrize("method", ["get", "post"])
-def test_cron_accepts_get_and_post_with_the_nometria_secret(client, monkeypatch, method):
+def test_cron_accepts_get_and_post_with_the_agentfox_secret(client, monkeypatch, method):
     monkeypatch.delenv("CRON_SECRET", raising=False)
     monkeypatch.setattr(get_settings(), "cron_secret", "ours")
     response = getattr(client, method)(CRON, headers={"Authorization": "Bearer ours"})

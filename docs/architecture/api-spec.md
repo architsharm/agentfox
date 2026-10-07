@@ -13,9 +13,9 @@ Base: `http://localhost:8080` (self-host default). All control-plane routes unde
 | **Agent key** (`nom_agt_…`) | `Authorization: Bearer <key>` | Agents calling the inline gateway | Bound to one `Identity`; binds the tenant. Optional: unauthenticated inline traffic is served in the default org and recorded as shadow traffic |
 | **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations | Bound to a `User` + role. Mint with `agentfox admin auth issue` or `POST /api/tokens`; shown once |
 | **Session cookie** | `nometria_session` | Dashboard browser sessions | Holds an API token the dashboard forwards as `Bearer` |
-| **Development header** | `X-Nometria-User: <email>` | Local development and tests | Accepted only when `AGENTFOX_AUTH_MODE=development`, or `auto` with a dev/test/local environment. `agentfox admin auth status` reports it |
-| **Service secret** | `X-Nometria-Service-Secret` | Dashboard OAuth provisioning | `POST /api/auth/github/provision` only |
-| **Cron secret** | `Authorization: <cron_secret>` | Scheduler | `GET` or `POST /api/internal/jobs/run` only; `AGENTFOX_CRON_SECRET` or `CRON_SECRET` (the older `NOMETRIA_CRON_SECRET` is still read); 503 if neither is set |
+| **Development header** | `X-AgentFox-User: <email>` | Local development and tests | Accepted only when `AGENTFOX_AUTH_MODE=development`, or `auto` with a dev/test/local environment. `agentfox admin auth status` reports it |
+| **Service secret** | `X-AgentFox-Service-Secret` | Dashboard OAuth provisioning | `POST /api/auth/github/provision` only |
+| **Cron secret** | `Authorization: <cron_secret>` | Scheduler | `GET` or `POST /api/internal/jobs/run` only; `AGENTFOX_CRON_SECRET` or `CRON_SECRET`; 503 if neither is set |
 
 Keys and tokens are hashed at rest (`argon2id`), looked up by prefix, shown once at issuance, and carry `expires_at`. Credential rotation issues a new key (P2-1). Reads need any authenticated operator; writes need a role permitted for the route's family (§C.4).
 
@@ -30,29 +30,29 @@ Drop-in: point `base_url` at the gateway, keep the existing client (X-1a, NFR-8)
 
 | Header | Meaning |
 |---|---|
-| `X-Nometria-Agent` | Agent slug. If absent, inferred from the credential; if neither resolves, a `shadow_agent` finding is raised (P1-2). |
-| `X-Nometria-Session` | Correlates multiple calls into one execution path. |
-| `X-Nometria-Environment` | `production` \| `staging` \| `development`. Selects the policy binding. |
-| `X-Nometria-Intent` | Declared task intent, used by intent-based containment (P3-4). |
-| `X-Nometria-Trust` | JSON map marking message indices as untrusted (`{"2":"retrieved","3":"tool_result"}`) for taint tracking. |
+| `X-AgentFox-Agent` | Agent slug. If absent, inferred from the credential; if neither resolves, a `shadow_agent` finding is raised (P1-2). |
+| `X-AgentFox-Session` | Correlates multiple calls into one execution path. |
+| `X-AgentFox-Environment` | `production` \| `staging` \| `development`. Selects the policy binding. |
+| `X-AgentFox-Intent` | Declared task intent, used by intent-based containment (P3-4). |
+| `X-AgentFox-Trust` | JSON map marking message indices as untrusted (`{"2":"retrieved","3":"tool_result"}`) for taint tracking. |
 
 Response adds:
 
 | Header | Meaning |
 |---|---|
-| `X-Nometria-Trace` | Trace id — the handle for everything in Pillar 5. |
-| `X-Nometria-Verdict` | The enforced verdict: `allow` \| `tokenize` \| `mask` \| `redact` \| `abstain` \| `escalate` \| `block` |
-| `X-Nometria-Effective-Verdict` | What the policy would have done regardless of mode — differs from the verdict in observe mode |
-| `X-Nometria-Mode` | `observe` \| `enforce` for the deciding policy |
-| `X-Nometria-Decision` | Decision id. |
-| `X-Nometria-Latency-Ms` | Added enforcement latency (NFR-1 observability). |
+| `X-AgentFox-Trace` | Trace id — the handle for everything in Pillar 5. |
+| `X-AgentFox-Verdict` | The enforced verdict: `allow` \| `tokenize` \| `mask` \| `redact` \| `abstain` \| `escalate` \| `block` |
+| `X-AgentFox-Effective-Verdict` | What the policy would have done regardless of mode — differs from the verdict in observe mode |
+| `X-AgentFox-Mode` | `observe` \| `enforce` for the deciding policy |
+| `X-AgentFox-Decision` | Decision id. |
+| `X-AgentFox-Latency-Ms` | Added enforcement latency (NFR-1 observability). |
 
 **On block** → `HTTP 403` with `{"error": {"type": "agentfox_policy_violation", "message", "verdict", "trace_id", "decision_id", "policy_version", "rules_fired", "entities", "explanation", "suppressed"}}` (X-4: never block without an auditable reason).
 **On escalate** → `HTTP 428` with `error.type = "agentfox_approval_required"` and `approval_id`
 (an error status, so provider SDKs raise rather than parse a completion); poll
 `GET /api/approvals/{id}` (an agent key may read its own agent's), and once it is `approved` send
-the same request with `X-Nometria-Approval: <id>` — it runs once (P2-3).
-**On overload** → `HTTP 429` with `Retry-After` from the admission gate; `X-Nometria-Priority` raises a request's priority.
+the same request with `X-AgentFox-Approval: <id>` — it runs once (P2-3).
+**On overload** → `HTTP 429` with `Retry-After` from the admission gate; `X-AgentFox-Priority` raises a request's priority.
 
 ### `POST /v1/guard/input` · `POST /v1/guard/output` · `POST /v1/guard/tool_call` · `POST /v1/guard/memory_write` · `POST /v1/guard/agent_message` · `POST /v1/mcp/call`
 

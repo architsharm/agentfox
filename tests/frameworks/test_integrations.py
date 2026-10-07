@@ -176,13 +176,13 @@ def test_the_health_probe_reports_the_mode_the_policies_are_in(app):
 
 def test_the_middleware_stamps_every_response(app):
     response = app.get("/agentfox/health")
-    assert response.headers["X-Nometria-Service"] == "test-agent"
-    assert float(response.headers["X-Nometria-Latency-Ms"]) >= 0
+    assert response.headers["X-AgentFox-Service"] == "test-agent"
+    assert float(response.headers["X-AgentFox-Latency-Ms"]) >= 0
 
 
 def test_correlation_ids_flow_through_the_middleware(app):
     response = app.get("/agentfox/health", headers={"langfuse-trace-id": "lf-mw"})
-    assert response.headers["X-Nometria-External-Trace"] == "lf-mw"
+    assert response.headers["X-AgentFox-External-Trace"] == "lf-mw"
 
 
 def test_the_dependency_governs_inside_the_handler(app):
@@ -196,7 +196,7 @@ def test_the_dependency_governs_inside_the_handler(app):
 
 def test_a_governed_route_stamps_the_trace_on_the_response(app):
     response = app.post("/ask", json={"prompt": "hello"})
-    assert response.headers["X-Nometria-Trace"] == response.json()["trace_id"]
+    assert response.headers["X-AgentFox-Trace"] == response.json()["trace_id"]
 
 
 def test_detections_reach_the_dependency(app):
@@ -214,7 +214,7 @@ def test_the_context_dependency_works_without_the_middleware(isolated_db):
         return {"agent": request_ctx.agent}
 
     client = TestClient(application)
-    body = client.get("/whoami", headers={"X-Nometria-Agent": "support-triage"}).json()
+    body = client.get("/whoami", headers={"X-AgentFox-Agent": "support-triage"}).json()
     assert body["agent"] == "support-triage"
 
 
@@ -255,7 +255,7 @@ def test_metrics_follow_prometheus_naming(seeded, enforcer):
     ):
         assert f"# TYPE {name} " in body, name
     for line in body.splitlines():
-        if line.startswith("nometria_") and "_total" in line.split("{")[0]:
+        if line.startswith("agentfox_") and "_total" in line.split("{")[0]:
             assert "# " not in line
 
 

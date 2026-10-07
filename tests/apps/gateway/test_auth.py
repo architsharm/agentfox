@@ -1,6 +1,6 @@
 """Authentication.
 
-The finding: the control plane accepted an unverified `X-Nometria-User` header and
+The finding: the control plane accepted an unverified `X-AgentFox-User` header and
 trusted it, so anyone who could reach the port was any user they named, with write
 access to policy, controls and the kill switch. It was documented as an MVP shortcut
 "confined to one function", which was true and was not a mitigation.
@@ -77,7 +77,7 @@ def test_production_refuses_header_only_identity(ready, production):
     """The exact request that used to return 200 with full admin write access."""
     client = TestClient(create_app())
     assert (
-        client.get("/api/agents", headers={"X-Nometria-User": "admin@example.com"}).status_code
+        client.get("/api/agents", headers={"X-AgentFox-User": "admin@example.com"}).status_code
         == 401
     )
 
@@ -85,7 +85,7 @@ def test_production_refuses_header_only_identity(ready, production):
 def test_production_refuses_header_only_writes(ready, production):
     client = TestClient(create_app())
     response = client.post(
-        "/api/controls/compute", headers={"X-Nometria-User": "admin@example.com"}
+        "/api/controls/compute", headers={"X-AgentFox-User": "admin@example.com"}
     )
     assert response.status_code == 401
 
@@ -94,7 +94,7 @@ def test_the_refusal_says_how_to_fix_it(ready, production):
     """An error that does not tell an operator what to do next generates a support
     conversation instead of a token."""
     client = TestClient(create_app())
-    detail = client.get("/api/agents", headers={"X-Nometria-User": "admin@example.com"}).json()[
+    detail = client.get("/api/agents", headers={"X-AgentFox-User": "admin@example.com"}).json()[
         "detail"
     ]
     assert "production" in detail
@@ -115,7 +115,7 @@ def test_a_valid_token_is_accepted_in_production(ready, production):
 def test_development_still_works_without_a_token(ready):
     client = TestClient(create_app())
     assert (
-        client.get("/api/agents", headers={"X-Nometria-User": "admin@example.com"}).status_code
+        client.get("/api/agents", headers={"X-AgentFox-User": "admin@example.com"}).status_code
         == 200
     )
 
@@ -249,7 +249,7 @@ def test_an_agent_credential_binds_its_agents_tenant(isolated_db):
     response = client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": "hi"}]},
-        headers={"Authorization": f"Bearer {raw}", "X-Nometria-Agent": "acme-bot"},
+        headers={"Authorization": f"Bearer {raw}", "X-AgentFox-Agent": "acme-bot"},
     )
     assert response.status_code == 200
 
@@ -266,7 +266,7 @@ def test_unregistered_agents_are_still_observed(ready):
     response = client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": "hi"}]},
-        headers={"X-Nometria-Agent": "never-registered"},
+        headers={"X-AgentFox-Agent": "never-registered"},
     )
     assert response.status_code == 200
 
@@ -294,7 +294,7 @@ def test_routine_auth_lookups_do_not_warn(ready):
     logger.setLevel(logging.WARNING)
     try:
         TestClient(create_app()).get(
-            "/api/agents", headers={"X-Nometria-User": "admin@example.com"}
+            "/api/agents", headers={"X-AgentFox-User": "admin@example.com"}
         )
     finally:
         logger.removeHandler(handler)

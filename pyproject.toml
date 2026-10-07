@@ -76,7 +76,7 @@ all = ["agentfox[pii,classifiers,rails,validators,redteam,otel,postgres,langgrap
 
 # NOT included in `all` on purpose (Appendix A.4): Llama Guard / ShieldGemma carry
 # non-OSI licences. Installing this extra is an explicit act, and the adapters
-# additionally refuse to load unless NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1.
+# additionally refuse to load unless AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1.
 restricted-classifiers = ["transformers>=4.44", "torch>=2.4"]
 
 [project.scripts]

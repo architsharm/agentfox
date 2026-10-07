@@ -23,11 +23,16 @@ SRC = REPO / "src" / "agentfox"
 #: Modules that read the legacy names on purpose and say so.
 LEGACY_READERS = {
     "core/config.py",  # the fallback itself
-    "apps/cli/submit.py",  # AGENTFOX_API_URL, then NOMETRIA_API_URL
     "apps/report/evidence.py",  # old audit-key names, for packages signed under them
-    "frameworks/autoguard/environment.py",  # env var names auto() inspects
     "capabilities/detection/detectors/secrets.py",  # a detector label, not a variable
 }
+
+#: Modules that accept the pre-rename x-nometria-* request headers on purpose.
+LEGACY_HEADER_READERS = {
+    "core/headers.py",  # the input-side fallback itself
+    "exporters/correlation.py",  # x-nometria-langfuse-trace / -langsmith-trace
+}
+LEGACY_HEADER = re.compile(r"x[-_]nometria[-_]", re.I)
 
 LEGACY = re.compile(r"\bNOMETRIA_[A-Z*]")
 #: A mention that explicitly calls the old name the old name is fine.
@@ -60,3 +65,16 @@ def test_generated_config_names_the_current_prefix():
     from agentfox.apps.cli.onboarding import _CONFIG_TEMPLATE
 
     assert "AGENTFOX_*" in _CONFIG_TEMPLATE
+
+
+def test_no_header_the_package_emits_or_documents_is_x_nometria():
+    """Headers are X-AgentFox-*. The old spelling is accepted in exactly one place."""
+    offenders = []
+    for path in sorted(SRC.rglob("*.py")):
+        rel = path.relative_to(SRC).as_posix()
+        if rel in LEGACY_HEADER_READERS:
+            continue
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if LEGACY_HEADER.search(line) and not SAYS_LEGACY.search(line):
+                offenders.append(f"{rel}:{lineno}: {line.strip()[:100]}")
+    assert offenders == [], "use X-AgentFox-* headers:\n" + "\n".join(offenders)

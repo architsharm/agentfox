@@ -8,25 +8,24 @@ since they are cached for the process lifetime (`agentfox.core.config.get_settin
 Locally, it points agentfox at a dedicated SQLite file next to the calling demo
 (`<demo folder>/demo.db`), never at the repo's own `agentfox.db` (used by the dashboard
 and the rest of the dev environment), and never at the other demo's file. The path is
-overridable: set `AGENTFOX_DATABASE_URL` (or the older `NOMETRIA_DATABASE_URL`)
-yourself before running a script. The default is written under the older name on
-purpose: every agentfox version reads it, including an older vendored wheel, and the
-current one reads `AGENTFOX_DATABASE_URL` first, so an explicit override still wins.
+overridable: set `AGENTFOX_DATABASE_URL` yourself before running a script (the
+deprecated `NOMETRIA_DATABASE_URL` is still honoured too).
 
 **Deployed (Vercel) case**: the project's Postgres comes from Vercel's native Neon
-integration, connected with a custom env-var prefix of `NOMETRIA_DATABASE` — but
-Neon's own base variable name is itself `POSTGRES_URL`/`DATABASE_URL`, so the
-integration produces `NOMETRIA_DATABASE_POSTGRES_URL` (prefix + Neon's name), not
-`NOMETRIA_DATABASE_URL` directly (confirmed directly against the actual generated
-variable list — searching for `NOMETRIA_DATABASE_URL` returns nothing; only the
-doubled-up names exist). Rather than hand-copy the secret's raw value into a second,
-manually-created variable (redundant, and easy to get subtly wrong — an initial
-attempt at exactly that hit "Could not parse SQLAlchemy URL from given URL string"),
-derive `NOMETRIA_DATABASE_URL` from the integration's own variable. This also fixes
-the driver: Neon's connection strings use the bare `postgresql://` scheme (psycopg2's
-default dialect), but the deployed demo installs `psycopg` (v3) per its
-`requirements.txt` — SQLAlchemy needs `postgresql+psycopg://` to pick that driver.
-Neither Neon variable is ever set locally, so this branch is a no-op there.
+integration, connected with a custom env-var prefix (`AGENTFOX_DATABASE`, or
+`NOMETRIA_DATABASE` before the rename). Neon's own base variable names are
+`POSTGRES_URL`/`DATABASE_URL`, so the integration produces
+`AGENTFOX_DATABASE_POSTGRES_URL` (prefix + Neon's name), not `AGENTFOX_DATABASE_URL`
+directly — only the doubled-up names exist. Rather than hand-copy the secret's raw
+value into a second, manually-created variable (redundant, and easy to get subtly
+wrong — an initial attempt at exactly that hit "Could not parse SQLAlchemy URL from
+given URL string"), derive `AGENTFOX_DATABASE_URL` from the integration's own
+variable. This also fixes the driver: Neon's connection strings use the bare
+`postgresql://` scheme (psycopg2's default dialect), but the deployed demo installs
+`psycopg` (v3) per its `requirements.txt` — SQLAlchemy needs `postgresql+psycopg://`
+to pick that driver. Neither Neon variable is ever set locally, so this branch is a
+no-op there. The `NOMETRIA_DATABASE_*` names are read last, until the integration's
+prefix is changed (docs/deployment/vercel-env-rename.md).
 """
 
 from __future__ import annotations
@@ -35,13 +34,20 @@ import os
 from pathlib import Path
 
 #: Either name set by hand means "use this database", and nothing here touches it.
+#: (`NOMETRIA_DATABASE_URL` is the deprecated pre-rename name.)
 _EXPLICIT = ("AGENTFOX_DATABASE_URL", "NOMETRIA_DATABASE_URL")
+
+#: What a Neon integration generates, under the current prefix first.
+_NEON = (
+    "AGENTFOX_DATABASE_POSTGRES_URL",
+    "AGENTFOX_DATABASE_DATABASE_URL",
+    "NOMETRIA_DATABASE_POSTGRES_URL",
+    "NOMETRIA_DATABASE_DATABASE_URL",
+)
 
 
 def _neon_database_url() -> str | None:
-    url = os.environ.get("NOMETRIA_DATABASE_POSTGRES_URL") or os.environ.get(
-        "NOMETRIA_DATABASE_DATABASE_URL"
-    )
+    url = next((os.environ[name] for name in _NEON if os.environ.get(name)), None)
     if not url:
         return None
     for scheme in ("postgres://", "postgresql://"):
@@ -56,5 +62,5 @@ def configure(demo_dir: Path) -> Path:
     if any(name in os.environ for name in _EXPLICIT):
         return default_db_path
     neon_url = _neon_database_url()
-    os.environ["NOMETRIA_DATABASE_URL"] = neon_url or f"sqlite:///{default_db_path}"
+    os.environ["AGENTFOX_DATABASE_URL"] = neon_url or f"sqlite:///{default_db_path}"
     return default_db_path

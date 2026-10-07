@@ -215,7 +215,7 @@ def test_the_openfga_hint_names_the_current_variable():
 
     source = inspect.getsource(OpenFgaEngine.visible)
     assert "AGENTFOX_ENTITLEMENT_ENGINE" in source
-    assert "NOMETRIA_" not in source
+    assert "AGENTFOX_" not in source
 
 
 def test_the_over_permission_report_works_with_no_entitlement_model(isolated_db):
@@ -429,7 +429,7 @@ def test_gateway_completion_with_a_principal_records_a_disclosure_event(client):
                 {"source": "hr/salaries-2026", "text": "Head of Eng: 210,000."},
             ],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     assert response.status_code == 200
     with session_scope() as session:

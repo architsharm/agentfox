@@ -111,8 +111,9 @@ export default function Page() {
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`}</Code>
       <p>
         Every setting is on <Link href="/docs/reference/config">Configuration</Link>. The
-        pre-rename <code>NOMETRIA_*</code> names still work everywhere; where both are set,{" "}
-        <code>AGENTFOX_*</code> wins.
+        pre-rename <code>NOMETRIA_*</code> names are still read as a deprecated fallback,
+        with a startup warning naming each one; where both are set, <code>AGENTFOX_*</code>{" "}
+        wins. Rename them: a later release stops reading them.
       </p>
 
       <h2 id="python">The gateway as a Python app</h2>
@@ -164,7 +165,7 @@ export AGENTFOX_SERVICE_AUTH_SECRET="…another generated value…"`}</Code>
   Only a hash is stored. There is no way to show this value again — issue a new token if it is lost.
 …`}</Output>
           <p>Against a production gateway, the header is refused and the token works:</p>
-          <Code>{`curl -s -o /dev/null -w "%{http_code}\\n" -H "X-Nometria-User: admin@example.com" http://localhost:8080/api/findings
+          <Code>{`curl -s -o /dev/null -w "%{http_code}\\n" -H "X-AgentFox-User: admin@example.com" http://localhost:8080/api/findings
 curl -s -o /dev/null -w "%{http_code}\\n" -H "Authorization: Bearer $AGENTFOX_TOKEN" http://localhost:8080/api/findings`}</Code>
           <Output>{`401
 200`}</Output>
@@ -282,7 +283,7 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
       <Callout kind="warning" title="After the first deploy">
         <ul>
           <li>
-            The blueprint generates <code>NOMETRIA_SERVICE_AUTH_SECRET</code> on the gateway
+            The blueprint generates <code>AGENTFOX_SERVICE_AUTH_SECRET</code> on the gateway
             and copies it to the dashboard. A deployment created from an older blueprint has
             it on the dashboard only, and its gateway now refuses to start on the default:
             sync the blueprint, or copy the dashboard&apos;s value to the gateway.
@@ -296,9 +297,11 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
       <p>
         Then set the GitHub OAuth app&apos;s callback to{" "}
         <code>https://&lt;your-dashboard-host&gt;/api/auth/github/callback</code>, exactly,
-        including the scheme. The blueprint generates the audit signing key for you (as{" "}
-        <code>NOMETRIA_AUDIT_SIGNING_KEY</code>, kept under the old name on purpose so a
-        blueprint sync does not rotate it). The dashboard runbook, including Fly.io, is{" "}
+        including the scheme. The blueprint asks for{" "}
+        <code>AGENTFOX_AUDIT_SIGNING_KEY</code> once, on creation: paste a random value and
+        keep a copy. A deployment made from an older blueprint has it as{" "}
+        <code>NOMETRIA_AUDIT_SIGNING_KEY</code>; copy that value to the new name rather than
+        generating a new one, or entries signed before the change stop verifying. The dashboard runbook, including Fly.io, is{" "}
         <code>deploy/README-dashboard.md</code>.
       </p>
 

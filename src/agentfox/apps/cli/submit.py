@@ -10,7 +10,6 @@ contract this is not allowed to loosen.
 
 from __future__ import annotations
 
-import os
 import sys
 from typing import Any
 
@@ -18,6 +17,7 @@ import httpx
 from rich.console import Console
 
 from agentfox.capabilities.discovery.repo import ScanReport
+from agentfox.core.config import env
 
 
 class SubmissionUnavailable(Exception):
@@ -32,25 +32,23 @@ def submit_scan_report(report: ScanReport, *, source: str) -> dict[str, Any]:
     configured, no credential configured, the request itself failing — so callers can
     show one friendly message rather than a traceback.
     """
-    base = os.environ.get("AGENTFOX_API_URL") or os.environ.get("NOMETRIA_API_URL")
+    base = env("API_URL")
     if not base:
         raise SubmissionUnavailable(
             "AGENTFOX_API_URL is not set — point it at a running `agentfox serve` "
             "(yours or your team's) to submit."
         )
 
-    # AGENTFOX_ first, NOMETRIA_ as the legacy alias — the same precedence
-    # config.py applies to every other setting (ENV_PREFIX / LEGACY_ENV_PREFIX).
-    # This module read the environment directly and so never picked up the
-    # rename, which meant the product told operators to set a variable named
-    # after the old company and the new one silently did nothing.
-    token = os.environ.get("AGENTFOX_API_TOKEN") or os.environ.get("NOMETRIA_API_TOKEN")
-    dev_user = os.environ.get("AGENTFOX_USER") or os.environ.get("NOMETRIA_USER")
+    # Through config.env(): AGENTFOX_ first, the pre-rename NOMETRIA_ name as a
+    # deprecated fallback — the same precedence, and the same deprecation warning,
+    # as every other setting.
+    token = env("API_TOKEN")
+    dev_user = env("USER")
     headers: dict[str, str] = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     elif dev_user:
-        headers["X-Nometria-User"] = dev_user
+        headers["X-AgentFox-User"] = dev_user
     else:
         raise SubmissionUnavailable(
             "no credentials configured — set AGENTFOX_API_TOKEN (`agentfox admin auth issue "

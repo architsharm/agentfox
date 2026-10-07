@@ -84,7 +84,7 @@ the *same* database, so either run everything from inside `demo/redteam-live-lan
 (the scripts set the default relative to themselves) or export it explicitly:
 
 ```bash
-export NOMETRIA_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live-lang/demo.db"
+export AGENTFOX_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live-lang/demo.db"
 ```
 
 ### The agent this seeds
@@ -373,7 +373,7 @@ agentfox policy observe baseline   # put it back
 `ANTHROPIC_API_KEY` nor `OPENAI_API_KEY` is set — it makes no network call in that
 case (verified directly: `_resolve_llm()` raises `MissingApiKey` before any
 provider package is even imported). Set one of them, or optionally pin the exact
-model with `NOMETRIA_DEMO_MODEL` (e.g. `claude-3-5-sonnet-20241022`). No other
+model with `AGENTFOX_DEMO_MODEL` (e.g. `claude-3-5-sonnet-20241022`). No other
 third-party network calls happen anywhere in this demo.
 
 ## What I verified myself (and what I didn't)
@@ -392,7 +392,7 @@ needing a live key:
   object is lazy and doesn't itself call out): `build_agent_executor()` returns a
   real `AgentExecutor` with all four tools bound (`lookup_customer`,
   `search_orders`, `issue_refund`, `send_email`), for both providers, and
-  `NOMETRIA_DEMO_MODEL` correctly pins the model name.
+  `AGENTFOX_DEMO_MODEL` correctly pins the model name.
 - **`agentfox.auto()`'s patch report.** Importing `agent.py` prints
   `Patched: openai, anthropic, langchain` — `_patch_langchain` patches
   `langchain_core.language_models.chat_models.BaseChatModel.invoke` directly (see
@@ -507,7 +507,7 @@ turn list each request) rather than server-side, because a serverless function's
 filesystem/process state does not reliably persist between two requests in the same
 conversation — the governed state that actually matters (capability grants, taint
 marks, audit trail, order/customer records) lives in Postgres via
-`NOMETRIA_DATABASE_URL`, not in the function's memory. `web.py`'s `_ensure_seeded()`
+`AGENTFOX_DATABASE_URL`, not in the function's memory. `web.py`'s `_ensure_seeded()`
 runs `seed_demo_agent.main()` lazily on first request rather than requiring a
 separate manual step, and is safe to call on every cold start — `save_policy` and
 the capability-grant loop are already idempotent at the DB level (checked directly,
@@ -523,7 +523,7 @@ not assumed; see `web.py`'s docstring).
    Vercel account for `guardrails-api`), **not** `guardrails-api`'s own `guardrails-db`
    — red-team demo traffic and probe runs should not land in the same database as
    real product compliance data.
-3. The standard `NOMETRIA_*` environment variables (service auth secret, token
+3. The standard `AGENTFOX_*` environment variables (service auth secret, token
    encryption key, audit signing key, evidence dir, environment, auth mode) —
    freshly generated for this project, the same way `agentfox init` generates them
    locally, not copied from `guardrails-api`'s.

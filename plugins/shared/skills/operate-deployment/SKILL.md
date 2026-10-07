@@ -15,14 +15,14 @@ entries (`gateway` on 8080, `dashboard` on 3000). Its paths point at the main ch
 adjust them in a worktree. Otherwise run these as background processes, never inline:
 
 ```bash
-NOMETRIA_PLAYGROUND_CORS_ORIGIN=http://localhost:3000 agentfox serve --port 8080
-(cd dashboard && npm ci && NOMETRIA_API_URL=http://127.0.0.1:8080 npm run dev)
+AGENTFOX_PLAYGROUND_CORS_ORIGIN=http://localhost:3000 agentfox serve --port 8080
+(cd dashboard && npm ci && AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev)
 ```
 
 - The API docs are at `http://127.0.0.1:8080/docs`.
 - The dashboard is at `http://localhost:3000`. Start with `/start`, `/findings`, `/agents` and
   `/policies`.
-- In development, API calls can use `X-Nometria-User: admin@example.com`.
+- In development, API calls can use `X-AgentFox-User: admin@example.com`.
 
 ## Self-host: Docker Compose
 
@@ -56,10 +56,10 @@ several of them.
 | # | Check | How |
 |---|---|---|
 | 1 | Dev auth header refused | `AGENTFOX_ENVIRONMENT=production`, `AGENTFOX_AUTH_MODE=token` (or `oidc`); `agentfox admin auth status` |
-| 2 | Postgres, not SQLite | `NOMETRIA_DATABASE_URL=postgresql+psycopg://…`, `[postgres]` extra |
+| 2 | Postgres, not SQLite | `AGENTFOX_DATABASE_URL=postgresql+psycopg://…`, `[postgres]` extra |
 | 3 | Secrets changed from dev defaults | `AGENTFOX_AUDIT_SIGNING_KEY` and `AGENTFOX_SERVICE_AUTH_SECRET` (the gateway refuses to start outside development without them; `agentfox doctor` checks), `AGENTFOX_TOKEN_ENCRYPTION_KEY`, `AGENTFOX_CRON_SECRET` |
-| 4 | Fail mode deliberate | `NOMETRIA_FAIL_MODE=closed` for high-risk agents; know that `open` lets requests through on detector timeout |
-| 5 | Egress intentional | `NOMETRIA_ALLOW_EGRESS=true` only when a real provider is configured |
+| 4 | Fail mode deliberate | `AGENTFOX_FAIL_MODE=closed` for high-risk agents; know that `open` lets requests through on detector timeout |
+| 5 | Egress intentional | `AGENTFOX_ALLOW_EGRESS=true` only when a real provider is configured |
 | 6 | Detectors as expected | `agentfox doctor` lists them; add extras for Presidio or classifiers |
 | 7 | Operator tokens, not shared logins | First operator: `agentfox admin users create <email> --role owner`; then `agentfox admin auth issue <email> --days 90` (shown once; the user stores it) |
 | 8 | Migrations current | `agentfox admin db current` = head; `agentfox admin db upgrade` |

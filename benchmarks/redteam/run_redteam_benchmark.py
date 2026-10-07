@@ -41,10 +41,10 @@ RESULTS_DIR = Path(__file__).parent / "results"
 def main() -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     tmpdir = tempfile.mkdtemp(prefix="redteam_bench_")
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
-    os.environ["NOMETRIA_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
-    os.environ["NOMETRIA_AUDIT_SIGNING_KEY"] = "bench-key"
-    os.environ["NOMETRIA_ALLOW_EGRESS"] = "false"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
+    os.environ["AGENTFOX_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
+    os.environ["AGENTFOX_AUDIT_SIGNING_KEY"] = "bench-key"
+    os.environ["AGENTFOX_ALLOW_EGRESS"] = "false"
 
     from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, run_campaign
     from agentfox.core import db
