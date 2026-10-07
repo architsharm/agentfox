@@ -3,7 +3,7 @@ red-team campaign runner itself, not the underlying detectors it calls (those
 are separately benchmarked: `benchmarks/REPORT.md`, `benchmarks/pii/`,
 `benchmarks/action_safety/`).
 
-    uv run python benchmarks/redteam/run_redteam_benchmark.py
+    uv run python -m benchmarks.redteam.run_redteam_benchmark
 
 **A different kind of benchmark from most others in this repo, and that
 difference is the point.** `benchmarks/REPORT.md` etc. score whether a

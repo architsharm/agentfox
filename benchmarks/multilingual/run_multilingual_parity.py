@@ -1,7 +1,7 @@
 """Cross-lingual parity — does the product work as well in German as in English?
 
-    PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
-      python benchmarks/multilingual/run_multilingual_parity.py
+    PYTHONPATH=src NOMETRIA_CONFIG=none \
+      python -m benchmarks.multilingual.run_multilingual_parity
 
 **The criticism this answers.** AI-security products are evaluated in English and
 sold worldwide. `docs/design/coverage-map.md` row L0.10 says so about this product too:
@@ -42,13 +42,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "agent_security"))
-
 RESULTS_DIR = Path(__file__).parent / "results"
-DATA_DIR = Path(__file__).parent.parent / "data_generalization"
+DATA_DIR = Path(__file__).parent.parent / "generalization" / "data"
 DB_PATH = Path("/tmp/agentfox_multilingual_benchmark.db")
 
-#: The seven languages `data_generalization/README.md` says `yanismiraoui.json`
+#: The seven languages `generalization/data/README.md` says `yanismiraoui.json`
 #: contains. Whether it really contains all seven is measured below, not assumed.
 LANGUAGES = {
     "en": "English",
@@ -65,7 +63,7 @@ LANGUAGES = {
 #
 # `yanismiraoui.json` ships **no language field** — only `text` and `label`. The
 # seven languages are named in the dataset card and in this repo's own
-# `data_generalization/README.md`, but nothing in the file says which row is which,
+# `generalization/data/README.md`, but nothing in the file says which row is which,
 # so a per-language score requires assigning languages ourselves.
 #
 # No language-ID library is installed in this venv (checked: langdetect, langid,
@@ -999,7 +997,7 @@ def run_integrity_parity(pairs: list[dict[str, Any]] | None = None) -> dict[str,
 #     and case references. Split into paragraphs, because a paragraph is the size of
 #     an answer.
 #   - `entitlement/data/privacylens.json` — English workplace narratives.
-#   - the three `data_generalization` benign pools, English rows only, language
+#   - the three `generalization/data` benign pools, English rows only, language
 #     assigned by the same scorer section 1 validates.
 # ---------------------------------------------------------------------------
 
@@ -1308,7 +1306,7 @@ def build_corpora() -> dict[str, Any]:
 #:
 #: The first is what actually ships. The second exists because of what the first
 #: measures: this repo's own committed generalization results
-#: (`../results_generalization/summary.json`) put the shipped regex heuristic at
+#: (`../generalization/results/summary.json`) put the shipped regex heuristic at
 #: **0.48% recall** on this dataset and the opt-in ML classifier at **98.55%**. A
 #: per-language parity table computed on a stack that detects essentially nothing in
 #: *any* language, English included, would be a table of zeroes reported as perfect
@@ -1338,7 +1336,7 @@ DETECTION_CONFIGS: list[dict[str, Any]] = [
         #  2. With the timeout raised, the Enforcer's default 8-worker pool
         #     accumulates straggler threads holding model tensors and segfaults part
         #     way through a multi-thousand-row run — the same accumulation
-        #     `../run_generalization_benchmark.py` documents and mitigates with
+        #     `../generalization/run_generalization_benchmark.py` documents and mitigates with
         #     `max_workers=2`.
         #
         # So this config scores `DetectorPipeline` directly with `max_workers=2`,
@@ -1374,12 +1372,11 @@ DETECTION_CONFIGS: list[dict[str, Any]] = [
 
 
 def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
-    from _util import wipe_db
-
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache
     from agentfox.fixtures.seed import seed
     from agentfox.runtime.enforcement import Enforcer
+    from benchmarks._common import wipe_db
 
     if config["detectors"] is None:
         os.environ.pop("AGENTFOX_ENABLED_DETECTORS", None)

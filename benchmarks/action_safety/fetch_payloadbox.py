@@ -4,7 +4,7 @@ each fragment as the value of an ORDINARY, non-SQL-declared tool-call argument
 (e.g. ``{"order_id": fragment}``) — the exact scenario `analyse_scope()` (via the
 `analyse_arguments()` dispatcher) is meant to catch, not `analyse_sql()`.
 
-    uv run python benchmarks/action_safety/fetch_payloadbox.py
+    uv run python -m benchmarks.action_safety.fetch_payloadbox
 
 Source: https://github.com/payload-box/sql-injection-payload-list (MIT — LICENSE
 verified by fetching it directly, see below). Five dialect files

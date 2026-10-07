@@ -68,17 +68,17 @@ more useful than one quietly left out.
 ## Reproducing everything
 
 ```bash
-uv run python benchmarks/containment/run_containment_benchmark.py
-uv run python benchmarks/agentdojo_e2e/run_agentdojo_e2e.py   # superseded label-assigned run
-uv run python benchmarks/adaptive/run_adaptive_benchmark.py
-uv run python benchmarks/run_prompt_injection_benchmark.py
-uv run python scripts/coverage.py --write
+uv run python -m benchmarks.containment.run_containment_benchmark
+uv run python -m benchmarks.agentdojo.run_agentdojo_e2e   # superseded label-assigned run
+uv run python -m benchmarks.adaptive.run_adaptive_benchmark
+uv run python -m benchmarks.injection.run_prompt_injection_benchmark
+uv run python scripts/gen/coverage.py --write
 uv run python scripts/probe/run.py --md > docs/design/coverage-map.md
 ```
 
 Everything above runs offline, with no API key and no model weights, against a throwaway database.
 The AgentDojo headline (provenance inferred from the real tool outputs) needs AgentDojo installed in a
 separate environment; its commands are under "Reproducing" in
-[`benchmarks/agentdojo_e2e/README.md`](../../benchmarks/agentdojo_e2e/README.md). Detector changes
+[`benchmarks/agentdojo/README.md`](../../benchmarks/agentdojo/README.md). Detector changes
 since some results files were written mean a few of them are due for a re-run; until then the
 published figures are the ones those files hold.

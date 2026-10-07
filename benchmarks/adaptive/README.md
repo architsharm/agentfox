@@ -5,7 +5,7 @@
 **Second pass.** The first run found four detector gaps and fixed none of them. Three were real bugs and are now fixed in `src/`; every number below is the re-measurement, with the pre-fix number beside it. See [Fixes applied](#fixes-applied).
 
 ```bash
-uv run python benchmarks/adaptive/run_adaptive_benchmark.py
+uv run python -m benchmarks.adaptive.run_adaptive_benchmark
 ```
 
 ## Why this benchmark exists

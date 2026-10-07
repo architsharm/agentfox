@@ -118,7 +118,7 @@ services:
       # an owner token. The dashboard below is given the same value.
       AGENTFOX_SERVICE_AUTH_SECRET: ${AGENTFOX_SERVICE_AUTH_SECRET:?set AGENTFOX_SERVICE_AUTH_SECRET to a random value (openssl rand -hex 32)}
       AGENTFOX_EVIDENCE_DIR: /var/agentfox/evidence
-      # The public playground page (dashboard/app/playground) calls this origin
+      # The public playground page (dashboard/app/(marketing)/playground) calls this origin
       # directly from the visitor's browser, unauthenticated — additive to the
       # hardcoded localhost origins in gateway/app.py, not a replacement. Only
       # needed once the dashboard is actually reachable from somewhere other than

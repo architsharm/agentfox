@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 /**
  * Change the judgment posture — which optional tiers run, and what may leave the box.
@@ -15,7 +15,7 @@ import { proxyCustomBody } from "@/lib/proxy";
  * into a list. `confirm_egress` is forwarded as the boolean the gateway expects: an
  * unchecked HTML checkbox sends nothing at all, which is the correct default here.
  *
- * Session-cookie-only auth comes from `proxyForward` — see lib/proxy.ts. Attributing
+ * Session-cookie-only auth comes from `proxyForward` — see lib/product/proxy.ts. Attributing
  * "who permitted customer data to leave the building" to a dev-fallback identity
  * would corrupt precisely the record this change exists to create.
  */
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     // safe default for fail_closed comes from the form, not from here: the box is
     // rendered checked, and when the deployment requires failing closed it is
     // disabled and a hidden `fail_closed=on` is posted in its place
-    // (components/JudgmentPosture.tsx). An unticked box is a deliberate choice to
+    // (components/product/JudgmentPosture.tsx). An unticked box is a deliberate choice to
     // fail open, and the gateway refuses it if the deployment does not allow that.
     fail_closed: form.get("fail_closed") !== null,
     confirm_egress: form.get("confirm_egress") !== null,

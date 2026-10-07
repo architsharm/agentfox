@@ -1,6 +1,6 @@
 """Tier D — excessive agency / privilege escalation.
 
-    uv run python benchmarks/agent_security/tier_d_excessive_agency.py
+    uv run python -m benchmarks.agent_security.tier_d_excessive_agency
 
 The attack shape: an agent is granted a *narrow* set of tool capabilities, but a
 jailbreak (or a poisoned tool result, or an attacker-controlled retrieval) tries to
@@ -29,13 +29,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from _util import wipe_db
-
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
 from agentfox.fixtures.seed import seed
 from agentfox.platform.registry.control import quarantine
 from agentfox.runtime.enforcement import Enforcer
+from benchmarks._common import wipe_db
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

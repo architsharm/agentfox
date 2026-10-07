@@ -6,8 +6,8 @@ F9.4 after this benchmark confirmed the gap, catches **10 of 13 — all of them 
 final turn, with 0 of 9 benign controls flagged**.
 
 ```bash
-PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
-  python benchmarks/crescendo/run_crescendo_benchmark.py
+PYTHONPATH=src NOMETRIA_CONFIG=none \
+  python -m benchmarks.crescendo.run_crescendo_benchmark
 ```
 
 ## Why this benchmark exists

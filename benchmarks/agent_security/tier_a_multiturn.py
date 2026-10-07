@@ -1,6 +1,6 @@
 """Tier A — contextual & multi-turn injection (payload splitting).
 
-    uv run python benchmarks/agent_security/tier_a_multiturn.py
+    uv run python -m benchmarks.agent_security.tier_a_multiturn
 
 The attack shape: an attacker spreads a payload across several separate calls in
 one conversation. Turn 1 and 2 look completely innocent scored alone; only the
@@ -39,14 +39,13 @@ import json
 import os
 from pathlib import Path
 
-from _util import wipe_db
-
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
 from agentfox.core.models import ConversationTurn
 from agentfox.fixtures.seed import seed
 from agentfox.platform.policy import set_mode
 from agentfox.runtime.enforcement import Enforcer
+from benchmarks._common import wipe_db
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -129,10 +128,7 @@ def run_scenario(session, scenario: dict) -> dict:
 
 
 def score_llm_guard_per_turn(scenario: dict) -> dict | None:
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).parent))
-    from llm_guard_client import LlmGuardUnavailable, scan
+    from benchmarks.agent_security.llm_guard_client import LlmGuardUnavailable, scan
 
     all_turns = [*scenario["turns"], scenario["final_turn"]]
     try:

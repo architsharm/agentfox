@@ -22,27 +22,27 @@ jobs:
       - name: Install (matches CI)
         run: uv sync --extra pii --extra otel --extra postgres --extra sql --extra dev
       - name: Containment under total detector bypass
-        run: uv run python benchmarks/containment/run_containment_benchmark.py
+        run: uv run python -m benchmarks.containment.run_containment_benchmark
       # The inferred-provenance replay, which is what the published AgentDojo figures come from.
-      # The label-assigned run_agentdojo_e2e.py is retired (benchmarks/agentdojo_e2e/README.md).
+      # The label-assigned run_agentdojo_e2e.py is retired (benchmarks/agentdojo/README.md).
       - name: AgentDojo traces (isolated environment)
         run: |
           uv venv "$RUNNER_TEMP/agentdojo_venv"
           uv pip install --python "$RUNNER_TEMP/agentdojo_venv/bin/python" agentdojo==0.1.35
-          "$RUNNER_TEMP/agentdojo_venv/bin/python" benchmarks/agentdojo_e2e/inferred/gen_traces.py v1.2.2 \
+          "$RUNNER_TEMP/agentdojo_venv/bin/python" -m benchmarks.agentdojo.inferred.gen_traces v1.2.2 \
             > "$RUNNER_TEMP/traces_v1.2.2.json"
       - name: AgentDojo replay, provenance inferred from tool outputs
         run: |
-          uv run python benchmarks/agentdojo_e2e/inferred/replay.py \
+          uv run python -m benchmarks.agentdojo.inferred.replay \
             "$RUNNER_TEMP/traces_v1.2.2.json" "$RUNNER_TEMP/out.json"
-          GRANT_MODE=tiered uv run python benchmarks/agentdojo_e2e/inferred/replay.py \
+          GRANT_MODE=tiered uv run python -m benchmarks.agentdojo.inferred.replay \
             "$RUNNER_TEMP/traces_v1.2.2.json" "$RUNNER_TEMP/out_tiered.json" inferred,inferred_arg
-          uv run python benchmarks/agentdojo_e2e/inferred/summarise.py \
+          uv run python -m benchmarks.agentdojo.inferred.summarise \
             "$RUNNER_TEMP/out.json" "$RUNNER_TEMP/out_tiered.json" "$RUNNER_TEMP/traces_v1.2.2.json"
       - name: Crescendo trajectory
-        run: uv run python benchmarks/crescendo/run_crescendo_benchmark.py
+        run: uv run python -m benchmarks.crescendo.run_crescendo_benchmark
       - name: Published claims still match fresh measurements
-        run: uv run python scripts/claims.py --check
+        run: uv run python scripts/check/claims.py --check
       - name: Coverage map does not overstate the product
         run: uv run python scripts/probe/run.py
       - name: Keep the fresh results for comparison
@@ -52,5 +52,5 @@ jobs:
           name: nightly-evidence
           path: |
             benchmarks/containment/results/
-            benchmarks/agentdojo_e2e/results/
+            benchmarks/agentdojo/results/
             benchmarks/crescendo/results/

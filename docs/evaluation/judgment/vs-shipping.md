@@ -68,7 +68,7 @@ is what genuinely complementary signals look like.
 The shipping check flags nothing here, and the benchmark README says why: it is
 a *syntax-level* check on tool arguments, and AgentDojo's attacker-controlled
 values are ordinary-looking IBANs, dates and channel names. Containment happens
-at the capability layer instead (see `benchmarks/agentdojo_e2e/`, where, with
+at the capability layer instead (see `benchmarks/agentdojo/`, where, with
 provenance inferred rather than labelled, session-level taint contains every
 evaluable attack pair at a large benign-utility cost). The 617 calls here count
 each AgentDojo task once per registered version; 384 are unique.

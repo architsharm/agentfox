@@ -18,7 +18,7 @@ export default function Page() {
       <h1>CLI reference</h1>
       <p className="docs-lede">
         Every command and option, generated from the CLI by{" "}
-        <code>scripts/docs_reference.py</code>. If it is on this page, it runs.
+        <code>scripts/gen/docs_reference.py</code>. If it is on this page, it runs.
       </p>
 
       <p>

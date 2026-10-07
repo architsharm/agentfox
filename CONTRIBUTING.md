@@ -27,7 +27,7 @@ uvx pre-commit install
 ## The contract: `just ci`
 
 `just ci` runs what [CI](.github/workflows/ci.yml) runs: ruff at CI's pinned version, the
-Python suite, the four drift checks, the dashboard tests and the vendored-wheel freshness
+Python suite, the drift checks, the dashboard tests and the vendored-wheel freshness
 rule. If it passes locally, the pull request will pass, except for the Docker build
 (`just docker-smoke`, which needs Docker).
 
@@ -37,10 +37,11 @@ rule. If it passes locally, the pull request will pass, except for the Docker bu
 | `just test` | `uv run pytest -q` |
 | `just test-fast` | `uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo` |
 | `just lint` | `uvx ruff@0.15.7 check .`, `uvx ruff@0.15.7 format --check .` (`just fmt` applies them) and the import contracts, `PYTHONPATH=src uvx --from import-linter==2.15 lint-imports` |
-| `just check` | `check_plugins.py`, `api_routes.py --check`, `docs_reference.py --check`, `claims.py --check` |
+| `just check` | `scripts/check/plugins.py`, `scripts/check/demo_kit.py`, `scripts/gen/api_routes.py --check`, `scripts/gen/docs_reference.py --check`, `scripts/check/claims.py --check` |
 | `just regen` | rewrites the generated files those checks compare against |
 | `just dashboard` | `npm ci`, `npm test` and `tsc --noEmit` in `dashboard/` |
 | `just wheels` | rebuilds `api/vendor/` and `demo/redteam-live-lang/vendor/` |
+| `just new-harness <name>` | scaffolds `src/agentfox/harnesses/<name>/` from `scripts/templates/harness/` |
 | `just serve` / `just demo` | the gateway on :8080; the offline walkthrough on a throwaway database |
 | `just new-pack <id>` / `just test-pack [<id>]` | scaffold a built-in capability pack; validate packs and run their golden cases |
 
@@ -84,7 +85,9 @@ needs a reason and a TODO saying what removes it.
 ### Add a harness
 
 A harness is a coding agent AgentFox governs through its hooks (Claude Code today). It is
-one folder, `src/agentfox/harnesses/<name>/`, and touches nothing else in `src/`:
+one folder, `src/agentfox/harnesses/<name>/`, and touches nothing else in `src/`.
+`just new-harness <name> "Display Name"` writes the folder from `scripts/templates/harness/`
+(an adapter skeleton whose capabilities all start as "cannot", and a fixtures README):
 
 1. **`adapter.py`** implements `harnesses/base.py:HarnessAdapter` and exposes `ADAPTER`:
    `parse` (raw payload → `AgentEvent`), `render` (`Decision` → exact stdout, stderr and exit
@@ -159,10 +162,11 @@ edit the output by hand.
 
 | File | Regenerate | Checked by |
 |---|---|---|
-| route tables in `docs/architecture/api-spec.md` | `uv run python scripts/api_routes.py --write` | `api_routes.py --check` |
-| `dashboard/lib/reference/cli.json`, `api.json` | `uv run python scripts/docs_reference.py --write` | `docs_reference.py --check`, which also resolves every `agentfox …` command shown on a docs page |
-| `docs/status.md` | `uv run python scripts/coverage.py --write` | regenerated, not checked |
+| route tables in `docs/architecture/api-spec.md` | `uv run python scripts/gen/api_routes.py --write` | `api_routes.py --check` |
+| `dashboard/lib/generated/reference/cli.json`, `api.json` | `uv run python scripts/gen/docs_reference.py --write` | `docs_reference.py --check`, which also resolves every `agentfox …` command shown on a docs page |
+| `docs/status.md` | `uv run python scripts/gen/coverage.py --write` | regenerated, not checked |
 | `docs/design/coverage-map.md` | `uv run python scripts/probe/run.py --md > docs/design/coverage-map.md` | regenerated, not checked |
+| `dashboard/lib/generated/coverage.json` | `uv run python scripts/probe/run.py --json > dashboard/lib/generated/coverage.json` | `tests/repo/test_coverage_page_data.py` (every taxonomy scenario is published) |
 
 Two more checks bind prose to evidence:
 
@@ -170,11 +174,11 @@ Two more checks bind prose to evidence:
   benchmark figure to the result file it came from. Change a number by re-running the
   benchmark and committing the result; `claims.py --check` confirms the prose agrees. A
   figure in the README, `benchmarks/`, `docs/` or on the website must be bound.
-- **The plugins and the docs map.** `scripts/check_plugins.py` checks that every command
+- **The plugins and the docs map.** `scripts/check/plugins.py` checks that every command
   and path the operator plugins name exists, that every tracked `.md` file is classified in
   [`plugins/shared/reference/docs-map.md`](plugins/shared/reference/docs-map.md), and that
   the Claude Code plugin's copies of `plugins/shared/` (AGENTS.md, skills, reference) match
-  their originals. Edit `plugins/shared/`, then `uv run python scripts/check_plugins.py
+  their originals. Edit `plugins/shared/`, then `uv run python scripts/check/plugins.py
   --write` refreshes the copies. A new doc gets a row in the docs map and in
   [docs/README.md](docs/README.md).
 
@@ -185,7 +189,7 @@ If one of these fails, the document is wrong, not the check.
 `api/` (the Vercel deployment of the gateway) and `demo/redteam-live-lang/` deploy a wheel
 committed in their `vendor/` directories, not the source tree. A change under
 `src/agentfox/` must rebuild both wheels in the same commit, or production serves stale
-code. The pre-commit hook (`scripts/rebuild_vendored_wheels.py`) does this for you, and CI's
+code. The pre-commit hook (`scripts/check/rebuild_vendored_wheels.py`) does this for you, and CI's
 `vendored-wheel-freshness` job fails a push that skipped it.
 
 `git commit --no-verify` skips the hook. If you use it on a commit that touches

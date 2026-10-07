@@ -4,7 +4,7 @@
 wildcard/SQLi-fragment/path-traversal `analyse_scope` backstop) against
 `data/payloadbox_cases.json`.
 
-    uv run python benchmarks/action_safety/run_payloadbox_benchmark.py
+    uv run python -m benchmarks.action_safety.run_payloadbox_benchmark
 
 Every case places one raw payload-box fragment (or one hand-authored benign value)
 as the value of an ordinary, non-SQL-declared argument — e.g. `{"order_id": "1 OR

@@ -375,7 +375,7 @@ detector fires`}</Output>
         <p>
           Measured on AgentDojo (97 user tasks, 949 attack pairs, provenance inferred from the
           real tool outputs, every detector off), from{" "}
-          <code>benchmarks/agentdojo_e2e/README.md</code>:
+          <code>benchmarks/agentdojo/README.md</code>:
         </p>
         <table>
           <thead>

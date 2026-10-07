@@ -1,7 +1,7 @@
 """Scores AgentFox's PII detectors against the Text Anonymization Benchmark (TAB)'s
 `echr_test.json` (`data/tab_echr_test.json`, 127 rows, real ECHR case law, MIT).
 
-    uv run python benchmarks/pii/run_tab_benchmark.py
+    uv run python -m benchmarks.pii.run_tab_benchmark
 
 Same three detector configurations, same direct-call/span-overlap methodology as
 the other two PII runs — see `run_presidio_research_benchmark.py`'s docstring for
@@ -39,6 +39,7 @@ from pathlib import Path
 from agentfox.capabilities.detection.adapters.presidio import DEFAULT_EXCLUDED, PresidioPiiDetector
 from agentfox.capabilities.detection.base import DetectionContext
 from agentfox.capabilities.detection.detectors.pii import NativePiiDetector
+from benchmarks._common import merge_counts, pred_spans, summarize
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -88,10 +89,6 @@ def gt_spans_for_row(row: dict) -> list[tuple[int, int, str, str]]:
     return out
 
 
-def pred_spans(detections, canonical_types: set[str]) -> list[tuple[int, int, str]]:
-    return [(d.start, d.end, d.entity_type) for d in detections if d.entity_type in canonical_types]
-
-
 def score_row(gt, pred) -> tuple[int, int, int, dict[str, list[int]], dict[str, list[int]]]:
     per_type: dict[str, list[int]] = {}
     per_identifier: dict[str, list[int]] = {}
@@ -125,33 +122,6 @@ def score_row(gt, pred) -> tuple[int, int, int, dict[str, list[int]], dict[str, 
     return tp, fp, fn, per_type, per_identifier
 
 
-def merge(total: dict[str, list[int]], part: dict[str, list[int]]) -> None:
-    for t, (tp, fp, fn) in part.items():
-        bucket = total.setdefault(t, [0, 0, 0])
-        bucket[0] += tp
-        bucket[1] += fp
-        bucket[2] += fn
-
-
-def prf1(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
-    precision = tp / (tp + fp) if (tp + fp) else 0.0
-    recall = tp / (tp + fn) if (tp + fn) else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
-    return precision, recall, f1
-
-
-def summarize(tp: int, fp: int, fn: int) -> dict:
-    p, r, f = prf1(tp, fp, fn)
-    return {
-        "tp": tp,
-        "fp": fp,
-        "fn": fn,
-        "precision": round(p, 4),
-        "recall": round(r, 4),
-        "f1": round(f, 4),
-    }
-
-
 def run_config(name: str, detector, rows: list[dict], ctx: DetectionContext) -> dict:
     canonical_types = set(GT_ENTITY_MAP.values())
     total_tp = total_fp = total_fn = 0
@@ -166,8 +136,8 @@ def run_config(name: str, detector, rows: list[dict], ctx: DetectionContext) -> 
         total_tp += tp
         total_fp += fp
         total_fn += fn
-        merge(per_type, part_type)
-        merge(per_identifier, part_ident)
+        merge_counts(per_type, part_type)
+        merge_counts(per_identifier, part_ident)
         if (i + 1) % 25 == 0:
             print(f"  [{name}] {i + 1}/{len(rows)} rows")
 

@@ -1,6 +1,6 @@
 """Containment under total detector bypass — what survives when detection fails.
 
-    uv run python benchmarks/containment/run_containment_benchmark.py
+    uv run python -m benchmarks.containment.run_containment_benchmark
 
 **The question this answers.** Every published adversarial-robustness result says the
 same thing: a determined attacker gets past content detection. "The Attacker Moves
@@ -41,12 +41,9 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "agent_security"))
 
 # Bind the throwaway database BEFORE importing anything that reads settings. Without this
 # the benchmark inherits whatever `NOMETRIA_DATABASE_URL` happens to be set — in practice
@@ -57,13 +54,12 @@ DB_PATH = Path(tempfile.gettempdir()) / "agentfox_containment_benchmark.db"
 os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
 os.environ.setdefault("NOMETRIA_CONFIG", "none")
 
-from _util import wipe_db  # noqa: E402
-
 from agentfox.core import db  # noqa: E402
 from agentfox.core.config import get_settings, reset_settings_cache  # noqa: E402
 from agentfox.fixtures.seed import seed  # noqa: E402
 from agentfox.platform.registry.control import quarantine  # noqa: E402
 from agentfox.runtime.enforcement import Enforcer  # noqa: E402
+from benchmarks._common import wipe_db  # noqa: E402
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

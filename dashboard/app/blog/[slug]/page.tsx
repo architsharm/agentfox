@@ -1,16 +1,16 @@
 /**
  * /blog/<slug> — one post.
  *
- * Statically generated from lib/blog.ts. A slug that is not registered is a 404
+ * Statically generated from lib/marketing/blog.ts. A slug that is not registered is a 404
  * rather than an empty shell, because `dynamicParams` is off.
  */
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { BlogArticle } from "@/components/blog/article";
-import { POST_BODIES } from "@/components/blog/posts";
-import { AUTHOR, blogPath, getPost, SLUGS } from "@/lib/blog";
+import { BlogArticle } from "@/components/marketing/blog/article";
+import { POST_BODIES } from "@/components/marketing/blog/posts";
+import { AUTHOR, blogPath, getPost, SLUGS } from "@/lib/marketing/blog";
 import { publicPageMetadata } from "@/lib/site";
 
 export const dynamicParams = false;

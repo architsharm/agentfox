@@ -44,18 +44,19 @@ fmt:
     {{ruff}} check --fix .
     {{ruff}} format .
 
-# The four drift checks: docs, reference and published numbers against the code.
+# The drift checks: docs, reference, published numbers and the demo kit copy against the code.
 check:
-    uv run python scripts/check_plugins.py
-    uv run python scripts/api_routes.py --check
-    uv run python scripts/docs_reference.py --check
-    uv run python scripts/claims.py --check
+    uv run python scripts/check/plugins.py
+    uv run python scripts/check/demo_kit.py
+    uv run python scripts/gen/api_routes.py --check
+    uv run python scripts/gen/docs_reference.py --check
+    uv run python scripts/check/claims.py --check
 
 # Regenerate every generated file the checks above compare against.
 regen:
-    uv run python scripts/api_routes.py --write
-    uv run python scripts/docs_reference.py --write
-    uv run python scripts/coverage.py --write
+    uv run python scripts/gen/api_routes.py --write
+    uv run python scripts/gen/docs_reference.py --write
+    uv run python scripts/gen/coverage.py --write
 
 # Dashboard: clean install, vitest, and a type check (the type check is not in CI).
 dashboard:
@@ -75,6 +76,10 @@ wheel-freshness base="origin/main":
 
 # Everything CI runs except the Docker build.
 ci: lint test check dashboard wheel-freshness
+
+# Scaffold a coding-agent harness adapter: `just new-harness codex "Codex CLI"`.
+new-harness name display="":
+    uv run python scripts/gen/new_harness.py {{name}} {{ if display != "" { "--display-name '" + display + "'" } else { "" } }}
 
 # Rebuild both vendored wheels (api/ and the live demo deploy these, not src/).
 wheels:

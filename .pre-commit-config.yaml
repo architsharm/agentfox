@@ -5,7 +5,7 @@ repos:
     hooks:
       - id: rebuild-vendored-wheels
         name: rebuild vendored wheels if src/agentfox changed
-        entry: python3 scripts/rebuild_vendored_wheels.py
+        entry: python3 scripts/check/rebuild_vendored_wheels.py
         language: system
         files: ^src/agentfox/.*\.py$
         pass_filenames: false

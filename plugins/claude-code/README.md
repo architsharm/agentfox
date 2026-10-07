@@ -82,5 +82,5 @@ checker that keeps it honest. `AGENTS.md`, `skills/` and `reference/` here are c
 directory; edit the shared originals, then refresh the copies:
 
 ```bash
-uv run python scripts/check_plugins.py --write
+uv run python scripts/check/plugins.py --write
 ```

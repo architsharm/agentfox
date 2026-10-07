@@ -1,6 +1,6 @@
 """Tier B — indirect/honeypot injection via tool output.
 
-    uv run python benchmarks/agent_security/tier_b_indirect_injection.py
+    uv run python -m benchmarks.agent_security.tier_b_indirect_injection
 
 The attack shape: the user's own request is benign ("summarize this webpage",
 "look up this order"), but *third-party content the agent fetches on the way* —
@@ -29,7 +29,7 @@ shapes (HTML comments, fake "system notes", hidden divs, one of them the seeded
 `internal.export_report` poisoned MCP tool description shipped in
 `agentfox.fixtures.seed`) and 10 deliberately benign documents using the same trigger
 vocabulary ("ignore", "override", "disregard") with no injection intent — the
-same over-defense discipline as `benchmarks/data_generalization/notinject.json`,
+same over-defense discipline as `benchmarks/generalization/data/notinject.json`,
 so a detector that just pattern-matches loaded words doesn't get credit it
 didn't earn.
 """
@@ -40,14 +40,13 @@ import json
 import os
 from pathlib import Path
 
-from _util import wipe_db
-
 from agentfox.capabilities.detection import warm_all
 from agentfox.core import db
 from agentfox.core.config import get_settings, reset_settings_cache
 from agentfox.fixtures.seed import seed
 from agentfox.frameworks.mcp import McpGovernor
 from agentfox.runtime.enforcement import Enforcer
+from benchmarks._common import wipe_db
 
 DATA_PATH = Path(__file__).parent / "data" / "tier_b_cases.json"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -120,7 +119,7 @@ def score_nometria(cases: list[dict]) -> list[dict]:
 
 
 def score_llm_guard(cases: list[dict]) -> list[dict] | None:
-    from llm_guard_client import LlmGuardUnavailable, scan
+    from benchmarks.agent_security.llm_guard_client import LlmGuardUnavailable, scan
 
     try:
         scanned = scan([c["text"] for c in cases])

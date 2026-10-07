@@ -3,7 +3,7 @@
  * hand-rolled markup, so a code block, a warning and a numbered walkthrough look the
  * same everywhere.
  *
- * Commands inside <Code> are checked in CI: scripts/docs_reference.py --check resolves
+ * Commands inside <Code> are checked in CI: scripts/gen/docs_reference.py --check resolves
  * every `agentfox ...` line against the live CLI, flags included.
  */
 import Link from "next/link";

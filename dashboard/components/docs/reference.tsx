@@ -1,9 +1,9 @@
 /**
- * Renders the reference generated from the code by scripts/docs_reference.py.
+ * Renders the reference generated from the code by scripts/gen/docs_reference.py.
  * Nothing here is typed by hand: regenerate the JSON, and the page follows.
  */
-import api from "@/lib/reference/api.json";
-import cli from "@/lib/reference/cli.json";
+import api from "@/lib/generated/reference/api.json";
+import cli from "@/lib/generated/reference/cli.json";
 
 type Param = {
   kind: string;

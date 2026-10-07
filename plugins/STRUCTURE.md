@@ -38,7 +38,7 @@ plugins/
     ├── README.md                     for humans: what this is, how to install it, how to use it
     ├── .claude-plugin/plugin.json    Claude Code plugin manifest
     ├── .mcp.json             L3  MCP server: `agentfox mcp serve`, 27 read-only tools for any MCP client
-    ├── AGENTS.md, reference/, skills/    COPIES of shared/, made by `scripts/check_plugins.py --write`
+    ├── AGENTS.md, reference/, skills/    COPIES of shared/, made by `scripts/check/plugins.py --write`
     ├── commands/             L3  ENTRY POINTS — what a user types (/agentfox:<name>), thin, call a skill
     ├── agents/               L3  ROLES — subagents with scoped tools (read-only auditor, policy author, …)
     ├── hooks/hooks.json      L4  GUARDRAILS FOR THE PLUGIN — confirmation gate on blocking commands
@@ -48,9 +48,9 @@ plugins/
 **Why copies.** An installed Claude Code plugin cannot load a component outside its own
 directory: a path such as `../shared/skills` is rejected, and only a git-hosted marketplace
 dereferences symlinks (a `--plugin-dir` or local-path install skips them). So the Claude Code
-plugin carries byte-for-byte copies of `shared/`, committed, and `scripts/check_plugins.py`
+plugin carries byte-for-byte copies of `shared/`, committed, and `scripts/check/plugins.py`
 fails CI when a copy differs from its original. Edit `shared/`, never the copies, then run
-`uv run python scripts/check_plugins.py --write`. A plugin for another agent runtime is a
+`uv run python scripts/check/plugins.py --write`. A plugin for another agent runtime is a
 sibling folder that gets the same copies (add it to `RUNTIMES` in the checker).
 
 Layer 0 is the product's own docs (`docs/`, `benchmarks/`, READMEs). They stay where they
@@ -108,7 +108,7 @@ or remove a tool, update the count in `README.md`, `reference/cli.md` and this f
 ## Keeping it honest
 
 ```bash
-uv run python scripts/check_plugins.py
+uv run python scripts/check/plugins.py
 ```
 
 The checker loads the real Typer command tree and fails when any of these is true:

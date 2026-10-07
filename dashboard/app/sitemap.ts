@@ -19,15 +19,15 @@
  */
 
 import type { MetadataRoute } from "next";
-import { BLOG_POSTS, blogPath } from "@/lib/blog";
-import { DOC_PAGES } from "@/lib/docs";
-import { ALL_PAGES } from "@/lib/nav";
+import { BLOG_POSTS, blogPath } from "@/lib/marketing/blog";
+import { DOC_PAGES } from "@/lib/docs/pages";
+import { ALL_PAGES } from "@/lib/marketing/nav";
 import { SITE_URL } from "@/lib/site";
 
 const BUILT_AT = new Date();
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  // Derived from lib/nav.ts rather than kept here. This file used to hold its
+  // Derived from lib/marketing/nav.ts rather than kept here. This file used to hold its
   // own copy of the site's page list, which is how it came to be missing three
   // pages at once: the nav knew about them and nothing told the sitemap.
   //
@@ -40,7 +40,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: page.sitemap!.changeFrequency,
     priority: page.sitemap!.priority,
   }));
-  // Every docs page, from lib/docs.ts (the docs sidebar's own list). /docs itself is
+  // Every docs page, from lib/docs/pages.ts (the docs sidebar's own list). /docs itself is
   // already in the site nav above.
   const listed = new Set(pages.map((p) => p.url));
   const docs: MetadataRoute.Sitemap = DOC_PAGES.map((page) => ({
@@ -49,7 +49,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "monthly" as const,
     priority: 0.6,
   })).filter((page) => !listed.has(page.url));
-  // Every blog post, from lib/blog.ts. A post's own date rather than the build
+  // Every blog post, from lib/marketing/blog.ts. A post's own date rather than the build
   // time: a post does not change because the site was redeployed, and a
   // lastModified that moves on every deploy teaches a crawler to ignore it.
   const posts: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({

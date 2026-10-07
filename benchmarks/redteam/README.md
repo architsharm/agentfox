@@ -19,7 +19,7 @@ produce an honest recall **and** precision number, not just a one-sided "attacks
 count? Before this round, the answer to both was no, for structural reasons fixed here.
 
 ```bash
-uv run python benchmarks/redteam/run_redteam_benchmark.py
+uv run python -m benchmarks.redteam.run_redteam_benchmark
 ```
 
 ## Two structural gaps, found by reading what a probe actually reaches
@@ -99,8 +99,8 @@ agent and reading the real output — not from inspecting the code in the abstra
    0.7–0.8 on `injection.heuristic` — genuine detections — but never cleared this
    separate policy-level gate, which is independent of and stricter than the detector's
    own scoring (already benchmarked at 100% precision, `benchmarks/REPORT.md`). Checked
-   directly against `benchmarks/data/train.json`, `data/test.json`, and
-   `data_generalization/notinject.json`: zero benign examples score ≥0.7 in any of the
+   directly against `benchmarks/injection/data/train.json`, `data/test.json`, and
+   `generalization/data/notinject.json`: zero benign examples score ≥0.7 in any of the
    three (2 score exactly 0.6 in `train.json`, which is why the fix is 0.7 and not a
    blanket match to `injection.indirect`'s 0.6). Lowered to 0.7 — recovers 15 real
    held-out attacks the detector already caught but the policy gate was silently
@@ -115,7 +115,7 @@ agent and reading the real output — not from inspecting the code in the abstra
 
 None of fixes 4–5 changes any already-published benchmark number:
 `benchmarks/REPORT.md`'s primary held-out recall (66.7% @ 100% precision) is re-verified
-unchanged after both changes (`uv run python benchmarks/run_prompt_injection_benchmark.py`)
+unchanged after both changes (`uv run python -m benchmarks.injection.run_prompt_injection_benchmark`)
 — the detector's own scoring, which that number measures, was never the problem; the
 policy-level gate sitting on top of it was.
 
@@ -142,7 +142,7 @@ policy-level gate sitting on top of it was.
 # Adaptive campaigns — configuration regression testing that mutates
 
 ```bash
-uv run python benchmarks/redteam/run_adaptive_redteam_benchmark.py
+uv run python -m benchmarks.redteam.run_adaptive_redteam_benchmark
 ```
 
 ## Why the claim changed, not just the code

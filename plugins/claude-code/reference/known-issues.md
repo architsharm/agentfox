@@ -78,7 +78,7 @@ it still doesn't do:
 - Coverage numbers differ across `README.md`, `docs/design/failure-modes.md`, `docs/status.md` and
   `docs/design/coverage-map.md`, because only the last two are generated. Quote only the generated
   ones, and regenerate first.
-- `docs/architecture/api-spec.md` route tables are generated (`scripts/api_routes.py`) and
+- `docs/architecture/api-spec.md` route tables are generated (`scripts/gen/api_routes.py`) and
   checked in CI. Its prose sections are hand-written and may lag the code.
 
 Fixed on 2026-09-15: Appendix B's catalog path, control count and missing rows; Appendix C's

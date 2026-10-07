@@ -1,0 +1,7869 @@
+{
+ "generated_by": "scripts/gen/docs_reference.py",
+ "count": 208,
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/health",
+   "section": "health",
+   "audience": "public",
+   "summary": "The same payload as `/api/health`, at the path probes default to.",
+   "description": "The same payload as `/api/health`, at the path probes default to.\n\nAn alias, not a second implementation: both call the same function, so the two\ncannot drift apart and report different things about one process.",
+   "params": [],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/metrics",
+   "section": "metrics",
+   "audience": "public",
+   "summary": "Prometheus exposition.",
+   "description": "Prometheus exposition.\n\nUnauthenticated on purpose, like every other /metrics endpoint: a scrape job\nthat needs a bearer token is a scrape job nobody configures. It exposes counts\nand rates, never content — no prompt, no finding detail, no identifier.",
+   "params": [],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/chat/completions",
+   "section": "v1/chat",
+   "audience": "public",
+   "summary": "OpenAI-compatible inline proxy",
+   "description": "",
+   "params": [
+    {
+     "name": "x-nometria-agent",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-session",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-environment",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-intent",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-trust",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-provider",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-stream-mode",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-approval",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/guard/agent_message",
+   "section": "v1/guard",
+   "audience": "public",
+   "summary": "Authorise an inter-agent message",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GuardAgentMessageRequest",
+    "fields": [
+     {
+      "name": "sender",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "content",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "recipient",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "nonce",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timestamp",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "signature",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/guard/input",
+   "section": "v1/guard",
+   "audience": "public",
+   "summary": "Enforce on content without proxying.",
+   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GuardContentRequest",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "content",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surface",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "taint_source",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "intent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "trace_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/guard/memory_write",
+   "section": "v1/guard",
+   "audience": "public",
+   "summary": "Authorise a memory write",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GuardMemoryWriteRequest",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "content",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "subject",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "taint_source",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "provenance",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "verified_by",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "ttl_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/guard/output",
+   "section": "v1/guard",
+   "audience": "public",
+   "summary": "Enforce on content without proxying.",
+   "description": "Enforce on content without proxying.\n\nThe route's first line is kept short because `scripts/api_routes.py` uses it as\nthis operation's label in the API route table.\n\n`verdict`/`applied_verdict` is what happened; `effective_verdict`/\n`would_be_verdict` is what the bound policy says should happen, which in observe\nmode is the one that did not take effect. Gate on the applied one.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GuardContentRequest",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "content",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surface",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "taint_source",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "intent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "trace_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "completion",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/guard/tool_call",
+   "section": "v1/guard",
+   "audience": "public",
+   "summary": "Authorise a tool call",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GuardToolCallRequest",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "arguments",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "provenance",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "intent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "prior_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "prior_steps",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "approval_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/mcp/call",
+   "section": "v1/mcp",
+   "audience": "public",
+   "summary": "Govern one MCP call for callers that are not in-process Python.",
+   "description": "Govern one MCP call for callers that are not in-process Python.\n\nPre-call the arguments are authorised against the tool's capability and taint\nceiling; post-call the result is evaluated on the ``tool_result`` surface and\nreturned redacted where policy says so.",
+   "params": [
+    {
+     "name": "x-nometria-agent",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-intent",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "McpCallRequest",
+    "fields": [
+     {
+      "name": "server",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "arguments",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "provenance",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "result",
+      "type": "any",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/messages",
+   "section": "v1/messages",
+   "audience": "public",
+   "summary": "Anthropic-compatible inline proxy",
+   "description": "",
+   "params": [
+    {
+     "name": "x-nometria-agent",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-session",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-environment",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-intent",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-trust",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-provider",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-stream-mode",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-approval",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/traces",
+   "section": "v1/traces",
+   "audience": "public",
+   "summary": "OTLP/HTTP trace ingest",
+   "description": "OTLP/HTTP trace ingest\n\nAccepts protobuf (`application/x-protobuf`, what the OpenTelemetry exporters send by\ndefault) and JSON, either one gzip-compressed. A protobuf request gets the empty\nprotobuf `ExportTraceServiceResponse` the OTLP spec asks for; a JSON request gets\nthe ingest summary.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agent-controls",
+   "section": "agent-controls",
+   "audience": "operator",
+   "summary": "Kill-switch/quarantine state per agent.",
+   "description": "Kill-switch/quarantine state per agent.\n\nDeliberately not `/api/controls`: that path belongs to governance.py's\ncompliance-control listing (NIST/EU-AI-Act style controls). Two routers with a\nhandler on the identical path means whichever is included first in app.py\nsilently takes every request meant for the other.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agent-messages",
+   "section": "agent-messages",
+   "audience": "operator",
+   "summary": "List Messages",
+   "description": "",
+   "params": [
+    {
+     "name": "sender",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "List Agents",
+   "description": "",
+   "params": [
+    {
+     "name": "registered",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Create Agent",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "AgentIn",
+    "fields": [
+     {
+      "name": "slug",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "purpose",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "owner_email",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "owner_team",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "environment",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "risk_tier",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "declared_models",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "declared_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "data_classes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "framework",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{agent_id}/approve",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Approve Agent",
+   "description": "",
+   "params": [
+    {
+     "name": "agent_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{agent_id}/reject",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Reject Agent",
+   "description": "",
+   "params": [
+    {
+     "name": "agent_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Get Agent",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/agents/{slug}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Update Agent",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "AgentUpdate",
+    "fields": [
+     {
+      "name": "owner_email",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "owner_team",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "risk_tier",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "purpose",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/kill",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Stop an agent now. Requires the stronger role — this is an incident action.",
+   "description": "Stop an agent now. Requires the stronger role — this is an incident action.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ControlIn",
+    "fields": [
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/lineage",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Agent Lineage",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "depth",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/posture",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Agent Posture",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/quarantine",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Stop an agent while you investigate. Reversible and audited.",
+   "description": "Stop an agent while you investigate. Reversible and audited.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ControlIn",
+    "fields": [
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/resume",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Restart a stopped agent. Deliberately the same role as `kill` — restarting something that was stopped for cause is not a lesser decision than stopping it.",
+   "description": "Restart a stopped agent. Deliberately the same role as `kill` — restarting\nsomething that was stopped for cause is not a lesser decision than stopping it.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ControlIn",
+    "fields": [
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/signing-key",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Key Status",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/signing-key",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Mint (or rotate) an agent's HMAC signing key. Shown once — like an API token, nothing after this call can retrieve the raw value again.",
+   "description": "Mint (or rotate) an agent's HMAC signing key. Shown once — like an API\ntoken, nothing after this call can retrieve the raw value again.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Stop sending this tenant's alerts to its own Slack channel.",
+   "description": "Stop sending this tenant's alerts to its own Slack channel.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Whether this tenant has its own Slack channel, and whether alerts can leave at all.",
+   "description": "Whether this tenant has its own Slack channel, and whether alerts can leave at all.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/alerts/slack",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Send this tenant's monitor alerts to its own Slack incoming webhook.",
+   "description": "Send this tenant's monitor alerts to its own Slack incoming webhook.\n\nThe URL must be ``https://hooks.slack.com/services/…``; it is stored encrypted.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SlackIn",
+    "fields": [
+     {
+      "name": "url",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "min_severity",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/alerts/slack/test",
+   "section": "alerts",
+   "audience": "operator",
+   "summary": "Send a test message to every channel this tenant's alerts go to, now.",
+   "description": "Send a test message to every channel this tenant's alerts go to, now.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/answerability/boundaries",
+   "section": "answerability",
+   "audience": "operator",
+   "summary": "Every declared knowledge boundary, or one agent's with `?agent=<slug>`.",
+   "description": "Every declared knowledge boundary, or one agent's with `?agent=<slug>`.\n\nA filtered read 404s on an unknown agent; a known agent with no declaration\nreturns an empty list rather than an error.",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/answerability/boundary",
+   "section": "answerability",
+   "audience": "operator",
+   "summary": "Write Boundary",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "BoundaryIn",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "systems_of_record",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "coverage_months",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "coverage_start",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "entity_types",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "answerable_types",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "out_of_scope_topics",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "freshness_hours",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/answerability/check",
+   "section": "answerability",
+   "audience": "operator",
+   "summary": "Would this question be refused, and what would we say instead?",
+   "description": "Would this question be refused, and what would we say instead?\n\nRuns nothing and changes nothing, so a team can replay real traffic against a\ncandidate boundary before enforcing it. Shipping a refusal control without this\nstep means discovering the false-positive rate from users.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CheckIn",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "question",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "known_entities",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/answerability/report",
+   "section": "answerability",
+   "audience": "operator",
+   "summary": "Abstention and over-refusal side by side.",
+   "description": "Abstention and over-refusal side by side.\n\nReporting one without the other would let a team optimise abstention up, push\nrefusals onto answerable questions, and call it progress.",
+   "params": [
+    {
+     "name": "days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/approvals",
+   "section": "approvals",
+   "audience": "operator",
+   "summary": "List Approvals",
+   "description": "",
+   "params": [
+    {
+     "name": "status",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/approvals/{approval_id}",
+   "section": "approvals",
+   "audience": "operator",
+   "summary": "One approval. An operator may read any; an agent key only its own agent's.",
+   "description": "One approval. An operator may read any; an agent key only its own agent's.\n\nThe SDK's `wait_for_approval` polls this with the agent's own key: the\nagent that is waiting is the one caller certain to need the answer, so it\ndoes not need an operator token to read it.",
+   "params": [
+    {
+     "name": "approval_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/approvals/{approval_id}/approve",
+   "section": "approvals",
+   "audience": "operator",
+   "summary": "Approve",
+   "description": "",
+   "params": [
+    {
+     "name": "approval_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ApprovalDecision",
+    "fields": [
+     {
+      "name": "rationale",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/approvals/{approval_id}/deny",
+   "section": "approvals",
+   "audience": "operator",
+   "summary": "Deny",
+   "description": "",
+   "params": [
+    {
+     "name": "approval_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ApprovalDecision",
+    "fields": [
+     {
+      "name": "rationale",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/attention",
+   "section": "attention",
+   "audience": "operator",
+   "summary": "What needs a human, ranked. The home page is built from this.",
+   "description": "What needs a human, ranked. The home page is built from this.\n\nAn inventory answers \"what do we have\"; nobody opens a dashboard to ask that. They\nopen it to ask \"is anything wrong right now\", and a screen that leads with counts\nmakes them do the ranking themselves.",
+   "params": [
+    {
+     "name": "hours",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/audit/checkpoint",
+   "section": "audit",
+   "audience": "operator",
+   "summary": "Checkpoint",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/audit/entries",
+   "section": "audit",
+   "audience": "operator",
+   "summary": "Audit Entries",
+   "description": "",
+   "params": [
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "action",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/audit/verify",
+   "section": "audit",
+   "audience": "operator",
+   "summary": "Verify Chain",
+   "description": "",
+   "params": [
+    {
+     "name": "start_seq",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "end_seq",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/github/provision",
+   "section": "auth",
+   "audience": "operator",
+   "summary": "Find-or-create the user behind a GitHub identity, and mint them a token.",
+   "description": "Find-or-create the user behind a GitHub identity, and mint them a token.\n\n**Trust model.** This route believes the GitHub identity in the body because of\nwho is allowed to send it, not because of anything in the body. The only holder\nof ``service_auth_secret`` is the dashboard's OAuth callback, which calls here\nonly after it has completed GitHub's OAuth exchange itself (state cookie checked,\ncode exchanged for a token, ``/user`` read with that token) — so\n``github_user_id`` is GitHub's own answer to \"who signed in\", relayed by a party\nthat holds the deployment's secret. Under that model:\n\n* The secret is equivalent to \"sign in as any GitHub-linked user of this\n  deployment\". It must be random, shared only between the gateway and the\n  dashboard, and never the published default — `create_app()` refuses to start\n  outside development with the default, and :func:`_require_service_secret`\n  refuses this route on its own as well.\n* Find-or-create keys on ``github_user_id`` and nothing else: GitHub's numeric\n  id is immutable, unlike a login (renameable, then claimable by someone else)\n  or an email (the body's email is whatever GitHub reported, and keying on it\n  would let any GitHub account that lists an address take over the user who\n  owns that address here). An existing user is therefore only ever returned to\n  a sign-in that GitHub attested as that same account.\n* A deactivated user is refused rather than handed a token that every other\n  route would then reject.\n\nRuns in system scope for the lookup because — like every credential resolution\nin auth.py — we cannot know the tenant until we know who this is. A first-time\nGitHub login gets a brand new org: there is no invite flow yet, so \"new GitHub\nidentity\" and \"new tenant\" are the same event.\n\nEach sign-in mints a fresh token (the raw value of an old one is not stored, so\nit cannot be reused) and retires all but the newest ``MAX_LOGIN_SESSIONS`` login\ntokens; signing out revokes the session's own token (``POST /api/auth/logout``).",
+   "params": [
+    {
+     "name": "x-nometria-service-secret",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ProvisionIn",
+    "fields": [
+     {
+      "name": "github_user_id",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "github_login",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "email",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/logout",
+   "section": "auth",
+   "audience": "operator",
+   "summary": "Revoke the bearer token this request presents — the dashboard's Sign Out.",
+   "description": "Revoke the bearer token this request presents — the dashboard's Sign Out.\n\nDeleting the cookie alone left the token valid for the rest of its 365 days, so\na copied cookie outlived the sign-out. Idempotent: an already-revoked, expired or\nunknown token is reported as not revoked, never as an error, so a browser whose\nsession already ended can still sign out cleanly.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/board",
+   "section": "board",
+   "audience": "operator",
+   "summary": "Board",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/compliance/status",
+   "section": "compliance",
+   "audience": "operator",
+   "summary": "Compliance Status",
+   "description": "",
+   "params": [
+    {
+     "name": "framework",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/controls",
+   "section": "controls",
+   "audience": "operator",
+   "summary": "List Controls",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/controls/compute",
+   "section": "controls",
+   "audience": "operator",
+   "summary": "Compute Controls",
+   "description": "",
+   "params": [
+    {
+     "name": "window_days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/controls/sync",
+   "section": "controls",
+   "audience": "operator",
+   "summary": "Load the static control catalog and obligation calendar from YAML into this tenant's control-plane DB. `agentfox admin catalog sync` does the same thing from the CLI against whatever DB it's pointed at — this is the same idempotent upsert, reachable without shell access to the deployment, so a freshly provisioned org isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it from the product itself.",
+   "description": "Load the static control catalog and obligation calendar from YAML into this\ntenant's control-plane DB. `agentfox admin catalog sync` does the same thing\nfrom the CLI against whatever DB it's pointed at — this is the same idempotent\nupsert, reachable without shell access to the deployment, so a freshly provisioned\norg isn't stuck at \"0 controls, mapped to seven frameworks\" with no way to fix it\nfrom the product itself.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/coverage/threats",
+   "section": "coverage",
+   "audience": "operator",
+   "summary": "Every published threat, and what this deployment actually does about it.",
+   "description": "Every published threat, and what this deployment actually does about it.\n\nReadable by every role. The question \"are we covered against prompt injection\"\nis not a privileged one, and a posture that only its owner can see is a posture\nnobody checks.",
+   "params": [
+    {
+     "name": "window_days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/credentials/{credential_id}/revoke",
+   "section": "credentials",
+   "audience": "operator",
+   "summary": "Revoke",
+   "description": "",
+   "params": [
+    {
+     "name": "credential_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/detectors",
+   "section": "detectors",
+   "audience": "operator",
+   "summary": "Which detectors exist, which are live, and how fast they are.",
+   "description": "Which detectors exist, which are live, and how fast they are.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/discovery/scan",
+   "section": "discovery",
+   "audience": "operator",
+   "summary": "Sweep: lineage, unowned agents, registry drift, identity posture, delegation shape.",
+   "description": "Sweep: lineage, unowned agents, registry drift, identity posture, delegation shape.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/discovery/shadow",
+   "section": "discovery",
+   "audience": "operator",
+   "summary": "Shadow Agents",
+   "description": "",
+   "params": [
+    {
+     "name": "window_days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/discovery/submit",
+   "section": "discovery",
+   "audience": "operator",
+   "summary": "Submit a redacted local scan for review",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ScanSubmission",
+    "fields": [
+     {
+      "name": "source",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "label",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "files_scanned",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "frameworks",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "coverage",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "counts",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "sites",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/entitlement/filter",
+   "section": "entitlement",
+   "audience": "operator",
+   "summary": "Return only what this human may see, and record what was withheld.",
+   "description": "Return only what this human may see, and record what was withheld.\n\nCall it before generation. Filtering afterwards means the answer already contains\nwhat it should not — at which point the only remaining option is to refuse to send\nit, and the user learns that something exists.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "FilterIn",
+    "fields": [
+     {
+      "name": "subject",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "chunks",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "purpose",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "trace_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "record",
+      "type": "boolean",
+      "required": false,
+      "description": "Persist what was withheld."
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/entitlement/grants",
+   "section": "entitlement",
+   "audience": "operator",
+   "summary": "List Grants",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/entitlement/grants",
+   "section": "entitlement",
+   "audience": "operator",
+   "summary": "Add Grant",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GrantIn",
+    "fields": [
+     {
+      "name": "resource",
+      "type": "string",
+      "required": true,
+      "description": "Matches a chunk's source; globs allowed."
+     },
+     {
+      "name": "principal",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "principal_kind",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "classes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "purposes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "residency",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/entitlement/over-permission",
+   "section": "entitlement",
+   "audience": "operator",
+   "summary": "How much more the agent can reach than its callers are entitled to.",
+   "description": "How much more the agent can reach than its callers are entitled to.\n\nWorks before any entitlement model exists, which is the argument for looking at it\nfirst: a customer with no grants sees 1.0 and understands the exercise immediately.",
+   "params": [
+    {
+     "name": "days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/entitlement/principals",
+   "section": "entitlement",
+   "audience": "operator",
+   "summary": "List Principals",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/entitlement/principals",
+   "section": "entitlement",
+   "audience": "operator",
+   "summary": "Put Principal",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "PrincipalIn",
+    "fields": [
+     {
+      "name": "subject",
+      "type": "string",
+      "required": true,
+      "description": "Stable IdP identifier — an OIDC `sub`, employee id."
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "display",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "groups",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "clearances",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "purposes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "residency",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/escalation/conversations/{session_id}",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "The transcript plus why the policy did or didn't fire on it.",
+   "description": "The transcript plus why the policy did or didn't fire on it.\n\nIncludes the actual turn text — a missed-escalation row that says only\n\"3 triggers on turn 2\" gives an operator nothing to act on; they need to see\nwhat the user actually said.",
+   "params": [
+    {
+     "name": "session_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/escalation/handoffs",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "List Handoffs",
+   "description": "",
+   "params": [
+    {
+     "name": "status",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/escalation/handoffs/{handoff_id}/acknowledge",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "Acknowledge",
+   "description": "",
+   "params": [
+    {
+     "name": "handoff_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/escalation/missed",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "**The 31% control.** Conversations that qualified for a hand-off and got none.",
+   "description": "**The 31% control.** Conversations that qualified for a hand-off and got none.\n\nRead-only: this endpoint does not raise findings or retroactive hand-offs, so it\nis safe to poll from a dashboard. `POST /scan` is the one that acts.",
+   "params": [
+    {
+     "name": "since_hours",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/escalation/policy",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "Read Policy",
+   "description": "",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/escalation/policy",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "Write Policy",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__escalation__PolicyIn",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "conditions",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "owner_role",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "sla_minutes",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/escalation/report",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "Report",
+   "description": "",
+   "params": [
+    {
+     "name": "since_hours",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/escalation/scan",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "Run detection and act on it: findings, retroactive hand-offs, SLA breaches.",
+   "description": "Run detection and act on it: findings, retroactive hand-offs, SLA breaches.\n\nRetroactive hand-offs are the point. Recording that a person was left waiting and\nthen leaving them waiting produces an audit artefact, not a control.",
+   "params": [
+    {
+     "name": "since_hours",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/escalation/turns",
+   "section": "escalation",
+   "audience": "operator",
+   "summary": "Record one turn with its signals.",
+   "description": "Record one turn with its signals.\n\nSignals are extracted here rather than at detection time, so a later change to the\nlexicon cannot make yesterday's conversations answer differently.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TurnIn",
+    "fields": [
+     {
+      "name": "session_id",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "trace_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "user_text",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agent_text",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "escalated",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "failed",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "confidence",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/annotations/queue",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Eval results a human should look at: score within `band` of the scorer's own pass/fail threshold, or scorers disagreeing on the same case — both are exactly the shape a human should review rather than trust blindly, not a finding-in-itself the way a failed scorer already is.",
+   "description": "Eval results a human should look at: score within `band` of the scorer's\nown pass/fail threshold, or scorers disagreeing on the same case — both are\nexactly the shape a human should review rather than trust blindly, not a\nfinding-in-itself the way a failed scorer already is.",
+   "params": [
+    {
+     "name": "run_id",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "band",
+     "in": "query",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/drift",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Read-only. Viewing drift persists nothing, so the number of drift findings measures how often the agent drifted, not how often someone looked. Recording is the scheduled `drift.check` job (or `agentfox report drift` locally).",
+   "description": "Read-only. Viewing drift persists nothing, so the number of drift findings\nmeasures how often the agent drifted, not how often someone looked. Recording is\nthe scheduled `drift.check` job (or `agentfox report drift` locally).",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "scorer",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/gate",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "The CI entry point. Non-zero exit maps from ``passed: false``.",
+   "description": "The CI entry point. Non-zero exit maps from ``passed: false``.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GateIn",
+    "fields": [
+     {
+      "name": "suite",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "target",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "scorers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "baseline_run_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "thresholds",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "min_pass_rate",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/online",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Run Online",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "OnlineIn",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "scorers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "since_days",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "rate",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/results/{result_id}/annotate",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Record a human's judgment on a borderline eval result. Requires a note — same reasoning as Finding's own suppress/resolve discipline (registry.py's patch_finding): a one-click verdict with nothing recorded is how a real disagreement about scorer correctness disappears without anyone having actually looked.",
+   "description": "Record a human's judgment on a borderline eval result. Requires a note —\nsame reasoning as Finding's own suppress/resolve discipline\n(registry.py's patch_finding): a one-click verdict with nothing recorded is\nhow a real disagreement about scorer correctness disappears without anyone\nhaving actually looked.",
+   "params": [
+    {
+     "name": "result_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "AnnotateIn",
+    "fields": [
+     {
+      "name": "verdict",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/runs",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "List Runs",
+   "description": "",
+   "params": [
+    {
+     "name": "suite",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/runs",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Create Run",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "RunIn",
+    "fields": [
+     {
+      "name": "suite",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "target",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "scorers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "baseline_run_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "runner",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/runs/{run_id}",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Get Run",
+   "description": "",
+   "params": [
+    {
+     "name": "run_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/scorers",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Scorers",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/slos",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Slos",
+   "description": "",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/slos",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Declare a reliability target for one agent+scorer pair.",
+   "description": "Declare a reliability target for one agent+scorer pair.\n\nWithout this, `evaluate_slos` has nothing to measure against — a page that only\nreads SLOs and never lets anyone set one is a dead end for every org that hasn't\nalready seeded them by hand.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SloIn",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "scorer",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "objective",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "window",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "target",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/suites",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "List Suites",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/suites",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Create Suite",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SuiteIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "description",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tags",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/eval/suites/{key}",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Get Suite",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/suites/{key}/cases",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Add Case",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CaseIn",
+    "fields": [
+     {
+      "name": "input",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "expected",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "context",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "labels",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "split",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/eval/suites/{key}/cases/from-trace",
+   "section": "eval",
+   "audience": "operator",
+   "summary": "Promote a production failure into a regression test.",
+   "description": "Promote a production failure into a regression test.\n\nThe shortest path from \"this went wrong in production\" to \"this can never ship\nagain\" is the feature that makes an eval suite grow instead of rot.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "trace_id",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/evidence",
+   "section": "evidence",
+   "audience": "operator",
+   "summary": "List Evidence",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/evidence",
+   "section": "evidence",
+   "audience": "operator",
+   "summary": "Enqueues through jobs_db rather than calling evidence.build() directly, and processes it within this same request — see jobs_db's own module docstring for why same-request processing, not a deferred worker, is the honest fit here. A transient failure gets one automatic retry later, with backoff, and this returns 202 queued_for_retry meanwhile; a permanent one is a real `Job` row with status=\"dead\" a human can find via GET /jobs, not a bare 500.",
+   "description": "Enqueues through jobs_db rather than calling evidence.build()\ndirectly, and processes it within this same request — see jobs_db's own\nmodule docstring for why same-request processing, not a deferred worker,\nis the honest fit here. A transient failure gets one automatic retry\nlater, with backoff, and this returns 202 queued_for_retry meanwhile; a\npermanent one is a real `Job` row with status=\"dead\" a human can find via\nGET /jobs, not a bare 500.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "EvidenceIn",
+    "fields": [
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "controls",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "period_from",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "period_to",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/evidence/{package_id}/download",
+   "section": "evidence",
+   "audience": "operator",
+   "summary": "Download Evidence",
+   "description": "",
+   "params": [
+    {
+     "name": "package_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/export/siem",
+   "section": "export",
+   "audience": "operator",
+   "summary": "Export Siem",
+   "description": "",
+   "params": [
+    {
+     "name": "format",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "since_days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/findings",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "List Findings",
+   "description": "",
+   "params": [
+    {
+     "name": "status",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "severity",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "type",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/findings/types",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "Every finding type: its title, default severity, what it means and who raises it.",
+   "description": "Every finding type: its title, default severity, what it means and who raises it.\n\nThe registry the queue's labels come from (`platform/ledger/finding_types.py`),\nincluding the types the loaded capability packs declare. Declared before\n`/findings/{finding_id}` so ``types`` is not read as an id.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/findings/{finding_id}",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "Get Finding",
+   "description": "",
+   "params": [
+    {
+     "name": "finding_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/findings/{finding_id}",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "Patch Finding",
+   "description": "",
+   "params": [
+    {
+     "name": "finding_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "FindingPatch",
+    "fields": [
+     {
+      "name": "status",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "suppression_reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/frameworks",
+   "section": "frameworks",
+   "audience": "operator",
+   "summary": "Frameworks",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/frameworks/review",
+   "section": "frameworks",
+   "audience": "operator",
+   "summary": "Step 3 of the mapping review gate.",
+   "description": "Step 3 of the mapping review gate.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ReviewIn",
+    "fields": [
+     {
+      "name": "control_key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "framework",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "reference",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/frameworks/{key}",
+   "section": "frameworks",
+   "audience": "operator",
+   "summary": "Framework",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/guardrails/feedback",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "List Feedback",
+   "description": "",
+   "params": [
+    {
+     "name": "label",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "status",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/guardrails/feedback",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "\"This was wrong\", attached to the decision it is about.",
+   "description": "\"This was wrong\", attached to the decision it is about.\n\nThe label's author is the signed-in caller and nobody else — the request body has\nno actor field to spoof. Filing it again for the same decision changes the caller's\nlabel rather than adding a vote. Auditors are refused: they observe the controls,\nand a control its auditor can tune is not independently audited.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "FeedbackRequest",
+    "fields": [
+     {
+      "name": "decision_id",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "label",
+      "type": "string",
+      "required": true,
+      "description": "false_positive | true_positive | false_negative"
+     },
+     {
+      "name": "detector_key",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "entity_type",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/guardrails/latency",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "Per-detector and per-agent p50/p95/max, plus how often the budget degraded.",
+   "description": "Per-detector and per-agent p50/p95/max, plus how often the budget degraded.\n\nPercentiles rather than means on purpose: a mean hides the tail, and the tail is\nwhat gets a governance product removed for being slow.",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/guardrails/precision",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "Per-detector precision with the label count beside it.",
+   "description": "Per-detector precision with the label count beside it.\n\nThe denominator is not decoration — precision over four labels is noise, and\nreporting it without the sample size is how a tuning surface starts lying.",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/guardrails/recommendations",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "Threshold suggestions, including the honest refusal to make one.",
+   "description": "Threshold suggestions, including the honest refusal to make one.\n\nA detector whose false and true positives occupy the same score range cannot be\nfixed with a dial, and saying so is more useful than a confident number.",
+   "params": [
+    {
+     "name": "days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/guardrails/suppressions",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "List Suppressions",
+   "description": "",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/guardrails/suppressions",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "Accept a false positive as a scoped, expiring exception.",
+   "description": "Accept a false positive as a scoped, expiring exception.\n\nExpiry is mandatory by construction: a permanent silent exception is\nindistinguishable from a detector that stopped working.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SuppressionRequest",
+    "fields": [
+     {
+      "name": "feedback_id",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "scope",
+      "type": "string",
+      "required": false,
+      "description": "agent | global"
+     },
+     {
+      "name": "ttl_days",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "exact",
+      "type": "boolean",
+      "required": false,
+      "description": "suppress only this exact matched text"
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/guardrails/suppressions/{suppression_id}",
+   "section": "guardrails",
+   "audience": "operator",
+   "summary": "Delete Suppression",
+   "description": "",
+   "params": [
+    {
+     "name": "suppression_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/health",
+   "section": "health",
+   "audience": "operator",
+   "summary": "Liveness, plus what is currently not being checked.",
+   "description": "Liveness, plus what is currently not being checked.\n\n`status` stays \"ok\" for a process that is up and serving — that is what every\nliveness probe already pointed at this route means by it, and changing it would\nstart restarting healthy containers. What a fail-open deployment needs *on top*\nis `governance_healthy`: a fail-open system reports success while checking\nnothing, so a 200 here is exactly the signal that cannot tell a working control\nfrom an absent one.",
+   "params": [],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/identities",
+   "section": "identities",
+   "audience": "operator",
+   "summary": "List Identities",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/identities/{identity_id}/capabilities",
+   "section": "identities",
+   "audience": "operator",
+   "summary": "Add Capability",
+   "description": "",
+   "params": [
+    {
+     "name": "identity_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CapabilityIn",
+    "fields": [
+     {
+      "name": "tool_key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "actions",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "constraints",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "requires_approval",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_taint",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/identities/{identity_id}/check",
+   "section": "identities",
+   "audience": "operator",
+   "summary": "Check",
+   "description": "",
+   "params": [
+    {
+     "name": "identity_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CapabilityCheckIn",
+    "fields": [
+     {
+      "name": "tool_key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "action",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "arguments",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "argument_taint",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/identities/{identity_id}/credentials",
+   "section": "identities",
+   "audience": "operator",
+   "summary": "Issue",
+   "description": "",
+   "params": [
+    {
+     "name": "identity_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "ttl_days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/identities/{identity_id}/rotate",
+   "section": "identities",
+   "audience": "operator",
+   "summary": "Rotate",
+   "description": "",
+   "params": [
+    {
+     "name": "identity_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "overlap_hours",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/github/connect",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Connect",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ConnectIn",
+    "fields": [
+     {
+      "name": "access_token",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/integrations/github/repos",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "List Repos",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/github/scan",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Trigger Scan",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ScanIn",
+    "fields": [
+     {
+      "name": "repo_full_name",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "ref",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/integrations/github/scans/{scan_id}",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Get Scan",
+   "description": "",
+   "params": [
+    {
+     "name": "scan_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/github/webhook",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "GitHub push webhook: a signed push to a monitored repository queues a rescan.",
+   "description": "GitHub push webhook: a signed push to a monitored repository queues a rescan.\n\n``X-Hub-Signature-256`` is verified first; then each monitor of the pushed\nrepository whose tenant's secret signed the delivery gets a rescan of the commit.\n\nRegister it on the repository (or organisation) with payload URL\n``https://<api host>/api/integrations/github/webhook``, content type\n``application/json``, the ``push`` event, and as secret either the deployment's\n``AGENTFOX_GITHUB_WEBHOOK_SECRET`` or the one ``POST\n/api/integrations/github/webhook-secret`` returned for the connection. A delivery\nis acted on only for the tenants whose secret signed it.",
+   "params": [
+    {
+     "name": "x-github-event",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-hub-signature-256",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/github/webhook-secret",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Create or replace the GitHub connection's push-webhook secret (shown once).",
+   "description": "Create or replace the GitHub connection's push-webhook secret (shown once).\n\nPaste it into the GitHub webhook's \"Secret\" field.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/hosted-api/scan",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Scan Hosted Api",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "HostedApiScanIn",
+    "fields": [
+     {
+      "name": "endpoint_url",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "docs_url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "openapi_spec_url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "purpose",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/internal/jobs/run",
+   "section": "internal",
+   "audience": "internal",
+   "summary": "The cron entry point. GET because that is what Vercel Cron sends; POST for anything else that drives it.",
+   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n0. With `settings.showcase_enabled`, make sure the public showcase tenant and its\n   opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants\n   the scheduling pass below finds.\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
+   "params": [
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/internal/jobs/run",
+   "section": "internal",
+   "audience": "internal",
+   "summary": "The cron entry point. GET because that is what Vercel Cron sends; POST for anything else that drives it.",
+   "description": "The cron entry point. GET because that is what Vercel Cron sends; POST for\nanything else that drives it.\n\n0. With `settings.showcase_enabled`, make sure the public showcase tenant and its\n   opted-in probe target exist (`evaluation.showcase`), so it is one of the tenants\n   the scheduling pass below finds.\n1. Scheduling pass (if `settings.scheduler_enabled`): per tenant, create default\n   schedules and enqueue whatever is due.\n2. Recover jobs stuck in `running`, then run every pending job whose backoff has\n   elapsed, across every tenant — the one place that's correct, since nothing\n   about a cron trigger belongs to a single tenant's request.",
+   "params": [
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/jobs",
+   "section": "jobs",
+   "audience": "operator",
+   "summary": "Includes dead-lettered jobs by default — that's the point (jobs.py's own docstring: the dead letter is public state, not a log line an operator has to know to go look for).",
+   "description": "Includes dead-lettered jobs by default — that's the point (jobs.py's\nown docstring: the dead letter is public state, not a log line an\noperator has to know to go look for).",
+   "params": [
+    {
+     "name": "kind",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "status",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/jobs/{job_id}",
+   "section": "jobs",
+   "audience": "operator",
+   "summary": "Get Job",
+   "description": "",
+   "params": [
+    {
+     "name": "job_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/jobs/{job_id}/retry",
+   "section": "jobs",
+   "audience": "operator",
+   "summary": "Retry Job",
+   "description": "",
+   "params": [
+    {
+     "name": "job_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/judgment/posture",
+   "section": "judgment",
+   "audience": "operator",
+   "summary": "What is in force, what may be changed, and what the deployment forbids.",
+   "description": "What is in force, what may be changed, and what the deployment forbids.\n\nReadable by every role including `auditor`: the posture is the answer to \"what\nleft the building\", and an auditor who cannot read it cannot audit anything else\neither.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/judgment/posture",
+   "section": "judgment",
+   "audience": "operator",
+   "summary": "Replace the posture, refusing anything the deployment does not permit.",
+   "description": "Replace the posture, refusing anything the deployment does not permit.\n\nA whole-document PUT rather than a PATCH of individual fields, deliberately: the\ndangerous changes here are *combinations* — a remote tier plus `pii_egress=allow`\nis a different decision from either alone — and a field-at-a-time API makes each\nhalf look innocuous and never shows anyone the pair.\n\n409 rather than 400 for a ceiling breach: the request is well-formed and the\ncaller is permitted: it conflicts with the state of the deployment, and the\ndistinction is what tells an admin to call whoever runs the process rather than\nretype the form.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "PostureRequest",
+    "fields": [
+     {
+      "name": "tiers",
+      "type": "array",
+      "required": false,
+      "description": "Tier names to enable. 'deterministic' is implicit and always on."
+     },
+     {
+      "name": "pii_egress",
+      "type": "string",
+      "required": false,
+      "description": "block | redact | allow"
+     },
+     {
+      "name": "fail_closed",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "backend",
+      "type": "string",
+      "required": false,
+      "description": "local | remote | auto"
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": "Why this change is being made. Required — it is the field an investigation actually reads."
+     },
+     {
+      "name": "confirm_egress",
+      "type": "boolean",
+      "required": false,
+      "description": "Required when the change starts sending payloads off this machine, or loosens how personal data is handled on the way."
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/legal-holds",
+   "section": "legal-holds",
+   "audience": "operator",
+   "summary": "Place Hold",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "LegalHoldIn",
+    "fields": [
+     {
+      "name": "scope",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/mcp-servers",
+   "section": "mcp-servers",
+   "audience": "operator",
+   "summary": "List Mcp",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/mcp-servers",
+   "section": "mcp-servers",
+   "audience": "operator",
+   "summary": "Register an MCP server, and start monitoring it for tool drift.",
+   "description": "Register an MCP server, and start monitoring it for tool drift.\n\nA remote (Streamable HTTP) server's tool listing is re-read on a schedule; a stdio\nserver's pushed listings are watched.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "McpIn",
+    "fields": [
+     {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "transport",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "trust_level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "pinned_version",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/mcp-servers/{name}/scan",
+   "section": "mcp-servers",
+   "audience": "operator",
+   "summary": "Scan Mcp",
+   "description": "",
+   "params": [
+    {
+     "name": "name",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "McpScanIn",
+    "fields": [
+     {
+      "name": "tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/mcp-servers/{name}/tools",
+   "section": "mcp-servers",
+   "audience": "operator",
+   "summary": "Snapshot a listing *and* register each tool in the registry.",
+   "description": "Snapshot a listing *and* register each tool in the registry.\n\nDistinct from ``/scan``, which only reports hygiene. Registration is what gives\nthe tool a policy identity and a digest to compare against at call time; without\nit the rug-pull check has no baseline.\n\nA changed listing for an already-registered tool is held (reported in ``held``,\nnot registered) and filed as a change proposal (``proposals``). With\n``accept_changes`` the signed-in person approves those proposals, which takes the\nsame role as approving any proposal (``policy_production``); a held tool is\nre-recorded once two different people have approved it.",
+   "params": [
+    {
+     "name": "name",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "McpRegisterIn",
+    "fields": [
+     {
+      "name": "tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "accept_changes",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/me",
+   "section": "me",
+   "audience": "operator",
+   "summary": "The signed-in identity, for the account menu.",
+   "description": "The signed-in identity, for the account menu.\n\nA bare 'Sign out' link with nothing else in the account area leaves a multi-user\nproduct with no visible answer to \"who am I, and whose data is this\" — this backs\nthat answer. `workspace` is the connected GitHub login when there is one (the\nthing a solo/team GitHub account actually reads as a workspace name to a user),\nfalling back to the raw org id.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/memory",
+   "section": "memory",
+   "audience": "operator",
+   "summary": "List Entries",
+   "description": "",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "active_only",
+     "in": "query",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/memory/{entry_id}/revoke",
+   "section": "memory",
+   "audience": "operator",
+   "summary": "Pull an entry immediately — the concrete fix for 'no way to find and remove a bad memory'.",
+   "description": "Pull an entry immediately — the concrete fix for 'no way to find and\nremove a bad memory'.",
+   "params": [
+    {
+     "name": "entry_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/memory/{entry_id}/verify",
+   "section": "memory",
+   "audience": "operator",
+   "summary": "A human vouches for an entry — it stops decaying on the unverified TTL.",
+   "description": "A human vouches for an entry — it stops decaying on the unverified TTL.",
+   "params": [
+    {
+     "name": "entry_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/monitors",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Every monitor in the tenant, with its last result and when it next runs.",
+   "description": "Every monitor in the tenant, with its last result and when it next runs.",
+   "params": [
+    {
+     "name": "kind",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "enabled",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Watch a source by hand. The first run stores a baseline; later runs report changes.",
+   "description": "Watch a source by hand. The first run stores a baseline; later runs report changes.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MonitorIn",
+    "fields": [
+     {
+      "name": "kind",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "target",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Stop watching a source. Its findings are kept.",
+   "description": "Stop watching a source. Its findings are kept.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "One monitor, with the findings it raised that are still open.",
+   "description": "One monitor, with the findings it raised that are still open.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/monitors/{monitor_id}",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Rename, retune the interval, change config, or pause/resume (``enabled``).",
+   "description": "Rename, retune the interval, change config, or pause/resume (``enabled``).",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MonitorPatch",
+    "fields": [
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/pause",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Stop scheduled runs. Open findings stay open; nothing is closed while paused.",
+   "description": "Stop scheduled runs. Open findings stay open; nothing is closed while paused.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/resume",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Resume scheduled runs from the monitor's next due time.",
+   "description": "Resume scheduled runs from the monitor's next due time.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/monitors/{monitor_id}/run",
+   "section": "monitors",
+   "audience": "operator",
+   "summary": "Run one monitor now, through the job queue, and return its result.",
+   "description": "Run one monitor now, through the job queue, and return its result.",
+   "params": [
+    {
+     "name": "monitor_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/obligations",
+   "section": "obligations",
+   "audience": "operator",
+   "summary": "Obligations",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Install state as a checklist, computed live.",
+   "description": "Install state as a checklist, computed live.\n\nEvery step is derived from data, never from a stored \"completed\" flag — a\nchecklist that can disagree with the system is worse than none.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/",
+   "section": "platform",
+   "audience": "operator",
+   "summary": "Name the service and say where to go next. Unauthenticated.",
+   "description": "Name the service and say where to go next. Unauthenticated.\n\nAdded because `GET /` and `GET /health` both returned `{\"detail\":\"Not Found\"}`\non the deployed API while only `/api/health` worked, which reads as a dead host\nto anyone checking by hand or with a default uptime probe.\n\nIt reports the product name, the running version, and paths. It reports no\nconfiguration: not the database, the provider, the policy mode, the fail mode,\nthe enabled detectors or any credential. Reaching this route proves the process\nis up and serving HTTP and nothing more — it runs no dependency check, so a 200\nhere does not mean the database or the detectors are healthy. `/api/health`\nanswers that.",
+   "params": [],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/playground/sessions",
+   "section": "playground",
+   "audience": "public-unauthenticated",
+   "summary": "Create a playground sandbox.",
+   "description": "Create a playground sandbox.\n\nA private tenant in the deployment database, seeded with the demo fixtures.\n`session_id` is the only credential. It survives this process, so a follow-up\nrequest served by a different instance finds the same sandbox; it expires\n`expires_in_seconds` after the last action on it, and its data is then deleted.",
+   "params": [],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/playground/sessions/{session_id}/chat",
+   "section": "playground",
+   "audience": "public-unauthenticated",
+   "summary": "Chat",
+   "description": "",
+   "params": [
+    {
+     "name": "session_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": {
+    "model": "PlaygroundChatRequest",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "document",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/playground/sessions/{session_id}/enforce",
+   "section": "playground",
+   "audience": "public-unauthenticated",
+   "summary": "Flip the baseline policy observe -> enforce (or back) for this sandbox only.",
+   "description": "Flip the baseline policy observe -> enforce (or back) for this sandbox only.\n\nNothing about the visitor's earlier messages changes retroactively — the point\nis to re-send the same injection afterwards and watch the verdict actually\nchange from \"would have blocked\" to \"blocked\", the same \"aha\" `agentfox demo`\nalready walks through interactively (`cli/demo.py`, section 08).",
+   "params": [
+    {
+     "name": "session_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": {
+    "model": "PlaygroundEnforceRequest",
+    "fields": [
+     {
+      "name": "mode",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/playground/sessions/{session_id}/state",
+   "section": "playground",
+   "audience": "public-unauthenticated",
+   "summary": "Everything the live sidebar needs: recent traces (decisions + detector runs + findings), the tamper-evident audit chain's own self-check, and compliance posture — all real, already-existing functions, just called and serialized.",
+   "description": "Everything the live sidebar needs: recent traces (decisions + detector runs\n+ findings), the tamper-evident audit chain's own self-check, and compliance\nposture — all real, already-existing functions, just called and serialized.",
+   "params": [
+    {
+     "name": "session_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/playground/sessions/{session_id}/tool-call",
+   "section": "playground",
+   "audience": "public-unauthenticated",
+   "summary": "Try a tool call directly, with no model in the loop.",
+   "description": "Try a tool call directly, with no model in the loop.\n\nTiers C (parameter exploitation) and D (excessive agency) don't need an LLM to\ndecide to misbehave; the visitor decides.\n\n`verdict`/`applied_verdict` is what happened to this call;\n`effective_verdict`/`would_be_verdict` is what the bound policy says should\nhappen, which in observe mode is the one that did not take effect.",
+   "params": [
+    {
+     "name": "session_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "body": {
+    "model": "PlaygroundToolCallRequest",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "arguments",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "provenance",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "intent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "List Policies",
+   "description": "",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Upsert Policy",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__policy__PolicyIn",
+    "fields": [
+     {
+      "name": "body",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "notes",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "scope_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "compose",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/effective",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "The policy actually in force for a subject, with per-rule provenance.",
+   "description": "The policy actually in force for a subject, with per-rule provenance.",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "team",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "user",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/lint",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Policy lint. `passed` is false when critical/high findings exist.",
+   "description": "Policy lint. `passed` is false when critical/high findings exist.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/simulate",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Replay recorded traffic against a candidate policy.",
+   "description": "Replay recorded traffic against a candidate policy.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SimulateIn",
+    "fields": [
+     {
+      "name": "body",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "since_days",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "limit",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "persist",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/validate",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Validate Policy",
+   "description": "",
+   "params": [],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__policy__PolicyIn",
+    "fields": [
+     {
+      "name": "body",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "notes",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "scope_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "compose",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/{key}",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Get Policy",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/{key}/canary",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Get Policy Canary",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/canary/advance",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Check the candidate cohort's health and advance, hold, or auto-roll-back.",
+   "description": "Check the candidate cohort's health and advance, hold, or auto-roll-back.\n\nSafe to call repeatedly — a canary without enough traffic yet, or still inside\nits dwell time, simply holds at its current step. The gate is two-way: a\ncandidate that blocks more than stable *or less* than stable (a loosening) by\nmore than its threshold is rolled back. This is what makes rollback \"automated\":\nthe decision is computed from telemetry every time this is called, never a human\njudgement call. The scheduled `canary.advance` job applies the same gate.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/canary/rollback",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Rollback Policy Canary",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/canary/start",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Start Policy Canary",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CanaryStartIn",
+    "fields": [
+     {
+      "name": "candidate_version",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "steps",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_block_rate_delta",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_block_rate_drop",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "min_dwell_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "min_sample",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/mode",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Promote or demote a policy, optionally making a saved version live.",
+   "description": "Promote or demote a policy, optionally making a saved version live.\n\nPromoting to ``enforce`` requires a recorded simulation of exactly the rules\nbeing enforced (``POST /api/policies/simulate`` with that version's body) —\nthe server-side half of the editor's simulate-before-promote gate.\nDemoting to ``observe`` never needs one: it can only stop blocking.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ModeIn",
+    "fields": [
+     {
+      "name": "mode",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "version",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "scope_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "compose",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/{key}/rego",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Get Rego",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{policy_id}/approve",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Approve Policy",
+   "description": "",
+   "params": [
+    {
+     "name": "policy_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{policy_id}/reject",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Reject Policy",
+   "description": "",
+   "params": [
+    {
+     "name": "policy_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "List Targets",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Register a target. It is created disabled; nothing is sent until opt-in.",
+   "description": "Register a target. It is created disabled; nothing is sent until opt-in.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TargetCreate",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "adapter",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "model",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_header",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "forbidden_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "leak_markers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_probes_per_run",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "rate_limit_per_minute",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets/{target_id}",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Get Target",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/probes/targets/{target_id}",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Update Target",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TargetUpdate",
+    "fields": [
+     {
+      "name": "url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "forbidden_tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "leak_markers",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "interval_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_probes_per_run",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "rate_limit_per_minute",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/targets/{target_id}/campaigns",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Campaigns",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/opt-in",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Opt In",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "OptIn",
+    "fields": [
+     {
+      "name": "acknowledgement",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/opt-out",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Opt Out",
+   "description": "",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/probes/targets/{target_id}/run",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "Probe the target now. Same consent and caps as a scheduled run, and refused within `MIN_MANUAL_GAP_SECONDS` of the previous run.",
+   "description": "Probe the target now. Same consent and caps as a scheduled run, and refused\nwithin `MIN_MANUAL_GAP_SECONDS` of the previous run.",
+   "params": [
+    {
+     "name": "target_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/probes/warning",
+   "section": "probes",
+   "audience": "operator",
+   "summary": "What a person must read before enabling probes, plus the probe library, the hard caps and the adapter contract a target endpoint has to speak.",
+   "description": "What a person must read before enabling probes, plus the probe library, the\nhard caps and the adapter contract a target endpoint has to speak.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/proposals",
+   "section": "proposals",
+   "audience": "operator",
+   "summary": "List change proposals, filtered by status, kind and scope.",
+   "description": "List change proposals, filtered by status, kind and scope.",
+   "params": [
+    {
+     "name": "status",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "kind",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "scope_level",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "scope_id",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/proposals/{proposal_id}",
+   "section": "proposals",
+   "audience": "operator",
+   "summary": "One proposal with its diff, evidence, proof and decisions.",
+   "description": "One proposal with its diff, evidence, proof and decisions.",
+   "params": [
+    {
+     "name": "proposal_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/proposals/{proposal_id}/apply",
+   "section": "proposals",
+   "audience": "operator",
+   "summary": "Apply an approved proposal, or settle one whose canary has finished.",
+   "description": "Apply an approved proposal, or settle one whose canary has finished.",
+   "params": [
+    {
+     "name": "proposal_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/proposals/{proposal_id}/decide",
+   "section": "proposals",
+   "audience": "operator",
+   "summary": "Approve or reject; an org-level loosening needs two different approvers.",
+   "description": "Approve or reject; an org-level loosening needs two different approvers.",
+   "params": [
+    {
+     "name": "proposal_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "DecideRequest",
+    "fields": [
+     {
+      "name": "approve",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/proposals/{proposal_id}/rollback",
+   "section": "proposals",
+   "audience": "operator",
+   "summary": "Undo an applied or canaried proposal through its applier.",
+   "description": "Undo an applied or canaried proposal through its applier.",
+   "params": [
+    {
+     "name": "proposal_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "RollbackRequest",
+    "fields": [
+     {
+      "name": "reason",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/proposals/{proposal_id}/verify",
+   "section": "proposals",
+   "audience": "operator",
+   "summary": "Record whether an applied change worked; ``verified: false`` rolls it back.",
+   "description": "Record whether an applied change worked; ``verified: false`` rolls it back.",
+   "params": [
+    {
+     "name": "proposal_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "VerifyRequest",
+    "fields": [
+     {
+      "name": "verified",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/providers",
+   "section": "providers",
+   "audience": "operator",
+   "summary": "The neutrality surface, made inspectable.",
+   "description": "The neutrality surface, made inspectable.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/public/showcase",
+   "section": "public",
+   "audience": "public-unauthenticated",
+   "summary": "AgentFox probing its own demo agent: recent runs, attacks attempted, contained and escaped, findings opened and closed. Unauthenticated and read-only; returns ``{\"enabled\": false}`` on a deployment that does not run the showcase.",
+   "description": "AgentFox probing its own demo agent: recent runs, attacks attempted, contained\nand escaped, findings opened and closed. Unauthenticated and read-only; returns\n``{\"enabled\": false}`` on a deployment that does not run the showcase.",
+   "params": [],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/redteam/campaigns",
+   "section": "redteam",
+   "audience": "operator",
+   "summary": "List Campaigns",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/redteam/campaigns",
+   "section": "redteam",
+   "audience": "operator",
+   "summary": "Enqueues through jobs_db and processes within this same request — see jobs_db's own module docstring and governance.py's build_evidence for the same reasoning applied to the other named candidate operation.",
+   "description": "Enqueues through jobs_db and processes within this same request\n— see jobs_db's own module docstring and governance.py's build_evidence\nfor the same reasoning applied to the other named candidate operation.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CampaignIn",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probes",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "runner",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "adaptive",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "budget",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "seed",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "include_deployment_probes",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/redteam/probes",
+   "section": "redteam",
+   "audience": "operator",
+   "summary": "List Probes",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/reliability",
+   "section": "reliability",
+   "audience": "operator",
+   "summary": "Circuit-breaker state and live budget consumption.",
+   "description": "Circuit-breaker state and live budget consumption.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/retention",
+   "section": "retention",
+   "audience": "operator",
+   "summary": "Retention",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/risk/assessments/{slug}",
+   "section": "risk",
+   "audience": "operator",
+   "summary": "Create Assessment",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__governance__AssessIn",
+    "fields": [
+     {
+      "name": "eu_ai_act_class",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "inherent_risk",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "residual_risk",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "answers",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "review_months",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "sign_off",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "signed_off_by",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/risk/classify/{slug}",
+   "section": "risk",
+   "audience": "operator",
+   "summary": "Classify Agent",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/risk/register",
+   "section": "risk",
+   "audience": "operator",
+   "summary": "Get Register",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/sources",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "List Sources",
+   "description": "",
+   "params": [
+    {
+     "name": "tier",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "domain",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/sources",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "Register or re-tier a source.",
+   "description": "Register or re-tier a source.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SourceIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": "The identifier the retriever emits — URI, doc id, table."
+     },
+     {
+      "name": "title",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tier",
+      "type": "string",
+      "required": false,
+      "description": "system_of_record | approved | unverified | external"
+     },
+     {
+      "name": "owner",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "domain",
+      "type": "string",
+      "required": false,
+      "description": "Corpus this belongs to, e.g. 'finance'."
+     },
+     {
+      "name": "updated_at_source",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "freshness_sla_hours",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "deprecated",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "metadata",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/sources/assess",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "Would this answer, from these sources, pass?",
+   "description": "Would this answer, from these sources, pass?\n\nA dry run against real retrieval output, so a team can see what the control would\nsay before wiring it into their request path.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__provenance__AssessIn",
+    "fields": [
+     {
+      "name": "answer",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "chunks",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agent_domain",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/sources/connections",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "Attach a real connector to a registered source — a database or an authenticated enterprise API — so `validate` can check it for real instead of assuming every source is a plain fetchable URL.",
+   "description": "Attach a real connector to a registered source — a database or an\nauthenticated enterprise API — so `validate` can check it for real instead\nof assuming every source is a plain fetchable URL.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ConnectionIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": "Must match an already-registered source's key."
+     },
+     {
+      "name": "kind",
+      "type": "string",
+      "required": true,
+      "description": "database | api"
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": "database: dialect, host, port, database, username, check_table (optional). api: base_url, auth_header (default 'Authorization'), auth_prefix (default 'Bearer ')."
+     },
+     {
+      "name": "credential",
+      "type": "string",
+      "required": false,
+      "description": "The raw password or token — encrypted immediately, never stored in the clear."
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/sources/context-check",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "Would this document or chunk set be fit to enter the corpus?",
+   "description": "Would this document or chunk set be fit to enter the corpus?\n\nA dry run against pasted or re-fetched text, in the same spirit as `/assess`:\nthe ingestion/chunk quality gate (`context_integrity.py`) existed with no route\nat all — this is deliberately the lightweight wiring rather than an inline\nretrieval-path gate, so a team can check a document before deciding whether to\nbuild that gate at all.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ContextCheckIn",
+    "fields": [
+     {
+      "name": "text",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "chunks",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "source_key",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/sources/health",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "Which registered sources are stale, deprecated, or unowned.",
+   "description": "Which registered sources are stale, deprecated, or unowned.\n\nThe question an operator actually has is not \"what is registered\" but \"what is\nrotting\" — a tiering exercise done once and never revisited is worse than none,\nbecause the tier says authoritative long after the content stopped being so.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/sources/{key}",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "Retire a source. Deprecates by default rather than deleting.",
+   "description": "Retire a source. Deprecates by default rather than deleting.\n\nA deleted source silently becomes *unverified* again — the default for anything\nunregistered — where a deprecated one keeps raising a finding every time an answer\nis grounded in it. Losing that signal is exactly the wrong outcome for a source you\nretired because it was wrong.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "hard",
+     "in": "query",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/sources/{key}/validate",
+   "section": "sources",
+   "audience": "operator",
+   "summary": "Actually fetch the source and check its content, rather than trust the tier.",
+   "description": "Actually fetch the source and check its content, rather than trust the tier.\n\nA tier is a claim a human made once. This is us going and looking: fetching the\nURL, hashing what came back, and flagging when it's changed since the last check\n— or reporting honestly that the key isn't a URL at all and can't be checked this\nway.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/tokens",
+   "section": "tokens",
+   "audience": "operator",
+   "summary": "List Tokens",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/tokens",
+   "section": "tokens",
+   "audience": "operator",
+   "summary": "Mint a token for the caller's own use. The raw value is returned once — same guarantee as every other credential this platform issues.",
+   "description": "Mint a token for the caller's own use. The raw value is returned once —\nsame guarantee as every other credential this platform issues.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TokenIn",
+    "fields": [
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "ttl_days",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/tokens/{token_id}/revoke",
+   "section": "tokens",
+   "audience": "operator",
+   "summary": "Revoke Token",
+   "description": "",
+   "params": [
+    {
+     "name": "token_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/tools",
+   "section": "tools",
+   "audience": "operator",
+   "summary": "List Tools",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/tools",
+   "section": "tools",
+   "audience": "operator",
+   "summary": "Create Tool",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ToolIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "kind",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "impact",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "description",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "json_schema",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "output_trust",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/traces",
+   "section": "traces",
+   "audience": "operator",
+   "summary": "List Traces",
+   "description": "",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "verdict",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "entity_type",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "tool",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "since_days",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/traces/resolve",
+   "section": "traces",
+   "audience": "operator",
+   "summary": "Their run id → our governance decision.",
+   "description": "Their run id → our governance decision.\n\nThis is the direction that matters during an incident: an engineer is already\nlooking at a Langfuse trace and wants to know which policy shaped it. Nobody\nships this, because it requires the governance system to have stored the join\nkey at decision time rather than reconstructing it from timestamps afterwards.",
+   "params": [
+    {
+     "name": "system",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "external_id",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/traces/{trace_id}",
+   "section": "traces",
+   "audience": "operator",
+   "summary": "Get Trace",
+   "description": "",
+   "params": [
+    {
+     "name": "trace_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-nometria-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/version",
+   "section": "version",
+   "audience": "operator",
+   "summary": "Every version that participates in a decision, so a verdict can be reproduced.",
+   "description": "Every version that participates in a decision, so a verdict can be reproduced.",
+   "params": [],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/waitlist",
+   "section": "waitlist",
+   "audience": "public-unauthenticated",
+   "summary": "Record an address. Unauthenticated, idempotent, and it sends nothing anywhere.",
+   "description": "Record an address. Unauthenticated, idempotent, and it sends nothing anywhere.\n\nSubmitting the same address twice succeeds both times. That is not politeness: a\nform post that answers 409 to a browser retry shows a stranger an error for\nsomething that worked, and the row they are being told conflicts with is their\nown.",
+   "params": [],
+   "body": {
+    "model": "WaitlistRequest",
+    "fields": [
+     {
+      "name": "email",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "source",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "company",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  }
+ ]
+}

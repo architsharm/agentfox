@@ -26,14 +26,14 @@
  * sections of annotated links.
  */
 
-import { BLOG_POSTS, blogPath } from "@/lib/blog";
-import { FLAT, HOME, PRODUCT as NAV_PRODUCT, RESOURCES, SECONDARY } from "@/lib/nav";
+import { BLOG_POSTS, blogPath } from "@/lib/marketing/blog";
+import { FLAT, HOME, PRODUCT as NAV_PRODUCT, RESOURCES, SECONDARY } from "@/lib/marketing/nav";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, REPO_URL } from "@/lib/site";
 
 export const dynamic = "force-static";
 
 /**
- * The index, derived from lib/nav.ts.
+ * The index, derived from lib/marketing/nav.ts.
  *
  * It used to be a hand-kept list here, with its own copy of every page's
  * description. Two consequences, both real: three pages existed for a week

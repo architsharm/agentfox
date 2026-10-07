@@ -6,11 +6,11 @@
 2. [CoCoNot](https://huggingface.co/datasets/allenai/coconot) `contrast` split (MIT) — 379 rows, real-world-shaped prompts about safety/completeness/modality that have nothing to do with knowledge boundaries. Pure over-refusal/robustness control.
 
 ```bash
-uv run python benchmarks/answerability/fetch_kuq.py
-uv run python benchmarks/answerability/run_kuq_benchmark.py
+uv run python -m benchmarks.answerability.fetch_kuq
+uv run python -m benchmarks.answerability.run_kuq_benchmark
 
-uv run --with pyarrow python benchmarks/answerability/fetch_coconot.py
-uv run python benchmarks/answerability/run_coconot_benchmark.py
+uv run --with pyarrow python -m benchmarks.answerability.fetch_coconot
+uv run python -m benchmarks.answerability.run_coconot_benchmark
 ```
 
 ## Dataset 1 — KUQ (Known-Unknown Questions)

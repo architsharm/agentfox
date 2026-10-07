@@ -228,15 +228,17 @@ Outside the package:
 | Path | What it is |
 |---|---|
 | `tests/` | Mirrors the package (`tests/runtime/`, `tests/platform/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, plugins, vendored wheels, install layout); `tests/harnesses/conformance.py` runs every registered harness adapter against its captured fixtures. |
-| `dashboard/` | The Next.js 15 app: the signed-in product (`app/app/`), the marketing site, and the website docs (`app/docs/`, sidebar in `lib/docs.ts`). It is a client of the gateway API with no back channel. Tests with vitest. |
-| `benchmarks/` | Every published number: one directory per area with its runner, results and README; `claims.yaml` binds quoted numbers to result files. |
+| `dashboard/` | The Next.js 15 app, three sites in one tree organised by route groups that do not change a URL: the signed-in product (`app/(product)/app/`, plus `/login`), the marketing site (`app/(marketing)/`; the home page and `app/blog/` sit at the app root so their Open Graph image URLs stay unhashed), and the website docs (`app/docs/`, sidebar in `lib/docs/pages.ts`). `components/` and `lib/` split the same way into `product/`, `marketing/` and `docs/`; `components/ui/` holds primitives used by more than one site, and `lib/generated/` holds the JSON the generators write. It is a client of the gateway API with no back channel. Tests with vitest. |
+| `benchmarks/` | Every published number: one directory per claim family, named as its claim ids in `claims.yaml` are prefixed (`containment/`, `agentdojo/`, `injection/`, `generalization/`, …), each with its runner, results and README; `claims.yaml` binds quoted numbers to result files. `_common/` holds the helpers scripts share (database reset, dataset download, PII span scoring). Scripts run as modules from the root: `python -m benchmarks.<family>.<script>`. |
 | `plugins/` | AgentFox packaged for an operator's coding agent (to *use* AgentFox, as opposed to `src/agentfox/harnesses/`, which *governs* one). `shared/` holds the runtime-neutral AGENTS.md, skills and reference files checked against the live CLI; `claude-code/` is the Claude Code plugin (manifest, slash commands, subagents, safety hook, MCP config) with committed copies of `shared/`. Contract in `plugins/STRUCTURE.md`. |
-| `docs/` | Design and contributor docs; index in [docs/README.md](docs/README.md). User docs are on the website. |
-| `scripts/` | Generators and checks: `claims.py`, `docs_reference.py`, `api_routes.py`, `coverage.py`, `rebuild_vendored_wheels.py`, `quickscan.sh`. |
+| `docs/` | Design and contributor docs (`architecture/`, `design/`, `evaluation/`, `adr/` for decision records); index in [docs/README.md](docs/README.md). User docs are on the website. |
+| `scripts/` | `gen/` writes generated files (`api_routes.py`, `docs_reference.py`, `coverage.py`, and `new_harness.py` from `templates/`); `check/` holds the drift checks CI runs (`claims.py`, `plugins.py`, `demo_kit.py`) and the vendored-wheel pre-commit hook; `ops/` is for operating a deployment (`deploy_smoke.py`). `probe/` builds the coverage map and stays put because product code names its scenarios; `quickscan.sh` stays at the top because the README publishes its raw URL for `curl \| bash`. |
 | `migrations/` | Alembic revisions (also shipped inside the wheel as `agentfox/_migrations`). |
-| `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), Render and Fly configs, dashboard runbook. |
+| `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), the dashboard-only Render and Fly configs, the dashboard runbook, and the hand-applied Neon catch-up SQL. |
+| `render.yaml` | The one-click self-host blueprint (database, gateway, dashboard). At the root because Render's deploy button reads only that path. |
+| `justfile` | The command surface: `just ci` runs what CI runs; `just new-harness <name>` scaffolds an adapter. |
 | `api/` | The Vercel deployment of the gateway: `api/index.py` re-exports `agentfox.apps.gateway.app:app`. It installs from a **wheel committed in `api/vendor/`**, because Vercel's root directory for this function is `api/` and `../src` would not ship. |
-| `demo/` | Two live red-team demos (`redteam-live/`, `redteam-live-lang/`); the second also deploys from a vendored wheel. |
+| `demo/` | Two live red-team demos (`redteam-live/`, CrewAI; `redteam-live-lang/`, LangChain) sharing one support-tools agent, seed and verification in `demo/kit/`. The second deploys on Vercel from a vendored wheel and a committed copy of the kit (`redteam-live-lang/kit/`), because its Vercel root directory is that folder. |
 
 ## Invariants and cross-cutting concerns
 
@@ -311,21 +313,23 @@ Headers still use `X-Nometria-*`. Do not rename either without a compatibility p
 
 **Published numbers are bound.** [`benchmarks/claims.yaml`](benchmarks/claims.yaml) binds each
 quoted figure (in this README, `benchmarks/`, `docs/`, website pages) to the result file it
-came from; `scripts/claims.py --check` fails on drift, and `retired` figures fail if quoted.
+came from; `scripts/check/claims.py --check` fails on drift, and `retired` figures fail if quoted.
 Change a number by re-running the benchmark, never by editing prose.
 
-**Generated files are regenerated, not edited.** `docs/status.md` (`scripts/coverage.py
---write`), the route tables in `docs/architecture/api-spec.md` (`scripts/api_routes.py
---write`), `dashboard/lib/reference/*.json` (`scripts/docs_reference.py --write`, which also
+**Generated files are regenerated, not edited.** `docs/status.md` (`scripts/gen/coverage.py
+--write`), the route tables in `docs/architecture/api-spec.md` (`scripts/gen/api_routes.py
+--write`), `dashboard/lib/generated/reference/*.json` (`scripts/gen/docs_reference.py --write`, which also
 checks every `agentfox …` command shown on a docs page), `docs/design/coverage-map.md`
-(`scripts/probe/run.py`). `scripts/check_plugins.py` checks the plugins against the live CLI,
+(`scripts/probe/run.py`). `scripts/check/plugins.py` checks the plugins against the live CLI,
 that the Claude Code plugin's copies of `plugins/shared/` match their originals (`--write`
 refreshes them), and that every tracked `.md` file is classified in
-`plugins/shared/reference/docs-map.md`.
+`plugins/shared/reference/docs-map.md`. `scripts/check/demo_kit.py` checks that
+`demo/redteam-live-lang/kit/` is a byte-identical copy of `demo/kit/` (`--write` refreshes
+it): edit the kit in `demo/kit/` only.
 
 **Vendored wheels are the deploy.** `api/vendor/` and `demo/redteam-live-lang/vendor/` hold
 built wheels. A change under `src/agentfox/` must rebuild both in the same commit; the
-pre-commit hook (`scripts/rebuild_vendored_wheels.py`) does it, and CI's
+pre-commit hook (`scripts/check/rebuild_vendored_wheels.py`) does it, and CI's
 `vendored-wheel-freshness` job fails a push that skipped it.
 
 ## Where to start for common changes
@@ -351,30 +355,30 @@ re-homed there is not reachable. `tests/apps/cli/test_cli_layout.py` enforces th
 removed names, and the two protocol endpoints kept at their old paths (`hooks run`,
 `mcp serve`). Add a row to `plugins/shared/reference/cli.md` (mark it **BLK** if it changes
 whether traffic is blocked, and add a pattern to `plugins/claude-code/scripts/guard_blocking_commands.py`),
-then run `scripts/docs_reference.py --write` so the website's CLI reference picks it up.
+then run `scripts/gen/docs_reference.py --write` so the website's CLI reference picks it up.
 
 **Add an HTTP route.** Add it to the router for its family in `apps/gateway/routes/` (use
 `deps.db`, and `agent_credential` for `/v1/*` or `current_user`/`require(...)` for `/api/*`).
 A new router must be included in `apps/gateway/app.py:create_app`. Regenerate
-`scripts/api_routes.py --write` and `scripts/docs_reference.py --write`, and update
+`scripts/gen/api_routes.py --write` and `scripts/gen/docs_reference.py --write`, and update
 `plugins/shared/reference/http-api.md`. If the route is a privileged operator action, record it
 (see the audit invariant). Tests in `tests/apps/gateway/` or `tests/e2e/`.
 
 **Add a website docs page.** Create `dashboard/app/docs/<section>/<slug>/page.tsx` using the
 blocks in `dashboard/components/docs/blocks.tsx` (copy a sibling page), and add it to
-`DOC_NAV` in `dashboard/lib/docs.ts`, the one list the sidebar reads. Every `agentfox …`
-command on the page is checked by `scripts/docs_reference.py --check`; a figure on it must be
+`DOC_NAV` in `dashboard/lib/docs/pages.ts`, the one list the sidebar reads. Every `agentfox …`
+command on the page is checked by `scripts/gen/docs_reference.py --check`; a figure on it must be
 bound in `benchmarks/claims.yaml`. Run `npm test` in `dashboard/`.
 
 **Add a benchmark or a published number.** Add `benchmarks/<area>/` with its runner, a
 `results/` file and a README (method, dataset, licence, limits); link it from
 `benchmarks/README.md`. To quote a number anywhere, add a claim to `benchmarks/claims.yaml`
-pointing at the result file and every place that quotes it, and run `scripts/claims.py
+pointing at the result file and every place that quotes it, and run `scripts/check/claims.py
 --check`. Read [docs/evaluation/evidence-standards.md](docs/evaluation/evidence-standards.md)
 before writing the headline.
 
 **Add a markdown doc.** Classify it in `plugins/shared/reference/docs-map.md` and list it in
-[docs/README.md](docs/README.md); `check_plugins.py` fails otherwise.
+[docs/README.md](docs/README.md); `scripts/check/plugins.py` fails otherwise.
 
 **Add a check** (something `evaluate` should look at on every call). Write a function in
 the capability that owns the question, taking a `platform/checks.py:CheckContext` and
@@ -407,7 +411,7 @@ A pack is promoted to `stable` (loaded by default) once it has cases, a README a
 owner. Nothing in `src/` changes to add one.
 
 **Add a harness** (a coding agent to govern). One folder, `src/agentfox/harnesses/<name>/`,
-beside `claude_code/`:
+beside `claude_code/`; `just new-harness <name>` writes the skeleton:
 
 1. `adapter.py`: a class satisfying `harnesses/base.py:HarnessAdapter` and a module-level
    `ADAPTER`. Map the harness's event names to the canonical kinds (`events`), declare an

@@ -9,10 +9,10 @@ forbidden, which is the control: if SQL blast radius moves, the routing table
 has failed at its only job.
 
     JEV_API_KEY=... ANTHROPIC_API_KEY=... \
-      uv run python benchmarks/judgment/run_judgment_benchmark.py
+      uv run python -m benchmarks.judgment.run_judgment_benchmark
 
 Writes results/judgment_results.json. Every number published anywhere about
-these tiers is rendered from that file by scripts/claims.py.
+these tiers is rendered from that file by scripts/check/claims.py.
 """
 
 from __future__ import annotations
@@ -21,12 +21,10 @@ import collections
 import json
 import os
 import pathlib
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "src"))
 
 HERE = pathlib.Path(__file__).parent
 BENCH = ROOT / "benchmarks"
@@ -120,7 +118,7 @@ def main() -> int:
     # used three hand-written sentences repeated 55 times, which meant the
     # false-positive rate was one sentence's verdict multiplied by 55 and the
     # F1 rested on three distinct examples.
-    notinject = json.loads((BENCH / "data_generalization" / "notinject.json").read_text())
+    notinject = json.loads((BENCH / "generalization" / "data" / "notinject.json").read_text())
     # all 339, not N of them: the over-defense set is the whole point here
     benign = [r["text"] for r in notinject if not r.get("label")]
 
@@ -173,7 +171,7 @@ def main() -> int:
     # rate here is the one to believe.
     heldout: list[dict] = []
     for fname, src in (("test.json", "deepset-test"), ("train.json", "deepset-train")):
-        for r in json.loads((BENCH / "data" / fname).read_text()):
+        for r in json.loads((BENCH / "injection" / "data" / fname).read_text()):
             if not r.get("label"):
                 heldout.append({"text": r["text"], "src": src})
     corpus_benign = json.loads(

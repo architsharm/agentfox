@@ -1,7 +1,7 @@
 """Fetches amayuelas/KUQ's `knowns_unknowns.jsonl` (MIT — verified via the HF API's
 `cardData.license`) and writes a filtered, flat JSON file to `data/kuq.json`.
 
-    uv run python benchmarks/answerability/fetch_kuq.py
+    uv run python -m benchmarks.answerability.fetch_kuq
 
 Source: https://huggingface.co/datasets/amayuelas/KUQ
 File:   knowns_unknowns.jsonl (6,884 rows) — a Turk-curated set of questions each
@@ -34,8 +34,9 @@ claims to check.
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
+
+from benchmarks._common import fetch
 
 DATA_DIR = Path(__file__).parent / "data"
 URL = "https://huggingface.co/datasets/amayuelas/KUQ/resolve/main/knowns_unknowns.jsonl"
@@ -43,17 +44,10 @@ URL = "https://huggingface.co/datasets/amayuelas/KUQ/resolve/main/knowns_unknown
 IN_SCOPE_UNKNOWN_CATEGORIES = {"future unknown": "future_unknown", "controversial": "controversial"}
 
 
-def _fetch(url: str) -> str:
-    result = subprocess.run(
-        ["curl", "-sL", "--fail", url], capture_output=True, text=True, check=True
-    )
-    return result.stdout
-
-
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    raw = _fetch(URL)
+    raw = fetch(URL)
     rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
     print(f"Fetched {len(rows)} rows from KUQ knowns_unknowns.jsonl")
 

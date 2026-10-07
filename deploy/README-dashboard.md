@@ -15,7 +15,7 @@ ungoverned agent code, and issues them an API token their agents authenticate wi
 > `https://nometria-dashboard.onrender.com` as a backup; its sign-in returns 503 until the
 > three secrets below are set on it, and its callback URL is added to the OAuth app.
 > The Neon migration in step 1b has been run: the database is at revision `d5e2a9c14f03`
-> and the Findings page works again. `scripts/deploy_smoke.py` checks all of this against a
+> and the Findings page works again. `scripts/ops/deploy_smoke.py` checks all of this against a
 > live deployment in one command.
 
 ## 1. Secrets the two deployments must share

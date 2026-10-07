@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { BrandLockup } from "@/components/marketing/brand";
-import { SESSION_COOKIE } from "@/lib/api";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SESSION_COOKIE } from "@/lib/product/api";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ScrollReveal } from "@/components/marketing/motion";
 import { NavMenu } from "@/components/marketing/menu";
-import { FLAT, GROUPS, SECONDARY } from "@/lib/nav";
+import { FLAT, GROUPS, SECONDARY } from "@/lib/marketing/nav";
 
 /**
  * The public navigation bar.
@@ -23,7 +23,7 @@ import { FLAT, GROUPS, SECONDARY } from "@/lib/nav";
    was a mislabelled anchor into a pricing block on the home page. These are the
    pages, named the way they are titled. */
 /* The header row is two dropdowns and one link, and the lists behind them
-   live in lib/nav.ts along with the footer's, the sitemap's and llms.txt's.
+   live in lib/marketing/nav.ts along with the footer's, the sitemap's and llms.txt's.
    Four files used to keep their own copy of the same information
    architecture and the failure was always the same: a page was added and
    three of them never heard about it.

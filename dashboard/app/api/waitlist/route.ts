@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyPublicFormPost } from "@/lib/proxy";
+import { proxyPublicFormPost } from "@/lib/product/proxy";
 
 /**
  * "Join the hosted-cloud waitlist" — posted by a plain HTML form on the pricing

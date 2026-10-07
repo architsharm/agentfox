@@ -1,0 +1,12 @@
+# {{display_name}} fixtures
+
+Hook payloads captured from a real {{display_name}} session, never written by hand. For each
+canonical event kind the adapter handles:
+
+- `<kind>.json`: the raw payload the hook received, verbatim.
+- `<kind>.expected.json`: the `AgentEvent` it must parse to, and the exact stdout, stderr
+  and exit code each decision must render to (copy the shape from
+  `harnesses/claude_code/fixtures/`).
+- `install.existing.json` (optional): an existing settings file `install` must merge into.
+
+`tests/harnesses/conformance.py` runs every registered adapter against these files.

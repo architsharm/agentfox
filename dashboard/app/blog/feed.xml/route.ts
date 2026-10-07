@@ -5,7 +5,7 @@
  * matcher skips any path with a file extension.
  */
 
-import { AUTHOR, blogPath, postsByDate } from "@/lib/blog";
+import { AUTHOR, blogPath, postsByDate } from "@/lib/marketing/blog";
 import { absolute, SITE_NAME } from "@/lib/site";
 
 export const dynamic = "force-static";

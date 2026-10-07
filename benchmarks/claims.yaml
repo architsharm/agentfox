@@ -1,6 +1,6 @@
 # Every headline number we publish, bound to the result file it came from.
 #
-# `scripts/claims.py --check` renders each claim from its source and fails if any document
+# `scripts/check/claims.py --check` renders each claim from its source and fails if any document
 # quoting it no longer says exactly that. Two published numbers were corrected by hand in a
 # single week (an SPML recall figure and an adaptive attack-success rate) before this existed.
 #
@@ -20,6 +20,10 @@
 # figure retired from the docs is also caught on any page of the website; a glob that matches no
 # file is itself a failure.
 
+# Claim ids are prefixed by the benchmark folder that produces them (`agentdojo.*` comes from
+# benchmarks/agentdojo/). The one exception is `jev.*`: the Jev study's numbers live in
+# benchmarks/judgment/ with the judgment-tier benchmark, because Jev is that tier's model.
+
 claims:
   - id: containment.attacks_contained_with_detectors_off
     source: benchmarks/containment/results/containment_results.json
@@ -34,8 +38,8 @@ claims:
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} attack scenarios were still contained"}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} attacks contained with zero detector signal"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} attacks contained with zero detector signal'}
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="attack scenarios contained with every detector off"'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} attacks contained with zero detector signal'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="attack scenarios contained with every detector off"'}
 
   - id: containment.legitimate_calls_allowed_with_detectors_off
     source: benchmarks/containment/results/containment_results.json
@@ -47,13 +51,13 @@ claims:
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} legitimate calls were still allowed"}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} legitimate calls still allowed"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} legitimate calls still allowed'}
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="legitimate calls still allowed in the same run"'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} legitimate calls still allowed'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="legitimate calls still allowed in the same run"'}
 
   # AgentDojo: provenance inferred from executed tool outputs (v1.2.2, detectors off). The earlier
   # label-assigned run is retired below.
   - id: agentdojo.session_taint.attack_pairs_contained
-    source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+    source: benchmarks/agentdojo/results/inferred_provenance_summary.json
     path: [conditions, inferred_session_taint, attacks_contained, fraction]
     render: fraction
     quoted_in:
@@ -64,15 +68,15 @@ claims:
       - {file: docs/design/PRD.md, text: "{n} of {d} attack pairs are contained at session-level taint"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} attack pairs were contained at session-level taint"}
       # The website. Not markdown, but the same normalised substring check applies.
-      - {file: dashboard/app/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
+      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "Session-level taint (the default): {n} of {d} attack pairs contained"}
-      - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
+      - {file: dashboard/app/(product)/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} attack pairs contained with session-level taint"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'session-level taint contained {n} of {d} attack pairs'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'session-level taint contained {n} of {d} attack pairs'}
 
   - id: agentdojo.session_taint.benign_tasks_allowed
-    source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+    source: benchmarks/agentdojo/results/inferred_provenance_summary.json
     render: fields
     fields:
       n: [conditions, inferred_session_taint, benign_tasks_allowed, k]
@@ -87,17 +91,17 @@ claims:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "Session-level taint (shipped default) | {n}/{d} ({pct}% {ci}) | 588/588"}
       - {file: docs/design/PRD.md, text: "a cost of {n} of {d} benign tasks running without escalation"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} benign tasks ran without escalation"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "Session-level taint (shipped default) | {n}/{d} ({pct}% {ci}) | 588/588 | 702/702"}
-      - {file: dashboard/app/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
-      - {file: dashboard/app/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
+      - {file: benchmarks/agentdojo/README.md, text: "Session-level taint (shipped default) | {n}/{d} ({pct}% {ci}) | 588/588 | 702/702"}
+      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
+      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "only {n} of {d} benign tasks ({pct}% {ci}) ran without escalating to a human"}
-      - {file: dashboard/app/login/page.tsx, text: '["{n} of {d}", "benign tasks ran without escalating to a human"]'}
+      - {file: dashboard/app/(product)/login/page.tsx, text: '["{n} of {d}", "benign tasks ran without escalating to a human"]'}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} benign tasks ({pct}% {ci}) run without escalating to a human"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'only {n} of {d} benign tasks ran without escalating to a human'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'only {n} of {d} benign tasks ran without escalating to a human'}
 
   - id: agentdojo.argument_taint
-    source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+    source: benchmarks/agentdojo/results/inferred_provenance_summary.json
     render: fields
     fields:
       bk: [conditions, inferred_argument_taint, benign_tasks_allowed, k]
@@ -115,12 +119,12 @@ claims:
       - {file: benchmarks/README.md, text: "Argument-level taint: {ak}/{an} contained, {bk}/{bn} benign tasks"}
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "Argument-level taint | {bk}/{bn} | {ak}/{an}"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "Per-argument taint ran {bk} of {bn} benign tasks and contained {ak} of {an} attack pairs"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "Argument-level taint | {bk}/{bn} ({bpct}% {bci}) | {ak}/{an} | {ck}/{cn}"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "Argument-level taint misses {missed} attacker calls"}
+      - {file: benchmarks/agentdojo/README.md, text: "Argument-level taint | {bk}/{bn} ({bpct}% {bci}) | {ak}/{an} | {ck}/{cn}"}
+      - {file: benchmarks/agentdojo/README.md, text: "Argument-level taint misses {missed} attacker calls"}
       - {file: docs/design/architecture-differentiation.md, text: "Per-argument taint: {bk}/{bn} benign tasks, {ak}/{an} attack pairs contained"}
 
   - id: agentdojo.argument_taint_tiered
-    source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+    source: benchmarks/agentdojo/results/inferred_provenance_summary.json
     render: fields
     fields:
       bk: [conditions, inferred_argument_taint_tiered, benign_tasks_allowed, k]
@@ -131,10 +135,10 @@ claims:
       an: [conditions, inferred_argument_taint_tiered, attacks_contained, n]
     quoted_in:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "Argument-level taint, read-only tools exempt | {bk}/{bn} | {ak}/{an}"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "Argument-level taint, read-only tools exempt | {bk}/{bn} ({bpct}% {bci}) | {ak}/{an}"}
+      - {file: benchmarks/agentdojo/README.md, text: "Argument-level taint, read-only tools exempt | {bk}/{bn} ({bpct}% {bci}) | {ak}/{an}"}
 
   - id: agentdojo.oracle_upper_bound
-    source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+    source: benchmarks/agentdojo/results/inferred_provenance_summary.json
     render: fields
     fields:
       b: [conditions, oracle_labels, benign_tasks_allowed, fraction]
@@ -143,10 +147,10 @@ claims:
       - {file: README.md, text: "Taking provenance from the benchmark's own labels gives {b} and {a}"}
       - {file: benchmarks/README.md, text: "the same replay gives {b} and {a}"}
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "Taken from the benchmark's labels (upper bound) | {b} | {a}"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "Taken from the benchmark's labels (upper bound) | {b} | {a}"}
+      - {file: benchmarks/agentdojo/README.md, text: "Taken from the benchmark's labels (upper bound) | {b} | {a}"}
 
   - id: agentdojo.capability_only
-    source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+    source: benchmarks/agentdojo/results/inferred_provenance_summary.json
     render: fields
     fields:
       b: [conditions, capability_only, benign_tasks_allowed, fraction]
@@ -155,14 +159,14 @@ claims:
       cn: [conditions, capability_only, acting_calls_contained, n]
     quoted_in:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "None (grants and impact tiers only) | {b} | {a}"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "None: grants and impact tiers only | {b} | {a} | {ck}/{cn}"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "contain {ck} of {cn} attacker write calls"}
+      - {file: benchmarks/agentdojo/README.md, text: "None: grants and impact tiers only | {b} | {a} | {ck}/{cn}"}
+      - {file: benchmarks/agentdojo/README.md, text: "contain {ck} of {cn} attacker write calls"}
       - {file: docs/design/architecture-differentiation.md, text: "None (grants and impact tiers only): {b} benign, {a} attack pairs contained"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'contain {ck} of {cn} attacker write calls'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'contain {ck} of {cn} attacker write calls'}
 
   - id: agentdojo.legitimate_actions_escalated
-    source: benchmarks/agentdojo_e2e/results/inferred_provenance_summary.json
+    source: benchmarks/agentdojo/results/inferred_provenance_summary.json
     render: fields
     fields:
       k: [benign_acting_calls_escalated_argument_tiered, k]
@@ -170,7 +174,7 @@ claims:
       pct: {path: [benign_acting_calls_escalated_argument_tiered, rate], scale: 100, format: ".0f"}
     quoted_in:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "{pct}% of AgentDojo's legitimate write and irreversible calls copy a value out of a tool output"}
-      - {file: benchmarks/agentdojo_e2e/README.md, text: "{k} of {n} legitimate write and irreversible calls ({pct}%) are still escalated"}
+      - {file: benchmarks/agentdojo/README.md, text: "{k} of {n} legitimate write and irreversible calls ({pct}%) are still escalated"}
 
   - id: adaptive.readable_attack_success_at_50
     source: benchmarks/adaptive/results/adaptive_summary.json
@@ -186,7 +190,7 @@ claims:
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{pct}% at 50 attempts"}
       - {file: docs/design/architecture-differentiation.md, text: "{pct}% attack success at 50 attempts"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{pct}% of the attacks we catch through within 50 attempts'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{pct}% of the attacks we catch through within 50 attempts'}
 
   - id: adaptive.bypasses_contained_at_the_action
     source: benchmarks/adaptive/results/adaptive_summary.json
@@ -197,8 +201,8 @@ claims:
       - {file: docs/evaluation/benchmarking-whitepaper.md, text: "{n}/{d} were still contained at the action"}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} of those bypasses still contained at the action"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} of those bypasses still contained at the action'}
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="adaptive bypasses of the detector, still contained at the action"'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} of those bypasses still contained at the action'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="adaptive bypasses of the detector, still contained at the action"'}
 
   - id: crescendo.trajectory_detection
     source: benchmarks/crescendo/results/crescendo_results.json
@@ -228,7 +232,7 @@ claims:
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} matched pairs"}
 
   - id: generalization.classifier_spml_recall
-    source: benchmarks/results_generalization/summary.json
+    source: benchmarks/generalization/results/summary.json
     path: [configs, heuristic_classifier, spml, recall]
     render: percent
     decimals: 1
@@ -402,7 +406,7 @@ claims:
       - {file: docs/design/architecture-differentiation.md, text: "llm-guard {lp}% precision and {lr}% recall, against AgentFox's {ap}% and {ar}%"}
 
   - id: injection.heuristic_held_out
-    source: benchmarks/results/prompt_injection_summary.json
+    source: benchmarks/injection/results/prompt_injection_summary.json
     render: fields
     fields:
       pct: {path: [configs, heuristic, held_out, recall], scale: 100, format: ".1f"}
@@ -412,8 +416,8 @@ claims:
       - {file: docs/design/architecture-differentiation.md, text: "held-out injection recall is {pct}% at 100% precision"}
       - {file: docs/design/architecture-differentiation.md, text: "{ms} ms per example for the heuristic"}
       # The blog.
-      - {file: dashboard/components/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
-      - {file: dashboard/components/blog/posts/hidden-indirect-prompt-injection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
+      - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
+      - {file: dashboard/components/marketing/blog/posts/hidden-indirect-prompt-injection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
 
   - id: crescendo.trajectory_latency
     source: benchmarks/crescendo/results/crescendo_results.json
@@ -436,7 +440,7 @@ claims:
 retired:
   - id: agentdojo.label_assigned_benign_utility
     text: "552/552 legitimate"
-    reason: "label-assigned provenance and duplicated task versions; see benchmarks/agentdojo_e2e/README.md"
+    reason: "label-assigned provenance and duplicated task versions; see benchmarks/agentdojo/README.md"
     files: [README.md, benchmarks/README.md, docs/evaluation/benchmarking-whitepaper.md, docs/design/PRD.md, docs/evaluation/responding-to-the-critique.md, docs/evaluation/judgment/vs-shipping.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
   - id: agentdojo.label_assigned_benign_utility_prose
     text: "552 of 552 legitimate"

@@ -2,7 +2,7 @@
 LICENSE verified by fetching it directly) and writes it unmodified to
 `data/tab_echr_test.json`.
 
-    uv run python benchmarks/pii/fetch_tab.py
+    uv run python -m benchmarks.pii.fetch_tab
 
 Source: https://github.com/NorskRegnesentral/text-anonymization-benchmark
 File:   echr_test.json (127 real European Court of Human Rights judgments,
@@ -23,8 +23,9 @@ templated sentences (Dataset 1) or synthetic financial documents (Dataset 2).
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
+
+from benchmarks._common import fetch
 
 DATA_DIR = Path(__file__).parent / "data"
 BASE = "https://raw.githubusercontent.com/NorskRegnesentral/text-anonymization-benchmark/master"
@@ -32,23 +33,16 @@ LICENSE_URL = f"{BASE}/LICENSE.txt"
 TEST_URL = f"{BASE}/echr_test.json"
 
 
-def _fetch(url: str) -> str:
-    result = subprocess.run(
-        ["curl", "-sL", "--fail", url], capture_output=True, text=True, check=True
-    )
-    return result.stdout
-
-
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    license_text = _fetch(LICENSE_URL)
+    license_text = fetch(LICENSE_URL)
     if "MIT License" not in license_text:
         raise SystemExit(
             "TAB LICENSE.txt no longer reads as MIT — re-verify before using this data."
         )
 
-    raw = _fetch(TEST_URL)
+    raw = fetch(TEST_URL)
     rows = json.loads(raw)
     print(f"Fetched {len(rows)} rows from TAB echr_test.json")
 
