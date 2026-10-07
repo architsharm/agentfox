@@ -5,7 +5,7 @@ patterns, array bounds, nested objects. Enough to cover the contracts agents
 actually declare, without pulling `jsonschema` onto the critical path.
 
 Guardrails AI (Apache-2.0 core) is the richer wrapped alternative — see
-``adapters/guardrails_ai.py``. Note: the core is Apache-2.0 but
+``adapters/rails.py``. Note: the core is Apache-2.0 but
 individual Hub validators carry their own licences, so any Hub validator must be
 licence-checked before it ships.
 """

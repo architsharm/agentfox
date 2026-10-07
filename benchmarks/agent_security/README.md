@@ -46,8 +46,10 @@ one off.
 `tier_d_excessive_agency.py` — 6 scenarios through the real
 `Enforcer.guard_tool_call` path, using the actual shipped seed data
 (`support-triage` genuinely has no payments/email grant; `payments-ops` genuinely
-has a `<$1000` transfer ceiling). **6/6 correct**, including the kill-switch fix
-below.
+has a `<$1000` transfer ceiling). **5/6 correct**, including the kill-switch fix
+below. The miss is the negative control: an ordinary `tickets.update` is blocked by
+`cascade.reaches_destructive`, because the demo world declares that a ticket update
+triggers `email.send` (added after this tier was first run, which scored 6/6).
 
 LLM Guard cannot participate in this tier — it has no tool registry, no
 capability model, no concept of "this agent's grants." This isn't scored as a
@@ -126,8 +128,11 @@ scanner. This is the layered-defense argument made concrete, not asserted.
 injection in an unnamed field, path traversal in an unnamed field; 5 negative
 controls) through `support-triage`'s genuinely granted, ordinary capabilities
 (`kb.search`, `crm.lookup`, `tickets.*`) — every case's capability check passes
-(`all_capability_checks_passed: true`), so any block comes purely from argument-
-value analysis. **10/10 correct.**
+(`all_capability_checks_passed: true`). **8/10 correct.** All 5 attacks are blocked
+by argument-value analysis. The 2 misses are negative controls (`c07`, `c10`), both
+`tickets.update` calls, blocked by `cascade.reaches_destructive`: the demo world
+declares that a ticket update triggers `email.send`, a tool this agent holds no grant
+for. That trigger was added after this tier was first run, which scored 10/10.
 
 The gap this closed was real, found by reading `guardrails/actions.py` before
 writing any test: `analyse_arguments` only inspected values under three

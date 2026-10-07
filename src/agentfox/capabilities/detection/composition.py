@@ -11,7 +11,7 @@ the *second* one's argument happens to be a value the *first* one just returned.
 Neither tool's own scope check has any way to know that, because neither call looks
 wrong on its own.
 
-The mechanism: `guardrails.taint.TaintTracker` tags an argument's value with
+The mechanism: `detection.taint.TaintTracker` tags an argument's value with
 `propagated_from` — the path of whichever earlier tool-result content it matched
 against (a provenance ledger built for a different purpose — flagging untrusted
 content flowing into arguments — that records exactly the fact this check needs:
@@ -28,14 +28,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-#: Tool.impact's own three-tier convention (models.py: "read"/"write"/"irreversible",
+#: Tool.impact's own three-tier convention (core/models/registry.py: "read"/"write"/"irreversible",
 #: "the axis policy reasons over"). Reused as-is rather than inventing a parallel
 #: ranking — a second scale for the same concept is how these drift out of sync.
 IMPACT_RANK = {"read": 0, "write": 1, "irreversible": 2}
 
 #: Prefix used by the SDK's `tool_result()` (sdk/__init__.py) when the caller
 #: identifies the producing tool. Kept distinct from MCP governance's own
-#: `mcp.<server>.<tool>` convention (integrations/mcp.py) rather than unifying them,
+#: `mcp.<server>.<tool>` convention (frameworks/mcp.py) rather than unifying them,
 #: to avoid touching that already-shipped, already-tested path.
 _SDK_TOOL_RESULT_PREFIX = "tool:"
 
@@ -44,14 +44,14 @@ def tool_key_from_origin(path: str) -> str | None:
     """Recover a producing tool's *registered* key from a taint mark's origin path.
 
     Two conventions currently encode tool identity in a mark's path:
-    - MCP governance (``integrations/mcp.py``): the taint mark's path is
+    - MCP governance (``frameworks/mcp.py``): the taint mark's path is
       ``mcp.<server>.<tool>`` (dot-separated — see ``_govern_result``), but the
       tool is actually *registered* under a different format,
-      ``integrations.mcp.tool_key()``'s ``mcp:<server>/<tool>`` (colon + slash).
+      ``frameworks.mcp.tool_key()``'s ``mcp:<server>/<tool>`` (colon + slash).
       These are two distinct, already-shipped conventions in the same module,
       not a typo — this function reconstructs the registered form so the
       lookup below hits the real `Tool.key`, rather than importing
-      `integrations.mcp` here (guardrails/ stays integration-agnostic; the
+      `frameworks.mcp` here (detection/ stays integration-agnostic; the
       coupling is this one format string, disclosed rather than hidden behind
       an import).
     - The SDK's ``tool_result(text, tool=...)``: ``tool:<tool_key>#<index>``,

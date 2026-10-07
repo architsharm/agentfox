@@ -1,7 +1,7 @@
 """The provenance a policy rule reasons over, as distinct from the provenance recorded.
 
 Two decisions sit between the taint tracker and a rule like ``taint_exceeds: user``,
-and both are made here, once, so the live path (`enforcement.py`) and replay
+and both are made here, once, so the live path (`runtime/enforcement/`) and replay
 (`policy/simulate.py`) cannot disagree about them:
 
 * **Scope** (`Settings.taint_scope`). ``session`` reads the worst provenance anywhere

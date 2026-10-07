@@ -131,7 +131,7 @@ Detection is the layer we trust least, so we publish its numbers.
 
 - The default heuristic detector's held-out injection recall is **26.7%**, at 100% precision
   ([REPORT.md](benchmarks/REPORT.md)). An [adaptive attacker](benchmarks/adaptive/README.md)
-  that reads our verdict and retries gets **73% of the attacks we catch through within 50
+  that reads our verdict and retries gets **71% of the attacks we catch through within 50
   attempts** against the default stack.
 - The deterministic answerability classifier abstains on 57/676 contested questions; with a
   judgment tier that becomes 572/676, at the cost of over-refusal rising from 0.75% to 6.8%.

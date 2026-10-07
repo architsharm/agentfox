@@ -139,19 +139,19 @@
     {
       "config": "pii.presidio.full",
       "tp": 4168,
-      "fp": 820,
+      "fp": 814,
       "fn": 631,
-      "precision": 0.8356,
+      "precision": 0.8366,
       "recall": 0.8685,
-      "f1": 0.8517,
+      "f1": 0.8523,
       "by_type": {
         "PII.DATE_TIME": {
           "tp": 2715,
-          "fp": 276,
+          "fp": 273,
           "fn": 199,
-          "precision": 0.9077,
+          "precision": 0.9086,
           "recall": 0.9317,
-          "f1": 0.9196
+          "f1": 0.92
         },
         "PII.LOCATION": {
           "tp": 488,
@@ -163,11 +163,11 @@
         },
         "PII.PERSON": {
           "tp": 965,
-          "fp": 164,
+          "fp": 161,
           "fn": 262,
-          "precision": 0.8547,
+          "precision": 0.857,
           "recall": 0.7865,
-          "f1": 0.8192
+          "f1": 0.8202
         }
       },
       "by_identifier_type": {

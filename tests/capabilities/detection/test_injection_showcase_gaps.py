@@ -1,6 +1,6 @@
 """Three injection classes the live showcase let through, and the text that must not fire.
 
-The public showcase (`evaluation/showcase.py`) probes an in-process support agent on
+The public showcase (`apps/showcase.py`) probes an in-process support agent on
 the offline ``echo-1`` model with the baseline policy in enforce mode. Three of its
 nine attacks reached the model:
 

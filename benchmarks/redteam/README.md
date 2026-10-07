@@ -220,8 +220,14 @@ adopted verbatim and reported in the table below.
 The tables in this section are the **first run, before the nested-argument fix** (finding 2
 below; fixed in the 2026-09-16 update at the end). `results/adaptive_redteam_summary.json` holds
 the re-run after that fix, and the update's "Before and after" table gives both. In the current file the classes that moved are
-`argument_shape` 0/41 (was 10/41), `encoding` 25/31 (was 26/31) and `tool_scope` 0/29 (was 0/25),
-and the semantics split is `structural` 0/105, `readable` 3/39, `requires_decode` 25/34.
+`argument_shape` 0/42 (was 10/41), `provenance` 0/30 (was 0/31) and `tool_scope` 0/29 (was 0/25),
+with `encoding` at 26/31, and the semantics split is `structural` 0/105, `readable` 3/39,
+`requires_decode` 26/34. The one attempt that moved from `provenance` to `argument_shape` came
+from the refusal-reason fix of 2026-09-23 (a grant that exists but is exceeded now reports
+`capability.constraint_violated` instead of `capability.denied`), which changes the feedback the
+search adapts to; no verdict changed. `encoding` and `requires_decode` move by one or two
+between runs (24 to 26 escapes seen on 2026-10-07), because a long hex payload can exceed the
+40ms per-detector budget and then scores as no detection.
 
 | Agent | Risk tier | Static escapes | Adaptive escapes | Found *only* by mutation | Attempts | Benign FPs |
 |---|---|---|---|---|---|---|
@@ -349,7 +355,7 @@ the finding is not in any prompt: it is in the shape of a capability row.
 
 ### 4. The capability and taint layer held under every honest mutation
 
-`provenance` 0/31 and `tool_scope` 0/25 (0/29 in the post-fix re-run). Re-declaring every argument as user-sourced,
+`provenance` 0/31 and `tool_scope` 0/25 (0/30 and 0/29 in the current re-run). Re-declaring every argument as user-sourced,
 trying sibling keys in a namespace, and supplying a plausible declared intent did not get
 a single ungranted or over-ceiling call through on any agent. All nine
 `ungranted.registered` probes (a real irreversible tool the agent genuinely lacks, on
@@ -500,9 +506,9 @@ latency problem this module exists to prevent.
 |---|---|---|
 | `structural` (re-nesting, argument reshaping) | 10/101 escaped (10%) | **0/105 escaped (0%)** |
 | `readable` (payloads a model simply reads) | 3/39 (8%) | 3/39 (8%) |
-| `requires_decode` (base64, hex, reversal) | 26/34 (76%) | 25/34 (74%) |
+| `requires_decode` (base64, hex, reversal) | 26/34 (76%) | 26/34 (76%) |
 
-The `readable` and `requires_decode` columns are unchanged, which is the honest read: this fix
+The `readable` and `requires_decode` columns are unchanged (`requires_decode` varies by one or two between runs; see the note on the detector budget above), which is the honest read: this fix
 closed a structural bypass and did nothing whatever for detection, because it is not a detection
 fix. Regression cases for the nested shapes live in `tests/capabilities/detection/test_action_assurance.py`.
 

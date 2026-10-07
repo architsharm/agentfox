@@ -49,7 +49,7 @@ FLAG_LABEL = {
     EXFIL: "can send data out or act irreversibly",
 }
 
-#: The pattern `benchmarks/agentdojo_e2e/run_agentdojo_e2e.py` grades irreversible
+#: The pattern `benchmarks/agentdojo/run_agentdojo_e2e.py` grades irreversible
 #: tools with. Kept identical so a tool the benchmark calls irreversible is one the
 #: scan calls an exfiltration channel.
 _AGENTDOJO_IRREVERSIBLE = re.compile(

@@ -328,6 +328,7 @@ claims:
     quoted_in:
       - {file: benchmarks/README.md, text: "`provenance` {n}/{d}"}
       - {file: docs/design/architecture-differentiation.md, text: "provenance-laundering mutations {n}/{d}"}
+      - {file: dashboard/app/docs/benchmarks/page.tsx, text: "<code>provenance</code> {n}/{d}"}
 
   - id: redteam.structural_escapes_after_fix
     source: benchmarks/redteam/results/adaptive_redteam_summary.json

@@ -162,7 +162,7 @@ export default function Page() {
           <tr>
             <td>Adaptive red team vs. the capability and taint layer</td>
             <td>
-              <code>provenance</code> 0/31, <code>tool_scope</code> 0/29, <code>structural</code>{" "}
+              <code>provenance</code> 0/30, <code>tool_scope</code> 0/29, <code>structural</code>{" "}
               0/105 escapes
             </td>
             <td>

@@ -1,7 +1,7 @@
 """F3.8 — composed privilege escalation (P9-11).
 
 A read tool's output, chained into a write tool's argument, is a composition
-neither tool's own scope permits alone — see `guardrails/composition.py`'s
+neither tool's own scope permits alone — see `capabilities/detection/composition.py`'s
 module docstring for the full failure-mode description and why it needed the
 taint tracker's existing `propagated_from` provenance rather than a new
 tracking mechanism.
@@ -49,9 +49,9 @@ def _governor(seeded):
 
 def test_tool_key_is_recovered_from_the_mcp_path_convention():
     """The taint mark's path (`mcp.<server>.<tool>`) and the tool's actual
-    *registered* key (`integrations.mcp.tool_key()`'s `mcp:<server>/<tool>`) are
+    *registered* key (`frameworks.mcp.tool_key()`'s `mcp:<server>/<tool>`) are
     different formats in the same module — this must reconstruct the registered
-    one, or the DB lookup in enforcement.py silently misses every time."""
+    one, or the DB lookup in runtime/enforcement/ silently misses every time."""
     assert (
         tool_key_from_origin("mcp.patient-records.search_patients")
         == "mcp:patient-records/search_patients"
@@ -133,7 +133,7 @@ def test_an_unregistered_origin_tool_is_skipped_not_assumed():
 def test_caller_declared_provenance_is_not_a_silent_composition():
     """`argument_propagated_from` only carries *inferred* provenance
     (`TaintMark.propagated_from`) — a value the caller explicitly declared the
-    source of was never silent in the first place, and enforcement.py never
+    source of was never silent in the first place, and the enforcer never
     populates this dict from a declared mark. Documented here as the contract,
     not exercised against the DB-backed path (covered by the integration test
     below instead)."""

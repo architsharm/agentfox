@@ -273,9 +273,9 @@ rules:
 
   # --- Cascade risk (P9) and data-access scoping (P18) -----------------
   # action_risk matches on the same action.risks[].code every SQL/shell/HTTP
-  # finding already lands in (guardrails/actions.py) — cascade_risk() and
+  # finding already lands in (capabilities/detection/actions.py) — cascade_risk() and
   # analyse_access() findings use the identical {code, severity, detail,
-  # evidence} shape and are appended into that same list (enforcement.py's
+  # evidence} shape and are appended into that same list (enforcement/tool_calls.py's
   # _cascade_and_access_risks), so these rules are the first ones in this
   # file to actually react to that condition; nothing shipped did before.
   - id: cascade.reaches_destructive

@@ -74,7 +74,7 @@ encoded in the platform, which is what our [operator plugin](../../plugins/claud
 |---|---|
 | Built a benchmark that **deletes the detection layer entirely** and measures what still holds | [`benchmarks/containment/`](../../benchmarks/containment/README.md) |
 | Replayed AgentDojo's ground truth end to end, 97 user tasks and 949 attack pairs, with provenance inferred from the real tool outputs, reporting benign utility alongside containment | [`benchmarks/agentdojo/`](../../benchmarks/agentdojo/README.md) |
-| Published our own adaptive-attack success rate against ourselves (**73% at 50 attempts**), using the critique's own protocol — and fixed the three detector bugs it found | [`benchmarks/adaptive/`](../../benchmarks/adaptive/README.md) |
+| Published our own adaptive-attack success rate against ourselves (**71% at 50 attempts**), using the critique's own protocol — and fixed the three detector bugs it found | [`benchmarks/adaptive/`](../../benchmarks/adaptive/README.md) |
 | Measured non-English parity instead of claiming multilingual support | [`benchmarks/multilingual/`](../../benchmarks/multilingual/README.md) |
 | Measured gradual multi-turn (crescendo) attacks, which per-message detection cannot see | [`benchmarks/crescendo/`](../../benchmarks/crescendo/README.md) |
 | Made containment readiness a first-class health check, ahead of detectors | `agentfox doctor` |

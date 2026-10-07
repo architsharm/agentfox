@@ -52,7 +52,7 @@ Two rounds so far, both triggered by asking "what's actually failing, and why" r
 | 2. gretelai multilingual | `pii.presidio` (full) | 16.3% → **21.7%** | 70.1% → 68.5% |
 | 2. gretelai multilingual | `pii.native` `DATE_OF_BIRTH`, German only | 0.0% → **68.0%** recall | — |
 | 2. gretelai multilingual | `pii.presidio` `US_SSN` (full policy) | 14.4% → **87.3%** precision | 49.7% → 45.1% |
-| 3. TAB | `pii.presidio` (full) | unchanged (83.6%) | unchanged (86.9%) |
+| 3. TAB | `pii.presidio` (full) | unchanged at the time (83.6%; 83.7% on the 2026-10-07 re-run) | unchanged (86.9%) |
 
 Recall moves down a few points on the default-policy rows — an honest, expected side effect of #2 (Presidio's own `DATE_TIME` output no longer masquerades as `DATE_OF_BIRTH`), #4 (a handful of genuine SSNs scored exactly at the 0.05 tier are filtered out along with the false positives), and #6 (132 genuine passport numbers are no longer detected at all by default, the same trade-off #1 already made for driver's licenses). All three trades are disclosed in the per-dataset sections below, not hidden in the aggregate.
 
@@ -68,7 +68,7 @@ Recall moves down a few points on the default-policy rows — an honest, expecte
 |---|---|---|---|---|---|---|---|
 | `pii.native` | 96.4% | 14.1% | 24.7% | 243 | 9 | 1477 | 0 |
 | `pii.presidio` (default policy — ships as-is) | 90.2% | 15.1% | 25.8% | 259 | 28 | 1461 | 1 |
-| `pii.presidio` (nothing excluded) | 65.2% | 75.6% | 70.0% | 1300 | 693 | 420 | 396 |
+| `pii.presidio` (nothing excluded) | 65.3% | 75.6% | 70.1% | 1300 | 690 | 420 | 396 |
 
 \* Predicted spans that land fully inside an out-of-scope `STREET_ADDRESS` ground-truth span — correct detections this benchmark has no ground truth to credit, not detector errors. See "Fixes applied" above.
 
@@ -115,9 +115,9 @@ The remaining 79 genuine (non-address) false positives show two real, unfixed pa
 
 | Config | Precision | Recall | F1 | TP | FP | FN | Excluded* |
 |---|---|---|---|---|---|---|---|
-| `pii.native` | 37.1% | 17.1% | 23.4% | 2,480 | 4,209 | 12,000 | 1 |
+| `pii.native` | 37.1% | 17.1% | 23.4% | 2,480 | 4,207 | 12,000 | 1 |
 | `pii.presidio` (default policy) | 51.9% | 18.2% | 27.0% | 2,637 | 2,442 | 11,843 | 8 |
-| `pii.presidio` (nothing excluded) | 21.7% | 68.5% | 33.0% | 9,921 | 35,795 | 4,559 | 1,854 |
+| `pii.presidio` (nothing excluded) | 21.7% | 68.5% | 33.0% | 9,920 | 35,718 | 4,560 | 1,853 |
 
 \* Same containment exclusion as Dataset 1 — see "Fixes applied".
 
@@ -179,13 +179,13 @@ Fixing the three biggest problems in round 1 made the next tier of issues visibl
 |---|---|---|---|---|---|---|
 | `pii.native` | — | 0.0% | — | 0 | 0 | 4,799 |
 | `pii.presidio` (default policy) | — | 0.0% | — | 0 | 0 | 4,799 |
-| `pii.presidio` (nothing excluded) | 83.6% | 86.9% | 85.2% | 4,168 | 820 | 631 |
+| `pii.presidio` (nothing excluded) | 83.7% | 86.9% | 85.2% | 4,168 | 814 | 631 |
 
 Unchanged by the fix round — the `DATE_TIME` rename is a relabeling with no behavior change here (TAB's own label was already generic, matching what `PII.DATE_TIME` now honestly represents), and TAB has no `street_address` category for the containment fix to apply to. `pii.native` and the default-policy config score exactly 0% recall **by construction**: every in-scope type here is either unsupported by regex alone or excluded by the shipping default policy. Full per-entity-type breakdown: [`results/tab_summary.json`](results/tab_summary.json).
 
 ### The best full-policy result of the three datasets — and a real explanation for why
 
-83.6% precision / 86.9% recall is meaningfully better than both Dataset 1 (65.2%/75.6%) and Dataset 2 (21.7%/68.5%). The most striking single number: `DATE_TIME` precision is **90.8%** here (2,715 TP / 276 FP), against 27.9% on Dataset 1 and (pre-fix) 1.6% on Dataset 2. Real ECHR judgments' date mentions are overwhelmingly tied to the people in the case (birth dates, dates of events central to the individual's history) rather than the generic transaction/statement dates that dominate Dataset 2's financial documents — so the *same* engine, on genuinely different document domains, produces a completely different precision number for the identical entity type. Coherent, natural, single-language prose is also simply closer to what a general-purpose NER model was trained on than either templated synthetic sentences or dense multilingual structured documents — consistent with `PERSON` (85.5%/78.6%) and `LOCATION` (56.2%/74.2%) both landing at or above their Dataset 1/2 numbers too, `LOCATION` precision aside (the one category that stays the weakest across all three datasets even after the containment fix).
+83.7% precision / 86.9% recall is meaningfully better than both Dataset 1 (65.3%/75.6%) and Dataset 2 (21.7%/68.5%). The most striking single number: `DATE_TIME` precision is **90.9%** here (2,715 TP / 273 FP), against 27.9% on Dataset 1 and (pre-fix) 1.6% on Dataset 2. Real ECHR judgments' date mentions are overwhelmingly tied to the people in the case (birth dates, dates of events central to the individual's history) rather than the generic transaction/statement dates that dominate Dataset 2's financial documents — so the *same* engine, on genuinely different document domains, produces a completely different precision number for the identical entity type. Coherent, natural, single-language prose is also simply closer to what a general-purpose NER model was trained on than either templated synthetic sentences or dense multilingual structured documents — consistent with `PERSON` (85.7%/78.6%) and `LOCATION` (56.2%/74.2%) both landing at or above their Dataset 1/2 numbers too, `LOCATION` precision aside (the one category that stays the weakest across all three datasets even after the containment fix).
 
 ### A weaker, more ambiguous version of the STREET_ADDRESS pattern — disclosed, not fixed
 

@@ -344,7 +344,7 @@ def create_app() -> FastAPI:
     app.include_router(probes.router)
     # Unauthenticated and read-only: the marketing site's /live page. It reads only the
     # showcase tenant, returns counts rather than content, and is cached and rate
-    # limited — see probes.py and evaluation/showcase.py.
+    # limited — see probes.py and apps/showcase.py.
     app.include_router(probes.public_router)
 
     def _health_payload() -> dict[str, Any]:
@@ -394,7 +394,7 @@ def create_app() -> FastAPI:
         return _health_payload()
 
     # `summary` pinned so the docstring below does not rewrite this route's label in
-    # the generated API route table (scripts/api_routes.py) — the explanation belongs
+    # the generated API route table (scripts/gen/api_routes.py) — the explanation belongs
     # in the description, and the public summary of this route has not changed.
     @app.get("/api/health", tags=["platform"], summary="Health")
     def health() -> dict[str, Any]:
