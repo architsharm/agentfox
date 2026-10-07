@@ -61,7 +61,7 @@ def _record_turn(
     """Record this turn so escalation governance works over HTTP.
 
     Escalation governance reads recorded conversation turns. Without this, only the
-    SDK's `agentfox.auto()` monkeypatch (autoguard.py's `_record_turn`) would record
+    SDK's `agentfox.auto()` monkeypatch (autoguard's `_record_turn`) would record
     them, and a team integrating via this HTTP gateway directly — not the Python SDK —
     would get no escalation tracking at all. Never breaks the caller's request.
     """
@@ -264,7 +264,7 @@ def _headers(result) -> dict[str, str]:
 # Loop governance across the proxy's tool loop
 # ---------------------------------------------------------------------------
 #
-# `enforcement.py::_budget_state` calls `agent_loop.py` to score the *one* decision in
+# `enforcement/limits.py::_budget_state` calls `agent_loop.py` to score the *one* decision in
 # front of it, and a `/v1/guard/tool_call` caller threads its own step history in
 # through `prior_steps`. The drop-in proxy has to govern across turns as well: an
 # agent alternating A-B-A-B forever through `/v1/chat/completions` is otherwise
@@ -344,7 +344,7 @@ def _tool_steps(messages: list[dict[str, Any]]) -> list[Step]:
 
 def _loop_budget() -> LoopBudget:
     """The deployment's declared `AGENTFOX_LOOP_*` budgets — the same ones
-    `enforcement.py::_budget_state` reads, so the proxy and the direct guard endpoint
+    `enforcement/limits.py::_budget_state` reads, so the proxy and the direct guard endpoint
     cannot disagree about what a runaway loop is."""
     settings = get_settings()
     return LoopBudget(
@@ -903,7 +903,7 @@ def guard_content(
 ) -> dict[str, Any]:
     """Enforce on content without proxying.
 
-    The route's first line is kept short because `scripts/api_routes.py` uses it as
+    The route's first line is kept short because `scripts/gen/api_routes.py` uses it as
     this operation's label in the API route table.
 
     `verdict`/`applied_verdict` is what happened; `effective_verdict`/

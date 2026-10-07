@@ -1,6 +1,6 @@
 """F6 and F8, on the live enforcement path.
 
-`docs/failure-modes.md` recorded eleven modes as `◐-unwired`: real, individually
+`docs/design/failure-modes.md` recorded eleven modes as `◐-unwired`: real, individually
 unit-tested detectors that nothing in the request path ever called.
 `tests/capabilities/grounding/test_commitments.py` and
 `tests/capabilities/grounding/test_context_integrity.py` already prove the detectors work —

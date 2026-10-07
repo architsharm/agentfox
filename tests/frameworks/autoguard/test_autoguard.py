@@ -253,7 +253,7 @@ def test_the_governed_call_leaves_a_trace_and_decisions(app_db, fake_openai):
 def test_the_governed_call_writes_an_llm_span_with_the_output_text(app_db, fake_openai):
     """`sample_production()` (P4-2 online eval) finds a trace's output by looking for
     a `kind="llm"` span with `attributes["agentfox.output"]` set — the same shape
-    `enforcement.py`'s `_finish_completion()` writes for the native gateway path. This
+    `enforcement/completion.py`'s `_finish_completion()` writes for the native gateway path. This
     patched-library path used to skip writing that span entirely: every trace it
     produced had `guardrail`-kind spans (from tool governance) but never an `llm`-kind
     one, so `sample_production()` silently dropped every one of its traces (`output`

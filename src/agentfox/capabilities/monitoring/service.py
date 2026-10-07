@@ -9,7 +9,7 @@ A run has three steps, the same for every kind:
    (`Monitor.baseline_json`). The first run only stores a baseline: monitoring reports
    *changes*, and everything already there was reported by the scan that created the
    monitor.
-3. **Reconcile.** Each new condition is raised through `prove.findings.raise_finding`
+3. **Reconcile.** Each new condition is raised through `ledger.findings.raise_finding`
    (subject ``monitor``, fingerprint = the condition's key), so a condition seen again
    is one finding, and one that comes back after being fixed reopens. Every open finding
    this monitor owns whose condition no longer holds is closed through

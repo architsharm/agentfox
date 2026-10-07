@@ -1,7 +1,7 @@
 """Deferred job queue observability + cron backstop.
 
 Evidence-package export and red-team-campaign runs enqueue and process within
-the same request that creates them (see `jobs_db.py`'s own module docstring
+the same request that creates them (see `platform/jobs/store.py`'s own module docstring
 for why, not a design accident). What these routes add is the part that
 same-request processing can't give a caller on its own: a durable, queryable
 record of every attempt — including one that's dead-lettered, or one stuck in

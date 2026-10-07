@@ -50,7 +50,7 @@ What it does, following the crescendo entry in `docs/design/failure-modes.md`:
 **Observe-first.** Nothing here decides a verdict. `assess` returns a finding;
 `Enforcer.check_conversation_window` puts it on the `action_risk` channel that
 the action-assurance checks already use, where a policy author can act on it. See the
-module's use site in `enforcement.py` for how a policy makes it block.
+module's use site in `runtime/enforcement/surfaces.py` for how a policy makes it block.
 
 Deterministic and offline: regexes and set arithmetic, no model calls, no state.
 """

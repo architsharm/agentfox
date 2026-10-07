@@ -217,7 +217,7 @@ class ScanReport:
     files_scanned: int = 0
     #: Files opened whose language this scanner can read for model calls
     #: (:data:`CODE_SUFFIXES`). ``None`` means this report did not come from a
-    #: filesystem walk at all — an OpenAPI spec scan (`discovery_openapi.py`) or a
+    #: filesystem walk at all — an OpenAPI spec scan (`discovery/openapi.py`) or a
     #: hand-built report — so there is nothing to claim about source coverage either
     #: way, and :attr:`inconclusive` stays False.
     code_files_scanned: int | None = None

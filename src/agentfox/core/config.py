@@ -508,7 +508,7 @@ class Settings(BaseSettings):
         "protectai/deberta-v3-base-prompt-injection-v2"
     )
     # Apache-2.0, ~22M params — embeds text locally for cosine-similarity matching
-    # against `guardrails/data/injection_corpus.json`. Same opt-in reasoning as the
+    # against `capabilities/detection/data/injection_corpus.json`. Same opt-in reasoning as the
     # classifier above; unlike the classifier, this one improves by editing that
     # corpus file, no retraining required.
     embedding_similarity_model: str = "sentence-transformers/all-MiniLM-L6-v2"

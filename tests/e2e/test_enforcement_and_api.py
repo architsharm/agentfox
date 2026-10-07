@@ -232,7 +232,7 @@ def test_enforcement_stays_inside_the_latency_budget(seeded, enforcer):
 #
 # Both `effects.cascade_risk()` and `data_access.analyse_access()` were fully
 # built and tested but had zero callers anywhere outside their own test files
-# before this. These tests prove the wiring (enforcement.py's
+# before this. These tests prove the wiring (enforcement/tool_calls.py's
 # `_cascade_and_access_risks`) actually reaches a real enforcement effect via
 # the shipped `tool-containment.yaml` rules, not just that a finding object
 # gets constructed somewhere.

@@ -133,7 +133,7 @@ class Tool(Base, TimestampMixin):
     #: attacker may have written.
     #: ``trusted`` is an operator's declaration that the output comes from a system
     #: of record they control — a CRM read — so a customer's email address copied
-    #: from it into ``send_email`` is not untrusted input. See guardrails/taint.py.
+    #: from it into ``send_email`` is not untrusted input. See capabilities/detection/taint.py.
     output_trust: Mapped[str] = mapped_column(String(16), default="untrusted")
     #: The MCP impact annotations (`readOnlyHint`, `destructiveHint`, ...) as reviewed
     #: when the listing was registered or accepted; part of the pinned digest
