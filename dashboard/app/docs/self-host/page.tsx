@@ -111,9 +111,8 @@ export default function Page() {
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`}</Code>
       <p>
         Every setting is on <Link href="/docs/reference/config">Configuration</Link>. The
-        pre-rename <code>NOMETRIA_*</code> names are still read as a deprecated fallback,
-        with a startup warning naming each one; where both are set, <code>AGENTFOX_*</code>{" "}
-        wins. Rename them: a later release stops reading them.
+        pre-rename <code>NOMETRIA_*</code> names are no longer read; the gateway and the
+        dashboard log a warning naming any that are still set.
       </p>
 
       <h2 id="python">The gateway as a Python app</h2>
@@ -301,7 +300,8 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
         <code>AGENTFOX_AUDIT_SIGNING_KEY</code> once, on creation: paste a random value and
         keep a copy. A deployment made from an older blueprint has it as{" "}
         <code>NOMETRIA_AUDIT_SIGNING_KEY</code>; copy that value to the new name rather than
-        generating a new one, or entries signed before the change stop verifying. The dashboard runbook, including Fly.io, is{" "}
+        generating a new one, or entries signed before the change stop verifying (the old
+        name is no longer read). The dashboard runbook, including Fly.io, is{" "}
         <code>deploy/README-dashboard.md</code>.
       </p>
 

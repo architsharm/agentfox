@@ -54,26 +54,9 @@ _TRACEPARENT = re.compile(
 
 # Header names we accept, most specific first. Vendor SDKs and proxies disagree on
 # spelling, and a join key missed because of a hyphen is a join key we do not have.
-# The pre-rename x-nometria-* spelling is still accepted, after x-agentfox-*.
 _HEADER_MAP: list[tuple[str, tuple[str, ...]]] = [
-    (
-        LANGSMITH,
-        (
-            "x-agentfox-langsmith-trace",
-            "x-nometria-langsmith-trace",
-            "langsmith-trace-id",
-            "x-langsmith-trace-id",
-        ),
-    ),
-    (
-        LANGFUSE,
-        (
-            "x-agentfox-langfuse-trace",
-            "x-nometria-langfuse-trace",
-            "langfuse-trace-id",
-            "x-langfuse-trace-id",
-        ),
-    ),
+    (LANGSMITH, ("x-agentfox-langsmith-trace", "langsmith-trace-id", "x-langsmith-trace-id")),
+    (LANGFUSE, ("x-agentfox-langfuse-trace", "langfuse-trace-id", "x-langfuse-trace-id")),
 ]
 _RUN_HEADER_MAP: list[tuple[str, tuple[str, ...]]] = [
     (LANGSMITH, ("langsmith-run-id", "x-langsmith-run-id")),

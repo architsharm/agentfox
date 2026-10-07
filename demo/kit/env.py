@@ -8,12 +8,10 @@ since they are cached for the process lifetime (`agentfox.core.config.get_settin
 Locally, it points agentfox at a dedicated SQLite file next to the calling demo
 (`<demo folder>/demo.db`), never at the repo's own `agentfox.db` (used by the dashboard
 and the rest of the dev environment), and never at the other demo's file. The path is
-overridable: set `AGENTFOX_DATABASE_URL` yourself before running a script (the
-deprecated `NOMETRIA_DATABASE_URL` is still honoured too).
+overridable: set `AGENTFOX_DATABASE_URL` yourself before running a script.
 
 **Deployed (Vercel) case**: the project's Postgres comes from Vercel's native Neon
-integration, connected with a custom env-var prefix (`AGENTFOX_DATABASE`, or
-`NOMETRIA_DATABASE` before the rename). Neon's own base variable names are
+integration, connected with the custom env-var prefix `AGENTFOX_DATABASE`. Neon's own base variable names are
 `POSTGRES_URL`/`DATABASE_URL`, so the integration produces
 `AGENTFOX_DATABASE_POSTGRES_URL` (prefix + Neon's name), not `AGENTFOX_DATABASE_URL`
 directly — only the doubled-up names exist. Rather than hand-copy the secret's raw
@@ -24,8 +22,8 @@ variable. This also fixes the driver: Neon's connection strings use the bare
 `postgresql://` scheme (psycopg2's default dialect), but the deployed demo installs
 `psycopg` (v3) per its `requirements.txt` — SQLAlchemy needs `postgresql+psycopg://`
 to pick that driver. Neither Neon variable is ever set locally, so this branch is a
-no-op there. The `NOMETRIA_DATABASE_*` names are read last, until the integration's
-prefix is changed (docs/deployment/vercel-env-rename.md).
+no-op there. The integration's pre-rename `NOMETRIA_DATABASE` prefix is no longer read
+(docs/deployment/vercel-env-rename.md).
 """
 
 from __future__ import annotations
@@ -33,17 +31,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-#: Either name set by hand means "use this database", and nothing here touches it.
-#: (`NOMETRIA_DATABASE_URL` is the deprecated pre-rename name.)
-_EXPLICIT = ("AGENTFOX_DATABASE_URL", "NOMETRIA_DATABASE_URL")
+#: Set by hand, it means "use this database", and nothing here touches it.
+_EXPLICIT = ("AGENTFOX_DATABASE_URL",)
 
-#: What a Neon integration generates, under the current prefix first.
-_NEON = (
-    "AGENTFOX_DATABASE_POSTGRES_URL",
-    "AGENTFOX_DATABASE_DATABASE_URL",
-    "NOMETRIA_DATABASE_POSTGRES_URL",
-    "NOMETRIA_DATABASE_DATABASE_URL",
-)
+#: What a Neon integration generates under the `AGENTFOX_DATABASE` prefix.
+_NEON = ("AGENTFOX_DATABASE_POSTGRES_URL", "AGENTFOX_DATABASE_DATABASE_URL")
 
 
 def _neon_database_url() -> str | None:

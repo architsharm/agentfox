@@ -31,7 +31,7 @@ EOF
 
 `AGENTFOX_ENVIRONMENT=production` makes `/api` require an API token. Outside development the gateway refuses to start while `AGENTFOX_SERVICE_AUTH_SECRET` (which authenticates the dashboard's sign-in call; give a dashboard the same value) or `AGENTFOX_AUDIT_SIGNING_KEY` is unset or still a published default. Without the environment line the gateway runs in development, where an unauthenticated request acts as whichever user it names.
 
-If you use PostgreSQL, add `AGENTFOX_DATABASE_URL=...` to that file. Settings are read as `AGENTFOX_*`; the pre-rename `NOMETRIA_*` names are still read as a deprecated fallback (with a startup warning naming each one, and listed by `agentfox doctor`), so an existing environment file keeps working until you rename it; when both are set the `AGENTFOX_*` value wins.
+If you use PostgreSQL, add `AGENTFOX_DATABASE_URL=...` to that file. Settings are read as `AGENTFOX_*`; the pre-rename `NOMETRIA_*` names are no longer read, so rename them in an existing environment file (a startup warning and `agentfox doctor` name any that are left).
 
 ## Add the user units
 

@@ -34,7 +34,16 @@ the file it came from.
 
 ### Removed
 
-- The `nometria` Python package shim and the `nometria` console script. Import from `agentfox` (e.g. `agentfox.frameworks.langgraph`) and run `agentfox`. The `NOMETRIA_*` environment variables, `nometria.toml` and `x-nometria-*` headers are still read.
+- The `nometria` Python package shim and the `nometria` console script. Import from `agentfox` (e.g. `agentfox.frameworks.langgraph`) and run `agentfox`.
+- **The last of the Nometria names (rename stage B).** The `NOMETRIA_*` environment
+  fallback (settings, `NOMETRIA_CONFIG`, the CLI's `NOMETRIA_API_URL` /
+  `NOMETRIA_API_TOKEN` / `NOMETRIA_USER`, `NOMETRIA_AGENT`, `NOMETRIA_MCP_LOG_LEVEL`, the
+  evidence package's `NOMETRIA_AUDIT_KEY`, the dashboard's `NOMETRIA_*`, the demos'
+  `NOMETRIA_DEMO_MODEL` and `NOMETRIA_DATABASE_*`), the `nometria.toml` / `[nometria]`
+  config file, and acceptance of `x-nometria-*` request headers. Set `AGENTFOX_*`,
+  `agentfox.toml` / `[agentfox]` and `X-AgentFox-*`. A leftover old name is not read, but
+  it is not silent either: the process logs one warning naming each ignored setting, the
+  dashboard one per variable, and `agentfox doctor` lists every `NOMETRIA_*` still set.
 
 - The hidden pre-consolidation CLI names. `agentfox --help` shows thirteen verbs, and
   the old top-level names had kept running, hidden, with a "now called" hint. They no

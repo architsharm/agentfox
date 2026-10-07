@@ -802,15 +802,15 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
   }
 ];
 
-const OUTSIDE: { name: string; legacy: string; what: string }[] = [
-  { name: "AGENTFOX_STATE_DIR", legacy: "—", what: "Directory for the default database and evidence. It decides the defaults of database_url and evidence_dir, so it is not itself a setting." },
-  { name: "AGENTFOX_CONFIG", legacy: "NOMETRIA_CONFIG", what: "Path to the TOML file to read. It must exist. none, off or - turns file loading off." },
-  { name: "AGENTFOX_AGENT", legacy: "NOMETRIA_AGENT", what: "Agent slug for agentfox.auto() when none is passed. Then OTEL_SERVICE_NAME, SERVICE_NAME, APP_NAME, K_SERVICE, the script name, and finally default-agent." },
-  { name: "AGENTFOX_API_URL, AGENTFOX_API_TOKEN, AGENTFOX_USER", legacy: "NOMETRIA_API_URL, NOMETRIA_API_TOKEN, NOMETRIA_USER", what: "Where agentfox scan --submit sends a redacted summary, and the credential it uses." },
-  { name: "AGENTFOX_AUDIT_KEY", legacy: "NOMETRIA_AUDIT_KEY, then the *_AUDIT_SIGNING_KEY names", what: "Read by the verify_chain.py inside an evidence package to check checkpoint signatures." },
-  { name: "AGENTFOX_MCP_LOG_LEVEL", legacy: "NOMETRIA_MCP_LOG_LEVEL", what: "Log level of agentfox serve mcp. Default WARNING." },
-  { name: "CRON_SECRET", legacy: "—", what: "Accepted in addition to cron_secret by /api/internal/jobs/run (Vercel Cron sets it)." },
-  { name: "JEV_API_KEY", legacy: "—", what: "Key for the hosted jev judgment tier. Without it that tier is unavailable." },
+const OUTSIDE: { name: string; what: string }[] = [
+  { name: "AGENTFOX_STATE_DIR", what: "Directory for the default database and evidence. It decides the defaults of database_url and evidence_dir, so it is not itself a setting." },
+  { name: "AGENTFOX_CONFIG", what: "Path to the TOML file to read. It must exist. none, off or - turns file loading off." },
+  { name: "AGENTFOX_AGENT", what: "Agent slug for agentfox.auto() when none is passed. Then OTEL_SERVICE_NAME, SERVICE_NAME, APP_NAME, K_SERVICE, the script name, and finally default-agent." },
+  { name: "AGENTFOX_API_URL, AGENTFOX_API_TOKEN, AGENTFOX_USER", what: "Where agentfox scan --submit sends a redacted summary, and the credential it uses." },
+  { name: "AGENTFOX_AUDIT_KEY", what: "Then AGENTFOX_AUDIT_SIGNING_KEY. Read by the verify_chain.py inside an evidence package to check checkpoint signatures." },
+  { name: "AGENTFOX_MCP_LOG_LEVEL", what: "Log level of agentfox serve mcp. Default WARNING." },
+  { name: "CRON_SECRET", what: "Accepted in addition to cron_secret by /api/internal/jobs/run (Vercel Cron sets it)." },
+  { name: "JEV_API_KEY", what: "Key for the hosted jev judgment tier. Without it that tier is unavailable." },
 ];
 
 const DASHBOARD: { name: string; def: string; what: string }[] = [
@@ -848,19 +848,16 @@ export default function Page() {
           <code>AGENTFOX_&lt;KEY&gt;</code> in the environment.
         </li>
         <li>
-          <code>NOMETRIA_&lt;KEY&gt;</code>, the pre-rename name: deprecated, still read so
-          existing deployments keep working, with one startup warning naming each one in
-          use. <code>agentfox doctor</code> lists every one still set. Where both are set,{" "}
-          <code>AGENTFOX_</code> wins.
-        </li>
-        <li>
           The <code>[agentfox]</code> table of the file named by <code>AGENTFOX_CONFIG</code>,
-          or of <code>./agentfox.toml</code> in the working directory. A pre-rename{" "}
-          <code>nometria.toml</code> or <code>[nometria]</code> table is still read, with the
-          same warning.
+          or of <code>./agentfox.toml</code> in the working directory.
         </li>
         <li>The default in the tables below.</li>
       </ol>
+      <p>
+        The pre-rename <code>NOMETRIA_&lt;KEY&gt;</code> names, <code>nometria.toml</code> and a{" "}
+        <code>[nometria]</code> table are no longer read. A process that finds one logs a
+        warning naming it, and <code>agentfox doctor</code> lists every one still set.
+      </p>
       <p>
         The key in the file is the setting name: <code>taint_scope = &quot;argument&quot;</code>{" "}
         in the file is <code>AGENTFOX_TAINT_SCOPE=argument</code> in the environment. Lists
@@ -933,7 +930,6 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         <thead>
           <tr>
             <th>Variable</th>
-            <th>Deprecated name, still read</th>
             <th>What it does</th>
           </tr>
         </thead>
@@ -943,7 +939,6 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
               <td>
                 <code>{v.name}</code>
               </td>
-              <td>{v.legacy}</td>
               <td>{v.what}</td>
             </tr>
           ))}

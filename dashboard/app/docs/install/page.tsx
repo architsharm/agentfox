@@ -254,16 +254,16 @@ taint_scope = "session"`}</Code>
           <code>AGENTFOX_*</code> environment variables;
         </li>
         <li>
-          the pre-rename <code>NOMETRIA_*</code> environment variables, deprecated: still
-          read, with a startup warning naming each one (<code>agentfox doctor</code> lists
-          every one still set);
-        </li>
-        <li>
           the <code>[agentfox]</code> table of <code>$AGENTFOX_CONFIG</code> if set (it must
           exist), otherwise of <code>./agentfox.toml</code> in the working directory;
         </li>
         <li>built-in defaults.</li>
       </ol>
+      <p>
+        The pre-rename <code>NOMETRIA_*</code> variables and <code>nometria.toml</code> are no
+        longer read. The process logs a warning naming any that are still set, and{" "}
+        <code>agentfox doctor</code> lists them.
+      </p>
       <p>
         Keys are the setting names without the prefix. An unknown key is ignored with a
         warning that names it. <code>AGENTFOX_CONFIG=none</code> turns file loading off. Every

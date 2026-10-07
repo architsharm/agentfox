@@ -54,8 +54,8 @@ def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
     # A developer's shell AGENTFOX_CONFIG, or a agentfox.toml left in the cwd by
     # `agentfox init`, must never leak into a test. Tests of file loading delenv this.
     monkeypatch.setenv("AGENTFOX_CONFIG", "none")
-    # Nor may a pre-rename NOMETRIA_* variable from that shell: it would be read as a
-    # fallback. Tests of the fallback set the ones they need.
+    # Nor may a pre-rename NOMETRIA_* variable from that shell: it is no longer read,
+    # but it is warned about. Tests of that warning set the ones they need.
     for name in [n for n in os.environ if n.startswith("NOMETRIA_")]:
         monkeypatch.delenv(name, raising=False)
 

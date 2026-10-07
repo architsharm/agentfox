@@ -2,7 +2,7 @@
 title: AgentFox configuration (environment variables)
 layer: reference
 audience: agents, operators
-source_of_truth: src/agentfox/core/config.py (Settings, env_prefix AGENTFOX_, deprecated NOMETRIA_)
+source_of_truth: src/agentfox/core/config.py (Settings, env_prefix AGENTFOX_)
 verified_against: commit 6863b8b, 2026-09-15
 ---
 
@@ -11,17 +11,15 @@ verified_against: commit 6863b8b, 2026-09-15
 Sources, highest precedence first:
 
 1. `AGENTFOX_*` environment variables
-2. `NOMETRIA_*` environment variables, the pre-rename names: deprecated, still read so
-   existing deployments keep working, with one startup warning naming each one in use
-   (`agentfox doctor` lists every one still set); where both are set, `AGENTFOX_*` wins
-3. the `[agentfox]` table of a TOML file (a pre-rename `nometria.toml` or `[nometria]`
-   table is still read, with the same warning)
-4. built-in defaults
+2. the `[agentfox]` table of a TOML file
+3. built-in defaults
+
+The pre-rename `NOMETRIA_*` names, `nometria.toml` and a `[nometria]` table are no longer
+read. A startup warning names any still present, and `agentfox doctor` lists them.
 
 Every variable below is listed under its `AGENTFOX_` name. The dashboard reads only
 `AGENTFOX_API_URL`, `AGENTFOX_API_TOKEN`, `AGENTFOX_USER`, `AGENTFOX_PLAYGROUND_API_URL`,
-`AGENTFOX_SERVICE_AUTH_SECRET`, `AGENTFOX_SITE_URL` and `AGENTFOX_SELF_HOSTED` (and their
-deprecated `NOMETRIA_*` twins, with a warning).
+`AGENTFOX_SERVICE_AUTH_SECRET`, `AGENTFOX_SITE_URL` and `AGENTFOX_SELF_HOSTED`.
 
 The file is `$AGENTFOX_CONFIG` if set, which must exist. Otherwise it's `./agentfox.toml` in
 the working directory, if present. `AGENTFOX_CONFIG=none` turns file loading off, which is

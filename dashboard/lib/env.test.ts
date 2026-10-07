@@ -30,11 +30,11 @@ describe("env", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("falls back to NOMETRIA_ and warns once per name", () => {
+  it("no longer reads NOMETRIA_, and says so once per name", () => {
     process.env.NOMETRIA_USER = "old@example.com";
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(env("USER")).toBe("old@example.com");
-    expect(env("USER")).toBe("old@example.com");
+    expect(env("USER")).toBeUndefined();
+    expect(env("USER")).toBeUndefined();
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0][0])).toContain("AGENTFOX_USER");
   });

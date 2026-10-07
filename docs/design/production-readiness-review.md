@@ -288,7 +288,7 @@ deployment must know about the fixes and features merged since.
 
 ### 7.2 New production configuration
 
-Settings are read as `AGENTFOX_<name>` first and the deprecated `NOMETRIA_<name>` second (with a startup warning).
+Settings are read as `AGENTFOX_<name>` (the pre-rename `NOMETRIA_<name>` is no longer read).
 
 | Setting | Purpose | When unset |
 |---|---|---|

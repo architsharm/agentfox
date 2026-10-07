@@ -34,11 +34,10 @@
 #      --token`) and sign in on /login with that token.
 #
 # Settings are AGENTFOX_*. A deployment created from an older copy of this blueprint
-# has NOMETRIA_* variables instead; both services still read those as a deprecated
-# fallback (the gateway logs a warning naming each one, and `agentfox doctor` lists
-# them). Rename them in the Render dashboard by copying each value to its
-# AGENTFOX_* name, then delete the old one — see the audit signing key below for
-# the one that must never be regenerated.
+# has NOMETRIA_* variables instead, which are no longer read (both services log a
+# warning naming each one, and `agentfox doctor` lists them). Rename them in the
+# Render dashboard by copying each value to its AGENTFOX_* name, then delete the old
+# one — see the audit signing key below for the one that must never be regenerated.
 #
 # Full runbook, including Fly, Docker Compose and bare metal: deploy/README-dashboard.md
 

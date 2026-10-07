@@ -309,10 +309,9 @@ URL a user typed (a spec, an MCP server, a probe target) goes through `core/outb
 not open a database or import a client library.
 
 **Settings names.** `AGENTFOX_*` settings, `agentfox.toml` / `[agentfox]` and `X-AgentFox-*`
-headers are the only names written or documented. The pre-rename `NOMETRIA_*`, `nometria.toml`
-/ `[nometria]` and `x-nometria-*` are still *read*, at lower precedence and with a startup
-deprecation warning (`core/config.py`, `core/headers.py`), until the deployments that set
-them are renamed (`docs/deployment/vercel-env-rename.md`).
+headers are the only names. The pre-rename `NOMETRIA_*`, `nometria.toml` / `[nometria]` and
+`x-nometria-*` are no longer read; `core/config.py` only notices leftover ones, so a
+deployment that still sets them gets a startup warning rather than silent defaults.
 
 **Published numbers are bound.** [`benchmarks/claims.yaml`](benchmarks/claims.yaml) binds each
 quoted figure (in this README, `benchmarks/`, `docs/`, website pages) to the result file it

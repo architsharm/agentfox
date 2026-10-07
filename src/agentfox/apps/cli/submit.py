@@ -39,9 +39,7 @@ def submit_scan_report(report: ScanReport, *, source: str) -> dict[str, Any]:
             "(yours or your team's) to submit."
         )
 
-    # Through config.env(): AGENTFOX_ first, the pre-rename NOMETRIA_ name as a
-    # deprecated fallback — the same precedence, and the same deprecation warning,
-    # as every other setting.
+    # Through config.env(), like every other switch read outside Settings.
     token = env("API_TOKEN")
     dev_user = env("USER")
     headers: dict[str, str] = {}

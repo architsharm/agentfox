@@ -61,9 +61,8 @@ export default function Page() {
       <Callout kind="note">
         <p>
           Headers are <code>X-AgentFox-*</code>. The pre-rename <code>X-Nometria-*</code>{" "}
-          request headers are still accepted, for clients not yet updated; where a request
-          carries both, <code>X-AgentFox-*</code> wins. Responses carry only{" "}
-          <code>X-AgentFox-*</code>.
+          headers are no longer accepted: a client still sending them is treated as if it
+          sent none.
         </p>
       </Callout>
 
