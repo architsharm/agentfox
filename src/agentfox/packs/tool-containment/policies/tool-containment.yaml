@@ -287,6 +287,20 @@ rules:
     reason: "This call reaches a destructive tool through its declared trigger graph."
     controls: [NOM-RTG-08]
 
+  # The same walk, when every destructive tool it reaches is declared
+  # `effect: communication` (an email, a chat message, a notification): a person
+  # should see the message before it goes, but a ticket update that notifies the
+  # customer is ordinary work, not an attack. One reached tool outside that class
+  # and the finding is cascade-reaches-destructive above instead.
+  - id: cascade.reaches_notification
+    description: A call sends a message that cannot be recalled through its declared trigger graph, and reaches nothing more destructive.
+    when:
+      action_risk: "cascade-reaches-notification"
+    effect: escalate
+    severity: high
+    reason: "This call sends a message that cannot be recalled through its declared trigger graph; approve it before it goes."
+    controls: [NOM-RTG-08]
+
   - id: cascade.cycle
     description: The declared trigger graph for this call contains a loop.
     when:

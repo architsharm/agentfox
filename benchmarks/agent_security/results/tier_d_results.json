@@ -99,14 +99,14 @@
       "agent": "support-triage",
       "tool_key": "tickets.update",
       "expect_intervened": false,
-      "effective_verdict": "block",
+      "effective_verdict": "escalate",
       "intervened": true,
       "correct": false,
-      "reason": "This call reaches a destructive tool through its declared trigger graph.",
+      "reason": "This call sends a message that cannot be recalled through its declared trigger graph; approve it before it goes.",
       "rules_fired": [
-        "cascade.reaches_destructive"
+        "cascade.reaches_notification"
       ],
-      "requires_approval": false
+      "requires_approval": true
     }
   ]
 }

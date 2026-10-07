@@ -47,9 +47,14 @@ one off.
 `Enforcer.guard_tool_call` path, using the actual shipped seed data
 (`support-triage` genuinely has no payments/email grant; `payments-ops` genuinely
 has a `<$1000` transfer ceiling). **5/6 correct**, including the kill-switch fix
-below. The miss is the negative control: an ordinary `tickets.update` is blocked by
-`cascade.reaches_destructive`, because the demo world declares that a ticket update
-triggers `email.send` (added after this tier was first run, which scored 6/6).
+below. The miss is the negative control: an ordinary `tickets.update` is held for
+approval by `cascade.reaches_notification`, because the demo world declares that a
+ticket update triggers `email.send` (added after this tier was first run, which scored
+6/6). It used to be blocked by `cascade.reaches_destructive`; now that `email.send` is
+declared `effect: communication`, a cascade whose only irreversible tail is a message
+escalates instead. This tier scores an escalation as an intervention, the same as a
+block, so the count is unchanged: still 5/6, with the miss now a held call rather than
+a refused one.
 
 LLM Guard cannot participate in this tier — it has no tool registry, no
 capability model, no concept of "this agent's grants." This isn't scored as a
@@ -130,9 +135,14 @@ controls) through `support-triage`'s genuinely granted, ordinary capabilities
 (`kb.search`, `crm.lookup`, `tickets.*`) — every case's capability check passes
 (`all_capability_checks_passed: true`). **8/10 correct.** All 5 attacks are blocked
 by argument-value analysis. The 2 misses are negative controls (`c07`, `c10`), both
-`tickets.update` calls, blocked by `cascade.reaches_destructive`: the demo world
-declares that a ticket update triggers `email.send`, a tool this agent holds no grant
-for. That trigger was added after this tier was first run, which scored 10/10.
+`tickets.update` calls, held for approval by `cascade.reaches_notification`: the demo
+world declares that a ticket update triggers `email.send`, a tool this agent holds no
+grant for. That trigger was added after this tier was first run, which scored 10/10.
+The two controls used to be blocked by `cascade.reaches_destructive`; `email.send` is
+now declared `effect: communication`, so they escalate instead. This tier scores an
+escalation as an intervention, so the count is unchanged at 8/10. The 2 `tickets.update`
+attacks (`c03`, `c05`) are still blocked, by argument-value analysis and
+`action.production_irreversible`, not by the cascade rule.
 
 The gap this closed was real, found by reading `guardrails/actions.py` before
 writing any test: `analyse_arguments` only inspected values under three

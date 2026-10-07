@@ -1619,6 +1619,19 @@
         "multiple": false,
         "default": null,
         "help": "untrusted | trusted — whether values copied out of this tool's output taint the arguments they land in. Default for a new tool: untrusted. Declare trusted only for a system of record you control, such as a CRM read."
+       },
+       {
+        "kind": "option",
+        "name": "effect",
+        "opts": [
+         "--effect"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "communication — this tool's irreversible effect is a message leaving (an email, a chat message, a notification), not data destroyed, money moved or state changed. A cascade whose only irreversible tail is such a tool is escalated for approval rather than blocked. Pass '' to clear."
        }
       ],
       "default_subcommand": null,

@@ -342,6 +342,13 @@ defence-in-depth working as designed. Where action assurance was the only thing 
 Disclosed rather than fixed here: `src/agentfox/capabilities/detection/actions.py` is owned by
 another engineer this round. It is the highest-value item this benchmark produced.
 
+Re-checked since: the first two rows no longer read as they did. Nested SQL is now
+caught (`{"params": {"sql": "DELETE FROM customers"}}` on `tickets.update` fires
+`sql.unbounded_mutation` and `action.production_irreversible` and blocks), and the
+cascade from `tickets.update` to `email.send` is now `cascade.reaches_notification`, an
+escalation, because `email.send` is declared `effect: communication`. The cascade rule
+alone would no longer block that nested call; the SQL analysis does.
+
 ### 3. A glob capability grant authorises tools nobody granted
 
 `support-triage` holds `tickets.*`. That grant was written when `tickets.create` and

@@ -380,3 +380,38 @@ def test_control_keys_are_unique():
     keys = [control["key"] for control in load_catalog()["controls"]]
     duplicates = [key for key, n in collections.Counter(keys).items() if n > 1]
     assert duplicates == []
+
+
+# --- Declared effect class (cascade: escalate a message, block a destruction) ----
+
+
+def test_a_declared_effect_class_survives_a_relisting_and_stays_out_of_the_schema(session):
+    import pytest
+
+    from agentfox.platform.registry.digest import record_digest
+    from agentfox.platform.registry.service import (
+        EFFECT_CLASS_KEY,
+        effect_class_of,
+        tool_input_schema,
+        upsert_tool,
+    )
+
+    schema = {"type": "object", "properties": {"to": {"type": "string"}}}
+    tool = upsert_tool(
+        session, "mail.send", impact="irreversible", schema=schema, effect_class="communication"
+    )
+    assert effect_class_of(tool) == "communication"
+    assert EFFECT_CLASS_KEY not in tool_input_schema(tool)
+    digest = record_digest(tool)
+
+    # A listing replaces the schema wholesale; the operator's declaration is not the
+    # listing's to drop, and it does not move the pinned digest.
+    tool = upsert_tool(session, "mail.send", impact="irreversible", schema=schema, listed=True)
+    assert effect_class_of(tool) == "communication"
+    assert record_digest(tool) == digest
+
+    tool = upsert_tool(session, "mail.send", impact="irreversible", effect_class="")
+    assert effect_class_of(tool) is None
+
+    with pytest.raises(ValueError):
+        upsert_tool(session, "mail.send", impact="irreversible", effect_class="harmless")

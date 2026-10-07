@@ -884,7 +884,12 @@ def _set_definition(tool, definition: dict[str, Any]) -> None:
 def _accept_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> dict[str, Any]:
     from agentfox.platform.registry.digest import record_digest
     from agentfox.platform.registry.impact import infer_impact
-    from agentfox.platform.registry.service import IMPACT_SOURCE_KEY, LISTED_KEY, impact_source_of
+    from agentfox.platform.registry.service import (
+        EFFECT_CLASS_KEY,
+        IMPACT_SOURCE_KEY,
+        LISTED_KEY,
+        impact_source_of,
+    )
 
     diff = _accept_diff(proposal)
     key = str(diff["tool_key"])
@@ -898,8 +903,10 @@ def _accept_apply(session: Session, proposal: ChangeProposal, *, actor: str) -> 
         )
     before = _tool_definition(tool)
     schema = dict(diff.get("inputSchema") or {})
-    if IMPACT_SOURCE_KEY in (tool.schema_json or {}):
-        schema[IMPACT_SOURCE_KEY] = tool.schema_json[IMPACT_SOURCE_KEY]
+    # Our markers are the operator's statements about the tool, not the listing's.
+    for marker in (IMPACT_SOURCE_KEY, EFFECT_CLASS_KEY):
+        if marker in (tool.schema_json or {}):
+            schema[marker] = tool.schema_json[marker]
     # The accepted definition is a listing's, so it is pinned even if it is bare.
     schema[LISTED_KEY] = True
     after = {

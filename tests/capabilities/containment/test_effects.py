@@ -187,6 +187,44 @@ def test_a_harmless_call_that_reaches_a_destructive_one_is_blocked():
     assert "cascade-reaches-destructive" in codes(cascade.findings)
 
 
+def test_a_cascade_whose_only_destructive_tail_is_a_message_escalates():
+    """A ticket update that notifies the customer is ordinary work: the message cannot
+    be recalled, so a person approves it, but nothing is deleted or moved."""
+    cascade = cascade_risk(
+        "tickets.update",
+        {"tickets.update": ["email.send"]},
+        destructive=("email.send",),
+        communication=("email.send",),
+    )
+    assert codes(cascade.findings) == {"cascade-reaches-notification"}
+    assert cascade.verdict == "escalate"
+    assert cascade.findings[0].severity == "high"
+
+
+def test_one_destructive_tool_beside_a_message_still_blocks():
+    """The split is all-or-nothing: a cascade that sends mail *and* purges a table is
+    judged by the purge."""
+    cascade = cascade_risk(
+        "orders.update",
+        TRIGGERS,
+        destructive=("email.send", "db.purge"),
+        communication=("email.send",),
+    )
+    assert codes(cascade.findings) == {"cascade-reaches-destructive"}
+    assert cascade.findings[0].evidence["destructive"] == ["email.send", "db.purge"]
+    assert cascade.verdict == "block"
+
+
+def test_an_unclassified_irreversible_tool_counts_as_destructive():
+    """Never guessed from the name: `email.send` that nobody declared as
+    communication is destructive, as it was before the class existed."""
+    cascade = cascade_risk(
+        "tickets.update", {"tickets.update": ["email.send"]}, destructive=("email.send",)
+    )
+    assert codes(cascade.findings) == {"cascade-reaches-destructive"}
+    assert cascade.verdict == "block"
+
+
 def test_a_trigger_loop_is_caught():
     cascade = cascade_risk("a", {"a": ["b"], "b": ["a"]})
     assert cascade.cycles == [["a", "b", "a"]]

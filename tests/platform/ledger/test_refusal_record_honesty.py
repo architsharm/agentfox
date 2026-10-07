@@ -127,12 +127,14 @@ def test_cascade_to_a_destructive_tool_fires_under_one_id(enforcer, seeded):
     )
     ids = [r["rule_id"] for r in result.to_json()["rules_fired"]]
 
-    assert "cascade-reaches-destructive" not in ids
-    assert ids.count("cascade.reaches_destructive") == 1
+    # The demo world declares email.send `effect: communication`, so this cascade is
+    # the notification rule, not the destructive one; the one-id contract is the same.
+    assert "cascade-reaches-notification" not in ids
+    assert ids.count("cascade.reaches_notification") == 1
 
     # Deduping must not throw away what the surviving entry did not already say.
-    fired = _rule(result.to_json(), "cascade.reaches_destructive")
-    assert fired["evidence"]["destructive"] == ["email.send"]
+    fired = _rule(result.to_json(), "cascade.reaches_notification")
+    assert fired["evidence"]["communication"] == ["email.send"]
 
 
 def test_no_fired_rule_id_uses_the_hyphenated_spelling(enforcer, seeded):
