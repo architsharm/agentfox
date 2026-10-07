@@ -6,7 +6,7 @@ audience: maintainers of this repo (human or agent)
 
 # Plugin structure
 
-The product has 43 markdown docs, a 17-group CLI, an HTTP API with 150+ routes and six SDK
+The product has 43 markdown docs, a CLI of 13 commands, an HTTP API with 200+ routes and six SDK
 surfaces. Nobody, human or agent, should need all of that at once. The operator plugins are
 a **layered set of markdown files**. Each layer answers one kind of question, and each fact
 has exactly one home.
