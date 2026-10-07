@@ -79,6 +79,11 @@ Each line follows one shape: architecture fact → mechanism → measured result
    - **Architecture:** the action check reads where a value came from, never the text.
    - **Mechanism:** an attacker can rewrite a payload until no detector fires, but that does not change its `tool_result` provenance.
    - **Result:** our own adaptive attacker reaches 73% attack success at 50 attempts on the readable attacks we catch (`adaptive.readable_attack_success_at_50`), yet 38/38 of those bypasses still contained at the action (`adaptive.bypasses_contained_at_the_action`).
+   - **Head to head on AgentDojo:** on AgentDojo's 588 injection pairs, llm-guard alone let 86/588 (14.6% [12.0, 17.7]) through at its default threshold; AgentFox containment let 0/588 (0.0% [0.0, 0.6]) through (`head_to_head.llm_guard_alone`, `head_to_head.containment_alone`).
+     - **The price:** containment completes 24/97 benign tasks (24.7% [17.2, 34.2]), against llm-guard's 42/97 (43.3% [33.9, 53.2]).
+     - **No deployable llm-guard threshold closes the gap:** at a benign false-positive rate of 5% or less, its best threshold still lets 389/588 through (`head_to_head.llm_guard_sweep_fpr5`).
+     - **Where it ties:** tuned on the test set and in its chunked mode, it does tie containment (§5).
+     - Prompt Guard 2 is not yet measured (§7).
    - **Why others can't by design:** a text classifier at the prompt/response boundary has nothing left to decide on once its text check is evaded. That covers Lakera Guard, Azure Prompt Shields, Bedrock Guardrails, Model Armor, llm-guard, Prompt Guard 2, and the Lasso, Prompt Security, F5 and Pillar classify APIs.
 2. **We measure with the detectors deleted.**
    - **Architecture:** grants, impact tiers and provenance run without any detector.
@@ -155,8 +160,9 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
   - Library: scanner exceptions propagate to the caller.
   - API server: returns HTTP 408 on timeout (10 s for prompts, 30 s for outputs), so the caller decides [code][lg-app].
 - **Evidence.** structlog and OpenTelemetry counters; no chain [code].
-- **Delta.** **This is the one head-to-head we ran**, against a real installed `llm-guard` (`benchmarks/agent_security/`).
+- **Delta.** We have run two head-to-heads against a real installed `llm-guard`.
   - On 20 indirect-injection cases it is more precise than us: llm-guard 81.8% precision and 90.0% recall, against AgentFox's 66.7% and 100.0% (`agent_security.tier_b_vs_llm_guard`).
+  - On AgentDojo's 588 injection pairs (`benchmarks/head_to_head/`), at its default it let 86/588 through where containment let 0/588 through. It completes more benign tasks, and it ties containment once tuned (§5).
   - On tool parameters and excessive agency it has no input to decide on, so we do not score it as a zero.
 
 ### NVIDIA NeMo Guardrails
@@ -204,7 +210,7 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
 - **Delta.**
   - **It wins on:** open-weight multilingual classifiers, and AlignmentCheck can catch a misaligned action that no declared rule anticipated.
   - **We win on:** a decision that does not rest on a model judging the trace.
-  - **Not yet run:** we have not run Prompt Guard 2 head to head (§7).
+  - **Not yet run:** we have not run Prompt Guard 2 head to head. The harness is built (`benchmarks/head_to_head/`), but the gated model needs the account owner to accept Meta's licence (§7).
 
 ### Microsoft Azure AI Content Safety: Prompt Shields
 
@@ -395,8 +401,19 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
   - no live IdP;
   - text only (`docs/architecture/high-level-design.md` §11).
 - **Head-to-heads.**
-  - Exactly one has been run: `llm-guard`, on 20 indirect-injection cases, where it was more precise.
-  - Every other comparison on this page is architectural, read from docs and code, not measured.
+  - Two have been run, both against `llm-guard`:
+    - on 20 indirect-injection cases, where it was more precise;
+    - on AgentDojo (`benchmarks/head_to_head/`), where it loses on attacks and wins elsewhere, as the next three bullets say.
+  - Every other comparison on this page, including Prompt Guard 2, is architectural, read from docs and code, not measured.
+- **llm-guard wins on benign utility.**
+  - At its defaults, on AgentDojo, llm-guard completes 42/97 benign tasks to containment's 24/97.
+  - At a benign false-positive rate of 5% or less it completes 82/97, while letting 389/588 attacks through.
+- **llm-guard ties containment once tuned.** In its non-default chunked mode, with a threshold tuned on the test set, it reaches 0/588 (0.0% [0.0, 0.6]) attacks at 24/97 benign tasks, the same point as containment (`head_to_head.llm_guard_chunks_matched_utility`). That setting flags 38.3% of benign tool outputs. The containment win is "no tuning and no model", not "a better point on the curve".
+- **Our detectors miss AgentDojo's injection text, and llm-guard does not.**
+  - With the shipped detectors on, an injection rule fired on 0 of the 752 injected tool outputs (`head_to_head.agentfox_detectors_on_outputs`).
+  - llm-guard flags 195 of the 298 distinct injected outputs at its default, and 291 of 298 chunked (`head_to_head.llm_guard_injected_recall`).
+  - Every AgentFox containment on that benchmark came from provenance.
+- **Stacking costs utility.** llm-guard + AgentFox containment completes only 11/97 benign tasks (`head_to_head.llm_guard_plus_containment`). Containment alone already contains every pair, so the classifier adds false positives and nothing else.
 - **Compliance mappings are DRAFT**, not reviewed by counsel.
 - **Corrections to [competitor-analysis.md](competitor-analysis.md) §4.**
   - **Argument-provenance taint is not unclaimed.** Zenity Boundaries has deterministic, conversation-scoped taint rules over tool calls. Our shipped default is also session-level. Say "per-value provenance with grant ceilings, measured with detectors off", not "nobody tracks taint".
@@ -442,11 +459,17 @@ These are the runs that would turn an architectural claim on this page into a me
 
 1. **AgentDojo with competitor detectors in the loop.** Run Prompt Guard 2, llm-guard and, under a trial key, Lakera Guard and Azure Prompt Shields as the only defence on the same 588 pairs, then stack them with containment.
    - This turns "a classifier has nothing left after a miss" into a number.
+   - **Partially measured** (`benchmarks/head_to_head/`).
+     - **llm-guard:** done, with a threshold sweep and a latency comparison: 71.9 ms p50 per tool result, against 6.9 ms for containment (`head_to_head.latency`).
+     - **Prompt Guard 2:** wired, but blocked on Meta's licence gate on Hugging Face. The account owner must accept it; the arm is then one command.
+     - **Lakera and Azure:** not attempted; they need trial keys.
+     - **The adaptive version of this** is still gap 5.
 2. **NeMo tool rails against the tool-parameter and excessive-agency tiers.** NeMo is the competitor whose architecture can see the same inputs. We should score it rather than describe it.
 3. **Invariant rules that encode our containment policy, on AgentDojo.** This tests whether hand-written flow rules match inferred provenance on utility and containment.
 4. **Bedrock `ApplyGuardrail` on tool arguments passed explicitly as text.** This measures the integrator workaround, not just the documented Converse gap.
 5. **The adaptive attacker against Prompt Guard 2 and llm-guard**, with the same protocol and budget as `benchmarks/adaptive/`, so "73% against us" has comparators.
 6. **Latency under the same harness.** Our per-call cost against llm-guard and Prompt Guard 2 on one machine. `benchmarks/agent_security/README.md` says this was never done.
+   - Done for llm-guard on AgentDojo tool outputs; see gap 1. Prompt Guard 2 is still to do.
 7. **Re-run the pending benchmarks** (adaptive, redteam provenance) and update the bound claims. Until then, this page quotes the committed results.
 
 [lk-api]: https://docs.lakera.ai/docs/api/guard

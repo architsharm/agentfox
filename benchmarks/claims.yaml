@@ -437,6 +437,175 @@ claims:
     quoted_in:
       - {file: docs/design/architecture-differentiation.md, text: "{median} ms median and {p95} ms p95 per injection check"}
 
+  # Head to head on AgentDojo (benchmarks/head_to_head/): third-party classifiers on tool outputs
+  # against AgentFox containment, on the same 588 pairs and 97 benign tasks.
+  - id: head_to_head.llm_guard_alone
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      ak: [arms, "llm_guard", attack_success, k]
+      an: [arms, "llm_guard", attack_success, n]
+      apct: [arms, "llm_guard", attack_success, pct]
+      aci: [arms, "llm_guard", attack_success, ci95]
+      bk: [arms, "llm_guard", benign_tasks_completed, k]
+      bn: [arms, "llm_guard", benign_tasks_completed, n]
+      bpct: [arms, "llm_guard", benign_tasks_completed, pct]
+      bci: [arms, "llm_guard", benign_tasks_completed, ci95]
+      fk: [arms, "llm_guard", benign_output_fpr, k]
+      fn: [arms, "llm_guard", benign_output_fpr, n]
+      fpct: [arms, "llm_guard", benign_output_fpr, pct]
+      fci: [arms, "llm_guard", benign_output_fpr, ci95]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "llm-guard alone (default) | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} ({bpct}% {bci}) | {fk}/{fn} ({fpct}% {fci})"}
+      - {file: benchmarks/head_to_head/README.md, text: "llm-guard alone let {ak} of {an} attacks through ({apct}%)"}
+      - {file: docs/design/architecture-differentiation.md, text: "llm-guard alone let {ak}/{an} ({apct}% {aci}) through at its default threshold"}
+      - {file: docs/design/architecture-differentiation.md, text: "against llm-guard's {bk}/{bn} ({bpct}% {bci})"}
+      - {file: docs/design/architecture-differentiation.md, text: "At its defaults, on AgentDojo, llm-guard completes {bk}/{bn} benign tasks"}
+      - {file: docs/design/architecture-differentiation.md, text: "at its default it let {ak}/{an} through where containment let 0/588 through"}
+      - {file: docs/design/competitor-analysis.md, text: "at its defaults it completes {bk}/{bn} benign tasks to our 24/97"}
+      - {file: docs/design/competitor-analysis.md, text: "It let {ak}/{an} attack pairs through where containment let 0/588 through"}
+      - {file: benchmarks/README.md, text: "llm-guard alone let {ak}/{an} ({apct}% {aci}) attack pairs through at its default"}
+      - {file: benchmarks/README.md, text: "llm-guard completes more benign tasks ({bk}/{bn} vs 24/97)"}
+
+  - id: head_to_head.containment_alone
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      ak: [arms, "agentfox_containment", attack_success, k]
+      an: [arms, "agentfox_containment", attack_success, n]
+      apct: [arms, "agentfox_containment", attack_success, pct]
+      aci: [arms, "agentfox_containment", attack_success, ci95]
+      bk: [arms, "agentfox_containment", benign_tasks_completed, k]
+      bn: [arms, "agentfox_containment", benign_tasks_completed, n]
+      bpct: [arms, "agentfox_containment", benign_tasks_completed, pct]
+      bci: [arms, "agentfox_containment", benign_tasks_completed, ci95]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "AgentFox containment alone (detectors off, session-level taint, the shipped default) | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} ({bpct}% {bci})"}
+      - {file: docs/design/architecture-differentiation.md, text: "AgentFox containment let {ak}/{an} ({apct}% {aci}) through"}
+      - {file: docs/design/architecture-differentiation.md, text: "containment completes {bk}/{bn} benign tasks ({bpct}% {bci})"}
+      - {file: docs/design/architecture-differentiation.md, text: "benign tasks to containment's {bk}/{bn}"}
+      - {file: docs/design/competitor-analysis.md, text: "benign tasks to our {bk}/{bn}"}
+      - {file: benchmarks/README.md, text: "AgentFox containment let {ak}/{an} through"}
+
+  - id: head_to_head.llm_guard_plus_containment
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      ak: [arms, "llm_guard+containment", attack_success, k]
+      an: [arms, "llm_guard+containment", attack_success, n]
+      apct: [arms, "llm_guard+containment", attack_success, pct]
+      aci: [arms, "llm_guard+containment", attack_success, ci95]
+      bk: [arms, "llm_guard+containment", benign_tasks_completed, k]
+      bn: [arms, "llm_guard+containment", benign_tasks_completed, n]
+      bpct: [arms, "llm_guard+containment", benign_tasks_completed, pct]
+      bci: [arms, "llm_guard+containment", benign_tasks_completed, ci95]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "llm-guard + AgentFox containment | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} ({bpct}% {bci})"}
+      - {file: docs/design/architecture-differentiation.md, text: "llm-guard + AgentFox containment completes only {bk}/{bn} benign tasks"}
+
+  - id: head_to_head.llm_guard_sweep_fpr5
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      t: {path: [threshold_sweeps, llm_guard, best_at_fpr_5pct, threshold], format: ".4f"}
+      ak: [threshold_sweeps, llm_guard, best_at_fpr_5pct, attack_success, k]
+      an: [threshold_sweeps, llm_guard, best_at_fpr_5pct, attack_success, n]
+      apct: [threshold_sweeps, llm_guard, best_at_fpr_5pct, attack_success, pct]
+      aci: [threshold_sweeps, llm_guard, best_at_fpr_5pct, attack_success, ci95]
+      bk: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_tasks_completed, k]
+      bn: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_tasks_completed, n]
+      bpct: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_tasks_completed, pct]
+      bci: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_tasks_completed, ci95]
+      fk: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_output_fpr, k]
+      fn: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_output_fpr, n]
+      fpct: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_output_fpr, pct]
+      fci: [threshold_sweeps, llm_guard, best_at_fpr_5pct, benign_output_fpr, ci95]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "best at benign FPR <= 5% | {t} | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} | {fk}/{fn} ({fpct}%)"}
+      - {file: docs/design/architecture-differentiation.md, text: "its best threshold still lets {ak}/{an} through"}
+      - {file: docs/design/architecture-differentiation.md, text: "it completes {bk}/{bn}, while letting {ak}/{an} attacks through"}
+
+  - id: head_to_head.llm_guard_matched_utility
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      t: {path: [threshold_sweeps, llm_guard, best_at_matched_utility, threshold], format: ".3f"}
+      ak: [threshold_sweeps, llm_guard, best_at_matched_utility, attack_success, k]
+      an: [threshold_sweeps, llm_guard, best_at_matched_utility, attack_success, n]
+      apct: [threshold_sweeps, llm_guard, best_at_matched_utility, attack_success, pct]
+      aci: [threshold_sweeps, llm_guard, best_at_matched_utility, attack_success, ci95]
+      bk: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_tasks_completed, k]
+      bn: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_tasks_completed, n]
+      bpct: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_tasks_completed, pct]
+      bci: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_tasks_completed, ci95]
+      fk: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_output_fpr, k]
+      fn: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_output_fpr, n]
+      fpct: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_output_fpr, pct]
+      fci: [threshold_sweeps, llm_guard, best_at_matched_utility, benign_output_fpr, ci95]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "best at AgentFox's utility (>= 24/97) | {t} | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} | {fk}/{fn} ({fpct}%)"}
+
+  - id: head_to_head.llm_guard_chunks_matched_utility
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      t: {path: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, threshold], format: ".3f"}
+      ak: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, attack_success, k]
+      an: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, attack_success, n]
+      apct: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, attack_success, pct]
+      aci: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, attack_success, ci95]
+      bk: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_tasks_completed, k]
+      bn: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_tasks_completed, n]
+      bpct: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_tasks_completed, pct]
+      bci: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_tasks_completed, ci95]
+      fk: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_output_fpr, k]
+      fn: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_output_fpr, n]
+      fpct: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_output_fpr, pct]
+      fci: [threshold_sweeps, llm_guard_chunks, best_at_matched_utility, benign_output_fpr, ci95]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "best at AgentFox's utility | {t} | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} | {fk}/{fn} ({fpct}%)"}
+      - {file: benchmarks/head_to_head/README.md, text: "llm-guard matches containment exactly: {ak}/{an} attacks and {bk}/{bn} benign tasks. That operating point flags {fpct}% of benign tool outputs"}
+      - {file: docs/design/architecture-differentiation.md, text: "it reaches {ak}/{an} ({apct}% {aci}) attacks at {bk}/{bn} benign tasks"}
+      - {file: docs/design/architecture-differentiation.md, text: "That setting flags {fpct}% of benign tool outputs"}
+
+  - id: head_to_head.llm_guard_injected_recall
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      dk: [arms, llm_guard, injected_output_recall, k]
+      dn: [arms, llm_guard, injected_output_recall, n]
+      ck: [arms, llm_guard_chunks, injected_output_recall, k]
+      cn: [arms, llm_guard_chunks, injected_output_recall, n]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "It flags {dk} of the {dn} distinct injected outputs"}
+      - {file: benchmarks/head_to_head/README.md, text: "With `CHUNKS` it flags {ck} of {cn}"}
+      - {file: docs/design/architecture-differentiation.md, text: "llm-guard flags {dk} of the {dn} distinct injected outputs at its default, and {ck} of {cn} chunked"}
+
+  - id: head_to_head.agentfox_detectors_on_outputs
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      k: [arms, agentfox_full, injected_output_injection_rule_fired, k]
+      n: [arms, agentfox_full, injected_output_injection_rule_fired, n]
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "An injection rule fired on {k} of the {n} injected-output occurrences"}
+      - {file: docs/design/architecture-differentiation.md, text: "an injection rule fired on {k} of the {n} injected tool outputs"}
+
+  - id: head_to_head.latency
+    source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
+    render: fields
+    fields:
+      lp50: {path: [latency_per_tool_result, llm_guard, p50_ms], format: ".1f"}
+      lp95: {path: [latency_per_tool_result, llm_guard, p95_ms], format: ".1f"}
+      ap50: {path: [latency_per_tool_result, agentfox_containment, p50_ms], format: ".1f"}
+      ap95: {path: [latency_per_tool_result, agentfox_containment, p95_ms], format: ".1f"}
+    quoted_in:
+      - {file: benchmarks/head_to_head/README.md, text: "llm-guard `PromptInjection` (default) | {lp50} ms | {lp95} ms"}
+      - {file: benchmarks/head_to_head/README.md, text: "AgentFox containment | {ap50} ms | {ap95} ms"}
+      - {file: benchmarks/head_to_head/README.md, text: "({lp50} ms against {ap50} ms)"}
+      - {file: docs/design/architecture-differentiation.md, text: "{lp50} ms p50 per tool result, against {ap50} ms for containment"}
+      - {file: benchmarks/README.md, text: "costs {lp50} ms p50 per tool result against {ap50} ms"}
+
 retired:
   - id: agentdojo.label_assigned_benign_utility
     text: "552/552 legitimate"
