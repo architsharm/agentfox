@@ -515,7 +515,7 @@ def test_a_sandbox_tenant_cannot_be_authenticated_into(client):
     that, `auth.authenticate` refuses to resolve a header into a sandbox tenant at all.
     """
     sid = _create(client)
-    resp = client.get("/api/agents", headers={"X-Nometria-User": "admin@example.com"})
+    resp = client.get("/api/agents", headers={"X-AgentFox-User": "admin@example.com"})
     assert resp.status_code == 200
     slugs = {a["slug"] for a in resp.json()["agents"]}
     assert slugs  # the deployment's own org, not the empty view a sandbox binding gives
@@ -632,7 +632,7 @@ def test_sandboxes_are_created_on_a_database_that_has_not_run_the_migration(tmp_
     from agentfox.core.tenancy import bind_session
 
     url = f"sqlite:///{tmp_path / 'pre-migration.db'}"
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", url)
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", url)
     reset_settings_cache()
     reset_engine()
     try:

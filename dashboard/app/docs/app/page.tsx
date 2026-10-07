@@ -216,7 +216,7 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
         </thead>
         <tbody>
           <tr>
-            <td><code>AGENTFOX_API_URL</code> (or <code>NOMETRIA_API_URL</code>)</td>
+            <td><code>AGENTFOX_API_URL</code> (or <code>AGENTFOX_API_URL</code>)</td>
             <td>web app</td>
             <td>The gateway, as the web app&apos;s server reaches it. Default <code>http://127.0.0.1:8080</code>.</td>
           </tr>

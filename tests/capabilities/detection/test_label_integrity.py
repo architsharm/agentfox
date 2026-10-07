@@ -44,7 +44,7 @@ def decision_id(client) -> str:
                 {"role": "tool", "content": INDIRECT_INJECTION},
             ],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     assert response.status_code == 403, response.text
     return response.json()["error"]["decision_id"]

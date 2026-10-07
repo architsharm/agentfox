@@ -44,22 +44,27 @@ from sqlalchemy.orm import Session
 
 @pytest.fixture(autouse=True)
 def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
-    monkeypatch.setenv("NOMETRIA_EVIDENCE_DIR", str(tmp_path / "evidence"))
-    monkeypatch.setenv("NOMETRIA_AUDIT_SIGNING_KEY", "test-key")
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+    monkeypatch.setenv("AGENTFOX_EVIDENCE_DIR", str(tmp_path / "evidence"))
+    monkeypatch.setenv("AGENTFOX_AUDIT_SIGNING_KEY", "test-key")
     # Not the published default: create_app() refuses to start a non-development
     # environment on it, and many tests switch the environment to production.
-    monkeypatch.setenv("NOMETRIA_SERVICE_AUTH_SECRET", "test-service-secret")
-    monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "false")
-    # A developer's shell NOMETRIA_CONFIG, or a agentfox.toml left in the cwd by
+    monkeypatch.setenv("AGENTFOX_SERVICE_AUTH_SECRET", "test-service-secret")
+    monkeypatch.setenv("AGENTFOX_ALLOW_EGRESS", "false")
+    # A developer's shell AGENTFOX_CONFIG, or a agentfox.toml left in the cwd by
     # `agentfox init`, must never leak into a test. Tests of file loading delenv this.
-    monkeypatch.setenv("NOMETRIA_CONFIG", "none")
+    monkeypatch.setenv("AGENTFOX_CONFIG", "none")
+    # Nor may a pre-rename NOMETRIA_* variable from that shell: it would be read as a
+    # fallback. Tests of the fallback set the ones they need.
+    for name in [n for n in os.environ if n.startswith("NOMETRIA_")]:
+        monkeypatch.delenv(name, raising=False)
 
     from agentfox.core import db
-    from agentfox.core.config import get_settings, reset_settings_cache
+    from agentfox.core.config import get_settings, reset_legacy_warning, reset_settings_cache
     from agentfox.runtime.availability import reset_admission_controller
 
     reset_settings_cache()
+    reset_legacy_warning()
     db.reset_engine()
     get_settings()
     db.init_db()
@@ -109,7 +114,7 @@ def client(tmp_path):
 
 
 def as_user(email: str) -> dict[str, str]:
-    return {"X-Nometria-User": email}
+    return {"X-AgentFox-User": email}
 
 
 # Convenience payloads reused across tests.

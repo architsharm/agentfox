@@ -20,9 +20,9 @@ def test_shipped_defaults_are_unchanged():
 
 
 def test_configured_cut_offs_take_effect(monkeypatch):
-    monkeypatch.setenv("NOMETRIA_EMBEDDING_SIMILARITY_ATTACK_THRESHOLD", "0.72")
-    monkeypatch.setenv("NOMETRIA_EMBEDDING_SIMILARITY_BENIGN_MARGIN", "0.1")
-    monkeypatch.setenv("NOMETRIA_PROMPT_INJECTION_CLASSIFIER_SECONDARY_THRESHOLD", "0.95")
+    monkeypatch.setenv("AGENTFOX_EMBEDDING_SIMILARITY_ATTACK_THRESHOLD", "0.72")
+    monkeypatch.setenv("AGENTFOX_EMBEDDING_SIMILARITY_BENIGN_MARGIN", "0.1")
+    monkeypatch.setenv("AGENTFOX_PROMPT_INJECTION_CLASSIFIER_SECONDARY_THRESHOLD", "0.95")
     reset_settings_cache()
     try:
         similarity = EmbeddingSimilarityDetector()
@@ -34,7 +34,7 @@ def test_configured_cut_offs_take_effect(monkeypatch):
 
 
 def test_explicit_arguments_still_win_over_configuration(monkeypatch):
-    monkeypatch.setenv("NOMETRIA_EMBEDDING_SIMILARITY_ATTACK_THRESHOLD", "0.72")
+    monkeypatch.setenv("AGENTFOX_EMBEDDING_SIMILARITY_ATTACK_THRESHOLD", "0.72")
     reset_settings_cache()
     try:
         assert EmbeddingSimilarityDetector(attack_threshold=0.5).attack_threshold == 0.5

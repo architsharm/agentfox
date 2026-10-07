@@ -74,7 +74,7 @@ Pick one path:
 - **Control plane running (preferred):** `POST /api/policies` with
   `{"body": "<yaml text>", "notes": "<why>", "mode": "observe"}`. It's versioned and audited,
   and the dashboard's `/policies` page does the same.
-- **Local or offline:** put the file in a directory, point `NOMETRIA_POLICIES_DIR` at it, and
+- **Local or offline:** put the file in a directory, point `AGENTFOX_POLICIES_DIR` at it, and
   run `agentfox init`. This loads every `*.yaml` in that directory, alongside the policies
   already in the database. It doesn't remove the shipped packs.
 

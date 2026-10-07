@@ -60,8 +60,8 @@ Finding status changes are audited, and an auditor will read the reasons, so wri
 that reader.
 
 ```bash
-curl -s -X PATCH "$NOMETRIA_API_URL/api/findings/<id>" \
-  -H "Authorization: Bearer $NOMETRIA_API_TOKEN" -H 'content-type: application/json' \
+curl -s -X PATCH "$AGENTFOX_API_URL/api/findings/<id>" \
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" -H 'content-type: application/json' \
   -d '{"status":"suppressed","suppression_reason":"<why this is expected, who decided>"}'
 ```
 

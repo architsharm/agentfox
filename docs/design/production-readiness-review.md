@@ -288,14 +288,14 @@ deployment must know about the fixes and features merged since.
 
 ### 7.2 New production configuration
 
-Settings are read as `AGENTFOX_<name>` first and the legacy `NOMETRIA_<name>` second.
+Settings are read as `AGENTFOX_<name>` first and the deprecated `NOMETRIA_<name>` second (with a startup warning).
 
 | Setting | Purpose | When unset |
 |---|---|---|
 | `AGENTFOX_SERVICE_AUTH_SECRET`, `AGENTFOX_AUDIT_SIGNING_KEY` | Already required; now enforced at startup (§7.1). | The gateway refuses to start outside development. |
 | `AGENTFOX_CRON_SECRET` (or Vercel's `CRON_SECRET`) | Bearer secret for `GET`/`POST /api/internal/jobs/run`, the job runner that drives monitors, live probes, escalation scans and the other schedules. The `Run monitors` GitHub Actions workflow calls it every 30 minutes and needs the repository secrets `AGENTFOX_API_URL` and `AGENTFOX_CRON_SECRET`. | The endpoint answers 503 and nothing scheduled runs, except by hand with `agentfox admin jobs run-due`. The workflow exits successfully without calling anything. |
 | `AGENTFOX_GITHUB_WEBHOOK_SECRET` | Verifies GitHub push deliveries to `/api/integrations/github/webhook`, which queue an immediate rescan. A connection can carry its own secret instead (`POST /api/integrations/github/webhook-secret`). | With neither, every delivery is refused; scheduled rescans still run. |
-| `AGENTFOX_WEBHOOK_URL`, `AGENTFOX_WEBHOOK_SECRET`, `AGENTFOX_WEBHOOK_MIN_SEVERITY` | The finding webhook. With the secret set, each request carries an HMAC signature header (still named `X-Nometria-Signature`). | No webhook; with a URL but no secret, requests are unsigned. |
+| `AGENTFOX_WEBHOOK_URL`, `AGENTFOX_WEBHOOK_SECRET`, `AGENTFOX_WEBHOOK_MIN_SEVERITY` | The finding webhook. With the secret set, each request carries an HMAC signature header (`X-AgentFox-Signature`). | No webhook; with a URL but no secret, requests are unsigned. |
 | `AGENTFOX_SLACK_WEBHOOK_URL`, `AGENTFOX_SLACK_MIN_SEVERITY` (default `medium`) | Slack messages for monitor findings opened, reopened or closed. A tenant can set its own channel with `PUT /api/alerts/slack`. | No deployment-wide Slack channel. |
 | `AGENTFOX_SHOWCASE_ENABLED` (default `false`), `AGENTFOX_SHOWCASE_ORG_ID` (default `org_showcase`) | Runs AgentFox against its own demo agent in a dedicated tenant and publishes the result at `GET /api/public/showcase` for the `/live` page. Only the hosted deployment behind the marketing site should turn it on. | Off: the public endpoint reports the showcase as disabled. |
 | `AGENTFOX_LIVE_PROBES_ENABLED` (default `true`) | Kill switch for every live probe target at once. Each target also needs its own recorded opt-in. | — |

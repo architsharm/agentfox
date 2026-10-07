@@ -35,7 +35,7 @@ def slow(monkeypatch):
     detector = _Slow()
     monkeypatch.setitem(detection_base._REGISTRY, detector.key, detector)
     monkeypatch.setenv(
-        "NOMETRIA_ENABLED_DETECTORS",
+        "AGENTFOX_ENABLED_DETECTORS",
         '["injection.heuristic", "pii.native", "test.slow_model"]',
     )
     reset_settings_cache()

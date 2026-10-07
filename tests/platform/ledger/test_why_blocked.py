@@ -25,7 +25,7 @@ from tests.conftest import INDIRECT_INJECTION, PII_TEXT, as_user, promote
 
 @pytest.fixture
 def console(monkeypatch):
-    monkeypatch.setenv("NOMETRIA_CONSOLE_URL", "https://governance.example.com/")
+    monkeypatch.setenv("AGENTFOX_CONSOLE_URL", "https://governance.example.com/")
     reset_settings_cache()
     yield "https://governance.example.com"
     reset_settings_cache()
@@ -82,7 +82,7 @@ def test_the_blocked_proxy_response_carries_the_link_in_body_and_header(client, 
     )
     assert response.status_code == 403
     assert response.json()["error"]["explain_url"].startswith(console)
-    assert response.headers["X-Nometria-Explain"].startswith(console)
+    assert response.headers["X-AgentFox-Explain"].startswith(console)
 
 
 # ---------------------------------------------------------------------------

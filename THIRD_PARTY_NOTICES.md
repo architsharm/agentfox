@@ -52,7 +52,7 @@ All permissive. Installed only via an explicit extra — see `pyproject.toml`.
 ## Restricted-licence adapters — NOT installed by default
 
 These are **not OSI-approved open source**. The adapters exist but refuse to load
-unless `NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1`, and they are excluded from the
+unless `AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`, and they are excluded from the
 `all` extra and from the published container image.
 
 | Project | Licence | Restriction |

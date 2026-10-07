@@ -28,14 +28,14 @@ def _origins(value: str | None) -> list[str]:
     if value is not None:
         import os
 
-        os.environ["NOMETRIA_PLAYGROUND_CORS_ORIGIN"] = value
+        os.environ["AGENTFOX_PLAYGROUND_CORS_ORIGIN"] = value
     reset_settings_cache()
     try:
         return get_settings().playground_cors_origins
     finally:
         import os
 
-        os.environ.pop("NOMETRIA_PLAYGROUND_CORS_ORIGIN", None)
+        os.environ.pop("AGENTFOX_PLAYGROUND_CORS_ORIGIN", None)
 
 
 def test_unset_means_no_extra_origins():
@@ -57,7 +57,7 @@ def test_whitespace_trailing_slashes_blanks_and_duplicates_are_tolerated():
 def test_the_app_allows_localhost_plus_every_configured_origin():
     import os
 
-    os.environ["NOMETRIA_PLAYGROUND_CORS_ORIGIN"] = f"{VERCEL},{RENDER}"
+    os.environ["AGENTFOX_PLAYGROUND_CORS_ORIGIN"] = f"{VERCEL},{RENDER}"
     reset_settings_cache()
     try:
         from agentfox.apps.gateway.app import create_app
@@ -71,5 +71,5 @@ def test_the_app_allows_localhost_plus_every_configured_origin():
         assert "http://localhost:3000" in allowed and "http://127.0.0.1:3000" in allowed
         assert VERCEL in allowed and RENDER in allowed
     finally:
-        os.environ.pop("NOMETRIA_PLAYGROUND_CORS_ORIGIN", None)
+        os.environ.pop("AGENTFOX_PLAYGROUND_CORS_ORIGIN", None)
         reset_settings_cache()

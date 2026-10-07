@@ -244,11 +244,11 @@ def _stamp_and_guard(session: Session, _context: Any, _instances: Any) -> None:
 
 def install(factory: sessionmaker[Session]) -> sessionmaker[Session]:
     """Wire isolation into a session factory. Idempotent."""
-    if getattr(factory, "_nometria_tenancy", False):
+    if getattr(factory, "_agentfox_tenancy", False):
         return factory
     event.listen(factory, "do_orm_execute", _tenant_criteria)
     event.listen(factory, "before_flush", _stamp_and_guard)
-    factory._nometria_tenancy = True  # type: ignore[attr-defined]
+    factory._agentfox_tenancy = True  # type: ignore[attr-defined]
     return factory
 
 

@@ -19,10 +19,10 @@ Three properties matter more than the delivery itself:
   nothing (logged once at INFO).
 
 When ``webhook_secret`` is set, each request carries
-``X-Nometria-Signature: sha256=<hex HMAC-SHA256 of the raw request body>``. The body
-includes ``sent_at`` and the request carries ``X-Nometria-Timestamp`` (unix seconds),
+``X-AgentFox-Signature: sha256=<hex HMAC-SHA256 of the raw request body>``. The body
+includes ``sent_at`` and the request carries ``X-AgentFox-Timestamp`` (unix seconds),
 so a receiver can reject stale replays. A retried delivery reuses the same body,
-signature and ``X-Nometria-Delivery`` id, so receivers can de-duplicate on it.
+signature and ``X-AgentFox-Delivery`` id, so receivers can de-duplicate on it.
 """
 
 from __future__ import annotations
@@ -236,12 +236,12 @@ def _after_rollback(session: Session) -> None:
 
 def install(factory: sessionmaker[Session]) -> sessionmaker[Session]:
     """Wire finding webhooks into a session factory. Idempotent."""
-    if getattr(factory, "_nometria_webhooks", False):
+    if getattr(factory, "_agentfox_webhooks", False):
         return factory
     event.listen(factory, "after_flush", _after_flush)
     event.listen(factory, "after_commit", _after_commit)
     event.listen(factory, "after_rollback", _after_rollback)
-    factory._nometria_webhooks = True  # type: ignore[attr-defined]
+    factory._agentfox_webhooks = True  # type: ignore[attr-defined]
     return factory
 
 
@@ -307,13 +307,13 @@ def _deliver(target: _Target, body: dict[str, Any]) -> tuple[bool, str]:
     headers = {
         "Content-Type": "application/json",
         "User-Agent": f"agentfox/{__version__}",
-        "X-Nometria-Event": str(payload.get("event")),
-        "X-Nometria-Delivery": uuid.uuid4().hex,
-        "X-Nometria-Timestamp": str(int(now)),
+        "X-AgentFox-Event": str(payload.get("event")),
+        "X-AgentFox-Delivery": uuid.uuid4().hex,
+        "X-AgentFox-Timestamp": str(int(now)),
     }
     if target.secret:
         digest = hmac.new(target.secret.encode(), raw, hashlib.sha256).hexdigest()
-        headers["X-Nometria-Signature"] = f"sha256={digest}"
+        headers["X-AgentFox-Signature"] = f"sha256={digest}"
 
     detail = "not attempted"
     for attempt in (1, 2):

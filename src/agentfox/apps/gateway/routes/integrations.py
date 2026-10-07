@@ -125,7 +125,7 @@ LOGIN_TOKEN_NAME = "github-login"
 
 
 def _require_service_secret(
-    x_nometria_service_secret: Annotated[str | None, Header()] = None,
+    x_agentfox_service_secret: Annotated[str | None, Header()] = None,
 ) -> None:
     settings = get_settings()
     expected = settings.service_auth_secret
@@ -139,8 +139,8 @@ def _require_service_secret(
             "GitHub sign-in is disabled: AGENTFOX_SERVICE_AUTH_SECRET is still a "
             "published value on a non-development deployment.",
         )
-    if not x_nometria_service_secret or not secrets.compare_digest(
-        x_nometria_service_secret, expected
+    if not x_agentfox_service_secret or not secrets.compare_digest(
+        x_agentfox_service_secret, expected
     ):
         raise HTTPException(401, "invalid or missing service secret")
 

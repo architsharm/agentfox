@@ -45,10 +45,10 @@ doc to open.
    outcome in this conversation. The plugin's safety hook will ask them. Let it, and don't
    work around it.
 2. **Use a scratch database for demos and experiments.** Prefix commands with
-   `NOMETRIA_DATABASE_URL=sqlite:////tmp/nometria-scratch.db`. The demo and `seed` write demo
+   `AGENTFOX_DATABASE_URL=sqlite:////tmp/agentfox-scratch.db`. The demo and `seed` write demo
    agents, keys and findings into whatever database they're pointed at.
 3. **Nothing leaves the machine by default.** Never pass `--submit`, set
-   `NOMETRIA_ALLOW_EGRESS=true` or add provider keys without the user's say-so.
+   `AGENTFOX_ALLOW_EGRESS=true` or add provider keys without the user's say-so.
 4. **Secrets are shown once.** `auth issue`, credential issue, and `seed --show-keys` print raw
    keys. Don't repeat them, write them to files, or commit them.
 5. **Compliance mappings are drafts.** Present framework results with the `DRAFT —
@@ -62,7 +62,7 @@ doc to open.
 8. **An automated change is still a change.** Everything the improvement loop wants to do
    is filed as a proposal. Applying or rolling one back is **BLK**, and a change that
    loosens a control is never applied automatically, whatever the evidence says.
-   `NOMETRIA_IMPROVEMENT_FROZEN=true` stops automated applies without losing proposals.
+   `AGENTFOX_IMPROVEMENT_FROZEN=true` stops automated applies without losing proposals.
 9. **Prefer the `agentfox_*` MCP tools for reading and analysis** when they're available;
    they return structured results. Otherwise prefer `--json` where it exists, or the HTTP API
    when a server is running. State changes always go through the CLI.

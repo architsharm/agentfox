@@ -14,7 +14,7 @@ description: Runs AgentFox's adversarial probe suite (22 OWASP-LLM and MITRE-ATL
   agent's *registered* grants and the policies bound to it, so a registration with no
   declared tools gives an optimistic result. Say so when it applies.
 - **Choose the database:** probes create a campaign and findings in whichever DB
-  `NOMETRIA_DATABASE_URL` points at. If the user doesn't want them in their real queue, use
+  `AGENTFOX_DATABASE_URL` points at. If the user doesn't want them in their real queue, use
   a scratch DB and `agentfox admin seed` there.
 
 ## 2. See the probes, then run them
@@ -56,4 +56,4 @@ numbers in a table.
 ## 5. Deeper runners (optional)
 
 `redteam probes` also lists wrapped runners (Garak, PyRIT) if the `[redteam]` extra is
-installed. They need a real model and `NOMETRIA_ALLOW_EGRESS=true`. Ask before using them.
+installed. They need a real model and `AGENTFOX_ALLOW_EGRESS=true`. Ask before using them.

@@ -290,7 +290,7 @@ def test_hosted_api_route_refuses_a_metadata_url(seeded_app):
             "endpoint_url": "https://petstore.example.com/v1",
             "openapi_spec_url": "http://169.254.169.254/latest/meta-data/",
         },
-        headers={"X-Nometria-User": "admin@example.com"},
+        headers={"X-AgentFox-User": "admin@example.com"},
     )
     assert response.status_code == 422, response.text
 
@@ -455,7 +455,7 @@ def test_first_registration_and_new_tools_are_unchanged(seeded, mcp_governor):
 
 
 def test_the_registry_route_holds_changes_unless_accepted(seeded_app):
-    admin = {"X-Nometria-User": "admin@example.com"}
+    admin = {"X-AgentFox-User": "admin@example.com"}
     first = seeded_app.post(
         f"/api/mcp-servers/{MCP_SERVER}/tools", json={"tools": V1}, headers=admin
     )
@@ -469,7 +469,7 @@ def test_the_registry_route_holds_changes_unless_accepted(seeded_app):
         accepted = seeded_app.post(
             f"/api/mcp-servers/{MCP_SERVER}/tools",
             json={"tools": V2, "accept_changes": True, "note": "reviewed"},
-            headers={"X-Nometria-User": approver},
+            headers={"X-AgentFox-User": approver},
         )
         assert accepted.status_code == 200, accepted.text
     assert accepted.json()["held"] == []

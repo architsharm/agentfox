@@ -60,11 +60,11 @@ def with_verdict_aliases(payload: dict[str, Any]) -> dict[str, Any]:
 def verdict_headers(result: Any) -> dict[str, str]:
     """The alias headers, matching :data:`ALIASES`.
 
-    Returned separately from the existing ``X-Nometria-Verdict`` /
-    ``X-Nometria-Effective-Verdict`` pair so that pair keeps its exact current value
+    Returned separately from the existing ``X-AgentFox-Verdict`` /
+    ``X-AgentFox-Effective-Verdict`` pair so that pair keeps its exact current value
     for anything already reading it.
     """
     return {
-        "X-Nometria-Applied-Verdict": getattr(result, "verdict", "") or "",
-        "X-Nometria-Would-Be-Verdict": getattr(result, "effective_verdict", "") or "",
+        "X-AgentFox-Applied-Verdict": getattr(result, "verdict", "") or "",
+        "X-AgentFox-Would-Be-Verdict": getattr(result, "effective_verdict", "") or "",
     }

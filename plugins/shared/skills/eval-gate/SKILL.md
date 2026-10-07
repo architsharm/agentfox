@@ -14,9 +14,9 @@ The CLI can run and gate suites but not create them. Suites and cases come from 
 (the `support-quality` demo suite), the HTTP API, or the dashboard's `/evals` page:
 
 ```bash
-curl -s -X POST "$NOMETRIA_API_URL/api/eval/suites" -H "Authorization: Bearer $NOMETRIA_API_TOKEN" \
+curl -s -X POST "$AGENTFOX_API_URL/api/eval/suites" -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \
   -H 'content-type: application/json' -d '{"key":"refund-answers","name":"Refund answers","tags":["support"]}'
-curl -s -X POST "$NOMETRIA_API_URL/api/eval/suites/refund-answers/cases" -H "Authorization: Bearer $NOMETRIA_API_TOKEN" \
+curl -s -X POST "$AGENTFOX_API_URL/api/eval/suites/refund-answers/cases" -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \
   -H 'content-type: application/json' -d '{"input":"Can I get a refund after 45 days?","expected":"No — 30 day window","context":["policies/refunds.md"]}'
 ```
 
@@ -32,7 +32,7 @@ agentfox test baseline <run_id> --label main
 ```
 
 The default provider is the offline `echo` model, which is fine for proving the plumbing. To
-evaluate the real model, the user sets `NOMETRIA_ALLOW_EGRESS=true` plus the provider key,
+evaluate the real model, the user sets `AGENTFOX_ALLOW_EGRESS=true` plus the provider key,
 and you pass `--provider openai --model <model>`. Ask before enabling egress.
 
 ## 3. Gate

@@ -10,8 +10,8 @@ jobs:
   governance:
     runs-on: ubuntu-latest
     env:
-      NOMETRIA_DATABASE_URL: sqlite:///${{ github.workspace }}/.agentfox-ci.db
-      NOMETRIA_ENVIRONMENT: test
+      AGENTFOX_DATABASE_URL: sqlite:///${{ github.workspace }}/.agentfox-ci.db
+      AGENTFOX_ENVIRONMENT: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,7 +28,7 @@ jobs:
       - name: Business guardrails don't conflict
         run: agentfox policy rules check
       # Eval gate: needs a suite with cases in this DB. For a hosted control plane, point
-      # NOMETRIA_DATABASE_URL at it (read-only CI credentials) and pass --baseline <run_id>.
+      # AGENTFOX_DATABASE_URL at it (read-only CI credentials) and pass --baseline <run_id>.
       - name: Eval regression gate
         run: |
           agentfox admin seed > /dev/null  # demo suite `support-quality`; replace with your own suite setup

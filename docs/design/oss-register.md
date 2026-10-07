@@ -55,12 +55,12 @@ Mapping detections to a taxonomy the buyer already trusts is worth more than a p
 
 | Project | Licence | Restriction | Our handling |
 |---|---|---|---|
-| **Llama Guard 4 / Prompt Guard 2** | Llama Community | **Not OSI-approved.** Adds an Acceptable-Use Policy and a >700M-MAU clause. Usable by most startups, but it is a restricted licence and needs commercial legal review. | Adapter exists; **not installed by default**; requires `NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1`. Granite Guardian is the default. |
+| **Llama Guard 4 / Prompt Guard 2** | Llama Community | **Not OSI-approved.** Adds an Acceptable-Use Policy and a >700M-MAU clause. Usable by most startups, but it is a restricted licence and needs commercial legal review. | Adapter exists; **not installed by default**; requires `AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`. Granite Guardian is the default. |
 | **ShieldGemma** | Gemma Licence | Same category — restricted, not permissive. | Same handling. |
 
 **Rule:** nothing restricted, archived, BSL, or competitor-owned sits on the default critical path. A customer must not inherit a licence obligation by running `docker compose up`.
 
-**Opting in to Llama Guard on a self-hosted stack.** `deploy/docker-compose.yml` ships with `safety.restricted` out of the enabled detector list and the licence flag at `"0"`, and the published gateway image never carries the gated weights. After the legal review above: accept Meta's licence for `meta-llama/Llama-Guard-3-8B` on Hugging Face, build the gateway image yourself with that account's token (`HF_TOKEN=hf_... docker compose -f deploy/docker-compose.yml build gateway`, which bakes the weights in), add `safety.restricted` to `AGENTFOX_ENABLED_DETECTORS`, and set `AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1` (the legacy `NOMETRIA_` name also works).
+**Opting in to Llama Guard on a self-hosted stack.** `deploy/docker-compose.yml` ships with `safety.restricted` out of the enabled detector list and the licence flag at `"0"`, and the published gateway image never carries the gated weights. After the legal review above: accept Meta's licence for `meta-llama/Llama-Guard-3-8B` on Hugging Face, build the gateway image yourself with that account's token (`HF_TOKEN=hf_... docker compose -f deploy/docker-compose.yml build gateway`, which bakes the weights in), add `safety.restricted` to `AGENTFOX_ENABLED_DETECTORS`, and set `AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`.
 
 ## A.5 Coverage by pillar
 

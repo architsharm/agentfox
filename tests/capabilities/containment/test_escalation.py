@@ -518,7 +518,7 @@ def test_gateway_completions_record_a_conversation_turn(client):
             "model": "echo-1",
             "messages": [{"role": "user", "content": "I want to speak to a manager"}],
         },
-        headers={"X-Nometria-Agent": "support-triage", "X-Nometria-Session": "gw-turn-1"},
+        headers={"X-AgentFox-Agent": "support-triage", "X-AgentFox-Session": "gw-turn-1"},
     )
     assert response.status_code == 200
     with session_scope() as session:

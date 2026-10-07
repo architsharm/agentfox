@@ -14,7 +14,7 @@
 --
 -- Run it in the Neon SQL editor (Vercel -> Storage -> guardrails-db -> Query, with
 -- read-only off), or from a checkout:
---   NOMETRIA_DATABASE_URL='<neon url>' uv run alembic upgrade head
+--   AGENTFOX_DATABASE_URL='<neon url>' uv run alembic upgrade head
 -- Afterwards: select version_num from alembic_version;  -- expect c4a71e8b2d16
 
 BEGIN;

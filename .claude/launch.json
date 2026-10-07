@@ -6,7 +6,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd /Users/architsharma/guardrails && NOMETRIA_DATABASE_URL=sqlite:////tmp/agentfox_pg_verify.db NOMETRIA_PLAYGROUND_CORS_ORIGIN=http://localhost:3000 uv run uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8080"
+        "cd /Users/architsharma/guardrails && AGENTFOX_DATABASE_URL=sqlite:////tmp/agentfox_pg_verify.db AGENTFOX_PLAYGROUND_CORS_ORIGIN=http://localhost:3000 uv run uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8080"
       ],
       "port": 8080
     },
@@ -15,7 +15,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd /Users/architsharma/guardrails/dashboard && NOMETRIA_API_URL=http://127.0.0.1:8080 NOMETRIA_PLAYGROUND_API_URL=http://127.0.0.1:8080 npm run dev"
+        "cd /Users/architsharma/guardrails/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8080 AGENTFOX_PLAYGROUND_API_URL=http://127.0.0.1:8080 npm run dev"
       ],
       "port": 3000
     },

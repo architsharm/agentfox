@@ -108,11 +108,11 @@ outcome = gov.call("issue_refund", {"amount": 40}, transport=call_mcp)   # outco
 ```python
 from openai import OpenAI
 client = OpenAI(base_url="http://localhost:8080/v1", api_key="nom_agt_…",
-                default_headers={"X-Nometria-Agent": "support-triage"})
+                default_headers={"X-AgentFox-Agent": "support-triage"})
 ```
 
 A call held for a person raises `openai.APIStatusError` (HTTP 428, `exc.body["approval_id"]`).
-Once approved, resend with `extra_headers={"X-Nometria-Approval": approval_id}`.
+Once approved, resend with `extra_headers={"X-AgentFox-Approval": approval_id}`.
 
 ## Rollout rule (the product's own safety stance)
 

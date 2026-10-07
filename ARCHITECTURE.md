@@ -139,7 +139,7 @@ recorded. New surfaces must call these methods, not reimplement them.
 1. `apps/gateway/app.py:create_app` builds the FastAPI app (`app` at module bottom; `agentfox serve`
    and `api/index.py` both serve it). Two middlewares run first for `/v1/*` only:
    `degradation_gate` (probes dependencies, applies the fail-open/closed policy, returns 503
-   or stamps `X-Nometria-Degraded`) and `admission_gate` (load shedding, 429).
+   or stamps `X-AgentFox-Degraded`) and `admission_gate` (load shedding, 429).
 2. The route `guard_tool_call` in `apps/gateway/routes/inline.py` takes a `GuardToolCallRequest`
    body (`agent`, `tool`, `arguments`, `provenance`, `intent`, …). Its dependencies are
    `apps/gateway/deps.py:db` (a session from `core/db.py:get_session`, committed when the
@@ -295,7 +295,7 @@ a bound policy version that no longer loads is handled the same way (`policy.unl
 `runtime/availability.py` converts a
 long-lasting degradation to closed, and its `NEVER_OPEN` controls (tenant isolation,
 entitlement filter, data-access scope, audit chain) refuse to be configured open. A degraded
-`/v1/*` response is stamped `X-Nometria-Degraded`. Admission and budget state are
+`/v1/*` response is stamped `X-AgentFox-Degraded`. Admission and budget state are
 per-process.
 
 **Nothing leaves the machine by default.** `Settings.allow_egress` (`AGENTFOX_ALLOW_EGRESS`)
@@ -308,8 +308,11 @@ URL a user typed (a spec, an MCP server, a probe target) goes through `core/outb
 **`import agentfox` has no side effects.** The top-level package re-exports lazily; it must
 not open a database or import a client library.
 
-**Settings names.** `AGENTFOX_*` is canonical; `NOMETRIA_*` still works at lower precedence.
-Headers still use `X-Nometria-*`. Do not rename either without a compatibility path.
+**Settings names.** `AGENTFOX_*` settings, `agentfox.toml` / `[agentfox]` and `X-AgentFox-*`
+headers are the only names written or documented. The pre-rename `NOMETRIA_*`, `nometria.toml`
+/ `[nometria]` and `x-nometria-*` are still *read*, at lower precedence and with a startup
+deprecation warning (`core/config.py`, `core/headers.py`), until the deployments that set
+them are renamed (`docs/deployment/vercel-env-rename.md`).
 
 **Published numbers are bound.** [`benchmarks/claims.yaml`](benchmarks/claims.yaml) binds each
 quoted figure (in this README, `benchmarks/`, `docs/`, website pages) to the result file it
@@ -447,6 +450,6 @@ user-facing version is the website's [limits page](https://useagentfox.com/docs/
   asking.
 - The Vercel deployment (`api/`) cannot run Alembic migrations through normal channels.
 - The hand-written prose in `docs/architecture/api-spec.md` (outside the generated route
-  tables) still uses some `NOMETRIA_*` names; trust the code.
+  tables) can lag the code; trust the code.
 - Two imports still point up a layer, each named with its TODO in `pyproject.toml`'s
   `[tool.importlinter]` (see [Invariants](#invariants-and-cross-cutting-concerns)).

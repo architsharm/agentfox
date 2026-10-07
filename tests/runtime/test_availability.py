@@ -229,9 +229,9 @@ def test_ordinary_load_is_admitted():
 
 
 def test_get_admission_controller_reads_settings(monkeypatch):
-    monkeypatch.setenv("NOMETRIA_ADMISSION_RATE_PER_SECOND", "5")
-    monkeypatch.setenv("NOMETRIA_ADMISSION_BURST", "7")
-    monkeypatch.setenv("NOMETRIA_ADMISSION_MAX_CONCURRENT", "9")
+    monkeypatch.setenv("AGENTFOX_ADMISSION_RATE_PER_SECOND", "5")
+    monkeypatch.setenv("AGENTFOX_ADMISSION_BURST", "7")
+    monkeypatch.setenv("AGENTFOX_ADMISSION_MAX_CONCURRENT", "9")
     from agentfox.core.config import reset_settings_cache
 
     reset_settings_cache()
@@ -259,8 +259,8 @@ def _saturate_admission(monkeypatch) -> None:
     """One token, refilling too slowly for the test to ever see a second one."""
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_ADMISSION_BURST", "1")
-    monkeypatch.setenv("NOMETRIA_ADMISSION_RATE_PER_SECOND", "0.0001")
+    monkeypatch.setenv("AGENTFOX_ADMISSION_BURST", "1")
+    monkeypatch.setenv("AGENTFOX_ADMISSION_RATE_PER_SECOND", "0.0001")
     reset_settings_cache()
     reset_admission_controller()
 

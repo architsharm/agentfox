@@ -112,8 +112,8 @@ def test_submit_posts_only_the_redacted_payload(tmp_path: Path, monkeypatch):
     (tmp_path / "app.py").write_text(
         "import subprocess\nsubprocess.run('echo super-secret-internal-flag')\n"
     )
-    monkeypatch.setenv("NOMETRIA_API_URL", "https://plane.example.internal")
-    monkeypatch.setenv("NOMETRIA_API_TOKEN", "nom_usr_test")
+    monkeypatch.setenv("AGENTFOX_API_URL", "https://plane.example.internal")
+    monkeypatch.setenv("AGENTFOX_API_TOKEN", "nom_usr_test")
 
     captured = {}
 

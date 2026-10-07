@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from agentfox.core.db import session_scope
+from agentfox.core.headers import get_header
 from agentfox.exporters.correlation import link_trace, refs_from_headers
 from agentfox.platform.ledger.trace import end_trace, start_trace
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
@@ -51,11 +52,12 @@ except Exception:  # pragma: no cover
 
 
 #: Headers the middleware reads, matching the gateway's so a team can move between
-#: the proxy and in-process enforcement without changing their client.
-AGENT_HEADER = "x-nometria-agent"
-SESSION_HEADER = "x-nometria-session"
-INTENT_HEADER = "x-nometria-intent"
-USER_HEADER = "x-nometria-user-principal"
+#: the proxy and in-process enforcement without changing their client. The
+#: pre-rename ``x-nometria-*`` spelling of each is still accepted, after these.
+AGENT_HEADER = "x-agentfox-agent"
+SESSION_HEADER = "x-agentfox-session"
+INTENT_HEADER = "x-agentfox-intent"
+USER_HEADER = "x-agentfox-user-principal"
 
 
 @dataclass
@@ -93,23 +95,23 @@ class AgentFoxMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
         started = time.perf_counter()
         headers = dict(request.headers)
         request.state.agentfox = GovernanceContext(
-            agent=headers.get(AGENT_HEADER),
-            session_id=headers.get(SESSION_HEADER),
-            intent=headers.get(INTENT_HEADER),
-            user_principal=headers.get(USER_HEADER),
+            agent=get_header(headers, "agent"),
+            session_id=get_header(headers, "session"),
+            intent=get_header(headers, "intent"),
+            user_principal=get_header(headers, "user-principal"),
             correlation=headers,
         )
         refs = refs_from_headers(headers)
 
         response = await call_next(request)
-        response.headers["X-Nometria-Service"] = self.service
+        response.headers["X-AgentFox-Service"] = self.service
         if refs:
-            response.headers["X-Nometria-External-Trace"] = refs[0].external_trace_id
+            response.headers["X-AgentFox-External-Trace"] = refs[0].external_trace_id
         trace_id = getattr(request.state, "agentfox_trace_id", None)
         if trace_id:
-            response.headers["X-Nometria-Trace"] = trace_id
+            response.headers["X-AgentFox-Trace"] = trace_id
         if self.record_latency:
-            response.headers["X-Nometria-Latency-Ms"] = (
+            response.headers["X-AgentFox-Latency-Ms"] = (
                 f"{(time.perf_counter() - started) * 1000:.2f}"
             )
         return response

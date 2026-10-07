@@ -497,7 +497,7 @@ def blocked_decision(client) -> dict:
                 {"role": "tool", "content": INDIRECT_INJECTION},
             ],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     assert response.status_code == 403, response.text
     return response.json()

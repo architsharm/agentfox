@@ -381,7 +381,7 @@ def test_the_api_isolates_tenants(two_tenants):
 
     client = TestClient(create_app())
     for org, mine, theirs in ((ACME, "acme-bot", "globex-bot"), (GLOBEX, "globex-bot", "acme-bot")):
-        headers = {"X-Nometria-User": f"admin@{org}.com"}
+        headers = {"X-AgentFox-User": f"admin@{org}.com"}
         agents = [a["slug"] for a in client.get("/api/agents", headers=headers).json()["agents"]]
         assert agents == [mine]
 
