@@ -3,7 +3,8 @@
 The operator plugin for the AgentFox control plane. It packages the product's knowledge as
 **skills, commands, subagents and safety hooks**, so a person can say "get my support agent
 governed" or "get me ready for the SOC 2 audit" and a coding agent can do it correctly.
-Without it, they'd have to learn 17 CLI groups, 150+ API routes and 43 docs first.
+Without it, they'd have to learn 13 CLI commands and their subcommands, 200+ API routes and
+40-odd docs pages first.
 
 ## Install
 
@@ -52,14 +53,15 @@ pip install "git+https://github.com/architsharm/agentfox.git"
 | `/agentfox:proposals [id or status]` | Review what the improvement loop wants to change; applying anything needs your say-so |
 | `/agentfox:plugin-check` | Check the plugin against the live CLI and repo (for maintainers) |
 
-**MCP server.** The plugin also starts `agentfox mcp serve`, which gives any MCP client 27
+**MCP server.** The plugin also starts the MCP server (its `.mcp.json` uses the older
+spelling `agentfox mcp serve`, an alias of `agentfox serve mcp`), which gives any MCP client 27
 read-only tools: posture, findings and how often each one has recurred, the improvement
 loop's change proposals, policy validate and simulate, guard a piece of text, analyse a
 SQL/shell/HTTP action, audit verify, compliance status, guardrail tests and more. Nothing
 there decides, applies or rolls back a change. Other MCP clients can run it directly:
 
 ```bash
-agentfox mcp serve
+agentfox serve mcp
 ```
 
 Subagents (the model delegates to them, or you ask for one by name):

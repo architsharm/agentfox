@@ -79,7 +79,7 @@ curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' \
 | Jobs | `GET /api/jobs`, `POST /api/jobs/{id}/retry`, `GET` or `POST /api/internal/jobs/run` (cron secret). Each cron run creates default schedules, recovers stuck jobs and runs due work. A failed first attempt of evidence or red-team work returns 202 `queued_for_retry`. |
 | Playground | `/api/playground/*` — unauthenticated, rate-limited, sandboxed per session |
 
-For push-style integration there are **finding webhooks** (`NOMETRIA_WEBHOOK_URL`, see
+For push-style integration there are **finding webhooks** (`AGENTFOX_WEBHOOK_URL`, see
 `reference/config.md`), `GET /metrics` (Prometheus), `GET /api/export/siem`, and LangSmith
-or Langfuse correlation. The **MCP server** is a separate stdio process, `agentfox mcp serve`,
+or Langfuse correlation. The **MCP server** is a separate stdio process, `agentfox serve mcp`,
 not an HTTP route. `POST /v1/mcp/call` governs calls *to* other MCP servers.

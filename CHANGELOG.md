@@ -11,6 +11,11 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+
+- `mcp_tool_added_under_wildcard` finding (high): a registered MCP server added a tool
+  that an existing wildcard grant already allows.
+
 ### Removed
 
 - The `nometria` Python package shim and the `nometria` console script. Import from `agentfox` (e.g. `agentfox.frameworks.langgraph`) and run `agentfox`. The `NOMETRIA_*` environment variables, `nometria.toml` and `x-nometria-*` headers are still read.
@@ -57,7 +62,13 @@ the file it came from.
 - Coding-agent harnesses are adapters behind one interface, `agentfox.harnesses`
   (registered through the `agentfox.harnesses` entry-point group). Claude Code is the only
   one; installed hooks (`agentfox hooks run --harness claude`) behave exactly as before.
-
+- Accepting a changed MCP tool listing is now a two-person change. A changed definition is
+  held and filed as an `mcp.tool.accept` change proposal; `McpGovernor.register_tools(...,
+  accept_changes=True)` now requires `actor=` (the reviewer) and raises `ValueError`
+  without one, and the change applies only when a second, different person approves.
+  `POST /api/mcp-servers/{name}/tools` with `accept_changes` counts as the signed-in
+  person's approval and needs the role that approves policy proposals. The result carries
+  `held`, `accepted`, `awaiting_second_approver` and `proposals`.
 - `McpCallBlocked`, raised by the MCP governor, is now an `agentfox.AgentFoxError` like
   every other refusal. It is still a `RuntimeError`.
 
