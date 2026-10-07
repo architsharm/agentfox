@@ -19,12 +19,16 @@ tools:
   description: Update an existing ticket.
   # A status change fires the helpdesk's own notification webhook, which sends mail
   # nobody asked this call to send. Looks like a plain write; the declared trigger is
-  # what lets cascade_risk() see the irreversible tail.
+  # what lets cascade_risk() see the irreversible tail. Because that tail is only a
+  # message (email.send declares `effect: communication`), the call is escalated for
+  # approval, not blocked.
   triggers:
   - email.send
 - key: email.send
   name: Send email
   impact: irreversible
+  # Its irreversible effect is a message leaving, not data destroyed or money moved.
+  effect: communication
   description: Send an email to an external recipient. Cannot be recalled.
 agents:
 - slug: support-triage

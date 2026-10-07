@@ -283,7 +283,88 @@ def test_seeded_demo_data_exercises_cascade_risk_without_manual_setup(seeded, en
         intent="resolve a customer's ticket",
     )
     codes = [r["code"] for r in result.taint["action"]["cascade"]["findings"]]
-    assert "cascade-reaches-destructive" in codes
+    assert "cascade-reaches-notification" in codes
+
+
+def test_a_ticket_update_that_only_sends_mail_is_escalated_not_blocked(seeded, enforcer):
+    """tickets.update -> email.send, and email.send is declared `effect: communication`
+    in the demo world: the only irreversible thing the cascade reaches is a message,
+    so a person approves it rather than the call being refused."""
+    agent = seeded.query(Agent).filter_by(slug="support-triage").one()
+    ensure_identity(seeded, agent)
+
+    result = enforcer.guard_tool_call(
+        agent_slug="support-triage",
+        tool_key="tickets.update",
+        arguments={"ticket_id": "TCK-1", "status": "resolved"},
+        intent="resolve a customer's ticket",
+    )
+    fired = [r["rule_id"] for r in result.rules_fired]
+    assert result.effective_verdict == "escalate"
+    assert not result.blocked
+    assert result.approval_id
+    assert "cascade.reaches_notification" in fired
+    assert "cascade.reaches_destructive" not in fired
+    assert result.taint["action"]["cascade"]["verdict"] == "escalate"
+
+
+def test_a_cascade_reaching_a_destructive_tool_beside_a_message_still_blocks(seeded, enforcer):
+    """email.send is a declared message, but the same walk also reaches an irreversible
+    tool nobody classified: the cascade is judged by that one."""
+    agent = seeded.query(Agent).filter_by(slug="support-triage").one()
+    identity = ensure_identity(seeded, agent)
+    grant_capability(seeded, identity, "cascade-server/reader")
+    seeded.add(
+        Tool(
+            key="cascade-server/reader",
+            name="reader",
+            impact="read",
+            triggers_json=["email.send", "cascade-server/purge"],
+        )
+    )
+    seeded.add(Tool(key="cascade-server/purge", name="purge", impact="irreversible"))
+    seeded.flush()
+
+    result = enforcer.guard_tool_call(
+        agent_slug="support-triage",
+        tool_key="cascade-server/reader",
+        arguments={"q": "x"},
+    )
+    assert result.blocked
+    fired = [r["rule_id"] for r in result.rules_fired]
+    assert "cascade.reaches_destructive" in fired
+    assert "cascade.reaches_notification" not in fired
+
+
+def test_an_escalated_cascade_approval_redeems_once(seeded):
+    from agentfox.frameworks.sdk import AgentFox, ApprovalRequired
+    from agentfox.platform.identity import resolve_approval
+
+    args = {"ticket_id": "TCK-1", "status": "resolved"}
+    provenance = {"ticket_id": "user", "status": "user"}
+    fox = AgentFox("support-triage", session=seeded)
+    with fox.session(intent="resolve a customer's ticket") as s:
+        with pytest.raises(ApprovalRequired) as held:
+            s.guard_tool("tickets.update", dict(args), provenance=provenance)
+    approval_id = held.value.approval_id
+    assert resolve_approval(seeded, approval_id, True, "usr_test", "ok").status == "approved"
+
+    with fox.session(intent="resolve a customer's ticket") as s:
+        result = s.guard_tool(
+            "tickets.update", dict(args), provenance=provenance, approval_id=approval_id
+        )
+    assert result.verdict == "allow"
+    assert "approval.redeemed" in [r["rule_id"] for r in result.rules_fired]
+    assert seeded.get(ApprovalRequest, approval_id).status == "used"
+
+    # Single use: the same approval does not let a second update through.
+    with fox.session(intent="resolve a customer's ticket") as s:
+        with pytest.raises(ApprovalRequired) as again:
+            s.guard_tool(
+                "tickets.update", dict(args), provenance=provenance, approval_id=approval_id
+            )
+    assert again.value.approval_id != approval_id
+    assert "already used" in str(again.value)
 
 
 def test_an_undeclared_trigger_stays_invisible(seeded, enforcer):

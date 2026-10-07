@@ -28,6 +28,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from agentfox.core.models import (
+    TOOL_EFFECT_CLASSES,
     Agent,
     Finding,
     LineageEdge,
@@ -376,7 +377,17 @@ IMPACT_SOURCE_KEY = "x-agentfox-impact-source"
 #: A vendor keyword in `schema_json` for the same reason as `IMPACT_SOURCE_KEY`.
 LISTED_KEY = "x-agentfox-listed"
 
-_MARKER_KEYS = (IMPACT_SOURCE_KEY, LISTED_KEY)
+#: What kind of irreversible effect a tool has, as an operator declared it (one of
+#: `TOOL_EFFECT_CLASSES`). Today the one class is ``communication``: the effect is a
+#: message leaving (an email, a chat message, a notification), not data destroyed,
+#: money moved or state changed. `cascade_risk` reads it to escalate, rather than
+#: block, a cascade whose only irreversible tail is a message. Never inferred from a
+#: tool's name; an undeclared tool counts as destructive. A vendor keyword in
+#: `schema_json` for the same reason as `IMPACT_SOURCE_KEY`, and kept across
+#: re-listings because it is the operator's statement, not the listing's.
+EFFECT_CLASS_KEY = "x-agentfox-effect"
+
+_MARKER_KEYS = (IMPACT_SOURCE_KEY, LISTED_KEY, EFFECT_CLASS_KEY)
 
 #: Audit action for any change to a registered tool's impact.
 IMPACT_CHANGED_ACTION = "tool.impact_changed"
@@ -386,6 +397,12 @@ def impact_source_of(tool: Tool) -> str:
     """``inferred`` for a guessed impact awaiting confirmation, else ``declared``."""
     schema = tool.schema_json or {}
     return "inferred" if schema.get(IMPACT_SOURCE_KEY) == "inferred" else "declared"
+
+
+def effect_class_of(tool: Tool) -> str | None:
+    """The declared effect class (`TOOL_EFFECT_CLASSES`), or None when undeclared."""
+    value = (tool.schema_json or {}).get(EFFECT_CLASS_KEY)
+    return value if value in TOOL_EFFECT_CLASSES else None
 
 
 def tool_input_schema(tool: Tool) -> dict[str, Any]:
@@ -413,9 +430,10 @@ def upsert_tool(
     annotations: dict[str, Any] | None = None,
     listed: bool = False,
     actor: str | None = None,
+    effect_class: str | None = None,
 ) -> Tool:
-    """Create or update a tool. ``output_trust=None`` and ``annotations=None`` leave
-    what is recorded as it is.
+    """Create or update a tool. ``output_trust=None``, ``annotations=None`` and
+    ``effect_class=None`` leave what is recorded as it is; ``effect_class=""`` clears it.
 
     ``impact_source="inferred"`` is a guess, and a guess never replaces a declared
     impact: an MCP listing re-infers on every listing, and before this an unchanged
@@ -427,6 +445,8 @@ def upsert_tool(
     keeping the old one (which left the drift block on for good). Otherwise an empty
     value keeps what is stored, as before.
     """
+    if effect_class and effect_class not in TOOL_EFFECT_CLASSES:
+        raise ValueError(f"effect_class must be one of {TOOL_EFFECT_CLASSES}")
     tool = session.scalar(select(Tool).where(Tool.key == key))
     prior_impact = tool.impact if tool is not None else None
     keep_declared = (
@@ -457,6 +477,11 @@ def upsert_tool(
         schema_json[IMPACT_SOURCE_KEY] = "inferred"
     else:
         schema_json.pop(IMPACT_SOURCE_KEY, None)
+    declared_effect = effect_class if effect_class is not None else effect_class_of(tool)
+    if declared_effect:
+        schema_json[EFFECT_CLASS_KEY] = declared_effect
+    else:
+        schema_json.pop(EFFECT_CLASS_KEY, None)
     tool.schema_json = schema_json
     tool.description = description if listed else (description or tool.description)
     tool.mcp_server_id = mcp_server_id or tool.mcp_server_id

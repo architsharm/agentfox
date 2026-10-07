@@ -1,17 +1,18 @@
 {
-  "source": "The PreToolUse payload recorded from a live Claude Code 2.1.220 session by the probe behind adapter.VERIFIED['PreToolUse'] (tests/hooks/test_harness_adapter.py LIVE_PAYLOAD); home-directory paths were anonymised to /Users/x when it was recorded.",
+  "source": "The PreToolUse payload captured verbatim from a live headless Claude Code 2.1.292 session (`claude -p \"Run the shell command: echo hello\" --allowedTools \"Bash(echo:*)\"`, a scratch project whose .claude/settings.local.json hook teed stdin to a file). The only edit is the home-directory user name, anonymised to x (/Users/x, and the -Users-x- segments of the mangled project paths). Same session as tool.post.json.",
   "event": {
     "harness": "claude",
     "event": "PreToolUse",
     "kind": "tool.pre",
     "tool": "Bash",
     "arguments": {
-      "command": "ls -la"
+      "command": "echo hello",
+      "description": "Print hello"
     },
     "canonical_tool": "shell",
-    "session_id": "51690438-15cf-42ec-80c2-29ce269bcca9",
-    "cwd": "/Users/x/repo",
-    "permission_mode": "auto",
+    "session_id": "f5c41f2b-9542-4fd4-ac52-188d142f054b",
+    "cwd": "/private/tmp/claude-501/-Users-x-guardrails/ce4cc217-dc76-4dc5-a681-2b404229a816/scratchpad/hookcap",
+    "permission_mode": "default",
     "content": "",
     "surface": "tool_args",
     "checks_content": false

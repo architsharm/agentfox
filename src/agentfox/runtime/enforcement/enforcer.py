@@ -805,6 +805,17 @@ class Enforcer(
                     evidence=risk.get("evidence", {}),
                 )
             )
+        # A non-critical risk only acts through the pack rule that matched it (an
+        # escalation, say); give that rule the same evidence a critical one carries,
+        # so an approver sees which tool the message goes out through.
+        for risk in call.action.get("risks", []):
+            rule_id = RISK_CODE_RULE_IDS.get(risk["code"])
+            if risk.get("severity") == "critical" or rule_id not in fired_ids:
+                continue
+            for existing in rules_fired:
+                if existing.get("rule_id") == rule_id and "evidence" not in existing:
+                    existing["evidence"] = risk.get("evidence", {})
+                    existing["detail"] = risk["detail"]
 
         # A read tool's output flowing into a higher-impact tool's
         # argument is a composed escalation neither tool's own scope permits

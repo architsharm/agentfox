@@ -74,6 +74,7 @@ const CONTAINMENT: PackRule[] = [
   { id: "action.history_rewrite", effect: "escalate", severity: "medium", what: "A hard reset, force clean or dropped stash." },
   { id: "control_plane.tamper", effect: "block", severity: "critical", what: "A command that would switch AgentFox's own enforcement off. The pack refuses to load without it." },
   { id: "cascade.reaches_destructive", effect: "block", severity: "critical", what: "A harmless-looking call that reaches a destructive tool through its declared triggers." },
+  { id: "cascade.reaches_notification", effect: "escalate", severity: "high", what: "A call whose declared triggers reach only a message that cannot be recalled (a tool declared effect: communication), and nothing more destructive." },
   { id: "cascade.cycle", effect: "block", severity: "critical", what: "The declared trigger graph loops." },
   { id: "cascade.blast_radius", effect: "escalate", severity: "high", what: "The declared trigger graph is unusually deep or wide." },
   { id: "access.unscoped_table", effect: "block", severity: "critical", what: "A query on a table with per-customer rows and no predicate binding it to the caller." },
