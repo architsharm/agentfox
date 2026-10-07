@@ -48,7 +48,6 @@ from agentfox.capabilities.compliance.catalog import load_catalog
 from agentfox.capabilities.detection import all_detectors, available_detectors
 from agentfox.core.config import assert_production_secrets, get_settings
 from agentfox.core.db import init_db
-from agentfox.core.headers import normalize_asgi_headers
 from agentfox.platform.providers import all_providers, available_providers
 from agentfox.runtime.availability import (
     check_services,
@@ -58,25 +57,6 @@ from agentfox.runtime.availability import (
 )
 
 log = logging.getLogger(__name__)
-
-
-class LegacyHeaderMiddleware:
-    """Accept the pre-rename ``x-agentfox-*`` request headers as ``x-agentfox-*``.
-
-    Pure ASGI rather than ``@app.middleware("http")``: the rewrite has to land in the
-    ``scope`` that routing and ``Header()`` parameters read, before any of them run.
-    The new spelling wins when a request carries both (`agentfox.core.headers`).
-    """
-
-    def __init__(self, app: Any) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
-        if scope.get("type") in ("http", "websocket"):
-            headers = normalize_asgi_headers(scope.get("headers") or [])
-            if headers is not scope.get("headers"):
-                scope = {**scope, "headers": headers}
-        await self.app(scope, receive, send)
 
 
 def _load_demo_fixtures() -> None:
@@ -585,9 +565,6 @@ def create_app() -> FastAPI:
             ),
         }
 
-    # Added last, so it is the outermost layer: every middleware and route above sees
-    # only x-agentfox-* request headers, whichever spelling the client sent.
-    app.add_middleware(LegacyHeaderMiddleware)
     return app
 
 

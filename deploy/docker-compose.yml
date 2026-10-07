@@ -33,9 +33,7 @@
 # then open http://localhost:3000/login → "Self-hosted? Sign in with an API token" and
 # paste the token. For demo data instead: `... exec gateway agentfox admin seed`.
 #
-# Settings are read as AGENTFOX_*. The pre-rename NOMETRIA_* names are still read
-# as a deprecated fallback, with a startup warning naming each one; rename them in
-# your .env, since a later release stops reading them.
+# Settings are read as AGENTFOX_*.
 #
 #   control plane   http://localhost:3000
 #   API + gateway   http://localhost:8080

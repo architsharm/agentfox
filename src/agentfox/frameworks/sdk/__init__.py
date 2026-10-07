@@ -42,7 +42,6 @@ from sqlalchemy.orm import Session
 
 from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.db import session_scope
-from agentfox.core.headers import get_header
 
 # One class each, shared with the LangGraph integration and under `AgentFoxError`:
 # see `agentfox.errors`.
@@ -541,12 +540,11 @@ class AgentFox:
             timeout=self.timeout,
         )
         result = EnforcementResult(
-            # get_header: x-agentfox-*, or x-nometria-* from a pre-rename gateway.
-            verdict=get_header(response.headers, "verdict") or "allow",
-            effective_verdict=get_header(response.headers, "effective-verdict") or "allow",
-            mode=get_header(response.headers, "mode") or "observe",
-            trace_id=get_header(response.headers, "trace"),
-            decision_id=get_header(response.headers, "decision"),
+            verdict=response.headers.get("X-AgentFox-Verdict", "allow"),
+            effective_verdict=response.headers.get("X-AgentFox-Effective-Verdict", "allow"),
+            mode=response.headers.get("X-AgentFox-Mode", "observe"),
+            trace_id=response.headers.get("X-AgentFox-Trace"),
+            decision_id=response.headers.get("X-AgentFox-Decision"),
         )
         if response.status_code == 403:
             error = response.json().get("error", {})

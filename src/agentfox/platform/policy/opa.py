@@ -177,7 +177,7 @@ class OpaPolicyEngine:
     def put_policy(self, policy: PolicyDocument) -> None:
         module = policy.key.replace("-", "_")
         httpx.put(
-            f"{self.url}/v1/policies/nometria_{module}",
+            f"{self.url}/v1/policies/agentfox_{module}",
             content=compile_to_rego(policy),
             headers={"Content-Type": "text/plain"},
             timeout=5.0,

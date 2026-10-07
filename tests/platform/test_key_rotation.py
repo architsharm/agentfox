@@ -2,8 +2,8 @@
 
 Covers `core.crypto` (decrypt with a previous key), `platform.keys.rotation`
 (re-encrypt, re-sign, the `audit.key_rotated` entry, idempotency, what it refuses to
-touch), the scheduler hook, the CLI, `/api/version`, the one-time NOMETRIA_ bridge in
-`core.config`, and that no key value ever leaves the process in any of them.
+touch), the scheduler hook, the CLI, `/api/version`, and that no key value ever leaves
+the process in any of them.
 """
 
 from __future__ import annotations
@@ -410,71 +410,6 @@ def test_no_key_value_reaches_logs_audit_entries_or_reports(monkeypatch, caplog)
     haystack = json.dumps([reports, entries]) + caplog.text
     for secret in SECRETS:
         assert secret not in haystack
-
-
-# ---------------------------------------------------------------------------
-# the one-time NOMETRIA_ bridge
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("agentfox", "nometria", "expected"),
-    [
-        (NEW_TOKEN_KEY, OLD_TOKEN_KEY, [OLD_TOKEN_KEY]),  # both set, differ: bridged
-        (NEW_TOKEN_KEY, NEW_TOKEN_KEY, []),  # same value: nothing to rotate
-        (NEW_TOKEN_KEY, None, []),  # only the new name
-        (None, OLD_TOKEN_KEY, []),  # only the old name: it is the current key
-    ],
-)
-def test_bridge_makes_the_nometria_key_previous_only_when_both_differ(
-    monkeypatch, agentfox, nometria, expected
-):
-    _configure(
-        monkeypatch,
-        AGENTFOX_TOKEN_ENCRYPTION_KEY=agentfox,
-        NOMETRIA_TOKEN_ENCRYPTION_KEY=nometria,
-        AGENTFOX_AUDIT_SIGNING_KEY=NEW_AUDIT_KEY if agentfox else None,
-        NOMETRIA_AUDIT_SIGNING_KEY=(OLD_AUDIT_KEY if nometria != agentfox else NEW_AUDIT_KEY)
-        if nometria
-        else None,
-    )
-    settings = get_settings()
-    assert settings.token_encryption_previous_keys == expected
-    assert settings.audit_signing_previous_keys == ([OLD_AUDIT_KEY] if expected else [])
-    assert settings.token_encryption_key == (agentfox or nometria)
-
-
-def test_bridge_adds_to_an_explicit_previous_list(monkeypatch):
-    third = Fernet.generate_key().decode()
-    _configure(
-        monkeypatch,
-        AGENTFOX_TOKEN_ENCRYPTION_KEY=NEW_TOKEN_KEY,
-        AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS=third,
-        NOMETRIA_TOKEN_ENCRYPTION_KEY=OLD_TOKEN_KEY,
-    )
-    assert get_settings().token_encryption_previous_keys == [third, OLD_TOKEN_KEY]
-
-
-def test_bridge_end_to_end(monkeypatch):
-    """Production's case: data under NOMETRIA_* keys, fresh AGENTFOX_* keys added."""
-    _seed_under_old_keys(monkeypatch)
-    _configure(
-        monkeypatch,
-        AGENTFOX_TOKEN_ENCRYPTION_KEY=NEW_TOKEN_KEY,
-        AGENTFOX_AUDIT_SIGNING_KEY=NEW_AUDIT_KEY,
-        NOMETRIA_TOKEN_ENCRYPTION_KEY=OLD_TOKEN_KEY,
-        NOMETRIA_AUDIT_SIGNING_KEY=OLD_AUDIT_KEY,
-    )
-    with session_scope() as s:
-        report = _report(s)
-    assert report["token_encryption"]["reencrypted"] == 2
-    assert report["audit_signing"]["resigned"] == 1
-    # The NOMETRIA_* variables are deleted afterwards: nothing breaks.
-    _configure(monkeypatch, NOMETRIA_TOKEN_ENCRYPTION_KEY=None, NOMETRIA_AUDIT_SIGNING_KEY=None)
-    with session_scope() as s:
-        assert chain.verify_range(s).valid
-        for row in s.scalars(select(AgentSigningKey)):
-            assert decrypt_secret(row.key_encrypted) == "hmac-secret"
 
 
 def test_rotation_is_atomic_per_column(monkeypatch):

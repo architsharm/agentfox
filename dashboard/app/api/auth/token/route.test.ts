@@ -33,7 +33,7 @@ describe("sign in with an API token", () => {
     expect(String(url)).toMatch(/\/api\/me$/);
     expect(init.headers.Authorization).toBe("Bearer nom_api_good");
     expect(res.headers.get("location")).toMatch(/\/app\/start$/);
-    expect(res.headers.get("set-cookie") || "").toMatch(/nometria_session=nom_api_good/);
+    expect(res.headers.get("set-cookie") || "").toMatch(/agentfox_session=nom_api_good/);
   });
 
   it("refuses a token the gateway rejects", async () => {

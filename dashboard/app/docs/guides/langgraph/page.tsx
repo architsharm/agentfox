@@ -67,7 +67,7 @@ def keep_latest(old: dict, new: dict) -> dict:
 class State(TypedDict, total=False):
     messages: Annotated[list, add_messages]
     docs: str
-    __nometria__: Annotated[dict[str, Any], keep_latest]  # AgentFox's governance state
+    __agentfox__: Annotated[dict[str, Any], keep_latest]  # AgentFox's governance state
 
 
 guard = AgentFoxGuard(
@@ -246,7 +246,7 @@ resumed: Ticket filed.`}</Output>
       <h2>The governance key in your state</h2>
       <p>
         The guard returns its bookkeeping (trace id, last verdict, what retrieval nodes
-        read, the tools called and each step) under the state key <code>__nometria__</code>{" "}
+        read, the tools called and each step) under the state key <code>__agentfox__</code>{" "}
         (exported as <code>STATE_KEY</code>). Declare it in your state, as in{" "}
         <code>graph.py</code>:
       </p>
@@ -265,7 +265,7 @@ resumed: Ticket filed.`}</Output>
         <li><strong>A grant&apos;s <code>--limit</code> refuses with &quot;this call passed None&quot;</strong>: the tool node found no arguments. Pass <code>arguments=</code>, or put the model&apos;s tool call in <code>state[&quot;messages&quot;]</code>.</li>
         <li><strong>A node refused with <code>capability.denied</code></strong>: grant the tool to the agent; the first run registers the agent so the grant can name it.</li>
         <li><strong>A paused run cannot be resumed</strong>: compile the graph with a checkpointer (<code>InMemorySaver</code> for tests) and pass the same <code>thread_id</code>.</li>
-        <li><strong>Trace id missing from the result</strong>: declare <code>__nometria__</code> in the state, with a merging reducer.</li>
+        <li><strong>Trace id missing from the result</strong>: declare <code>__agentfox__</code> in the state, with a merging reducer.</li>
       </ul>
 
       <h2>Limits</h2>

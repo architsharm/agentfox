@@ -110,10 +110,7 @@ export default function Page() {
       <Code>{`python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`}</Code>
       <p>
-        Every setting is on <Link href="/docs/reference/config">Configuration</Link>. The
-        pre-rename <code>NOMETRIA_*</code> names are still read as a deprecated fallback,
-        with a startup warning naming each one; where both are set, <code>AGENTFOX_*</code>{" "}
-        wins. Rename them: a later release stops reading them.
+        Every setting is on <Link href="/docs/reference/config">Configuration</Link>.
       </p>
 
       <h2 id="python">The gateway as a Python app</h2>
@@ -299,9 +296,10 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
         <code>https://&lt;your-dashboard-host&gt;/api/auth/github/callback</code>, exactly,
         including the scheme. The blueprint asks for{" "}
         <code>AGENTFOX_AUDIT_SIGNING_KEY</code> once, on creation: paste a random value and
-        keep a copy. A deployment made from an older blueprint has it as{" "}
-        <code>NOMETRIA_AUDIT_SIGNING_KEY</code>; copy that value to the new name rather than
-        generating a new one, or entries signed before the change stop verifying. The dashboard runbook, including Fly.io, is{" "}
+        keep a copy. To change it later, keep the old value as{" "}
+        <code>AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS</code> and run{" "}
+        <code>agentfox admin keys rotate</code> (<code>docs/deployment/key-rotation.md</code>).
+        The dashboard runbook, including Fly.io, is{" "}
         <code>deploy/README-dashboard.md</code>.
       </p>
 

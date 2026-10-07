@@ -44,7 +44,7 @@ def _keep_latest(old: dict, new: dict) -> dict:
 class State(TypedDict, total=False):
     messages: Annotated[list, add_messages]
     docs: str
-    __nometria__: Annotated[dict[str, Any], _keep_latest]
+    __agentfox__: Annotated[dict[str, Any], _keep_latest]
 
 
 class PlainState(TypedDict, total=False):
@@ -52,7 +52,7 @@ class PlainState(TypedDict, total=False):
 
     messages: Annotated[list, add_messages]
     docs: str
-    __nometria__: dict[str, Any]
+    __agentfox__: dict[str, Any]
 
 
 @pytest.fixture

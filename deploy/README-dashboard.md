@@ -23,11 +23,8 @@ ungoverned agent code, and issues them an API token their agents authenticate wi
 Two values must be byte-identical on the API (Vercel) and the UI (Render or Fly),
 and one exists only on the API.
 
-Every variable here is read as `AGENTFOX_*`. The pre-rename `NOMETRIA_*` names are
-still accepted by both services as a deprecated fallback (each logs a warning naming
-the old variables it used), so an existing deployment keeps working until it is
-renamed; if both are set, the `AGENTFOX_*` value wins. Renaming the hosted
-deployment: [`docs/deployment/vercel-env-rename.md`](../docs/deployment/vercel-env-rename.md).
+Every variable here is read as `AGENTFOX_*`. Changing the encryption or audit signing
+key: [`docs/deployment/key-rotation.md`](../docs/deployment/key-rotation.md).
 
 | Value | Where | What breaks without it |
 |---|---|---|

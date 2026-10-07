@@ -24,16 +24,11 @@ def workdir(tmp_path, monkeypatch):
     cwd = tmp_path / "project"
     cwd.mkdir()
     monkeypatch.chdir(cwd)
-    # Both spellings, because Settings reads both prefixes and the current one wins.
     for var in (
         "AGENTFOX_CONFIG",
-        "NOMETRIA_CONFIG",
         "AGENTFOX_ENVIRONMENT",
         "AGENTFOX_DEFAULT_POLICY_MODE",
         "AGENTFOX_ENABLED_DETECTORS",
-        "NOMETRIA_ENVIRONMENT",
-        "NOMETRIA_DEFAULT_POLICY_MODE",
-        "NOMETRIA_ENABLED_DETECTORS",
     ):
         monkeypatch.delenv(var, raising=False)
     reset_settings_cache()

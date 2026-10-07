@@ -566,35 +566,6 @@ def doctor(
         else:
             add("ok", "key rotation", "no previous key configured; nothing to rotate")
 
-    # The pre-rename names still work, which is exactly why nobody notices them. This
-    # line is the checklist item to clear before that fallback is removed: it names
-    # every NOMETRIA_* still set, including ones nothing reads (a Neon integration's
-    # NOMETRIA_DATABASE_* family) and ones an AGENTFOX_* twin already overrides.
-    from agentfox.core.config import legacy_env_vars_set, legacy_settings_in_use
-
-    legacy_in_use = legacy_settings_in_use()
-    legacy_idle = [name for name in legacy_env_vars_set() if name not in legacy_in_use]
-    if legacy_in_use or legacy_idle:
-        parts = []
-        if legacy_in_use:
-            parts.append("in use: " + ", ".join(legacy_in_use))
-        if legacy_idle:
-            parts.append(
-                "set but not read (shadowed by an AGENTFOX_* twin, or not a setting): "
-                + ", ".join(legacy_idle)
-            )
-        add(
-            "warn",
-            "legacy names",
-            "pre-rename settings still present — "
-            + "; ".join(parts)
-            + ". Rename each NOMETRIA_<X> to AGENTFOX_<X> (and nometria.toml / [nometria] "
-            "to agentfox.toml / [agentfox]), then remove the old ones; a later release "
-            "stops reading them.",
-        )
-    else:
-        add("ok", "legacy names", "no pre-rename NOMETRIA_* variables or nometria.toml in use")
-
     # Containment before detection, deliberately. Every published adversarial-robustness
     # result says a determined attacker eventually gets past content inspection; what is
     # left at that moment is what an agent is *allowed to do*. That is declared, not

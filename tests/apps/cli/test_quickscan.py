@@ -97,11 +97,7 @@ def test_default_run_does_not_prompt_or_submit_when_not_a_tty(tmp_path: Path, mo
 
 
 def test_submit_without_a_configured_control_plane_fails_gracefully(tmp_path: Path, monkeypatch):
-    # Both names, because submit.py accepts AGENTFOX_ with NOMETRIA_ as the
-    # legacy alias — unsetting only one leaves the other able to satisfy the
-    # check this test exists to exercise.
     monkeypatch.delenv("AGENTFOX_API_URL", raising=False)
-    monkeypatch.delenv("NOMETRIA_API_URL", raising=False)
     result = runner.invoke(app, ["scan", "sessions", str(tmp_path), "--skip-sessions", "--submit"])
     assert result.exit_code == 0, result.output
     assert "Could not submit" in flat(result.output)

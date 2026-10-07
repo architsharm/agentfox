@@ -33,12 +33,8 @@
 #      gateway's shell (`agentfox admin users create you@example.com --role owner
 #      --token`) and sign in on /login with that token.
 #
-# Settings are AGENTFOX_*. A deployment created from an older copy of this blueprint
-# has NOMETRIA_* variables instead; both services still read those as a deprecated
-# fallback (the gateway logs a warning naming each one, and `agentfox doctor` lists
-# them). Rename them in the Render dashboard by copying each value to its
-# AGENTFOX_* name, then delete the old one — see the audit signing key below for
-# the one that must never be regenerated.
+# Settings are AGENTFOX_*. See the audit signing key below for the one that must never
+# be regenerated without rotating (docs/deployment/key-rotation.md).
 #
 # Full runbook, including Fly, Docker Compose and bare metal: deploy/README-dashboard.md
 
@@ -91,11 +87,10 @@ services:
         value: /var/agentfox/evidence
       # Never seen by us. Losing it does not lose the audit chain, but it does end
       # the ability to verify entries signed before the change — see Appendix
-      # E.2.2. `sync: false`, not `generateValue`: this name replaced the pre-rename
-      # NOMETRIA_AUDIT_SIGNING_KEY, and a generated value under the new name would
-      # win over the old one on an existing deployment's next blueprint sync,
-      # silently rotating its key. Prompted for once, on creation; an existing
-      # deployment copies its NOMETRIA_AUDIT_SIGNING_KEY value here by hand.
+      # E.2.2. `sync: false`, not `generateValue`: a generated value would change on a
+      # blueprint sync and silently rotate the key. Prompted for once, on creation. To
+      # change it, keep the old value in AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS and run
+      # `agentfox admin keys rotate` (docs/deployment/key-rotation.md).
       - key: AGENTFOX_AUDIT_SIGNING_KEY
         sync: false
       # Authenticates the dashboard's GitHub sign-in call (/api/auth/github/provision),
@@ -103,11 +98,9 @@ services:
       # so the two can never differ. It used to be generated on the dashboard only,
       # which left this service on the published default: sign-in failed, and anyone
       # who read the source could mint owner tokens on the gateway directly. The
-      # gateway now refuses to start outside development on the default. Renamed
-      # from NOMETRIA_SERVICE_AUTH_SECRET: on an existing deployment a blueprint sync
-      # generates a fresh value under this name for the gateway and copies the same
-      # one to the dashboard, so the pair stays matched (it is a shared secret
-      # between the two services, not a key anything was signed with).
+      # gateway now refuses to start outside development on the default. A blueprint
+      # sync copies the same value to the dashboard, so the pair stays matched (it is a
+      # shared secret between the two services, not a key anything was signed with).
       - key: AGENTFOX_SERVICE_AUTH_SECRET
         generateValue: true
       # The five zero-dependency defaults. The classifier and safety models the

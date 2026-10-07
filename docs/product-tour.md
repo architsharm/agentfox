@@ -399,9 +399,7 @@ Everything runs on your own infrastructure. There is no licence check, no phone-
 default egress: a fresh install ships with `AGENTFOX_ALLOW_EGRESS=false` and the `echo` provider,
 so it runs end to end with no model and no API key. Point it at a model when you want one.
 
-Settings are `AGENTFOX_*` environment variables. The pre-rename `NOMETRIA_*` names are still read
-as a deprecated fallback, with a startup warning naming each one; where both are set,
-`AGENTFOX_*` wins. The full list is
+Settings are `AGENTFOX_*` environment variables. The full list is
 [plugins/shared/reference/config.md](../plugins/shared/reference/config.md).
 
 **Two secrets are required outside development.** With `AGENTFOX_ENVIRONMENT` set to anything but

@@ -255,7 +255,7 @@ earlier).
 
 | Phase | Work | Size |
 |---|---|---|
-| 0. Hygiene | Delete stale `__pycache__` folders; `core/vocab.py`; one blocked/approval exception base used by all seven ingress paths (started as `agentfox/errors.py`); move `core/seed.py` to `fixtures/`. The Nometria → AgentFox rename is no longer in this phase (section 9) | small |
+| 0. Hygiene | Delete stale `__pycache__` folders; `core/vocab.py`; one blocked/approval exception base used by all seven ingress paths (started as `agentfox/errors.py`); move `core/seed.py` to `fixtures/`. The rest of the product rename is no longer in this phase (section 9) | small |
 | 1. Layers | Create `platform/`, `capabilities/`, `frameworks/`, `exporters/`, `apps/`; break the cycles listed in section 3; add import-linter to CI | medium, mostly moves |
 | 2. Harness SPI | `harnesses/base.py`; move all Claude-specific constants from cli, policy and discovery into `harnesses/claude_code/`; conformance suite; rename `harness/` to `plugins/` | medium |
 | 3. Second harness | Codex CLI (contract closest to Claude's, so it proves the interface cheaply), then Cursor. Needs real payloads captured from each tool. Deferred until the restructure is done (section 9) | small each |
@@ -275,9 +275,9 @@ proves the business-pack story.
 4. **Deferred until the restructure is done:**
    - new harnesses (Codex first, then Cursor);
    - stopping the committed vendored wheels;
-   - the rest of the Nometria → AgentFox rename (the `NOMETRIA_*` environment fallback, the
-     `nometria` console script and the `x-nometria-*` headers), because production
-     environments still set them.
+   - the rest of the product rename (the pre-rename environment-variable fallback, console
+     script and request headers), because production environments still set them. Since
+     finished.
 
 ## 10. Progress
 
