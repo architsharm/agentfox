@@ -434,7 +434,7 @@ proves the business-pack story.
 |---|---|
 | 0. Hygiene | Done |
 | 1. Layers | Done, except the two import-linter exceptions named above (evaluation -> runtime). Intra-layer cycles remain between `capabilities/detection` and `capabilities/judgment` (the judgment detector, and egress redaction through detection's PII detector) and between `capabilities/evaluation` and `capabilities/monitoring` (opting a probe target in creates its monitor) |
-| 2. Harness SPI | Done. `agentfox hooks capture` is not built (`just new-harness` was added in phase 5); a PostToolUse fixture should be re-captured verbatim at the next probe |
+| 2. Harness SPI | Done. `agentfox hooks capture` is not built (`just new-harness` was added in phase 5); the PreToolUse and PostToolUse fixtures were re-captured verbatim from Claude Code 2.1.292 |
 | 3. Second harness | Deferred (section 9) |
 | 4. Packs | Done. Remaining: compliance packs per framework if a framework ever ships controls of its own, packs' fixtures beyond the demo world's two desks (the HR screening agent has no pack), CODEOWNERS generated from pack owners, and a check registry entry for the action analysis and cascade/data-access risks, which still run in the runtime |
 | 5. Repo outside src | Done, except: building wheels at deploy time (deferred, section 9); `docs/getting-started.md` and `docs/product-tour.md` are user docs still in `docs/` (fold into the website docs, then delete); three comments and one data string in `src/` still cite pre-phase-5 paths (`scripts/api_routes.py` in `apps/gateway/app.py` and `routes/inline.py`, `benchmarks/agentdojo_e2e/` in `discovery/exposure.py`, `benchmarks/data_generalization/` in `detection/data/injection_corpus.json`), left so this phase needed no wheel rebuild |

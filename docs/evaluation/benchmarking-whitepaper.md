@@ -135,8 +135,8 @@ Well-structured identifier types (`EMAIL`, `IBAN`, `IP_ADDRESS`) hold 90%+ preci
 |---|---|---|---|
 | A — multi-turn / payload splitting | "Ignore all previous instructions" split across 3 separate API calls | 2/2 correct — none of the 3 fragments fires alone, only the assembled window | Flags all 3 fragments individually — not multi-turn awareness, just over-triggering |
 | B — indirect injection via tool output | 20 cases: hidden instructions, poisoned MCP tool descriptions | 100.0% recall / 66.7% precision | 90.0% recall / 81.8% precision |
-| C — tool-parameter exploitation | Wildcard scope, SQL fragments, path traversal in unnamed arguments | 8/10 correct (all 5 attacks blocked; 2 benign `tickets.update` controls blocked by the cascade rule) | Cannot participate — scans text, not structured JSON |
-| D — excessive agency / privilege escalation | 6 scenarios against real shipped capability grants | 5/6 correct (the benign `tickets.update` control is blocked by the cascade rule) | Cannot participate — no capability model |
+| C — tool-parameter exploitation | Wildcard scope, SQL fragments, path traversal in unnamed arguments | 8/10 correct (all 5 attacks blocked; 2 benign `tickets.update` controls held for approval by the cascade rule, scored as interventions) | Cannot participate — scans text, not structured JSON |
+| D — excessive agency / privilege escalation | 6 scenarios against real shipped capability grants | 5/6 correct (the benign `tickets.update` control is held for approval by the cascade rule, scored as an intervention) | Cannot participate — no capability model |
 
 Full methodology: [`benchmarks/agent_security/README.md`](../../benchmarks/agent_security/README.md).
 

@@ -121,6 +121,7 @@ from agentfox.core.models.public import (
 from agentfox.core.models.registry import (
     MONITOR_KINDS,
     OUTPUT_TRUST_LEVELS,
+    TOOL_EFFECT_CLASSES,
     Agent,
     AgentControl,
     AlertChannel,
@@ -185,6 +186,7 @@ __all__ = [
     "MemoryEntry",
     "Monitor",
     "OUTPUT_TRUST_LEVELS",
+    "TOOL_EFFECT_CLASSES",
     "Obligation",
     "PROPOSAL_OPEN_FINGERPRINT",
     "PlaygroundSandbox",

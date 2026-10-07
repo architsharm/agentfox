@@ -1,18 +1,19 @@
 {
-  "source": "The Bash PostToolUse payload from the 2.1.220 live probe behind adapter.VERIFIED['PostToolUse'] (tests/hooks/test_hook_events.py POST). Identifiers were shortened when it was recorded (session_id 's1', tool_use_id 'toolu_1'), and it does not carry every field a PreToolUse payload does; re-capture it with the next probe.",
+  "source": "The PostToolUse payload captured verbatim from the same live headless Claude Code 2.1.292 session as tool.pre.json (same session_id and tool_use_id; the Bash call `echo hello`). The only edit is the home-directory user name, anonymised to x (/Users/x, and the -Users-x- segments of the mangled project paths).",
   "event": {
     "harness": "claude",
     "event": "PostToolUse",
     "kind": "tool.post",
     "tool": "Bash",
     "arguments": {
-      "command": "gh issue view 7"
+      "command": "echo hello",
+      "description": "Print hello"
     },
     "canonical_tool": "shell",
-    "session_id": "s1",
-    "cwd": "/repo",
-    "permission_mode": "auto",
-    "content": "thanks for the report",
+    "session_id": "f5c41f2b-9542-4fd4-ac52-188d142f054b",
+    "cwd": "/private/tmp/claude-501/-Users-x-guardrails/ce4cc217-dc76-4dc5-a681-2b404229a816/scratchpad/hookcap",
+    "permission_mode": "default",
+    "content": "hello",
     "surface": "tool_result",
     "checks_content": true
   },

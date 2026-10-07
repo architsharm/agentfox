@@ -113,6 +113,17 @@ the file it came from.
 
 ### Changed
 
+- **A cascade that only sends a message escalates instead of blocking.** A tool can be
+  declared `effect: communication` (`agentfox declare tool --effect communication`, or
+  `effect:` in a pack's `world.yaml`): its irreversible effect is a message leaving, not
+  data destroyed, money moved or state changed. When every destructive tool a call's
+  declared triggers reach is such a tool, `cascade_risk` reports
+  `cascade-reaches-notification` (high) and the new `cascade.reaches_notification` rule
+  in `tool-containment` holds the call for approval; one reached tool outside that class
+  and it is `cascade.reaches_destructive` (block), as before. Never guessed from a tool's
+  name: an undeclared tool counts as destructive. The demo world declares `email.send`
+  this way, so an ordinary `tickets.update` is held for approval rather than refused.
+
 - **Nometria to AgentFox, environment and headers (stage A).** Everything the product
   writes and documents is now `AGENTFOX_*`, `agentfox.toml` / `[agentfox]` and
   `X-AgentFox-*`: the gateway's response headers (`X-AgentFox-Trace`, `-Verdict`,

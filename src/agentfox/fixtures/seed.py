@@ -247,6 +247,7 @@ def seed(
             impact=spec.get("impact", "read"),
             schema=spec.get("schema"),
             description=spec.get("description", ""),
+            effect_class=spec.get("effect"),
         )
         if "triggers" in spec:
             tool.triggers_json = spec["triggers"]

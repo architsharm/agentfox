@@ -36,6 +36,16 @@ def tools_declare(
             "trusted only for a system of record you control, such as a CRM read."
         ),
     ),
+    effect: str | None = typer.Option(
+        None,
+        "--effect",
+        help=(
+            "communication — this tool's irreversible effect is a message leaving (an "
+            "email, a chat message, a notification), not data destroyed, money moved or "
+            "state changed. A cascade whose only irreversible tail is such a tool is "
+            "escalated for approval rather than blocked. Pass '' to clear."
+        ),
+    ),
 ) -> None:
     """Declare a tool and what it can do.
 
@@ -43,12 +53,15 @@ def tools_declare(
     a tainted argument can reach. This is the command that makes least privilege real, and
     it is deliberately the first thing `agentfox init` points at.
     """
-    from agentfox.core.models import OUTPUT_TRUST_LEVELS
+    from agentfox.core.models import OUTPUT_TRUST_LEVELS, TOOL_EFFECT_CLASSES
     from agentfox.platform.registry.service import upsert_tool
 
     valid = ("read", "write", "high_impact", "irreversible")
     if impact not in valid:
         console.print(f"[red]impact must be one of: {', '.join(valid)}[/]")
+        raise typer.Exit(2)
+    if effect and effect not in TOOL_EFFECT_CLASSES:
+        console.print(f"[red]effect must be one of: {', '.join(TOOL_EFFECT_CLASSES)}[/]")
         raise typer.Exit(2)
     if output_trust is not None and output_trust not in OUTPUT_TRUST_LEVELS:
         console.print(f"[red]output trust must be one of: {', '.join(OUTPUT_TRUST_LEVELS)}[/]")
@@ -62,6 +75,7 @@ def tools_declare(
             impact=impact,
             description=description,
             output_trust=output_trust,
+            effect_class=effect,
         )
         if triggers:
             tool.triggers_json = [t.strip() for t in triggers.split(",") if t.strip()]
