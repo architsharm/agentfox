@@ -2,7 +2,7 @@
 #
 # The UI is a pure client of the API (principle X-5), so this deploys one web
 # service and no database: the API on Vercel already owns the Neon connection, and
-# nothing here talks to Postgres. Point NOMETRIA_API_URL at that API.
+# nothing here talks to Postgres. Point AGENTFOX_API_URL at that API.
 #
 # Secrets are `sync: false` on purpose — Render prompts for them once at create
 # time and stores them itself, so no key is ever committed here.
@@ -11,10 +11,13 @@
 #
 # After the first deploy, set the GitHub OAuth app's callback URL to
 # https://<your-render-host>/api/auth/github/callback, and ADD https://<your-render-host>
-# to the API's NOMETRIA_PLAYGROUND_CORS_ORIGIN, which is comma-separated. Replacing the
+# to the API's AGENTFOX_PLAYGROUND_CORS_ORIGIN, which is comma-separated. Replacing the
 # value instead of appending fixes this host's playground by breaking the other one's.
-# The product's settings are AGENTFOX_* (NOMETRIA_* still read as a fallback), but the
-# dashboard reads only the NOMETRIA_* names below, so they keep the old prefix.
+# Settings are AGENTFOX_*. A service created from an older copy of this file has
+# NOMETRIA_* variables; the dashboard still reads those as a deprecated fallback
+# (logging a warning per name). Copy each value to its AGENTFOX_* name in the Render
+# dashboard and delete the old one: a blueprint sync does not do it for you, since
+# secrets here are `sync: false`. docs/deployment/vercel-env-rename.md has the order.
 # Full runbook: deploy/README-dashboard.md
 services:
   - type: web
@@ -41,14 +44,14 @@ services:
       - key: HOSTNAME
         value: 0.0.0.0
       # The control plane this UI drives. No trailing slash.
-      - key: NOMETRIA_API_URL
+      - key: AGENTFOX_API_URL
         value: https://guardrails-api.vercel.app
       # Sign-in. From the GitHub OAuth app.
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
-      # Must be byte-identical to the API's NOMETRIA_SERVICE_AUTH_SECRET: it is what
+      # Must be byte-identical to the API's AGENTFOX_SERVICE_AUTH_SECRET: it is what
       # authenticates the one privileged call that provisions a new account.
-      - key: NOMETRIA_SERVICE_AUTH_SECRET
+      - key: AGENTFOX_SERVICE_AUTH_SECRET
         sync: false

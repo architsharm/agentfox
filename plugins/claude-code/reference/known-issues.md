@@ -17,7 +17,7 @@ Each entry: what breaks, how to work around it, where the fix belongs. When you 
    says so. Tool calls with tainted arguments, denied capabilities, runaway loops and
    destructive cascades are escalated or blocked from the start. Check with `agentfox policy list`.
 2. **`agentfox demo` writes demo agents, findings and an evidence package** into whatever DB
-   `NOMETRIA_DATABASE_URL` points at. It restores `baseline`'s mode when it finishes, but
+   `AGENTFOX_DATABASE_URL` points at. It restores `baseline`'s mode when it finishes, but
    the data stays. Run it against a scratch DB.
 3. **`agentfox admin seed` creates agent keys only on the first seed**, and masks them unless
    `--show-keys` is passed. Never paste a full key back to the user or into a file.
@@ -52,7 +52,7 @@ it still doesn't do:
 
 - **Streaming is checked at the end.** A streamed response is checked when it finishes, so
   chunks already delivered can't be recalled. Cutting a stream mid-response needs the gateway
-  with `NOMETRIA_STREAMING_MODE=windowed`.
+  with `AGENTFOX_STREAMING_MODE=windowed`.
 - **Some stream helpers aren't governed.** Anthropic's `messages.stream()`, LangChain
   `stream`/`astream`, and OpenAI `with_raw_response`/`with_streaming_response` aren't wrapped.
 - **Stream type checks fail.** The wrapped stream isn't an instance of the SDK's own stream
@@ -60,7 +60,7 @@ it still doesn't do:
 - **Redactions don't reach the provider.** A pre-flight redaction is recorded, but the
   in-process call still sends the original text. Use the SDK or the gateway when inbound
   redaction must reach the provider.
-- **Fail-closed covers pre-flight only.** `NOMETRIA_FAIL_MODE=closed` refuses a call whose
+- **Fail-closed covers pre-flight only.** `AGENTFOX_FAIL_MODE=closed` refuses a call whose
   pre-flight crashed. A post-flight crash still lets the response through, with a warning.
 - **Async paths block briefly.** Database work there is synchronous and blocks the event loop
   for a moment.

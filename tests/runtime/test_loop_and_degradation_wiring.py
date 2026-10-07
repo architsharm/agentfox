@@ -24,7 +24,7 @@ from agentfox.runtime.availability import (
 )
 from tests.conftest import as_user
 
-AGENT = {"X-Nometria-Agent": "support-triage"}
+AGENT = {"X-AgentFox-Agent": "support-triage"}
 
 
 @pytest.fixture(autouse=True)
@@ -39,7 +39,7 @@ def _clean_ledger():
 def _with(session: str | None = None, **extra) -> dict[str, str]:
     headers = {**AGENT, **extra}
     if session:
-        headers["X-Nometria-Session"] = session
+        headers["X-AgentFox-Session"] = session
     return headers
 
 
@@ -86,7 +86,7 @@ def test_a_repeating_tool_call_loop_through_the_proxy_is_stopped(client):
     assert error["rules_fired"][0]["rule_id"] == "loop.runaway"
     assert "identical arguments" in error["message"]
     assert error["trace_id"], "a refusal without an auditable reason is not allowed (X-4)"
-    assert response.headers["X-Nometria-Verdict"] == "block"
+    assert response.headers["X-AgentFox-Verdict"] == "block"
 
 
 def test_an_alternating_cycle_is_stopped_where_per_tool_counting_cannot_see_it(client):
@@ -168,7 +168,7 @@ def test_a_normal_multi_step_loop_under_the_limit_is_not_stopped(client):
         headers=_with("sess-progress"),
     )
     assert response.status_code == 200
-    assert response.headers["X-Nometria-Verdict"] == "allow"
+    assert response.headers["X-AgentFox-Verdict"] == "allow"
 
 
 def test_the_same_tool_with_different_arguments_is_progress_not_a_loop(client):
@@ -209,8 +209,8 @@ def test_an_ordinary_single_turn_chat_is_untouched(client):
 
 
 def test_the_configured_limit_is_what_decides(client, monkeypatch):
-    """The budget is `NOMETRIA_LOOP_*`, not a constant compiled into the route."""
-    monkeypatch.setenv("NOMETRIA_LOOP_MAX_REPEATS", "99")
+    """The budget is `AGENTFOX_LOOP_*`, not a constant compiled into the route."""
+    monkeypatch.setenv("AGENTFOX_LOOP_MAX_REPEATS", "99")
     reset_settings_cache()
     response = client.post(
         "/v1/chat/completions",
@@ -248,7 +248,7 @@ def _break_detector_pipeline(monkeypatch) -> None:
     """A real probe firing on real configuration: every enabled detector missing
     means the pipeline as a whole has nothing to run."""
     monkeypatch.delenv("AGENTFOX_ENABLED_DETECTORS", raising=False)
-    monkeypatch.setenv("NOMETRIA_ENABLED_DETECTORS", '["nope.does_not_exist"]')
+    monkeypatch.setenv("AGENTFOX_ENABLED_DETECTORS", '["nope.does_not_exist"]')
     reset_settings_cache()
     reset_degradation_ledger()
 
@@ -257,17 +257,17 @@ def test_a_degraded_dependency_fails_open_and_is_recorded(client, monkeypatch):
     """Fail-open is legitimate — but the request must be recorded, and the caller
     must be told, or a control that is down is indistinguishable from one that works.
     """
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", "open")
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "open")
     _break_detector_pipeline(monkeypatch)
 
     response = client.post("/v1/guard/input", json={"agent": "nobody", "content": "hi"})
     assert response.status_code == 200, "fail open keeps the customer's agent working"
-    assert response.headers["X-Nometria-Degraded"] == DETECTOR_PIPELINE
+    assert response.headers["X-AgentFox-Degraded"] == DETECTOR_PIPELINE
     assert get_degradation_ledger().history(DETECTOR_PIPELINE), "the record is the point"
 
 
 def test_a_degraded_dependency_fails_closed_when_declared_closed(client, monkeypatch):
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", "closed")
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "closed")
     _break_detector_pipeline(monkeypatch)
 
     response = client.post("/v1/guard/input", json={"agent": "nobody", "content": "hi"})
@@ -282,7 +282,7 @@ def test_a_degraded_dependency_fails_closed_when_declared_closed(client, monkeyp
 def test_fail_open_converts_to_closed_once_it_covers_too_much_traffic(client, monkeypatch):
     """Bounded, not indefinite. A control open across a whole window is not degraded,
     it is absent, and the system should stop pretending otherwise."""
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", "open")
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "open")
     _break_detector_pipeline(monkeypatch)
 
     first = client.post("/v1/guard/input", json={"agent": "nobody", "content": "hi"})
@@ -296,7 +296,7 @@ def test_a_degraded_control_is_visible_to_an_operator_on_the_api(client, monkeyp
     """Without reading logs. `/api/health` still reports status ok — the process is
     up — but a fail-open system reports success while checking nothing, so the 200
     alone cannot distinguish a working control from an absent one."""
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", "open")
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "open")
     _break_detector_pipeline(monkeypatch)
 
     health = client.get("/api/health").json()
@@ -327,7 +327,7 @@ def test_reading_the_status_view_does_not_change_it(client, monkeypatch):
     """An earlier version recorded what it probed, so opening the dashboard pushed a
     fail-open control towards its budget. A status view that changes the system by
     being read is worse than none."""
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", "open")
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "open")
     _break_detector_pipeline(monkeypatch)
 
     for _ in range(5):
@@ -365,7 +365,7 @@ def test_a_probe_that_throws_is_evidence_not_a_500(client, monkeypatch):
         raise RuntimeError("connection refused")
 
     monkeypatch.setitem(availability._PROBES, DATABASE, explode)
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", "closed")
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "closed")
     reset_settings_cache()
     reset_degradation_ledger()
 
@@ -378,7 +378,7 @@ def test_a_probe_that_throws_is_evidence_not_a_500(client, monkeypatch):
 def test_the_control_plane_is_not_locked_out_by_the_outage(client, monkeypatch):
     """An operator diagnosing a degradation must be able to reach the endpoint that
     describes it — the same reasoning that scopes the admission gate to `/v1/*`."""
-    monkeypatch.setenv("NOMETRIA_FAIL_MODE", "closed")
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "closed")
     _break_detector_pipeline(monkeypatch)
 
     assert client.get("/api/health").status_code == 200

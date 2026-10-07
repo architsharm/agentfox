@@ -1,6 +1,6 @@
 """Cross-lingual parity — does the product work as well in German as in English?
 
-    PYTHONPATH=src NOMETRIA_CONFIG=none \
+    PYTHONPATH=src AGENTFOX_CONFIG=none \
       python -m benchmarks.multilingual.run_multilingual_parity
 
 **The criticism this answers.** AI-security products are evaluated in English and
@@ -1383,16 +1383,16 @@ def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dic
     else:
         os.environ["AGENTFOX_ENABLED_DETECTORS"] = json.dumps(config["detectors"])
     if config["detector_timeout_ms"] is None:
-        os.environ.pop("NOMETRIA_DETECTOR_TIMEOUT_MS", None)
+        os.environ.pop("AGENTFOX_DETECTOR_TIMEOUT_MS", None)
     else:
-        os.environ["NOMETRIA_DETECTOR_TIMEOUT_MS"] = str(config["detector_timeout_ms"])
+        os.environ["AGENTFOX_DETECTOR_TIMEOUT_MS"] = str(config["detector_timeout_ms"])
 
-    # `NOMETRIA_DATABASE_URL` is the setting that actually exists. An earlier version
-    # of this script set `NOMETRIA_DB_PATH`, which is not a setting — Settings is
+    # `AGENTFOX_DATABASE_URL` is the setting that actually exists. An earlier version
+    # of this script set `AGENTFOX_DB_PATH`, which is not a setting — Settings is
     # `extra="ignore"`, so it was accepted silently and every run wrote to the repo's
     # shared `agentfox.db` while `wipe_db` deleted a /tmp file that was never created.
     wipe_db(DB_PATH)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
     reset_settings_cache()
     db.reset_engine()
     assert str(DB_PATH) in get_settings().database_url, "benchmark is not on its own database"

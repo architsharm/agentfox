@@ -63,9 +63,7 @@ agentfox --version`}</Code>
       <p>From source, for the latest commit:</p>
       <Code>{`pip install "git+https://github.com/architsharm/agentfox.git"`}</Code>
       <p>
-        The package installs one command, <code>agentfox</code>. (An older{" "}
-        <code>nometria</code> command is kept as an alias so existing installs keep working;
-        the docs always use <code>agentfox</code>.)
+        The package installs one command, <code>agentfox</code>.
       </p>
 
       <h2 id="extras">Extras</h2>
@@ -229,7 +227,7 @@ sqlite:////…/agentfox.db
       <Code lang="toml" title="agentfox.toml">{`# AgentFox configuration.
 # Everything here has a safe default; this file exists so the defaults are visible
 # rather than implicit. The [agentfox] table is read from the working directory;
-# environment variables (AGENTFOX_*, or the older NOMETRIA_*) override it.
+# environment variables (AGENTFOX_*) override it.
 
 [agentfox]
 environment = "development"
@@ -253,10 +251,13 @@ taint_scope = "session"`}</Code>
       <p>How settings are read, highest precedence first:</p>
       <ol>
         <li>
-          <code>AGENTFOX_*</code> environment variables (the older <code>NOMETRIA_*</code>{" "}
-          names are still read, below the new ones);
+          <code>AGENTFOX_*</code> environment variables;
         </li>
-        <li>the pre-rename <code>NOMETRIA_*</code> environment variables;</li>
+        <li>
+          the pre-rename <code>NOMETRIA_*</code> environment variables, deprecated: still
+          read, with a startup warning naming each one (<code>agentfox doctor</code> lists
+          every one still set);
+        </li>
         <li>
           the <code>[agentfox]</code> table of <code>$AGENTFOX_CONFIG</code> if set (it must
           exist), otherwise of <code>./agentfox.toml</code> in the working directory;
@@ -285,7 +286,7 @@ taint_scope = "session"`}</Code>
   ✓    database            reachable — 0 agent(s), 0 trace(s)
   !    traffic             no decisions recorded — nothing has been governed yet. Add
                            \`agentfox.auto()\` to your entry point.
-  !    authentication      the X-Nometria-User header is accepted (environment=development,
+  !    authentication      the X-AgentFox-User header is accepted (environment=development,
                            auth_mode=auto) — anyone who can reach this port is any user they name.
                            Fine locally, unacceptable anywhere else.
   !    containment         no tools declared — nothing constrains what an agent may do when a

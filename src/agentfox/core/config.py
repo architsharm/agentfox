@@ -117,6 +117,22 @@ LEGACY_ENV_PREFIX = "NOMETRIA_"
 LEGACY_CONFIG_ENV_VAR = "NOMETRIA_CONFIG"
 LEGACY_CONFIG_FILENAME = "nometria.toml"
 LEGACY_CONFIG_TABLE = "nometria"
+#: Legacy names read outside `Settings` (through `env()` or directly by a caller),
+#: without the prefix. Together with the `Settings` fields they are the legacy
+#: variables that can actually change behaviour; any other ``NOMETRIA_*`` (for
+#: example the ``NOMETRIA_DATABASE_*`` family a Neon integration generates) is set
+#: but read by nothing.
+LEGACY_DIRECT_NAMES = frozenset(
+    {
+        "CONFIG",
+        "API_URL",
+        "API_TOKEN",
+        "USER",
+        "AUDIT_KEY",
+        "AGENT",
+        "MCP_LOG_LEVEL",
+    }
+)
 #: The file `agentfox init` writes, looked up in the current working directory.
 DEFAULT_CONFIG_FILENAME = "agentfox.toml"
 #: The only table read from the file. Other tables are left for other tools.
@@ -135,10 +151,12 @@ class ConfigFileError(RuntimeError):
 def resolve_config_file() -> Path | None:
     """Which config file settings would be read from right now, if any.
 
-    ``NOMETRIA_CONFIG`` wins and must exist — the operator named it, so a typo is an
-    error rather than a silent fall-back to defaults. ``NOMETRIA_CONFIG=none`` turns file
-    loading off entirely. Otherwise ``./agentfox.toml``
-    in the current working directory, only if present.
+    ``AGENTFOX_CONFIG`` wins and must exist — the operator named it, so a typo is an
+    error rather than a silent fall-back to defaults. ``AGENTFOX_CONFIG=none`` turns
+    file loading off entirely. Otherwise ``./agentfox.toml`` in the current working
+    directory, only if present. The pre-rename ``NOMETRIA_CONFIG`` and
+    ``./nometria.toml`` are still read after those, with a deprecation warning
+    (see :func:`legacy_settings_in_use`).
     """
     explicit = os.environ.get(CONFIG_ENV_VAR) or os.environ.get(LEGACY_CONFIG_ENV_VAR)
     if explicit and explicit.strip().lower() in {"none", "off", "-"}:
@@ -164,9 +182,10 @@ _resolved = threading.local()
 
 
 class Settings(BaseSettings):
-    """Source precedence, highest first: init kwargs > ``NOMETRIA_*`` environment
-    variables > the ``[agentfox]`` table of the config file (see
-    :func:`resolve_config_file`) > the defaults below. ``.env`` files are not read.
+    """Source precedence, highest first: init kwargs > ``AGENTFOX_*`` environment
+    variables > the pre-rename ``NOMETRIA_*`` ones (deprecated, with a warning) > the
+    ``[agentfox]`` table of the config file (see :func:`resolve_config_file`) > the
+    defaults below. ``.env`` files are not read.
     """
 
     model_config = SettingsConfigDict(env_prefix=ENV_PREFIX, extra="ignore")
@@ -194,6 +213,7 @@ class Settings(BaseSettings):
         )
         sources: list[PydanticBaseSettingsSource] = [init_settings, env_settings, legacy_env]
         toml_source = _toml_source(settings_cls, path)
+        warn_legacy_settings()
         if toml_source is not None:
             sources.append(toml_source)
         sources.extend([dotenv_settings, file_secret_settings])
@@ -358,7 +378,7 @@ class Settings(BaseSettings):
     # Every newly committed Finding at or above `webhook_min_severity` is POSTed
     # to `webhook_url` (see webhooks.py). Still gated by `allow_egress` above: a
     # configured URL with egress off sends nothing. With `webhook_secret` set,
-    # each request carries `X-Nometria-Signature: sha256=<hmac of the raw body>`.
+    # each request carries `X-AgentFox-Signature: sha256=<hmac of the raw body>`.
     webhook_url: str | None = None
     webhook_secret: str | None = None
     webhook_timeout_seconds: float = 3.0
@@ -710,10 +730,8 @@ def _toml_source(
         return None
     if not isinstance(table, dict):
         raise ConfigFileError(f"{path}: `{header}` must be a table")
-    if header == LEGACY_CONFIG_TABLE:
-        log.warning(
-            "%s uses the old [%s] table; rename it to [%s]", path, LEGACY_CONFIG_TABLE, CONFIG_TABLE
-        )
+    # A [nometria] table is reported by warn_legacy_settings(), with every other
+    # pre-rename name in use, rather than by a warning of its own here.
     unknown = sorted(set(table) - set(settings_cls.model_fields))
     if unknown:
         log.warning("%s: ignoring unknown [%s] key(s): %s", path, header, ", ".join(unknown))
@@ -724,11 +742,106 @@ def env(name: str, default: str | None = None) -> str | None:
     """One environment variable read outside `Settings`, with the legacy fallback.
 
     For the handful of switches that are read straight from the environment
-    (a log level, the agent name `auto()` guesses) rather than through `Settings`.
-    ``AGENTFOX_<name>`` wins; ``NOMETRIA_<name>`` keeps working, for the same reason
-    `LEGACY_ENV_PREFIX` exists. An empty value counts as unset.
+    (a log level, the agent name `auto()` guesses, the CLI's API URL) rather than
+    through `Settings`. ``AGENTFOX_<name>`` wins; ``NOMETRIA_<name>`` keeps working,
+    for the same reason `LEGACY_ENV_PREFIX` exists, and is reported by the same
+    one-time deprecation warning. An empty value counts as unset. Add a new
+    ``name`` to `LEGACY_DIRECT_NAMES` so the warning and `agentfox doctor` know it
+    is read.
     """
-    return os.environ.get(ENV_PREFIX + name) or os.environ.get(LEGACY_ENV_PREFIX + name) or default
+    value = os.environ.get(ENV_PREFIX + name)
+    if value:
+        return value
+    legacy = os.environ.get(LEGACY_ENV_PREFIX + name)
+    if legacy:
+        warn_legacy_settings()
+        return legacy
+    return default
+
+
+def legacy_env_vars_set() -> list[str]:
+    """Every ``NOMETRIA_*`` environment variable that is set (non-empty), sorted.
+
+    Including the ones nothing reads (shadowed by an ``AGENTFOX_*`` twin, or never
+    read at all, like a Neon integration's ``NOMETRIA_DATABASE_POSTGRES_URL``): this
+    is the list to empty before the legacy fallback is removed.
+    """
+    return sorted(k for k, v in os.environ.items() if k.startswith(LEGACY_ENV_PREFIX) and v)
+
+
+def _legacy_name_is_read(name: str) -> bool:
+    bare = name[len(LEGACY_ENV_PREFIX) :]
+    return bare.lower() in Settings.model_fields or bare in LEGACY_DIRECT_NAMES
+
+
+def legacy_settings_in_use() -> list[str]:
+    """The pre-rename names this process actually takes a value from, sorted.
+
+    A ``NOMETRIA_<X>`` variable counts when ``<X>`` is something agentfox reads and
+    ``AGENTFOX_<X>`` is not set (so the legacy value is the one applied). A legacy
+    config file counts too: ``nometria.toml`` found in the working directory, or a
+    file whose settings sit under ``[nometria]`` rather than ``[agentfox]``.
+    """
+    in_use = [
+        name
+        for name in legacy_env_vars_set()
+        if _legacy_name_is_read(name)
+        and not os.environ.get(ENV_PREFIX + name[len(LEGACY_ENV_PREFIX) :])
+    ]
+    try:
+        path = resolve_config_file()
+    except ConfigFileError:
+        path = None
+    if path is not None:
+        if path.name == LEGACY_CONFIG_FILENAME:
+            in_use.append(str(path))
+        if _uses_legacy_table(path):
+            in_use.append(f"[{LEGACY_CONFIG_TABLE}] in {path}")
+    return in_use
+
+
+def _uses_legacy_table(path: Path) -> bool:
+    try:
+        with path.open("rb") as fh:
+            data = tomllib.load(fh)
+    except (OSError, tomllib.TOMLDecodeError):
+        return False
+    return CONFIG_TABLE not in data and LEGACY_CONFIG_TABLE in data
+
+
+#: What the deprecation warning has already named in this process. It fires once at
+#: startup; it fires again only if a legacy name appears that it has not named yet.
+_legacy_warned: set[str] = set()
+_legacy_lock = threading.Lock()
+
+
+def warn_legacy_settings() -> None:
+    """Log ONE deprecation warning naming every pre-rename setting in use."""
+    in_use = legacy_settings_in_use()
+    with _legacy_lock:
+        new = [name for name in in_use if name not in _legacy_warned]
+        if not new:
+            return
+        _legacy_warned.update(in_use)
+    renames = ", ".join(
+        f"{name} -> {ENV_PREFIX}{name[len(LEGACY_ENV_PREFIX) :]}"
+        if name.startswith(LEGACY_ENV_PREFIX)
+        else f"{name} -> {DEFAULT_CONFIG_FILENAME} / [{CONFIG_TABLE}]"
+        for name in in_use
+    )
+    log.warning(
+        "Deprecated pre-rename (Nometria) settings in use: %s. They still work for now, "
+        "but support for them will be removed; rename them (%s). `agentfox doctor` "
+        "lists every legacy variable still set.",
+        ", ".join(in_use),
+        renames,
+    )
+
+
+def reset_legacy_warning() -> None:
+    """Test hook — forget which legacy names were already warned about."""
+    with _legacy_lock:
+        _legacy_warned.clear()
 
 
 def is_development(settings: Settings | None = None) -> bool:

@@ -9,7 +9,7 @@ verified_against: commit 6863b8b, 2026-09-15 — template validated with `agentf
 # Policy schema
 
 Policies are YAML. They compile to Rego (`GET /api/policies/{key}/rego`), and the native
-engine evaluates them by default (`NOMETRIA_POLICY_ENGINE=opa` switches to OPA). Examples:
+engine evaluates them by default (`AGENTFOX_POLICY_ENGINE=opa` switches to OPA). Examples:
 `src/agentfox/packs/*/policies/` and
 `plugins/shared/skills/author-policy/templates/candidate-policy.yaml`.
 
@@ -83,5 +83,5 @@ where each rule came from. `agentfox policy lint` finds shadowed and conflicting
 ## Lifecycle
 
 `validate` (offline) → `lint` → `simulate` (replay recorded decisions) → save (API or
-`NOMETRIA_POLICIES_DIR` + `init`) → observe → canary or `policy enforce` → `policy observe`
+`AGENTFOX_POLICIES_DIR` + `init`) → observe → canary or `policy enforce` → `policy observe`
 to roll back. The procedure is in `plugins/shared/skills/author-policy/SKILL.md`.

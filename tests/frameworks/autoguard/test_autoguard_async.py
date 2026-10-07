@@ -412,7 +412,7 @@ async def test_async_patching_is_idempotent(app_db, fake_openai):
     assert next(p for p in second.patches if p.library == "openai.async").detail == (
         "already patched"
     )
-    assert getattr(completions.AsyncCompletions.create, "__nometria__", False)
+    assert getattr(completions.AsyncCompletions.create, "__agentfox__", False)
     await completions.AsyncCompletions().create(model="gpt-4o", messages=_HI)
     assert len(calls) == 1, "the provider must be called exactly once"
     assert state().calls_governed == 1

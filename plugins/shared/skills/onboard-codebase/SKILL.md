@@ -22,7 +22,7 @@ agentfox admin version
   poetry env), not globally. The install line is `pip install "git+https://github.com/architsharm/agentfox.git"`.
 - **Separate database:** ask whether they want one per project. The default is a
   `agentfox.db` next to the package. For a project-local DB, export
-  `NOMETRIA_DATABASE_URL=sqlite:///$PWD/.agentfox/agentfox.db` and add `.agentfox/` to
+  `AGENTFOX_DATABASE_URL=sqlite:///$PWD/.agentfox/agentfox.db` and add `.agentfox/` to
   `.gitignore`.
 - **Config file:** `init` writes `agentfox.toml` in the project, and every process started in
   that directory reads it. Environment variables still win. Tell the user it's live config,
@@ -72,7 +72,7 @@ agentfox.auto(agent="<slug>")      # follows policy modes: baseline observes, so
 ```
 
 Choose `<slug>` with the user: a stable, lowercase service name such as `support-triage`.
-It can also come from `NOMETRIA_AGENT`. Show the diff. Don't pass `mode="enforce"`. The default
+It can also come from `AGENTFOX_AGENT`. Show the diff. Don't pass `mode="enforce"`. The default
 follows each policy's mode, so blocking starts only when someone runs `policy enforce`. A
 killed or quarantined agent is refused under the default.
 
@@ -95,7 +95,7 @@ tool by tool: an irreversible action recorded as `read` is one a tainted argumen
 ## 6. Generate first traffic
 
 Run the thing the user already runs, such as their tests, a local script or the dev server,
-and make one or two model calls. Offline, set `NOMETRIA_DEFAULT_PROVIDER=echo` only if their
+and make one or two model calls. Offline, set `AGENTFOX_DEFAULT_PROVIDER=echo` only if their
 code goes through the gateway. Otherwise their own provider handles the call as before.
 
 ## 7. Report

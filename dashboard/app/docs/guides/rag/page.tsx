@@ -598,7 +598,7 @@ say:     That asks for a projection rather than a recorded fact. I can only repo
         </li>
         <li>
           <strong>
-            <code>unknown user &apos;admin@example.com&apos;. Send X-Nometria-User or a nom_api_ bearer token.</code>
+            <code>unknown user &apos;admin@example.com&apos;. Send X-AgentFox-User or a nom_api_ bearer token.</code>
           </strong>{" "}
           The request had no operator token. See{" "}
           <Link href="/docs/guides/gateway">the gateway guide</Link>.

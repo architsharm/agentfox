@@ -51,7 +51,7 @@ def _app() -> TestClient:
 def _provision(client: TestClient, gh_id: str = "4242", email: str = "dev@corp.example", **kw):
     return client.post(
         "/api/auth/github/provision",
-        headers={"X-Nometria-Service-Secret": kw.pop("secret", SECRET)},
+        headers={"X-AgentFox-Service-Secret": kw.pop("secret", SECRET)},
         json={"github_user_id": gh_id, "github_login": "dev", "email": email, **kw},
     )
 
@@ -264,7 +264,7 @@ def test_token_mode_never_treats_a_credential_less_api_request_as_owner(ready, p
     client = _app()
     assert client.get("/api/agents").status_code == 401
     assert (
-        client.get("/api/agents", headers={"X-Nometria-User": "admin@example.com"}).status_code
+        client.get("/api/agents", headers={"X-AgentFox-User": "admin@example.com"}).status_code
         == 401
     )
 

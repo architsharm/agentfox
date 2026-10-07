@@ -373,7 +373,7 @@ def test_governed_mcp_call_over_the_gateway(client):
     response = client.post(
         "/v1/mcp/call",
         json={"server": SERVER, "tool": "search_docs", "arguments": {"q": "x"}},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     # No capability was granted over the API, so the call is denied — which is the
     # correct default and proves the route is governed rather than a passthrough.

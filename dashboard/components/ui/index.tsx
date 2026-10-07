@@ -1,6 +1,7 @@
 /** Shared presentational pieces. */
 
 import Link from "next/link";
+import { env } from "@/lib/env";
 import findingTypes from "@/lib/generated/reference/finding-types.json";
 import { InfoTip } from "./InfoTip";
 
@@ -360,7 +361,7 @@ export function Empty({ children }: { children: React.ReactNode }) {
  * True only where someone can actually act on "run `agentfox serve`" — i.e. the
  * control plane is a process on their own machine or in their own deployment.
  *
- * `NOMETRIA_SELF_HOSTED` is the explicit switch; with it unset we infer from
+ * `AGENTFOX_SELF_HOSTED` (or the deprecated `NOMETRIA_SELF_HOSTED`) is the explicit switch; with it unset we infer from
  * whether the configured API URL is a loopback address, which is exactly the
  * local-dev case and never the hosted one. The default direction matters: on the
  * hosted deployment nobody can run that command, so telling them to is worse
@@ -370,9 +371,9 @@ export function Empty({ children }: { children: React.ReactNode }) {
  * process's environment rather than whatever was set when the bundle was built.
  */
 function isSelfHosted(): boolean {
-  const flag = process.env.AGENTFOX_SELF_HOSTED || process.env.NOMETRIA_SELF_HOSTED;
+  const flag = env("SELF_HOSTED");
   if (flag !== undefined && flag !== "") return /^(1|true|yes)$/i.test(flag);
-  const url = process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL;
+  const url = env("API_URL");
   if (!url) return true; // no URL configured at all means the built-in localhost default
   return /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(url);
 }

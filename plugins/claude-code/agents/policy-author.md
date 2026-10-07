@@ -14,7 +14,7 @@ Hard limits:
 - You may run `policy validate`, `policy lint`, `policy simulate`, `policy effective` and
   `policy list`.
 - You must not run `policy enforce`, `policy observe`, or any command the plugin's safety hook flags.
-- Work in a scratch database (`NOMETRIA_DATABASE_URL=sqlite:////tmp/nometria-policy.db`)
+- Work in a scratch database (`AGENTFOX_DATABASE_URL=sqlite:////tmp/agentfox-policy.db`)
   unless told to use a specific one.
 
 Return:

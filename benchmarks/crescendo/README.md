@@ -6,7 +6,7 @@ F9.4 after this benchmark confirmed the gap, catches **10 of 13 — all of them 
 final turn, with 0 of 9 benign controls flagged**.
 
 ```bash
-PYTHONPATH=src NOMETRIA_CONFIG=none \
+PYTHONPATH=src AGENTFOX_CONFIG=none \
   python -m benchmarks.crescendo.run_crescendo_benchmark
 ```
 
@@ -56,7 +56,7 @@ The headline result is "caught nothing", which is indistinguishable from "the be
 
 Both pass. The window check demonstrably works on the attack it was built for.
 
-**This gate has already earned its place.** An earlier version of this script set `NOMETRIA_DB_PATH` to point at a throwaway database. That is not a real setting — `Settings` is `extra="ignore"`, so it was accepted silently, every run wrote to the repo's shared `agentfox.db`, and `wipe_db` dutifully deleted a `/tmp` file that had never been created. Because `check_conversation_window` selects stored turns by `session_id`, turns accumulated across runs under the same ids: by the second run `p1` was reading a window of stale duplicates and no longer detected the payload split. The attack results were unchanged at 0/13 either way — which is exactly the problem, since a broken harness and a real negative result look identical. The script now sets `NOMETRIA_DATABASE_URL`, resets the engine, and asserts it is on its own database before doing anything.
+**This gate has already earned its place.** An earlier version of this script set `AGENTFOX_DB_PATH` to point at a throwaway database. That is not a real setting — `Settings` is `extra="ignore"`, so it was accepted silently, every run wrote to the repo's shared `agentfox.db`, and `wipe_db` dutifully deleted a `/tmp` file that had never been created. Because `check_conversation_window` selects stored turns by `session_id`, turns accumulated across runs under the same ids: by the second run `p1` was reading a window of stale duplicates and no longer detected the payload split. The attack results were unchanged at 0/13 either way — which is exactly the problem, since a broken harness and a real negative result look identical. The script now sets `AGENTFOX_DATABASE_URL`, resets the engine, and asserts it is on its own database before doing anything.
 
 ## Results
 

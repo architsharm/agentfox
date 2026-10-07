@@ -1,6 +1,6 @@
 """Crescendo — gradual multi-turn manipulation, where no single turn is the attack.
 
-    PYTHONPATH=src NOMETRIA_CONFIG=none \
+    PYTHONPATH=src AGENTFOX_CONFIG=none \
       python -m benchmarks.crescendo.run_crescendo_benchmark
 
 **The gap.** `docs/design/coverage-map.md` row L1.6 was `✗ absent`: "Detection is per-message.
@@ -633,8 +633,8 @@ def main() -> None:
     from agentfox.runtime.enforcement import Enforcer
     from benchmarks._common import wipe_db
 
-    # `NOMETRIA_DATABASE_URL` is the setting that actually exists. An earlier version
-    # of this script set `NOMETRIA_DB_PATH`, which is not a setting at all — Settings
+    # `AGENTFOX_DATABASE_URL` is the setting that actually exists. An earlier version
+    # of this script set `AGENTFOX_DB_PATH`, which is not a setting at all — Settings
     # is `extra="ignore"`, so it was accepted silently and every run wrote to the
     # repo's shared `agentfox.db` instead, while `wipe_db` faithfully deleted a /tmp
     # file that was never created.
@@ -645,7 +645,7 @@ def main() -> None:
     # duplicates and no longer detected the payload split it is there to prove. The
     # liveness gate caught it, which is the whole reason it exists.
     wipe_db(DB_PATH)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
     reset_settings_cache()
     db.reset_engine()
     assert str(DB_PATH) in get_settings().database_url, "benchmark is not on its own database"

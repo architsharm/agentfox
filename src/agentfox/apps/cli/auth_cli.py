@@ -193,7 +193,7 @@ def status() -> None:
     if allowed:
         console.print(
             Panel(
-                f"[yellow]The X-Nometria-User header is accepted.[/]\n\n"
+                f"[yellow]The X-AgentFox-User header is accepted.[/]\n\n"
                 f"[dim]environment = {settings.environment} · auth_mode = "
                 f"{settings.auth_mode}\n"
                 "Anyone who can reach this port is any user they name. That is fine for "

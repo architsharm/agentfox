@@ -40,7 +40,7 @@ irreversible action that is mis-declared as `write` loses the human-in-the-loop 
 | a LangGraph graph | `AgentFoxGuard`: `retrieval_node` for fetchers, `model_node` for LLM calls, `tool_node(fn, tool=key)` for tools |
 | a FastAPI service | `install(app)` for observe middleware; `Depends(guard(agent=..., field="prompt"))` on prompt-taking endpoints |
 | an MCP client | `McpGovernor`: `register_tools` once, then `gov.call(...)` instead of calling the server directly |
-| streaming that must be cut mid-response, or not Python | gateway proxy: set `base_url` to `http://<gateway>:8080/v1` and send `X-Nometria-Agent` plus `X-Nometria-Trust` for untrusted message indices |
+| streaming that must be cut mid-response, or not Python | gateway proxy: set `base_url` to `http://<gateway>:8080/v1` and send `X-AgentFox-Agent` plus `X-AgentFox-Trust` for untrusted message indices |
 
 Several can coexist. For example, `auto()` for model calls plus the SDK for tools.
 
@@ -65,7 +65,7 @@ when someone runs `policy enforce`, because `auto()` and the SDK follow it with 
 Add a test that runs against a scratch DB. It feeds a "retrieved" document that carries an
 account number, passes that value to the irreversible tool, and asserts that
 `ApprovalRequired` is raised. Build it from the SDK example in [reference/sdk.md](../../reference/sdk.md). Set
-`NOMETRIA_DATABASE_URL` to a tmp path in the test. The test may run enforce mode; the
+`AGENTFOX_DATABASE_URL` to a tmp path in the test. The test may run enforce mode; the
 application code stays in observe.
 
 Also check the negative case: the same call with a user-supplied value is allowed.

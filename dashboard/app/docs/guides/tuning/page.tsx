@@ -159,7 +159,7 @@ baseline → observe`}</Output>
         the SDK and the offline <code>echo</code> provider, against a database loaded with{" "}
         <code>agentfox admin seed</code>; the HTTP calls went to{" "}
         <code>agentfox serve</code> in development auth mode, where{" "}
-        <code>X-Nometria-User</code> names the caller (the seeded users include{" "}
+        <code>X-AgentFox-User</code> names the caller (the seeded users include{" "}
         <code>dana@example.com</code>, role compliance, and{" "}
         <code>marcus@example.com</code>, role security).
       </p>
@@ -232,7 +232,7 @@ for text in messages:
           </p>
           <InTheApp path="/app/traces">Traces → a trace → File as a false positive</InTheApp>
           <Code>{`curl -s -X POST localhost:8080/api/guardrails/feedback \\
-  -H "Content-Type: application/json" -H "X-Nometria-User: dana@example.com" \\
+  -H "Content-Type: application/json" -H "X-AgentFox-User: dana@example.com" \\
   -d '{"decision_id": "dec_01m469yr75ht7jc9f7", "label": "false_positive", "note": "a formatting request, not an override"}'`}</Code>
           <Output>{`{"id":"gfb_01m469z3cqc0bwjx98","decision_id":"dec_01m469yr75ht7jc9f7","actor":"dana@example.com","label":"false_positive","detector_key":"injection.heuristic","entity_type":"INJECTION.INSTRUCTION_INJECTION","score":0.8,"status":"open"}`}</Output>
           <p>
@@ -397,7 +397,7 @@ dec_01m469yr75ht7jc9f7 input block -> allow`}</Output>
         Label it, and the recommendation changes:
       </p>
       <Code>{`curl -s -X POST localhost:8080/api/guardrails/feedback \\
-  -H "Content-Type: application/json" -H "X-Nometria-User: dana@example.com" \\
+  -H "Content-Type: application/json" -H "X-AgentFox-User: dana@example.com" \\
   -d '{"decision_id": "dec_01m469yra2phq3y4pm", "label": "true_positive"}'
 curl -s localhost:8080/api/guardrails/recommendations`}</Code>
       <Output>{`…
@@ -430,7 +430,7 @@ curl -s localhost:8080/api/guardrails/recommendations`}</Code>
         gets <code>403</code>.
       </p>
       <Code>{`curl -s -X POST localhost:8080/api/guardrails/suppressions \\
-  -H "Content-Type: application/json" -H "X-Nometria-User: marcus@example.com" \\
+  -H "Content-Type: application/json" -H "X-AgentFox-User: marcus@example.com" \\
   -d '{"feedback_id": "gfb_01m469z3cqc0bwjx98", "scope": "agent", "exact": true, "ttl_days": 14, "reason": "language preference, not an override"}'`}</Code>
       <Output>{`{
     "id": "sup_01m46a03rshp4ee8d3",
@@ -531,11 +531,11 @@ block ['INJECTION.INSTRUCTION_INJECTION', 'INJECTION.INSTRUCTION_OVERRIDE'] | Ne
       </p>
       <Code>{`# save the edited policy as a new version (baseline v2)
 curl -s -X POST localhost:8080/api/policies -H "Content-Type: application/json" \\
-  -H "X-Nometria-User: marcus@example.com" \\
+  -H "X-AgentFox-User: marcus@example.com" \\
   -d '{"body": "<baseline.yaml as a string>", "notes": "injection.direct 0.7 -> 0.81, canary first"}'
 
 curl -s -X POST localhost:8080/api/policies/baseline/canary/start \\
-  -H "Content-Type: application/json" -H "X-Nometria-User: marcus@example.com" \\
+  -H "Content-Type: application/json" -H "X-AgentFox-User: marcus@example.com" \\
   -d '{"candidate_version": 2, "steps": [10, 50, 100], "min_sample": 20}'`}</Code>
       <Output>{`{"key":"baseline","version":2,"version_id":"pvr_01m46a0n4ea7abgpd1"}
 {

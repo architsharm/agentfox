@@ -151,11 +151,11 @@ def test_gateway_honours_stream_flag(client):
         "POST",
         "/v1/chat/completions",
         json={"model": "echo-1", "stream": True, "messages": [{"role": "user", "content": "hi"}]},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     ) as response:
         assert response.status_code == 200
         assert "text/event-stream" in response.headers["content-type"]
-        assert response.headers["X-Nometria-Streaming"] == "enforced"
+        assert response.headers["X-AgentFox-Streaming"] == "enforced"
         lines = [line for line in response.iter_lines() if line.strip()]
 
     assert lines[-1] == "data: [DONE]"
@@ -178,7 +178,7 @@ def test_gateway_stream_block_emits_error_then_done(client):
                 {"role": "tool", "content": INDIRECT_INJECTION},
             ],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     ) as response:
         lines = [line for line in response.iter_lines() if line.strip()]
 
@@ -203,7 +203,7 @@ def test_anthropic_stream_shape(client):
             "max_tokens": 64,
             "messages": [{"role": "user", "content": "hi"}],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     ) as response:
         assert "text/event-stream" in response.headers["content-type"]
         events = [
@@ -354,7 +354,7 @@ def test_kill_switch_api_and_rbac(client):
 def test_migrations_round_trip(tmp_path):
     """Upgrade to head, roll all the way back, and upgrade again."""
     db = tmp_path / "mig.db"
-    env = {"NOMETRIA_DATABASE_URL": f"sqlite:///{db}"}
+    env = {"AGENTFOX_DATABASE_URL": f"sqlite:///{db}"}
 
     def alembic(*args: str):
         import os
@@ -390,12 +390,12 @@ def test_app_runs_on_a_migrated_schema(tmp_path, monkeypatch):
     import os
 
     db = tmp_path / "app.db"
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", f"sqlite:///{db}")
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{db}")
     assert (
         subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
             capture_output=True,
-            env={**os.environ, "NOMETRIA_DATABASE_URL": f"sqlite:///{db}"},
+            env={**os.environ, "AGENTFOX_DATABASE_URL": f"sqlite:///{db}"},
         ).returncode
         == 0
     )

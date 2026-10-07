@@ -457,7 +457,7 @@ def test_resolving_and_suppressing_emit_signed_webhook_events(
     assert events["finding.suppressed"]["finding"]["suppression_reason"] == "accepted risk"
     for request in receiver.received:
         headers = {k.lower(): v for k, v in request["headers"].items()}
-        assert headers["x-nometria-signature"].startswith("sha256=")
+        assert headers["x-agentfox-signature"].startswith("sha256=")
 
 
 def test_automated_resolution_and_recurrence_emit_events(monkeypatch, receiver):  # noqa: F811

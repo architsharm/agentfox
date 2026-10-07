@@ -60,11 +60,7 @@ def err(path: Path, msg: str) -> None:
 
 # ---------------------------------------------------------------- CLI references
 CODE_SPAN = re.compile(r"`([^`\n]+)`")
-# `nometria` is still accepted: the console script keeps that name as an alias, so a
-# stale invocation in the markdown must still be validated rather than silently skipped.
-INVOCATION = re.compile(
-    r"(?<![\w./\[-])(?:agentfox|nometria)(?:\.sh)?[ \t]+([a-z][a-z-]*(?:[ \t]+[^\s`|]+)*)"
-)
+INVOCATION = re.compile(r"(?<![\w./\[-])agentfox(?:\.sh)?[ \t]+([a-z][a-z-]*(?:[ \t]+[^\s`|]+)*)")
 FLAG = re.compile(r"(?<![\w-])(--?[a-zA-Z][\w-]*)")
 NOT_COMMANDS = {
     "import",

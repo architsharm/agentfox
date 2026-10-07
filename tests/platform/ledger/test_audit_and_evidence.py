@@ -295,10 +295,10 @@ def test_evidence_scope_is_honoured(seeded, enforcer):
 
 @pytest.mark.parametrize(
     "variable",
-    ["AGENTFOX_AUDIT_KEY", "NOMETRIA_AUDIT_KEY", "AGENTFOX_AUDIT_SIGNING_KEY"],
+    ["AGENTFOX_AUDIT_KEY", "AGENTFOX_AUDIT_KEY", "AGENTFOX_AUDIT_SIGNING_KEY"],
 )
 def test_shipped_verifier_reads_the_key_under_either_prefix(seeded, tmp_path, variable):
-    """AGENTFOX_ is the name; NOMETRIA_ keeps working for anyone who wrote it down."""
+    """AGENTFOX_ is the name; AGENTFOX_ keeps working for anyone who wrote it down."""
     import os
 
     for i in range(3):

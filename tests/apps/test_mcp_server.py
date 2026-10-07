@@ -359,7 +359,7 @@ def test_stdio_subprocess_end_to_end(tmp_path):
     env = {
         **os.environ,
         "PYTHONPATH": os.pathsep.join(p for p in (str(SRC), os.environ.get("PYTHONPATH")) if p),
-        "NOMETRIA_DATABASE_URL": f"sqlite:///{tmp_path / 'e2e.db'}",
+        "AGENTFOX_DATABASE_URL": f"sqlite:///{tmp_path / 'e2e.db'}",
     }
     messages = [
         _request("initialize", {"protocolVersion": "2025-03-26", "capabilities": {}}, msg_id=1),

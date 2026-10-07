@@ -429,7 +429,7 @@ def test_gateway_completion_with_a_principal_records_a_disclosure_event(client):
                 {"source": "hr/salaries-2026", "text": "Head of Eng: 210,000."},
             ],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     assert response.status_code == 200
     with session_scope() as session:

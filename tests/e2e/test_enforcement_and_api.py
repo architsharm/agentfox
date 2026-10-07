@@ -373,14 +373,14 @@ def test_openai_compatible_proxy(client):
     response = client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": "hello"}]},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     assert response.status_code == 200
     body = response.json()
     assert body["object"] == "chat.completion"
     assert body["choices"][0]["message"]["content"]
-    assert response.headers["X-Nometria-Verdict"] == "allow"
-    assert response.headers["X-Nometria-Trace"]
+    assert response.headers["X-AgentFox-Verdict"] == "allow"
+    assert response.headers["X-AgentFox-Trace"]
 
 
 def test_anthropic_compatible_proxy(client):
@@ -391,7 +391,7 @@ def test_anthropic_compatible_proxy(client):
             "max_tokens": 64,
             "messages": [{"role": "user", "content": "hello"}],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     assert response.status_code == 200
     body = response.json()
@@ -410,7 +410,7 @@ def test_blocked_request_returns_a_readable_error(client):
                 {"role": "tool", "content": INDIRECT_INJECTION},
             ],
         },
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     assert response.status_code == 403
     error = response.json()["error"]
@@ -568,7 +568,7 @@ def test_siem_export_formats(client):
     client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": "hi"}]},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     for fmt, marker in (
         ("jsonl", "agent.decision"),
@@ -710,7 +710,7 @@ def test_policy_simulation_reports_a_diff(client):
     client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": "hello"}]},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
     candidate = "key: strict\nmode: enforce\nrules:\n  - id: all\n    when: {}\n    effect: block\n"
     response = client.post(
@@ -1287,14 +1287,14 @@ def test_proxy_responses_carry_both_verdict_headers(client):
     response = client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": "hello"}]},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
 
-    assert response.headers["X-Nometria-Verdict"] == "allow"
-    assert response.headers["X-Nometria-Applied-Verdict"] == response.headers["X-Nometria-Verdict"]
+    assert response.headers["X-AgentFox-Verdict"] == "allow"
+    assert response.headers["X-AgentFox-Applied-Verdict"] == response.headers["X-AgentFox-Verdict"]
     assert (
-        response.headers["X-Nometria-Would-Be-Verdict"]
-        == response.headers["X-Nometria-Effective-Verdict"]
+        response.headers["X-AgentFox-Would-Be-Verdict"]
+        == response.headers["X-AgentFox-Effective-Verdict"]
     )
 
 
@@ -1308,7 +1308,7 @@ def test_the_alias_headers_are_exposed_across_origins(client):
         for m in create_app().user_middleware
         for h in (m.kwargs.get("expose_headers") or [])
     }
-    assert {"x-nometria-applied-verdict", "x-nometria-would-be-verdict"} <= exposed
+    assert {"x-agentfox-applied-verdict", "x-agentfox-would-be-verdict"} <= exposed
 
 
 def test_a_block_body_says_which_verdict_took_effect(client):
@@ -1316,7 +1316,7 @@ def test_a_block_body_says_which_verdict_took_effect(client):
     response = client.post(
         "/v1/chat/completions",
         json={"model": "echo-1", "messages": [{"role": "user", "content": INDIRECT_INJECTION}]},
-        headers={"X-Nometria-Agent": "support-triage"},
+        headers={"X-AgentFox-Agent": "support-triage"},
     )
 
     assert response.status_code == 403

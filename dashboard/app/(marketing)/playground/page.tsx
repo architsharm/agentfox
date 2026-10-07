@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { env } from "@/lib/env";
 import { publicPageMetadata } from "@/lib/site";
 import { Playground } from "@/components/marketing/Playground";
 import { MarketingNav } from "@/components/marketing/nav";
@@ -21,14 +22,14 @@ export const metadata: Metadata = publicPageMetadata({
  * `NEXT_PUBLIC_*` var would be. `<Playground>` itself is a Client Component — the
  * browser calls the gateway's public, unauthenticated `/api/playground/*` routes
  * directly, so it needs a URL the *visitor's browser* can reach, which is why this
- * is a separate variable from `NOMETRIA_API_URL` (used by every other,
+ * is a separate variable from `AGENTFOX_API_URL` (used by every other,
  * cookie-authenticated, server-to-server page in this app and often an
  * internal-network address like `http://gateway:8080`).
  */
 export default function PlaygroundPage() {
   const apiBase =
-    process.env.AGENTFOX_PLAYGROUND_API_URL || process.env.NOMETRIA_PLAYGROUND_API_URL ||
-    process.env.AGENTFOX_API_URL || process.env.NOMETRIA_API_URL ||
+    env("PLAYGROUND_API_URL") ||
+    env("API_URL") ||
     "http://127.0.0.1:8080";
 
   return (

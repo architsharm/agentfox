@@ -10,7 +10,7 @@ taking `prometheus-client` as a dependency to emit forty lines of text would be 
 poor trade for a package that promises to install offline. The optional extra exists
 only for teams pushing to a gateway.
 
-Metric naming follows Prometheus convention (`nometria_<subsystem>_<unit>`), and
+Metric naming follows Prometheus convention (`agentfox_<subsystem>_<unit>`), and
 counters carry the `_total` suffix, because a metric that does not follow the
 convention does not compose with the alerting rules a team already wrote.
 """

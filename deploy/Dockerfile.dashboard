@@ -1,4 +1,4 @@
-# Nometria control-plane UI. A pure client of the public API (principle X-5).
+# AgentFox control-plane UI. A pure client of the public API (principle X-5).
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -15,8 +15,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-RUN addgroup -g 10001 -S nometria && adduser -S nometria -u 10001 -G nometria
-USER nometria
+RUN addgroup -g 10001 -S agentfox && adduser -S agentfox -u 10001 -G agentfox
+USER agentfox
 
 EXPOSE 3000
 CMD ["node", "server.js"]

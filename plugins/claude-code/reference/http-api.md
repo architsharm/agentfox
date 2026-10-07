@@ -19,7 +19,7 @@ One FastAPI process (`agentfox serve`, default `127.0.0.1:8080`) serves two surf
 | Caller | Credential | Notes |
 |---|---|---|
 | Operator / script | `Authorization: Bearer nom_api_…` | Mint with `agentfox admin auth issue EMAIL` or `POST /api/tokens`. Shown once. |
-| Local development | `X-Nometria-User: you@example.com` | Accepted only when `auth_mode=development`, or `auto` + a dev/test/local environment. `agentfox admin auth status` tells you. |
+| Local development | `X-AgentFox-User: you@example.com` | Accepted only when `auth_mode=development`, or `auto` + a dev/test/local environment. `agentfox admin auth status` tells you. |
 | Agent (inline) | `Authorization: Bearer nom_agt_…` | Optional; binds the tenant. Unauthenticated inline traffic is recorded as shadow traffic. |
 
 Write routes need a role for their family (owner, admin, security, compliance, developer,
@@ -38,9 +38,9 @@ auditor). Reads need any operator.
 | `POST /v1/mcp/call` | Govern a call to an MCP server tool. Body `{server, tool, arguments, provenance, result?}`. |
 | `POST /v1/traces` | OTLP/HTTP trace ingest (protobuf or JSON, optionally gzip); reports shadow agents. |
 
-Proxy request headers: `X-Nometria-Agent`, `-Session`, `-Environment`, `-Intent`,
+Proxy request headers: `X-AgentFox-Agent`, `-Session`, `-Environment`, `-Intent`,
 `-Trust` (JSON map of message index → source, e.g. `{"2":"retrieved"}`), `-Provider`,
-`-Stream-Mode`, `-Approval` (the id of an approved hold: the same request then runs once). Every inline response carries `X-Nometria-Trace`, `-Verdict`,
+`-Stream-Mode`, `-Approval` (the id of an approved hold: the same request then runs once). Every inline response carries `X-AgentFox-Trace`, `-Verdict`,
 `-Effective-Verdict`, `-Decision`, `-Mode`, `-Latency-Ms`.
 
 Outcomes: **200** allowed (content may be redacted) · **403**

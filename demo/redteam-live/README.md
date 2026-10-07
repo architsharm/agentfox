@@ -64,13 +64,13 @@ safe to re-run.
 
 **This demo uses its own database file** (`demo/redteam-live/demo.db`, via
 `_env.py`), never the repo's own `agentfox.db`. You do not need to set
-`NOMETRIA_DATABASE_URL` yourself, but every command below — including the
+`AGENTFOX_DATABASE_URL` yourself, but every command below — including the
 `agentfox` CLI ones — needs to see the *same* database, so either run everything
 from inside `demo/redteam-live/` (the scripts set the default relative to
 themselves) or export it explicitly:
 
 ```bash
-export NOMETRIA_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live/demo.db"
+export AGENTFOX_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live/demo.db"
 ```
 
 ### The agent this seeds
@@ -297,7 +297,7 @@ agentfox policy observe baseline   # put it back
 `crew.py` fails immediately with a clear message, not a stack trace, if neither
 `ANTHROPIC_API_KEY` nor `OPENAI_API_KEY` is set — it makes no network call in
 that case. Set one of them, or optionally pin the exact model with
-`NOMETRIA_DEMO_MODEL` (e.g. `anthropic/claude-3-5-sonnet-20241022`). No other
+`AGENTFOX_DEMO_MODEL` (e.g. `anthropic/claude-3-5-sonnet-20241022`). No other
 third-party network calls happen anywhere in this demo.
 
 ## What I verified myself (and what I didn't)

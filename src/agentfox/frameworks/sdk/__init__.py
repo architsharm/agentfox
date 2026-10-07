@@ -42,6 +42,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.db import session_scope
+from agentfox.core.headers import get_header
 
 # One class each, shared with the LangGraph integration and under `AgentFoxError`:
 # see `agentfox.errors`.
@@ -330,7 +331,7 @@ class AgentFox:
                 if not declared:  # the database was not there at import time
                     declared = self._declare_tool(key, impact, description)
                 target = (
-                    session or getattr(wrapper, "_nometria_session", None) or self._active.get()
+                    session or getattr(wrapper, "_agentfox_session", None) or self._active.get()
                 )
                 if target is None:
                     with self.session() as ad_hoc:
@@ -339,8 +340,8 @@ class AgentFox:
                     target.guard_tool(key, dict(kwargs))
                 return fn(*args, **kwargs)
 
-            wrapper._nometria_tool = key  # type: ignore[attr-defined]
-            wrapper._nometria_impact = impact  # type: ignore[attr-defined]
+            wrapper._agentfox_tool = key  # type: ignore[attr-defined]
+            wrapper._agentfox_impact = impact  # type: ignore[attr-defined]
             return wrapper
 
         return decorator
@@ -510,17 +511,17 @@ class AgentFox:
 
     def _remote_complete(self, **kwargs: Any) -> tuple[EnforcementResult, Any]:
         headers = self._headers()
-        headers["X-Nometria-Agent"] = kwargs["agent"]
+        headers["X-AgentFox-Agent"] = kwargs["agent"]
         if kwargs.get("intent"):
-            headers["X-Nometria-Intent"] = kwargs["intent"]
+            headers["X-AgentFox-Intent"] = kwargs["intent"]
         if kwargs.get("session_id"):
-            headers["X-Nometria-Session"] = kwargs["session_id"]
+            headers["X-AgentFox-Session"] = kwargs["session_id"]
         if kwargs.get("approval_id"):
-            headers["X-Nometria-Approval"] = kwargs["approval_id"]
+            headers["X-AgentFox-Approval"] = kwargs["approval_id"]
         if kwargs.get("trust_map"):
             import json
 
-            headers["X-Nometria-Trust"] = json.dumps(kwargs["trust_map"])
+            headers["X-AgentFox-Trust"] = json.dumps(kwargs["trust_map"])
         # In remote mode the correlation ids have to travel on the wire, or
         # the gateway records a governance decision that nothing can be joined to.
         for ref in refs_from_env():
@@ -540,11 +541,12 @@ class AgentFox:
             timeout=self.timeout,
         )
         result = EnforcementResult(
-            verdict=response.headers.get("X-Nometria-Verdict", "allow"),
-            effective_verdict=response.headers.get("X-Nometria-Effective-Verdict", "allow"),
-            mode=response.headers.get("X-Nometria-Mode", "observe"),
-            trace_id=response.headers.get("X-Nometria-Trace"),
-            decision_id=response.headers.get("X-Nometria-Decision"),
+            # get_header: x-agentfox-*, or x-nometria-* from a pre-rename gateway.
+            verdict=get_header(response.headers, "verdict") or "allow",
+            effective_verdict=get_header(response.headers, "effective-verdict") or "allow",
+            mode=get_header(response.headers, "mode") or "observe",
+            trace_id=get_header(response.headers, "trace"),
+            decision_id=get_header(response.headers, "decision"),
         )
         if response.status_code == 403:
             error = response.json().get("error", {})

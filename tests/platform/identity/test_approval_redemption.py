@@ -156,7 +156,7 @@ def _agent_key(session, slug="payments-ops") -> str:
 def _token_mode(monkeypatch):
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_AUTH_MODE", "token")
+    monkeypatch.setenv("AGENTFOX_AUTH_MODE", "token")
     reset_settings_cache()
 
 
@@ -249,7 +249,7 @@ def test_a_held_message_is_filed_with_its_content_and_completes_on_retry(client)
         "model": "gpt-4o-mini",
         "messages": [{"role": "user", "content": "My card 4111 1111 1111 1111 was charged twice."}],
     }
-    headers = {"X-Nometria-Agent": "support-triage"}
+    headers = {"X-AgentFox-Agent": "support-triage"}
     held = client.post("/v1/chat/completions", json=body, headers=headers)
     assert held.status_code == 428, held.text
     error = held.json()["error"]
@@ -269,7 +269,7 @@ def test_a_held_message_is_filed_with_its_content_and_completes_on_retry(client)
         f"/api/approvals/{approval_id}/approve", json={}, headers=as_user("admin@example.com")
     )
     retry = client.post(
-        "/v1/chat/completions", json=body, headers={**headers, "X-Nometria-Approval": approval_id}
+        "/v1/chat/completions", json=body, headers={**headers, "X-AgentFox-Approval": approval_id}
     )
     assert retry.status_code == 200, retry.text
     assert retry.json()["choices"][0]["message"]["content"]

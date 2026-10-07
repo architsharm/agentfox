@@ -22,7 +22,7 @@ plugins/
 │   ├── AGENTS.md             L3  router for ANY agent runtime: "user wants X → load skill Y" + golden rules
 │   ├── reference/            L1  FACTS — dense, agent-optimised, verified against code
 │   │   ├── cli.md                every command, flag, side effect, exit code
-│   │   ├── config.md             every NOMETRIA_* variable and extra
+│   │   ├── config.md             every AGENTFOX_* variable and extra
 │   │   ├── http-api.md           inline + control-plane routes, auth, outcomes
 │   │   ├── sdk.md                auto(), SDK, LangGraph, FastAPI, MCP, proxy — and which to pick
 │   │   ├── policy-schema.md      policy YAML: conditions, effects, precedence

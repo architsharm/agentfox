@@ -146,7 +146,7 @@ def tableless_db(tmp_path, monkeypatch):
     from agentfox.core import db
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", f"sqlite:///{tmp_path / 'fresh.db'}")
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{tmp_path / 'fresh.db'}")
     reset_settings_cache()
     db.reset_engine()
     assert not inspect(db.get_engine()).has_table("agents")
@@ -318,7 +318,7 @@ def test_policy_effective_defaults_to_the_configured_environment(monkeypatch):
     assert default.exit_code == 0, default.output
     assert "effective policy in development" in flat(default.output)
 
-    monkeypatch.setenv("NOMETRIA_ENVIRONMENT", "staging")
+    monkeypatch.setenv("AGENTFOX_ENVIRONMENT", "staging")
     reset_settings_cache()
     configured = runner.invoke(app, ["policy", "effective"])
     assert "effective policy in staging" in flat(configured.output)
@@ -399,7 +399,7 @@ obligations:
 def compliance_dir(tmp_path, monkeypatch):
     from agentfox.core.config import reset_settings_cache
 
-    monkeypatch.setenv("NOMETRIA_COMPLIANCE_DIR", str(tmp_path))
+    monkeypatch.setenv("AGENTFOX_COMPLIANCE_DIR", str(tmp_path))
     reset_settings_cache()
     return tmp_path
 
