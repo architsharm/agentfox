@@ -137,8 +137,8 @@ over all 22 windows, reported in the results JSON):
 
 | | Per governed turn |
 |---|---|
-| sub-threshold detector component (6 extra pipeline runs) | ~3.2-3.6 ms |
-| scoring: drift, markers, slope fit | ~0.5 ms |
+| sub-threshold detector component (6 extra pipeline runs) | ~3.2-3.8 ms |
+| scoring: drift, markers, slope fit | ~0.3-0.5 ms |
 | **total mean** | **~3.7-4.1 ms** |
 | total p95 | ~5-6 ms |
 

@@ -139,7 +139,7 @@ const CLAIMS: {
     figure: "26.7",
     unit: "%",
     detail: "held-out recall at 100% precision for the default heuristic detector, on the deepset split of 116. The opt-in classifier ensemble reaches 66.7%.",
-    limit: "The ensemble needs the classifiers extra and a weights download. An adaptive attacker gets 72.9% of what the default stack catches through within 50 attempts.",
+    limit: "The ensemble needs the classifiers extra and a weights download. An adaptive attacker gets 70.8% of what the default stack catches through within 50 attempts.",
   },
 ];
 
@@ -227,7 +227,7 @@ export default function BenchmarkPage() {
           and the opt-in classifier ensemble 66.7%; a real installed{" "}
           <code className="mono">llm-guard</code> is more precise on the same 20
           indirect-injection cases, 81.8% against 66.7%, and an adaptive
-          attacker gets 72.9% of what the default stack catches through within
+          attacker gets 70.8% of what the default stack catches through within
           50 attempts.
         </p>
       </div>
@@ -648,7 +648,10 @@ export default function BenchmarkPage() {
         <li>
           <strong>Tier D, excessive agency.</strong> 6 scenarios through the real{" "}
           <code className="mono">Enforcer.guard_tool_call</code> path using the
-          shipped seed data. 6/6 correct. This tier also found a real bug: the
+          shipped seed data. 5/6 correct: the negative control, an ordinary{" "}
+          <code className="mono">tickets.update</code>, is now blocked by the
+          cascade rule because the demo world declares that a ticket update
+          sends email. This tier also found a real bug: the
           kill switch was wired into{" "}
           <code className="mono">preflight</code> only, so a quarantined
           agent&apos;s tool calls were not actually stopped by it. Fixed, with a
@@ -657,8 +660,12 @@ export default function BenchmarkPage() {
         <li>
           <strong>Tier C, tool parameter exploitation.</strong> 10 cases, 5 real
           and 5 negative controls, through capabilities the agent genuinely
-          holds, so every capability check passes and any block comes purely from
-          argument-value analysis. 10/10 correct. The gap this closed was real:{" "}
+          holds, so every capability check passes. 8/10 correct: all 5 attacks
+          are blocked by argument-value analysis, and 2 of the 5 negative
+          controls, both{" "}
+          <code className="mono">tickets.update</code> calls, are blocked by the
+          cascade rule because the demo world declares that a ticket update
+          sends email. The gap this closed was real:{" "}
           <code className="mono">order_id=&quot;*&quot;</code> used to go
           straight through because argument analysis only inspected values under
           three hard-coded key names.
@@ -843,12 +850,12 @@ export default function BenchmarkPage() {
           <>
             <strong>
               A quarter of the attacks our detectors stop are through within
-              five adapted attempts, and roughly three in four within fifty.
+              five adapted attempts, and roughly seven in ten within fifty.
             </strong>{" "}
             Using only mutations that leave the instruction plainly readable —
             no base64, no hex, no fragment reassembly. With the full move set,
-            every seed falls on both surfaces within 25 attempts. The 73% quoted
-            on the home page is the 72.9% endpoint here.
+            every seed falls on both surfaces within 25 attempts. The 71% quoted
+            on the home page is the 70.8% endpoint here.
           </>
         }
       >
@@ -884,10 +891,10 @@ export default function BenchmarkPage() {
           </thead>
           <tbody>
             {[
-              ["indirect_retrieved / all operators (48)", "0.0%", "56.2%", "89.6%", "100.0%", "100.0%", "4"],
-              ["indirect_retrieved / readable only (48)", "0.0%", "25.0%", "39.6%", "62.5%", "72.9%", "9"],
+              ["indirect_retrieved / all operators (48)", "0.0%", "58.3%", "89.6%", "100.0%", "100.0%", "4"],
+              ["indirect_retrieved / readable only (48)", "0.0%", "25.0%", "37.5%", "62.5%", "70.8%", "9"],
               ["direct_input / all operators (47)", "0.0%", "72.3%", "93.6%", "100.0%", "100.0%", "4"],
-              ["direct_input / readable only (47)", "0.0%", "31.9%", "46.8%", "72.3%", "74.5%", "6"],
+              ["direct_input / readable only (47)", "0.0%", "27.7%", "44.7%", "72.3%", "74.5%", "7"],
             ].map(([config, a1, a5, a10, a25, a50, med]) => (
               <tr key={config}>
                 <td className="mono small">{config}</td>
@@ -922,10 +929,10 @@ export default function BenchmarkPage() {
         with the full move set we exceed it against ourselves.
       </p>
       <p>
-        165 of the 190 searches ended in a bypass. Each one was re-run on the
+        164 of the 190 searches ended in a bypass. Each one was re-run on the
         persisting enforcement path, because the search itself runs with{" "}
         <code className="mono">persist=False</code> for speed, and{" "}
-        <strong>165 of 165 reproduced</strong>.
+        <strong>164 of 164 reproduced</strong>.
       </p>
 
       <h3>What the bypasses did once they were through</h3>
@@ -1056,7 +1063,7 @@ export default function BenchmarkPage() {
       <p>
         <strong>What the result files do record.</strong> The adaptive run
         records its random seed (<code className="mono">20251009</code>), the
-        50-attempt cap, 190 searches, 5,593 attempts, 29.2 seconds of wall
+        50-attempt cap, 190 searches, 5,642 attempts, 34.3 seconds of wall
         clock, the five enabled detectors by name, and the fact that it makes no
         model calls and no network calls. The AgentDojo summary records the
         AgentDojo package and suite version, the task and pair counts, and each
@@ -1105,7 +1112,7 @@ export default function BenchmarkPage() {
               <>
                 Not cosmetic here: detectors run under a 40ms timeout and a
                 detector that times out is scored as raising nothing. The
-                adaptive run recorded 9 degraded attempts out of 5,593 (0.16%)
+                adaptive run recorded 9 degraded attempts out of 5,642 (0.16%)
                 on whatever machine produced it. A slower machine would record
                 more, and would move cells in the direction that flatters the
                 attacker.

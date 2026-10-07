@@ -431,7 +431,7 @@ agentfox findings --json --limit 1`}</Code>
       </p>
       <ul>
         <li>
-          An adaptive attacker that reads the verdict and retries gets 73% of the
+          An adaptive attacker that reads the verdict and retries gets 71% of the
           readable indirect attacks the default stack catches through within 50
           attempts.
         </li>

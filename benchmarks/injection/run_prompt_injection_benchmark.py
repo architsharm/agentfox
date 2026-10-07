@@ -189,7 +189,7 @@ def main() -> None:
         "train.json false negatives only; test.json held out and never inspected — "
         "'held_out' is the number to trust. injection.classifier is a pretrained "
         "model, never fit to this dataset. injection.similarity matches against a "
-        "synthetic corpus (guardrails/data/injection_corpus.json) authored "
+        "synthetic corpus (capabilities/detection/data/injection_corpus.json) authored "
         "independently of this benchmark's dataset.",
         "configs": {},
     }

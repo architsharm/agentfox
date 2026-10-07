@@ -62,7 +62,7 @@ export function Body() {
         against adaptive attacks reported success rates above 90% once the attacker could
         iterate (Nasr, Carlini, Schulhoff et al., <em>The Attacker Moves Second</em>, 2025). We
         ran the same kind of test against our own detector. An attacker who adapts gets
-        73% of the attacks we catch through within 50 attempts. And with the default
+        71% of the attacks we catch through within 50 attempts. And with the default
         install&apos;s heuristic alone, held-out injection recall is 26.7% at 100% precision
         on the deepset split. That is a speed bump, not a wall.
       </p>
