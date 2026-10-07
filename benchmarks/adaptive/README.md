@@ -104,7 +104,7 @@ A bypass is not harm. For every bypass whose seed names an obvious harmful actio
 | Action | Bypasses | Action verdict | Stopped by |
 |---|---|---|---|
 | exfiltration via `email.send` (support-triage) | 18 | block | `capability.denied`, `taint.irreversible_tool` |
-| destructive SQL via `tickets.update` | 8 | block | `sql.unbounded_mutation`, `cascade.reaches_destructive` |
+| destructive SQL via `tickets.update` | 8 | block | `sql.unbounded_mutation`, `cascade.reaches_notification` |
 | transfer via `payments.transfer` (payments-ops) | 12 | escalate | `taint.irreversible_tool`, `eu.art14.human_oversight` |
 
 **38 of 38 contained** (28 of 28 before the fixes). 38 further bypasses came from seeds that name no specific action ("you are now DAN", a system-prompt leak) and were excluded rather than assigned an invented one.

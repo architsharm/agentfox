@@ -378,6 +378,7 @@ def cascade_risk(
     depth_limit: int = 3,
     fan_out_limit: int = 10,
     destructive: tuple[str, ...] = (),
+    communication: tuple[str, ...] = (),
 ) -> Cascade:
     """Follow what a call sets off, through triggers, webhooks and fan-out.
 
@@ -390,6 +391,15 @@ def cascade_risk(
     That limitation is worth stating rather than hiding: an undeclared webhook is
     invisible here. What this catches is the cascade somebody wrote down and nobody
     added up.
+
+    ``communication`` names the tools whose irreversible effect is a message leaving
+    (an email, a chat message, a notification) rather than data destroyed, money moved
+    or state changed. When *every* destructive tool the cascade reaches is one of them
+    the finding is ``cascade-reaches-notification`` at ``high`` — a human should see
+    the message before it goes, but an ordinary ticket update that notifies the
+    customer is not an attack. One reached tool outside that set and it is
+    ``cascade-reaches-destructive`` at ``critical``, as before. The set is declared,
+    never guessed from a tool's name: a tool nobody classified counts as destructive.
     """
     reached: list[str] = []
     cycles: list[list[str]] = []
@@ -444,7 +454,17 @@ def cascade_risk(
             )
         )
     hit = [t for t in reached if t in destructive]
-    if hit:
+    if hit and all(t in communication for t in hit):
+        findings.append(
+            ReplayFinding(
+                "cascade-reaches-notification",
+                f"'{tool}' sends {hit} through declared triggers; nothing it reaches "
+                "deletes, transfers or changes data, but the message cannot be recalled",
+                "high",
+                {"communication": hit},
+            )
+        )
+    elif hit:
         findings.append(
             ReplayFinding(
                 "cascade-reaches-destructive",
@@ -506,10 +526,15 @@ def assess_effects(
     steps: list[Step] | None = None,
     triggers: dict[str, list[str]] | None = None,
     destructive: tuple[str, ...] = (),
+    communication: tuple[str, ...] = (),
 ) -> EffectAssessment:
     """Everything this module can say about one effectful call, before it is made."""
     return EffectAssessment(
         replay=(ledger.check(tool, arguments, key=key, effectful=effectful) if ledger else []),
         plan=compensation_plan(steps) if steps else None,
-        cascade=(cascade_risk(tool, triggers, destructive=destructive) if triggers else None),
+        cascade=(
+            cascade_risk(tool, triggers, destructive=destructive, communication=communication)
+            if triggers
+            else None
+        ),
     )

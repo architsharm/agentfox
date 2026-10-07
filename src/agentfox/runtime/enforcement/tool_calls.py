@@ -18,7 +18,7 @@ from agentfox.capabilities.detection import TaintTracker
 from agentfox.capabilities.detection.actions import find_sql_argument
 from agentfox.core.models import AccessScopeRule, TaintTag, Tool, Trace
 from agentfox.core.vocab import taint_rank
-from agentfox.platform.registry.service import record_edge
+from agentfox.platform.registry.service import effect_class_of, record_edge
 from agentfox.runtime.enforcement.result import EnforcementResult
 from agentfox.runtime.enforcement.rules import _fired_rule
 
@@ -248,7 +248,12 @@ class _ToolCallMixin:
                 triggers = {t.key: t.triggers_json for t in org_tools if t.triggers_json}
                 if triggers:
                     destructive = tuple(t.key for t in org_tools if t.impact == "irreversible")
-                    cascade = cascade_risk(tool_key, triggers, destructive=destructive)
+                    communication = tuple(
+                        t.key for t in org_tools if effect_class_of(t) == "communication"
+                    )
+                    cascade = cascade_risk(
+                        tool_key, triggers, destructive=destructive, communication=communication
+                    )
                     extra["cascade"] = cascade.to_json()
                     extra_risks.extend(f.to_json() for f in cascade.findings)
         except Exception as exc:  # pragma: no cover - governance extra must not break the call

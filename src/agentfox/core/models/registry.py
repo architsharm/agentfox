@@ -144,6 +144,11 @@ class Tool(Base, TimestampMixin):
 #: Values of `Tool.output_trust`.
 OUTPUT_TRUST_LEVELS = ("untrusted", "trusted")
 
+#: Declared effect classes for a tool (`registry.service.EFFECT_CLASS_KEY`).
+#: ``communication``: the tool's irreversible effect is a message leaving — an email,
+#: a chat message, a notification — not data destroyed, money moved or state changed.
+TOOL_EFFECT_CLASSES = ("communication",)
+
 
 class McpServer(Base, TimestampMixin):
     __tablename__ = "mcp_servers"

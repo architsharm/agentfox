@@ -113,6 +113,7 @@ _VERDICT_RANK = {"allow": 0, "alter": 1, "redact": 1, "mask": 1, "escalate": 2, 
 #: them, and so does anything reading `taint.action`.
 RISK_CODE_RULE_IDS = {
     "cascade-reaches-destructive": "cascade.reaches_destructive",
+    "cascade-reaches-notification": "cascade.reaches_notification",
     "cascade-cycle": "cascade.cycle",
     "cascade-too-deep": "cascade.blast_radius",
     "unscoped-table": "access.unscoped_table",
