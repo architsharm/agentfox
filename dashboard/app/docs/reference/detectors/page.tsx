@@ -65,7 +65,7 @@ const OPTIN: Row[] = [
 const ENTITIES: Row[] = [
   ["INJECTION.*", "INSTRUCTION_OVERRIDE, INSTRUCTION_INJECTION, INSTRUCTION_LEAK, INSTRUCTION_PERSONA, PERSONA_OVERRIDE, SYSTEM_PROMPT_LEAK, JAILBREAK, COVERT_INSTRUCTION, EXFILTRATION, ROLE_DELIMITER, CONTROL_TOKENS, FAKE_SYSTEM_BLOCK, INSTRUCTION_IN_DATA, HIDDEN_CHARACTERS, HIDDEN_INSTRUCTION, ENCODED_PAYLOAD, OBFUSCATED_CONTENT (injection.heuristic); JAILBREAK (classifiers); SEMANTIC_SIMILARITY (injection.similarity); CLASSIFIER, UNUSUAL (Hub validators)"],
   ["PII.*", "EMAIL, IP_ADDRESS, CREDIT_CARD, IBAN, DATE_OF_BIRTH, US_SSN, US_PHONE, US_PASSPORT, US_MRN, UK_NINO, UK_NHS, EU_VAT, IN_AADHAAR, IN_PAN (pii.native); PERSON, LOCATION, DATE_TIME, US_DRIVER_LICENSE, MEDICAL_LICENSE, CRYPTO_WALLET (pii.presidio); PRESENT_UNLOCATED (pii.judgment: personal data present, location unknown); HUB"],
-  ["SECRET.*", "OPENAI_KEY, ANTHROPIC_KEY, AWS_ACCESS_KEY, GITHUB_TOKEN, SLACK_TOKEN, GOOGLE_API_KEY, STRIPE_KEY, NOMETRIA_KEY, PRIVATE_KEY, JWT, CONNECTION_STRING, GENERIC (secrets.native); HUB"],
+  ["SECRET.*", "OPENAI_KEY, ANTHROPIC_KEY, AWS_ACCESS_KEY, GITHUB_TOKEN, SLACK_TOKEN, GOOGLE_API_KEY, STRIPE_KEY, AGENTFOX_KEY, PRIVATE_KEY, JWT, CONNECTION_STRING, GENERIC (secrets.native); HUB"],
   ["SAFETY.*", "HARM, SELF_HARM, ILLICIT, HARASSMENT, EXTREMISM (safety.lexicon; SEXUAL is a category with no patterns yet); HARM (Granite, Llama Guard); TOXIC, NSFW, PROFANITY, DRUGS, BIAS, BANNED_TERM, LLAMA_GUARD, SHIELD_GEMMA (Hub validators)"],
   ["SCHEMA.*", "VIOLATION, UNPARSEABLE (schema.json); SQL_INVALID, JSON_INVALID (Hub validators)"],
   ["RAILS.BLOCKED", "A NeMo rail refused the content."],
@@ -431,7 +431,7 @@ agentfox findings --json --limit 1`}</Code>
       </p>
       <ul>
         <li>
-          An adaptive attacker that reads the verdict and retries gets 73% of the
+          An adaptive attacker that reads the verdict and retries gets 71% of the
           readable indirect attacks the default stack catches through within 50
           attempts.
         </li>

@@ -15,7 +15,7 @@ not the frontier of adversarial ML, which is what Garak and PyRIT are for.
 1. `kind="content"` probes call `Enforcer.check_content()`, which never passes
    `arguments`/`tool_key` to `evaluate()`. Capability/constraint checks
    (`identity.check_capability`), the action-assurance/SQLi-scope backstop
-   (`guardrails.actions.analyse_arguments`, only runs `if arguments`), and
+   (`detection.actions.analyse_arguments`, only runs `if arguments`), and
    composed-privilege-escalation (needs a real `guard_tool_call` +
    `TaintTracker`) are **structurally unreachable** from a content probe —
    not weak against it, *invisible* to it. `kind="tool_call"` and

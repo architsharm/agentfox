@@ -58,6 +58,7 @@ Stdlib only. Run from inside the extracted package:
 
 Re-derives every entry digest and the chain linkage from audit_entries.json and
 checks the signed checkpoints if a key is supplied via AGENTFOX_AUDIT_KEY.
+Several keys may be given, comma-separated, for a chain that spans a key rotation.
 Exit code 0 = intact, 1 = tampered.
 """
 import hashlib, hmac, json, os, sys
@@ -119,10 +120,16 @@ def main():
         None,
     )
     if key:
+        # Several keys, comma-separated, for a chain that spans a key rotation: a
+        # checkpoint is genuine if any of them signed it.
+        keys = [k.strip() for k in key.split(",") if k.strip()]
         by_seq = {r["seq"]: r for r in entries}
         for cp in checkpoints:
-            sig = hmac.new(key.encode(), cp["digest"].encode(), hashlib.sha256).hexdigest()
-            if not hmac.compare_digest(sig, cp.get("signature", "")):
+            sigs = [
+                hmac.new(k.encode(), cp["digest"].encode(), hashlib.sha256).hexdigest()
+                for k in keys
+            ]
+            if not any(hmac.compare_digest(sig, cp.get("signature", "")) for sig in sigs):
                 breaks.append((cp["seq"], "checkpoint_signature", "checkpoint signature mismatch"))
             elif cp["seq"] in by_seq and by_seq[cp["seq"]]["digest"] != cp["digest"]:
                 breaks.append(

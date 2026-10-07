@@ -3,9 +3,9 @@
 No account, no GitHub connection, no SDK integration, nothing leaves this machine —
 unless you explicitly ask it to. Three signals, all local:
 
-1. What's committed — `discovery.py`'s static AST scan of the current directory,
+1. What's committed — `discovery/repo.py`'s static AST scan of the current directory,
    the same engine `agentfox scan` uses.
-2. What's actually running — `session_scan.py`'s read of local AI-tool session
+2. What's actually running — `discovery/sessions.py`'s read of local AI-tool session
    transcripts, which sees ad hoc agent usage the repo scan can't (a notebook
    agent, an MCP server wired up an hour ago, nothing committed yet).
 3. Proof, not a claim — a handful of known adversarial prompts run through the

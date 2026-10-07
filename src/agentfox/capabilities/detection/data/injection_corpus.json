@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "purpose": "Anchor corpus for injection.similarity (EmbeddingSimilarityDetector). Synthetic — authored from a taxonomy of known prompt-injection/jailbreak intents, not derived from any real user data or from any benchmark dataset this project evaluates against (kept independent so evaluation stays honest, including the generalization datasets under ../../../../benchmarks/data_generalization/ — see that directory's README for why). Grows by editing this file; the detector needs no retraining to pick up new entries, only a re-embed.",
+    "purpose": "Anchor corpus for injection.similarity (EmbeddingSimilarityDetector). Synthetic — authored from a taxonomy of known prompt-injection/jailbreak intents, not derived from any real user data or from any benchmark dataset this project evaluates against (kept independent so evaluation stays honest, including the generalization datasets under ../../../../../benchmarks/generalization/data/ — see that directory's README for why). Grows by editing this file; the detector needs no retraining to pick up new entries, only a re-embed.",
     "categories": [
       "instruction_override", "persona_override", "system_prompt_leak",
       "covert_instruction", "exfiltration", "obfuscation_intent",

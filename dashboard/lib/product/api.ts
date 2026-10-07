@@ -24,7 +24,7 @@ const TOKEN = env("API_TOKEN");
 //: a real per-user token on sign-in and sets it here. Checked ahead of the static
 //: env var, so a signed-in user's own token — not a shared service token — is what
 //: the gateway sees, and its tenant scoping applies to everything the UI shows them.
-export const SESSION_COOKIE = "nometria_session";
+export const SESSION_COOKIE = "agentfox_session";
 
 export class ApiError extends Error {
   constructor(

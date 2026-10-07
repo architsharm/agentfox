@@ -255,7 +255,7 @@ raises on anything a policy would block. `off()` reverses every patch.
 ## 8. LangGraph integration — `src/agentfox/frameworks/langgraph.py`
 
 LangGraph is an optional import; trace identity lives **in graph state**
-(`STATE_KEY = "__nometria__"`) so it survives checkpointing, resumption and time-travel;
+(`STATE_KEY = "__agentfox__"`) so it survives checkpointing, resumption and time-travel;
 escalation maps to LangGraph's own `interrupt()`; enforcement failures always raise.
 
 `class AgentFoxGuard`, constructed with `agent`, `environment`, `intent`, an optional shared

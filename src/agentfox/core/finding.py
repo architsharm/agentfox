@@ -1,6 +1,6 @@
 """One shared shape for a module-level, non-persisted finding.
 
-Five independent modules (``effects``, ``data_access``, ``guardrails.actions``,
+Five independent modules (``effects``, ``data_access``, ``detection.actions``,
 ``register``, ``context_integrity``) each hand-rolled the same
 ``{code, detail, severity, evidence}`` dataclass with an identical ``to_json``.
 This is the one copy.

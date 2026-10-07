@@ -94,7 +94,7 @@ They use Mintlify, which gives most of this for free.
 
 - The Jev/policy-authority pages are dense, conditional legal-style prose (version-specific behaviours for 1.0.7 vs 1.0.7-beta.2 vs 1.0.8-beta.0). That's a product complexity smell.
 - Two CLIs (`failproofai` local, `fp` cloud) with overlapping verbs; many "this CLI can't do that yet" notes.
-- Legacy naming still leaks: `AGENTEYE_ENVIRONMENT`, `X-AgentEye-Org`, `X-AgentEye-Signature`, `agenteye-orgctl`. Same disease as our `X-Nometria-*`.
+- Legacy naming still leaks: `AGENTEYE_ENVIRONMENT`, `X-AgentEye-Org`, `X-AgentEye-Signature`, `agenteye-orgctl`. Same disease as our own pre-rename headers had.
 - SDK path gives tracing only — "it does not enforce policies on its own."
 
 ---
@@ -165,7 +165,7 @@ They use Mintlify, which gives most of this for free.
    - Judgment tiers and egress (public version of `docs/architecture/judgment-tiers.md`).
    - Glossary or a concepts table.
    - Changelog page.
-   - Migration from `nometria`.
+   - Migration from the pre-rename package.
    - Recipes (policy and red-team starters).
 6. **Per-endpoint API pages** grouped by tag, plus a published `openapi.json`. Add a hand-written API intro covering auth, status-code meanings and request IDs.
 7. **Every page ends with "check it worked"** (the exact command) and a card to the next stage.
@@ -175,9 +175,9 @@ They use Mintlify, which gives most of this for free.
    - `mcp_tool_added_under_wildcard` was missing from `reference/detectors` and `CHANGELOG.md`. Fixed.
    - `harness/README.md`, `harness/STRUCTURE.md` and the support page said "17 CLI groups"; there are 13. Fixed.
    - `harness/` told people to type `agentfox mcp serve`; they now see `agentfox serve mcp`. The old spelling stays in `.mcp.json` and the coding-agent hook configs (`hooks run`), because those are deliberate hidden aliases that installed configs call.
-   - `harness/reference/http-api.md` named `NOMETRIA_WEBHOOK_URL`; it now names `AGENTFOX_WEBHOOK_URL`. Fixed.
+   - `harness/reference/http-api.md` named the pre-rename webhook variable; it now names `AGENTFOX_WEBHOOK_URL`. Fixed.
    - Open: the harness plugin is at 0.1.0 while the package is 0.3.1.
-   - Open: `X-Nometria-*` headers (~68 mentions in the gateway guide) and `NOMETRIA_*` env vars in `render.yaml`, `alembic.ini` and `pyproject.toml`. This waits on the restructure, but it is user-visible.
+   - Pre-rename headers (~68 mentions in the gateway guide) and environment variables in `render.yaml`, `alembic.ini` and `pyproject.toml`. Fixed: the rename is finished.
 
 ### Positioning
 

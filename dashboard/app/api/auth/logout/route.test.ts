@@ -12,7 +12,7 @@ const { POST } = await import("./route");
 function logout(cookie?: string) {
   return new NextRequest("http://localhost:3000/api/auth/logout", {
     method: "POST",
-    headers: cookie ? { Cookie: `nometria_session=${cookie}` } : {},
+    headers: cookie ? { Cookie: `agentfox_session=${cookie}` } : {},
   });
 }
 
@@ -34,13 +34,13 @@ describe("sign out", () => {
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBe("Bearer nom_api_session123");
     expect(res.headers.get("location")).toMatch(/\/login$/);
-    expect(res.headers.get("set-cookie") || "").toMatch(/nometria_session=;/);
+    expect(res.headers.get("set-cookie") || "").toMatch(/agentfox_session=;/);
   });
 
   it("still signs the browser out when the gateway is unreachable", async () => {
     fetchMock.mockRejectedValueOnce(new Error("ECONNREFUSED"));
     const res = await POST(logout("nom_api_session123"));
-    expect(res.headers.get("set-cookie") || "").toMatch(/nometria_session=;/);
+    expect(res.headers.get("set-cookie") || "").toMatch(/agentfox_session=;/);
   });
 
   it("makes no gateway call without a session", async () => {

@@ -76,7 +76,7 @@ builder.add_node("model",    guard.model_node(call_model))
 builder.add_node("pay",      guard.tool_node(transfer, tool="payments.transfer"))
 ```
 
-Governance state lives under the `"__nometria__"` state key, so it survives checkpointing.
+Governance state lives under the `"__agentfox__"` state key, so it survives checkpointing.
 `tool_node` authorises the model's latest call to that tool in `state["messages"]` (or
 `arguments=`), with taint from earlier retrieval nodes. Escalation calls LangGraph's `interrupt()`;
 blocks raise `agentfox.PolicyViolation` (all refusals are `agentfox.AgentFoxError`).

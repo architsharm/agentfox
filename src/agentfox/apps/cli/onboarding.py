@@ -533,30 +533,38 @@ def doctor(
     else:
         add("ok", "secrets", "service secret and audit signing key are set")
 
-    # The pre-rename names are no longer read. A deployment that still sets one is
-    # running on the default for it without knowing, so name every NOMETRIA_* still
-    # set: the ones that used to be settings (now ignored) first, then the rest (a Neon
-    # integration's NOMETRIA_DATABASE_* family, or ones an AGENTFOX_* twin replaced).
-    from agentfox.core.config import ignored_legacy_settings, legacy_env_vars_set
+    # Key rotation: a previous key is a temporary state, and this line says whether it
+    # is still needed. Fingerprints only; a key value is never printed.
+    from agentfox.core.crypto import InvalidEncryptionKey, keyring
 
-    legacy_ignored = ignored_legacy_settings()
-    legacy_idle = [name for name in legacy_env_vars_set() if name not in legacy_ignored]
-    if legacy_ignored or legacy_idle:
-        parts = []
-        if legacy_ignored:
-            parts.append("IGNORED, the default applies instead: " + ", ".join(legacy_ignored))
-        if legacy_idle:
-            parts.append("set but not read (safe to delete): " + ", ".join(legacy_idle))
-        add(
-            "warn",
-            "legacy names",
-            "pre-rename settings still present — "
-            + "; ".join(parts)
-            + ". Rename each NOMETRIA_<X> to AGENTFOX_<X> (and nometria.toml / [nometria] "
-            "to agentfox.toml / [agentfox]); the old names are no longer read.",
-        )
-    else:
-        add("ok", "legacy names", "no pre-rename NOMETRIA_* variables or nometria.toml present")
+    if settings.token_encryption_key:
+        try:
+            keyring()
+        except InvalidEncryptionKey as exc:
+            add("bad", "encryption key", str(exc))
+    try:
+        from agentfox.platform.keys.rotation import status_summary
+
+        rotation = status_summary(fresh=True)
+    except Exception as exc:  # noqa: BLE001 - doctor reports, it does not crash
+        rotation = {}
+        add("warn", "key rotation", f"could not be checked: {type(exc).__name__}")
+    if rotation:
+        detail = ", ".join(f"{k.replace('_', ' ')}: {v}" for k, v in rotation.items())
+        states = set(rotation.values())
+        if "misconfigured" in states:
+            add("bad", "key rotation", detail + " — `agentfox admin keys status` says why")
+        elif "pending" in states:
+            add(
+                "warn",
+                "key rotation",
+                detail + " — data is still on a previous key. Run `agentfox admin keys "
+                "rotate` (the job runner also does it); keep the previous key until done.",
+            )
+        elif "complete" in states:
+            add("ok", "key rotation", detail + " — the previous keys can now be removed")
+        else:
+            add("ok", "key rotation", "no previous key configured; nothing to rotate")
 
     # Containment before detection, deliberately. Every published adversarial-robustness
     # result says a determined attacker eventually gets past content inspection; what is

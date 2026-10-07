@@ -19,9 +19,6 @@ dashboard/.npm-cache/
 **/.env
 **/.env.*
 !**/.env.example
-# Written by `agentfox init` when run from the repo root without an explicit
-# --path — a local dev convenience file, not a repo artifact.
-/nometria.toml
 
 # Business, go-to-market and competitor material that must not reach a public
 # repository: drafted grant and RFP packages, launch screenshots, post copy, a

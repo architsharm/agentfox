@@ -54,6 +54,10 @@ endpoint every 30 minutes, and self-hosted deployments run `agentfox admin jobs
 run-due` from their own scheduler. Calling it more often than an interval is always
 safe: schedules and monitors both refuse to run before they are due.
 
+``keys.rotate`` has no schedule row: it is deployment-wide, not per tenant. Every
+:func:`run_due` pass checks whether a previous key (``AGENTFOX_*_KEY_PREVIOUS``) still
+protects anything and enqueues one rotation job if so (`agentfox.platform.keys`).
+
 `eval.run` has a handler but no default schedule: it needs a suite and a target that
 only the tenant can name. Add a `JobSchedule` row with that payload to run one on a
 cadence.
@@ -62,6 +66,7 @@ cadence.
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -74,6 +79,8 @@ from agentfox.core.tenancy import bind_session, session_org, system_scope
 from agentfox.core.vocab import AUTOMATION_ACTOR_TYPE
 from agentfox.platform.jobs import store as jobs_db
 from agentfox.platform.jobs.queue import PENDING, RUNNING
+
+log = logging.getLogger(__name__)
 
 HOUR = 3600
 DAY = 24 * HOUR
@@ -271,7 +278,18 @@ def schedule_all_tenants(session: Session, now: dt.datetime | None = None) -> di
 
 def run_due(session: Session, *, limit: int = 50, now: dt.datetime | None = None) -> dict[str, Any]:
     """One pass of the job runner — what the cron route and `agentfox admin jobs run-due`
-    both do: fill the queue from schedules, recover stuck jobs, run everything due."""
+    both do: fill the queue from schedules, recover stuck jobs, run everything due.
+
+    Key rotation rides along: with a previous key configured and data still on it,
+    one deployment-wide `keys.rotate` job is enqueued (`platform.keys.rotation`). With
+    no previous key configured that check costs nothing."""
+    from agentfox.platform.keys.rotation import enqueue_if_pending
+
+    try:
+        key_rotation_job = enqueue_if_pending(session)
+    except Exception as exc:  # noqa: BLE001 - key rotation must never stop the runner
+        log.warning("key rotation check failed: %s", type(exc).__name__)
+        key_rotation_job = None
     scheduled = schedule_all_tenants(session, now)
     recovered = jobs_db.recover_stuck(session, org_id=None, now=now)
     finished = jobs_db.run_pending(session, org_id=None, limit=limit, now=now)
@@ -281,4 +299,32 @@ def run_due(session: Session, *, limit: int = 50, now: dt.datetime | None = None
         "scheduled": sum(scheduled.values()),
         "scheduled_by_tenant": scheduled,
         "scheduler_enabled": get_settings().scheduler_enabled,
+        "key_rotation": _key_rotation_outcome(session, key_rotation_job),
+    }
+
+
+def _key_rotation_outcome(session: Session, job_id: str | None) -> dict[str, Any] | None:
+    """What this pass's `keys.rotate` job did, in counts and states only, so the cron
+    caller (a GitHub Actions log, a curl) can see it without an API token. No key,
+    no fingerprint, no row id."""
+    if job_id is None:
+        return None
+    with system_scope("key rotation: reading this pass's job result", routine=True):
+        job = session.get(Job, job_id)
+    if job is None:
+        return {"job": job_id}
+    result = job.result_json or {}
+    enc, sig = result.get("token_encryption") or {}, result.get("audit_signing") or {}
+    return {
+        "job": job.id,
+        "status": job.status,
+        "error": job.last_error or None,
+        "token_encryption": enc.get("state"),
+        "audit_signing": sig.get("state"),
+        "reencrypted": enc.get("reencrypted"),
+        "undecryptable": enc.get("undecryptable"),
+        "resigned": sig.get("resigned"),
+        "chains_not_rotated": sum(
+            1 for c in sig.get("chains", []) if c.get("state") not in ("ok", "rotated")
+        ),
     }

@@ -60,7 +60,7 @@ from agentfox.runtime.enforcement import EnforcementResult, Enforcer
 log = logging.getLogger(__name__)
 
 #: Key under which we stash governance state inside the graph's state dict.
-STATE_KEY = "__nometria__"
+STATE_KEY = "__agentfox__"
 
 #: How much of each retrieval the governance state keeps for taint inference, and how
 #: many retrievals. Graph state is checkpointed, so it is bounded.
@@ -148,7 +148,7 @@ class AgentFoxGuard:
         """The incoming governance state with ``changes`` applied, as a node update.
 
         Carried whole rather than written as a delta: a state schema without a
-        merging reducer on ``__nometria__`` replaces the value on every write, and a
+        merging reducer on ``__agentfox__`` replaces the value on every write, and a
         tool node writing only ``tools_called`` would erase the trace id and what
         was retrieved.
         """

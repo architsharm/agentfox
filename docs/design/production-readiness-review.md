@@ -59,7 +59,7 @@ recur silently.** Effort: S.
 
 Gap-analysis.md and the LLD both note the wheel-drift *pattern* (three recent commits —
 `2cfe048`, `551c220`, `00a4d4f` — show a real production incident from exactly this).
-Checked freshly on 2026-09-04: `api/vendor/nometria-0.1.0-py3-none-any.whl` is dated
+Checked freshly on 2026-09-04: the committed `api/vendor/` wheel (still under the package's pre-rename name) is dated
 2026-08-28. Files newer than the wheel under `src/agentfox/` include `enforcement.py`,
 `autoguard.py`, `context_integrity.py`, `models.py`, `answerability.py`, `entitlement.py`,
 `data_access.py`, `discovery.py`, `register.py`, `system_log.py`, `db.py`, `config.py`,
@@ -288,7 +288,7 @@ deployment must know about the fixes and features merged since.
 
 ### 7.2 New production configuration
 
-Settings are read as `AGENTFOX_<name>` (the pre-rename `NOMETRIA_<name>` is no longer read).
+Settings are read as `AGENTFOX_<name>`.
 
 | Setting | Purpose | When unset |
 |---|---|---|
@@ -306,6 +306,5 @@ channels and probe targets add tables: run `agentfox admin db upgrade` before se
 ### 7.3 Still open from this review
 
 §3's per-process admission and budget state is unchanged: it also applies to the circuit
-breaker and to the fail-open budget. The code restructure, the last of the Nometria→AgentFox
-rename and building the vendored wheels at deploy time are deferred by decision; see
+breaker and to the fail-open budget. The code restructure, the last of the product rename and building the vendored wheels at deploy time are deferred by decision; see
 [gap-analysis.md](gap-analysis.md) Part 7.

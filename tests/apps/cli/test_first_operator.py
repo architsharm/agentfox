@@ -3,7 +3,7 @@
 Before: `admin auth issue` on a fresh database failed "unknown user", and the only ways
 to create one were GitHub sign-in or `admin seed`, which also loads demo agents and
 traffic into what is meant to be a production database.
-Also #22: `admin auth status` advised the pre-rename NOMETRIA_* variables.
+Also #22: `admin auth status` advises the AGENTFOX_* variables.
 """
 
 from __future__ import annotations
@@ -74,4 +74,3 @@ def test_auth_status_advises_agentfox_variables():
     result = runner.invoke(app, ["admin", "auth", "status"])
     assert result.exit_code == 0, result.output
     assert "AGENTFOX_ENVIRONMENT=production" in flat(result.output)
-    assert "NOMETRIA_" not in result.output

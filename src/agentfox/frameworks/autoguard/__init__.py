@@ -914,7 +914,7 @@ def _evaluate_output(
     state = call.state
     # The only place on this path that writes a kind="llm" span with the raw
     # response text — the shape sample_production() (online eval) scores.
-    # Mirrors enforcement.py's _finish_completion(), the gateway path's equivalent.
+    # Mirrors enforcement/completion.py's _finish_completion(), the gateway path's equivalent.
     add_span(
         session,
         call.trace_id,

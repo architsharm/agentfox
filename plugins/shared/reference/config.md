@@ -14,9 +14,6 @@ Sources, highest precedence first:
 2. the `[agentfox]` table of a TOML file
 3. built-in defaults
 
-The pre-rename `NOMETRIA_*` names, `nometria.toml` and a `[nometria]` table are no longer
-read. A startup warning names any still present, and `agentfox doctor` lists them.
-
 Every variable below is listed under its `AGENTFOX_` name. The dashboard reads only
 `AGENTFOX_API_URL`, `AGENTFOX_API_TOKEN`, `AGENTFOX_USER`, `AGENTFOX_PLAYGROUND_API_URL`,
 `AGENTFOX_SERVICE_AUTH_SECRET`, `AGENTFOX_SITE_URL` and `AGENTFOX_SELF_HOSTED`.
@@ -46,8 +43,10 @@ Settings are cached per process, so restart after changing them.
 | `AGENTFOX_ENABLED_DETECTORS` | `["injection.heuristic","pii.native","secrets.native","safety.lexicon","schema.json"]` | Add `pii.presidio`, `injection.classifier`, `injection.similarity`, `safety.granite` after installing their extras. |
 | `AGENTFOX_EVIDENCE_DIR` | `<repo-root>/var/evidence` | Where `evidence export` writes zips. |
 | `AGENTFOX_AUDIT_SIGNING_KEY` | `dev-insecure-checkpoint-key` | **Must be changed in production**: the gateway refuses to start outside development on the default. |
+| `AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS` | unset | Retired signing keys, comma-separated: old checkpoints still verify. `agentfox admin keys rotate` verifies the chain and re-signs them; then remove them. |
 | `AGENTFOX_SERVICE_AUTH_SECRET` | `dev-insecure-service-secret` | Dashboard OAuth callback (mints owner tokens). **Must be changed in production**: the gateway refuses to start outside development on the default. |
-| `AGENTFOX_TOKEN_ENCRYPTION_KEY` | unset | Fernet key for stored GitHub tokens; that feature fails closed without it. |
+| `AGENTFOX_TOKEN_ENCRYPTION_KEY` | unset | Fernet key for every secret stored at rest (GitHub tokens, source credentials, alert URLs, probe auth headers, agent signing keys); those features fail closed without it. |
+| `AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS` | unset | Retired encryption keys, comma-separated: still decrypt, never encrypt. `agentfox admin keys rotate` re-encrypts under the current key; then remove them. |
 | `AGENTFOX_CRON_SECRET` (or `CRON_SECRET`) | unset | Required for `/api/internal/jobs/run`, which accepts GET (Vercel Cron) or POST. Returns 503 if unset. |
 | `AGENTFOX_PLAYGROUND_CORS_ORIGIN` | unset | Comma-separated origins allowed to call the public playground from a browser, additive to localhost. List every host that serves the page: a missing origin shows as "Failed to fetch" in the browser while curl looks healthy. |
 

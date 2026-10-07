@@ -22,8 +22,7 @@ variable. This also fixes the driver: Neon's connection strings use the bare
 `postgresql://` scheme (psycopg2's default dialect), but the deployed demo installs
 `psycopg` (v3) per its `requirements.txt` — SQLAlchemy needs `postgresql+psycopg://`
 to pick that driver. Neither Neon variable is ever set locally, so this branch is a
-no-op there. The integration's pre-rename `NOMETRIA_DATABASE` prefix is no longer read
-(docs/deployment/vercel-env-rename.md).
+no-op there.
 """
 
 from __future__ import annotations

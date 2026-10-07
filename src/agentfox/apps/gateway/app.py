@@ -151,6 +151,21 @@ def _judgment_posture() -> dict[str, Any]:
     }
 
 
+def _key_rotation_status() -> dict[str, str]:
+    """`platform.keys.rotation.status_summary`, or "unknown" if it cannot be computed.
+
+    Public, so states only. Free (no database access) unless a previous key is
+    configured, and cached for a minute when one is.
+    """
+    from agentfox.platform.keys.rotation import status_summary
+
+    try:
+        return status_summary()
+    except Exception as exc:  # noqa: BLE001 - a version route must always answer
+        log.warning("key rotation status unavailable: %s", type(exc).__name__)
+        return {"token_encryption": "unknown", "audit_signing": "unknown"}
+
+
 def create_app() -> FastAPI:
     # Before anything else, and here rather than in `lifespan`: a serverless host may
     # never run the lifespan, and a process that is going to refuse should refuse
@@ -324,7 +339,7 @@ def create_app() -> FastAPI:
     app.include_router(probes.router)
     # Unauthenticated and read-only: the marketing site's /live page. It reads only the
     # showcase tenant, returns counts rather than content, and is cached and rate
-    # limited — see probes.py and evaluation/showcase.py.
+    # limited — see probes.py and apps/showcase.py.
     app.include_router(probes.public_router)
 
     def _health_payload() -> dict[str, Any]:
@@ -374,7 +389,7 @@ def create_app() -> FastAPI:
         return _health_payload()
 
     # `summary` pinned so the docstring below does not rewrite this route's label in
-    # the generated API route table (scripts/api_routes.py) — the explanation belongs
+    # the generated API route table (scripts/gen/api_routes.py) — the explanation belongs
     # in the description, and the public summary of this route has not changed.
     @app.get("/api/health", tags=["platform"], summary="Health")
     def health() -> dict[str, Any]:
@@ -405,6 +420,9 @@ def create_app() -> FastAPI:
             "enforcement_budget_ms": settings.enforcement_budget_ms,
             "detector_versions": {k: d.version for k, d in all_detectors().items()},
             "egress_allowed": settings.allow_egress,
+            # States only (complete | pending | not_configured | misconfigured), never a
+            # key or a fingerprint: lets an operator confirm a rotation from outside.
+            "key_rotation": _key_rotation_status(),
         }
 
     @app.get("/api/detectors", tags=["platform"])

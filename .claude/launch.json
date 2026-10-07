@@ -42,7 +42,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd /Users/architsharma/guardrails/.claude/worktrees/gap-analysis-failure-modes-2a3ba9/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8081 NOMETRIA_API_URL=http://127.0.0.1:8081 NEXT_DIST_DIR=.next-dev PORT=3001 npm run dev -- -p 3001"
+        "cd /Users/architsharma/guardrails/.claude/worktrees/gap-analysis-failure-modes-2a3ba9/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8081 NEXT_DIST_DIR=.next-dev PORT=3001 npm run dev -- -p 3001"
       ],
       "port": 3001
     }

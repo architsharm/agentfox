@@ -58,8 +58,8 @@ Citations are in §4.
 | Primitive | What it is, and the design decision | Who else has it | What it moves (claim id or results file) |
 |---|---|---|---|
 | **Argument provenance and containment at the action** | Every argument carries a provenance mark on a fixed order: `none < user < retrieved < tool_result < subagent < memory` (`detection/taint.py`, `detection/base.py:TAINT_ORDER`). It is inferred by matching argument values against earlier tool outputs, or declared by the caller. A grant carries a ceiling (`max_taint`), and the tool's declared impact tier caps what tainted values may reach. **Decision:** the action check never reads the payload text. | **Adjacent:** <br>- Zenity Boundaries: deterministic, conversation-scoped taint facts that later `forbid` rules read [code]. <br>- Invariant: `->` flow rules over trace order [code]. <br>- Pillar: claims "taint analysis", mechanism [ND]. <br>**No per-argument-value provenance found** in llm-guard, NeMo, Guardrails AI, LlamaFirewall [code], or in the Lakera, Azure, Bedrock, Model Armor, Prompt Security or F5 API contracts [docs]. | 8/8 attacks contained with zero detector signal; 4/4 legitimate calls still allowed (`containment.*`). <br>588/588 attack pairs contained with session-level taint (`agentdojo.session_taint.attack_pairs_contained`). <br>38/38 of those bypasses still contained at the action (`adaptive.bypasses_contained_at_the_action`). |
-| **Capability grants with constraints** | Default deny. A grant names one identity, one tool, and argument limits (`eq`, `lte`, `in` … in `policy/model.py:COMPARATORS`), checked in `identity/service.py:check_capability`. **Decision:** a denial is set directly, whatever mode the policy packs are in. | **Has it:** <br>- Zenity Boundaries (rules over `resource.attributes.arguments`) [code]. <br>- Invariant (argument-value rules) [docs]. <br>- NeMo (tool allow-list plus JSON-schema validation) [code]. <br>- Lakera ("Tool Allow/Deny List"; argument scope [ND]). <br>- ServiceNow AI Gateway (tool-level approve or reject) [docs]. | Excessive-agency tier: 6/6 correct, where llm-guard "cannot participate" (`benchmarks/agent_security/results/tier_d_results.json`). <br>With grants and impact tiers only and no provenance, the AgentDojo result is 0/588 attack pairs contained (`agentdojo.capability_only`). We publish that grants alone are not enough. |
-| **Deterministic action semantics** | Generated SQL is parsed to an AST with sqlglot. We reason over the tree: unbounded DML, tautology `WHERE`, DDL, stacked statements (`detection/actions.py`). Every string argument also goes through `analyse_scope`. **Decision:** "deterministic parsing, never a model". An unparseable statement fails closed. | **Adjacent:** <br>- NeMo ships YARA rules including `sqli` [code]. <br>- LlamaFirewall CodeShield runs regex and Semgrep over generated code [code]. <br>No statement-level SQL blast-radius analysis found elsewhere. | gretelai SQL held-out split: 8/8 natural DML, 12/12 natural DDL, and 357/357 each of the adversarial unbounded and tautology sets, with zero false positives (`benchmarks/action_safety/results/summary.json`). <br>Tool-parameter tier: 10/10 (`tier_c_results.json`). |
+| **Capability grants with constraints** | Default deny. A grant names one identity, one tool, and argument limits (`eq`, `lte`, `in` … in `policy/model.py:COMPARATORS`), checked in `identity/service.py:check_capability`. **Decision:** a denial is set directly, whatever mode the policy packs are in. | **Has it:** <br>- Zenity Boundaries (rules over `resource.attributes.arguments`) [code]. <br>- Invariant (argument-value rules) [docs]. <br>- NeMo (tool allow-list plus JSON-schema validation) [code]. <br>- Lakera ("Tool Allow/Deny List"; argument scope [ND]). <br>- ServiceNow AI Gateway (tool-level approve or reject) [docs]. | Excessive-agency tier: 5/6 correct (the miss is a benign `tickets.update` blocked by the cascade rule), where llm-guard "cannot participate" (`benchmarks/agent_security/results/tier_d_results.json`). <br>With grants and impact tiers only and no provenance, the AgentDojo result is 0/588 attack pairs contained (`agentdojo.capability_only`). We publish that grants alone are not enough. |
+| **Deterministic action semantics** | Generated SQL is parsed to an AST with sqlglot. We reason over the tree: unbounded DML, tautology `WHERE`, DDL, stacked statements (`detection/actions.py`). Every string argument also goes through `analyse_scope`. **Decision:** "deterministic parsing, never a model". An unparseable statement fails closed. | **Adjacent:** <br>- NeMo ships YARA rules including `sqli` [code]. <br>- LlamaFirewall CodeShield runs regex and Semgrep over generated code [code]. <br>No statement-level SQL blast-radius analysis found elsewhere. | gretelai SQL held-out split: 8/8 natural DML, 12/12 natural DDL, and 357/357 each of the adversarial unbounded and tautology sets, with zero false positives (`benchmarks/action_safety/results/summary.json`). <br>Tool-parameter tier: 8/10, all 5 attacks blocked; the 2 misses are benign `tickets.update` controls blocked by the cascade rule (`tier_c_results.json`). |
 | **Answerability gate before generation** | `_answerability_gate` in `runtime/enforcement/completion.py` refuses a question outside the agent's declared knowledge boundary *before* the provider is called. **Decision:** abstention is a gate, not a score after the fact. | **Post-generation only:** <br>- Bedrock contextual grounding scores the response, output only [docs]. <br>- Automated Reasoning is detect-only, after generation [docs]. <br>No pre-generation gate found. | The deterministic classifier abstains on 57/676 contested questions; with a judgment tier that becomes 572/676 (`judgment.contested_recall_off`, `judgment.contested_recall_on`). The off number is weak; see §5. |
 | **Normalised views for detection** | Detectors run over several *views* of the text: zero-width characters stripped, separators rejoined, decoded, hidden HTML. Offsets map back to the original (`detection/normalize.py`). **Decision:** many views, not one aggressive rewrite, because over-blocking gets a guardrail switched off. | **Has it:** <br>- llm-guard (`invisible_text` scanner) [code]. <br>- LlamaFirewall (hidden-ASCII scanner) [code]. <br>Common practice, not a differentiator. | NotInject false positives cut 8.6% → 0.3% by the fixes the adaptive benchmark found (`benchmarks/adaptive/README.md`). <br>19/19 matched pairs across languages (`multilingual.integrity_parity`). |
 | **Judgment tiers with egress control** | Optional model tiers (Jev, hosted LLM, local LLM) behind a routing table that forbids them from deciding parse-tree questions (`detection/judgment/capability.py`, `STRUCTURAL_PARSED`). Hosted calls need `allow_egress`, are redacted first, and fail closed if redaction cannot run (`detection/judgment/egress.py`). **Decision:** a model may add recall but may never overrule the parser. | **Model on the deterministic question:** <br>- NeMo sends tool name and arguments to an LLM judge [code]. <br>- LlamaFirewall AlignmentCheck is an LLM judge over the trace [code]. <br>No routing table forbidding a model from overruling a parser found. | 160/165 injection payloads that defeated our pattern detectors caught with a tier on (`judgment.escaped_payloads_caught`). <br>SQL blast-radius accuracy stays at 100.0% with every tier enabled (`judgment.sql_control_unchanged`). |
@@ -67,7 +67,7 @@ Citations are in §4.
 | **Hash-chained audit** | Every decision and operator action is appended to a SHA-256 chain with HMAC checkpoints (`prove/audit/chain.py`). Evidence packages ship a stdlib-only `verify_chain.py`. **Decision:** an auditor verifies without trusting us. | **Has it:** <br>- AWS CloudTrail log-file integrity validation (SHA-256, RSA-signed digests) covers Bedrock guardrail events [docs]. <br>- ServiceNow AI Gateway claims "tamper-evident audit logs", mechanism [ND]. <br>No hash chain or signing found in llm-guard, NeMo, Guardrails AI, LlamaFirewall, Zenity OpenClaw, Lasso or Invariant Gateway [code]. | Verified adversarially, not benchmarked: mutation, deletion, reorder and checkpoint forgery are detected (`docs/evaluation/benchmarking-whitepaper.md` §4.11). |
 | **Approvals bound to the exact call** | An approval lets through one retry of the same agent, tool and arguments, before expiry, once (`identity/service.py:redeem_approval`). **Decision:** presenting an approval can never make a call more permitted than a person saw. | **Escalate outcomes:** <br>- Credo Agent Governor ("escalate") [vendor page]. <br>- LlamaFirewall (`HUMAN_IN_THE_LOOP_REQUIRED`) [code]. <br>How an approval is bound to arguments is [ND] for both. <br>The Copilot Studio webhook can only allow or block [docs]. | Tested, not benchmarked. |
 | **Harness hooks** | Claude Code hooks call a warm local daemon that runs the same `Enforcer` (`hooks/`). `updatedInput` lets an `alter` verdict rewrite the call. **Decision:** the hook path reports and does not block when the daemon is down (`hooks/client.py`), and says so. | **Has it:** <br>- Noma (decision made server-side; fails open on network error) [code]. <br>- Snyk Agent Guard [code]. <br>- Credo Agent Governor [vendor page]. <br>- Zenity Cursor plugin [code]. <br>Not a differentiator. | No benchmark. |
-| **Continuous monitoring and live probing** | Connected GitHub repos, OpenAPI specs and MCP servers are re-checked on a schedule and diffed. Opt-in probes run against deployed agents (`monitoring/`, `evaluation/live_probes.py`). | **Has more:** <br>- Zenity, Noma, Lasso, Pillar and ServiceNow all ship estate discovery or posture management [vendor page / docs]. <br>- Snyk Agent Scan scans MCP supply chains [code]. <br>Theirs is broader. | Adaptive red-team: provenance-laundering mutations 0/31, tool-scope mutations 0/29, structural argument-shape mutations 0/105 after the nested-argument fix (`redteam.*`). <br>That is configuration regression testing, not robustness. |
+| **Continuous monitoring and live probing** | Connected GitHub repos, OpenAPI specs and MCP servers are re-checked on a schedule and diffed. Opt-in probes run against deployed agents (`monitoring/`, `evaluation/live_probes.py`). | **Has more:** <br>- Zenity, Noma, Lasso, Pillar and ServiceNow all ship estate discovery or posture management [vendor page / docs]. <br>- Snyk Agent Scan scans MCP supply chains [code]. <br>Theirs is broader. | Adaptive red-team: provenance-laundering mutations 0/30, tool-scope mutations 0/29, structural argument-shape mutations 0/105 after the nested-argument fix (`redteam.*`). <br>That is configuration regression testing, not robustness. |
 
 ---
 
@@ -78,7 +78,12 @@ Each line follows one shape: architecture fact → mechanism → measured result
 1. **Containment survives a detector miss.**
    - **Architecture:** the action check reads where a value came from, never the text.
    - **Mechanism:** an attacker can rewrite a payload until no detector fires, but that does not change its `tool_result` provenance.
-   - **Result:** our own adaptive attacker reaches 73% attack success at 50 attempts on the readable attacks we catch (`adaptive.readable_attack_success_at_50`), yet 38/38 of those bypasses still contained at the action (`adaptive.bypasses_contained_at_the_action`).
+   - **Result:** our own adaptive attacker reaches 71% attack success at 50 attempts on the readable attacks we catch (`adaptive.readable_attack_success_at_50`), yet 38/38 of those bypasses still contained at the action (`adaptive.bypasses_contained_at_the_action`).
+   - **Head to head on AgentDojo:** on AgentDojo's 588 injection pairs, llm-guard alone let 86/588 (14.6% [12.0, 17.7]) through at its default threshold; AgentFox containment let 0/588 (0.0% [0.0, 0.6]) through (`head_to_head.llm_guard_alone`, `head_to_head.containment_alone`).
+     - **The price:** containment completes 24/97 benign tasks (24.7% [17.2, 34.2]), against llm-guard's 42/97 (43.3% [33.9, 53.2]).
+     - **No deployable llm-guard threshold closes the gap:** at a benign false-positive rate of 5% or less, its best threshold still lets 389/588 through (`head_to_head.llm_guard_sweep_fpr5`).
+     - **Where it ties:** tuned on the test set and in its chunked mode, it does tie containment (§5).
+     - Prompt Guard 2 is not yet measured (§7).
    - **Why others can't by design:** a text classifier at the prompt/response boundary has nothing left to decide on once its text check is evaded. That covers Lakera Guard, Azure Prompt Shields, Bedrock Guardrails, Model Armor, llm-guard, Prompt Guard 2, and the Lasso, Prompt Security, F5 and Pillar classify APIs.
 2. **We measure with the detectors deleted.**
    - **Architecture:** grants, impact tiers and provenance run without any detector.
@@ -88,12 +93,12 @@ Each line follows one shape: architecture fact → mechanism → measured result
 3. **We see the tool call as structure, not as a string.**
    - **Architecture:** the decision is taken on the tool key and typed arguments, against the agent's grants.
    - **Mechanism:** `order_id="*"` is a wildcard scope, and `amount` above the ceiling breaks a constraint. Neither contains injection-shaped text.
-   - **Result:** tool-parameter tier 10/10 and excessive-agency tier 6/6. In both tiers llm-guard "cannot participate" (`benchmarks/agent_security/results/tier_c_results.json`, `tier_d_results.json`).
+   - **Result:** tool-parameter tier 8/10 and excessive-agency tier 5/6; every attack is blocked, and the three misses are benign `tickets.update` controls blocked by `cascade.reaches_destructive`, because the demo world declares that a ticket update sends email. In both tiers llm-guard "cannot participate" (`benchmarks/agent_security/results/tier_c_results.json`, `tier_d_results.json`).
    - **Why others can't by design:** Bedrock's Converse integration does not evaluate `toolUse.input` [docs]. llm-guard has no tool-call input [code].
 4. **We hold up on long multi-step attacks at single-digit-millisecond cost.**
    - **Architecture:** we keep per-session state.
    - **Mechanism:** a trajectory detector reads the slope of a conversation instead of one message.
-   - **Result:** 10/13 gradual-escalation conversations detected, with 0/9 control conversations flagged (`crescendo.*`), at 3.8 ms mean and 7.8 ms p95 added per turn (`crescendo.trajectory_latency`).
+   - **Result:** 10/13 gradual-escalation conversations detected, with 0/9 control conversations flagged (`crescendo.*`), at 4.1 ms mean and 5.0 ms p95 added per turn (`crescendo.trajectory_latency`).
    - **Why others can't by design:** a stateless per-message scanner cannot see a slope. In the payload-splitting tier, llm-guard flags each fragment alone rather than the assembled attack (`benchmarks/agent_security/README.md`, Tier A).
 5. **A model never decides a deterministic question.**
    - **Architecture:** a routing table seats only the parser on parse-tree questions.
@@ -155,8 +160,9 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
   - Library: scanner exceptions propagate to the caller.
   - API server: returns HTTP 408 on timeout (10 s for prompts, 30 s for outputs), so the caller decides [code][lg-app].
 - **Evidence.** structlog and OpenTelemetry counters; no chain [code].
-- **Delta.** **This is the one head-to-head we ran**, against a real installed `llm-guard` (`benchmarks/agent_security/`).
+- **Delta.** We have run two head-to-heads against a real installed `llm-guard`.
   - On 20 indirect-injection cases it is more precise than us: llm-guard 81.8% precision and 90.0% recall, against AgentFox's 66.7% and 100.0% (`agent_security.tier_b_vs_llm_guard`).
+  - On AgentDojo's 588 injection pairs (`benchmarks/head_to_head/`), at its default it let 86/588 through where containment let 0/588 through. It completes more benign tasks, and it ties containment once tuned (§5).
   - On tool parameters and excessive agency it has no input to decide on, so we do not score it as a zero.
 
 ### NVIDIA NeMo Guardrails
@@ -204,7 +210,7 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
 - **Delta.**
   - **It wins on:** open-weight multilingual classifiers, and AlignmentCheck can catch a misaligned action that no declared rule anticipated.
   - **We win on:** a decision that does not rest on a model judging the trace.
-  - **Not yet run:** we have not run Prompt Guard 2 head to head (§7).
+  - **Not yet run:** we have not run Prompt Guard 2 head to head. The harness is built (`benchmarks/head_to_head/`), but the gated model needs the account owner to accept Meta's licence (§7).
 
 ### Microsoft Azure AI Content Safety: Prompt Shields
 
@@ -386,7 +392,7 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
   - The shipped lexical heuristic's held-out injection recall is 26.7% at 100% precision (`injection.heuristic_held_out`).
   - The opt-in ensemble reaches 85.6% recall on SPML (`generalization.classifier_spml_recall`), but it times out on long prompts (`benchmarks/REPORT.md`, round 7).
 - **The answerability gate is real, but its default recall is low.** It abstains on 57/676 contested questions; with a judgment tier that becomes 572/676 (`judgment.contested_recall_*`), at 6.8% over-refusal (`benchmarks/judgment/results/judgment_results.json`).
-- **Judgment costs latency.** The hosted tier adds 341.3 ms median and 1209.8 ms p95 per injection check (`judgment.injection_latency`), against 0.179 ms per example for the heuristic (`injection.heuristic_held_out`).
+- **Judgment costs latency.** The hosted tier adds 341.3 ms median and 1209.8 ms p95 per injection check (`judgment.injection_latency`), against 0.22 ms per example for the heuristic (`injection.heuristic_held_out`).
 - **The hook path fails open.** The default `fail_mode` is also open (`runtime/availability.py`). Only the four `NEVER_OPEN` controls are guaranteed closed.
 - **Not built:**
   - no sandbox (that is E2B/Modal/Daytona's job);
@@ -395,8 +401,19 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
   - no live IdP;
   - text only (`docs/architecture/high-level-design.md` §11).
 - **Head-to-heads.**
-  - Exactly one has been run: `llm-guard`, on 20 indirect-injection cases, where it was more precise.
-  - Every other comparison on this page is architectural, read from docs and code, not measured.
+  - Two have been run, both against `llm-guard`:
+    - on 20 indirect-injection cases, where it was more precise;
+    - on AgentDojo (`benchmarks/head_to_head/`), where it loses on attacks and wins elsewhere, as the next three bullets say.
+  - Every other comparison on this page, including Prompt Guard 2, is architectural, read from docs and code, not measured.
+- **llm-guard wins on benign utility.**
+  - At its defaults, on AgentDojo, llm-guard completes 42/97 benign tasks to containment's 24/97.
+  - At a benign false-positive rate of 5% or less it completes 82/97, while letting 389/588 attacks through.
+- **llm-guard ties containment once tuned.** In its non-default chunked mode, with a threshold tuned on the test set, it reaches 0/588 (0.0% [0.0, 0.6]) attacks at 24/97 benign tasks, the same point as containment (`head_to_head.llm_guard_chunks_matched_utility`). That setting flags 38.3% of benign tool outputs. The containment win is "no tuning and no model", not "a better point on the curve".
+- **Our detectors miss AgentDojo's injection text, and llm-guard does not.**
+  - With the shipped detectors on, an injection rule fired on 0 of the 752 injected tool outputs (`head_to_head.agentfox_detectors_on_outputs`).
+  - llm-guard flags 195 of the 298 distinct injected outputs at its default, and 291 of 298 chunked (`head_to_head.llm_guard_injected_recall`).
+  - Every AgentFox containment on that benchmark came from provenance.
+- **Stacking costs utility.** llm-guard + AgentFox containment completes only 11/97 benign tasks (`head_to_head.llm_guard_plus_containment`). Containment alone already contains every pair, so the classifier adds false positives and nothing else.
 - **Compliance mappings are DRAFT**, not reviewed by counsel.
 - **Corrections to [competitor-analysis.md](competitor-analysis.md) §4.**
   - **Argument-provenance taint is not unclaimed.** Zenity Boundaries has deterministic, conversation-scoped taint rules over tool calls. Our shipped default is also session-level. Say "per-value provenance with grant ceilings, measured with detectors off", not "nobody tracks taint".
@@ -408,7 +425,7 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
 
 - **"Lakera blocks prompt injection too."**
   - Yes, and as a dedicated classifier it is a different product from our default lexical heuristic. We make no comparative detection claim and decline to quote PINT.
-  - The question is what happens after a classifier misses. Our adaptive attacker gets 73% attack success at 50 attempts against our own detectors, yet 38/38 of those bypasses still contained at the action.
+  - The question is what happens after a classifier misses. Our adaptive attacker gets 71% attack success at 50 attempts against our own detectors, yet 38/38 of those bypasses still contained at the action.
   - A screening API returns `flagged`, and "your application determines the appropriate action" [docs][lk-int]. We are that application-side decision. The two are complementary.
 - **"Bedrock Guardrails is free with my cloud."**
   - For text it is a good default. Keep it.
@@ -442,11 +459,17 @@ These are the runs that would turn an architectural claim on this page into a me
 
 1. **AgentDojo with competitor detectors in the loop.** Run Prompt Guard 2, llm-guard and, under a trial key, Lakera Guard and Azure Prompt Shields as the only defence on the same 588 pairs, then stack them with containment.
    - This turns "a classifier has nothing left after a miss" into a number.
+   - **Partially measured** (`benchmarks/head_to_head/`).
+     - **llm-guard:** done, with a threshold sweep and a latency comparison: 71.9 ms p50 per tool result, against 6.9 ms for containment (`head_to_head.latency`).
+     - **Prompt Guard 2:** wired, but blocked on Meta's licence gate on Hugging Face. The account owner must accept it; the arm is then one command.
+     - **Lakera and Azure:** not attempted; they need trial keys.
+     - **The adaptive version of this** is still gap 5.
 2. **NeMo tool rails against the tool-parameter and excessive-agency tiers.** NeMo is the competitor whose architecture can see the same inputs. We should score it rather than describe it.
 3. **Invariant rules that encode our containment policy, on AgentDojo.** This tests whether hand-written flow rules match inferred provenance on utility and containment.
 4. **Bedrock `ApplyGuardrail` on tool arguments passed explicitly as text.** This measures the integrator workaround, not just the documented Converse gap.
-5. **The adaptive attacker against Prompt Guard 2 and llm-guard**, with the same protocol and budget as `benchmarks/adaptive/`, so "73% against us" has comparators.
+5. **The adaptive attacker against Prompt Guard 2 and llm-guard**, with the same protocol and budget as `benchmarks/adaptive/`, so "71% against us" has comparators.
 6. **Latency under the same harness.** Our per-call cost against llm-guard and Prompt Guard 2 on one machine. `benchmarks/agent_security/README.md` says this was never done.
+   - Done for llm-guard on AgentDojo tool outputs; see gap 1. Prompt Guard 2 is still to do.
 7. **Re-run the pending benchmarks** (adaptive, redteam provenance) and update the bound claims. Until then, this page quotes the committed results.
 
 [lk-api]: https://docs.lakera.ai/docs/api/guard

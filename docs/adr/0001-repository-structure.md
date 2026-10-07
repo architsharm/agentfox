@@ -44,9 +44,9 @@ how other projects solved the same problems.
    `deploy/` except where a platform reads a fixed path (`render.yaml` and `api/` at the root).
 7. **Deferred until the restructure is done:** new harnesses (Codex first, then Cursor);
    building wheels at deploy time instead of committing them to `api/vendor/` and the demo's
-   `vendor/`; the rest of the Nometria → AgentFox rename (the `NOMETRIA_*` environment fallback,
-   the `nometria` console script and the `x-nometria-*` headers), because production
-   environments still set them.
+   `vendor/`; the rest of the product rename (the pre-rename environment-variable fallback,
+   console script and request headers), because production environments still set them.
+   The rename has since been finished: those fallbacks are gone.
 
 ## Consequences
 

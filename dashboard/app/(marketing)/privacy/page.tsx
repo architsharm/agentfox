@@ -214,7 +214,7 @@ export default function Privacy() {
               </p>
               <div className="mk-grid mk-grid-2" style={{ marginTop: 18 }}>
                 <div className="mk-card">
-                  <p className="mk-label">nometria_session</p>
+                  <p className="mk-label">agentfox_session</p>
                   <p className="mk-body" style={{ margin: "10px 0 0", fontSize: "var(--t-body)" }}>
                     The API token minted for you at sign-in, which is what the control
                     plane checks on every request. <span className="mk-mono">httpOnly</span>

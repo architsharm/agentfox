@@ -44,7 +44,7 @@ _KNOWN: list[tuple[str, re.Pattern[str], float]] = [
         re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
         0.9,
     ),
-    ("SECRET.NOMETRIA_KEY", re.compile(r"\bnom_(?:agt|api)_[A-Za-z0-9]{16,}\b"), 0.99),
+    ("SECRET.AGENTFOX_KEY", re.compile(r"\bnom_(?:agt|api)_[A-Za-z0-9]{16,}\b"), 0.99),
     (
         "SECRET.CONNECTION_STRING",
         re.compile(

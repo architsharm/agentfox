@@ -126,10 +126,10 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
           <Output>{`{"error":"GitHub sign-in is not configured (GITHUB_CLIENT_ID is unset)."}`}</Output>
           <p>
             For a local evaluation only, the session is the token itself, held in a cookie
-            named <code>nometria_session</code>. Open <code>http://localhost:3000/login</code>,
+            named <code>agentfox_session</code>. Open <code>http://localhost:3000/login</code>,
             then in the browser console:
           </p>
-          <Code lang="ts" title="browser console">{`document.cookie = "nometria_session=<the token from step 3>; path=/"; location.href = "/app";`}</Code>
+          <Code lang="ts" title="browser console">{`document.cookie = "agentfox_session=<the token from step 3>; path=/"; location.href = "/app";`}</Code>
           <Callout kind="warning">
             This is a workaround for a local instance, not a sign-in method. Anything with that
             cookie acts as the token&apos;s user. Do not do it on a shared or public

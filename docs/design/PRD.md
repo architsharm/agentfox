@@ -127,7 +127,7 @@ harness failing if any claim disagrees with what happens.
 with **every detector disabled**, 8 of 8 attack scenarios are still contained, and on AgentDojo,
 with argument provenance inferred from the real tool outputs, 588 of 588 attack pairs are
 contained at session-level taint, at a cost of 24 of 97 benign tasks running without escalation. We separately publish our own adaptive-attack
-success rate against our detectors (**73% at 50 attempts**), because a vendor that only
+success rate against our detectors (**71% at 50 attempts**), because a vendor that only
 publishes the flattering half of that pair should not be believed. See
 [`benchmarks/containment/`](../../benchmarks/containment/README.md),
 [`benchmarks/agentdojo/`](../../benchmarks/agentdojo/README.md) and
@@ -161,8 +161,7 @@ probing of deployed agents (§13).
   against; KMS/Vault needs a deployment; HA scale-out needs load. Each is a declared
   seam rather than an implementation, and a declared seam is not a feature.
 * **Deliberately deferred.** Model-based detectors ship but their weights are an opt-in
-  download. The code restructure, new coding-agent harnesses and the last of the
-  Nometria→AgentFox rename are deferred too (§13.4).
+  download. The code restructure and new coding-agent harnesses are deferred too (§13.4).
 * **Genuinely hard and openly uncovered.** Sycophancy, invalid logical inference, and
   answer quality in languages other than English. A deterministic checker cannot judge
   informal argument, and an LLM judge inherits the failure it is meant to catch. These
@@ -1297,8 +1296,6 @@ small JSON contract the adapter sends.
 
 - The code restructure in [structure-proposal.md](structure-proposal.md), and with it new
   coding-agent harnesses (Codex first, then Cursor).
-- The last of the Nometria→AgentFox rename: the `NOMETRIA_*` environment fallback, the
-  `nometria` console script and the `x-nometria-*` headers stay while production depends on them.
 - Building the vendored wheels at deploy time instead of committing them.
 
 ---

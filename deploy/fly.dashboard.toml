@@ -9,8 +9,7 @@
 # from the repo root with `--build-context` support, or from ./dashboard with the
 # Dockerfile path adjusted. Runbook: deploy/README-dashboard.md
 #
-# Settings are AGENTFOX_*. The pre-rename NOMETRIA_* names are no longer read;
-# rename any you set before the rename.
+# Settings are AGENTFOX_*.
 app = "nometria-dashboard"
 primary_region = "iad"
 

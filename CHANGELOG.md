@@ -13,6 +13,28 @@ the file it came from.
 
 ### Added
 
+- **Key rotation** for the two keys that protect stored data.
+  `AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS` and `AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS`
+  (comma-separated) hold retired keys: secrets still decrypt and checkpoints still
+  verify under them, while everything new uses the current key. `agentfox admin keys
+  rotate` re-encrypts every encrypted column (atomic per column; a value no key
+  decrypts is reported and left alone), verifies each tenant's audit chain, re-signs
+  its previous-key checkpoints, records an `audit.key_rotated` entry with the key
+  fingerprints (first 8 hex of SHA-256, never the key) and checkpoints the new head.
+  `agentfox admin keys status` shows the fingerprints and what still needs a previous
+  key. The job runner (`/api/internal/jobs/run`, `agentfox admin jobs run-due`) enqueues
+  a `keys.rotate` job by itself while a previous key still protects something;
+  `/api/version` reports `key_rotation` states and `agentfox doctor` has a `key
+  rotation` line. See docs/deployment/key-rotation.md.
+- Checkpoints record the signing key's fingerprint in `key_id` (was the constant
+  `local`), and are written into the chain of the entry they anchor even inside
+  `system_scope`. `chain.verify` accepts one key or several.
+- The `verify_chain.py` in evidence packages accepts several comma-separated keys in
+  `AGENTFOX_AUDIT_KEY`, for a chain that spans a rotation.
+- One-time migration bridge: when both `AGENTFOX_<KEY>` and `NOMETRIA_<KEY>` were set
+  and differed for `TOKEN_ENCRYPTION_KEY` or `AUDIT_SIGNING_KEY`, the `NOMETRIA_` value
+  was used as the previous key. Removed again by rename stage B (below).
+
 - **Capability packs.** A business use case or framework is one directory with a
   `pack.yaml` (id, version, maturity, owners, compliance mappings, vocabulary) and its
   policies, controls, ladder templates, red-team probes, optional checks, golden cases
@@ -35,15 +57,30 @@ the file it came from.
 ### Removed
 
 - The `nometria` Python package shim and the `nometria` console script. Import from `agentfox` (e.g. `agentfox.frameworks.langgraph`) and run `agentfox`.
-- **The last of the Nometria names (rename stage B).** The `NOMETRIA_*` environment
-  fallback (settings, `NOMETRIA_CONFIG`, the CLI's `NOMETRIA_API_URL` /
+- **The last of the Nometria names (rename stage B). Breaking.** The `NOMETRIA_*`
+  environment fallback (settings, `NOMETRIA_CONFIG`, the CLI's `NOMETRIA_API_URL` /
   `NOMETRIA_API_TOKEN` / `NOMETRIA_USER`, `NOMETRIA_AGENT`, `NOMETRIA_MCP_LOG_LEVEL`, the
   evidence package's `NOMETRIA_AUDIT_KEY`, the dashboard's `NOMETRIA_*`, the demos'
   `NOMETRIA_DEMO_MODEL` and `NOMETRIA_DATABASE_*`), the `nometria.toml` / `[nometria]`
-  config file, and acceptance of `x-nometria-*` request headers. Set `AGENTFOX_*`,
-  `agentfox.toml` / `[agentfox]` and `X-AgentFox-*`. A leftover old name is not read, but
-  it is not silent either: the process logs one warning naming each ignored setting, the
-  dashboard one per variable, and `agentfox doctor` lists every `NOMETRIA_*` still set.
+  config file, acceptance of `x-nometria-*` request headers, the `legacy names` doctor
+  line and the one-time `NOMETRIA_` key bridge are gone. Only `AGENTFOX_*`,
+  `agentfox.toml` / `[agentfox]` and `X-AgentFox-*` are read; an old name is ignored
+  without a warning. Key rotation (`*_PREVIOUS`) stays.
+- **Breaking:** the dashboard session cookie is `agentfox_session` (was
+  `nometria_session`). Everyone is signed out once and signs in again.
+- **Breaking:** the LangGraph governance state key is `__agentfox__` (was
+  `__nometria__`). Declare `__agentfox__` in your state schema. Graph state checkpointed
+  before the upgrade keeps its governance state under the old key, where it is no
+  longer read: an in-flight thread resumed across the upgrade starts a new trace.
+- **Breaking:** OPA policy documents are pushed as `agentfox_<policy>` (were
+  `nometria_<policy>`). An OPA sidecar that kept documents pushed by an older version
+  holds both under the same package; restart it (pushed policies are in memory) or
+  `DELETE /v1/policies/nometria_<policy>` for each.
+- The secrets detector's entity for AgentFox API and agent keys (`nom_api_…`,
+  `nom_agt_…`) is `SECRET.AGENTFOX_KEY` (was `SECRET.NOMETRIA_KEY`). The `SECRET.*`
+  policy rules match it unchanged; a rule naming the old entity must be updated. The
+  key prefixes themselves are unchanged, so issued keys keep working and keep being
+  detected.
 
 - The hidden pre-consolidation CLI names. `agentfox --help` shows thirteen verbs, and
   the old top-level names had kept running, hidden, with a "now called" hint. They no
@@ -91,7 +128,7 @@ the file it came from.
   variable. `render.yaml`, `deploy/`, the docs and the plugins use only the new names.
   The self-host blueprint now prompts for `AGENTFOX_AUDIT_SIGNING_KEY` instead of
   generating it, so a blueprint sync can never rotate an existing deployment's key.
-  Renaming the hosted deployment: `docs/deployment/vercel-env-rename.md`.
+  Renaming the hosted deployment: `docs/deployment/vercel-env-rename.md` (since removed).
 - The shipped policies and the control catalog moved from `policies_data/` and
   `compliance_data/` into the capability packs (`packs/<id>/policies/`,
   `packs/compliance/catalog/controls/`). `compliance_dir` and `policies_dir` still

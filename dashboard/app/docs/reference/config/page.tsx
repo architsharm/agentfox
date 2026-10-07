@@ -100,7 +100,13 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "token_encryption_key",
         "env": "AGENTFOX_TOKEN_ENCRYPTION_KEY",
         "def": "unset",
-        "what": "Fernet key that encrypts stored GitHub access tokens. Unset: connecting GitHub fails closed."
+        "what": "Fernet key that encrypts every secret stored at rest: GitHub tokens, source credentials, alert URLs, probe auth headers, agent signing keys. Unset: those features fail closed."
+      },
+      {
+        "key": "token_encryption_key_previous",
+        "env": "AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS",
+        "def": "unset",
+        "what": "Retired encryption keys, comma-separated. They still decrypt and never encrypt; agentfox admin keys rotate moves everything to the current key, then remove them."
       },
       {
         "key": "cron_secret",
@@ -559,6 +565,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Signs audit-chain checkpoints. Keep it outside the database. Outside development the gateway refuses to start while it is the published default."
       },
       {
+        "key": "audit_signing_key_previous",
+        "env": "AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS",
+        "def": "unset",
+        "what": "Retired signing keys, comma-separated. Checkpoints they signed still verify; agentfox admin keys rotate verifies the chain and re-signs them with the current key, then remove them."
+      },
+      {
         "key": "audit_checkpoint_interval",
         "env": "AGENTFOX_AUDIT_CHECKPOINT_INTERVAL",
         "def": "100",
@@ -853,11 +865,6 @@ export default function Page() {
         </li>
         <li>The default in the tables below.</li>
       </ol>
-      <p>
-        The pre-rename <code>NOMETRIA_&lt;KEY&gt;</code> names, <code>nometria.toml</code> and a{" "}
-        <code>[nometria]</code> table are no longer read. A process that finds one logs a
-        warning naming it, and <code>agentfox doctor</code> lists every one still set.
-      </p>
       <p>
         The key in the file is the setting name: <code>taint_scope = &quot;argument&quot;</code>{" "}
         in the file is <code>AGENTFOX_TAINT_SCOPE=argument</code> in the environment. Lists

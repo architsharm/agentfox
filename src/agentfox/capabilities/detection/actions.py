@@ -857,7 +857,7 @@ def analyse_scope(key: str, value: str) -> ActionAnalysis | None:
                 # "critical", not "high": a legitimate identifier argument is never
                 # literally the string "*"/"all"/"any" — this is as unambiguous as
                 # `sql.destructive_ddl`, so it gets the same automatic-block
-                # treatment (enforcement.py's "a critical action risk stands on
+                # treatment (enforcer.py's "a critical action risk stands on
                 # its own" rule) rather than depending on an operator to author a
                 # policy rule for it first.
                 severity="critical",
@@ -970,7 +970,7 @@ def walk_arguments(
 ) -> Any:
     """Yield ``(leaf_key, path, value)`` for every scalar in a tool call, nested included.
 
-    Taint tracking already flattens nested arguments (`guardrails/taint.py::_flatten`), so a
+    Taint tracking already flattens nested arguments (`detection/taint.py::_flatten`), so a
     value buried at `params.sql` carried its provenance correctly — but action assurance
     only ever looked at the top level. The result was a blind spot exactly where a real
     integration puts things: `{"sql": "DELETE FROM customers"}` was blocked, while

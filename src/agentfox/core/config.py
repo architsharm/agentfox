@@ -105,27 +105,6 @@ class InsecureConfigurationError(RuntimeError):
 #: Env var naming an explicit config file. Deliberately *not* a Settings field: it
 #: decides where settings come from, so it cannot itself come from that file.
 CONFIG_ENV_VAR = "AGENTFOX_CONFIG"
-#: The pre-rename (Nometria) spelling, which is no longer read. Kept only to *notice*
-#: it: a deployment that still sets ``NOMETRIA_FAIL_MODE`` or keeps a
-#: ``nometria.toml`` would otherwise run on defaults without a word, which for a
-#: governance product means quietly running unconfigured. So the process says so
-#: once at startup (`warn_ignored_legacy_settings`) and `agentfox doctor` lists them.
-LEGACY_ENV_PREFIX = "NOMETRIA_"
-LEGACY_CONFIG_FILENAME = "nometria.toml"
-LEGACY_CONFIG_TABLE = "nometria"
-#: Names that used to be read outside `Settings`, without the prefix. With the
-#: `Settings` fields, a ``NOMETRIA_<X>`` among them is a setting that is now ignored.
-LEGACY_DIRECT_NAMES = frozenset(
-    {
-        "CONFIG",
-        "API_URL",
-        "API_TOKEN",
-        "USER",
-        "AUDIT_KEY",
-        "AGENT",
-        "MCP_LOG_LEVEL",
-    }
-)
 #: The file `agentfox init` writes, looked up in the current working directory.
 DEFAULT_CONFIG_FILENAME = "agentfox.toml"
 #: The only table read from the file. Other tables are left for other tools.
@@ -147,8 +126,7 @@ def resolve_config_file() -> Path | None:
     ``AGENTFOX_CONFIG`` wins and must exist — the operator named it, so a typo is an
     error rather than a silent fall-back to defaults. ``AGENTFOX_CONFIG=none`` turns
     file loading off entirely. Otherwise ``./agentfox.toml`` in the current working
-    directory, only if present. The pre-rename ``NOMETRIA_CONFIG`` and
-    ``./nometria.toml`` are not read (see :func:`ignored_legacy_settings`).
+    directory, only if present.
     """
     explicit = os.environ.get(CONFIG_ENV_VAR)
     if explicit and explicit.strip().lower() in {"none", "off", "-"}:
@@ -195,7 +173,6 @@ class Settings(BaseSettings):
         _resolved.path = path
         sources: list[PydanticBaseSettingsSource] = [init_settings, env_settings]
         toml_source = _toml_source(settings_cls, path)
-        warn_ignored_legacy_settings()
         if toml_source is not None:
             sources.append(toml_source)
         sources.extend([dotenv_settings, file_secret_settings])
@@ -510,7 +487,7 @@ class Settings(BaseSettings):
         "protectai/deberta-v3-base-prompt-injection-v2"
     )
     # Apache-2.0, ~22M params — embeds text locally for cosine-similarity matching
-    # against `guardrails/data/injection_corpus.json`. Same opt-in reasoning as the
+    # against `capabilities/detection/data/injection_corpus.json`. Same opt-in reasoning as the
     # classifier above; unlike the classifier, this one improves by editing that
     # corpus file, no retraining required.
     embedding_similarity_model: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -562,9 +539,13 @@ class Settings(BaseSettings):
     # mint a token" call before any user token exists — it authenticates with this
     # shared secret instead. Must match the dashboard's own copy of the same value.
     service_auth_secret: str = DEFAULT_SERVICE_AUTH_SECRET
-    # Fernet key encrypting stored GitHub access tokens at rest. `None` means "not
-    # configured" — connecting a repo fails closed rather than storing a raw token.
+    # Fernet key encrypting every secret held at rest (core/crypto.py). `None` means
+    # "not configured" — connecting a repo fails closed rather than storing a raw token.
     token_encryption_key: str | None = None
+    # Retired encryption keys, comma-separated. Still accepted for decryption, never
+    # used to encrypt, until `agentfox admin keys rotate` (or the `keys.rotate` job)
+    # has re-encrypted everything under `token_encryption_key`. Then remove them.
+    token_encryption_key_previous: str | None = None
 
     # --- Deferred job queue ----------------------------------------
     # POST /api/internal/jobs/run is the cron backstop for a job stuck in
@@ -657,6 +638,10 @@ class Settings(BaseSettings):
 
     # --- Audit (Pillar 5) ------------------------------------------------
     audit_signing_key: str = DEFAULT_AUDIT_SIGNING_KEY
+    # Retired signing keys, comma-separated. Checkpoints signed with one still verify;
+    # new checkpoints are always signed with `audit_signing_key`. Key rotation
+    # re-signs the old checkpoints (after verifying the chain), so these can go.
+    audit_signing_key_previous: str | None = None
     audit_checkpoint_interval: int = 100
     # The audit log must not become a new PII liability.
     redact_at_capture: bool = True
@@ -683,6 +668,29 @@ class Settings(BaseSettings):
     def restricted_models_allowed(self) -> bool:
         return self.accept_restricted_model_licenses
 
+    @property
+    def token_encryption_previous_keys(self) -> list[str]:
+        """Each retired encryption key, in order, without blanks, duplicates or the
+        current key."""
+        return split_keys(self.token_encryption_key_previous, exclude=self.token_encryption_key)
+
+    @property
+    def audit_signing_previous_keys(self) -> list[str]:
+        """Each retired audit signing key, in order, without blanks, duplicates or the
+        current key."""
+        return split_keys(self.audit_signing_key_previous, exclude=self.audit_signing_key)
+
+
+def split_keys(raw: str | None, *, exclude: str | None = None) -> list[str]:
+    """A comma-separated key list, trimmed, in order, without blanks, duplicates or
+    ``exclude`` (the current key, which is never also a previous one)."""
+    out: list[str] = []
+    for part in (raw or "").split(","):
+        key = part.strip()
+        if key and key != exclude and key not in out:
+            out.append(key)
+    return out
+
 
 def _toml_source(
     settings_cls: type[BaseSettings], path: Path | None
@@ -705,7 +713,6 @@ def _toml_source(
     header = CONFIG_TABLE
     table = data.get(header)
     if table is None:
-        # A [nometria] table is reported by warn_ignored_legacy_settings().
         log.warning("%s has no [%s] table; nothing read from it", path, CONFIG_TABLE)
         return None
     if not isinstance(table, dict):
@@ -721,94 +728,9 @@ def env(name: str, default: str | None = None) -> str | None:
 
     For the handful of switches that are read straight from the environment
     (a log level, the agent name `auto()` guesses, the CLI's API URL) rather than
-    through `Settings`. An empty value counts as unset. The pre-rename
-    ``NOMETRIA_<name>`` is not read; add a new ``name`` to `LEGACY_DIRECT_NAMES` so a
-    leftover old spelling of it is still reported.
+    through `Settings`. An empty value counts as unset.
     """
     return os.environ.get(ENV_PREFIX + name) or default
-
-
-def legacy_env_vars_set() -> list[str]:
-    """Every ``NOMETRIA_*`` environment variable that is set (non-empty), sorted.
-
-    None of them is read any more. This is what `agentfox doctor` lists, including
-    ones that never were settings (a Neon integration's ``NOMETRIA_DATABASE_*``).
-    """
-    return sorted(k for k, v in os.environ.items() if k.startswith(LEGACY_ENV_PREFIX) and v)
-
-
-def _legacy_name_was_read(name: str) -> bool:
-    bare = name[len(LEGACY_ENV_PREFIX) :]
-    return bare.lower() in Settings.model_fields or bare in LEGACY_DIRECT_NAMES
-
-
-def ignored_legacy_settings() -> list[str]:
-    """Pre-rename settings that are present but no longer applied, sorted.
-
-    A ``NOMETRIA_<X>`` variable counts when ``<X>`` is something agentfox reads and
-    ``AGENTFOX_<X>`` is not set — the operator meant to configure it and it is being
-    ignored. So does a ``nometria.toml`` in the working directory when no config file
-    is loaded, and a loaded file whose settings sit under ``[nometria]``.
-    """
-    ignored = [
-        name
-        for name in legacy_env_vars_set()
-        if _legacy_name_was_read(name)
-        and not os.environ.get(ENV_PREFIX + name[len(LEGACY_ENV_PREFIX) :])
-    ]
-    try:
-        path = resolve_config_file()
-    except ConfigFileError:
-        path = None
-    legacy_file = Path.cwd() / LEGACY_CONFIG_FILENAME
-    if path is None and not os.environ.get(CONFIG_ENV_VAR) and legacy_file.is_file():
-        ignored.append(str(legacy_file.resolve()))
-    if path is not None and _uses_legacy_table(path):
-        ignored.append(f"[{LEGACY_CONFIG_TABLE}] in {path}")
-    return ignored
-
-
-def _uses_legacy_table(path: Path) -> bool:
-    try:
-        with path.open("rb") as fh:
-            data = tomllib.load(fh)
-    except (OSError, tomllib.TOMLDecodeError):
-        return False
-    return CONFIG_TABLE not in data and LEGACY_CONFIG_TABLE in data
-
-
-#: What the warning has already named in this process. It fires once at startup; it
-#: fires again only if a legacy name appears that it has not named yet.
-_legacy_warned: set[str] = set()
-_legacy_lock = threading.Lock()
-
-
-def warn_ignored_legacy_settings() -> None:
-    """Log ONE warning naming every pre-rename setting that is now being ignored."""
-    ignored = ignored_legacy_settings()
-    with _legacy_lock:
-        new = [name for name in ignored if name not in _legacy_warned]
-        if not new:
-            return
-        _legacy_warned.update(ignored)
-    renames = ", ".join(
-        f"{name} -> {ENV_PREFIX}{name[len(LEGACY_ENV_PREFIX) :]}"
-        if name.startswith(LEGACY_ENV_PREFIX)
-        else f"{name} -> {DEFAULT_CONFIG_FILENAME} / [{CONFIG_TABLE}]"
-        for name in ignored
-    )
-    log.warning(
-        "Ignored pre-rename (Nometria) settings: %s. These names are no longer read, so "
-        "the defaults apply instead; rename them (%s).",
-        ", ".join(ignored),
-        renames,
-    )
-
-
-def reset_legacy_warning() -> None:
-    """Test hook — forget which legacy names were already warned about."""
-    with _legacy_lock:
-        _legacy_warned.clear()
 
 
 def is_development(settings: Settings | None = None) -> bool:

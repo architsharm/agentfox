@@ -260,11 +260,6 @@ taint_scope = "session"`}</Code>
         <li>built-in defaults.</li>
       </ol>
       <p>
-        The pre-rename <code>NOMETRIA_*</code> variables and <code>nometria.toml</code> are no
-        longer read. The process logs a warning naming any that are still set, and{" "}
-        <code>agentfox doctor</code> lists them.
-      </p>
-      <p>
         Keys are the setting names without the prefix. An unknown key is ignored with a
         warning that names it. <code>AGENTFOX_CONFIG=none</code> turns file loading off. Every
         key is on <Link href="/docs/reference/config">Configuration</Link>. Settings are read

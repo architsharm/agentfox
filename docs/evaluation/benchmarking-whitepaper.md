@@ -97,7 +97,7 @@ argument can reach. `agentfox doctor` now grades that readiness directly.
 [`benchmarks/adaptive/`](../../benchmarks/adaptive/README.md) implements the protocol from *The Attacker
 Moves Second*: the attacker calls our real detector path, reads back the verdict and the entity list, and
 steers its next mutation from that feedback. Against the attacks our stack currently stops, using only
-human-readable mutations, attack success reaches **73% at a 50-attempt budget** (100% with encoding
+human-readable mutations, attack success reaches **71% at a 50-attempt budget** (100% with encoding
 operators included). Building it found three real detector defects, all since fixed — separator
 collapsing that welded words together, unknown obfuscation producing no signal at all, and two missing
 override objects that left two of our own canonical attack payloads undetected. The fixes cost the
@@ -120,8 +120,8 @@ contained at the action** (28/28 before the detector fixes). Treat detection as 
 
 **Benchmarked against three independent datasets** — synthetic short-sentence text, dense multilingual financial documents, and real European Court of Human Rights case law — after two rounds of fixes driven by reading actual false positives rather than trusting the aggregate percentage (a `US_SSN` score-gate, a taxonomy fix separating a birthdate-specific detector from Presidio's generic date recognizer, and others). We're reporting only the results that clear a 65%/65% precision-and-recall bar here, honestly labeled by which policy configuration reached it — the shipped default policy deliberately trades recall on noisy categories (`PERSON`/`LOCATION`/`DATE_TIME`) for precision, so it doesn't clear this bar on its own, and we're not hiding that:
 
-- **Real ECHR case law (TAB dataset, 127 real judgments), full policy: 83.6% precision / 86.9% recall.** The strongest result of the three — coherent single-language legal prose is closer to what a general-purpose NER model was trained on than templated or dense multilingual synthetic text.
-- **Synthetic sentence dataset (presidio-research, 1,500 rows), full policy: 65.2% precision / 75.6% recall.**
+- **Real ECHR case law (TAB dataset, 127 real judgments), full policy: 83.7% precision / 86.9% recall.** The strongest result of the three — coherent single-language legal prose is closer to what a general-purpose NER model was trained on than templated or dense multilingual synthetic text.
+- **Synthetic sentence dataset (presidio-research, 1,500 rows), full policy: 65.3% precision / 75.6% recall.**
 
 Well-structured identifier types (`EMAIL`, `IBAN`, `IP_ADDRESS`) hold 90%+ precision and recall regardless of dataset or language and are not separately broken out here. Full per-dataset numbers, including where the default policy and a multilingual financial-document dataset fall short of this bar and why, are reported without the filter in [`benchmarks/pii/README.md`](../../benchmarks/pii/README.md) — we'd rather a reader see the honest full picture there than infer we're hiding a weaker number by omitting it entirely.
 
@@ -135,8 +135,8 @@ Well-structured identifier types (`EMAIL`, `IBAN`, `IP_ADDRESS`) hold 90%+ preci
 |---|---|---|---|
 | A — multi-turn / payload splitting | "Ignore all previous instructions" split across 3 separate API calls | 2/2 correct — none of the 3 fragments fires alone, only the assembled window | Flags all 3 fragments individually — not multi-turn awareness, just over-triggering |
 | B — indirect injection via tool output | 20 cases: hidden instructions, poisoned MCP tool descriptions | 100.0% recall / 66.7% precision | 90.0% recall / 81.8% precision |
-| C — tool-parameter exploitation | Wildcard scope, SQL fragments, path traversal in unnamed arguments | 10/10 correct | Cannot participate — scans text, not structured JSON |
-| D — excessive agency / privilege escalation | 6 scenarios against real shipped capability grants | 6/6 correct | Cannot participate — no capability model |
+| C — tool-parameter exploitation | Wildcard scope, SQL fragments, path traversal in unnamed arguments | 8/10 correct (all 5 attacks blocked; 2 benign `tickets.update` controls blocked by the cascade rule) | Cannot participate — scans text, not structured JSON |
+| D — excessive agency / privilege escalation | 6 scenarios against real shipped capability grants | 5/6 correct (the benign `tickets.update` control is blocked by the cascade rule) | Cannot participate — no capability model |
 
 Full methodology: [`benchmarks/agent_security/README.md`](../../benchmarks/agent_security/README.md).
 

@@ -17,6 +17,7 @@ Deployed:   this module's `app` is Vercel's entrypoint (see vercel.json).
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 import _env  # noqa: F401  -- must run before anything imports agentfox settings
@@ -37,6 +38,8 @@ from recorded_scenarios import (
 from agentfox.core.db import init_db, session_scope
 from agentfox.frameworks.autoguard import Blocked
 
+_log = logging.getLogger("redteam-live-lang")
+
 app = FastAPI(title="AgentFox red-team live demo (LangChain)")
 
 _seeded = False
@@ -55,7 +58,30 @@ def _ensure_seeded() -> None:
     if _seeded:
         return
     seed_demo_agent.main()
+    _rotate_keys_if_configured()
     _seeded = True
+
+
+def _rotate_keys_if_configured() -> None:
+    """With a previous key set (`AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS`,
+    `AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS`), move this demo's own database onto the
+    current keys. This deployment has no job runner of its own, so cold start is
+    where it happens. Free when no previous key is set, idempotent when one is, and
+    never fatal: a failure is logged and the demo still serves."""
+    from agentfox.platform.keys.rotation import PENDING, rotate, status_summary
+
+    try:
+        if PENDING not in status_summary(fresh=True).values():
+            return
+        with session_scope() as session:
+            report = rotate(session, actor_id="demo-startup")
+        _log.warning(
+            "key rotation: re-encrypted %s value(s), re-signed %s checkpoint(s)",
+            report["token_encryption"]["reencrypted"],
+            report["audit_signing"]["resigned"],
+        )
+    except Exception as exc:  # noqa: BLE001 - the demo must come up regardless
+        _log.warning("key rotation skipped: %s", type(exc).__name__)
 
 
 class ChatTurn(BaseModel):

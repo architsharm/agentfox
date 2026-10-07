@@ -659,7 +659,7 @@ guard.tool_node(fn=None, *, tool: str, provenance=None, arguments=None, messages
         </li>
         <li>
           Governance state (trace id, last verdict, what was retrieved, tools called) is written under the{" "}
-          <code>&quot;__nometria__&quot;</code> key of the graph state, so it survives a
+          <code>&quot;__agentfox__&quot;</code> key of the graph state, so it survives a
           checkpoint. Add that key to your state schema.
         </li>
         <li>

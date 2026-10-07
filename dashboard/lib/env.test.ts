@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { apiBase, env, resetLegacyEnvWarnings } from "./env";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { apiBase, env } from "./env";
 
-const NAMES = ["AGENTFOX_API_URL", "NOMETRIA_API_URL", "AGENTFOX_USER", "NOMETRIA_USER"];
+const NAMES = ["AGENTFOX_API_URL", "AGENTFOX_USER"];
 
 describe("env", () => {
   const saved: Record<string, string | undefined> = {};
@@ -11,7 +11,6 @@ describe("env", () => {
       saved[name] = process.env[name];
       delete process.env[name];
     }
-    resetLegacyEnvWarnings();
   });
 
   afterEach(() => {
@@ -19,24 +18,16 @@ describe("env", () => {
       if (saved[name] === undefined) delete process.env[name];
       else process.env[name] = saved[name];
     }
-    vi.restoreAllMocks();
   });
 
-  it("reads AGENTFOX_ first", () => {
+  it("reads AGENTFOX_<name>", () => {
     process.env.AGENTFOX_API_URL = "https://new.example";
-    process.env.NOMETRIA_API_URL = "https://old.example";
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(env("API_URL")).toBe("https://new.example");
-    expect(warn).not.toHaveBeenCalled();
+    expect(apiBase()).toBe("https://new.example");
   });
 
-  it("no longer reads NOMETRIA_, and says so once per name", () => {
-    process.env.NOMETRIA_USER = "old@example.com";
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("is undefined when unset", () => {
     expect(env("USER")).toBeUndefined();
-    expect(env("USER")).toBeUndefined();
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(String(warn.mock.calls[0][0])).toContain("AGENTFOX_USER");
   });
 
   it("treats an empty value as unset", () => {

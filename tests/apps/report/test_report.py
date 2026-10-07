@@ -175,7 +175,6 @@ def test_evidence_package_opens_on_the_summary(seeded, enforcer):
     assert summary_md.startswith("# AgentFox summary")
     assert "SUMMARY.md" in package.manifest_json["files"]
     assert readme.startswith("AGENTFOX EVIDENCE PACKAGE")
-    assert "NOMETRIA" not in readme.splitlines()[0]
 
 
 def test_board_computes_control_status_itself(seeded):

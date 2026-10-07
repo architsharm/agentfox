@@ -23,7 +23,7 @@ So every gateway response adds two aliases next to the existing keys:
 
 The old keys stay, with the same values, so nothing that reads them breaks. This
 renames nothing and decides nothing: it only adds names to the wire format the gateway
-emits. ``enforcement.py`` is untouched, so the SDK, the CLI, the audit chain and the
+emits. ``runtime/enforcement/`` is untouched, so the SDK, the CLI, the audit chain and the
 stored decision rows keep the field names they already have.
 """
 
