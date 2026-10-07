@@ -13,6 +13,29 @@ the file it came from.
 
 ### Added
 
+- **Key rotation** for the two keys that protect stored data.
+  `AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS` and `AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS`
+  (comma-separated) hold retired keys: secrets still decrypt and checkpoints still
+  verify under them, while everything new uses the current key. `agentfox admin keys
+  rotate` re-encrypts every encrypted column (atomic per column; a value no key
+  decrypts is reported and left alone), verifies each tenant's audit chain, re-signs
+  its previous-key checkpoints, records an `audit.key_rotated` entry with the key
+  fingerprints (first 8 hex of SHA-256, never the key) and checkpoints the new head.
+  `agentfox admin keys status` shows the fingerprints and what still needs a previous
+  key. The job runner (`/api/internal/jobs/run`, `agentfox admin jobs run-due`) enqueues
+  a `keys.rotate` job by itself while a previous key still protects something;
+  `/api/version` reports `key_rotation` states and `agentfox doctor` has a `key
+  rotation` line. See docs/deployment/key-rotation.md.
+- Checkpoints record the signing key's fingerprint in `key_id` (was the constant
+  `local`), and are written into the chain of the entry they anchor even inside
+  `system_scope`. `chain.verify` accepts one key or several.
+- The `verify_chain.py` in evidence packages accepts several comma-separated keys in
+  `AGENTFOX_AUDIT_KEY`, for a chain that spans a rotation.
+- One-time migration bridge (this release only): when both `AGENTFOX_<KEY>` and
+  `NOMETRIA_<KEY>` are set and differ for `TOKEN_ENCRYPTION_KEY` or
+  `AUDIT_SIGNING_KEY`, the `NOMETRIA_` value is used as the previous key. See
+  docs/deployment/vercel-env-rename.md.
+
 - **Capability packs.** A business use case or framework is one directory with a
   `pack.yaml` (id, version, maturity, owners, compliance mappings, vocabulary) and its
   policies, controls, ladder templates, red-team probes, optional checks, golden cases

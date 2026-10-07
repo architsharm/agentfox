@@ -87,7 +87,8 @@ a quoted figure drifts from its source.
 | Document | What it is | Who it is for |
 |---|---|---|
 | [systemd.md](deployment/systemd.md) | Run the Python gateway as a reboot-persistent systemd user service, with separate database, evidence and signing-key storage. | Self-hosters on Linux. |
-| [vercel-env-rename.md](deployment/vercel-env-rename.md) | Checklist for renaming the hosted Vercel projects' variables from `NOMETRIA_*` to `AGENTFOX_*`, and when the legacy fallback can be removed. | The hosted deployment's owner. |
+| [key-rotation.md](deployment/key-rotation.md) | Rotate the token encryption key and the audit signing key: the `_PREVIOUS` settings, `agentfox admin keys rotate`, the automatic job and how to confirm nothing still needs the old key. | Anyone running a deployment. |
+| [vercel-env-rename.md](deployment/vercel-env-rename.md) | The exact procedure for moving the hosted Vercel projects from `NOMETRIA_*` secrets to fresh `AGENTFOX_*` ones through key rotation, and when the legacy fallback can be removed. | The hosted deployment's owner. |
 | [../deploy/README-dashboard.md](../deploy/README-dashboard.md) | Deploying the hosted dashboard (Render, Fly, Vercel), its shared secrets and the database migration state. | Anyone running the dashboard. |
 
 ## Elsewhere in the repo

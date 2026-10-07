@@ -4578,8 +4578,8 @@
    {
     "path": "admin",
     "name": "admin",
-    "summary": "Run the deployment: operators, tokens, schema, scheduled jobs, catalog upkeep, hooks, seed data.",
-    "help": "Run the deployment: operators, tokens, schema, scheduled jobs, catalog upkeep, hooks, seed data.",
+    "summary": "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog upkeep, hooks, seed data.",
+    "help": "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog upkeep, hooks, seed data.",
     "panel": "Operate",
     "params": [],
     "default_subcommand": null,
@@ -5185,6 +5185,78 @@
           "multiple": false,
           "default": 50,
           "help": "Most jobs to run in this pass."
+         },
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Print JSON."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
+      "path": "admin keys",
+      "name": "keys",
+      "summary": "Rotate the token encryption and audit signing keys.",
+      "help": "Rotate the token encryption and audit signing keys.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin keys status",
+        "name": "status",
+        "summary": "Fingerprints in use, and whether any data or checkpoint still needs a previous key.",
+        "help": "Fingerprints in use, and whether any data or checkpoint still needs a previous key.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "as_json",
+          "opts": [
+           "--json"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Print JSON."
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin keys rotate",
+        "name": "rotate",
+        "summary": "Re-encrypt stored secrets and re-sign audit checkpoints under the current keys.",
+        "help": "Re-encrypt stored secrets and re-sign audit checkpoints under the current keys.\n\nValues no configured key decrypts are reported and left untouched. A chain that\nfails verification is reported and not re-signed. Safe to run repeatedly.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "option",
+          "name": "dry_run",
+          "opts": [
+           "--dry-run"
+          ],
+          "type": "flag",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": null,
+          "help": "Report only; change nothing."
          },
          {
           "kind": "option",
