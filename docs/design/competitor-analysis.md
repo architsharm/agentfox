@@ -138,6 +138,7 @@ Conceding ground precisely, with the specific competitor and the specific gap:
 | **LangSmith** | Dataset splits, pairwise comparison, annotation queues; public **$39/seat** pricing | Our eval-suite tooling is comparably basic; **we have no published pricing at all** |
 | **WitnessAI** | Network-level capture of desktop apps and IDEs, not just API traffic | We tokenize PII once content reaches us; we don't capture at the network layer |
 | **Astrix + Microsoft Entra Agent ID** | Full NHI lifecycle, Conditional Access, ITSM/SIEM/SOAR integration | We model non-human identity but have no live IdP integration and no SOAR hooks; findings leave only through SIEM export, the finding webhook and (for monitor findings) Slack |
+| **Protect AI llm-guard** | Measured on AgentDojo ([`benchmarks/head_to_head/`](../../benchmarks/head_to_head/README.md)): at its defaults it completes 42/97 benign tasks to our 24/97, and its classifier flags injected tool outputs that our shipped heuristic misses entirely | It let 86/588 attack pairs through where containment let 0/588 through; chunked and tuned on the test set, it ties containment at 0/588 and 24/97 |
 | **Almost every named competitor** | AWS/Azure Marketplace listing | We have none |
 
 **Procurement-bar honesty**: 8 of 14 standard enterprise procurement requirements remain
