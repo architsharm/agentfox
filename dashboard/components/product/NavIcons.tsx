@@ -20,6 +20,11 @@ const PATHS: Record<string, React.ReactNode> = {
   "/app/evals": <><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" /><path d="M9 12l2 2 4-4.5" /></>,
   "/app/sources": <><ellipse cx="12" cy="5.5" rx="7.5" ry="2.6" /><path d="M4.5 5.5v13c0 1.4 3.4 2.6 7.5 2.6s7.5-1.2 7.5-2.6v-13" /><path d="M4.5 12c0 1.4 3.4 2.6 7.5 2.6s7.5-1.2 7.5-2.6" /></>,
   "/app/compliance": <><circle cx="12" cy="8" r="5" /><path d="M9 12.3 7 21l5-3 5 3-2-8.7" /></>,
+  "/app/observe": <><path d="M3 20h18" /><path d="M5 16l4-5 4 3 6-8" /></>,
+  "/app/test": <><path d="M9 3h6" /><path d="M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3" /></>,
+  "/app/reports": <><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /><path d="M10 13h6M10 17h6" /></>,
+  "/app/coverage": <><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M3 20h18" /></>,
+  "/app/settings": <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" /></>,
 };
 
 export function NavIcon({ href }: { href: string }) {

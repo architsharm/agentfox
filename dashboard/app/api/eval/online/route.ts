@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     req,
     "POST",
     "/api/eval/online",
-    "/app/evals",
+    "/app/test?tab=reliability",
     { agent, since_days, rate },
     (res, body) => {
       if (!res.ok) return { error: body.detail || res.statusText };

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/product/proxy";
+import { proxyCustomBody, sameOriginPath } from "@/lib/product/proxy";
 
 /**
  * "This detection was wrong" — filed from wherever a detection is actually shown
@@ -11,7 +11,7 @@ import { proxyCustomBody } from "@/lib/product/proxy";
  */
 export async function POST(req: NextRequest) {
   const form = await req.formData();
-  const returnTo = String(form.get("return_to") || "/app/policies?tab=guardrails");
+  const returnTo = sameOriginPath(form.get("return_to") as string | null, "/app/policies?tab=advanced&sec=tuning");
 
   const body: Record<string, string> = {};
   for (const key of ["decision_id", "label", "detector_key", "entity_type", "note"]) {

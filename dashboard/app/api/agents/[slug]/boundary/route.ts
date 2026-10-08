@@ -33,5 +33,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     mode: (form.get("mode") as string) || "observe",
   };
 
-  return proxyCustomBody(req, "PUT", "/api/answerability/boundary", `/app/agents/${slug}`, body);
+  return proxyCustomBody(req, "PUT", "/api/answerability/boundary", `/app/agents/${slug}?tab=access`, body);
 }

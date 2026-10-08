@@ -163,6 +163,13 @@ def _blocked_response(result, status: int = 403) -> JSONResponse:
             "error": {
                 "type": "agentfox_policy_violation",
                 "message": result.reason or "blocked by policy",
+                # The deciding rule's words for the end user, when it set any;
+                # `message` above is for the engineer and the audit log.
+                **(
+                    {"user_message": result.user_message}
+                    if getattr(result, "user_message", "")
+                    else {}
+                ),
                 # Both names, same values: `applied_verdict`/`would_be_verdict` say
                 # which one took effect (gateway/verdicts.py).
                 "verdict": result.verdict,
@@ -257,6 +264,12 @@ def _headers(result) -> dict[str, str]:
         # In the headers too, because the response body of a streamed completion is
         # a sequence of SSE frames and the engineer debugging one is reading curl -i.
         **({"X-AgentFox-Explain": url} if (url := _explain_url(result)) else {}),
+        # The first answer was refused and a corrected one is being returned.
+        **(
+            {"X-AgentFox-Fixed": "1"}
+            if ((result.taint or {}).get("reask") or {}).get("fixed")
+            else {}
+        ),
     }
 
 
@@ -863,6 +876,12 @@ class GuardContentRequest(BaseModel):
     # commonest integration is a single call in a middleware that has no id to give.
     session_id: str | None = None
     trace_id: str | None = None
+    #: "production" unless the caller says otherwise. The dashboard's "Try it" sends
+    #: "playground", which every dashboard view excludes by default.
+    environment: str | None = None
+    #: The passages the answer was built from, for the grounding checks (the
+    #: built-in one and the opt-in `grounding.nli` model). Optional.
+    context: list[str] | None = None
     # With `surface: "completion"`, the facts the caller observed when the agent
     # claimed to be done — `{"work_verified": true}` — which `completion_requires`
     # rules check. Without a way to send them, every completion claim over HTTP was
@@ -885,6 +904,7 @@ class GuardToolCallRequest(BaseModel):
     # repeats>=3 fallback instead of falling through to it.
     prior_steps: list[dict[str, Any]] | None = None
     session_id: str | None = None
+    environment: str | None = None
     # The retry of a call a person approved. The same agent, tool and
     # arguments run once; anything else escalates as it would have without it.
     approval_id: str | None = None
@@ -935,6 +955,11 @@ def guard_content(
     # fix: a capability wired to the SDK path only, and silently absent for everyone
     # on the HTTP one.
     enforcer = Enforcer(session)
+    if payload.context:
+        enforcer.evidence = {
+            **enforcer.evidence,
+            "chunks": [{"text": c} for c in payload.context if c],
+        }
     # Resolve before starting the trace so the trace carries an agent id, which is
     # what gives the agent a last-seen and lets the Traces page filter by agent.
     # `resolve` also registers an unknown slug as shadow traffic, which is the
@@ -953,6 +978,7 @@ def guard_content(
             agent_id=agent.id if agent else None,
             agent_slug=slugify(payload.agent),
             session_id=payload.session_id,
+            environment=payload.environment or "production",
             intent=payload.intent,
             trace_id=payload.trace_id,
         )
@@ -1002,6 +1028,7 @@ def guard_tool_call(
         agent_id=agent.id if agent else None,
         agent_slug=slugify(payload.agent),
         session_id=payload.session_id,
+        environment=payload.environment or "production",
         intent=payload.intent,
     )
     result = enforcer.guard_tool_call(

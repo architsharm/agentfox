@@ -98,7 +98,7 @@ describe("judgment posture form mapping", () => {
   });
 
   it("does not forward return_to into the gateway payload", async () => {
-    await POST(postForm([["reason", "r"], ["return_to", "/app/policies?tab=judgment"]]));
+    await POST(postForm([["reason", "r"], ["return_to", "/app/policies?tab=advanced&sec=judges"]]));
     expect(sentBody(fetchMock)).not.toHaveProperty("return_to");
   });
 

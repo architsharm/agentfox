@@ -40,6 +40,8 @@ engine evaluates them by default (`AGENTFOX_POLICY_ENGINE=opa` switches to OPA).
 | `enabled` | bool | `true` |
 | `redaction` | redaction style when the effect redacts | `mask` |
 | `overridable` | can a lower level (team/agent/user) override it | `false` |
+| `message` | what the **end user** is told when this rule stops or holds a request; `reason` stays for operators | `""` |
+| `on_block` | `refuse` \| `reask` — on a blocked model *output*, `reask` asks the model once more with the rule as a correction (gateway proxy only; guard endpoints return it as `fix.instruction`); never applies to tool calls | `refuse` |
 
 ## Effects and precedence
 

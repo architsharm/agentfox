@@ -3,7 +3,7 @@ import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { api, safeApi, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, Panel, ts } from "@/components/ui";
-import { Breadcrumbs } from "@/components/product/Breadcrumbs";
+import { Header } from "@/components/kit";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -41,9 +41,7 @@ export default async function SuiteDetail({
 
   return (
     <>
-      <Breadcrumbs crumbs={[{ label: "Evaluation", href: "/app/evals" }]} />
-      <h1>{suite.name || suite.key}</h1>
-      <p className="sub">{suite.description || "No description."}</p>
+      <Header back={{ href: "/app/test?tab=suites", label: "Test suites" }} title={suite.name || suite.key} hint={suite.description || undefined} />
       {review_error && <div className="error">{review_error}</div>}
 
       <h2>Cases ({suite.cases.length})</h2>
@@ -54,7 +52,7 @@ export default async function SuiteDetail({
             A suite with no cases has nothing to run. Add one below, or — the faster
             path once you have real traffic — promote an actual production trace
             into a regression case from its ID (find one on{" "}
-            <Link href="/app/traces">Traces</Link>).
+            <Link href="/app/traces">Activity</Link>).
           </p>
         </div>
       ) : (

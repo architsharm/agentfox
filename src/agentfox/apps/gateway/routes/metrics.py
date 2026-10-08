@@ -1,0 +1,355 @@
+"""Aggregates for the dashboard's Observe views and policy performance.
+
+Every list endpoint elsewhere returns records; a dashboard needs counts over time,
+split by something, compared with the period before. Computing those in the
+browser from a capped list of traces is wrong as soon as there are more traces than
+the cap, so they are computed here, over the whole window.
+
+Four shapes, all filtered the same way (`range`, `agent`, `environment`):
+
+* ``/summary``   — totals, one series per outcome, the previous period's totals
+* ``/breakdown`` — the same counts split by agent, environment, model, tool or surface
+* ``/rules``     — per rule: how often it fired, enforced vs only watching, trend
+* ``/errors``    — failed steps (tool and model errors), grouped
+
+Outcomes use the dashboard's four words, not the six verdicts: ``allowed``,
+``masked`` (redact/mask/tokenize), ``held`` (escalate) and ``blocked``.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+from collections import Counter, defaultdict
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from agentfox.apps.gateway.deps import current_user, db
+from agentfox.core.models import Agent, Decision, Span, Trace, User
+
+router = APIRouter(prefix="/api/metrics", tags=["metrics"])
+
+#: Window length and bucket size for each range the dashboard offers.
+RANGES: dict[str, tuple[dt.timedelta, dt.timedelta]] = {
+    "24h": (dt.timedelta(hours=24), dt.timedelta(hours=1)),
+    "7d": (dt.timedelta(days=7), dt.timedelta(hours=6)),
+    "30d": (dt.timedelta(days=30), dt.timedelta(days=1)),
+    "90d": (dt.timedelta(days=90), dt.timedelta(days=3)),
+}
+
+OUTCOMES = ("allowed", "masked", "held", "blocked")
+
+_OUTCOME = {
+    "allow": "allowed",
+    "redact": "masked",
+    "mask": "masked",
+    "tokenize": "masked",
+    "escalate": "held",
+    "block": "blocked",
+}
+
+DIMENSIONS = ("agent", "environment", "model", "tool", "surface")
+
+#: Requests sent from the dashboard's "Try it". Excluded unless asked for by name.
+PLAYGROUND = "playground"
+
+
+def outcome(verdict: str | None) -> str:
+    return _OUTCOME.get(verdict or "allow", "allowed")
+
+
+def _aware(value: dt.datetime) -> dt.datetime:
+    # SQLite returns naive datetimes for timezone-aware columns.
+    return value if value.tzinfo else value.replace(tzinfo=dt.UTC)
+
+
+class Window:
+    def __init__(self, key: str, now: dt.datetime | None = None) -> None:
+        if key not in RANGES:
+            raise HTTPException(422, f"range must be one of {', '.join(RANGES)}")
+        self.key = key
+        self.length, self.step = RANGES[key]
+        self.end = now or dt.datetime.now(dt.UTC)
+        self.start = self.end - self.length
+        self.prev_start = self.start - self.length
+        self.count = int(self.length / self.step)
+
+    def index(self, at: dt.datetime) -> int | None:
+        at = _aware(at)
+        if at < self.start or at > self.end:
+            return None
+        return min(self.count - 1, int((at - self.start) / self.step))
+
+    def bucket_starts(self) -> list[str]:
+        return [(self.start + i * self.step).isoformat() for i in range(self.count)]
+
+
+def _agent_id(session: Session, slug: str | None) -> str | None:
+    if not slug:
+        return None
+    agent = session.scalar(select(Agent).where(Agent.slug == slug))
+    return agent.id if agent else "__none__"
+
+
+def _traces(
+    session: Session,
+    since: dt.datetime,
+    until: dt.datetime,
+    agent: str | None,
+    environment: str | None,
+):
+    q = select(Trace).where(Trace.started_at >= since, Trace.started_at <= until)
+    if agent:
+        q = q.where(Trace.agent_slug == agent)
+    if environment:
+        q = q.where(Trace.environment == environment)
+    else:
+        q = q.where(Trace.environment != PLAYGROUND)
+    return list(session.scalars(q))
+
+
+def _decisions(session: Session, w: Window, agent: str | None, environment: str | None):
+    q = select(Decision).where(Decision.created_at >= w.start, Decision.created_at <= w.end)
+    agent_id = _agent_id(session, agent)
+    if agent_id:
+        q = q.where(Decision.agent_id == agent_id)
+    decisions = list(session.scalars(q))
+    played = {
+        t.id
+        for t in session.scalars(
+            select(Trace).where(
+                Trace.id.in_({d.trace_id for d in decisions if d.trace_id}),
+                Trace.environment == PLAYGROUND,
+            )
+        )
+    }
+    if played and environment != PLAYGROUND:
+        decisions = [d for d in decisions if d.trace_id not in played]
+    if environment:
+        trace_env = {
+            t.id: t.environment
+            for t in session.scalars(
+                select(Trace).where(Trace.id.in_({d.trace_id for d in decisions if d.trace_id}))
+            )
+        }
+        decisions = [d for d in decisions if trace_env.get(d.trace_id or "") == environment]
+    return decisions
+
+
+def _error_trace_ids(session: Session, trace_ids: set[str]) -> set[str]:
+    if not trace_ids:
+        return set()
+    return {
+        s.trace_id
+        for s in session.scalars(
+            select(Span).where(Span.trace_id.in_(trace_ids), Span.status == "error")
+        )
+    }
+
+
+def _totals(traces: list[Trace], errors: set[str]) -> dict[str, Any]:
+    counts = Counter(outcome(t.verdict) for t in traces)
+    return {
+        "requests": len(traces),
+        **{o: counts.get(o, 0) for o in OUTCOMES},
+        "errors": sum(1 for t in traces if t.id in errors or t.status == "error"),
+        "cost_usd": round(sum(t.cost_usd or 0.0 for t in traces), 6),
+        "agents": len({t.agent_slug for t in traces if t.agent_slug}),
+    }
+
+
+def _percentile(values: list[float], p: float) -> float:
+    if not values:
+        return 0.0
+    values = sorted(values)
+    k = max(0, min(len(values) - 1, round(p * (len(values) - 1))))
+    return round(values[k], 2)
+
+
+@router.get("/summary")
+def summary(
+    window: str = Query("7d", alias="range"),
+    agent: str | None = None,
+    environment: str | None = None,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    w = Window(window)
+    traces = _traces(session, w.start, w.end, agent, environment)
+    previous = _traces(session, w.prev_start, w.start, agent, environment)
+    errors = _error_trace_ids(session, {t.id for t in traces} | {t.id for t in previous})
+
+    series = [{o: 0 for o in (*OUTCOMES, "errors")} for _ in range(w.count)]
+    for t in traces:
+        i = w.index(t.started_at)
+        if i is None:
+            continue
+        series[i][outcome(t.verdict)] += 1
+        if t.id in errors or t.status == "error":
+            series[i]["errors"] += 1
+
+    latencies = [d.latency_ms for d in _decisions(session, w, agent, environment) if d.latency_ms]
+    return {
+        "range": w.key,
+        "start": w.start.isoformat(),
+        "end": w.end.isoformat(),
+        "bucket_seconds": int(w.step.total_seconds()),
+        "buckets": [{"t": t, **s} for t, s in zip(w.bucket_starts(), series, strict=True)],
+        "totals": _totals(traces, errors),
+        "previous": _totals(previous, errors),
+        "latency_ms": {"p50": _percentile(latencies, 0.5), "p95": _percentile(latencies, 0.95)},
+    }
+
+
+@router.get("/breakdown")
+def breakdown(
+    dim: str = Query("agent"),
+    window: str = Query("7d", alias="range"),
+    agent: str | None = None,
+    environment: str | None = None,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    if dim not in DIMENSIONS:
+        raise HTTPException(422, f"dim must be one of {', '.join(DIMENSIONS)}")
+    w = Window(window)
+    rows: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"requests": 0, **{o: 0 for o in OUTCOMES}, "errors": 0, "cost_usd": 0.0}
+    )
+
+    if dim in ("tool", "surface"):
+        # A tool call or a check surface is a decision, not a whole request.
+        for d in _decisions(session, w, agent, environment):
+            key = (d.tool_key if dim == "tool" else d.surface) or ""
+            if not key:
+                continue
+            row = rows[key]
+            row["requests"] += 1
+            row[outcome(d.verdict)] += 1
+    else:
+        traces = _traces(session, w.start, w.end, agent, environment)
+        errors = _error_trace_ids(session, {t.id for t in traces})
+        for t in traces:
+            key = {"agent": t.agent_slug, "environment": t.environment, "model": t.model}[
+                dim
+            ] or "(unknown)"
+            row = rows[key]
+            row["requests"] += 1
+            row[outcome(t.verdict)] += 1
+            row["errors"] += 1 if (t.id in errors or t.status == "error") else 0
+            row["cost_usd"] = round(row["cost_usd"] + (t.cost_usd or 0.0), 6)
+
+    ordered = sorted(rows.items(), key=lambda kv: kv[1]["requests"], reverse=True)
+    return {"range": w.key, "dim": dim, "rows": [{"key": k, **v} for k, v in ordered]}
+
+
+@router.get("/rules")
+def rules(
+    window: str = Query("7d", alias="range"),
+    agent: str | None = None,
+    environment: str | None = None,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """How each rule behaved: fired, stopped something, or only watched.
+
+    ``enforced`` counts fires that changed the outcome; ``watched`` counts fires in
+    observe mode — what the rule would have done had it been enforcing. That second
+    number is the one a team needs before promoting a rule.
+    """
+    w = Window(window)
+    agent_slug = {a.id: a.slug for a in session.scalars(select(Agent))}
+    stats: dict[str, dict[str, Any]] = {}
+    for d in _decisions(session, w, agent, environment):
+        for fired in d.rules_fired_json or []:
+            rule_id = fired.get("rule_id") if isinstance(fired, dict) else None
+            if not rule_id:
+                continue
+            s = stats.setdefault(
+                rule_id,
+                {
+                    "rule_id": rule_id,
+                    "fires": 0,
+                    "enforced": 0,
+                    "watched": 0,
+                    "effect": fired.get("effect"),
+                    "severity": fired.get("severity"),
+                    "last_fired": None,
+                    "series": [0] * w.count,
+                    "agents": Counter(),
+                    "tools": Counter(),
+                    "sample_trace_ids": [],
+                },
+            )
+            s["fires"] += 1
+            watched = (fired.get("mode") or d.mode) == "observe"
+            s["watched" if watched else "enforced"] += 1
+            at = _aware(d.created_at)
+            if not s["last_fired"] or at.isoformat() > s["last_fired"]:
+                s["last_fired"] = at.isoformat()
+            i = w.index(at)
+            if i is not None:
+                s["series"][i] += 1
+            if d.agent_id:
+                s["agents"][agent_slug.get(d.agent_id, d.agent_id)] += 1
+            if d.tool_key:
+                s["tools"][d.tool_key] += 1
+            if (
+                d.trace_id
+                and d.trace_id not in s["sample_trace_ids"]
+                and len(s["sample_trace_ids"]) < 5
+            ):
+                s["sample_trace_ids"].append(d.trace_id)
+
+    out = []
+    for s in sorted(stats.values(), key=lambda s: s["fires"], reverse=True):
+        out.append(
+            {
+                **s,
+                "agents": dict(s["agents"].most_common(5)),
+                "tools": dict(s["tools"].most_common(5)),
+            }
+        )
+    return {"range": w.key, "bucket_seconds": int(w.step.total_seconds()), "rules": out}
+
+
+@router.get("/errors")
+def errors(
+    window: str = Query("7d", alias="range"),
+    agent: str | None = None,
+    environment: str | None = None,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """Steps that failed — a tool that threw, a model call that errored — grouped."""
+    w = Window(window)
+    traces = {t.id: t for t in _traces(session, w.start, w.end, agent, environment)}
+    groups: dict[tuple[str, str], dict[str, Any]] = {}
+    if traces:
+        for s in session.scalars(
+            select(Span).where(Span.trace_id.in_(set(traces)), Span.status == "error")
+        ):
+            key = (s.kind, s.name or s.kind)
+            g = groups.setdefault(
+                key,
+                {
+                    "kind": s.kind,
+                    "name": s.name or s.kind,
+                    "count": 0,
+                    "agents": Counter(),
+                    "last": None,
+                    "sample_trace_id": s.trace_id,
+                    "message": (s.error or "")[:200],
+                },
+            )
+            g["count"] += 1
+            t = traces.get(s.trace_id)
+            if t and t.agent_slug:
+                g["agents"][t.agent_slug] += 1
+            at = _aware(s.started_at).isoformat()
+            if not g["last"] or at > g["last"]:
+                g["last"], g["sample_trace_id"] = at, s.trace_id
+    rows = sorted(groups.values(), key=lambda g: g["count"], reverse=True)
+    return {"range": w.key, "rows": [{**g, "agents": dict(g["agents"])} for g in rows]}

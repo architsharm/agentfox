@@ -23,7 +23,7 @@ const AREAS: {
       "Register an agent, or claim one that turned up in traffic without ever being registered. Open an agent to see its traces, its lineage and its risk tier.",
   },
   {
-    name: "Verified sources",
+    name: "Settings → Verified sources",
     href: "/app/sources",
     answers:
       "Which of the places your agents read from are systems of record, and which are somebody's notes.",
@@ -31,7 +31,7 @@ const AREAS: {
       "Tier a source, then validate it: validation fetches it and checks the content is still what it was, which a registered key on its own never proves.",
   },
   {
-    name: "Findings",
+    name: "Issues",
     href: "/app/findings",
     answers:
       "Which problems are worth a person's attention, ranked by severity, with the evidence attached.",
@@ -39,7 +39,7 @@ const AREAS: {
       "Read a finding, then resolve it with a note or suppress it with a reason. One routine blocked call is not a finding; a pattern or a severe one is.",
   },
   {
-    name: "Traces",
+    name: "Activity",
     href: "/app/traces",
     answers:
       "What one agent actually did on one request: the prompt, what it retrieved, which tools it called, and every guardrail decision along the way.",
@@ -47,7 +47,7 @@ const AREAS: {
       "Open a trace when you want to know why a specific request was allowed, redacted, escalated or blocked. Filter by agent or by outcome to find it.",
   },
   {
-    name: "Evaluation",
+    name: "Test",
     href: "/app/evals",
     answers:
       "Whether the agent gets the answer right, not just whether it avoids saying something unsafe.",
@@ -55,7 +55,7 @@ const AREAS: {
       "Build a suite of known questions and run it, or sample real traffic and score that instead. This is also where you run red-team probes against an agent.",
   },
   {
-    name: "Policies",
+    name: "Rules",
     href: "/app/policies",
     answers:
       "The rules that decide what a detector's result does: allow, redact, escalate or block.",
@@ -63,15 +63,15 @@ const AREAS: {
       "Read what is in force for an agent, and check which policies are still in observe mode rather than enforcing. Changes are simulated against recorded traffic before they are promoted.",
   },
   {
-    name: "Guardrail tuning",
-    href: "/app/policies?tab=guardrails",
+    name: "Rules → Detectors & tuning",
+    href: "/app/policies?tab=advanced&sec=tuning",
     answers:
       "Whether those checks are catching real problems, how much time they cost, and which ones someone has quietly silenced.",
     doThere:
       "Label a detection as a false positive, and turn that label into a scoped suppression that expires on its own rather than a detector somebody switches off.",
   },
   {
-    name: "Access Control",
+    name: "Settings → Data access",
     href: "/app/entitlement",
     answers:
       "Whether an agent's answer contained only what the specific person asking was cleared to see.",
@@ -87,7 +87,7 @@ const AREAS: {
       "Approve a call so it runs, or deny it so it does not. An unanswered request denies itself when it expires rather than sitting open.",
   },
   {
-    name: "Escalation",
+    name: "Approvals → Escalation",
     href: "/app/approvals?tab=escalation",
     answers:
       "Which whole conversations should have reached a person, including the ones that never did.",
@@ -95,7 +95,7 @@ const AREAS: {
       "Work the hand-off queue, and read the conversations that qualified for a human and kept going anyway. Set the conditions that qualify one.",
   },
   {
-    name: "Compliance",
+    name: "Reports → Compliance",
     href: "/app/compliance",
     answers:
       "Which controls are actually holding, computed from telemetry rather than attested on a form, mapped across seven frameworks.",

@@ -310,15 +310,26 @@ def search_traces(
     until: dt.datetime | None = None,
     entity_type: str | None = None,
     tool_key: str | None = None,
+    rule_id: str | None = None,
+    errors_only: bool = False,
     limit: int = 100,
 ) -> list[dict[str, Any]]:
     query = select(Trace).order_by(Trace.started_at.desc())
     if agent_slug:
         query = query.where(Trace.agent_slug == agent_slug)
     if verdict:
-        query = query.where(Trace.verdict == verdict)
+        # Comma-separated: the dashboard's "held" covers escalate, its "masked"
+        # covers redact/mask/tokenize.
+        verdicts = [v.strip() for v in verdict.split(",") if v.strip()]
+        query = query.where(Trace.verdict.in_(verdicts))
+    if errors_only:
+        failed = {s.trace_id for s in session.scalars(select(Span).where(Span.status == "error"))}
+        query = query.where((Trace.status == "error") | Trace.id.in_(failed or {"__none__"}))
     if environment:
         query = query.where(Trace.environment == environment)
+    else:
+        # The dashboard's "Try it" runs; listed only when asked for by name.
+        query = query.where(Trace.environment != "playground")
     if since:
         query = query.where(Trace.started_at >= since)
     if until:
@@ -340,6 +351,49 @@ def search_traces(
             if d.trace_id
         }
         query = query.where(Trace.id.in_(trace_ids or {"__none__"}))
+    if rule_id:
+        decisions = select(Decision).where(Decision.trace_id.is_not(None))
+        if since:
+            decisions = decisions.where(Decision.created_at >= since)
+        trace_ids = {
+            d.trace_id
+            for d in session.scalars(decisions)
+            if any(
+                isinstance(r, dict) and r.get("rule_id") == rule_id
+                for r in d.rules_fired_json or []
+            )
+        }
+        query = query.where(Trace.id.in_(trace_ids or {"__none__"}))
+
+    traces = list(session.scalars(query.limit(limit)))
+    # Which rules fired and which tools were called, per trace — so a list of runs
+    # can say why each one was stopped without opening it.
+    fired: dict[str, list[str]] = {}
+    tools: dict[str, list[str]] = {}
+    surfaces: dict[str, list[str]] = {}
+    # What a rule that is only watching would have done: the strongest effect among
+    # fired rules in observe mode. A run that was allowed but would have been
+    # blocked is the fact a team needs before switching a rule to enforce.
+    would: dict[str, str] = {}
+    strength = {"block": 3, "escalate": 2, "redact": 1, "mask": 1, "tokenize": 1}
+    if traces:
+        for d in session.scalars(
+            select(Decision).where(Decision.trace_id.in_({t.id for t in traces}))
+        ):
+            for r in d.rules_fired_json or []:
+                rid = r.get("rule_id") if isinstance(r, dict) else None
+                if rid and rid not in fired.setdefault(d.trace_id, []):
+                    fired[d.trace_id].append(rid)
+                effect = r.get("effect") if isinstance(r, dict) else None
+                if (
+                    r.get("mode") if isinstance(r, dict) else None
+                ) == "observe" and effect in strength:
+                    if strength[effect] > strength.get(would.get(d.trace_id, ""), 0):
+                        would[d.trace_id] = effect
+            if d.tool_key and d.tool_key not in tools.setdefault(d.trace_id, []):
+                tools[d.trace_id].append(d.tool_key)
+            if d.surface and d.surface not in surfaces.setdefault(d.trace_id, []):
+                surfaces[d.trace_id].append(d.surface)
 
     return [
         {
@@ -353,8 +407,12 @@ def search_traces(
             "provider": t.provider,
             "intent": t.intent,
             "cost_usd": t.cost_usd,
+            "rules": fired.get(t.id, []),
+            "tools": tools.get(t.id, []),
+            "surfaces": surfaces.get(t.id, []),
+            "would_verdict": would.get(t.id),
         }
-        for t in session.scalars(query.limit(limit))
+        for t in traces
     ]
 
 

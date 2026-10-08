@@ -41,6 +41,13 @@ class EnforcementResult:
     explanation: dict[str, Any] = field(default_factory=dict)
     suppressed: list[dict[str, Any]] = field(default_factory=list)
     latency_budget: dict[str, Any] = field(default_factory=dict)
+    #: What to show the end user when the request was stopped or held, from the
+    #: deciding rule's `message`. Empty when no deciding rule set one.
+    user_message: str = ""
+    #: When the deciding rules ask to re-ask rather than refuse an output: the
+    #: correction to send the model. The gateway's proxy uses it itself; a guard
+    #: endpoint returns it for the caller to use.
+    reask_instruction: str = ""
 
     @property
     def detections_found(self) -> bool:
@@ -77,6 +84,8 @@ class EnforcementResult:
             "explanation": self.explanation,
             "suppressed": self.suppressed,
             "latency_budget": self.latency_budget,
+            "user_message": self.user_message or None,
+            "fix": {"instruction": self.reask_instruction} if self.reask_instruction else None,
         }
 
 
@@ -108,3 +117,58 @@ class StreamEvent:
     finish_reason: str | None = None
     usage: dict[str, int] = field(default_factory=dict)
     result: EnforcementResult | None = None
+
+
+#: Applied verdicts after which the end user is not getting what they asked for.
+STOPPING_VERDICTS = frozenset({"block", "escalate", "abstain"})
+
+
+def user_message_for(verdict: str, rules_fired: list[dict[str, Any]]) -> str:
+    """The deciding rule's end-user message, if it set one.
+
+    "Deciding" is a rule whose effect is the applied verdict; when several decide,
+    the first one with a message wins, in the order the policies fired them.
+    """
+    if verdict not in STOPPING_VERDICTS:
+        return ""
+    return next(
+        (r["message"] for r in rules_fired if r.get("effect") == verdict and r.get("message")),
+        "",
+    )
+
+
+def reask_instruction_for(effective: str, surface: str, rules_fired: list[dict[str, Any]]) -> str:
+    """The correction to re-ask with, or "" when this block is not fixable.
+
+    Only a blocked model *output* qualifies, and only when every rule that blocked it
+    asked for a re-ask: one rule that wants a refusal keeps the refusal. The
+    instruction is built from the rules' reasons, the operator-facing text, because
+    it goes to the model and never to the end user.
+    """
+    if effective != "block" or surface not in ("output", "completion"):
+        return ""
+    blocking = [r for r in rules_fired if r.get("effect") == "block"]
+    if not blocking or any(r.get("on_block", "refuse") != "reask" for r in blocking):
+        return ""
+    reasons = "; ".join(dict.fromkeys(r.get("reason") or r.get("rule_id", "") for r in blocking))
+    return (
+        "Your previous answer was not allowed: "
+        f"{reasons}. Answer the same request again without that problem."
+    )
+
+
+def masking_entities(rules_fired: list[dict[str, Any]]) -> tuple[set[str], tuple[str, ...]]:
+    """Exact entity types and prefixes the firing mask/redact rules name.
+
+    Personal data and secrets are always masked under a masking verdict, as before.
+    Beyond those, only what a masking rule actually named — so a custom word list
+    set to Mask masks its words, and a block rule's entities are never rewritten.
+    """
+    exact: set[str] = set()
+    prefixes: list[str] = ["PII", "SECRET"]
+    for r in rules_fired:
+        if r.get("effect") not in ("redact", "mask", "tokenize"):
+            continue
+        exact.update(str(e).upper() for e in r.get("entities") or [])
+        prefixes.extend(str(p).upper() for p in r.get("entity_prefixes") or [])
+    return exact, tuple(dict.fromkeys(prefixes))

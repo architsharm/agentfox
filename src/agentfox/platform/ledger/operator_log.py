@@ -120,6 +120,21 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "undoes a change; reverting a tightening loosens a control again",
     ),
     PrivilegedAction(
+        "agentfox.capabilities.detection.custom_store.save_rules",
+        "operator.custom_rule.saved",
+        "adds or changes a rule that can block, mask or hold traffic",
+    ),
+    PrivilegedAction(
+        "agentfox.capabilities.detection.custom_store.delete_rule",
+        "operator.custom_rule.deleted",
+        "removes a rule — the protection it gave stops with it",
+    ),
+    PrivilegedAction(
+        "agentfox.capabilities.detection.detector_settings.set_enabled",
+        "operator.detector.toggled",
+        "switching a detector off silences it for the whole workspace, like a suppression",
+    ),
+    PrivilegedAction(
         "agentfox.capabilities.judgment.posture.save",
         "operator.judgment_posture.changed",
         "decides whether customer payloads leave this machine for a third party — "

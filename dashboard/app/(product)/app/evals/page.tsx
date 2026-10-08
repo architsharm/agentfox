@@ -8,7 +8,7 @@ import { AgentLink, ApiDown, Empty, InfoTip, InventoryStrip, Panel, ts } from "@
 function score(v: unknown): string {
   return typeof v === "number" && Number.isFinite(v) ? v.toFixed(2) : "—";
 }
-import { PageHeader } from "@/components/product/PageHeader";
+import { Header } from "@/components/kit";
 import { Explainer } from "@/components/product/Explainer";
 
 /**
@@ -16,7 +16,7 @@ import { Explainer } from "@/components/product/Explainer";
  * copy of "AgentFox Control Plane". See lib/site.ts appPageMetadata.
  */
 export const metadata: Metadata = appPageMetadata(
-  "Evaluation",
+  "Test",
   "Pre-release test suites, red-team runs and the drift between them.",
 );
 
@@ -62,7 +62,7 @@ export default async function Evals({
 
   return (
     <>
-      <PageHeader title="Evaluation" sub="Whether your agent gets the answer right — graded automatically, tracked over time." />
+      <Header back={{ href: "/app/test", label: "Test" }} title="Evaluation details" />
 
       {/* Four tiles for four inventory counts — none of them is a number that
           wants a person, they are just what exists. A strip says the same thing

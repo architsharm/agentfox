@@ -72,12 +72,18 @@ def list_traces(
     environment: str | None = None,
     entity_type: str | None = None,
     tool: str | None = None,
+    rule: str | None = None,
+    errors: bool = False,
     since_days: int | None = None,
+    start: dt.datetime | None = None,
+    end: dt.datetime | None = None,
     limit: int = 100,
     session: Session = Depends(db),
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
     since = dt.datetime.now(dt.UTC) - dt.timedelta(days=since_days) if since_days else None
+    if start and (since is None or start > since):
+        since = start
     return {
         "traces": search_traces(
             session,
@@ -86,8 +92,11 @@ def list_traces(
             environment=environment,
             entity_type=entity_type,
             tool_key=tool,
+            rule_id=rule,
+            errors_only=errors,
             since=since,
-            limit=limit,
+            until=end,
+            limit=min(limit, 500),
         )
     }
 

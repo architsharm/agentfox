@@ -163,7 +163,7 @@ export function WhyBlocked({
         <p className="small muted">
           Filed against this decision and the detector that decided it. It feeds
           precision reporting and the threshold recommendations on{" "}
-          <Link href="/app/policies?tab=guardrails">Guardrail tuning</Link> — it does not
+          <Link href="/app/policies?tab=advanced&sec=tuning">Detectors &amp; tuning</Link> — it does not
           change anything on its own.
         </p>
       </div>

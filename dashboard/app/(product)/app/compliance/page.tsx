@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, ControlStatus, DraftCaveat, Gaps, InfoTip, InventoryStrip, Panel, Stat, StatLink, StatusBar, pct, ts } from "@/components/ui";
-import { PageHeader } from "@/components/product/PageHeader";
+import { REPORTS_TABS } from "@/components/product/AreaTabs";
+import { Header, Tabs } from "@/components/kit";
 import { PrintButton } from "@/components/product/PrintButton";
 
 /**
@@ -34,9 +36,7 @@ const TABS: { key: string; label: string }[] = [
   { key: "frameworks", label: "Frameworks" },
   { key: "obligations", label: "Obligations" },
   { key: "risk", label: "Risk register" },
-  { key: "evidence", label: "Evidence & reports" },
   { key: "retention", label: "Retention & legal hold" },
-  { key: "board", label: "Board snapshot" },
 ];
 
 export default async function Compliance({
@@ -45,6 +45,9 @@ export default async function Compliance({
   searchParams: Promise<{ review_error?: string; review_notice?: string; tab?: string }>;
 }) {
   const { review_error, review_notice, tab: rawTab } = await searchParams;
+  // Evidence and the board summary moved to their own Reports tabs.
+  if (rawTab === "evidence") redirect("/app/reports?tab=evidence");
+  if (rawTab === "board") redirect("/app/reports");
   // Controls is the default because /findings and /policies deep-link to
   // /compliance#<control-key> — a control anchor that lands on the wrong tab
   // never scrolls into view, so the tab that owns those anchors has to be first.
@@ -63,7 +66,8 @@ export default async function Compliance({
   } catch (e: any) {
     return (
       <>
-        <h1>Compliance</h1>
+        <Header title="Reports" />
+        <Tabs items={REPORTS_TABS} active="compliance" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -75,15 +79,8 @@ export default async function Compliance({
 
   return (
     <>
-      <PageHeader
-        title="Compliance"
-        sub={
-          <>
-            One control set, seven frameworks. Status is{" "}
-            <strong>computed from telemetry</strong>, not attested on a form.
-          </>
-        }
-      />
+      <Header title="Reports" />
+      <Tabs items={REPORTS_TABS} active="compliance" />
 
       {review_error && <div className="error">{review_error}</div>}
       {review_notice && <div className="note-panel">{review_notice}</div>}
@@ -118,24 +115,29 @@ export default async function Compliance({
           unit={`effective of the ${assessed} control(s) with telemetry to assess — the ${counts.not_implemented || 0} not-yet-implemented are excluded from the ratio, not counted as failing`}
         />
 
-      <div className="tabbar">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={t.key === "controls" ? "/app/compliance" : `/app/compliance?tab=${t.key}`}
-            className={tab === t.key ? "active" : ""}
-          >
-            {t.label}
-            <span className="tab-count">
-              {t.key === "controls" && controls.controls.length}
-              {t.key === "frameworks" && frameworks.frameworks.length}
-              {t.key === "obligations" && obligations.obligations.length}
-              {t.key === "risk" && register.register.length}
-              {t.key === "evidence" && evidencePackages.packages.length}
-              {t.key === "retention" && retention.legal_holds.length}
-            </span>
-          </Link>
-        ))}
+      {/* Sections of Compliance, under the Reports tab bar — chips rather than a
+          second underlined tab row, so the two levels never look alike. */}
+      <div className="chipbar">
+        {TABS.map((t) => {
+          const n: Record<string, number> = {
+            controls: controls.controls.length,
+            frameworks: frameworks.frameworks.length,
+            obligations: obligations.obligations.length,
+            risk: register.register.length,
+            evidence: evidencePackages.packages.length,
+            retention: retention.legal_holds.length,
+          };
+          return (
+            <Link
+              key={t.key}
+              href={t.key === "controls" ? "/app/compliance" : `/app/compliance?tab=${t.key}`}
+              className={tab === t.key ? "chip active" : "chip"}
+            >
+              {t.label}
+              {t.key in n && <span className="chip-n">{n[t.key]}</span>}
+            </Link>
+          );
+        })}
       </div>
 
       {tab === "controls" && (

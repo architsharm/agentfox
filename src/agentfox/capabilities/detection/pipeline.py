@@ -160,12 +160,16 @@ class DetectorPipeline:
         self._pool, self._heavy_pool = _get_shared_pools(max_workers)
 
     # -- selection -------------------------------------------------------
-    def select(self, surface: str) -> list[Detector]:
+    def select(
+        self, surface: str, enabled: frozenset[str] | set[str] | None = None
+    ) -> list[Detector]:
+        """``enabled`` is a workspace's own choice (`detector_settings.enabled_for`);
+        without it, the deployment's `enabled_detectors`."""
         if self._explicit is not None:
             candidates = list(self._explicit)
         else:
-            enabled = set(get_settings().enabled_detectors)
-            candidates = [d for k, d in available_detectors().items() if k in enabled]
+            chosen = set(enabled) if enabled is not None else set(get_settings().enabled_detectors)
+            candidates = [d for k, d in available_detectors().items() if k in chosen]
         applicable = [d for d in candidates if surface in d.surfaces and d.available()]
         return sorted(applicable, key=lambda d: _COST_ORDER.get(d.key, 50))
 
@@ -178,7 +182,7 @@ class DetectorPipeline:
         already been evaluated. Without it, a stack that respects 100 ms per call can
         still spend half a second on one request."""
         effective_budget = self.budget_ms if budget_ms is None else float(budget_ms)
-        detectors = self.select(context.surface)
+        detectors = self.select(context.surface, context.enabled_detectors)
         # A detector that cannot physically finish inside the default budget —
         # currently only the judgment tiers, which make a network round trip
         # measured at a 332ms median — declares `requires_budget_ms`. Without

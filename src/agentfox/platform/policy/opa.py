@@ -217,6 +217,8 @@ class OpaPolicyEngine:
             reason = f.get("reason", "")
             if not reason and rule_id in by_id:
                 reason = NativePolicyEngine._explain(by_id[rule_id], pinput)
+            # Static per rule, so read from the rule rather than carried through Rego.
+            source = by_id.get(rule_id)
             fired.append(
                 FiredRule(
                     rule_id=rule_id,
@@ -225,6 +227,8 @@ class OpaPolicyEngine:
                     severity=f.get("severity", "medium"),
                     controls=list(f.get("controls", [])),
                     mode=policy.mode,
+                    message=source.message if source else "",
+                    on_block=source.on_block if source else "refuse",
                 )
             )
         effective = result.get("verdict", policy.default_effect)

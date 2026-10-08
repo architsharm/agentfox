@@ -1,143 +1,109 @@
 import type { Metadata } from "next";
-import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
-import { api, safeApi, apiErrorProps } from "@/lib/product/api";
-import { ApiDown } from "@/components/ui";
-import { PageHeader } from "@/components/product/PageHeader";
-import { ExpandableFindingRow } from "@/components/product/ExpandableFindingRow";
-import { controlTitleMap } from "@/lib/product/controls";
+import { appPageMetadata } from "@/lib/site";
+import { api, apiErrorProps, safeApi } from "@/lib/product/api";
+import { ApiDown, findingTypeInfo } from "@/components/ui";
+import { Card, Empty, Header, SeverityPill, Tabs, ago, href, num } from "@/components/kit";
+import { FilterBar } from "@/components/kit/FilterBar";
+import { severityRank } from "@/lib/product/vocab";
 
-/**
- * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
- * copy of "AgentFox Control Plane". See lib/site.ts appPageMetadata.
- */
-export const metadata: Metadata = appPageMetadata(
-  "Findings",
-  "What the detectors and scorers flagged, ranked by what needs a human.",
-);
-
+export const metadata: Metadata = appPageMetadata("Issues", "Problems that need a person, most severe first.");
 export const dynamic = "force-dynamic";
 
-export default async function Findings({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string; severity?: string; agent?: string }>;
-}) {
+type SP = Record<string, string | undefined>;
+
+const STATUSES = [
+  { key: "open", label: "Open" },
+  { key: "resolved", label: "Resolved" },
+  { key: "suppressed", label: "Accepted" },
+];
+
+const SEVERITIES = ["critical", "high", "medium", "low"];
+
+export default async function Issues({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const qs = new URLSearchParams({ limit: "200", status: sp.status ?? "open" });
+  const status = STATUSES.some((s) => s.key === sp.status) ? sp.status! : "open";
+  const qs = new URLSearchParams({ limit: "200", status });
   if (sp.severity) qs.set("severity", sp.severity);
   if (sp.agent) qs.set("agent", sp.agent);
 
-  let data: any, agents: any, controlTitles: Record<string, string>;
+  let data: any;
   try {
-    [data, agents, controlTitles] = await Promise.all([
-      api(`/api/findings?${qs}`),
-      safeApi("/api/agents", { agents: [] }),
-      controlTitleMap(),
-    ]);
+    data = await api(`/api/findings?${qs}`);
   } catch (e: any) {
     return (
       <>
-        <h1>Findings</h1>
+        <Header title="Issues" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
   }
+  const [agents, counts] = await Promise.all([
+    safeApi<any>("/api/agents", { agents: [] }),
+    Promise.all(STATUSES.map((s) => safeApi<any>(`/api/findings?status=${s.key}&limit=500${sp.agent ? `&agent=${sp.agent}` : ""}`, { findings: [] }))),
+  ]);
+  const rows = [...(data.findings || [])].sort(
+    (a, b) => severityRank(a.severity) - severityRank(b.severity) || String(b.last_seen_at).localeCompare(String(a.last_seen_at)),
+  );
+  const keep = { agent: sp.agent, severity: sp.severity };
 
   return (
     <>
-      <PageHeader title="Findings" sub="Every problem detected, most severe first." />
-
-      {/* Each chip run is a group with its own name: read one chip at a time, a
-          bare "high" says nothing about what it filters. `display: contents`
-          keeps the chipbar's own flex wrapping exactly as it was. */}
-      <form action="/app/findings" method="GET" className="chipbar">
-        <span role="group" aria-label="Filter by status" style={{ display: "contents" }}>
-          <span className="chipbar-label">status:</span>
-          {["open", "resolved", "suppressed"].map((s) => (
-            <Link
-              key={s}
-              href={`/app/findings?status=${s}${sp.severity ? `&severity=${sp.severity}` : ""}${sp.agent ? `&agent=${sp.agent}` : ""}`}
-              className={`chip${(sp.status ?? "open") === s ? " active" : ""}`}
-              aria-current={(sp.status ?? "open") === s ? "true" : undefined}
-            >
-              {s}
-            </Link>
-          ))}
-        </span>
-        <span role="group" aria-label="Filter by severity" style={{ display: "contents" }}>
-          <span className="chipbar-label" style={{ marginLeft: 10 }}>severity:</span>
-          {["critical", "high", "medium", "low"].map((s) => (
-            <Link
-              key={s}
-              href={`/app/findings?status=${sp.status ?? "open"}&severity=${s}${sp.agent ? `&agent=${sp.agent}` : ""}`}
-              className={`chip${sp.severity === s ? " active" : ""}`}
-              aria-current={sp.severity === s ? "true" : undefined}
-            >
-              {s}
-            </Link>
-          ))}
-          {sp.severity && (
-            <Link href={`/app/findings?status=${sp.status ?? "open"}${sp.agent ? `&agent=${sp.agent}` : ""}`} className="chip">
-              clear severity ×
-            </Link>
-          )}
-        </span>
-        <label htmlFor="findings-agent-filter" className="chipbar-label" style={{ marginLeft: 10 }}>
-          agent:
-        </label>
-        <input type="hidden" name="status" value={sp.status ?? "open"} />
-        {sp.severity && <input type="hidden" name="severity" value={sp.severity} />}
-        <select
-          id="findings-agent-filter"
-          name="agent"
-          defaultValue={sp.agent ?? ""}
-          style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--panel-2)", color: "var(--text)", fontSize: 12, fontFamily: "inherit" }}
-        >
-          <option value="">all agents</option>
-          {(agents.agents || []).map((a: any) => (
-            <option key={a.slug} value={a.slug}>{a.name || a.slug}</option>
-          ))}
-        </select>
-        <button type="submit" className="chip" style={{ cursor: "pointer" }}>filter</button>
-        {sp.agent && (
-          <Link href={`/app/findings?status=${sp.status ?? "open"}${sp.severity ? `&severity=${sp.severity}` : ""}`} className="chip">
-            clear agent ×
+      <Header title="Issues" />
+      <Tabs
+        active={status}
+        items={STATUSES.map((s, i) => ({
+          key: s.key,
+          label: s.label,
+          count: counts[i].findings?.length,
+          href: href("/app/findings", { ...keep, status: s.key === "open" ? undefined : s.key }),
+        }))}
+      />
+      <FilterBar range={false} agents={(agents.agents || []).map((a: any) => ({ slug: a.slug, name: a.name }))}>
+        <div className="k-seg" role="group" aria-label="Severity">
+          <Link href={href("/app/findings", { agent: sp.agent, status: sp.status })} className={!sp.severity ? "active" : ""} scroll={false}>
+            All
           </Link>
-        )}
-      </form>
-
-      <div className="panel scroll-x">
-        {data.findings.length === 0 ? (
-          <div className="body muted small">
-            No findings match. Either nothing has tripped a detector, or no traffic has been
-            recorded yet — check <Link href="/app/start">Start here</Link>.
-          </div>
-        ) : (
-          <table>
+          {SEVERITIES.map((s) => (
+            <Link key={s} href={href("/app/findings", { agent: sp.agent, status: sp.status, severity: s })} className={sp.severity === s ? "active" : ""} scroll={false}>
+              {s[0].toUpperCase() + s.slice(1)}
+            </Link>
+          ))}
+        </div>
+      </FilterBar>
+      <Card flush>
+        {rows.length ? (
+          <table className="k-table">
             <thead>
               <tr>
-                <th className="w-chip">severity</th>
-                <th className="w-name">agent</th>
-                <th className="w-short">type</th>
-                <th className="w-prose">finding</th>
-                <th className="w-name">controls</th>
-                <th className="w-when">raised</th>
+                <th className="tight">Severity</th>
+                <th>Issue</th>
+                <th>Agent</th>
+                <th className="num">Times</th>
+                <th className="tight">Last seen</th>
               </tr>
             </thead>
             <tbody>
-              {data.findings.map((f: any) => (
-                <ExpandableFindingRow
-                  key={f.id}
-                  finding={f}
-                  agents={agents.agents || []}
-                  controlTitles={controlTitles}
-                />
+              {rows.map((f: any) => (
+                <tr key={f.id}>
+                  <td className="tight"><SeverityPill value={f.severity} /></td>
+                  <td>
+                    <Link className="k-name" href={`/app/findings/${f.id}`}>{f.title}</Link>
+                    <span className="sub">{findingTypeInfo(f.type).label}</span>
+                  </td>
+                  <td>
+                    {f.agent_slug ? <Link href={`/app/agents/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : <span className="k-muted">—</span>}
+                  </td>
+                  <td className="num">{num(f.occurrences || 1)}</td>
+                  <td className="tight muted">{ago(f.last_seen_at || f.created_at)}</td>
+                </tr>
               ))}
             </tbody>
           </table>
+        ) : (
+          <Empty>{status === "open" ? "No open issues." : "Nothing here."}</Empty>
         )}
-      </div>
+      </Card>
     </>
   );
 }

@@ -3,7 +3,8 @@ import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, InfoTip, Panel, StatusBar } from "@/components/ui";
-import { PageHeader } from "@/components/product/PageHeader";
+import { SETTINGS_TABS } from "@/components/product/AreaTabs";
+import { Header, Tabs } from "@/components/kit";
 import { ContextCheck } from "@/components/product/ContextCheck";
 import { Modal } from "@/components/product/Modal";
 import { SourceAddFlow } from "@/components/product/SourceAddFlow";
@@ -80,7 +81,8 @@ export default async function Sources({
   } catch (e: any) {
     return (
       <>
-        <h1>Verified sources</h1>
+        <Header title="Settings" />
+        <Tabs items={SETTINGS_TABS} active="sources" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -96,18 +98,8 @@ export default async function Sources({
 
   return (
     <>
-      <PageHeader
-        title="Verified sources"
-        sub={
-          <>
-            Which sources are systems of record, and which are somebody&rsquo;s
-            notebook. A stale one raises a{" "}
-            <Link href="/app/findings">finding</Link> next time an agent is grounded
-            in it.
-          </>
-        }
-        action={sources.sources.length > 0 ? addSourceModal : undefined}
-      />
+      <Header title="Settings" actions={sources.sources.length > 0 ? addSourceModal : undefined} />
+      <Tabs items={SETTINGS_TABS} active="sources" />
 
       {review_error && <div className="error">{review_error}</div>}
       {review_notice && <div className="note-panel">{review_notice}</div>}

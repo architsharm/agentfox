@@ -32,7 +32,13 @@ from agentfox.capabilities.detection.adapters.presidio import PresidioPiiDetecto
 
 #: Detectors backed by something downloadable. Each must decide `available()`
 #: from what is already on disk — never by fetching, and never by assuming.
-PROVISIONED = ("pii.presidio", "injection.classifier", "safety.granite", "safety.restricted")
+PROVISIONED = (
+    "pii.presidio",
+    "injection.classifier",
+    "safety.granite",
+    "safety.restricted",
+    "grounding.nli",
+)
 
 
 @pytest.mark.parametrize("key", PROVISIONED)
@@ -128,12 +134,12 @@ def test_cached_weights_are_loaded_without_contacting_the_hub():
     import ast
     import inspect
 
-    from agentfox.capabilities.detection.adapters import classifiers, embeddings
+    from agentfox.capabilities.detection.adapters import classifiers, embeddings, grounding
 
     LOADERS = {"pipeline", "from_pretrained"}
     missing = []
     seen = 0
-    for module in (classifiers, embeddings):
+    for module in (classifiers, embeddings, grounding):
         tree = ast.parse(inspect.getsource(module))
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):

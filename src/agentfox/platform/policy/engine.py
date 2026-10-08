@@ -88,6 +88,8 @@ class NativePolicyEngine:
                     mode=policy.mode,
                     entities=entities,
                     entity_prefixes=entity_prefixes,
+                    message=rule.message,
+                    on_block=rule.on_block,
                 )
             )
 

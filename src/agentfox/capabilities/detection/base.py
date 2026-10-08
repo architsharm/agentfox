@@ -47,6 +47,9 @@ class DetectionContext:
     schema: dict[str, Any] | None = None
     prior_tools: list[str] = field(default_factory=list)
     extra: dict[str, Any] = field(default_factory=dict)
+    #: The detectors this workspace runs (`detector_settings.enabled_for`); None
+    #: means the deployment's `enabled_detectors`. Read by the pipeline's selection.
+    enabled_detectors: frozenset[str] | None = None
 
 
 @dataclass(slots=True)

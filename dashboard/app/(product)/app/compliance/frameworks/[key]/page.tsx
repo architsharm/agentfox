@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { appPageMetadata } from "@/lib/site";
 import { api, apiErrorProps } from "@/lib/product/api";
-import { Breadcrumbs } from "@/components/product/Breadcrumbs";
+import { Header } from "@/components/kit";
 import { ApiDown } from "@/components/ui";
 
 /**
@@ -44,8 +44,7 @@ export default async function FrameworkReview({
 
   return (
     <>
-      <Breadcrumbs crumbs={[{ label: "Frameworks", href: "/app/compliance?tab=frameworks" }]} />
-      <h1>{coverage.title}</h1>
+      <Header back={{ href: "/app/compliance?tab=frameworks", label: "Frameworks" }} title={coverage.title} />
       <p className="sub">
         {coverage.controls_mapped} of {coverage.controls_total} controls mapped,{" "}
         {coverage.mappings_reviewed} of {coverage.mappings_total} mappings reviewed.

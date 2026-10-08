@@ -464,10 +464,19 @@ class Settings(BaseSettings):
         "secrets.native",
         "safety.lexicon",
         "schema.json",
+        # A workspace's own rules (capabilities/detection/custom.py). Costs nothing
+        # until a workspace defines one, so it is on wherever the others are.
+        "custom.lists",
+        # Regexes over the code in a tool call's arguments; cheap, and acted on only
+        # by the agent-integrity pack, which ships watching.
+        "code.insecure",
     ]
     # Restricted-licence model adapters refuse to load without this.
     accept_restricted_model_licenses: bool = False
     granite_guardian_model: str = "ibm-granite/granite-guardian-3.0-2b"
+    # NLI cross-encoder for the opt-in `grounding.nli` detector (Apache-2.0, ~140M).
+    # Read from the local cache only; models needing trust_remote_code are refused.
+    grounding_nli_model: str = "cross-encoder/nli-deberta-v3-small"
     # MIT, ~86M params, no licence gate — but a real CPU forward pass still
     # costs tens of ms per call versus a regex scan's fractions of one, and every
     # concurrent request pays it independently (the latency budget is per-request,

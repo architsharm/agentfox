@@ -18,6 +18,7 @@ BUILTIN_CHECK_MODULES: tuple[str, ...] = (
     "agentfox.capabilities.containment.checks",
     "agentfox.capabilities.detection.checks",
     "agentfox.capabilities.business.checks",
+    "agentfox.capabilities.judgment.checks",
 )
 
 

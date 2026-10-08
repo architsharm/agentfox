@@ -191,7 +191,7 @@ export function JudgmentPosture({ posture }: { posture?: Posture | null }) {
 
       <p className="small muted">
         Change these on{" "}
-        <Link href="/app/policies?tab=judgment">Policies → Judgment posture</Link>. A
+        <Link href="/app/policies?tab=advanced&sec=judges">Rules → AI judges &amp; egress</Link>. A
         self-hosted model on loopback counts as <span className="mono">local_llm</span> and
         does not egress.
       </p>
@@ -224,7 +224,7 @@ export function JudgmentPostureForm({
   return (
     <div className="panel">
       <div className="head">
-        <span>Judgment posture</span>
+        <span>AI judges &amp; egress</span>
         <span className="small muted">version {posture.version}</span>
       </div>
       <div className="body">

@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 208,
+ "count": 229,
  "routes": [
   {
    "method": "GET",
@@ -211,6 +211,18 @@
       "description": ""
      },
      {
+      "name": "environment",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "context",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "completion",
       "type": "object",
       "required": false,
@@ -349,6 +361,18 @@
       "description": ""
      },
      {
+      "name": "environment",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "context",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "completion",
       "type": "object",
       "required": false,
@@ -419,6 +443,12 @@
      },
      {
       "name": "session_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "environment",
       "type": "string",
       "required": false,
       "description": ""
@@ -906,6 +936,139 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/access",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Get Access",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/access",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Grant a tool, or change the existing grant for it (one grant per tool key).",
+   "description": "Grant a tool, or change the existing grant for it (one grant per tool key).",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "AccessIn",
+    "fields": [
+     {
+      "name": "tool_key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "requires_approval",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "max_taint",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "constraints",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "actions",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}/access/{capability_id}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Remove Access",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "capability_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -1782,6 +1945,140 @@
    "body": null
   },
   {
+   "method": "POST",
+   "path": "/api/business/compile",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Compile written policy into rules and questions. Nothing is saved.",
+   "description": "Compile written policy into rules and questions. Nothing is saved.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CompileIn",
+    "fields": [
+     {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/business/rules",
+   "section": "business",
+   "audience": "operator",
+   "summary": "List Business Rules",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/business/rules",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Save Business Rule",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "BusinessRuleIn",
+    "fields": [
+     {
+      "name": "definition",
+      "type": "object",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/business/rules/{key}/mode",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Business Rule Mode",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__library__ModeIn",
+    "fields": [
+     {
+      "name": "mode",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
    "method": "GET",
    "path": "/api/compliance/status",
    "section": "compliance",
@@ -1945,6 +2242,226 @@
   },
   {
    "method": "GET",
+   "path": "/api/custom-rules",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Get Custom Rules",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-rules",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Post Custom Rule",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CustomRuleIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "kind",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "polarity",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "entries",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "examples",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "description",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "surfaces",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "case_sensitive",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "sequence",
+      "type": "SequenceSpec",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "effect",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "on_block",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "severity",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-rules/try",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Match one text against a rule that has not been saved. Records nothing.",
+   "description": "Match one text against a rule that has not been saved. Records nothing.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TryIn",
+    "fields": [
+     {
+      "name": "rule",
+      "type": "object",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surface",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/custom-rules/{key}",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Remove Custom Rule",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/detectors",
    "section": "detectors",
    "audience": "operator",
@@ -1965,6 +2482,51 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/detectors/{key}",
+   "section": "detectors",
+   "audience": "operator",
+   "summary": "Switch a detector on or off for this workspace. Turning one on that is not installed is refused: it would look enabled and check nothing.",
+   "description": "Switch a detector on or off for this workspace. Turning one on that is not\ninstalled is refused: it would look enabled and check nothing.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "DetectorToggleIn",
+    "fields": [
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "POST",
@@ -4316,6 +4878,96 @@
   },
   {
    "method": "POST",
+   "path": "/api/import/{tool}",
+   "section": "import",
+   "audience": "operator",
+   "summary": "Apply Import",
+   "description": "",
+   "params": [
+    {
+     "name": "tool",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ImportIn",
+    "fields": [
+     {
+      "name": "source",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "skip",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/import/{tool}/plan",
+   "section": "import",
+   "audience": "operator",
+   "summary": "Plan Import",
+   "description": "",
+   "params": [
+    {
+     "name": "tool",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ImportIn",
+    "fields": [
+     {
+      "name": "source",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "skip",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
    "path": "/api/integrations/github/connect",
    "section": "integrations",
    "audience": "operator",
@@ -4807,6 +5459,58 @@
   },
   {
    "method": "GET",
+   "path": "/api/library/packs",
+   "section": "library",
+   "audience": "operator",
+   "summary": "List Packs",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/packs/{pack_id}/install",
+   "section": "library",
+   "audience": "operator",
+   "summary": "Install Pack",
+   "description": "",
+   "params": [
+    {
+     "name": "pack_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/mcp-servers",
    "section": "mcp-servers",
    "audience": "operator",
@@ -5081,6 +5785,176 @@
      "in": "path",
      "required": true,
      "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/metrics/breakdown",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "Breakdown",
+   "description": "",
+   "params": [
+    {
+     "name": "dim",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "range",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/metrics/errors",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "Steps that failed — a tool that threw, a model call that errored — grouped.",
+   "description": "Steps that failed — a tool that threw, a model call that errored — grouped.",
+   "params": [
+    {
+     "name": "range",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/metrics/rules",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "How each rule behaved: fired, stopped something, or only watched.",
+   "description": "How each rule behaved: fired, stopped something, or only watched.\n\n``enforced`` counts fires that changed the outcome; ``watched`` counts fires in\nobserve mode — what the rule would have done had it been enforcing. That second\nnumber is the one a team needs before promoting a rule.",
+   "params": [
+    {
+     "name": "range",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/metrics/summary",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "Summary",
+   "description": "",
+   "params": [
+    {
+     "name": "range",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": null
     },
     {
      "name": "authorization",
@@ -6079,7 +6953,7 @@
     }
    ],
    "body": {
-    "model": "ModeIn",
+    "model": "agentfox__apps__gateway__routes__policy__ModeIn",
     "fields": [
      {
       "name": "mode",
@@ -6142,6 +7016,81 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/rules/{rule_id}",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Change one rule's action or switch it off, as a new saved version.",
+   "description": "Change one rule's action or switch it off, as a new saved version.\n\nThe dashboard edits rules one at a time; the policy model versions whole packs.\nThis starts from the version that is live (not a pending draft), changes the one\nrule, and saves the result. Like any save it changes nothing in force: the\ncaller promotes the returned version with ``/{key}/mode`` — after a simulation\nwhen the pack enforces, exactly as for a hand-edited policy.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "RulePatchIn",
+    "fields": [
+     {
+      "name": "effect",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "on_block",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "min_score",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "notes",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "POST",
@@ -7727,7 +8676,31 @@
      "type": null
     },
     {
+     "name": "rule",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "errors",
+     "in": "query",
+     "required": false,
+     "type": "boolean"
+    },
+    {
      "name": "since_days",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "start",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "end",
      "in": "query",
      "required": false,
      "type": null

@@ -4,26 +4,35 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, safeApi, ApiError, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, InfoTip, Panel, Empty } from "@/components/ui";
-import { PageHeader } from "@/components/product/PageHeader";
+import { SETTINGS_TABS } from "@/components/product/AreaTabs";
+import { Header, Tabs } from "@/components/kit";
 import { RepoTable } from "@/components/product/RepoTable";
 import { TokenManager } from "@/components/product/TokenManager";
+import { ConnectGuide, PATHS, type PathKey } from "@/components/product/start/ConnectGuide";
+import { FirstRequestWatcher } from "@/components/product/start/FirstRequestWatcher";
+import { publicApiBase } from "@/lib/env";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
  * copy of "AgentFox Control Plane". See lib/site.ts appPageMetadata.
  */
-export const metadata: Metadata = appPageMetadata(
-  "Start here",
-  "Connect a repository or a hosted API, mint a token, and see the first trace.",
-);
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}): Promise<Metadata> {
+  const { tab } = await searchParams;
+  if (tab === "connect") return appPageMetadata("Connections");
+  if (tab === "tokens") return appPageMetadata("API keys");
+  return appPageMetadata(
+    "Get started",
+    "Connect a repository or a hosted API, mint a token, and see the first trace.",
+  );
+}
 
 export const dynamic = "force-dynamic";
 
-const TABS: { key: string; label: string }[] = [
-  { key: "checklist", label: "Checklist" },
-  { key: "connect", label: "Connect" },
-  { key: "tokens", label: "API tokens" },
-];
+const TABS = ["checklist", "connect", "tokens"];
 
 const inputStyle = {
   width: "100%",
@@ -58,59 +67,68 @@ function Field({ label, ...props }: { label: string } & React.InputHTMLAttribute
 }
 
 /**
- * Start here / Connect / API tokens used to be three separate nav items — all
- * three are "get this instance pointed at something real," just at different
- * steps, and splitting them cost three sidebar rows for one job. One page,
- * one URL, tabs — same pattern already proven on the Compliance page.
+ * The setup checklist ("Get started") at the bare URL, and two Settings tabs —
+ * Connections (?tab=connect) and API keys (?tab=tokens) — at the URLs they have
+ * always had, so existing links and the checklist's own buttons keep working.
  */
 export default async function Start({
   searchParams,
 }: {
   searchParams: Promise<{
     tab?: string;
+    path?: string;
     scan_run_id?: string;
     hosted_scan_run_id?: string;
     scan_error?: string;
   }>;
 }) {
-  const { tab: rawTab, scan_run_id, hosted_scan_run_id, scan_error } = await searchParams;
+  const { tab: rawTab, path: rawPath, scan_run_id, hosted_scan_run_id, scan_error } = await searchParams;
   // "What's in here" was a tab here and is now two sections on the Glossary,
   // which is where the rest of the reference material lives. Without this, a
   // bookmarked ?tab=map falls through to Checklist and silently shows the wrong
   // page instead of the one that was asked for.
   if (rawTab === "map") redirect("/app/glossary#areas");
-  const tab = TABS.some((t) => t.key === rawTab) ? rawTab! : "checklist";
+  const tab = TABS.includes(rawTab || "") ? rawTab! : "checklist";
+
+  // Connect and API keys are Settings now: same URLs, shown under the Settings
+  // tab bar so they read as part of that area. What is left at the bare URL is
+  // the setup checklist — the "Get started" row.
+  if (tab === "connect" || tab === "tokens") {
+    return (
+      <>
+        <Header title="Settings" />
+        <Tabs items={SETTINGS_TABS} active={tab} />
+        {tab === "connect" ? (
+          <ConnectTab scanRunId={scan_run_id} hostedScanRunId={hosted_scan_run_id} scanError={scan_error} />
+        ) : (
+          <TokensTab />
+        )}
+      </>
+    );
+  }
+
+  // Connect, then see it arrive, then the rest of setup — the order a developer
+  // actually does it in. The checklist is unchanged; it moved below the two
+  // steps that get the first request through.
+  const path: PathKey = PATHS.some((p) => p.key === rawPath) ? (rawPath as PathKey) : "http";
+  const onboarding = await safeApi<any>("/api/onboarding", null);
 
   return (
     <>
-      <PageHeader
-        title="Start here"
-        sub={
-          <>
-            Point it at something real, then work through what is still open. New
-            here? The <Link href="/app/glossary#areas">Glossary</Link> maps every area
-            of the product.
-          </>
-        }
-      />
+      <Header title="Get started" />
 
-      <div className="tabbar">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={t.key === "checklist" ? "/app/start" : `/app/start?tab=${t.key}`}
-            className={tab === t.key ? "active" : ""}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </div>
+      <h2 className="k-section">1. Connect your agent</h2>
+      <ConnectGuide path={path} gateway={publicApiBase()} />
 
-      {tab === "checklist" && <ChecklistTab />}
-      {tab === "connect" && (
-        <ConnectTab scanRunId={scan_run_id} hostedScanRunId={hosted_scan_run_id} scanError={scan_error} />
+      <h2 className="k-section">2. See it arrive</h2>
+      {onboarding?.counts ? (
+        <FirstRequestWatcher initial={onboarding.counts} />
+      ) : (
+        <p className="small muted">Setup status is unavailable right now.</p>
       )}
-      {tab === "tokens" && <TokensTab />}
+
+      <h2 className="k-section">3. Finish setup</h2>
+      <ChecklistTab />
     </>
   );
 }
@@ -179,14 +197,14 @@ async function ChecklistTab() {
         safety enforce only once you promote them.{" "}
         <strong>Tool containment ships enforcing from install.</strong>{" "}
         <InfoTip text="A governance layer that starts refusing production traffic because someone added an import is indefensible, however correct its policy — so the content-based policies start in observe and only enforce once you promote them in the last step. Tool containment is different: it reasons about the action itself (which tool, with what arguments, from what provenance), not about prompt text, so it is much less prone to false positives. It ships enforcing on purpose, because it is the one control meant to hold even when everything upstream of it — including a content filter — got fooled." />{" "}
-        See the <Link href="/app/policies">Policies page</Link>.
+        See the <Link href="/app/policies">Rules page</Link>.
       </div>
 
       <div className="note-panel">
         <strong>Not every detector is on by default.</strong>{" "}
         <InfoTip text="Microsoft Presidio for PII, IBM Granite Guardian for safety, NVIDIA NeMo Guardrails and Guardrails AI need extra install steps — a package extra, a self-hosted deployment, or licence acceptance — and are not running in every deployment. Step 7 does not on its own give you full coverage." />{" "}
         Check what is active for yours on the{" "}
-        <Link href="/app/policies?tab=guardrails">Guardrail tuning tab</Link>.
+        <Link href="/app/policies?tab=advanced&sec=tuning">Detectors &amp; tuning tab</Link>.
       </div>
     </>
   );
@@ -250,7 +268,7 @@ async function ConnectTab({
       <p className="sub" style={{ marginTop: 16 }}>
         A repository, or a live API. This finds the <strong>agents</strong>; for the
         data they read from, see <Link href="/app/sources">Verified sources</Link>.{" "}
-        <InfoTip text="Either way, nothing goes live until you approve it on the Agents and Policies pages." />
+        <InfoTip text="Either way, nothing goes live until you approve it on the Agents and Rules pages." />
       </p>
 
       {scanError && <div className="error">Scan failed: {scanError}</div>}

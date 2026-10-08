@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/product/proxy";
+import { proxyCustomBody, sameOriginPath } from "@/lib/product/proxy";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,7 +9,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     req,
     "POST",
     `/api/approvals/${encodeURIComponent(id)}/approve`,
-    "/app/approvals",
+    // Home approves inline too, and should land back on Home rather than here.
+    sameOriginPath(form.get("return_to") as string | null, "/app/approvals"),
     { rationale },
     { successNotice: "approved" },
   );

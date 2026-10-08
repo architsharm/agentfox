@@ -237,7 +237,7 @@ No production traffic would newly block.`}</Output>
       <p>There is no CLI command for canaries; use the page or the routes above.</p>
 
       <h2 id="tuning">Guardrail tuning tab</h2>
-      <InTheApp path="/app/policies?tab=guardrails">Policies → Guardrail tuning</InTheApp>
+      <InTheApp path="/app/policies?tab=advanced&sec=tuning">Policies → Guardrail tuning</InTheApp>
       <p>
         Are the checks catching real problems, slowing agents down, or silenced? Filter by
         agent. Warning tiles appear only when something needs a person: checks that ran late
@@ -275,7 +275,7 @@ No production traffic would newly block.`}</Output>
 injection.heuristic  support-triage  INJECTION.INSTRUCTION_OVERRIDE  quoted text in a ticket, not an instruction  0 never used  2026-11-04  revoke`}</Output>
 
       <h2 id="judgment">Judgment posture tab</h2>
-      <InTheApp path="/app/policies?tab=judgment">Policies → Judgment posture</InTheApp>
+      <InTheApp path="/app/policies?tab=advanced&sec=judges">Policies → Judgment posture</InTheApp>
       <p>
         Whether optional evaluators may judge what code cannot, and whether a customer&apos;s
         text may leave the deployment for that. Loads and saves{" "}

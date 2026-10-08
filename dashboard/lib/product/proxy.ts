@@ -173,7 +173,7 @@ export async function proxyCustomBody(
  */
 export async function proxyJson(
   gatewayPath: string,
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   jsonBody?: unknown,
   opts?: { cache?: RequestCache },
 ): Promise<NextResponse> {
@@ -192,7 +192,7 @@ export async function proxyJson(
  * it checks. A protocol-relative `//evil.example` is the case a bare `startsWith("/")`
  * misses, and is why the second test is here.
  */
-function sameOriginPath(returnTo: string | null, fallback: string): string {
+export function sameOriginPath(returnTo: string | null, fallback: string): string {
   if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) return fallback;
   return returnTo;
 }

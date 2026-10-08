@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const id = String(form.get("id") || "");
   if (!id) {
-    const target = new URL("/app/policies?tab=guardrails", req.nextUrl.origin);
+    const target = new URL("/app/policies?tab=changes", req.nextUrl.origin);
     target.searchParams.set("review_error", "missing suppression id");
     return NextResponse.redirect(target);
   }
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     req,
     "DELETE",
     `/api/guardrails/suppressions/${encodeURIComponent(id)}`,
-    "/app/policies?tab=guardrails",
+    "/app/policies?tab=changes",
     undefined,
     { successNotice: "suppression revoked" },
   );

@@ -50,7 +50,7 @@ export function Coverage(input: CoverageInput) {
         <StatLink
           n={`${c.detectorsOn} of ${c.detectorsAvailable}`}
           label="detectors running"
-          href="/app/policies?tab=guardrails"
+          href="/app/policies?tab=advanced&sec=tuning"
           hint={`Of ${c.detectorsInstalled} checks this build knows about, ${c.detectorsAvailable} are installed here and ${c.detectorsOn} are switched on. Detection raises the cost of an attack; it is not what contains one — see the three checks that hold after a model has already been fooled.`}
         />
         <StatLink

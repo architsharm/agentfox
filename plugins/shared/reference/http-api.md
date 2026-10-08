@@ -31,7 +31,7 @@ auditor). Reads need any operator.
 |---|---|
 | `POST /v1/chat/completions` | **OpenAI-compatible proxy.** Point any OpenAI client's `base_url` at `http://host:8080/v1`. Streaming supported. |
 | `POST /v1/messages` | Anthropic-compatible proxy. |
-| `POST /v1/guard/input`, `POST /v1/guard/output` | Check a piece of text. Body `{agent, content, surface?, taint_source?, intent?, session_id?, trace_id?, completion?}`. With `surface: "completion"`, `completion` carries the facts observed when the agent claimed to be done (`{"work_verified": true}`); an unreported fact counts as unmet. **No auth.** |
+| `POST /v1/guard/input`, `POST /v1/guard/output` | Check a piece of text. Body `{agent, content, surface?, taint_source?, intent?, session_id?, trace_id?, completion?, context?}`. `context` is the passages an answer was built from (read by the grounding model). With `surface: "completion"`, `completion` carries the facts observed when the agent claimed to be done (`{"work_verified": true}`); an unreported fact counts as unmet. **No auth.** |
 | `POST /v1/guard/tool_call` | Authorise a tool call before running it. Body `{agent, tool, arguments, provenance, intent?, prior_tools?, session_id?}`. |
 | `POST /v1/guard/memory_write` | Govern a write to agent memory. |
 | `POST /v1/guard/agent_message` | Govern an inter-agent message (signature, nonce, freshness). |
@@ -41,11 +41,13 @@ auditor). Reads need any operator.
 Proxy request headers: `X-AgentFox-Agent`, `-Session`, `-Environment`, `-Intent`,
 `-Trust` (JSON map of message index → source, e.g. `{"2":"retrieved"}`), `-Provider`,
 `-Stream-Mode`, `-Approval` (the id of an approved hold: the same request then runs once). Every inline response carries `X-AgentFox-Trace`, `-Verdict`,
-`-Effective-Verdict`, `-Decision`, `-Mode`, `-Latency-Ms`.
+`-Effective-Verdict`, `-Decision`, `-Mode`, `-Latency-Ms`, and `-Fixed: 1` when a `reask` rule's
+correction was accepted in place of a block.
 
 Outcomes: **200** allowed (content may be redacted) · **403**
-`{error:{type:"agentfox_policy_violation", verdict, trace_id, rules_fired, entities, explanation, …}}`
-blocked · **428** `{error:{type:"agentfox_approval_required", approval_id, poll, …}}` held for a
+`{error:{type:"agentfox_policy_violation", verdict, trace_id, rules_fired, entities, explanation, user_message, …}}`
+blocked (`user_message`: the firing rule's `message`, safe to show the end user; guard responses
+also carry it, plus `fix.instruction` when a `reask` rule fired) · **428** `{error:{type:"agentfox_approval_required", approval_id, poll, …}}` held for a
 person (was 202 before 2026-10; provider SDKs raise on 428 and do not retry it) · **429** load
 shed (honour `Retry-After`). `/v1/guard/tool_call` answers 200 with `verdict: escalate` and an
 `approval_id`; once approved, send the same call with `"approval_id"` and it runs once.
@@ -65,6 +67,7 @@ curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' \
 | Findings | `GET /api/findings`, `GET /api/findings/types` (the finding-type registry: title, severity, description, owner), `GET /api/findings/{id}`, `PATCH /api/findings/{id}` `{status, suppression_reason?, note?}`. Status must be open, suppressed or resolved; suppressing needs a reason and resolving needs a note. A recurring problem updates one finding's `occurrences` rather than adding rows. |
 | Approvals | `GET /api/approvals?status=pending\|approved\|denied\|expired\|used`, `GET /api/approvals/{id}` (an agent key may read its own agent's), `POST /api/approvals/{id}/approve`, `…/deny` |
 | Policies | `GET /api/policies`, `GET /api/policies/{key}`, `GET …/{key}/rego`, `GET /api/policies/effective`, `GET /api/policies/lint`, `POST /api/policies/validate` (no auth), `POST /api/policies/simulate`, `POST /api/policies` `{body: <yaml>, notes}` (saves a version; never changes what is in force; a new policy goes live in observe), `POST /api/policies/{key}/mode` `{mode, version?}` (enforce needs a recorded simulation of that version, else 409) |
+| Rules | `POST /api/policies/{key}/rules/{rule_id}` `{effect?, enabled?, message?, on_block?, min_score?}` (one rule, saved as a new version) · `GET/POST /api/custom-rules`, `DELETE /api/custom-rules/{key}`, `POST /api/custom-rules/try` (words, patterns, topics, allowed topics, tool sequences; managed `custom` pack) · `POST /api/detectors/{key}` `{enabled}` · `POST /api/import/guardrails-ai/plan` `{source}` (Python, .rail or `to_dict()` JSON; never executed), `POST /api/import/guardrails-ai` `{source, skip?}` |
 | Canary rollout | `POST /api/policies/{key}/canary/start` `{…, max_block_rate_drop?, min_dwell_seconds?}` (rolls back if the candidate blocks much more *or* much less than stable), `GET …/canary`, `POST …/canary/advance`, `…/canary/rollback` |
 | Tools / MCP | `GET/POST /api/tools`, `GET/POST /api/mcp-servers`, `POST /api/mcp-servers/{name}/scan`, `POST /api/mcp-servers/{name}/tools` `{tools, accept_changes?, note?}` (registers a listing; a changed tool is held and filed as an `mcp.tool.accept` proposal, reported in `held` and `proposals`. `accept_changes` is the caller's approval of those proposals and needs the `policy_production` role; a held tool is re-recorded once two different people approve) |
 | Identity | `GET /api/identities`, `POST /api/identities/{id}/capabilities`, `POST /api/identities/{id}/check`, credentials issue/rotate/revoke |

@@ -99,6 +99,19 @@ class Rule(BaseModel):
     #: May a narrower level weaken this rule? Loosening is a grant, not a
     #: right, so the default is no. Tightening never needs permission.
     overridable: bool = False
+    #: What the end user is told when this rule stops or holds a request, in the
+    #: operator's words ("I can't help with refunds over $500 — a manager will
+    #: follow up."). Distinct from `reason`, which is written for the operator and
+    #: the audit log and may name internals the end user must not see. Empty: the
+    #: caller decides what to show.
+    message: str = ""
+    #: What to do instead of refusing when this rule blocks a model's *output*:
+    #: "refuse" (the default) returns the block; "reask" asks the model once more
+    #: with the rule's reason as a correction, and returns the new answer if it
+    #: passes. Only the gateway's model proxy can re-ask; a guard endpoint returns
+    #: the correction for the caller to use. Never applies to tool calls, where a
+    #: second attempt at a refused action is exactly what a policy must not invite.
+    on_block: Literal["refuse", "reask"] = "refuse"
 
 
 #: Rules a pack may not ship without, by pack key.
@@ -278,6 +291,9 @@ class FiredRule:
     #: they are right.
     entities: list[str] = field(default_factory=list)
     entity_prefixes: list[str] = field(default_factory=list)
+    #: The rule's end-user message and on-block behaviour, copied from the rule.
+    message: str = ""
+    on_block: str = "refuse"
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -289,6 +305,9 @@ class FiredRule:
             "mode": self.mode,
             "entities": self.entities,
             "entity_prefixes": self.entity_prefixes,
+            # Omitted when unset, so every existing fired-rule record keeps its shape.
+            **({"message": self.message} if self.message else {}),
+            **({"on_block": self.on_block} if self.on_block != "refuse" else {}),
         }
 
 

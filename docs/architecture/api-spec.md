@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-208 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+229 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -126,11 +126,16 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `GET` | `/api/attention` | What needs a human, ranked. The home page is built from this. |
 | `GET` | `/api/detectors` | Which detectors exist, which are live, and how fast they are. |
+| `POST` | `/api/detectors/{key}` | Switch a detector on or off for this workspace. Turning one on that is not |
 | `GET` | `/api/health` | Liveness, plus what is currently not being checked. |
 | `GET` | `/api/me` | The signed-in identity, for the account menu. |
 | `GET` | `/api/memory` | List Entries |
 | `POST` | `/api/memory/{entry_id}/revoke` | Pull an entry immediately — the concrete fix for 'no way to find and |
 | `POST` | `/api/memory/{entry_id}/verify` | A human vouches for an entry — it stops decaying on the unverified TTL. |
+| `GET` | `/api/metrics/breakdown` | Breakdown |
+| `GET` | `/api/metrics/errors` | Steps that failed — a tool that threw, a model call that errored — grouped. |
+| `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
+| `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
 | `GET` | `/api/providers` | The neutrality surface, made inspectable. |
 | `GET` | `/api/reliability` | Circuit-breaker state and live budget consumption. |
@@ -146,6 +151,9 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents` | Create Agent |
 | `GET` | `/api/agents/{slug}` | Get Agent |
 | `PATCH` | `/api/agents/{slug}` | Update Agent |
+| `GET` | `/api/agents/{slug}/access` | Get Access |
+| `POST` | `/api/agents/{slug}/access` | Grant a tool, or change the existing grant for it (one grant per tool key). |
+| `DELETE` | `/api/agents/{slug}/access/{capability_id}` | Remove Access |
 | `POST` | `/api/agents/{slug}/kill` | Stop an agent now. Requires the stronger role — this is an incident action. |
 | `GET` | `/api/agents/{slug}/lineage` | Agent Lineage |
 | `GET` | `/api/agents/{slug}/posture` | Agent Posture |
@@ -200,6 +208,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/policies/{key}/canary/start` | Start Policy Canary |
 | `POST` | `/api/policies/{key}/mode` | Promote or demote a policy, optionally making a saved version live. |
 | `GET` | `/api/policies/{key}/rego` | Get Rego |
+| `POST` | `/api/policies/{key}/rules/{rule_id}` | Change one rule's action or switch it off, as a new saved version. |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |
 
@@ -377,9 +386,21 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/` | Name the service and say where to go next. Unauthenticated. |
+| `POST` | `/api/business/compile` | Compile written policy into rules and questions. Nothing is saved. |
+| `GET` | `/api/business/rules` | List Business Rules |
+| `POST` | `/api/business/rules` | Save Business Rule |
+| `POST` | `/api/business/rules/{key}/mode` | Business Rule Mode |
 | `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
+| `GET` | `/api/custom-rules` | Get Custom Rules |
+| `POST` | `/api/custom-rules` | Post Custom Rule |
+| `POST` | `/api/custom-rules/try` | Match one text against a rule that has not been saved. Records nothing. |
+| `DELETE` | `/api/custom-rules/{key}` | Remove Custom Rule |
+| `POST` | `/api/import/{tool}` | Apply Import |
+| `POST` | `/api/import/{tool}/plan` | Plan Import |
 | `GET` | `/api/judgment/posture` | What is in force, what may be changed, and what the deployment forbids. |
 | `PUT` | `/api/judgment/posture` | Replace the posture, refusing anything the deployment does not permit. |
+| `GET` | `/api/library/packs` | List Packs |
+| `POST` | `/api/library/packs/{pack_id}/install` | Install Pack |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |
 | `GET` | `/api/proposals/{proposal_id}` | One proposal with its diff, evidence, proof and decisions. |
 | `POST` | `/api/proposals/{proposal_id}/apply` | Apply an approved proposal, or settle one whose canary has finished. |

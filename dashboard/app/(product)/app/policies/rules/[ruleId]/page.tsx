@@ -1,0 +1,151 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { appPageMetadata } from "@/lib/site";
+import { safeApi } from "@/lib/product/api";
+import { ActionPill, BarList, Card, Empty, Grid, Header, Kpi, ModePill, Pill, Tabs, ago, href, num } from "@/components/kit";
+import { FilterBar } from "@/components/kit/FilterBar";
+import { RunsTable } from "@/components/kit/RunsTable";
+import { RuleTuner } from "@/components/product/policies/RuleTuner";
+import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
+import { loadRules, ruleMode } from "@/lib/product/rules";
+import { categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
+
+export const metadata: Metadata = appPageMetadata("Rule");
+export const dynamic = "force-dynamic";
+
+const TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "examples", label: "Examples" },
+  { key: "tune", label: "Tune" },
+  { key: "history", label: "History" },
+];
+
+type SP = Record<string, string | undefined>;
+
+export default async function RulePage({ params, searchParams }: { params: Promise<{ ruleId: string }>; searchParams: Promise<SP> }) {
+  const { ruleId: raw } = await params;
+  const ruleId = decodeURIComponent(raw);
+  const sp = await searchParams;
+  const tab = TABS.some((t) => t.key === sp.tab) ? sp.tab! : "overview";
+  const range = rangeOf(sp.range);
+
+  const custom = ruleId.startsWith("custom.");
+  const [{ packs, rules }, stats, customRules] = await Promise.all([
+    loadRules(),
+    safeApi<any>(`/api/metrics/rules?${metricsQs({ range })}`, { rules: [] }),
+    custom ? safeApi<any>("/api/custom-rules", { rules: [] }) : Promise.resolve({ rules: [] }),
+  ]);
+  const own = (customRules.rules || []).find((r: any) => r.rule_id === ruleId);
+  const rule = rules.find((r) => r.rule_id === ruleId);
+  const s = (stats.rules || []).find((r: any) => r.rule_id === ruleId);
+  const mode = rule ? ruleMode(rule) : null;
+  const tabHref = (k: string) => href(`/app/policies/rules/${encodeURIComponent(ruleId)}`, { tab: k === "overview" ? undefined : k, range: sp.range });
+
+  return (
+    <>
+      <Header
+        back={{ href: "/app/policies", label: "Policies" }}
+        title={ruleTitle(ruleId, rule?.description)}
+        hint={ruleId.startsWith("custom.") ? undefined : rule?.description}
+        meta={
+          <>
+            {rule && <ActionPill effect={rule.effect} />}
+            <ModePill mode={mode} />
+            <Pill tone="outline">{categoryLabel(ruleCategory(ruleId))}</Pill>
+          </>
+        }
+        actions={
+          <Link className="k-btn" href={tabHref("tune")}>
+            Change
+          </Link>
+        }
+      />
+      <Tabs items={TABS.map((t) => ({ ...t, href: tabHref(t.key) }))} active={tab} />
+
+      {tab === "overview" && (
+        <>
+          <FilterBar />
+          <Grid cols={4}>
+            <Kpi label="Hits" value={num(s?.fires || 0)} spark={s?.series} href={runsHref({ range }, { rule: ruleId })} />
+            <Kpi label="Stopped" value={num(s?.enforced || 0)} />
+            <Kpi label="Would have stopped" value={num(s?.watched || 0)} hint="Hits while the rule was only watching." />
+            <Kpi label="Last hit" value={s ? ago(s.last_fired) : "Never"} />
+          </Grid>
+          <Grid cols={2}>
+            <Card title="By agent">
+              <BarList rows={Object.entries(s?.agents || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: `/app/agents/${encodeURIComponent(k)}` }))} empty="No hits" />
+            </Card>
+            <Card title="By tool">
+              <BarList rows={Object.entries(s?.tools || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: runsHref({ range }, { rule: ruleId, tool: k }) }))} empty="Not tool-specific" />
+            </Card>
+          </Grid>
+          <Card title="In packs" flush>
+            {rule ? (
+              <table className="k-table">
+                <tbody>
+                  {rule.packs.map((p) => (
+                    <tr key={p.key}>
+                      <td><Link className="k-name" href={`/app/policies/${encodeURIComponent(p.key)}`}>{p.name}</Link></td>
+                      <td className="tight"><ActionPill effect={p.effect} /></td>
+                      <td className="tight">{p.enabled ? <ModePill mode={p.mode} /> : <Pill tone="outline">Off</Pill>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <Empty>Not in any installed pack.</Empty>
+            )}
+          </Card>
+        </>
+      )}
+
+      {tab === "examples" && <Examples ruleId={ruleId} range={range} />}
+
+      {tab === "tune" && (
+        <Card title="What this rule does">
+          {rule ? <RuleTuner ruleId={ruleId} packs={rule.packs} exact={own ? own.kind !== "topic" : false} /> : <Empty>Not in any installed pack.</Empty>}
+        </Card>
+      )}
+
+      {tab === "history" && (
+        <Card flush>
+          {rule ? (
+            <table className="k-table">
+              <tbody>
+                {packs
+                  .filter((p) => rule.packs.some((x) => x.key === p.key))
+                  .flatMap((p) => p.versions.map((v: any) => ({ ...v, pack: p, live: v.version === p.boundVersion })))
+                  .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+                  .map((v) => (
+                    <tr key={v.id}>
+                      <td>
+                        <span className="k-name">{v.notes || `Version ${v.version}`}</span>
+                        <span className="sub">{v.pack.name}</span>
+                      </td>
+                      <td className="tight">{v.live ? <Pill tone="ok">Live</Pill> : <Pill tone="outline">v{v.version}</Pill>}</td>
+                      <td className="tight muted">{v.author}</td>
+                      <td className="tight muted">{ago(v.created_at)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          ) : (
+            <Empty>No history.</Empty>
+          )}
+        </Card>
+      )}
+    </>
+  );
+}
+
+async function Examples({ ruleId, range }: { ruleId: string; range: keyof typeof RANGE_DAYS }) {
+  const runs = await safeApi<any>(`/api/traces?rule=${encodeURIComponent(ruleId)}&since_days=${RANGE_DAYS[range]}&limit=50`, { traces: [] });
+  return (
+    <>
+      <FilterBar />
+      <Card flush>
+        <RunsTable runs={runs.traces} />
+      </Card>
+    </>
+  );
+}

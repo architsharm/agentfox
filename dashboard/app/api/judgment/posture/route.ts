@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/product/proxy";
+import { proxyCustomBody, sameOriginPath } from "@/lib/product/proxy";
 
 /**
  * Change the judgment posture — which optional tiers run, and what may leave the box.
@@ -21,7 +21,7 @@ import { proxyCustomBody } from "@/lib/product/proxy";
  */
 export async function POST(req: NextRequest) {
   const form = await req.formData();
-  const returnTo = String(form.get("return_to") || "/app/policies?tab=guardrails");
+  const returnTo = sameOriginPath(form.get("return_to") as string | null, "/app/policies?tab=advanced&sec=tuning");
 
   const body = {
     tiers: form.getAll("tiers").map((t) => String(t)),

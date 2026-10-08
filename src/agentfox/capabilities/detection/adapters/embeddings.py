@@ -44,6 +44,63 @@ def _load_corpus() -> tuple[list[str], list[str]]:
     )
 
 
+class LocalEmbedder:
+    """A local sentence-embedding model: mean-pooled, L2-normalised vectors.
+
+    Shared by every detector that compares meaning locally — injection similarity,
+    custom topics — so a model is loaded once per process whoever asks first, and
+    a detector never triggers a download (`local_files_only`).
+    """
+
+    def __init__(self, model_id: str) -> None:
+        self.model_id = model_id
+
+    def available(self) -> bool:
+        try:
+            import transformers  # noqa: F401
+        except Exception:
+            return False
+        try:  # pragma: no cover - requires optional dependency
+            from huggingface_hub import try_to_load_from_cache
+
+            return try_to_load_from_cache(self.model_id, "config.json") is not None
+        except Exception:
+            # Never trigger a download at request time.
+            return False
+
+    @functools.cached_property
+    def _model(self):  # pragma: no cover - requires optional dependency
+        import torch
+        from transformers import AutoModel, AutoTokenizer
+
+        torch.set_num_threads(1)  # see injection.classifier's _pipeline for why
+        # local_files_only: see `injection.classifier`'s `_pipeline`.
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id, local_files_only=True)
+        model = AutoModel.from_pretrained(self.model_id, local_files_only=True)
+        model.eval()
+        return tokenizer, model
+
+    def embed(self, texts: list[str]):  # pragma: no cover - requires optional dependency
+        import torch
+
+        tokenizer, model = self._model
+        encoded = tokenizer(
+            texts, padding=True, truncation=True, max_length=256, return_tensors="pt"
+        )
+        with torch.no_grad():
+            out = model(**encoded)
+        mask = encoded["attention_mask"].unsqueeze(-1).float()
+        summed = (out.last_hidden_state * mask).sum(1)
+        counts = mask.sum(1).clamp(min=1e-9)
+        return torch.nn.functional.normalize(summed / counts, p=2, dim=1)
+
+
+@functools.lru_cache(maxsize=4)
+def local_embedder(model_id: str | None = None) -> LocalEmbedder:
+    """The process-wide embedder for a model (the configured one by default)."""
+    return LocalEmbedder(model_id or get_settings().embedding_similarity_model)
+
+
 class EmbeddingSimilarityDetector(BaseDetector):
     """Cosine-similarity match against a local corpus of known attack/benign
     examples — apache-2.0 `sentence-transformers/all-MiniLM-L6-v2`, ~22M params,
@@ -78,49 +135,12 @@ class EmbeddingSimilarityDetector(BaseDetector):
         )
 
     def available(self) -> bool:
-        try:
-            import transformers  # noqa: F401
-        except Exception:
-            return False
         if not _CORPUS_PATH.exists():
             return False
-        return self._weights_present()
-
-    def _weights_present(self) -> bool:  # pragma: no cover - requires optional dep
-        try:
-            from huggingface_hub import try_to_load_from_cache
-
-            return try_to_load_from_cache(self.model_id, "config.json") is not None
-        except Exception:
-            # Never trigger a download at request time.
-            return False
-
-    @functools.cached_property
-    def _model(self):  # pragma: no cover - requires optional dependency
-        import torch
-        from transformers import AutoModel, AutoTokenizer
-
-        torch.set_num_threads(1)  # see injection.classifier's _pipeline for why
-        # local_files_only: see `injection.classifier`'s `_pipeline`.
-        tokenizer = AutoTokenizer.from_pretrained(self.model_id, local_files_only=True)
-        model = AutoModel.from_pretrained(self.model_id, local_files_only=True)
-        model.eval()
-        return tokenizer, model
+        return local_embedder(self.model_id).available()
 
     def _embed(self, texts: list[str]):  # pragma: no cover - requires optional dependency
-        import torch
-
-        tokenizer, model = self._model
-        encoded = tokenizer(
-            texts, padding=True, truncation=True, max_length=256, return_tensors="pt"
-        )
-        with torch.no_grad():
-            out = model(**encoded)
-        mask = encoded["attention_mask"].unsqueeze(-1).float()
-        summed = (out.last_hidden_state * mask).sum(1)
-        counts = mask.sum(1).clamp(min=1e-9)
-        mean_pooled = summed / counts
-        return torch.nn.functional.normalize(mean_pooled, p=2, dim=1)
+        return local_embedder(self.model_id).embed(texts)
 
     @functools.cached_property
     def _corpus_embeddings(self):  # pragma: no cover - requires optional dependency
