@@ -56,7 +56,7 @@ class SimulationDiff:
         return bool(self.newly_blocked)
 
 
-def _policy_input_from_decision(session: Session, decision: Decision) -> PolicyInput:
+def policy_input_from_decision(session: Session, decision: Decision) -> PolicyInput:
     """Reconstruct the evaluator input from what was recorded at decision time.
 
     Determinism is what makes this sound: the stored detections, taint summary
@@ -129,7 +129,7 @@ def simulate(
     diff = SimulationDiff()
     for decision in decisions:
         diff.replayed += 1
-        pinput = _policy_input_from_decision(session, decision)
+        pinput = policy_input_from_decision(session, decision)
         in_scope = doc.matches_scope(pinput.agent_slug, pinput.environment)
         new: PolicyDecision = (
             engine.evaluate(doc, pinput) if in_scope else PolicyDecision(mode=doc.mode)

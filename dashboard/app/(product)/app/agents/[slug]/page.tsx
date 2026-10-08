@@ -88,12 +88,17 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
           </>
         }
         actions={
+          <>
+          <Link className="k-btn-primary" href={`/app/agents/${encodeURIComponent(a.slug)}/protect`}>
+            Protect
+          </Link>
           <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
             <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
-            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn-primary"}>
+            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>
               {state === "active" ? "Pause agent" : "Resume agent"}
             </button>
           </form>
+          </>
         }
       />
       <Meta
@@ -437,7 +442,7 @@ function Settings({ a, state }: { a: any; state: string }) {
           <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST" className="k-pills" style={{ gap: 8 }}>
             <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
             <input className="k-input" name="reason" placeholder="Reason (optional)" style={{ width: 240 }} />
-            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn-primary"}>{state === "active" ? "Pause" : "Resume"}</button>
+            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>{state === "active" ? "Pause" : "Resume"}</button>
           </form>
           {state !== "killed" && (
             <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">

@@ -49,6 +49,9 @@ from agentfox.apps.gateway.routes import custom_rules as custom_rule_routes
 from agentfox.apps.gateway.routes import imports as import_routes
 from agentfox.apps.gateway.routes import library as library_routes
 from agentfox.apps.gateway.routes import metrics as metrics_routes
+from agentfox.apps.gateway.routes import protection as protection_routes
+from agentfox.apps.gateway.routes import rule_examples as rule_example_routes
+from agentfox.apps.gateway.routes import workspace as workspace_routes
 from agentfox.capabilities.compliance.catalog import load_catalog
 from agentfox.capabilities.detection import all_detectors, available_detectors
 from agentfox.core.config import assert_production_secrets, get_settings
@@ -336,6 +339,9 @@ def create_app() -> FastAPI:
     app.include_router(library_routes.router)
     app.include_router(custom_rule_routes.router)
     app.include_router(import_routes.router)
+    app.include_router(protection_routes.router)
+    app.include_router(rule_example_routes.router)
+    app.include_router(workspace_routes.router)
     # Unauthenticated by design (see playground.py's module docstring) — the only
     # router in this app that never depends on `current_user`. It keeps no state in
     # this process: a sandbox is a tenant in the deployment database, so any instance

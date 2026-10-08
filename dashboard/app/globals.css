@@ -3192,6 +3192,15 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .k-preview-nums { display: flex; gap: 18px; flex-wrap: wrap; font-size: var(--t-small); }
 .k-preview-nums strong { font-variant-numeric: tabular-nums; }
 .k-plain { margin: 0; padding-left: 18px; font-size: var(--t-small); display: flex; flex-direction: column; gap: 2px; }
+.k-steps { display: flex; gap: 4px; list-style: none; margin: 0 0 6px; padding: 0; overflow-x: auto; scrollbar-width: none; }
+.k-steps button { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--panel); color: var(--muted); font-size: var(--t-small); white-space: nowrap; cursor: pointer; }
+.k-steps button:disabled { cursor: default; opacity: .5; }
+.k-steps .k-step-n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--border); color: var(--text); font-size: var(--t-micro); }
+.k-steps button.active { color: var(--text); border-color: var(--text); }
+.k-steps button.active .k-step-n { background: var(--text); color: var(--panel); }
+.k-steps button.done .k-step-n { background: var(--viz-allowed); color: var(--panel); }
+.k-form > .k-seg { align-self: flex-start; }
+.k-code { margin: 0; max-height: 520px; overflow: auto; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-2); background: var(--panel-2); font-size: var(--t-small); line-height: 1.5; }
 .k-details { margin-top: 14px; }
 .k-details > summary { cursor: pointer; color: var(--muted); font-size: var(--t-small); margin-bottom: 10px; }
 h2.k-section { font-size: var(--t-small); font-weight: 620; margin: 22px 0 10px; }

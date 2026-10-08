@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-229 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+239 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -157,6 +157,9 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/kill` | Stop an agent now. Requires the stronger role — this is an incident action. |
 | `GET` | `/api/agents/{slug}/lineage` | Agent Lineage |
 | `GET` | `/api/agents/{slug}/posture` | Agent Posture |
+| `GET` | `/api/agents/{slug}/protection` | Get Protection |
+| `POST` | `/api/agents/{slug}/protection` | Save Protection |
+| `POST` | `/api/agents/{slug}/protection/preview` | Replay this agent's last week against the protections, as if enforcing. |
 | `POST` | `/api/agents/{slug}/quarantine` | Stop an agent while you investigate. Reversible and audited. |
 | `POST` | `/api/agents/{slug}/resume` | Restart a stopped agent. Deliberately the same role as `kill` — restarting |
 | `POST` | `/api/discovery/scan` | Sweep: lineage, unowned agents, registry drift, identity posture, delegation shape. |
@@ -407,7 +410,14 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/proposals/{proposal_id}/decide` | Approve or reject; an org-level loosening needs two different approvers. |
 | `POST` | `/api/proposals/{proposal_id}/rollback` | Undo an applied or canaried proposal through its applier. |
 | `POST` | `/api/proposals/{proposal_id}/verify` | Record whether an applied change worked; ``verified: false`` rolls it back. |
+| `GET` | `/api/rules/{rule_id}/examples` | Get Examples |
+| `POST` | `/api/rules/{rule_id}/examples` | Post Example |
+| `POST` | `/api/rules/{rule_id}/examples/check` | Check Examples |
+| `DELETE` | `/api/rules/{rule_id}/examples/{example_id}` | Remove Example |
 | `POST` | `/api/waitlist` | Record an address. Unauthenticated, idempotent, and it sends nothing anywhere. |
+| `POST` | `/api/workspace/apply` | Apply Workspace |
+| `GET` | `/api/workspace/export` | Export Workspace |
+| `POST` | `/api/workspace/plan` | Plan Workspace |
 | `GET` | `/health` | The same payload as `/api/health`, at the path probes default to. |
 
 <!-- END GENERATED ROUTES -->

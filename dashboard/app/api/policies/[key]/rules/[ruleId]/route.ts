@@ -29,5 +29,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     persist: Boolean(version.needs_simulation),
   });
   const simulation = sim.ok ? await sim.json() : null;
-  return NextResponse.json({ ...version, simulation });
+  // The rule's saved tests, re-checked against exactly this proposed version.
+  const checked = await proxyJson(`/api/rules/${encodeURIComponent(ruleId)}/examples/check`, "POST", { policy: key, body: version.body });
+  const tests = checked.ok ? await checked.json() : null;
+  return NextResponse.json({ ...version, simulation, tests });
 }

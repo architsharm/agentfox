@@ -312,3 +312,61 @@ def policy_validate(file: Path) -> None:
     console.print(f"  [dim]compiles to {len(compile_to_rego(doc).splitlines())} lines of Rego[/]")
     if report["findings"]:
         _print_lint(report)
+
+
+@policy_app.command("export")
+def policy_export(
+    out: Path = typer.Option(None, "--out", "-o", help="Write to this file instead of stdout."),
+) -> None:
+    """Write every policy, custom rule and detector switch as one YAML file."""
+    from agentfox.capabilities import workspace
+
+    with _session() as session:
+        text = workspace.dump(workspace.export_bundle(session))
+    if out is None:
+        typer.echo(text, nl=False)
+        return
+    out.write_text(text)
+    console.print(f"[green]wrote[/] {out}")
+
+
+@policy_app.command("apply")
+def policy_apply(
+    file: Path,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Apply without asking."),
+) -> None:
+    """Make the workspace match a file from `policy export`. Shows the plan first.
+
+    Anything the file leaves out is left alone. A policy the file moves to enforce
+    is simulated against the last week first.
+    """
+    from agentfox.capabilities import workspace
+
+    try:
+        bundle = workspace.parse(file.read_text())
+    except (OSError, workspace.BundleError) as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+    with _session() as session:
+        the_plan = workspace.plan(session, bundle)
+        changes = the_plan.changes
+        if not changes:
+            console.print("[green]Nothing to change.[/]")
+            return
+        table = Table(box=None, pad_edge=False)
+        for column in ("", "kind", "key", "detail"):
+            table.add_column(column)
+        mark = {"new": "[green]+[/]", "changed": "[yellow]~[/]", "mode": "[yellow]~[/]"}
+        for item in changes:
+            table.add_row(mark[item.change], item.kind.replace("_", " "), item.key, item.detail)
+        console.print(table)
+        if not yes and not typer.confirm(f"Apply {len(changes)} change(s)?"):
+            raise typer.Exit(1)
+        applied = workspace.apply(session, bundle, actor="cli", reason=f"applied {file.name}")
+        for key, sim in applied.simulations.items():
+            counts = sim.get("counts", {})
+            console.print(
+                f"[bold]{key}[/] enforcing: {counts.get('newly_blocked', 0)} newly blocked "
+                f"in {sim.get('replayed', 0)} replayed requests"
+            )
+    console.print(f"[green]Applied {len(changes)} change(s).[/]")

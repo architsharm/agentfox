@@ -81,6 +81,9 @@ export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[
       byId.set(r.id, entry);
     }
   }
+  // Workspace-wide packs first; an agent's own protection layer (`agent.<slug>`) after.
+  const agentLayer = (key: string) => (key.startsWith("agent.") ? 1 : 0);
+  for (const r of byId.values()) r.packs.sort((a, b) => agentLayer(a.key) - agentLayer(b.key));
   return { packs, rules: Array.from(byId.values()) };
 }
 

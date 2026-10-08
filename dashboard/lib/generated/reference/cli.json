@@ -2425,6 +2425,69 @@
       "commands": []
      },
      {
+      "path": "policy export",
+      "name": "export",
+      "summary": "Write every policy, custom rule and detector switch as one YAML file.",
+      "help": "Write every policy, custom rule and detector switch as one YAML file.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "out",
+        "opts": [
+         "--out",
+         "-o"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Write to this file instead of stdout."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "policy apply",
+      "name": "apply",
+      "summary": "Make the workspace match a file from `policy export`.",
+      "help": "Make the workspace match a file from `policy export`. Shows the plan first.\n\nAnything the file leaves out is left alone. A policy the file moves to enforce\nis simulated against the last week first.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "file",
+        "opts": [
+         "file"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "yes",
+        "opts": [
+         "--yes",
+         "-y"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Apply without asking."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
       "path": "policy catalogue",
       "name": "catalogue",
       "summary": "Every kind of guardrail this product can enforce.",

@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 229,
+ "count": 239,
  "routes": [
   {
    "method": "GET",
@@ -1174,6 +1174,161 @@
    "body": null
   },
   {
+   "method": "GET",
+   "path": "/api/agents/{slug}/protection",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Get Protection",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/protection",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Save Protection",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SetupIn",
+    "fields": [
+     {
+      "name": "protections",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "words",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "avoid",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "allowed",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/protection/preview",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Replay this agent's last week against the protections, as if enforcing.",
+   "description": "Replay this agent's last week against the protections, as if enforcing.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "SetupIn",
+    "fields": [
+     {
+      "name": "protections",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "words",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "avoid",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "allowed",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
    "method": "POST",
    "path": "/api/agents/{slug}/quarantine",
    "section": "agents",
@@ -1549,7 +1704,7 @@
     }
    ],
    "body": {
-    "model": "CheckIn",
+    "model": "agentfox__apps__gateway__routes__answerability__CheckIn",
     "fields": [
      {
       "name": "agent",
@@ -8112,6 +8267,166 @@
   },
   {
    "method": "GET",
+   "path": "/api/rules/{rule_id}/examples",
+   "section": "rules",
+   "audience": "operator",
+   "summary": "Get Examples",
+   "description": "",
+   "params": [
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/rules/{rule_id}/examples",
+   "section": "rules",
+   "audience": "operator",
+   "summary": "Post Example",
+   "description": "",
+   "params": [
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ExampleIn",
+    "fields": [
+     {
+      "name": "decision_id",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "fires",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "sample",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/rules/{rule_id}/examples/check",
+   "section": "rules",
+   "audience": "operator",
+   "summary": "Check Examples",
+   "description": "",
+   "params": [
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__rule_examples__CheckIn",
+    "fields": [
+     {
+      "name": "policy",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "body",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/rules/{rule_id}/examples/{example_id}",
+   "section": "rules",
+   "audience": "operator",
+   "summary": "Remove Example",
+   "description": "",
+   "params": [
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "example_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/sources",
    "section": "sources",
    "audience": "operator",
@@ -8167,7 +8482,7 @@
     }
    ],
    "body": {
-    "model": "SourceIn",
+    "model": "agentfox__apps__gateway__routes__provenance__SourceIn",
     "fields": [
      {
       "name": "key",
@@ -8833,6 +9148,95 @@
       "name": "note",
       "type": "string",
       "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/workspace/apply",
+   "section": "workspace",
+   "audience": "operator",
+   "summary": "Apply Workspace",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__workspace__SourceIn",
+    "fields": [
+     {
+      "name": "source",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/workspace/export",
+   "section": "workspace",
+   "audience": "operator",
+   "summary": "Export Workspace",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/workspace/plan",
+   "section": "workspace",
+   "audience": "operator",
+   "summary": "Plan Workspace",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__workspace__SourceIn",
+    "fields": [
+     {
+      "name": "source",
+      "type": "string",
+      "required": true,
       "description": ""
      }
     ]

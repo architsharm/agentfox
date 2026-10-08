@@ -8,6 +8,7 @@ later record supersedes it and says so in its status line.
 |---|---|---|
 | [0001](0001-repository-structure.md) | One package in layers held by import-linter; `capabilities/`, `harnesses/`, `plugins/`, packs; the repository outside `src/`; what is deferred | Accepted, 2026-10-07 |
 | [0002](0002-customer-authored-rules.md) | Customer rules are data plus a managed policy pack; end-user message and re-ask on the rule; per-workspace detectors; importers only plan | Accepted, 2026-10-08 |
+| [0003](0003-agent-layers-workspace-file-rule-tests.md) | An agent's protection is an agent-level policy layer; the workspace as one YAML file that never deletes; rule tests as eval cases over recorded decisions | Accepted, 2026-10-08 |
 
 ## Writing one
 

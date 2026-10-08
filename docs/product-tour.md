@@ -84,6 +84,32 @@ builder.add_node("pay",      guard.tool_node(transfer, tool="payments.transfer")
 Trace identity and retrieval taint live in graph state, so they survive checkpointing and reach the
 tool node. Escalation maps to LangGraph's own `interrupt()` — one pause mechanism, not two.
 
+### OpenAI Agents SDK
+
+```python
+from agentfox.frameworks.openai_agents import (
+    agentfox_input_guardrail, agentfox_output_guardrail, guarded_function_tool,
+)
+
+@guarded_function_tool(fox, tool="payments.refund")              # checked before it runs
+def refund(order_id: str, amount: float) -> str: ...
+
+agent = Agent(name="support", tools=[refund],
+              input_guardrails=[agentfox_input_guardrail(client=fox)],
+              output_guardrails=[agentfox_output_guardrail(client=fox)])
+```
+
+`pip install 'agentfox[openai-agents]'`. The guardrails are the SDK's own `InputGuardrail` and
+`OutputGuardrail`: they trip only on an applied block, escalation or abstention, so observe mode
+changes nothing, and `output_info` carries the user message and trace id. A stopped tool call
+returns a refusal to the model instead of running.
+
+### TypeScript
+
+`sdk/typescript/` is `@agentfox/sdk`, a dependency-free client for `/v1/guard/input`, `/output`
+and `/tool_call`, with `wrapTool()` to guard a tool before it runs. Its
+[README](../sdk/typescript/README.md) also shows the OpenAI client pointed at the gateway proxy.
+
 ### MCP
 
 `agentfox scan mcp` reads the servers your MCP config declares (`.mcp.json`, `.cursor/mcp.json`,

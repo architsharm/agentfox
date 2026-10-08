@@ -18,7 +18,7 @@ commit; `scripts/check/plugins.py` fails if a repo `.md` file is unclassified.
 |---|---|---|
 | `README.md` | the pitch, quickstart, one contained tool call, headline numbers, honest limits | Entry point for humans; numbers bound in `benchmarks/claims.yaml` |
 | `ARCHITECTURE.md` | the domain model, one tool call traced through `auto()` and the gateway, the code map, invariants, where to start for a change | Start here before changing code; names functions, not line numbers |
-| `docs/product-tour.md` | every integration surface (auto, gateway, LangGraph, MCP, Claude Code hooks), commands grouped by task, demo output, self-hosting | Moved out of the README; the website guides cover the same ground |
+| `docs/product-tour.md` | every integration surface (auto, gateway, LangGraph, OpenAI Agents SDK, TypeScript, MCP, Claude Code hooks), commands grouped by task, demo output, self-hosting | Moved out of the README; the website guides cover the same ground |
 | `docs/design/PRD.md` | *why* a feature exists, requirement IDs, roadmap, non-goals | 1,200 lines — jump to §5 pillars, §6 integrations, §9 roadmap, §10.3 non-goals, §12 shipped since |
 | `docs/architecture/high-level-design.md` | architecture, request path, deployment topology | Derived from code; code wins |
 | `docs/architecture/low-level-design.md` | which module implements what, class internals, CLI tree | Derived from code; code wins |
@@ -80,6 +80,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | `CHANGELOG.md` | what changed in a release, and the section `.github/workflows/release.yml` turns into release notes |
 | `.github/PULL_REQUEST_TEMPLATE.md` | opening a pull request: the four checks that gate it and the vendored-wheel rule |
 | `deploy/README-dashboard.md` | deploying the hosted dashboard (Render/Fly/Vercel), its shared secrets and the Neon migration state |
+| `sdk/typescript/README.md` | using or changing the TypeScript client (`@agentfox/sdk`) for the `/v1/guard/*` routes |
 
 ## Class E — human-only: do not load into agent context
 

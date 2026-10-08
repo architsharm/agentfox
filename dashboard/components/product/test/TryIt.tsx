@@ -61,13 +61,15 @@ export function TryIt({ agents, tools }: { agents: { slug: string; name?: string
   return (
     <div className="k-form">
       <div className="k-pills" style={{ gap: 8, flexWrap: "wrap" }}>
-        <select className="k-select" value={agent} onChange={(e) => setAgent(e.target.value)} aria-label="Agent">
-          {agents.map((a) => (
-            <option key={a.slug} value={a.slug}>
-              {a.name || a.slug}
-            </option>
-          ))}
-        </select>
+        {agents.length > 1 && (
+          <select className="k-select" value={agent} onChange={(e) => setAgent(e.target.value)} aria-label="Agent">
+            {agents.map((a) => (
+              <option key={a.slug} value={a.slug}>
+                {a.name || a.slug}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="k-seg" role="group" aria-label="What to test">
           {KINDS.map((k) => (
             <button key={k.key} className={kind === k.key ? "active" : ""} onClick={() => setKind(k.key)}>
