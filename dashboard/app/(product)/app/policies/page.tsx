@@ -23,6 +23,7 @@ import { Detectors } from "@/components/product/policies/Detectors";
 import { ImportGuard } from "@/components/product/policies/ImportGuard";
 import { LibraryPacks } from "@/components/product/policies/LibraryPacks";
 import { PackMode } from "@/components/product/policies/PackMode";
+import { WorkspaceCode } from "@/components/product/policies/WorkspaceCode";
 import { LegacyJudgmentTab, LegacyPacksTab, LegacyTuningTab } from "@/components/product/policies/legacy";
 import { metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
@@ -38,6 +39,7 @@ const TABS = [
   { key: "performance", label: "Performance" },
   { key: "library", label: "Library" },
   { key: "changes", label: "Changes" },
+  { key: "code", label: "Code" },
   { key: "advanced", label: "Advanced" },
 ];
 
@@ -68,6 +70,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
       {tab === "performance" && <PerformanceTab sp={sp} />}
       {tab === "library" && <LibraryTab sec={sec} />}
       {tab === "changes" && <ChangesTab />}
+      {tab === "code" && <CodeTab />}
       {tab === "advanced" && <AdvancedTab sec={sec} agent={sp.agent} />}
     </>
   );
@@ -342,6 +345,17 @@ async function LibraryTab({ sec }: { sec?: string }) {
         </Card>
       )}
     </>
+  );
+}
+
+// --- Code --------------------------------------------------------------------
+
+async function CodeTab() {
+  const exported = await safeApi<any>("/api/workspace/export", { source: "" });
+  return (
+    <Card>
+      <WorkspaceCode source={exported.source} />
+    </Card>
   );
 }
 

@@ -16,6 +16,8 @@ verified_against: commit 6863b8b, 2026-09-15
 | LangGraph `AgentFoxGuard` | wrap nodes | retrieval, model, tool nodes; escalation → `interrupt()` | The agent is a LangGraph graph (primary adoption path). |
 | FastAPI `install()` / `guard()` | middleware / dependency | HTTP endpoints that take prompts | The agent is exposed as a FastAPI service. |
 | `McpGovernor` | wrap MCP client calls | MCP tool calls, schema drift ("rug pull"), undeclared tools | The agent uses MCP servers. |
+| OpenAI Agents SDK guardrails | add guardrails / wrap tools | run input, final output, function tool calls | The agent is an `agents.Agent` (OpenAI Agents SDK). |
+| TypeScript `@agentfox/sdk` | `new AgentFox(...)` | input, output and tool calls via `/v1/guard/*` | The agent is TypeScript or JavaScript and keeps its own model calls. |
 
 ## 1. `agentfox.auto()` — the one-liner
 
@@ -113,6 +115,55 @@ client = OpenAI(base_url="http://localhost:8080/v1", api_key="nom_agt_…",
 
 A call held for a person raises `openai.APIStatusError` (HTTP 428, `exc.body["approval_id"]`).
 Once approved, resend with `extra_headers={"X-AgentFox-Approval": approval_id}`.
+
+## 7. OpenAI Agents SDK
+
+```python
+from agents import Agent, function_tool
+from agentfox import AgentFox
+from agentfox.frameworks.openai_agents import (     # needs the [openai-agents] extra
+    agentfox_input_guardrail, agentfox_output_guardrail,
+    agentfox_tool_guardrail, guarded_function_tool,
+)
+
+fox = AgentFox(agent="support-triage")            # or base_url=, api_key= for a gateway
+
+@guarded_function_tool(fox, tool="payments.refund", provenance={"order_id": "user"})
+def refund(order_id: str, amount: float) -> str: ...
+
+agent = Agent(
+    name="support",
+    tools=[refund],
+    input_guardrails=[agentfox_input_guardrail(client=fox)],
+    output_guardrails=[agentfox_output_guardrail(client=fox)],
+)
+```
+
+A guardrail trips when the **applied** verdict is block, escalate or abstain (observe mode never
+trips); the Runner raises `InputGuardrailTripwireTriggered` / `OutputGuardrailTripwireTriggered`
+and `output_info` carries `verdict`, `effective_verdict`, `user_message`, `trace_id`,
+`approval_id`, `rules_fired` and `fix`. A guarded tool that is stopped does not run and returns
+a refusal to the model (the escalation's `approval_id` in it); `raise_on_block=True` raises
+`PolicyViolation` / `ApprovalRequired` instead. `guard_tool(fox, tool=...)` is the same wrapper
+without `function_tool`; `agentfox_tool_guardrail(fox, tools={sdk_name: key})` is a
+`ToolInputGuardrail` for `function_tool(..., tool_input_guardrails=[...])`. A tool call inside
+`with fox.session(intent=...)` joins that session.
+
+## 8. TypeScript (`sdk/typescript/`)
+
+```ts
+import { AgentFox, ApprovalRequired } from "@agentfox/sdk";
+
+const fox = new AgentFox({ baseUrl: "http://localhost:8080", agent: "support-triage", apiKey });
+const input = await fox.guardInput(text);                    // input.stopped, input.userMessage
+const output = await fox.guardOutput(answer, { context });   // output.fix?.instruction
+const call = await fox.guardToolCall("payments.refund", args, { order_id: "user" });
+const refund = fox.wrapTool(doRefund, { tool: "payments.refund" });   // throws PolicyViolation / ApprovalRequired
+```
+
+Dependency-free (global `fetch`); results use camelCase (`effectiveVerdict`, `approvalId`,
+`traceId`) and gate on `verdict`. For the proxy, an OpenAI client takes
+`baseURL: "<gateway>/v1"` and `defaultHeaders: {"X-AgentFox-Agent": ...}`.
 
 ## Rollout rule (the product's own safety stance)
 

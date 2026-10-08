@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
-import { safeApi } from "@/lib/product/api";
+import { post, safeApi } from "@/lib/product/api";
 import { ActionPill, BarList, Card, Empty, Grid, Header, Kpi, ModePill, Pill, Tabs, ago, href, num } from "@/components/kit";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
+import { RuleTests } from "@/components/product/policies/RuleTests";
 import { RuleTuner } from "@/components/product/policies/RuleTuner";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode } from "@/lib/product/rules";
@@ -15,7 +16,8 @@ export const dynamic = "force-dynamic";
 
 const TABS = [
   { key: "overview", label: "Overview" },
-  { key: "examples", label: "Examples" },
+  { key: "examples", label: "Hits" },
+  { key: "tests", label: "Tests" },
   { key: "tune", label: "Tune" },
   { key: "history", label: "History" },
 ];
@@ -101,6 +103,12 @@ export default async function RulePage({ params, searchParams }: { params: Promi
 
       {tab === "examples" && <Examples ruleId={ruleId} range={range} />}
 
+      {tab === "tests" && (
+        <Card>
+          {rule ? <Tests ruleId={ruleId} pack={rule.packs[0]?.key} agents={Object.keys(s?.agents || {})} /> : <Empty>Not in any installed pack.</Empty>}
+        </Card>
+      )}
+
       {tab === "tune" && (
         <Card title="What this rule does">
           {rule ? <RuleTuner ruleId={ruleId} packs={rule.packs} exact={own ? own.kind !== "topic" : false} /> : <Empty>Not in any installed pack.</Empty>}
@@ -148,4 +156,15 @@ async function Examples({ ruleId, range }: { ruleId: string; range: keyof typeof
       </Card>
     </>
   );
+}
+
+async function Tests({ ruleId, pack, agents }: { ruleId: string; pack?: string; agents: string[] }) {
+  const [checked, all] = await Promise.all([
+    pack
+      ? post<any>(`/api/rules/${encodeURIComponent(ruleId)}/examples/check`, { policy: pack }).catch(() => ({ results: [] }))
+      : Promise.resolve({ results: [] }),
+    safeApi<any>("/api/agents", { agents: [] }),
+  ]);
+  const slugs = Array.from(new Set([...agents, ...(all.agents || []).filter((a: any) => a.status !== "draft").map((a: any) => a.slug)]));
+  return <RuleTests ruleId={ruleId} results={checked.results || []} agents={slugs} />;
 }

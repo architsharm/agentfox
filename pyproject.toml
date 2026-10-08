@@ -48,6 +48,10 @@ redteam = ["garak>=0.10", "pyrit>=0.5"]                 # NVIDIA Garak + Microso
 # I-1: the primary adoption path. Optional so `pip install agentfox` stays light —
 # the integration module imports and degrades cleanly without it.
 langgraph = ["langgraph>=0.2.60"]
+# The OpenAI Agents SDK adapter (frameworks/openai_agents.py). Optional for the same
+# reason; kept out of `all` because it pulls in the `openai` client, which changes how
+# `auto()` behaves in an environment that did not ask for it.
+openai-agents = ["openai-agents>=0.3"]
 # P9: sqlglot is MIT, zero-dependency and pure Python, so this extra adds no
 # transitive surface. Kept optional only because action assurance is opt-in; without
 # it, SQL analysis fails closed rather than passing statements through unanalysed.

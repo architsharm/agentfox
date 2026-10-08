@@ -1,0 +1,36 @@
+{
+  "name": "@agentfox/sdk",
+  "version": "0.1.0",
+  "description": "AgentFox client: guard inputs, outputs and tool calls against an AgentFox gateway.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/architsharm/agentfox",
+    "directory": "sdk/typescript"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3",
+    "vitest": "^4.1.11"
+  }
+}

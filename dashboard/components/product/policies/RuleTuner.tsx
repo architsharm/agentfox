@@ -13,6 +13,7 @@ type Preview = {
   version: number;
   mode: string | null;
   label: string;
+  tests: null | { passed: number; failed: number; results: { id: string; sample: string; fires: boolean; passed: boolean }[] };
   simulation: null | {
     replayed: number;
     counts: { newly_blocked: number; newly_allowed: number; newly_escalated: number };
@@ -43,7 +44,7 @@ export function RuleTuner({ ruleId, packs, exact = false }: { ruleId: string; pa
     setPreview(null);
     try {
       const out = await callJson(`/api/policies/${encodeURIComponent(current.key)}/rules/${encodeURIComponent(ruleId)}`, "POST", change);
-      setPreview({ pack: current.key, version: out.version, mode: out.mode, label, simulation: out.simulation });
+      setPreview({ pack: current.key, version: out.version, mode: out.mode, label, simulation: out.simulation, tests: out.tests });
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -170,6 +171,20 @@ export function RuleTuner({ ruleId, packs, exact = false }: { ruleId: string; pa
             <span><strong>{s?.counts.newly_escalated ?? 0}</strong> newly held</span>
             <span><strong>{s?.counts.newly_allowed ?? 0}</strong> newly allowed</span>
           </div>
+          {preview.tests && preview.tests.passed + preview.tests.failed > 0 && (
+            <div className="k-form" style={{ gap: 4 }}>
+              <span className={`k-pill ${preview.tests.failed ? "k-pill-bad" : "k-pill-ok"}`} style={{ alignSelf: "flex-start" }}>
+                Tests: {preview.tests.passed} of {preview.tests.passed + preview.tests.failed} pass
+              </span>
+              {preview.tests.results
+                .filter((t) => !t.passed)
+                .map((t) => (
+                  <span key={t.id} className="k-muted">
+                    {t.fires ? "No longer catches" : "Now catches"} “{t.sample}”
+                  </span>
+                ))}
+            </div>
+          )}
           {current.mode !== "enforce" && <div className="k-muted">This pack is watching, so nothing will be blocked yet.</div>}
           <div className="k-pills" style={{ gap: 8 }}>
             <button className="k-btn-primary" disabled={busy} onClick={apply}>

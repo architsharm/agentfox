@@ -20,8 +20,7 @@ screen can show it.
 
 from __future__ import annotations
 
-import datetime as dt
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
@@ -42,23 +41,16 @@ from agentfox.platform.policy import (
     PolicyDocument,
     current_binding,
     load_version_document,
-    save_policy,
-    set_mode,
 )
 from agentfox.platform.policy.model import Condition, Rule
-from agentfox.platform.policy.simulate import record_simulation, simulate
+from agentfox.platform.policy.publish import Published, publish_in_current_mode
 
 POLICY_KEY = "custom"
 POLICY_NAME = "Your rules"
 
 
-@dataclass
-class SyncResult:
-    version: int | None = None
-    mode: str | None = None
-    #: Present when the pack enforces: what the new version would have changed.
-    simulation: dict[str, Any] | None = None
-    rules: list[str] = field(default_factory=list)
+#: What a change to the custom rules published (see `platform/policy/publish.py`).
+SyncResult = Published
 
 
 # --- reading ------------------------------------------------------------------
@@ -267,7 +259,7 @@ def sync_policy(
     """Regenerate the `custom` pack from the rows and make it live in its current mode."""
     seed = seed or {}
     policy = session.scalar(select(Policy).where(Policy.key == POLICY_KEY))
-    binding, live = current_binding(session, policy.id) if policy else (None, None)
+    live = current_binding(session, policy.id)[1] if policy else None
     previous: dict[str, Rule] = {}
     if live is not None:
         previous = {r.id: r for r in load_version_document(live).rules}
@@ -280,33 +272,9 @@ def sync_policy(
             "Rules written in your own words: blocked words and patterns, topics, "
             "and sequences of actions."
         ),
-        mode=binding.mode if binding else "observe",
         rules=[
             _policy_rule(r, previous.get(rule_id_for(r.key)), seed.get(rule_id_for(r.key), {}))
             for r in rows
         ],
     )
-    _policy, version = save_policy(
-        session,
-        doc,
-        author=actor,
-        notes="custom rules changed",
-        bind_mode="observe",
-        level=binding.level if binding else "org",
-        scope_id=binding.scope_id if binding else "*",
-        compose=binding.compose if binding else "extend",
-        rebind=False,
-    )
-    result = SyncResult(
-        version=version.version,
-        mode=binding.mode if binding else "observe",
-        rules=[r.id for r in doc.rules],
-    )
-    if binding is None:
-        return result  # a brand-new pack is bound in observe by `save_policy`
-    if binding.mode == "enforce":
-        diff = simulate(session, doc, since=dt.datetime.now(dt.UTC) - dt.timedelta(days=7))
-        record_simulation(session, doc, diff, run_by=actor, scope={"source": "custom_rules"})
-        result.simulation = diff.to_json()
-    set_mode(session, POLICY_KEY, binding.mode, version=version.version)
-    return result
+    return publish_in_current_mode(session, doc, actor=actor, notes="custom rules changed")
