@@ -281,7 +281,7 @@ curl -s localhost:8080/api/guardrails/recommendations`}</Code>
             traffic. Below five judged labels per detector the recommendation is{" "}
             <code>insufficient_data</code>.
           </p>
-          <InTheApp path="/app/policies?tab=guardrails">Policies → Guardrail tuning: precision, latency, suppressions, feedback log</InTheApp>
+          <InTheApp path="/app/policies?tab=advanced&sec=tuning">Policies → Guardrail tuning: precision, latency, suppressions, feedback log</InTheApp>
         </Step>
       </Steps>
 

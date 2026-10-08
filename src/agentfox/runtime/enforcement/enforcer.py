@@ -30,6 +30,8 @@ from agentfox.capabilities.detection import (
 from agentfox.capabilities.detection.actions import analyse_arguments
 from agentfox.capabilities.detection.actions import summarise as summarise_actions
 from agentfox.capabilities.detection.composition import check_composed_escalation
+from agentfox.capabilities.detection.custom_store import compiled_rules as compiled_custom_rules
+from agentfox.capabilities.detection.detector_settings import enabled_for as detectors_enabled_for
 from agentfox.capabilities.detection.tuning import (
     LatencyLedger,
     active_suppressions,
@@ -70,7 +72,12 @@ from agentfox.runtime.enforcement.approvals import held_call
 from agentfox.runtime.enforcement.completion import _CompletionMixin
 from agentfox.runtime.enforcement.findings import _FindingsMixin
 from agentfox.runtime.enforcement.limits import _LimitsMixin
-from agentfox.runtime.enforcement.result import EnforcementResult
+from agentfox.runtime.enforcement.result import (
+    EnforcementResult,
+    masking_entities,
+    reask_instruction_for,
+    user_message_for,
+)
 from agentfox.runtime.enforcement.rules import (
     _CAPABILITY_REFUSAL_RULE_IDS,
     _FALLBACK_VERSION,
@@ -189,6 +196,11 @@ class Enforcer(
         # `principal` and `memory` (memory binding), `retrieval`/`baseline` (retrieval
         # drift).
         self.evidence: dict[str, Any] = {}
+        # A workspace's custom rules (per agent) and detector choice, read once per
+        # enforcer: an enforcer serves one request, and both change only by an
+        # operator action.
+        self._custom_rule_cache: dict[str | None, list[Any]] = {}
+        self._enabled_detector_cache: frozenset[str] | None = None
 
     #: Context assembly is the caller's step, not ours: it needs the ranked
     #: chunks and the real token budget, and it repairs as well as reports. Exposed
@@ -391,6 +403,18 @@ class Enforcer(
             taint_source=call.taint_source,
             schema=call.schema,
             prior_tools=call.prior_tools or [],
+            # The workspace's own rules, read here because a detector runs in a
+            # thread pool where the session is not safe to use.
+            extra={
+                "custom_rules": self._custom_rules(call.agent_slug),
+                # What the answer was built from, for detectors that check an
+                # answer against it (grounding.nli). Supplied by the caller.
+                "context": [
+                    str(c.get("text") if isinstance(c, dict) else c)
+                    for c in (self.evidence.get("chunks") or [])
+                ],
+            },
+            enabled_detectors=self._enabled_detectors(),
         )
         ledger = self.ledger()
         pipeline_result = self.pipeline.run(
@@ -421,6 +445,18 @@ class Enforcer(
             call.detector_run_ids = self._persist_detectors(
                 pipeline_result, call.trace_id, call.surface
             )
+
+    def _custom_rules(self, agent_slug: str | None) -> list[Any]:
+        """Compiled custom rules for this agent."""
+        if agent_slug not in self._custom_rule_cache:
+            self._custom_rule_cache[agent_slug] = compiled_custom_rules(self.session, agent_slug)
+        return self._custom_rule_cache[agent_slug]
+
+    def _enabled_detectors(self) -> frozenset[str]:
+        """This workspace's detector choice."""
+        if self._enabled_detector_cache is None:
+            self._enabled_detector_cache = detectors_enabled_for(self.session)
+        return self._enabled_detector_cache
 
     def _check_capability(self, call: _Evaluation) -> None:
         """Does the identity hold a grant for this tool, within its limits?"""
@@ -1038,6 +1074,8 @@ class Enforcer(
             reason=reason,
             suppressed=call.suppressed,
             latency_budget=call.ledger.report(),
+            user_message=user_message_for(call.verdict, rules_fired),
+            reask_instruction=reask_instruction_for(call.effective, call.surface, rules_fired),
         )
         result.explanation = explain(
             result,
@@ -1056,12 +1094,13 @@ class Enforcer(
                 ),
                 "mask",
             )
+            exact, prefixes = masking_entities(rules_fired)
             result.content = redact_content(
                 call.content,
                 [
                     d
                     for d in pipeline_result.detections
-                    if d.entity_type.startswith(("PII", "SECRET"))
+                    if d.entity_type.upper() in exact or d.entity_type.upper().startswith(prefixes)
                 ],
                 mode="tokenize" if style == "tokenize" else "mask",
             )

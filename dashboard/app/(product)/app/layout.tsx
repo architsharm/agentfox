@@ -30,46 +30,37 @@ import { TopbarStats } from "@/components/product/TopbarStats";
  * redirects a signed-out request for a private path to /login, so this is the
  * belt to that braces, not the gate.
  */
+/**
+ * The sidebar is the customer's jobs, in the order they reach for them: is
+ * anything wrong (Home), what is happening (Observe), what is broken (Issues),
+ * which agent (Agents), what is allowed (Policies), what needs me (Approvals),
+ * does it hold up (Test), show others (Reports). Setup sits at the bottom.
+ *
+ * A row lists the other pages it stands for, so it stays lit on all of them.
+ */
 const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: "",
     items: [
-      ["Overview", "/app"],
-      ["Start here", "/app/start"],
-    ],
-  },
-  {
-    group: "Discover",
-    items: [
+      ["Home", "/app"],
+      ["Observe", "/app/observe", ["/app/traces"]],
+      ["Issues", "/app/findings"],
       ["Agents", "/app/agents"],
-      ["Verified sources", "/app/sources"],
-    ],
-  },
-  {
-    group: "Monitor",
-    items: [
-      // First in the group, because it is the question that comes before the other
-      // two: "am I covered", then "did something happen", then "what happened on
-      // this one request". That is the order a security engineer works in, and the
-      // product had no answer to the first one at all.
-      ["Threat coverage", "/app/coverage"],
-      ["Findings", "/app/findings"],
-      ["Traces", "/app/traces"],
-    ],
-  },
-  {
-    group: "Test",
-    items: [
-      ["Evaluation", "/app/evals"],
-    ],
-  },
-  {
-    group: "Govern",
-    items: [
       ["Policies", "/app/policies"],
-      ["Access control", "/app/entitlement"],
       ["Approvals", "/app/approvals"],
-      ["Compliance", "/app/compliance"],
+      ["Test", "/app/test", ["/app/evals"]],
+      ["Reports", "/app/reports", ["/app/compliance", "/app/coverage"]],
+    ],
+  },
+  {
+    group: "Setup",
+    items: [
+      ["Get started", "/app/start"],
+      [
+        "Settings",
+        "/app/settings",
+        ["/app/start?tab=connect", "/app/start?tab=tokens", "/app/sources", "/app/entitlement"],
+      ],
     ],
   },
 ];
@@ -81,17 +72,25 @@ const NAV: { group: string; items: NavItem[] }[] = [
  * the same as losing the ability to find the thing by typing its name.
  */
 const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
-  { label: "Connect GitHub", href: "/app/start?tab=connect", group: "Start here" },
-  { label: "Connect a hosted API", href: "/app/start?tab=connect", group: "Start here" },
-  { label: "API tokens", href: "/app/start?tab=tokens", group: "Start here" },
-  { label: "Guardrail tuning", href: "/app/policies?tab=guardrails", group: "Policies" },
-  { label: "Judgment posture", href: "/app/policies?tab=judgment", group: "Policies" },
-  { label: "OWASP LLM Top 10", href: "/app/coverage", group: "Threat coverage" },
-  { label: "OWASP Agentic", href: "/app/coverage", group: "Threat coverage" },
-  { label: "MITRE ATLAS", href: "/app/coverage", group: "Threat coverage" },
-  { label: "Egress", href: "/app/policies?tab=judgment", group: "Policies" },
-  { label: "Escalation", href: "/app/approvals?tab=escalation", group: "Approvals" },
-  { label: "Board view", href: "/app/compliance?tab=board", group: "Compliance" },
+  { label: "Runs", href: "/app/traces", group: "Observe" },
+  { label: "What breaks", href: "/app/observe?tab=breaks", group: "Observe" },
+  { label: "Security", href: "/app/observe?tab=security", group: "Observe" },
+  { label: "Cost & speed", href: "/app/observe?tab=cost", group: "Observe" },
+  { label: "Policy performance", href: "/app/policies?tab=performance", group: "Policies" },
+  { label: "Policy library", href: "/app/policies?tab=library", group: "Policies" },
+  { label: "Suggested changes", href: "/app/policies?tab=changes", group: "Policies" },
+  { label: "Detectors", href: "/app/policies?tab=advanced", group: "Policies" },
+  { label: "Attack tests", href: "/app/test?tab=attacks", group: "Test" },
+  { label: "Test suites", href: "/app/test?tab=suites", group: "Test" },
+  { label: "Compliance", href: "/app/compliance", group: "Reports" },
+  { label: "Threat coverage", href: "/app/coverage", group: "Reports" },
+  { label: "Evidence", href: "/app/reports?tab=evidence", group: "Reports" },
+  { label: "Audit log", href: "/app/reports?tab=audit", group: "Reports" },
+  { label: "Connect GitHub", href: "/app/start?tab=connect", group: "Settings" },
+  { label: "API keys", href: "/app/start?tab=tokens", group: "Settings" },
+  { label: "Alerts", href: "/app/settings?tab=alerts", group: "Settings" },
+  { label: "Verified sources", href: "/app/sources", group: "Settings" },
+  { label: "Data access", href: "/app/entitlement", group: "Settings" },
   { label: "Glossary", href: "/app/glossary", group: "Reference" },
 ];
 

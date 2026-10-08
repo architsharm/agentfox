@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from typing import Any
 
 from agentfox.capabilities.detection import TaintTracker
@@ -421,8 +422,14 @@ class _CompletionMixin:
         intent,
         schema,
         severity=None,
+        reask: Callable[[str, str], Any] | None = None,
     ) -> tuple[EnforcementResult, Any]:
-        """Post-flight, span, budget and trace close — shared by both paths."""
+        """Post-flight, span, budget and trace close — shared by both paths.
+
+        ``reask(previous_text, instruction)`` returns a second completion, or None.
+        Given only on the buffered path: a streamed answer has already reached the
+        caller, so there is nothing left to replace.
+        """
         rank = severity or self._severity
         add_span(
             self.session,
@@ -451,6 +458,19 @@ class _CompletionMixin:
             schema=schema,
             tracker=tracker,
         )
+        if reask is not None and outbound.blocked and outbound.reask_instruction:
+            outbound, response = self._reask_once(
+                reask,
+                outbound=outbound,
+                response=response,
+                agent=agent,
+                identity=identity,
+                trace=trace,
+                tracker=tracker,
+                intent=intent,
+                schema=schema,
+                model_provider=model_provider,
+            )
         if outbound.content is not None:
             response.text = outbound.content
         final = outbound if rank(outbound) >= rank(worst) else worst
@@ -472,6 +492,64 @@ class _CompletionMixin:
         )
         self._push_correlation(trace, final, agent.slug if agent else agent_slug)
         return final, (None if final.blocked else response)
+
+    def _reask_once(
+        self,
+        reask: Callable[[str, str], Any],
+        *,
+        outbound: EnforcementResult,
+        response: Any,
+        agent,
+        identity,
+        trace,
+        tracker,
+        intent,
+        schema,
+        model_provider,
+    ) -> tuple[EnforcementResult, Any]:
+        """Ask the model once more with the blocking rules' correction.
+
+        One retry, never a loop: a model that repeats the problem gets the block.
+        Both answers are evaluated and recorded, so the audit trail shows that a
+        first answer was refused and why, even when the caller got the second.
+        """
+        started = time.perf_counter()
+        try:
+            retry = reask(response.text or "", outbound.reask_instruction)
+        except Exception as exc:  # noqa: BLE001 - a failed retry keeps the original block
+            log.warning("re-ask failed, keeping the block: %s", exc)
+            return outbound, response
+        if retry is None:
+            return outbound, response
+        add_span(
+            self.session,
+            trace,
+            kind="llm",
+            name=f"{model_provider.key}.reask",
+            attributes={"agentfox.reask_rules": [r.get("rule_id") for r in outbound.rules_fired]},
+            duration_ms=(time.perf_counter() - started) * 1000,
+        )
+        second = self.evaluate(
+            agent=agent,
+            identity=identity,
+            content=retry.text,
+            surface="output",
+            trace=trace,
+            taint_source="none",
+            intent=intent,
+            schema=schema,
+            tracker=tracker,
+        )
+        if second.blocked:
+            return second, response
+        second.taint = {
+            **second.taint,
+            "reask": {
+                "fixed": True,
+                "refused_rules": [r.get("rule_id") for r in outbound.rules_fired],
+            },
+        }
+        return second, retry
 
     def run_completion(
         self,
@@ -547,4 +625,16 @@ class _CompletionMixin:
             intent=intent,
             schema=schema,
             severity=severity,
+            reask=lambda previous, instruction: model_provider.complete(
+                CompletionRequest(
+                    messages=[
+                        *redacted_messages,
+                        {"role": "assistant", "content": previous},
+                        {"role": "user", "content": instruction},
+                    ],
+                    model=model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+            ),
         )

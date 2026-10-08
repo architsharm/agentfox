@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   try {
     conditions = JSON.parse(conditionsRaw);
   } catch {
-    const target = new URL("/app/approvals?tab=escalation", req.nextUrl.origin);
+    const target = new URL("/app/approvals?tab=handoffs", req.nextUrl.origin);
     target.searchParams.set("review_error", "conditions must be valid JSON");
     return NextResponse.redirect(target);
   }
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     req,
     "PUT",
     "/api/escalation/policy",
-    "/app/approvals?tab=escalation",
+    "/app/approvals?tab=handoffs",
     { conditions, owner_role, sla_minutes, mode },
     { successNotice: "escalation policy saved" },
   );

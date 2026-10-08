@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (typeof ttlDays === "string" && ttlDays.trim()) body.ttl_days = Number(ttlDays);
   body.exact = form.get("exact") === "on";
 
-  return proxyCustomBody(req, "POST", "/api/guardrails/suppressions", "/app/policies?tab=guardrails", body, {
+  return proxyCustomBody(req, "POST", "/api/guardrails/suppressions", "/app/policies?tab=advanced&sec=tuning", body, {
     successNotice: "suppression created",
   });
 }

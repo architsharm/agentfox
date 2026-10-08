@@ -10,13 +10,17 @@ from agentfox.runtime.enforcement import Enforcer
 
 #: The order `Enforcer._run_content_checks` called these in before they were
 #: registered: evidence and disclosure, then commitment, context, control flow,
-#: sycophancy and trajectory. A change here changes what decisions record.
+#: sycophancy and trajectory — with the workspace's sequence rules (55) and task
+#: alignment (58) added after control flow. A change here changes what decisions
+#: record.
 LEGACY_ORDER = [
     "grounding.evidence",
     "grounding.disclosure",
     "grounding.commitments",
     "grounding.context",
     "containment.control_flow",
+    "containment.custom_sequences",
+    "judgment.task_alignment",
     "grounding.sycophancy",
     "detection.trajectory",
 ]
@@ -44,7 +48,10 @@ def test_the_builtin_content_checks_run_in_the_order_they_always_have():
             ],
         ),
         ("input", ["detection.trajectory"]),
-        ("tool_args", ["containment.control_flow"]),
+        (
+            "tool_args",
+            ["containment.control_flow", "containment.custom_sequences", "judgment.task_alignment"],
+        ),
         ("retrieved", ["grounding.context"]),
         ("tool_result", ["grounding.context"]),
         ("memory_write", ["grounding.context"]),

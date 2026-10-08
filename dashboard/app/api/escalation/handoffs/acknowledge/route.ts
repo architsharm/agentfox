@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const id = String(form.get("id") || "");
   if (!id) {
-    const target = new URL("/app/approvals?tab=escalation", req.nextUrl.origin);
+    const target = new URL("/app/approvals?tab=handoffs", req.nextUrl.origin);
     target.searchParams.set("review_error", "missing hand-off id");
     return NextResponse.redirect(target);
   }
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   return proxyReviewAction(
     req,
     `/api/escalation/handoffs/${encodeURIComponent(id)}/acknowledge`,
-    "/app/approvals?tab=escalation",
+    "/app/approvals?tab=handoffs",
     { successNotice: "acknowledged" },
   );
 }

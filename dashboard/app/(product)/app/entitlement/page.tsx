@@ -3,7 +3,8 @@ import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, Empty, InfoTip, Panel, Stat } from "@/components/ui";
-import { PageHeader } from "@/components/product/PageHeader";
+import { SETTINGS_TABS } from "@/components/product/AreaTabs";
+import { Header, Tabs } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
 
 /**
@@ -11,8 +12,8 @@ import { Modal } from "@/components/product/Modal";
  * copy of "AgentFox Control Plane". See lib/site.ts appPageMetadata.
  */
 export const metadata: Metadata = appPageMetadata(
-  "Access control",
-  "What each agent was granted, and what it is therefore allowed to call.",
+  "Data access",
+  "Who can see which data source through a shared agent identity.",
 );
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,8 @@ export default async function Entitlement() {
   } catch (e: any) {
     return (
       <>
-        <h1>Access Control</h1>
+        <Header title="Settings" />
+        <Tabs items={SETTINGS_TABS} active="entitlement" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -64,7 +66,8 @@ export default async function Entitlement() {
 
   return (
     <>
-      <PageHeader title="Access control" sub="Whether a shared agent identity actually stops one person seeing another’s data." />
+      <Header title="Settings" />
+      <Tabs items={SETTINGS_TABS} active="entitlement" />
 
       {report.requests === 0 ? (
         <div className="hero empty">
@@ -207,7 +210,7 @@ export default async function Entitlement() {
       <div className="section-head">
         <h2>
           Grants
-          <InfoTip text="A resource here is the same identifier space as a source's key on the Verified sources page — that page tells you whether the resource itself is trustworthy; this one tells you who's allowed to see it." />
+          <InfoTip text="A resource here is the same identifier space as a source's key on the Settings → Verified sources tab — that page tells you whether the resource itself is trustworthy; this one tells you who's allowed to see it." />
         </h2>
         <Modal trigger="+ Add a grant" triggerClassName="btn-primary" title="Add a grant — who can see which source">
         <form action="/api/entitlement/grants" method="POST" className="body stack">

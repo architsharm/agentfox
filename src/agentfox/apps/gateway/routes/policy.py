@@ -164,6 +164,10 @@ def get_policy(
         "compiled": latest.compiled_json if latest else {},
         "latest_version": latest.version if latest else None,
         "bound_version": bound.version if bound else None,
+        # The live version's YAML: what to simulate before promoting what is in
+        # force, as opposed to `body`, which is the newest (possibly pending) draft.
+        "live_body": bound.body if bound else "",
+        "live_compiled": bound.compiled_json if bound else {},
         "mode": binding.mode if binding else None,
         "level": binding.level if binding else "org",
         "scope_id": binding.scope_id if binding else "*",
@@ -255,6 +259,116 @@ def upsert_policy(
         "live_version": live.version if live else None,
         "mode": binding.mode if binding else None,
         "pending": live is None or live.id != version.id,
+    }
+
+
+class RulePatchIn(BaseModel):
+    effect: str | None = None
+    enabled: bool | None = None
+    #: The end-user message when this rule stops a request ("" clears it).
+    message: str | None = None
+    on_block: str | None = None
+    #: Detection threshold, 0–1: lower catches more. Only for rules that test a
+    #: detection; the dashboard's Low/Medium/High sensitivity sets this.
+    min_score: float | None = Field(None, ge=0.0, le=1.0)
+    notes: str = ""
+
+
+@router.post("/{key}/rules/{rule_id}", status_code=201)
+def patch_rule(
+    key: str,
+    rule_id: str,
+    payload: RulePatchIn,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Change one rule's action or switch it off, as a new saved version.
+
+    The dashboard edits rules one at a time; the policy model versions whole packs.
+    This starts from the version that is live (not a pending draft), changes the one
+    rule, and saves the result. Like any save it changes nothing in force: the
+    caller promotes the returned version with ``/{key}/mode`` — after a simulation
+    when the pack enforces, exactly as for a hand-edited policy.
+    """
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+    binding, live = current_binding(session, policy.id)
+    base = (
+        live
+        or session.scalars(
+            select(PolicyVersion)
+            .where(PolicyVersion.policy_id == policy.id)
+            .order_by(PolicyVersion.version.desc())
+        ).first()
+    )
+    if base is None:
+        raise HTTPException(404, f"policy '{key}' has no saved version")
+    doc = PolicyDocument.from_yaml(base.body)
+    rule = next((r for r in doc.rules if r.id == rule_id), None)
+    if rule is None:
+        raise HTTPException(404, f"policy '{key}' has no rule '{rule_id}'")
+    try:
+        if payload.min_score is not None and rule.when.detection is None:
+            raise HTTPException(
+                400, f"rule '{rule_id}' does not test a detection, so it has no sensitivity"
+            )
+        data = doc.model_dump(exclude_none=True)
+        for r in data["rules"]:
+            if r["id"] == rule_id:
+                if payload.effect is not None:
+                    r["effect"] = payload.effect
+                if payload.enabled is not None:
+                    r["enabled"] = payload.enabled
+                if payload.message is not None:
+                    r["message"] = payload.message.strip()
+                if payload.on_block is not None:
+                    r["on_block"] = payload.on_block
+                if payload.min_score is not None:
+                    r["when"]["detection"]["min_score"] = payload.min_score
+        patched = PolicyDocument.model_validate(data)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400, f"invalid change: {exc}") from exc
+
+    changes = {
+        k: v
+        for k, v in {
+            "effect": payload.effect,
+            "enabled": payload.enabled,
+            "message": payload.message,
+            "on_block": payload.on_block,
+            "min_score": payload.min_score,
+        }.items()
+        if v is not None
+    }
+    _policy, version = save_policy(
+        session,
+        patched,
+        author=user.email,
+        notes=payload.notes or f"{rule_id}: {changes}",
+        bind_mode="observe",
+        level=binding.level if binding else "org",
+        scope_id=binding.scope_id if binding else "*",
+        compose=binding.compose if binding else "extend",
+        rebind=False,
+    )
+    chain.append(
+        session,
+        "policy.rule_changed",
+        actor_type="user",
+        actor_id=user.email or user.id,
+        subject_type="policy_version",
+        subject_id=version.id,
+        payload={"policy": key, "rule": rule_id, "version": version.version, **changes},
+    )
+    return {
+        "key": key,
+        "version": version.version,
+        "body": version.body,
+        "mode": binding.mode if binding else None,
+        "needs_simulation": bool(binding and binding.mode == "enforce"),
     }
 
 

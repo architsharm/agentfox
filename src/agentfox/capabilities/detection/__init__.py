@@ -14,6 +14,7 @@ from agentfox.capabilities.detection.adapters.classifiers import (
     RestrictedClassifierDetector,
 )
 from agentfox.capabilities.detection.adapters.embeddings import EmbeddingSimilarityDetector
+from agentfox.capabilities.detection.adapters.grounding import GroundingNliDetector
 from agentfox.capabilities.detection.adapters.hub import CATALOGUE as HUB_CATALOGUE
 from agentfox.capabilities.detection.adapters.hub import HubValidatorDetector, hub_detectors
 from agentfox.capabilities.detection.adapters.presidio import PresidioPiiDetector
@@ -31,6 +32,8 @@ from agentfox.capabilities.detection.base import (
     register_detector,
     warm_all,
 )
+from agentfox.capabilities.detection.custom import CustomListDetector, CustomTopicDetector
+from agentfox.capabilities.detection.detectors.code import InsecureCodeDetector
 from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
 from agentfox.capabilities.detection.detectors.judgment import (
     InjectionJudgmentDetector,
@@ -49,12 +52,18 @@ register_detector(NativePiiDetector())
 register_detector(SecretsDetector())
 register_detector(SafetyLexiconDetector())
 register_detector(JsonSchemaDetector())
+# A workspace's own words, patterns and topics (custom.py); free with none defined.
+register_detector(CustomListDetector())
+# Insecure code in what a coding agent writes or runs (detectors/code.py).
+register_detector(InsecureCodeDetector())
 
 # --- Wrapped OSS, available when installed ---
 register_detector(PresidioPiiDetector())
 register_detector(PromptInjectionClassifierDetector())
 register_detector(EmbeddingSimilarityDetector())
 register_detector(GraniteGuardianDetector())
+register_detector(GroundingNliDetector())
+register_detector(CustomTopicDetector())
 register_detector(NemoRailsDetector())
 register_detector(GuardrailsAiDetector())
 

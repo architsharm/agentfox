@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from agentfox import __version__
 from agentfox.apps.gateway.deps import current_user, db
+from agentfox.apps.gateway.routes import access as access_routes
 from agentfox.apps.gateway.routes import (
     answerability,
     coverage,
@@ -44,6 +45,10 @@ from agentfox.apps.gateway.routes import (
     tuning,
     waitlist,
 )
+from agentfox.apps.gateway.routes import custom_rules as custom_rule_routes
+from agentfox.apps.gateway.routes import imports as import_routes
+from agentfox.apps.gateway.routes import library as library_routes
+from agentfox.apps.gateway.routes import metrics as metrics_routes
 from agentfox.capabilities.compliance.catalog import load_catalog
 from agentfox.capabilities.detection import all_detectors, available_detectors
 from agentfox.core.config import assert_production_secrets, get_settings
@@ -326,6 +331,11 @@ def create_app() -> FastAPI:
     app.include_router(proposals.router)
     app.include_router(posture.router)
     app.include_router(coverage.router)
+    app.include_router(metrics_routes.router)
+    app.include_router(access_routes.router)
+    app.include_router(library_routes.router)
+    app.include_router(custom_rule_routes.router)
+    app.include_router(import_routes.router)
     # Unauthenticated by design (see playground.py's module docstring) — the only
     # router in this app that never depends on `current_user`. It keeps no state in
     # this process: a sandbox is a tenant in the deployment database, so any instance
@@ -449,6 +459,12 @@ def create_app() -> FastAPI:
             }
 
         available = available_detectors()
+        from agentfox.capabilities.detection.detector_settings import (
+            ALWAYS_ON as DETECTORS_ALWAYS_ON,
+        )
+        from agentfox.capabilities.detection.detector_settings import enabled_for
+
+        workspace_enabled = enabled_for(session)
         # Why the OSS-wrapped and licence-restricted detectors aren't live here —
         # shown in the UI so "not installed" doesn't read as a bug. The native
         # detectors (injection.heuristic, pii.native, safety.lexicon, schema.json,
@@ -483,7 +499,9 @@ def create_app() -> FastAPI:
                     "version": detector.version,
                     "surfaces": list(detector.surfaces),
                     "available": key in available,
-                    "enabled": key in get_settings().enabled_detectors,
+                    # This workspace's choice (dashboard switches) over the deployment's.
+                    "enabled": key in workspace_enabled,
+                    "always_on": key in DETECTORS_ALWAYS_ON,
                     # A detector that knows why it is unavailable says so itself;
                     # the table above covers the ones that predate that. Twenty
                     # Hub validators maintained in a hard-coded dict in this file

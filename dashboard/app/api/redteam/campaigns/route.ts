@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
  * only the dashboard. Runs synchronously and redirects back with the result.
  */
 export async function POST(req: NextRequest) {
-  return proxyFormPost(req, "/api/redteam/campaigns", "/app/evals");
+  return proxyFormPost(req, "/api/redteam/campaigns", "/app/test?tab=attacks");
 }

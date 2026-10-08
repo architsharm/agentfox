@@ -1,0 +1,35 @@
+# Golden events for the agent-integrity pack. `verdict` is the effective verdict:
+# what the pack would do enforcing.
+cases:
+  - name: a tool call judged off-task is held
+    event:
+      surface: tool_args
+      tool_key: payments.transfer
+      action: {risks: [{code: intent.misaligned, severity: high}]}
+    expect: {verdict: escalate, rules: [intent.misaligned]}
+
+  - name: an on-task tool call passes
+    event:
+      surface: tool_args
+      tool_key: payments.refund
+    expect: {verdict: allow, not_rules: [intent.misaligned]}
+
+  - name: shell injection in written code is held
+    event:
+      surface: tool_args
+      tool_key: Write
+      detections: [{entity_type: CODE.SHELL_INJECTION, score: 0.8}]
+    expect: {verdict: escalate, rules: [code.insecure]}
+
+  - name: a weak code signal is let through
+    event:
+      surface: tool_args
+      tool_key: Write
+      detections: [{entity_type: CODE.WEAK_HASH, score: 0.5}]
+    expect: {verdict: allow, not_rules: [code.insecure]}
+
+  - name: an unsupported answer is blocked for a re-ask
+    event:
+      surface: output
+      detections: [{entity_type: GROUNDING.UNSUPPORTED, score: 0.9}]
+    expect: {verdict: block, rules: [grounding.unsupported]}

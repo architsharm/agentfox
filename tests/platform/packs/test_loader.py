@@ -11,6 +11,7 @@ from agentfox.platform import packs
 from agentfox.platform.packs import PackError, PackManifest, core_satisfies
 
 BUILTIN_IDS = [
+    "agent-integrity",
     "baseline",
     "coding-agent",
     "compliance/catalog",

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { ApiError, api, apiErrorProps } from "@/lib/product/api";
-import { Breadcrumbs } from "@/components/product/Breadcrumbs";
+import { Header } from "@/components/kit";
 import { ApiDown, InfoTip, NotFound, Severity, ts } from "@/components/ui";
 
 /**
@@ -53,8 +53,7 @@ export default async function EscalationConversation({
 
   return (
     <>
-      <Breadcrumbs crumbs={[{ label: "Escalation", href: "/app/approvals?tab=escalation" }]} />
-      <h1>{data.handoff?.summary || data.handoff?.reason || "Conversation"}</h1>
+      <Header back={{ href: "/app/approvals?tab=handoffs", label: "Hand-offs" }} title={data.handoff?.summary || data.handoff?.reason || "Conversation"} />
       <p className="mono small muted" style={{ marginTop: -8 }}>{sessionId}</p>
       <p className="sub">
         Every turn of this conversation, replayed against the escalation policy — so

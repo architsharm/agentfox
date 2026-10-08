@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { appPageMetadata } from "@/lib/site";
-import { PageHeader } from "@/components/product/PageHeader";
+import { Header } from "@/components/kit";
 import { GlossaryFilter } from "@/components/product/GlossaryFilter";
 import { ProductMap, PRODUCT_MAP_ROWS } from "@/components/product/ProductMap";
 
@@ -64,15 +64,7 @@ export default function Glossary() {
           on a page nobody arrives at to read about glossaries. PageHeader for
           consistency with every other page, and the sub says the one thing that
           is not obvious from the title: where to go for the other question. */}
-      <PageHeader
-        title="Glossary"
-        sub={
-          <>
-            Every word and code this interface shows you, decoded once — and what each{" "}
-            <em>area</em> of the product is for.
-          </>
-        }
-      />
+      <Header title="Glossary" />
 
       <GlossaryFilter total={TERM_COUNT} />
 
@@ -90,7 +82,7 @@ export default function Glossary() {
               <td className="mono small">Detectors / Guardrails</td>
               <td className="small">
                 Runtime checks that run on every request as it happens — prompt injection,
-                PII, secrets, unsafe content. See <a href="/app/policies?tab=guardrails">Guardrails</a>.
+                PII, secrets, unsafe content. See <a href="/app/policies?tab=advanced&sec=tuning">Guardrails</a>.
               </td>
             </tr>
             <tr id="policies" data-term="policies">
@@ -184,7 +176,7 @@ export default function Glossary() {
                 approvers. There is no screen for proposals; they are read and decided
                 with <span className="mono">agentfox policy proposals</span> or{" "}
                 <span className="mono">/api/proposals</span>, described on the{" "}
-                <a href="/app/policies">Policies page</a>.
+                <a href="/app/policies">Rules page</a>.
               </td>
             </tr>
             <tr id="capability-grant" data-term="capability grant">
@@ -405,7 +397,7 @@ export default function Glossary() {
       <section data-gl-section>
       <h2>Detector library names</h2>
       <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
-        The <a href="/app/policies?tab=guardrails">Guardrails</a> and <a href="/app/policies">Policies</a> pages
+        The <a href="/app/policies?tab=advanced&sec=tuning">Guardrails</a> and <a href="/app/policies">Policies</a> pages
         name the underlying open-source engine behind each detector, since which library
         caught something is itself useful debugging context:
       </p>

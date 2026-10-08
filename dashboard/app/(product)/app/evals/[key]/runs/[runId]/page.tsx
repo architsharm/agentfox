@@ -3,7 +3,7 @@ import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { ApiError, api, safeApi, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, InfoTip, NotFound, Panel, ts } from "@/components/ui";
-import { Breadcrumbs } from "@/components/product/Breadcrumbs";
+import { Header } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
 
 /**
@@ -51,13 +51,7 @@ export default async function RunDetail({
 
   return (
     <>
-      <Breadcrumbs
-        crumbs={[
-          { label: "Evaluation", href: "/app/evals" },
-          { label: key, href: `/app/evals/${key}` },
-        ]}
-      />
-      <h1 className="mono">{run.id}</h1>
+      <Header back={{ href: `/app/evals/${key}`, label: key }} title="Test run" />
       <p className="sub">
         <Link href={`/app/evals/${key}`}>{key}</Link>{" "}
         <span className="mono small muted">{run.runner}</span>{" "}

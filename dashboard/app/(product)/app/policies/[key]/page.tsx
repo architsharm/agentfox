@@ -3,7 +3,7 @@ import { appPageMetadata } from "@/lib/site";
 import { api, safeApi, ApiError, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, Panel, ts } from "@/components/ui";
 import { PolicyEditor } from "@/components/product/PolicyEditor";
-import { Breadcrumbs } from "@/components/product/Breadcrumbs";
+import { Header } from "@/components/kit";
 import { CanaryPanel } from "@/components/product/CanaryPanel";
 
 /**
@@ -146,8 +146,7 @@ export default async function PolicyDetail({
 
   return (
     <>
-      <Breadcrumbs crumbs={[{ label: "Policies", href: "/app/policies" }]} />
-      <h1>{policy.name || key}</h1>
+      <Header back={{ href: "/app/policies", label: "Policies" }} title={policy.name || key} />
       <p className="sub">
         {isNew
           ? `New policy — nothing saved yet. Save below to create it${initialScopeId && initialScopeId !== "*" ? ` scoped to ${initialScopeId}` : ""}.`

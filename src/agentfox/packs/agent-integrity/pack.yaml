@@ -1,0 +1,16 @@
+# Is the agent doing the job it was given, writing safe code, and saying only what
+# its sources support? The signals come from checks and detectors that never decide;
+# these rules decide, and ship watching.
+id: agent-integrity
+version: 1.0.0
+maturity: stable
+requires_core: ">=0.3"
+title: Agent integrity
+description: >
+  Tool calls that drift from the agent's task, insecure code a coding agent writes,
+  and answers the retrieved context does not support — re-asked rather than refused.
+owners: [agentfox-maintainers]
+tags: [agents, alignment, code, grounding]
+compliance:
+  controls: [NOM-RTG-04, NOM-IAM-03, NOM-EVL-02]
+requires_detectors: [code.insecure]

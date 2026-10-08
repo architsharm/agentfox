@@ -30,5 +30,5 @@ export async function POST(req: NextRequest) {
   if (periodFrom) body.period_from = periodFrom;
   if (periodTo) body.period_to = periodTo;
 
-  return proxyCustomBody(req, "POST", "/api/evidence", "/app/compliance?tab=evidence", body);
+  return proxyCustomBody(req, "POST", "/api/evidence", "/app/reports?tab=evidence", body);
 }

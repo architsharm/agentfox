@@ -90,6 +90,62 @@ class BusinessRule(Base, TimestampMixin):
     version: Mapped[int] = mapped_column(Integer, default=1)
 
 
+class CustomRule(Base, TimestampMixin):
+    """A rule a customer writes in their own words: a list of words, patterns or
+    topics, or a sequence of tool calls, with an action.
+
+    The definition lives here; enforcement does not. Each row is compiled into a
+    rule in the managed `custom` policy pack (`capabilities/detection/custom.py`),
+    so it is watched, enforced, simulated, versioned and audited exactly like every
+    shipped rule, and the policy engine stays the only place a verdict is decided.
+    Content kinds (terms, patterns, topics) are matched by the `custom.lists`
+    detector, which is what lets Mask rewrite the matched span; a sequence is a
+    registered check, because it is a fact about the run rather than about a string.
+    """
+
+    __tablename__ = "custom_rules"
+    __table_args__ = (UniqueConstraint("org_id", "key", name="ux_custom_rules_org_key"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("cus"))
+    #: Slug; the policy rule is `custom.<key>` and detections are `CUSTOM.<KEY>`.
+    key: Mapped[str] = mapped_column(String(80), index=True)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    #: terms | patterns | topic | sequence
+    kind: Mapped[str] = mapped_column(String(24), default="terms")
+    #: For topics: "deny" fires on a match, "allow" fires on content matching none
+    #: of the allowed topics (keep the agent on-topic).
+    polarity: Mapped[str] = mapped_column(String(8), default="deny")
+    entries_json: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    examples_json: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    description: Mapped[str] = mapped_column(Text, default="")
+    #: Where it applies: surfaces checked, and agents (empty = every agent).
+    surfaces_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    agents_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    case_sensitive: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: Kind-specific settings, e.g. a sequence's `after` / `then` tool patterns.
+    config_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_by: Mapped[str] = mapped_column(String(200), default="")
+
+
+class DetectorSetting(Base, TimestampMixin):
+    """A workspace's choice to switch one detector on or off.
+
+    Overrides `Settings.enabled_detectors` for this tenant only. Absent rows mean
+    "as the deployment configured it", so a fresh workspace behaves exactly as
+    before and an operator's environment variable still sets the default.
+    """
+
+    __tablename__ = "detector_settings"
+    __table_args__ = (UniqueConstraint("org_id", "key", name="ux_detector_settings_org_key"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("dts"))
+    key: Mapped[str] = mapped_column(String(64), index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_by: Mapped[str] = mapped_column(String(200), default="")
+
+
 class EndUserPrincipal(Base, TimestampMixin):
     """The human the agent is acting for.
 

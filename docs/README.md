@@ -81,6 +81,7 @@ a quoted figure drifts from its source.
 |---|---|---|
 | [adr/README.md](adr/README.md) | The index of architecture decision records, and how to write one. | Anyone about to make a decision that is expensive to reverse. |
 | [adr/0001-repository-structure.md](adr/0001-repository-structure.md) | One package in layers held by import-linter, `capabilities/`, harnesses, `plugins/`, packs, the repository outside `src/`, and what is deferred. | Contributors who want the why behind the layout. |
+| [adr/0002-customer-authored-rules.md](adr/0002-customer-authored-rules.md) | Custom rules as data plus a managed policy pack, end-user messages and re-ask, per-workspace detectors, and importers that only plan. | Anyone adding a rule type, a detector switch or an importer. |
 
 ## deployment/
 
