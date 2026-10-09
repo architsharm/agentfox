@@ -1544,7 +1544,7 @@ input[type="checkbox"], input[type="radio"] {
 
 /* The agent picker. Three tabs, a name and one line each. */
 .pg-agents { display: grid; gap: 10px; grid-template-columns: 1fr; margin: 26px 0 16px; }
-@media (min-width: 760px) { .pg-agents { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 760px) { .pg-agents { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); } }
 .pg-agent {
   text-align: left;
   padding: 13px 15px;
@@ -1638,6 +1638,7 @@ input[type="checkbox"], input[type="radio"] {
 }
 .pg-action-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; font-size: var(--t-micro); }
 .pg-action-args { color: var(--muted); font-size: var(--t-micro); overflow-wrap: anywhere; }
+.pg-result { margin: 8px 0 0; font-size: var(--t-micro); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
 .pg-pending { display: block; margin-top: 7px; font-size: var(--t-micro); color: var(--faint); }
 
 /* The verdict, and the reason behind it one click away. Closed by default: the

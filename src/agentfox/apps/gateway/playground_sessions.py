@@ -50,6 +50,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.db import get_sessionmaker
 from agentfox.core.models import Base, PlaygroundSandbox, TenantScoped, as_aware, utcnow
 from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.fixtures.sandbox_agents import seed_sandbox_agents
 from agentfox.fixtures.seed import seed as seed_world
 
 log = logging.getLogger(__name__)
@@ -256,6 +257,8 @@ class PlaygroundStore:
                 # sandbox is never visible half-built: either the whole world is there
                 # or no row is.
                 seed_world(session, email_namespace=session_id)
+                # The agents modelled on the apps AgentFox was live-tested on.
+                seed_sandbox_agents(session)
         except (IntegrityError, OperationalError, ProgrammingError) as exc:
             log.error("playground: could not create a sandbox", exc_info=True)
             raise PlaygroundUnavailable(
