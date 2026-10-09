@@ -716,9 +716,26 @@ def expire_stale_approvals(session: Session) -> int:
         )
     ).all()
     for request in stale:
-        request.status = "expired" if request.timeout_action == "deny" else "approved"
+        if request.timeout_action == "deny":
+            request.status = "expired"
+        else:
+            request.status = "approved"
+            # Approved by timeout: it gets the same window to be used as one a
+            # person approved, or it would lapse the moment it was granted.
+            request.expires_at = now + dt.timedelta(minutes=REDEEM_WINDOW_MINUTES)
+    # Approved but never used inside its window: it can no longer run, and the
+    # history should say so rather than read "approved" forever.
+    lapsed = session.scalars(
+        select(ApprovalRequest).where(
+            ApprovalRequest.status == "approved",
+            ApprovalRequest.expires_at.is_not(None),
+            ApprovalRequest.expires_at < now,
+        )
+    ).all()
+    for request in lapsed:
+        request.status = "lapsed"
     session.flush()
-    return len(stale)
+    return len(stale) + len(lapsed)
 
 
 # ---------------------------------------------------------------------------
@@ -737,13 +754,31 @@ def assess_posture(session: Session) -> list[Finding]:
     An identity graph nobody prunes is how agents accumulate the permissions that
     make a single injection catastrophic.
     """
-    findings: list[Finding] = []
+    findings = [
+        finding
+        for identity in session.scalars(select(Identity))
+        if (finding := assess_identity(session, identity)) is not None
+    ]
+    session.flush()
+    return findings
+
+
+def assess_identity(session: Session, identity: Identity) -> Finding | None:
+    """One identity's posture, its finding raised or, if the posture cleared, closed.
+
+    A retired identity (status other than ``active``) cannot authenticate, so it has
+    no posture to keep: every posture finding it had closes. A stale identity is one
+    nobody has used for the window that *still holds grants*; one with none left can
+    do nothing, so it is not flagged.
+    """
     cutoff = utcnow() - dt.timedelta(days=STALE_AFTER_DAYS)
+    posture = "healthy"
+    reasons: list[str] = []
+    caps = session.scalars(select(Capability).where(Capability.identity_id == identity.id)).all()
 
-    for identity in session.scalars(select(Identity)):
-        posture = "healthy"
-        reasons: list[str] = []
-
+    if identity.status != "active":
+        posture = "retired"
+    else:
         agent = session.get(Agent, identity.agent_id) if identity.agent_id else None
         if identity.kind == "agent" and (agent is None or agent.status == "retired"):
             posture = "orphaned"
@@ -752,46 +787,42 @@ def assess_posture(session: Session) -> list[Finding]:
         last_used = identity.last_used_at
         if last_used is not None and last_used.tzinfo is None:
             last_used = last_used.replace(tzinfo=dt.UTC)
-        if posture == "healthy" and (last_used is None or last_used < cutoff):
+        if posture == "healthy" and caps and (last_used is None or last_used < cutoff):
             posture = "stale"
             reasons.append(f"unused for more than {STALE_AFTER_DAYS} days")
 
-        caps = session.scalars(
-            select(Capability).where(Capability.identity_id == identity.id)
-        ).all()
         wildcards = [c for c in caps if c.tool_key.strip() == "*"]
         if wildcards:
             posture = "over_privileged"
             reasons.append("holds an unrestricted '*' tool grant")
 
-        identity.posture = posture
-        current_type = (
-            None
-            if posture == "healthy"
-            else (f"{posture}_identity" if posture != "over_privileged" else "over_privileged")
-        )
-        # A posture that no longer holds closes its finding: an identity that was stale
-        # and has since been used is not stale, whatever the queue still says.
-        for posture_type in _POSTURE_FINDING_TYPES:
-            if posture_type != current_type:
-                auto_resolve(
-                    session,
-                    type=posture_type,
-                    subject_type="identity",
-                    subject_id=identity.id,
-                    note=f"identity {identity.principal} is now {posture}",
-                )
-        if posture != "healthy":
-            finding, _ = raise_finding(
+    identity.posture = posture
+    current_type = (
+        None
+        if posture in ("healthy", "retired")
+        else (f"{posture}_identity" if posture != "over_privileged" else "over_privileged")
+    )
+    # A posture that no longer holds closes its finding: an identity that was stale
+    # and has since been used is not stale, whatever the queue still says.
+    for posture_type in _POSTURE_FINDING_TYPES:
+        if posture_type != current_type:
+            auto_resolve(
                 session,
-                type=current_type,
-                severity="high" if posture == "over_privileged" else "medium",
-                title=f"Identity {identity.principal} is {posture}",
+                type=posture_type,
                 subject_type="identity",
                 subject_id=identity.id,
-                evidence={"reasons": reasons, "capabilities": len(caps)},
-                control_keys=["NOM-IAM-01", "NOM-IAM-02"],
+                note=f"identity {identity.principal} is now {posture}",
             )
-            findings.append(finding)
-    session.flush()
-    return findings
+    if current_type is None:
+        return None
+    finding, _ = raise_finding(
+        session,
+        type=current_type,
+        severity="high" if posture == "over_privileged" else "medium",
+        title=f"Identity {identity.principal} is {posture}",
+        subject_type="identity",
+        subject_id=identity.id,
+        evidence={"reasons": reasons, "capabilities": len(caps)},
+        control_keys=["NOM-IAM-01", "NOM-IAM-02"],
+    )
+    return finding

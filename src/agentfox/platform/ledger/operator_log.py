@@ -177,11 +177,23 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "removes a model — the protection it gave stops with it",
     ),
     PrivilegedAction(
+        "agentfox.capabilities.remediation.remedies.apply_remedy",
+        "operator.finding.remedied",
+        "acts on an issue from the issue: grants or revokes access, registers or blocks an "
+        "agent, suppresses a detector, and can close the issue it was taken on",
+    ),
+    PrivilegedAction(
         "agentfox.capabilities.judgment.posture.save",
         "operator.judgment_posture.changed",
         "decides whether customer payloads leave this machine for a third party — "
         "the one configuration change whose consequence is invisible from the screen "
         "that makes it",
+    ),
+    PrivilegedAction(
+        "agentfox.capabilities.compliance.retention.set_policy",
+        "operator.retention.changed",
+        "shortening retention destroys records at the next purge; the before and after "
+        "are what an investigation into missing data asks for first",
     ),
 )
 

@@ -370,12 +370,19 @@ def test_the_checklist_is_computed_from_live_data(client):
     """A checklist that can disagree with the system is worse than none, so no step
     is ever a stored "completed" flag."""
     body = client.get("/api/onboarding", headers=as_user("admin@example.com")).json()
-    assert body["total"] == 7
-    install = next(s for s in body["steps"] if s["id"] == "install")
-    assert install["done"] is True, "the seeded fixture has agents"
-    # "connect" (GitHub) sits right after "install" and is unmet by the seeded
-    # fixture — no connection exists until someone actually connects a repo.
-    assert body["next"]["id"] == "connect"
+    assert [s["id"] for s in body["steps"]] == [
+        "agent",
+        "key",
+        "instrument",
+        "protect",
+        "boundary",
+        "enforce",
+    ]
+    agent = next(s for s in body["steps"] if s["id"] == "agent")
+    assert agent["done"] is True, "the seeded fixture has agents"
+    # The fixture authenticates with the development header and has minted no API
+    # key, so that is the next thing to do.
+    assert body["next"]["id"] == "key"
 
 
 def test_not_connected_and_nothing_wrong_are_distinguishable(client):

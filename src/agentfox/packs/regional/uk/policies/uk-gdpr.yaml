@@ -52,21 +52,21 @@ rules:
     action_risk: uk-gdpr.nhs-number-output
   effect: block
   severity: high
-  reason: 'UK GDPR: NHS number detected in agent output — blocked to prevent health identity exposure'
+  reason: 'UK GDPR: NHS number detected in agent output - blocked to prevent health identity exposure'
 - id: uk-gdpr.national-insurance-number-output
   description: National Insurance number in output (compact AB123456C or HMRC-spaced AB 12 34 56 C)
   when:
     action_risk: uk-gdpr.national-insurance-number-output
   effect: block
   severity: high
-  reason: 'UK GDPR: National Insurance number detected in agent output — blocked to prevent identity exposure'
+  reason: 'UK GDPR: National Insurance number detected in agent output - blocked to prevent identity exposure'
 - id: uk-gdpr.block-transfer-without-adequacy-platform-set
   description: 'Art. 44–46: block transfer without adequacy / platform-set DPF (never caller-attested)'
   when:
     action_risk: uk-gdpr.block-transfer-without-adequacy-platform-set
   effect: block
   severity: high
-  reason: 'UK GDPR Art. 44–46: transfer to <value> blocked — requires adequacy, IDTA/UK Addendum safeguards,
+  reason: 'UK GDPR Art. 44–46: transfer to <value> blocked - requires adequacy, IDTA/UK Addendum safeguards,
     and data protection test (DUAA ''not materially lower'' standard)'
 - id: uk-gdpr.block-large-exports-without-review
   description: 'Art. 5(1)(c): block large exports without review'
@@ -74,7 +74,7 @@ rules:
     action_risk: uk-gdpr.block-large-exports-without-review
   effect: block
   severity: high
-  reason: 'UK GDPR Art. 5(1)(c): export of <value> records is disproportionate — requires data minimisation
+  reason: 'UK GDPR Art. 5(1)(c): export of <value> records is disproportionate - requires data minimisation
     review'
 - id: uk-gdpr.special-category-health-data
   description: 'Art. 9: special category health data'
@@ -82,7 +82,7 @@ rules:
     action_risk: uk-gdpr.special-category-health-data
   effect: escalate
   severity: medium
-  reason: 'UK GDPR Art. 9: health data is special category — requires Art. 9(2) condition and Schedule
+  reason: 'UK GDPR Art. 9: health data is special category - requires Art. 9(2) condition and Schedule
     1 DPA basis'
 - id: uk-gdpr.other-special-category-data
   description: 'Art. 9: other special category data'
@@ -90,7 +90,7 @@ rules:
     action_risk: uk-gdpr.other-special-category-data
   effect: escalate
   severity: medium
-  reason: 'UK GDPR Art. 9: special category personal data detected — explicit consent or Schedule 1 DPA
+  reason: 'UK GDPR Art. 9: special category personal data detected - explicit consent or Schedule 1 DPA
     condition required'
 - id: uk-gdpr.purpose-limitation-language-output
   description: 'Art. 5(1)(b): purpose limitation language in output'
@@ -98,7 +98,7 @@ rules:
     action_risk: uk-gdpr.purpose-limitation-language-output
   effect: escalate
   severity: medium
-  reason: 'UK GDPR Art. 5(1)(b): personal data must not be further processed incompatibly — verify compatible
+  reason: 'UK GDPR Art. 5(1)(b): personal data must not be further processed incompatibly - verify compatible
     purpose or DUAA recognised legitimate interests before repurposing'
 - id: uk-gdpr.escalate-transfer-action-when-destination-not
   description: 'Art. 44–46: escalate transfer action when destination not specified'
@@ -106,7 +106,7 @@ rules:
     action_risk: uk-gdpr.escalate-transfer-action-when-destination-not
   effect: escalate
   severity: medium
-  reason: 'UK GDPR Art. 44–46: cross-border transfer action — confirm adequacy coverage or binding safeguards
+  reason: 'UK GDPR Art. 44–46: cross-border transfer action - confirm adequacy coverage or binding safeguards
     plus documented data protection test before export'
 - id: uk-gdpr.cross-border-language-without-structured-params
   description: 'Art. 44: cross-border language without structured params'
@@ -114,7 +114,7 @@ rules:
     action_risk: uk-gdpr.cross-border-language-without-structured-params
   effect: escalate
   severity: medium
-  reason: 'UK GDPR Art. 44: restricted transfer language detected — verify adequacy, safeguards, and data
+  reason: 'UK GDPR Art. 44: restricted transfer language detected - verify adequacy, safeguards, and data
     protection test'
 - id: uk-gdpr.bulk-export-actions
   description: 'Art. 5(1)(c): bulk export actions'

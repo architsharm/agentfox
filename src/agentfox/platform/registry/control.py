@@ -125,7 +125,7 @@ def set_state(
             subject_type="agent",
             subject_id=agent.id,
             evidence={"from": previous, "to": state, "reason": reason, "actor": actor},
-            control_keys=["NOM-DSC-02", "NOM-IAM-03"],
+            control_keys=["NOM-RTG-14", "NOM-DSC-02", "NOM-IAM-03"],
             fingerprint_parts=(state,),
         )
     session.flush()

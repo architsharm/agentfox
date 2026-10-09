@@ -19,7 +19,7 @@ rules:
     action_risk: south-africa-popia.biometric-personal-information-output
   effect: block
   severity: high
-  reason: 'POPIA s.26(1)(f): Biometric personal information detected in agent output — requires documented
+  reason: 'POPIA s.26(1)(f): Biometric personal information detected in agent output - requires documented
     POPIA s.27 exception'
 - id: south-africa-popia.children-s-personal-information
   description: 'POPIA s.26(1)(h): Children''s personal information'
@@ -35,7 +35,7 @@ rules:
     action_risk: south-africa-popia.sa-id-number-detected-output
   effect: block
   severity: high
-  reason: 'POPIA s.19: SA ID Number (13-digit) detected in agent output — blocked to prevent sensitive
+  reason: 'POPIA s.19: SA ID Number (13-digit) detected in agent output - blocked to prevent sensitive
     identifier exposure'
 - id: south-africa-popia.sa-id-number-with-contextual-label
   description: 'POPIA s.19: SA ID Number with contextual label'
@@ -43,14 +43,14 @@ rules:
     action_risk: south-africa-popia.sa-id-number-with-contextual-label
   effect: block
   severity: high
-  reason: 'POPIA s.19: SA ID Number value detected in agent response — blocked'
+  reason: 'POPIA s.19: SA ID Number value detected in agent response - blocked'
 - id: south-africa-popia.breach-notification-suppression
   description: 'POPIA s.22: Breach notification suppression'
   when:
     action_risk: south-africa-popia.breach-notification-suppression
   effect: block
   severity: high
-  reason: 'POPIA s.22: Agent cannot suppress or delay breach notification — Information Regulator must
+  reason: 'POPIA s.22: Agent cannot suppress or delay breach notification - Information Regulator must
     be notified without unreasonable delay'
 - id: south-africa-popia.transfer-non-adequate-country-without-consent
   description: 'POPIA s.72: Transfer to non-adequate country without consent (structured params)'
@@ -58,15 +58,15 @@ rules:
     action_risk: south-africa-popia.transfer-non-adequate-country-without-consent
   effect: block
   severity: high
-  reason: 'POPIA s.72: Transfer to <value> blocked — country not recognised as having substantially similar
+  reason: 'POPIA s.72: Transfer to <value> blocked - country not recognised as having substantially similar
     data protection to POPIA'
 - id: south-africa-popia.purpose-limitation-processing-beyond-original-consent
-  description: 'POPIA s.11: Purpose limitation — processing beyond original consent'
+  description: 'POPIA s.11: Purpose limitation - processing beyond original consent'
   when:
     action_risk: south-africa-popia.purpose-limitation-processing-beyond-original-consent
   effect: block
   severity: high
-  reason: 'POPIA s.11: Purpose limitation — agent cannot process personal information for a purpose beyond
+  reason: 'POPIA s.11: Purpose limitation - agent cannot process personal information for a purpose beyond
     the original consent'
 - id: south-africa-popia.any-cross-border-transfer-action-requires
   description: 'POPIA s.72: Any cross-border transfer action requires Information Officer approval'
@@ -82,14 +82,14 @@ rules:
     action_risk: south-africa-popia.cross-border-transfer-language-output
   effect: escalate
   severity: medium
-  reason: 'POPIA s.72: Cross-border data transfer language detected — requires Information Officer approval'
+  reason: 'POPIA s.72: Cross-border data transfer language detected - requires Information Officer approval'
 - id: south-africa-popia.health-medical-special-personal-information
   description: 'POPIA s.26(1)(e): Health / medical special personal information'
   when:
     action_risk: south-africa-popia.health-medical-special-personal-information
   effect: escalate
   severity: medium
-  reason: 'POPIA s.26(1)(e): Health/medical special personal information detected — requires explicit
+  reason: 'POPIA s.26(1)(e): Health/medical special personal information detected - requires explicit
     lawful basis under POPIA s.27'
 - id: south-africa-popia.race-ethnic-origin-special-personal-information
   description: 'POPIA s.26(1)(b): Race / ethnic origin special personal information'
@@ -97,7 +97,7 @@ rules:
     action_risk: south-africa-popia.race-ethnic-origin-special-personal-information
   effect: escalate
   severity: medium
-  reason: 'POPIA s.26(1)(b): Race/ethnic origin special personal information — requires lawful basis and
+  reason: 'POPIA s.26(1)(b): Race/ethnic origin special personal information - requires lawful basis and
     heightened controls'
 - id: south-africa-popia.criminal-history-special-personal-information
   description: 'POPIA s.26(1)(g): Criminal history special personal information'
@@ -105,7 +105,7 @@ rules:
     action_risk: south-africa-popia.criminal-history-special-personal-information
   effect: escalate
   severity: medium
-  reason: 'POPIA s.26(1)(g): Criminal history special personal information — requires explicit lawful
+  reason: 'POPIA s.26(1)(g): Criminal history special personal information - requires explicit lawful
     processing basis'
 - id: south-africa-popia.all-personal-information-access-must-logged
   description: 'POPIA s.17: All personal information access must be logged for RESPONSIBLE PARTY accountability'
@@ -113,5 +113,5 @@ rules:
     action_risk: south-africa-popia.all-personal-information-access-must-logged
   effect: allow
   severity: low
-  reason: 'POPIA s.17: Personal information access logged — RESPONSIBLE PARTY accountability record for
+  reason: 'POPIA s.17: Personal information access logged - RESPONSIBLE PARTY accountability record for
     Information Regulator'

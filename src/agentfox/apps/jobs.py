@@ -35,6 +35,9 @@ kind                   what it does
                        something.
 ``detectors.pull``     Downloads the model weights one detector loads (``key``),
                        for the Checks screen's Download button.
+``retention.purge``    Deletes or redacts data older than each data class's
+                       ``retain_days`` (``capabilities.compliance.retention.purge``).
+                       Respects active legal holds; never touches the audit chain.
 ``probes.run``         Sends the live probe library to every *opted-in* probe target
                        in the tenant that is due (``evaluation.live_probes``), records
                        a campaign per target and opens/closes ``live_probe_escape``
@@ -343,6 +346,25 @@ def rotate_keys(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# retention.purge
+# ---------------------------------------------------------------------------
+
+
+def purge_retention(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Apply every retention policy in the tenant once; one `retention_runs` row."""
+    from agentfox.capabilities.compliance.retention import purge, run_json
+
+    actor_type, actor_id = _actor(payload)
+    run = purge(
+        session,
+        trigger=str(payload.get("trigger") or "schedule"),
+        requested_by=actor_id,
+        actor_type=actor_type,
+    )
+    return {"retention_run_id": run.id, "run": run_json(run)}
+
+
+# ---------------------------------------------------------------------------
 # detectors.pull
 # ---------------------------------------------------------------------------
 
@@ -378,6 +400,7 @@ HANDLERS = {
     "redteam.posture": redteam_posture,
     "monitors.run": run_monitors,
     "probes.run": run_live_probes,
+    "retention.purge": purge_retention,
     "keys.rotate": rotate_keys,
     "detectors.pull": pull_detector_models,
 }

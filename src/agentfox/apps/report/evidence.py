@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox import __version__
+from agentfox.capabilities.compliance.reviews import review_json
 from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.config import get_settings
 from agentfox.core.models import (
@@ -35,6 +36,7 @@ from agentfox.core.models import (
     ApprovalRequest,
     AuditCheckpoint,
     AuditEntry,
+    ControlReview,
     ControlStatus,
     Decision,
     EvalRun,
@@ -491,6 +493,20 @@ def build(
                 for m in mappings
             ],
             indent=2,
+        ),
+        # Every attestation in scope, superseded ones included: an auditor asks who
+        # attested what, on which evidence, and whether it had lapsed.
+        "control_reviews.json": json.dumps(
+            [
+                {
+                    **(review_json(r) or {}),
+                    "evidence_at_review": r.evidence_json,
+                }
+                for r in session.scalars(select(ControlReview).order_by(ControlReview.reviewed_at))
+                if not controls or controls == ["*"] or r.control_key in controls
+            ],
+            indent=2,
+            default=str,
         ),
         "risk_assessments.json": json.dumps(
             [

@@ -59,6 +59,7 @@ def _record_turn(
     trace_id: str | None,
     messages: list[dict[str, Any]],
     answer: str,
+    response_format: Any = None,
 ) -> None:
     """Record this turn so escalation governance works over HTTP.
 
@@ -66,8 +67,17 @@ def _record_turn(
     SDK's `agentfox.auto()` monkeypatch (autoguard's `_record_turn`) would record
     them, and a team integrating via this HTTP gateway directly — not the Python SDK —
     would get no escalation tracking at all. Never breaks the caller's request.
+
+    A call that asked for JSON (`response_format`) is not a reply to the user: it is
+    the app classifying the message (OpenAI's airline demo runs two such guardrail
+    calls on every turn). Recorded, each one became a turn of its own, so every user
+    message counted as said twice and a JSON verdict stood in for the agent's answer.
     """
+    from agentfox.runtime.enforcement.completion import wants_structured_output
+
     if not answer or not trace_id:
+        return
+    if wants_structured_output({"response_format": response_format}):
         return
     try:
         from agentfox.capabilities.containment.escalation import record_turn
@@ -96,6 +106,43 @@ def _record_turn(
         )
     except Exception:  # pragma: no cover - observability must not break the call
         pass
+
+
+def _recording_turn(
+    events: Any,
+    session: Session,
+    *,
+    agent_slug: str | None,
+    session_id: str | None,
+    messages: list[dict[str, Any]],
+    response_format: Any = None,
+) -> Any:
+    """Pass a streamed completion through, recording its turn once it completes.
+
+    Only the buffered path recorded turns, so an app that streams (the Agents SDK's
+    `Runner.run_streamed`, most chat UIs) had none of its agent's replies in escalation
+    governance: a user asking for a person reached the hand-off queue only through the
+    app's own side calls, if at all.
+    """
+    text: list[str] = []
+    for event in events:
+        if event.kind == "delta" and event.delta:
+            text.append(event.delta)
+        elif event.kind == "done" and event.result is not None:
+            _record_turn(
+                session,
+                agent_slug=agent_slug,
+                session_id=session_id,
+                trace_id=event.result.trace_id,
+                messages=messages,
+                answer="".join(text),
+                response_format=response_format,
+            )
+            try:
+                session.commit()
+            except Exception:  # pragma: no cover - observability must not break the stream
+                session.rollback()
+        yield event
 
 
 def _trust_map(header: str | None) -> dict[str, str] | None:
@@ -728,6 +775,14 @@ async def chat_completions(
             evidence=evidence,
             approval_id=x_agentfox_approval,
         )
+        events = _recording_turn(
+            events,
+            session,
+            agent_slug=x_agentfox_agent,
+            session_id=x_agentfox_session,
+            messages=body.get("messages", []),
+            response_format=body.get("response_format"),
+        )
         return StreamingResponse(
             _stream_openai(events, body.get("model", "")),
             media_type="text/event-stream",
@@ -766,6 +821,7 @@ async def chat_completions(
         trace_id=result.trace_id,
         messages=body.get("messages", []),
         answer=response.text,
+        response_format=body.get("response_format"),
     )
     return JSONResponse(content=response.to_openai(body.get("model", "")), headers=_headers(result))
 
@@ -820,6 +876,14 @@ async def messages(
             passthrough_protocol="anthropic",
             evidence=evidence,
             approval_id=x_agentfox_approval,
+        )
+        # As on the OpenAI route: a streamed reply is a turn too.
+        events = _recording_turn(
+            events,
+            session,
+            agent_slug=x_agentfox_agent,
+            session_id=x_agentfox_session,
+            messages=payload,
         )
         return StreamingResponse(
             _stream_anthropic(events, body.get("model", "")),

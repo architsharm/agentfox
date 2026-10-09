@@ -522,30 +522,34 @@ For each row: does this control, as implemented, support the clause claimed? App
       </p>
       <Callout kind="note">
         Signing off from the CLI updates the mapping but does not add an entry to the audit
-        chain. Signing off in the web app (Compliance → Frameworks → Review mappings) does
-        record a <code>compliance.mapping_reviewed</code> entry with the signed-in user as
-        the actor. If you need the attestation in the chain, use the web app.
+        chain. Reviewing a control in the web app (Compliance → Regulations → a framework → a control) does
+        record a <code>compliance.control_reviewed</code> entry with the signed-in user as
+        the actor, an outcome, a note and a 90-day expiry. If you need the attestation in the
+        chain, use the web app.
       </Callout>
-      <InTheApp path="/app/compliance?tab=frameworks">Compliance → Frameworks → Review mappings</InTheApp>
+      <InTheApp path="/app/compliance?tab=regulations">Compliance → Regulations</InTheApp>
 
       <h2>Retention and legal hold</h2>
       <p>
-        What exists today is a record, not an enforcement mechanism. Be precise about this
-        with an auditor.
+        Retention is set per data class and enforced by a daily purge. The audit chain is
+        never purged.
       </p>
       <ul>
         <li>
-          <strong>Retention policies</strong> are rows (data class, days to keep, fields to
-          redact) that you read with <code>GET /api/retention</code> or on the Retention tab.
-          A seeded environment has four. There is no command, route or screen to add or change
-          one, and nothing in AgentFox deletes or redacts data when a period runs out.
+          <strong>Retention policies</strong> set how long each data class is kept: read
+          them with <code>GET /api/retention</code>, change one on the Retention tab or with{" "}
+          <code>PUT /api/retention/&#123;class&#125;</code> (a reason is required, and the change
+          is on the audit chain as <code>operator.retention.changed</code>). The daily{" "}
+          <code>retention.purge</code> job deletes runs and decisions older than their period
+          and redacts content (prompts, responses, detection samples, eval output) while
+          keeping the record. Each pass is a <code>retention.purged</code> audit entry.
         </li>
         <li>
           <strong>Legal holds</strong> are placed with <code>POST /api/legal-holds</code>{" "}
           (role <code>compliance</code>) or from the Retention tab. Placing one writes a{" "}
-          <code>legal_hold.placed</code> entry to the audit chain. There is no route to
-          release a hold, and because nothing purges data on a schedule, a hold does not
-          change what is kept.
+          <code>legal_hold.placed</code> entry to the audit chain. An active hold stops the
+          purge for the agents it names, or for everything when it names none. There is no
+          route to release a hold.
         </li>
         <li>
           <strong>Redaction at capture</strong> is on by default (

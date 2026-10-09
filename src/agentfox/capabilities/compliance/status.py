@@ -58,10 +58,8 @@ _TABLE_HINTS: dict[str, str] = {
     "source_records": "Tier a source on the Sources page.",
     "knowledge_boundaries": "Declare what an agent may answer, from that agent's page.",
     "handoffs": "Raise or detect a hand-off on the Escalation page.",
-    "retention_policies": (
-        "Seeded worlds carry one. There is no command or screen to add another yet, "
-        "so this stays open on a fresh tenant."
-    ),
+    "retention_policies": "Set a retention period on Compliance, Retention.",
+    "retention_runs": ("The purge runs daily; run it now from Compliance, Retention."),
     "redteam_campaigns": "Run a red-team campaign on the Evaluation page.",
     "eval_runs": "Create and run an eval suite on the Evaluation page.",
     "budgets": (
@@ -408,6 +406,80 @@ def _rule_capability_active(session, control, rule, since) -> tuple[str, str, di
     return "effective", f"Capability exercised: {counts}.", {"counts": counts}
 
 
+def _rule_kill_switch(session, control, rule, since) -> tuple[str, str, dict]:
+    """The kill switch, evidenced by its use: every stop audited, and every stop held.
+
+    Two checks over `agent_controls`. A stopped agent with an ``allow`` decision after
+    the moment it was stopped means the switch leaked, which is ``failing`` whatever
+    else is true. A state change with no `agent.*` entry on the audit chain means a
+    stop nobody can account for, which is ``degraded``. A switch never pulled has
+    nothing to evidence it and reads ``not_implemented`` with how to drill it.
+    """
+    from agentfox.core.models import AgentControl, AuditEntry
+
+    rows = list(session.scalars(select(AgentControl)))
+    exercised = [r for r in rows if r.previous_state is not None or r.state != "active"]
+    if not exercised:
+        return (
+            "not_implemented",
+            "No agent has ever been stopped, so nothing shows the switch works. "
+            "Quarantine a test agent from its page and resume it to record a drill.",
+            {"agent_controls": len(rows)},
+        )
+
+    leaks: dict[str, int] = {}
+    stopped = [r for r in exercised if r.state in ("quarantined", "killed")]
+    for row in stopped:
+        allowed = int(
+            session.scalar(
+                select(func.count())
+                .select_from(Decision)
+                .where(
+                    Decision.agent_id == row.agent_id,
+                    Decision.created_at > row.changed_at,
+                    Decision.verdict == "allow",
+                )
+            )
+            or 0
+        )
+        if allowed:
+            leaks[row.agent_id] = allowed
+
+    audited = set(
+        session.scalars(
+            select(AuditEntry.subject_id).where(
+                AuditEntry.action.in_(("agent.quarantined", "agent.killed", "agent.resumed"))
+            )
+        )
+    )
+    unaudited = [r.agent_id for r in exercised if r.agent_id not in audited]
+    detail = {
+        "exercised": len(exercised),
+        "stopped_now": len(stopped),
+        "leaks": leaks,
+        "unaudited": unaudited,
+    }
+    if leaks:
+        return (
+            "failing",
+            f"{sum(leaks.values())} call(s) were allowed after a stop, across "
+            f"{len(leaks)} stopped agent(s). The switch did not hold.",
+            detail,
+        )
+    if unaudited:
+        return (
+            "degraded",
+            f"{len(unaudited)} agent(s) changed state with no stop or resume on the audit chain.",
+            detail,
+        )
+    return (
+        "effective",
+        f"{len(exercised)} agent(s) stopped at least once, every change on the audit chain; "
+        f"{len(stopped)} stopped now, with no call allowed since.",
+        detail,
+    )
+
+
 _RULE_HANDLERS = {
     "presence": _rule_presence,
     "ratio": _rule_ratio,
@@ -418,6 +490,7 @@ _RULE_HANDLERS = {
     "scorer_active": _rule_scorer_active,
     "chain_valid": _rule_chain_valid,
     "capability_active": _rule_capability_active,
+    "kill_switch": _rule_kill_switch,
 }
 
 #: Every ``status_rule.kind`` that ``evaluate_control`` understands. An unknown kind

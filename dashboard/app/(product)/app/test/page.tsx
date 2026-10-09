@@ -42,14 +42,12 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
 }
 
 async function Try({ agents }: { agents: any[] }) {
-  const tools = await safeApi<any>("/api/tools", { tools: [] });
+  // The first agent's own tools; the picker loads another agent's when it changes.
+  const tools = agents.length ? await safeApi<any>(`/api/agents/${encodeURIComponent(agents[0].slug)}/tools`, { tools: [] }) : { tools: [] };
   return (
     <Card title="Check a message or tool call" hint="Runs your real rules for the chosen agent. Not counted as production traffic.">
       {agents.length ? (
-        <TryIt
-          agents={agents.map((a) => ({ slug: a.slug, name: a.name }))}
-          tools={(tools.tools || []).filter((t: any) => !t.key.startsWith("redteam.")).map((t: any) => ({ key: t.key, name: t.name }))}
-        />
+        <TryIt agents={agents.map((a) => ({ slug: a.slug, name: a.name }))} tools={tools.tools || []} />
       ) : (
         <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No agents yet.</Empty>
       )}

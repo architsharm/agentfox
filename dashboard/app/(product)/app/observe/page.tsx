@@ -351,7 +351,7 @@ function heldLabel(tool?: string | null): string {
 
 async function Review({ f, agents }: { f: Filters; agents: any[] }) {
   // "used" is an approved call that has since run: still an approval.
-  const statuses = ["pending", "approved", "used", "denied", "expired"] as const;
+  const statuses = ["pending", "approved", "used", "lapsed", "denied", "expired"] as const;
   const agentQs = f.agent ? `?agent=${encodeURIComponent(f.agent)}` : "";
   const [lists, report] = await Promise.all([
     Promise.all(statuses.map((s) => safeApi<any>(`/api/approvals?status=${s}`, { approvals: [] }))),
@@ -379,7 +379,7 @@ async function Review({ f, agents }: { f: Filters; agents: any[] }) {
     <>
       <Grid cols={4}>
         <Kpi label="Waiting" value={num(by.pending.length)} tone={by.pending.length ? "warn" : undefined} href="/app/approvals" />
-        <Kpi label="Approved" value={num(by.approved.length + by.used.length)} href="/app/approvals?tab=history&status=approved" />
+        <Kpi label="Approved" value={num(by.approved.length + by.used.length + by.lapsed.length)} href="/app/approvals?tab=history&status=approved" />
         <Kpi label="Denied" value={num(by.denied.length)} href="/app/approvals?tab=history&status=denied" />
         <Kpi label="Expired" value={num(by.expired.length)} tone={by.expired.length ? "warn" : undefined} hint="Nobody answered in time; the action was denied." href="/app/approvals?tab=history&status=expired" />
       </Grid>

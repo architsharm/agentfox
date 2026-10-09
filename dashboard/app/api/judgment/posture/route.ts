@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     // safe default for fail_closed comes from the form, not from here: the box is
     // rendered checked, and when the deployment requires failing closed it is
     // disabled and a hidden `fail_closed=on` is posted in its place
-    // (components/product/JudgmentPosture.tsx). An unticked box is a deliberate choice to
+    // (components/product/policies/advanced.tsx). An unticked box is a deliberate choice to
     // fail open, and the gateway refuses it if the deployment does not allow that.
     fail_closed: form.get("fail_closed") !== null,
     confirm_egress: form.get("confirm_egress") !== null,

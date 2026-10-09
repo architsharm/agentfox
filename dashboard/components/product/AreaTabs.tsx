@@ -24,7 +24,6 @@ export const SETTINGS_TABS: AreaTab[] = [
   { key: "connect", label: "Connections", href: "/app/start?tab=connect" },
   { key: "tokens", label: "API keys", href: "/app/start?tab=tokens" },
   { key: "alerts", label: "Alerts", href: "/app/settings?tab=alerts" },
-  { key: "checks", label: "Checks", href: "/app/policies?tab=checks" },
   { key: "sources", label: "Verified sources", href: "/app/sources" },
   { key: "entitlement", label: "Data access", href: "/app/entitlement" },
 ];

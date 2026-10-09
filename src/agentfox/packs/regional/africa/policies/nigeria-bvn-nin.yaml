@@ -20,35 +20,35 @@ rules:
     action_risk: nigeria-bvn-nin.block-bvn-value-agent-output
   effect: block
   severity: high
-  reason: 'BVN Protection: BVN value detected in agent output — blocked (NDPA Schedule 1 biometric data)'
+  reason: 'BVN Protection: BVN value detected in agent output - blocked (NDPA Schedule 1 biometric data)'
 - id: nigeria-bvn-nin.block-contextual-bvn-pattern-output
   description: Block contextual BVN pattern in output
   when:
     action_risk: nigeria-bvn-nin.block-contextual-bvn-pattern-output
   effect: block
   severity: high
-  reason: 'BVN Protection: BVN pattern detected in agent output — blocked to prevent credential exposure'
+  reason: 'BVN Protection: BVN pattern detected in agent output - blocked to prevent credential exposure'
 - id: nigeria-bvn-nin.block-nin-value-agent-output
   description: Block NIN value in agent output
   when:
     action_risk: nigeria-bvn-nin.block-nin-value-agent-output
   effect: block
   severity: high
-  reason: 'NIN Protection: NIN value detected in agent output — blocked (NDPA Schedule 1 biometric data)'
+  reason: 'NIN Protection: NIN value detected in agent output - blocked (NDPA Schedule 1 biometric data)'
 - id: nigeria-bvn-nin.block-virtual-nin-output
   description: Block virtual NIN (vNIN) in output
   when:
     action_risk: nigeria-bvn-nin.block-virtual-nin-output
   effect: block
   severity: high
-  reason: 'NIN Protection: Virtual NIN (vNIN) detected in agent output — blocked'
+  reason: 'NIN Protection: Virtual NIN (vNIN) detected in agent output - blocked'
 - id: nigeria-bvn-nin.block-direct-bvn-nin-transmission-external
   description: Block direct BVN/NIN transmission to external systems
   when:
     action_risk: nigeria-bvn-nin.block-direct-bvn-nin-transmission-external
   effect: block
   severity: high
-  reason: 'BVN/NIN Transmission: Direct BVN/NIN transmission blocked — use NIBSS tokenised verification
+  reason: 'BVN/NIN Transmission: Direct BVN/NIN transmission blocked - use NIBSS tokenised verification
     flow'
 - id: nigeria-bvn-nin.block-bvn-present-params-from-being
   description: Block BVN present in params from being passed externally
@@ -56,21 +56,21 @@ rules:
     action_risk: nigeria-bvn-nin.block-bvn-present-params-from-being
   effect: block
   severity: high
-  reason: 'BVN/NIN Transmission: BVN detected in params with external transmission action — blocked'
+  reason: 'BVN/NIN Transmission: BVN detected in params with external transmission action - blocked'
 - id: nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels
   description: Block BVN disclosure over conversational channels (social engineering)
   when:
     action_risk: nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels
   effect: block
   severity: high
-  reason: 'BVN/NIN Social Engineering: Attempt to disclose BVN/NIN through conversational channel — blocked'
+  reason: 'BVN/NIN Social Engineering: Attempt to disclose BVN/NIN through conversational channel - blocked'
 - id: nigeria-bvn-nin.block-illegal-data-persistence
-  description: Block illegal data persistence (NIMC Act 2026 — ₦20M corporate / 5yr individual penalty)
+  description: Block illegal data persistence (NIMC Act 2026 - ₦20M corporate / 5yr individual penalty)
   when:
     action_risk: nigeria-bvn-nin.block-illegal-data-persistence
   effect: block
   severity: high
-  reason: 'NIMC Act 2026: Storing NIN/BVN data after verification is prohibited — illegal data persistence
+  reason: 'NIMC Act 2026: Storing NIN/BVN data after verification is prohibited - illegal data persistence
     (₦20M corporate / 5yr individual penalty)'
 - id: nigeria-bvn-nin.block-persist-nin-true-flag-params
   description: Block persist_nin=true flag in params
@@ -78,14 +78,14 @@ rules:
     action_risk: nigeria-bvn-nin.block-persist-nin-true-flag-params
   effect: block
   severity: high
-  reason: 'NIMC Act 2026: persist_nin=true detected — NIN data may not be stored after verification completes'
+  reason: 'NIMC Act 2026: persist_nin=true detected - NIN data may not be stored after verification completes'
 - id: nigeria-bvn-nin.block-bulk-nin-identity-data-export
   description: Block bulk NIN/identity data export
   when:
     action_risk: nigeria-bvn-nin.block-bulk-nin-identity-data-export
   effect: block
   severity: high
-  reason: 'NIMC Act 2026: Bulk NIN/identity data export is prohibited — only individual authorised verifications
+  reason: 'NIMC Act 2026: Bulk NIN/identity data export is prohibited - only individual authorised verifications
     are permitted'
 - id: nigeria-bvn-nin.block-bulk-identity-export-true-flag
   description: Block bulk_identity_export=true flag in params
@@ -93,14 +93,14 @@ rules:
     action_risk: nigeria-bvn-nin.block-bulk-identity-export-true-flag
   effect: block
   severity: high
-  reason: 'NIMC Act 2026: bulk_identity_export=true detected — bulk identity extraction is prohibited'
+  reason: 'NIMC Act 2026: bulk_identity_export=true detected - bulk identity extraction is prohibited'
 - id: nigeria-bvn-nin.bvn-verification-always-requires-human-approval
   description: BVN verification always requires human approval
   when:
     action_risk: nigeria-bvn-nin.bvn-verification-always-requires-human-approval
   effect: escalate
   severity: medium
-  reason: 'BVN Verification: BVN lookup requires human approval — CBN BVN Framework mandates audit trail
+  reason: 'BVN Verification: BVN lookup requires human approval - CBN BVN Framework mandates audit trail
     for all lookups'
 - id: nigeria-bvn-nin.nin-verification-always-requires-human-approval
   description: NIN verification always requires human approval
@@ -108,10 +108,10 @@ rules:
     action_risk: nigeria-bvn-nin.nin-verification-always-requires-human-approval
   effect: escalate
   severity: medium
-  reason: 'NIN Verification: NIN lookup requires human approval — NIMC Act requires documented purpose
+  reason: 'NIN Verification: NIN lookup requires human approval - NIMC Act requires documented purpose
     for each lookup'
 - id: nigeria-bvn-nin.nin-bvn-lookup-without-declared-purpose
-  description: 'NIMC Act 2026 — Purpose limitation: NIN/BVN lookup without declared purpose. Defaulting
+  description: 'NIMC Act 2026 - Purpose limitation: NIN/BVN lookup without declared purpose. Defaulting
     through object.get twice — once for a missing `context` object, once for a missing/empty `nin_purpose`
     within it — means an absent context, an absent nin_purpose, and an explicit nin_purpose: "" are all
     treated identically. `in {"", null}` additionally catches an explicit nin_purpose: null (object.get
@@ -121,40 +121,40 @@ rules:
     action_risk: nigeria-bvn-nin.nin-bvn-lookup-without-declared-purpose
   effect: escalate
   severity: medium
-  reason: 'NIMC Act 2026: NIN lookup attempted without a declared purpose — purpose limitation requires
+  reason: 'NIMC Act 2026: NIN lookup attempted without a declared purpose - purpose limitation requires
     stating the reason before each verification'
 - id: nigeria-bvn-nin.bvn-lookup-attempted-without-declared-purpose
-  description: 'NIMC Act 2026: BVN lookup attempted without a declared purpose — purpose limitation requires
+  description: 'NIMC Act 2026: BVN lookup attempted without a declared purpose - purpose limitation requires
     stating the reason before each verification'
   when:
     action_risk: nigeria-bvn-nin.bvn-lookup-attempted-without-declared-purpose
   effect: escalate
   severity: medium
-  reason: 'NIMC Act 2026: BVN lookup attempted without a declared purpose — purpose limitation requires
+  reason: 'NIMC Act 2026: BVN lookup attempted without a declared purpose - purpose limitation requires
     stating the reason before each verification'
 - id: nigeria-bvn-nin.consented-purpose-differs-from-current-purpose
-  description: 'NIMC Act 2026 — Purpose mismatch: consented purpose differs from current purpose'
+  description: 'NIMC Act 2026 - Purpose mismatch: consented purpose differs from current purpose'
   when:
     action_risk: nigeria-bvn-nin.consented-purpose-differs-from-current-purpose
   effect: escalate
   severity: medium
-  reason: 'NIMC Act 2026: Purpose mismatch — NIN was consented for <value> but current purpose is <value>'
+  reason: 'NIMC Act 2026: Purpose mismatch - NIN was consented for <value> but current purpose is <value>'
 - id: nigeria-bvn-nin.escalate-if-identifier-type-bvn-nin
   description: Escalate if identifier type is BVN/NIN in params
   when:
     action_risk: nigeria-bvn-nin.escalate-if-identifier-type-bvn-nin
   effect: escalate
   severity: medium
-  reason: 'BVN/NIN Gate: Action <value> involves <value> identifier — requires human approval before proceeding'
+  reason: 'BVN/NIN Gate: Action <value> involves <value> identifier - requires human approval before proceeding'
 - id: nigeria-bvn-nin.identity-related-action-logged-ndpa-s
-  description: 'BVN/NIN Audit: Identity-related action logged — NDPA s.30 and CBN BVN audit trail requirement'
+  description: 'BVN/NIN Audit: Identity-related action logged - NDPA s.30 and CBN BVN audit trail requirement'
   when:
     action_risk: nigeria-bvn-nin.identity-related-action-logged-ndpa-s
   effect: allow
   severity: low
-  reason: 'BVN/NIN Audit: Identity-related action logged — NDPA s.30 and CBN BVN audit trail requirement'
+  reason: 'BVN/NIN Audit: Identity-related action logged - NDPA s.30 and CBN BVN audit trail requirement'
 - id: nigeria-bvn-nin.regulated-services-require-verified-nin-defaulting
-  description: 'NIMC Act 2026 — Mandatory NIN prerequisite: regulated services require verified NIN. Defaulting
+  description: 'NIMC Act 2026 - Mandatory NIN prerequisite: regulated services require verified NIN. Defaulting
     through object.get twice — once for a missing `context` object, once for a missing/null/false `nin_verified`
     within it — means an absent context, an absent nin_verified, and an explicit nin_verified: null or
     false are all treated identically as "not verified". A single object.get(input.context, ...) is itself
@@ -164,5 +164,5 @@ rules:
     action_risk: nigeria-bvn-nin.regulated-services-require-verified-nin-defaulting
   effect: allow
   severity: low
-  reason: 'NIMC Act 2026: Action <value> is a mandatory-NIN service — bank accounts, SIM, passports, land
+  reason: 'NIMC Act 2026: Action <value> is a mandatory-NIN service - bank accounts, SIM, passports, land
     transactions, pension, insurance, and consumer credit require context.nin_verified = true'

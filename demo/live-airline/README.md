@@ -93,7 +93,7 @@ failure paths would have nothing to catch.
 | `approve` | Compensation is held; approved; asked again it is issued once; a third ask issues nothing; the approval ends `used`. |
 | `deny` | Held, denied, never issued. |
 | `changed` | An approval covers the call a person saw: presented with different arguments it is held again; with the approved ones it runs. |
-| `message` | The blocked-words rule switched to "ask a person": the message is held; once approved the same message goes through once. Needs `AGENTFOX_MODEL_DIRECT=1` (through the proxy the model call carries the whole conversation, which the approval does not cover). |
+| `message` | The blocked-words rule switched to "ask a person": the message is held; once approved the same message passes the input check once (the reply is checked on its own, so a reply naming the competitor is held again). Needs `AGENTFOX_MODEL_DIRECT=1` (through the proxy the model call carries the whole conversation, which the approval does not cover). |
 | `expire` | Nobody answers. After `APPROVAL_TTL_MINUTES` (2 on `gateway.sh`) the approval expires, which denies. |
 
 ### Watching, enforcing, asking a person

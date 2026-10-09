@@ -51,6 +51,11 @@ class _SurfacesMixin:
         the live path passes one, which is what puts a governed request on the Traces
         page and into the control telemetry.
         """
+        # A standalone check is its own request, with its own detector budget. The
+        # ledger was only reset by the completion path, so an Enforcer reused for many
+        # checks (the SDK in-process, the red-team runner, a benchmark) spent one
+        # request's budget across all of them and later checks ran no detectors.
+        self.reset_ledger()
         if persist:
             # The live path — SDK `check()`, `/v1/guard/*`: an unknown slug is shadow
             # traffic and is registered as such, the same as every other guard. Looked

@@ -15,44 +15,44 @@ scope:
   - '*'
 rules:
 - id: africa-pii-leakage.credit-debit-card-number-detected-agent
-  description: 'PII leakage: credit/debit card number detected in agent output — blocked.'
+  description: 'PII leakage: credit/debit card number detected in agent output - blocked.'
   when:
     action_risk: africa-pii-leakage.credit-debit-card-number-detected-agent
   effect: block
   severity: high
-  reason: 'PII leakage: credit/debit card number detected in agent output — blocked.'
+  reason: 'PII leakage: credit/debit card number detected in agent output - blocked.'
 - id: africa-pii-leakage.bvn-nin-format-identifier-detected-agent
-  description: 'PII leakage: BVN/NIN-format identifier (11-digit) detected in agent output — blocked.'
+  description: 'PII leakage: BVN/NIN-format identifier (11-digit) detected in agent output - blocked.'
   when:
     action_risk: africa-pii-leakage.bvn-nin-format-identifier-detected-agent
   effect: block
   severity: high
-  reason: 'PII leakage: BVN/NIN-format identifier (11-digit) detected in agent output — blocked.'
+  reason: 'PII leakage: BVN/NIN-format identifier (11-digit) detected in agent output - blocked.'
 - id: africa-pii-leakage.south-african-id-number-detected-agent
-  description: 'PII leakage: South African ID number detected in agent output — blocked.'
+  description: 'PII leakage: South African ID number detected in agent output - blocked.'
   when:
     action_risk: africa-pii-leakage.south-african-id-number-detected-agent
   effect: block
   severity: high
-  reason: 'PII leakage: South African ID number detected in agent output — blocked.'
+  reason: 'PII leakage: South African ID number detected in agent output - blocked.'
 - id: africa-pii-leakage.email-address-detected-agent-output-route
-  description: 'PII leakage: email address detected in agent output — route to review.'
+  description: 'PII leakage: email address detected in agent output - route to review.'
   when:
     action_risk: africa-pii-leakage.email-address-detected-agent-output-route
   effect: escalate
   severity: medium
-  reason: 'PII leakage: email address detected in agent output — route to review.'
+  reason: 'PII leakage: email address detected in agent output - route to review.'
 - id: africa-pii-leakage.phone-number-detected-agent-output-route
-  description: 'PII leakage: phone number detected in agent output — route to review.'
+  description: 'PII leakage: phone number detected in agent output - route to review.'
   when:
     action_risk: africa-pii-leakage.phone-number-detected-agent-output-route
   effect: escalate
   severity: medium
-  reason: 'PII leakage: phone number detected in agent output — route to review.'
+  reason: 'PII leakage: phone number detected in agent output - route to review.'
 - id: africa-pii-leakage.action-may-produce-personal-data-output
-  description: 'PII audit: action may produce personal data — output logged for compliance review.'
+  description: 'PII audit: action may produce personal data - output logged for compliance review.'
   when:
     action_risk: africa-pii-leakage.action-may-produce-personal-data-output
   effect: allow
   severity: low
-  reason: 'PII audit: action may produce personal data — output logged for compliance review.'
+  reason: 'PII audit: action may produce personal data - output logged for compliance review.'

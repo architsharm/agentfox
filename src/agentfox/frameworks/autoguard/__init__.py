@@ -79,6 +79,7 @@ from __future__ import annotations
 import atexit
 import contextvars
 import functools
+import json
 import logging
 import sys
 import time
@@ -139,6 +140,12 @@ _IN_AGENTFOX: contextvars.ContextVar[bool] = contextvars.ContextVar(
 )
 
 
+#: Set while a LangChain chat model call is being governed, so its reply's tool calls
+#: can be left to the tool-level guard when that is on.
+_FROM_LANGCHAIN: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "agentfox_from_langchain", default=False
+)
+
 _STATE: AutoState | None = None
 
 
@@ -195,6 +202,12 @@ class AutoState:
     #: The task this agent does, in a sentence. Policy judges an irreversible tool call
     #: against it; without one, `intent.undeclared_irreversible` escalates every one.
     intent: str | None = None
+    #: LangChain tools are governed where they run (`BaseTool.invoke`), so the tool
+    #: calls in a LangChain model's reply are not decided a second time.
+    lc_tools: bool = False
+    #: What a refused LangChain tool call does: "message" hands the agent the refusal
+    #: as the tool's result and the run carries on; "raise" raises `Blocked`.
+    tool_refusals: str = "message"
 
     @property
     def active(self) -> bool:
@@ -584,7 +597,7 @@ def _postflight(
                         )
                         if outbound is not None:
                             refusal = Blocked(outbound)
-                    if tool_calls:
+                    if tool_calls and not (state.lc_tools and _FROM_LANGCHAIN.get()):
                         tool_refusal = _govern_tool_calls(
                             call, session, enforcer, identity, tool_calls
                         )
@@ -1219,7 +1232,11 @@ def _lc_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]:
                         return original(self, chat_input, config, stop=stop, **kwargs)
                     return original(self, chat_input, stop=stop, **kwargs)
 
-                return await _agovern(_live(state), govern_kwargs, call)
+                token = _FROM_LANGCHAIN.set(True)
+                try:
+                    return await _agovern(_live(state), govern_kwargs, call)
+                finally:
+                    _FROM_LANGCHAIN.reset(token)
 
             return agoverned
 
@@ -1234,7 +1251,11 @@ def _lc_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]:
                     return original(self, chat_input, config, stop=stop, **kwargs)
                 return original(self, chat_input, stop=stop, **kwargs)
 
-            return _govern(_live(state), govern_kwargs, call)
+            token = _FROM_LANGCHAIN.set(True)
+            try:
+                return _govern(_live(state), govern_kwargs, call)
+            finally:
+                _FROM_LANGCHAIN.reset(token)
 
         return governed
 
@@ -1394,7 +1415,272 @@ def _patch_langchain(state: AutoState) -> list[PatchResult]:
     ]
 
 
-_PATCHERS = (_patch_openai, _patch_anthropic, _patch_litellm, _patch_langchain)
+# -- LangChain tools, governed where they run ---------------------------------------
+
+_HELD_MESSAGE = (
+    "This tool call is held for human approval (approval_id: {approval_id}). Tell the "
+    "user it is waiting for a person to approve it. When the user says it has been "
+    "approved, call this tool again with exactly the same arguments: it runs once if it "
+    "was approved, and is held again if it was not."
+)
+
+
+class _LcHeld:
+    """Approvals this process opened for LangChain tool calls, by tool and arguments,
+    so the same call made again after a person approved it runs once."""
+
+    def __init__(self) -> None:
+        self._held: dict[tuple[str, str], str] = {}
+
+    @staticmethod
+    def _key(tool: str, arguments: dict[str, Any]) -> tuple[str, str]:
+        return tool, json.dumps(arguments, sort_keys=True, default=str)
+
+    def approved(self, session: Any, tool: str, arguments: dict[str, Any]) -> str | None:
+        from agentfox.core.models import ApprovalRequest
+
+        key = self._key(tool, arguments)
+        approval_id = self._held.get(key)
+        if approval_id is None:
+            return None
+        approval = session.get(ApprovalRequest, approval_id)
+        status = approval.status if approval is not None else "gone"
+        if status == "approved":
+            self._held.pop(key, None)
+            return approval_id
+        if status != "pending":
+            self._held.pop(key, None)
+        return None
+
+    def hold(self, tool: str, arguments: dict[str, Any], approval_id: str) -> None:
+        self._held[self._key(tool, arguments)] = approval_id
+
+
+_LC_HELD = _LcHeld()
+
+
+def _lc_tool_input(tool: Any, tool_input: Any) -> tuple[str, dict[str, Any], str | None]:
+    """The tool's name, its arguments, and the model's tool-call id when given one."""
+    name = str(getattr(tool, "name", "") or type(tool).__name__)
+    call_id = None
+    args = tool_input
+    if isinstance(tool_input, dict) and tool_input.get("type") == "tool_call":
+        call_id = tool_input.get("id")
+        args = tool_input.get("args", {})
+    if isinstance(args, str):
+        args = {"input": args}
+    elif not isinstance(args, dict):
+        args = {"_value": args}
+    return name, dict(args), call_id
+
+
+def _lc_tool_reply(text: str, name: str, call_id: str | None, *, error: bool) -> Any:
+    """What the agent receives in the tool's place: a ToolMessage when the model asked
+    for the call by id (so the conversation stays well formed), else the text."""
+    if call_id is None:
+        return text
+    from langchain_core.messages import ToolMessage
+
+    return ToolMessage(
+        content=text, tool_call_id=call_id, name=name, status="error" if error else "success"
+    )
+
+
+def _lc_tool_decide(
+    state: AutoState, name: str, arguments: dict[str, Any]
+) -> tuple[bool, EnforcementResult, str | None]:
+    """Authorise one LangChain tool call. Returns (may run, decision, trace id)."""
+    from agentfox.platform.ledger.trace import start_trace
+
+    token = _IN_AGENTFOX.set(True)
+    try:
+        with session_scope() as session:
+            enforcer = Enforcer(session)
+            agent, identity, _shadow = enforcer.resolve(state.agent)
+            _register_tool(session, name, None)
+            trace = start_trace(
+                session,
+                agent_id=agent.id if agent else None,
+                agent_slug=state.agent,
+                session_id=state.session_id,
+                environment=state.environment,
+                intent=state.intent,
+            )
+            has_grants = _agent_has_grants(session, identity)
+            exempt = (
+                frozenset(_CAPABILITY_REFUSAL_RULE_IDS)
+                if state.mode == "policy" and not has_grants
+                else frozenset()
+            )
+            result = enforcer.guard_tool_call(
+                in_process={"observe": "none", "enforce": "all"}.get(state.mode, "enforced"),
+                exempt_rules=exempt,
+                agent_slug=state.agent,
+                intent=state.intent,
+                tool_key=name,
+                arguments=arguments,
+                trace=trace,
+                approval_id=_LC_HELD.approved(session, name, arguments),
+            )
+            enforced = result.blocked or result.escalated
+            effective = enforced or result.effective_verdict in ("block", "escalate")
+            if enforced and state.mode == "policy" and _capability_only(result):
+                enforced = has_grants
+            raised = _raises(state.mode, enforced=enforced, effective=effective)
+            if result.escalated and result.approval_id:
+                _LC_HELD.hold(name, arguments, result.approval_id)
+            state.calls_governed += 1
+            if raised:
+                state.calls_blocked += 1
+            elif effective:
+                state.would_have_blocked += 1
+            return not raised, result, trace.id
+    finally:
+        _IN_AGENTFOX.reset(token)
+
+
+def _lc_tool_result(state: AutoState, trace_id: str | None, text: str) -> EnforcementResult | None:
+    """Check what the tool returned before the model reads it. Returns the decision
+    when it withholds the result, else None."""
+    if not text:
+        return None
+    from agentfox.core.models import Trace
+
+    token = _IN_AGENTFOX.set(True)
+    try:
+        with session_scope() as session:
+            enforcer = Enforcer(session)
+            trace = session.get(Trace, trace_id) if trace_id else None
+            decision = enforcer.check_content(
+                agent_slug=state.agent,
+                content=text,
+                surface="tool_result",
+                taint_source="tool_result",
+                trace=trace,
+            )
+            verdict = decision.get("verdict", "allow")
+            effective = decision.get("effective_verdict", verdict)
+            enforced = verdict in ("block", "escalate")
+            stop = _raises(
+                state.mode, enforced=enforced, effective=enforced or effective in ("block",)
+            )
+            if not stop:
+                return None
+            return EnforcementResult(
+                verdict=verdict,
+                effective_verdict=effective,
+                reason=decision.get("reason", ""),
+                user_message=decision.get("user_message") or "",
+                trace_id=decision.get("trace_id"),
+                rules_fired=decision.get("rules_fired") or [],
+            )
+    finally:
+        _IN_AGENTFOX.reset(token)
+
+
+def _lc_tool_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]:
+    """Wrapper factory for `BaseTool.invoke` / `.ainvoke`."""
+
+    def before(tool: Any, tool_input: Any) -> tuple[Any, str, dict[str, Any], str | None, Any]:
+        st = _live(state)
+        name, arguments, call_id = _lc_tool_input(tool, tool_input)
+        allowed, result, trace_id = _lc_tool_decide(st, name, arguments)
+        if allowed:
+            return None, name, arguments, call_id, trace_id
+        if st.tool_refusals == "raise":
+            raise Blocked(result, f"agentfox: tool call '{name}' refused: {result.reason}")
+        if result.escalated and result.approval_id:
+            text = _HELD_MESSAGE.format(approval_id=result.approval_id)
+        else:
+            text = "This tool call was blocked by policy: " + (
+                result.user_message or result.reason or "not allowed"
+            )
+        return _lc_tool_reply(text, name, call_id, error=True), name, arguments, call_id, trace_id
+
+    def after(output: Any, name: str, call_id: str | None, trace_id: str | None) -> Any:
+        text = getattr(output, "content", output)
+        withheld = _lc_tool_result(
+            _live(state), trace_id, text if isinstance(text, str) else str(text)
+        )
+        if withheld is None:
+            return output
+        message = withheld.user_message or withheld.reason or "it failed a policy check"
+        return _lc_tool_reply(
+            f"This tool's result was withheld by policy: {message}",
+            name,
+            call_id or getattr(output, "tool_call_id", None),
+            error=True,
+        )
+
+    def build(original: Any) -> Any:
+        if is_async:
+
+            @functools.wraps(original)
+            async def agoverned(self: Any, tool_input: Any, *args: Any, **kwargs: Any) -> Any:
+                if _IN_AGENTFOX.get():
+                    return await original(self, tool_input, *args, **kwargs)
+                refusal, name, _arguments, call_id, trace_id = before(self, tool_input)
+                if refusal is not None:
+                    return refusal
+                output = await original(self, tool_input, *args, **kwargs)
+                return after(output, name, call_id, trace_id)
+
+            return agoverned
+
+        @functools.wraps(original)
+        def governed(self: Any, tool_input: Any, *args: Any, **kwargs: Any) -> Any:
+            if _IN_AGENTFOX.get():
+                return original(self, tool_input, *args, **kwargs)
+            refusal, name, _arguments, call_id, trace_id = before(self, tool_input)
+            if refusal is not None:
+                return refusal
+            output = original(self, tool_input, *args, **kwargs)
+            return after(output, name, call_id, trace_id)
+
+        return governed
+
+    return build
+
+
+def _patch_langchain_tools(state: AutoState) -> list[PatchResult]:
+    try:
+        import langchain_core
+        from langchain_core.tools import BaseTool
+    except Exception as exc:
+        return _not_importable("langchain tools", exc)
+
+    version = getattr(langchain_core, "__version__", None)
+    results = [
+        _patch_attr(
+            "langchain.tools",
+            "langchain-core",
+            BaseTool,
+            "invoke",
+            _lc_tool_method(state, is_async=False),
+            version,
+            "BaseTool.invoke",
+        ),
+        _patch_attr(
+            "langchain.tools.async",
+            "langchain-core",
+            BaseTool,
+            "ainvoke",
+            _lc_tool_method(state, is_async=True),
+            version,
+            "BaseTool.ainvoke",
+        ),
+    ]
+    state.lc_tools = all(r.patched for r in results)
+    return results
+
+
+_PATCHERS = (
+    _patch_openai,
+    _patch_anthropic,
+    _patch_litellm,
+    _patch_langchain,
+    _patch_langchain_tools,
+)
 
 
 def auto(
@@ -1406,6 +1692,7 @@ def auto(
     intent: str | None = None,
     register: bool = True,
     quiet: bool = False,
+    tool_refusals: str = "message",
 ) -> AutoState:
     """Govern this process. One line, no code changes anywhere else.
 
@@ -1433,12 +1720,20 @@ def auto(
     request"). An irreversible tool call with no declared task is escalated by
     tool containment, since it cannot be judged against one.
 
+    LangChain tools are also governed where they run (``BaseTool.invoke``), whoever
+    called them. A refused call hands the agent the refusal as the tool's result and
+    the run carries on (``tool_refusals="raise"`` raises `Blocked` instead); a call
+    held for a person runs once when made again after they approve; what a tool
+    returns is checked before the model reads it.
+
     Returns the state, so a developer can assert on it in a test rather than trusting
     that it worked.
     """
     global _STATE
     if mode not in MODES:
         raise ValueError("mode must be 'policy' (default), 'observe' or 'enforce'")
+    if tool_refusals not in ("message", "raise"):
+        raise ValueError("tool_refusals must be 'message' (default) or 'raise'")
 
     settings = get_settings()
     state = AutoState(
@@ -1448,6 +1743,7 @@ def auto(
         frameworks=detect_frameworks(),
         session_id=session_id,
         intent=intent,
+        tool_refusals=tool_refusals,
     )
 
     try:

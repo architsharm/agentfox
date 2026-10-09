@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { safeApi } from "@/lib/product/api";
+import { actionLabel, actionSummary } from "@/lib/product/approvals";
 import { Card, Dot, Empty, Grid, Header, Kpi, Pill, SeverityPill, StackBar, TimeChart, ago, href, num, pctOf } from "@/components/kit";
 import { Countdown } from "@/components/product/Countdown";
 import { SetupProgress } from "@/components/product/home/SetupProgress";
@@ -70,12 +71,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
               <li key={a.id}>
                 <div className="k-list-main">
                   <span>
-                    <strong>{agentName[a.agent_id] || "An agent"}</strong> wants to run <span className="k-mono">{a.tool}</span>
+                    <strong>{agentName[a.agent_id] || "An agent"}</strong>{" "}
+                    <Link href={`/app/approvals/${a.id}`} className="k-mono">{actionLabel(a)}</Link>
                   </span>
                   <span className="muted">
-                    {Object.entries(a.arguments || {})
-                      .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
-                      .join(" · ")}
+                    {actionSummary(a)}
                     {" · expires "}
                     <Countdown at={a.expires_at} />
                   </span>

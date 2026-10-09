@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { proxyRedirectWithHandler } from "@/lib/product/proxy";
+import { requestOrigin } from "@/lib/product/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   const purpose = String(form.get("purpose") || "");
 
   if (!endpoint_url) {
-    const target = new URL("/app/start?tab=connect", req.nextUrl.origin);
+    const target = new URL("/app/start?tab=connect", requestOrigin(req));
     target.searchParams.set("scan_error", "missing endpoint URL or session");
     return NextResponse.redirect(target);
   }

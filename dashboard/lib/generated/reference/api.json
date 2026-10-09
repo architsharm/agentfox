@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 254,
+ "count": 261,
  "routes": [
   {
    "method": "GET",
@@ -1548,6 +1548,35 @@
    "body": null
   },
   {
+   "method": "GET",
+   "path": "/api/agents/{slug}/tools",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "The tools this agent can be tested with: granted, in its code, or seen called, each with where it is known from and a blank argument skeleton.",
+   "description": "The tools this agent can be tested with: granted, in its code, or seen called,\neach with where it is known from and a blank argument skeleton.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "DELETE",
    "path": "/api/alerts/slack",
    "section": "alerts",
@@ -2516,6 +2545,86 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/controls/{key}",
+   "section": "controls",
+   "audience": "operator",
+   "summary": "One control: what it checks, the evidence computed for it, where it is mapped, and every attestation made against it.",
+   "description": "One control: what it checks, the evidence computed for it, where it is mapped,\nand every attestation made against it.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/controls/{key}/reviews",
+   "section": "controls",
+   "audience": "operator",
+   "summary": "Attest one control against one framework. The reviewer is always the caller.",
+   "description": "Attest one control against one framework. The reviewer is always the caller.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ControlReviewIn",
+    "fields": [
+     {
+      "name": "framework",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "outcome",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "note",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "GET",
@@ -4909,6 +5018,51 @@
    }
   },
   {
+   "method": "POST",
+   "path": "/api/findings/{finding_id}/remedies/{key}",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "Take one of the issue's actions. Audited; the issue closes itself if the condition it is about cleared.",
+   "description": "Take one of the issue's actions. Audited; the issue closes itself if the\ncondition it is about cleared.",
+   "params": [
+    {
+     "name": "finding_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "RemedyIn",
+    "fields": [
+     {
+      "name": "inputs",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
    "method": "GET",
    "path": "/api/frameworks",
    "section": "frameworks",
@@ -4932,57 +5086,12 @@
    "body": null
   },
   {
-   "method": "POST",
-   "path": "/api/frameworks/review",
-   "section": "frameworks",
-   "audience": "operator",
-   "summary": "Step 3 of the mapping review gate.",
-   "description": "Step 3 of the mapping review gate.",
-   "params": [
-    {
-     "name": "authorization",
-     "in": "header",
-     "required": false,
-     "type": null
-    },
-    {
-     "name": "x-agentfox-user",
-     "in": "header",
-     "required": false,
-     "type": null
-    }
-   ],
-   "body": {
-    "model": "ReviewIn",
-    "fields": [
-     {
-      "name": "control_key",
-      "type": "string",
-      "required": true,
-      "description": ""
-     },
-     {
-      "name": "framework",
-      "type": "string",
-      "required": true,
-      "description": ""
-     },
-     {
-      "name": "reference",
-      "type": "string",
-      "required": false,
-      "description": ""
-     }
-    ]
-   }
-  },
-  {
    "method": "GET",
    "path": "/api/frameworks/{key}",
    "section": "frameworks",
    "audience": "operator",
-   "summary": "Framework",
-   "description": "",
+   "summary": "One framework: its requirements, the controls mapped to each with live status and attestation, its dated obligations, and its declared gaps.",
+   "description": "One framework: its requirements, the controls mapped to each with live status\nand attestation, its dated obligations, and its declared gaps.",
    "params": [
     {
      "name": "key",
@@ -6602,6 +6711,41 @@
   },
   {
    "method": "GET",
+   "path": "/api/metrics/quality",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "Is this agent giving right answers: every quality signal already recorded for it.",
+   "description": "Is this agent giving right answers: every quality signal already recorded for it.\n\n* ``wrong_answers`` — fires of the rules that catch a wrong result (grounding,\n  answerability abstentions, reply format, unverified completion, made-up tools)\n* ``failed_steps`` — tool and model calls that errored\n* ``evals`` — scored runs of its production traffic, and its reliability targets\n* ``feedback`` — what people said about its decisions\n* ``handoffs`` — conversations that should have reached a person\n* ``findings`` — open quality issues\n\n``checked`` says whether any rule looks for wrong results at all, so \"0\" can be\ntold apart from \"nothing is looking\".",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "range",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/metrics/rules",
    "section": "metrics",
    "audience": "operator",
@@ -7011,7 +7155,7 @@
    "section": "onboarding",
    "audience": "operator",
    "summary": "Install state as a checklist, computed live.",
-   "description": "Install state as a checklist, computed live.\n\nEvery step is derived from data, never from a stored \"completed\" flag — a\nchecklist that can disagree with the system is worse than none.",
+   "description": "Install state as a checklist, computed live.\n\nEvery step is derived from data, never from a stored \"completed\" flag — a\nchecklist that can disagree with the system is worse than none.\n\nThe steps are the order a developer does it in on the Get started page, and\neach one can be finished there in the browser; ``command`` is the same step\nfrom the command line, for whoever prefers it.",
    "params": [
     {
      "name": "authorization",
@@ -7137,7 +7281,7 @@
    "section": "playground",
    "audience": "public-unauthenticated",
    "summary": "Try a tool call directly, with no model in the loop.",
-   "description": "Try a tool call directly, with no model in the loop.\n\nTiers C (parameter exploitation) and D (excessive agency) don't need an LLM to\ndecide to misbehave; the visitor decides.\n\n`verdict`/`applied_verdict` is what happened to this call;\n`effective_verdict`/`would_be_verdict` is what the bound policy says should\nhappen, which in observe mode is the one that did not take effect.",
+   "description": "Try a tool call directly, with no model in the loop.\n\nTiers C (parameter exploitation) and D (excessive agency) don't need an LLM to\ndecide to misbehave; the visitor decides.\n\nA sandbox agent's tools are simulated (`fixtures/sandbox_agents.py`): when the\ncall is allowed its deterministic result is produced, then checked as a tool\nresult. `result` is null when the result was withheld (`result_withheld`), and\n`result_verdict` is that check.\n\n`verdict`/`applied_verdict` is what happened to this call;\n`effective_verdict`/`would_be_verdict` is what the bound policy says should\nhappen, which in observe mode is the one that did not take effect.",
    "params": [
     {
      "name": "session_id",
@@ -8851,8 +8995,8 @@
    "path": "/api/retention",
    "section": "retention",
    "audience": "operator",
-   "summary": "Retention",
-   "description": "",
+   "summary": "Every data class with its period, the last purge, the next one, and legal holds.",
+   "description": "Every data class with its period, the last purge, the next one, and legal holds.",
    "params": [
     {
      "name": "authorization",
@@ -8868,6 +9012,109 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/retention/purge",
+   "section": "retention",
+   "audience": "operator",
+   "summary": "Run the retention purge now, through the same job the daily schedule runs.",
+   "description": "Run the retention purge now, through the same job the daily schedule runs.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/retention/runs",
+   "section": "retention",
+   "audience": "operator",
+   "summary": "Retention Runs",
+   "description": "",
+   "params": [
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/retention/{data_class}",
+   "section": "retention",
+   "audience": "operator",
+   "summary": "Change how long one data class is kept. Audited as `operator.retention.changed`.",
+   "description": "Change how long one data class is kept. Audited as `operator.retention.changed`.",
+   "params": [
+    {
+     "name": "data_class",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "RetentionIn",
+    "fields": [
+     {
+      "name": "retain_days",
+      "type": "integer",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "redact_fields",
+      "type": "array",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "POST",

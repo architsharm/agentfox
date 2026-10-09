@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { proxyRedirectWithHandler } from "@/lib/product/proxy";
+import { requestOrigin } from "@/lib/product/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
   const ref = String(form.get("ref") || "");
 
   if (!repo_full_name) {
-    const target = new URL("/app/start?tab=connect", req.nextUrl.origin);
+    const target = new URL("/app/start?tab=connect", requestOrigin(req));
     target.searchParams.set("scan_error", "missing repository or session");
     return NextResponse.redirect(target);
   }

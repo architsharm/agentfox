@@ -14,9 +14,9 @@ scope:
   - '*'
 rules:
 - id: africa-tool-permissions.v-restricted-tool-route-authorization-queue
-  description: 'Tool requires human approval: ''%v'' is a restricted tool — route to authorization queue.'
+  description: 'Tool requires human approval: ''%v'' is a restricted tool - route to authorization queue.'
   when:
     action_risk: africa-tool-permissions.v-restricted-tool-route-authorization-queue
   effect: escalate
   severity: medium
-  reason: 'Tool requires human approval: <value> is a restricted tool — route to authorization queue.'
+  reason: 'Tool requires human approval: <value> is a restricted tool - route to authorization queue.'

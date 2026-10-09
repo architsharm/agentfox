@@ -256,7 +256,7 @@ def _policy_rule(row: CustomRule, previous: Rule | None, seed: dict[str, Any]) -
         description=spec.name,
         when=when,
         effect=kept.effect,
-        reason=f"{spec.name} — your rule",
+        reason=f"{spec.name}: your rule",
         severity=kept.severity,
         enabled=kept.enabled and spec.enabled,
         message=kept.message,

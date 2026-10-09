@@ -60,6 +60,7 @@ type EnforcementVerdict = {
   latency_ms: number;
   degraded: string[];
   trace_id: string | null;
+  user_message?: string | null;
 };
 
 /**
@@ -86,11 +87,23 @@ type Turn =
       verdict?: EnforcementVerdict;
       error?: string;
       pending?: boolean;
+      /** A sandbox agent's simulated tool result, once the call was allowed. */
+      result?: unknown;
+      resultWithheld?: boolean;
+      resultVerdict?: EnforcementVerdict;
     };
 
 type World = {
   session_id: string;
-  agents: { slug: string; name: string; purpose: string }[];
+  /** Sandbox agents (modelled on apps AgentFox was live-tested on) carry a short
+   *  summary and their own suggested prompts; the demo world's agents use `AGENTS`. */
+  agents: {
+    slug: string;
+    name: string;
+    purpose: string;
+    summary?: string;
+    prompts?: Suggestion[];
+  }[];
   tools: Record<string, { name: string; impact: string }>;
   poisoned_document: string;
 };
@@ -265,6 +278,18 @@ function ActionCard({ t }: { t: Extract<Turn, { kind: "action" }> }) {
       {t.pending && <span className="pg-pending">checking…</span>}
       {t.error && <span className="tag bad">{t.error}</span>}
       {t.verdict && <VerdictLine v={t.verdict} surface="the action" />}
+      {t.resultWithheld ? (
+        <div className="pg-result">
+          <span className="tag bad">result withheld</span>
+          {t.resultVerdict && <VerdictLine v={t.resultVerdict} surface="the result" />}
+        </div>
+      ) : (
+        t.result != null && (
+          <pre className="pg-result mono">
+            {typeof t.result === "string" ? t.result : JSON.stringify(t.result, null, 2)}
+          </pre>
+        )
+      )}
     </div>
   );
 }
@@ -292,7 +317,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
   const streamRef = useRef<HTMLDivElement>(null);
 
   const agentName = world?.agents.find((a) => a.slug === agent)?.name || agent;
-  const guide = AGENTS[agent];
+  const tries = world?.agents.find((a) => a.slug === agent)?.prompts || AGENTS[agent]?.tries;
 
   const call = useCallback(
     async function call<T = any>(path: string, init?: RequestInit): Promise<T> {
@@ -323,6 +348,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
       const body = await call<World>("/api/playground/sessions", { method: "POST" });
       setSessionId(body.session_id);
       setWorld(body);
+      setAgent(body.agents[0]?.slug || "support-triage");
       setDocumentText(body.poisoned_document);
       setMode("observe");
       setTurns([]);
@@ -394,7 +420,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
         ...t,
         {
           kind: "agent",
-          text: agentReply(body.reply),
+          text: agentReply(body.reply || body.verdict?.user_message),
           verdict: body.verdict,
           windowVerdict: body.conversation_window_verdict,
           scripted: Boolean(body.reply),
@@ -435,7 +461,12 @@ export function Playground({ apiBase }: { apiBase: string }) {
         method: "POST",
         body: JSON.stringify({ agent, tool: s.tool, arguments: args, intent: s.intent }),
       });
-      settle({ verdict: body });
+      settle({
+        verdict: body,
+        result: body.result,
+        resultWithheld: body.result_withheld,
+        resultVerdict: body.result_verdict,
+      });
       void refreshChain(sessionId);
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 404) {
@@ -501,7 +532,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
                 }}
               >
                 <b>{a.name}</b>
-                <span>{AGENTS[a.slug]?.holds || a.purpose}</span>
+                <span>{a.summary || AGENTS[a.slug]?.holds || a.purpose}</span>
               </button>
             ))}
           </div>
@@ -530,7 +561,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
                     <div className="pg-empty">
                       <span className="pg-empty-label">Try</span>
                       <div className="pg-chips">
-                        {guide?.tries.map((s) => (
+                        {tries?.map((s) => (
                           <button
                             key={s.label}
                             type="button"

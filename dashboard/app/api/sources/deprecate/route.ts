@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { proxyCustomBody } from "@/lib/product/proxy";
+import { requestOrigin } from "@/lib/product/origin";
 
 /**
  * Soft-retire a source: `key` travels in the POST body, not the URL path.
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const key = String(form.get("key") || "");
   if (!key) {
-    const target = new URL("/app/sources", req.nextUrl.origin);
+    const target = new URL("/app/sources", requestOrigin(req));
     target.searchParams.set("review_error", "missing source key");
     return NextResponse.redirect(target);
   }

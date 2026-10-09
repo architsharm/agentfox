@@ -33,6 +33,7 @@ from agentfox.core.models import Agent, BusinessRule, Policy, User
 from agentfox.platform.ledger import chain
 from agentfox.platform.packs.loader import load_packs
 from agentfox.platform.policy import PolicyDocument, current_binding, save_policy
+from agentfox.platform.registry.service import known_arguments
 
 router = APIRouter(tags=["library"])
 
@@ -178,28 +179,6 @@ def list_business_rules(
 
 class CompileIn(BaseModel):
     text: str = Field(min_length=1, max_length=20000)
-
-
-def known_arguments(session: Session, tool_key: str) -> set[str] | None:
-    """The arguments a tool takes: from its declared input schema, else from the calls
-    seen. None when neither says anything."""
-    from agentfox.core.models import Decision, Tool
-    from agentfox.platform.registry.service import tool_input_schema
-
-    tool = session.scalar(select(Tool).where(Tool.key == tool_key))
-    declared = set((tool_input_schema(tool).get("properties") or {}).keys()) if tool else set()
-    if declared:
-        return declared
-    seen: set[str] = set()
-    recent = session.scalars(
-        select(Decision)
-        .where(Decision.tool_key == tool_key)
-        .order_by(Decision.created_at.desc())
-        .limit(50)
-    )
-    for decision in recent:
-        seen |= set(((decision.taint_summary_json or {}).get("arguments_snapshot") or {}).keys())
-    return seen or None
 
 
 def _field_warnings(session: Session, compiled: dict[str, Any]) -> dict[str, Any]:

@@ -18,6 +18,8 @@ export const dynamic = "force-dynamic";
  */
 export default async function Settings({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams;
+  // Checks was a Settings tab that only linked to Policies; it lives there now.
+  if (tab === "checks") redirect("/app/policies?tab=checks");
   if (tab !== "alerts") redirect("/app/start?tab=connect");
 
   const [slack, monitors] = await Promise.all([

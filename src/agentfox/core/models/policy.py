@@ -195,6 +195,34 @@ class FrameworkMapping(Base, TimestampMixin):
     reviewed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class ControlReview(Base, TimestampMixin):
+    """A person's attestation of one control against one framework, at a point in time.
+
+    Computed status (`ControlStatus`) says what the telemetry found; this says what a
+    named reviewer concluded after looking at that evidence. The evidence they looked
+    at is frozen in `evidence_json`, so the attestation can be argued with later, and
+    it lapses at `expires_at`: an attestation nobody has renewed is not a current one.
+    Rows are never updated. A new review supersedes the previous one.
+    """
+
+    __tablename__ = "control_reviews"
+    __table_args__ = (Index("ix_ctlreview_key_fw_time", "control_key", "framework", "reviewed_at"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("crv"))
+    control_key: Mapped[str] = mapped_column(String(32), index=True)
+    framework: Mapped[str] = mapped_column(String(32), index=True)
+    #: meets | partially_meets | does_not_meet | not_applicable
+    outcome: Mapped[str] = mapped_column(String(24))
+    note: Mapped[str] = mapped_column(Text, default="")
+    reviewer: Mapped[str] = mapped_column(String(120))
+    reviewed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    #: The computed evidence the reviewer saw: status, rationale, rules, last fired.
+    evidence_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    #: The audit-chain entry recording this review.
+    audit_seq: Mapped[int | None] = mapped_column(Integer)
+
+
 class ControlStatus(Base, TimestampMixin):
     """Computed from telemetry, never attested."""
 

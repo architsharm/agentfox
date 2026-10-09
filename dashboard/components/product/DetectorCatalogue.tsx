@@ -56,23 +56,10 @@ export function DetectorCatalogue({ detectors }: { detectors: Detector[] }) {
   const rows = [...detectors].sort(
     (a, b) => rank(a) - rank(b) || a.key.localeCompare(b.key),
   );
-  const installable = rows.filter((d) => !d.available && d.install).length;
 
   return (
-    <details className="rt-more" style={{ marginTop: 18 }}>
-      <summary>
-        Every check available ({detectors.length})
-        {installable > 0 && ` — ${installable} one command away`}
-      </summary>
-
-      <p className="sub">
-        What each check looks at, whether it is running here, and what it costs
-        when it does. Checks wrapped from other projects report through this
-        product&rsquo;s own latency budget and precision tracking, so a number
-        beside one of them was measured on your traffic.
-      </p>
-
-      <div className="panel scroll-x">
+    <div>
+      <div className="k-card k-flush"><div className="k-card-body">
         <table>
           <thead>
             <tr>
@@ -124,7 +111,7 @@ export function DetectorCatalogue({ detectors }: { detectors: Detector[] }) {
                   {/* Only a check that has actually run has a number. An empty
                       cell here is honest; a 0.0 would read as "instant". */}
                   <td className="num small muted">
-                    {d.stats?.runs ? `${d.stats.avg_ms?.toFixed(2)}ms` : "—"}
+                    {d.stats?.runs ? `${d.stats.avg_ms?.toFixed(2)}ms` : "-"}
                   </td>
                   <td className="small wrap" style={{ maxWidth: 300 }}>
                     {on ? (
@@ -134,7 +121,7 @@ export function DetectorCatalogue({ detectors }: { detectors: Detector[] }) {
                     ) : d.install ? (
                       <code className="mono">pip install {d.install}</code>
                     ) : (
-                      <span className="muted small">{d.unavailable_reason ? "see below" : "—"}</span>
+                      <span className="muted small">{d.unavailable_reason || "-"}</span>
                     )}
                   </td>
                 </tr>
@@ -142,20 +129,16 @@ export function DetectorCatalogue({ detectors }: { detectors: Detector[] }) {
             })}
           </tbody>
         </table>
-      </div>
+      </div></div>
 
-      <p className="page-foot">
+      <p className="k-muted adv-foot">
         Checks from the{" "}
         <a href="https://guardrailsai.com/hub" target="_blank" rel="noreferrer">
           Guardrails AI Hub
         </a>{" "}
-        carry their own licences, independent of that project&rsquo;s Apache-2.0
-        core, so none ships enabled — installing one is a deliberate act. They
-        report into this product&rsquo;s taxonomy, so a jailbreak found by a
-        wrapped check fires the same policy rule as one found by ours, with no new
-        rule to write. Their telemetry is switched off before any of them runs:
-        see <Link href="/app/glossary">the glossary</Link> on egress.
+        carry their own licences, so none ships enabled. They report into the same rules as ours, with
+        telemetry off.
       </p>
-    </details>
+    </div>
   );
 }

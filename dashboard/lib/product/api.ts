@@ -8,6 +8,7 @@
  */
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { apiBase, env } from "@/lib/env";
 
 const BASE = apiBase();
@@ -78,7 +79,13 @@ export function apiErrorProps(e: unknown): { error: string; status?: number } {
 export async function safeApi<T = any>(path: string, fallback: T): Promise<T> {
   try {
     return await api<T>(path);
-  } catch {
+  } catch (e) {
+    // A signed-in session the gateway no longer accepts is not "no data": every page
+    // would render its empty state ("Nothing is waiting", "No decisions yet") over
+    // records that exist. Send the person to sign in again instead.
+    if (e instanceof ApiError && e.status === 401 && (await cookies()).get(SESSION_COOKIE)?.value) {
+      redirect("/login?session=expired");
+    }
     return fallback;
   }
 }

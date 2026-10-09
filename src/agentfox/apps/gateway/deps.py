@@ -56,6 +56,13 @@ WRITE_ROLES: dict[str, set[str]] = {
     # Enabling live probes points adversarial traffic at a running agent; the opt-in
     # is recorded with the caller's name, and it is a security call to make.
     "probes": {"owner", "admin", "security"},
+    # Attesting a control against a framework: the people who answer for compliance,
+    # and the auditor whose job the attestation is. Security and developers run the
+    # controls; they do not sign off their own work.
+    "control_review": {"owner", "admin", "compliance", "auditor"},
+    # Changing how long data is kept, or purging now, destroys records. Not an
+    # auditor's call (they read the record), and not security's alone.
+    "retention": {"owner", "admin", "compliance"},
 }
 
 ALL_ROLES = {"owner", "admin", "security", "compliance", "developer", "auditor"}

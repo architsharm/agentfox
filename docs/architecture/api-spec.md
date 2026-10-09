@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-254 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+261 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -136,6 +136,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/activity` | Activity |
 | `GET` | `/api/metrics/breakdown` | Breakdown |
 | `GET` | `/api/metrics/errors` | Steps that failed — a tool that threw, a model call that errored — grouped. |
+| `GET` | `/api/metrics/quality` | Is this agent giving right answers: every quality signal already recorded for it. |
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
@@ -165,6 +166,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/protection/preview` | Replay this agent's last week against the protections, as if enforcing. |
 | `POST` | `/api/agents/{slug}/quarantine` | Stop an agent while you investigate. Reversible and audited. |
 | `POST` | `/api/agents/{slug}/resume` | Restart a stopped agent. Deliberately the same role as `kill` — restarting |
+| `GET` | `/api/agents/{slug}/tools` | The tools this agent can be tested with: granted, in its code, or seen called, |
 | `POST` | `/api/discovery/scan` | Sweep: lineage, unowned agents, registry drift, identity posture, delegation shape. |
 | `GET` | `/api/discovery/shadow` | Shadow Agents |
 | `POST` | `/api/discovery/submit` | Submit a redacted local scan for review |
@@ -172,6 +174,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/findings/types` | Every finding type: its title, default severity, what it means and who raises it. |
 | `GET` | `/api/findings/{finding_id}` | Get Finding |
 | `PATCH` | `/api/findings/{finding_id}` | Patch Finding |
+| `POST` | `/api/findings/{finding_id}/remedies/{key}` | Take one of the issue's actions. Audited; the issue closes itself if the |
 | `GET` | `/api/mcp-servers` | List Mcp |
 | `POST` | `/api/mcp-servers` | Register an MCP server, and start monitoring it for tool drift. |
 | `POST` | `/api/mcp-servers/{name}/scan` | Scan Mcp |
@@ -279,7 +282,10 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/evidence/{package_id}/download` | Download Evidence |
 | `GET` | `/api/export/siem` | Export Siem |
 | `POST` | `/api/legal-holds` | Place Hold |
-| `GET` | `/api/retention` | Retention |
+| `GET` | `/api/retention` | Every data class with its period, the last purge, the next one, and legal holds. |
+| `POST` | `/api/retention/purge` | Run the retention purge now, through the same job the daily schedule runs. |
+| `GET` | `/api/retention/runs` | Retention Runs |
+| `PUT` | `/api/retention/{data_class}` | Change how long one data class is kept. Audited as `operator.retention.changed`. |
 | `GET` | `/api/traces` | List Traces |
 | `GET` | `/api/traces/resolve` | Their run id → our governance decision. |
 | `GET` | `/api/traces/{trace_id}` | Get Trace |
@@ -293,9 +299,10 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/controls` | List Controls |
 | `POST` | `/api/controls/compute` | Compute Controls |
 | `POST` | `/api/controls/sync` | Load the static control catalog and obligation calendar from YAML into this |
+| `GET` | `/api/controls/{key}` | One control: what it checks, the evidence computed for it, where it is mapped, |
+| `POST` | `/api/controls/{key}/reviews` | Attest one control against one framework. The reviewer is always the caller. |
 | `GET` | `/api/frameworks` | Frameworks |
-| `POST` | `/api/frameworks/review` | Step 3 of the mapping review gate. |
-| `GET` | `/api/frameworks/{key}` | Framework |
+| `GET` | `/api/frameworks/{key}` | One framework: its requirements, the controls mapped to each with live status |
 | `GET` | `/api/obligations` | Obligations |
 | `POST` | `/api/risk/assessments/{slug}` | Create Assessment |
 | `GET` | `/api/risk/classify/{slug}` | Classify Agent |

@@ -6,6 +6,7 @@ import datetime as dt
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -631,14 +632,37 @@ def list_finding_types(_user: User = Depends(current_user)) -> dict[str, Any]:
     return {"types": [entry.to_json() for entry in all_types()]}
 
 
+def _may_take(user: User, family: str | None) -> bool:
+    """Whether this caller may take a remedy needing ``family``'s write permission."""
+    from agentfox.capabilities.detection.tuning import LABEL_REFUSED_ROLES
+
+    if family is None:
+        return True
+    if family == "feedback":
+        return user.role not in LABEL_REFUSED_ROLES
+    return user.role in WRITE_ROLES.get(family, set())
+
+
+def _remedies_json(session: Session, finding: Finding, user: User) -> list[dict[str, Any]]:
+    from agentfox.capabilities.remediation import remedies_for
+
+    return [
+        {**r.to_json(), "allowed": r.kind == "link" or _may_take(user, r.family)}
+        for r in remedies_for(session, finding)
+    ]
+
+
 @router.get("/findings/{finding_id}")
 def get_finding(
-    finding_id: str, session: Session = Depends(db), _user: User = Depends(current_user)
+    finding_id: str, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
     finding = session.get(Finding, finding_id)
     if finding is None:
         raise HTTPException(404, "unknown finding")
     return {
+        # What can be done about it from here: actions the platform takes, and places
+        # the fix is made. `allowed` says whether this caller may take each action.
+        "remedies": _remedies_json(session, finding, user),
         "id": finding.id,
         "type": finding.type,
         "severity": finding.severity,
@@ -658,6 +682,46 @@ def get_finding(
         "created_at": _iso(finding.created_at),
         "resolved_at": _iso(finding.resolved_at),
     }
+
+
+class RemedyIn(BaseModel):
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/findings/{finding_id}/remedies/{key}")
+def take_remedy(
+    finding_id: str,
+    key: str,
+    payload: RemedyIn,
+    session: Session = Depends(db),
+    user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """Take one of the issue's actions. Audited; the issue closes itself if the
+    condition it is about cleared."""
+    from agentfox.capabilities.remediation import RemedyError, apply_remedy
+    from agentfox.capabilities.remediation.remedies import find_remedy
+
+    finding = session.get(Finding, finding_id)
+    if finding is None:
+        raise HTTPException(404, "unknown finding")
+    try:
+        remedy = find_remedy(session, finding, key)
+    except RemedyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if not _may_take(user, remedy.family):
+        allowed = sorted(WRITE_ROLES.get(remedy.family or "", set()))
+        raise HTTPException(
+            403, f"role '{user.role}' may not {remedy.label.lower()}. Permitted: {allowed}."
+        )
+    try:
+        result = apply_remedy(
+            session, finding, key, actor=user.email or user.id, inputs=payload.inputs
+        )
+    except RemedyError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {**result, "remedies": _remedies_json(session, finding, user)}
 
 
 class FindingPatch(BaseModel):
@@ -919,23 +983,40 @@ def list_approvals(
     query = select(ApprovalRequest).order_by(ApprovalRequest.requested_at.desc())
     if status:
         query = query.where(ApprovalRequest.status == status)
+    rows = list(session.scalars(query))
+    resolvers = _resolver_emails(session, rows)
+    return {"approvals": [_approval_json(a, resolvers) for a in rows]}
+
+
+def _resolver_emails(session: Session, rows: list[ApprovalRequest]) -> dict[str, str]:
+    ids = {a.resolver_user_id for a in rows if a.resolver_user_id}
+    if not ids:
+        return {}
+    return {u.id: u.email or u.id for u in session.scalars(select(User).where(User.id.in_(ids)))}
+
+
+def _approval_json(a: ApprovalRequest, resolvers: dict[str, str]) -> dict[str, Any]:
+    """One approval as the Approvals pages show it, including who decided and when.
+
+    `resolver` is null when nobody did: an approval that expired unanswered, or one
+    still pending. `resolved_at` is when its status last changed (approved, denied,
+    expired or used), null while pending.
+    """
     return {
-        "approvals": [
-            {
-                "id": a.id,
-                "agent_id": a.agent_id,
-                "tool": a.tool_key,
-                "arguments": a.arguments_json,
-                "reason": a.reason,
-                "status": a.status,
-                "requested_at": _iso(a.requested_at),
-                "expires_at": _iso(a.expires_at),
-                "trace_id": a.trace_id,
-                "decision_id": a.decision_id,
-                "timeout_action": a.timeout_action,
-            }
-            for a in session.scalars(query)
-        ]
+        "id": a.id,
+        "agent_id": a.agent_id,
+        "tool": a.tool_key,
+        "arguments": a.arguments_json,
+        "reason": a.reason,
+        "status": a.status,
+        "requested_at": _iso(a.requested_at),
+        "expires_at": _iso(a.expires_at),
+        "resolved_at": None if a.status == "pending" else _iso(a.updated_at),
+        "resolver": resolvers.get(a.resolver_user_id or "") or a.resolver_user_id,
+        "rationale": a.resolution_rationale or None,
+        "trace_id": a.trace_id,
+        "decision_id": a.decision_id,
+        "timeout_action": a.timeout_action,
     }
 
 
@@ -963,17 +1044,11 @@ def get_approval(
     ):
         # Not "forbidden": another agent's approval is not this agent's to know of.
         raise HTTPException(404, "unknown approval")
-    return {
-        "id": approval.id,
-        "status": approval.status,
-        "reason": approval.reason,
-        "tool": approval.tool_key,
-        "arguments": approval.arguments_json,
-        "rationale": approval.resolution_rationale,
-        "agent_id": approval.agent_id,
-        "expires_at": _iso(approval.expires_at),
-        "trace_id": approval.trace_id,
-    }
+    body = _approval_json(approval, _resolver_emails(session, [approval]))
+    if isinstance(caller, Identity):
+        # The agent needs the outcome, not which operator decided it.
+        body["resolver"] = None
+    return body
 
 
 class ApprovalDecision(BaseModel):
@@ -1013,6 +1088,15 @@ def _resolve(
         raise HTTPException(409, str(exc)) from exc
     if approval is None:
         raise HTTPException(404, "unknown approval")
+    if approval.status == "expired":
+        # It ran out while the person was deciding. Recording it as their approval (a
+        # 200 the dashboard showed as "Request approved") would be false, and the
+        # expiry is not their act for the chain either. A response rather than a raise,
+        # so the change to "expired" is committed.
+        return JSONResponse(  # type: ignore[return-value]
+            status_code=409,
+            content={"detail": "This approval expired before it was decided."},
+        )
     chain.append(
         session,
         f"approval.{approval.status}",

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, safeApi } from "@/lib/product/api";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -87,7 +88,7 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
   { label: "Threat coverage", href: "/app/coverage", group: "Reports" },
   { label: "Evidence", href: "/app/reports?tab=evidence", group: "Reports" },
   { label: "Audit log", href: "/app/reports?tab=audit", group: "Reports" },
-  { label: "Connect GitHub", href: "/app/start?tab=connect", group: "Settings" },
+  { label: "Connections", href: "/app/start?tab=connect", group: "Settings" },
   { label: "API keys", href: "/app/start?tab=tokens", group: "Settings" },
   { label: "Alerts", href: "/app/settings?tab=alerts", group: "Settings" },
   { label: "Verified sources", href: "/app/sources", group: "Settings" },
@@ -98,17 +99,28 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
 const NAV_FLAT = NAV.flatMap(({ group, items }) =>
   items.map(([label, href]) => ({ label, href, group: group || "Home" })),
 ).concat(NAV_SEARCH_ONLY);
+/**
+ * The topbar's data: who is signed in and what needs attention. Its own Suspense
+ * boundary, because the layout awaiting it held back every page under /app, and
+ * its loading state, until both calls had answered.
+ */
+async function TopbarData() {
+  const [me, attention] = await Promise.all([
+    safeApi<any>("/api/me", null),
+    safeApi<any>("/api/attention", { items: [], total: 0 }),
+  ]);
+  return (
+    <>
+      {attention?.counts && <TopbarStats counts={attention.counts} />}
+      <CommandSearch nav={NAV_FLAT} />
+      <NotificationsBell items={attention?.items?.slice(0, 6) || []} total={attention?.total || 0} />
+      {me && <AccountMenu email={me.email} workspace={me.workspace} role={me.role} />}
+    </>
+  );
+}
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const signedIn = Boolean((await cookies()).get(SESSION_COOKIE)?.value);
-
-  let me: any = null;
-  let attention: any = null;
-  if (signedIn) {
-    [me, attention] = await Promise.all([
-      safeApi("/api/me", null),
-      safeApi("/api/attention", { items: [], total: 0 }),
-    ]);
-  }
 
   return (
     <div className="shell">
@@ -127,10 +139,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         {signedIn && (
           <div className="topbar">
-            {attention?.counts && <TopbarStats counts={attention.counts} />}
-            <CommandSearch nav={NAV_FLAT} />
-            <NotificationsBell items={attention?.items?.slice(0, 6) || []} total={attention?.total || 0} />
-            {me && <AccountMenu email={me.email} workspace={me.workspace} role={me.role} />}
+            <Suspense fallback={<CommandSearch nav={NAV_FLAT} />}>
+              <TopbarData />
+            </Suspense>
           </div>
         )}
         <main>{children}</main>

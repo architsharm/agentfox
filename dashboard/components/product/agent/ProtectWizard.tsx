@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
-import { TryIt } from "@/components/product/test/TryIt";
+import { TryIt, type AgentTool } from "@/components/product/test/TryIt";
 
 type Protection = {
   key: string;
@@ -44,7 +44,7 @@ export function ProtectWizard({
   tools,
 }: {
   initial: ProtectionState;
-  tools: { key: string; name?: string }[];
+  tools: AgentTool[];
 }) {
   const router = useRouter();
   const fresh = initial.protections.every((p) => p.level === "off");

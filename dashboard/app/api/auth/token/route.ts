@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiBase } from "@/lib/env";
 import { SESSION_COOKIE } from "@/lib/product/api";
+import { requestOrigin } from "@/lib/product/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ function fail(origin: string, message: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  const origin = requestOrigin(req);
   // Login CSRF: another site must not be able to sign this browser in as *its*
   // account. A same-origin form post always carries a matching Origin header.
   const sentFrom = req.headers.get("origin");

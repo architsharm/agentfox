@@ -93,7 +93,7 @@ rules:
     controls: [NOM-IAM-02]
 
   - id: capability.approval_required
-    description: This specific action is allowed, but only with a human's sign-off first — see Approvals.
+    description: This specific action is allowed, but only with a human's sign-off first - see Approvals.
     when:
       capability: requires_approval
     effect: escalate
@@ -131,7 +131,7 @@ rules:
       loop_detected: true
     effect: block
     severity: medium
-    reason: "The same tool has been called repeatedly in one execution path — runaway loop."
+    reason: "The same tool has been called repeatedly in one execution path - runaway loop."
     controls: [NOM-RTG-08]
 
   # --- Completion: is the agent allowed to stop? ------------------------
@@ -209,7 +209,7 @@ rules:
   # nonetheless be the one to authorise, and because a containment pack that
   # hard-fails `terraform apply` gets removed rather than tuned.
   - id: action.remote_code_execution
-    description: A download piped straight into a shell or interpreter — code nobody reviewed.
+    description: A download piped straight into a shell or interpreter - code nobody reviewed.
     when:
       action_risk: "remote-code-execution"
     effect: block
@@ -247,7 +247,7 @@ rules:
     controls: [NOM-RTG-04]
 
   - id: action.history_rewrite
-    description: Destroying local history — a hard reset, a force clean, a dropped stash.
+    description: Destroying local history - a hard reset, a force clean, a dropped stash.
     when:
       action_risk: "history-rewrite"
     effect: escalate
@@ -341,7 +341,7 @@ rules:
       action_risk: "undeclared-table"
     effect: escalate
     severity: high
-    reason: "This query touches a table with no declared scope rule — reported, not assumed safe."
+    reason: "This query touches a table with no declared scope rule - reported, not assumed safe."
     controls: [NOM-RTG-04]
 
   # --- Injection reaching a tool boundary ------------------------------

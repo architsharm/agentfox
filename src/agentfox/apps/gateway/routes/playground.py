@@ -25,6 +25,7 @@ should happen, which in observe mode is the one that did not take effect). See
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -41,6 +42,7 @@ from agentfox.apps.gateway.playground_sessions import (
 from agentfox.apps.gateway.routes.playground_deps import playground_session
 from agentfox.apps.gateway.verdicts import with_verdict_aliases
 from agentfox.core.models import Agent
+from agentfox.fixtures import sandbox_agents
 from agentfox.fixtures.seed import AGENTS, CAPABILITIES, POISONED_DOCUMENT, TOOLS
 
 router = APIRouter(prefix="/api/playground", tags=["playground"])
@@ -74,8 +76,16 @@ def create_session(request: Request) -> dict[str, Any]:
     return {
         "session_id": record.id,
         "expires_in_seconds": SESSION_TTL_SECONDS,
-        "agents": [{"slug": a["slug"], "name": a["name"], "purpose": a["purpose"]} for a in AGENTS],
-        "tools": {t["key"]: {"name": t["name"], "impact": t["impact"]} for t in TOOLS},
+        # The agents modelled on live-tested apps first, each with its tools and the
+        # prompts that show what its policy does; then the demo world's own agents.
+        "agents": [
+            *sandbox_agents.describe(),
+            *({"slug": a["slug"], "name": a["name"], "purpose": a["purpose"]} for a in AGENTS),
+        ],
+        "tools": {
+            **{t["key"]: {"name": t["name"], "impact": t["impact"]} for t in TOOLS},
+            **sandbox_agents.tools(),
+        },
         "capabilities": CAPABILITIES,
         "poisoned_document": POISONED_DOCUMENT,
         "mode": "observe",
@@ -125,6 +135,7 @@ def chat(
             model="echo-1",
             session_id=session_id,
             intent="playground chat",
+            environment=sandbox_agents.ENVIRONMENT,
         )
         record.remember_trace(session, result.trace_id)
 
@@ -168,6 +179,11 @@ def tool_call(
     Tiers C (parameter exploitation) and D (excessive agency) don't need an LLM to
     decide to misbehave; the visitor decides.
 
+    A sandbox agent's tools are simulated (`fixtures/sandbox_agents.py`): when the
+    call is allowed its deterministic result is produced, then checked as a tool
+    result. `result` is null when the result was withheld (`result_withheld`), and
+    `result_verdict` is that check.
+
     `verdict`/`applied_verdict` is what happened to this call;
     `effective_verdict`/`would_be_verdict` is what the bound policy says should
     happen, which in observe mode is the one that did not take effect.
@@ -185,6 +201,7 @@ def tool_call(
             agent_slug=slugify(payload.agent),
             session_id=session_id,
             intent=payload.intent,
+            environment=sandbox_agents.ENVIRONMENT,
         )
         result = enforcer.guard_tool_call(
             agent_slug=payload.agent,
@@ -195,7 +212,30 @@ def tool_call(
             trace=trace,
         )
         record.remember_trace(session, result.trace_id or trace.id)
-        return with_verdict_aliases(result.to_json())
+        body = with_verdict_aliases(result.to_json())
+
+        output = None
+        if result.verdict == "allow":
+            output = sandbox_agents.simulate(payload.agent, payload.tool, payload.arguments)
+        if output is None:
+            return body
+        # Checked the way a tool result is before a model reads it.
+        checked = enforcer.check_content(
+            payload.agent,
+            output if isinstance(output, str) else json.dumps(output),
+            surface="tool_result",
+            taint_source="tool_result",
+            trace=trace,
+        )
+        withheld = checked["verdict"] not in ("allow", "redact", "mask", "tokenize")
+        if checked.get("content") and not withheld:
+            output = checked["content"]
+        return {
+            **body,
+            "result": None if withheld else output,
+            "result_withheld": withheld,
+            "result_verdict": with_verdict_aliases(checked),
+        }
 
 
 class PlaygroundEnforceRequest(BaseModel):

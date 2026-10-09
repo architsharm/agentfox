@@ -40,7 +40,6 @@ from agentfox.core.models import (
     EvalSuite,
     RedTeamCampaign,
     RedTeamFinding,
-    Trace,
     User,
 )
 from agentfox.core.tenancy import session_org
@@ -161,44 +160,13 @@ def promote_trace(
     The shortest path from "this went wrong in production" to "this can never ship
     again" is the feature that makes an eval suite grow instead of rot.
     """
-    from agentfox.capabilities.detection.tuning import explain_recorded
-    from agentfox.platform.ledger.trace import full_trace
+    from agentfox.capabilities.evaluation.cases import promote_trace as promote
 
     suite = _suite(session, key)
-    trace = session.get(Trace, trace_id)
-    if trace is None:
-        raise HTTPException(404, "unknown trace")
-    detail = full_trace(session, trace_id, explain=explain_recorded) or {}
-
-    retrieved: list[str] = []
-    output = ""
-    for span in detail.get("spans", []):
-        attrs = span.get("attributes") or {}
-        if attrs.get("agentfox.output"):
-            output = str(attrs["agentfox.output"])
-        if span.get("kind") == "retrieval" and attrs.get("agentfox.content"):
-            retrieved.append(str(attrs["agentfox.content"]))
-
-    case = EvalCase(
-        suite_id=suite.id,
-        input_json={"prompt": trace.intent or ""},
-        expected_json={"goal": trace.intent or ""},
-        context_json={"retrieved": retrieved, "observed_output": output},
-        labels=["from-production", f"verdict:{trace.verdict}"],
-        split="regression",
-        source_trace_id=trace_id,
-    )
-    session.add(case)
-    session.flush()
-    chain.append(
-        session,
-        "eval.case_promoted",
-        actor_type="user",
-        actor_id=user.email or user.id,
-        subject_type="eval_case",
-        subject_id=case.id,
-        payload={"suite": key, "trace_id": trace_id},
-    )
+    try:
+        case = promote(session, suite, trace_id, actor=user.email or user.id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
     return {"id": case.id, "suite": key, "source_trace_id": trace_id}
 
 

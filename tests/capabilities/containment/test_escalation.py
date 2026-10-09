@@ -264,6 +264,24 @@ def test_detection_raises_a_finding_and_a_retroactive_handoff(seeded, agent_id):
     assert handoff.due_at is not None
 
 
+def test_a_retroactive_handoff_still_counts_as_missed(seeded, agent_id):
+    """The Hand-offs tab read "0.0% missed, none in this window" right after a scan
+    had queued hand-offs for conversations nobody escalated live."""
+    _conversation(
+        seeded, agent_id, [("I want a manager", "I can assist.", {})], session_id="retro-2"
+    )
+    first = detect_missed_escalation(seeded)
+    again = detect_missed_escalation(seeded, raise_findings=False)
+    assert [m["session_id"] for m in first["missed"]] == ["retro-2"]
+    assert [m["session_id"] for m in again["missed"]] == ["retro-2"]
+    assert again["missed"][0]["handed_off"] is True
+    assert again["missed_rate"] > 0
+    # Acting again changes nothing: one finding, one hand-off.
+    detect_missed_escalation(seeded)
+    assert seeded.query(Handoff).filter_by(session_id="retro-2").count() == 1
+    assert seeded.query(Finding).filter_by(type="missed_escalation").count() == 1
+
+
 def test_scanning_twice_does_not_duplicate(seeded, agent_id):
     _conversation(seeded, agent_id, [("escalate", "ok", {})], session_id="dupe-1")
     detect_missed_escalation(seeded)
@@ -527,6 +545,62 @@ def test_gateway_completions_record_a_conversation_turn(client):
     assert turn.signals_json.get("explicit_request") is True
 
 
+def test_a_streamed_completion_records_its_turn(client):
+    """Only the buffered path recorded turns; a streaming app's replies never reached
+    escalation governance."""
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "echo-1",
+            "stream": True,
+            "messages": [{"role": "user", "content": "I want to speak to a manager"}],
+        },
+        headers={"X-AgentFox-Agent": "support-triage", "X-AgentFox-Session": "gw-stream-1"},
+    )
+    assert response.status_code == 200
+    assert "[DONE]" in response.text
+    with session_scope() as session:
+        turn = session.query(ConversationTurn).filter_by(session_id="gw-stream-1").one()
+    assert turn.user_text == "I want to speak to a manager"
+    assert turn.agent_text  # the streamed reply, assembled
+    assert turn.signals_json.get("explicit_request") is True
+
+
+def test_a_streamed_anthropic_completion_records_its_turn(client):
+    response = client.post(
+        "/v1/messages",
+        json={
+            "model": "echo-1",
+            "stream": True,
+            "max_tokens": 64,
+            "messages": [{"role": "user", "content": "I want to speak to a manager"}],
+        },
+        headers={"X-AgentFox-Agent": "support-triage", "X-AgentFox-Session": "gw-stream-a"},
+    )
+    assert response.status_code == 200
+    with session_scope() as session:
+        turn = session.query(ConversationTurn).filter_by(session_id="gw-stream-a").one()
+    assert turn.user_text == "I want to speak to a manager"
+    assert turn.agent_text
+
+
+def test_a_json_classifier_call_is_not_a_turn(client):
+    """An app's own guardrail call (JSON out) on the same user message is not the agent
+    replying; recorded, every message counted as said twice."""
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "echo-1",
+            "response_format": {"type": "json_object"},
+            "messages": [{"role": "user", "content": "I want to speak to a manager"}],
+        },
+        headers={"X-AgentFox-Agent": "support-triage", "X-AgentFox-Session": "gw-json-1"},
+    )
+    assert response.status_code == 200
+    with session_scope() as session:
+        assert session.query(ConversationTurn).filter_by(session_id="gw-json-1").count() == 0
+
+
 def test_policy_writes_require_the_policy_role(client):
     response = client.put(
         "/api/escalation/policy",
@@ -557,6 +631,11 @@ def test_an_enforcing_policy_hands_off_live_on_the_qualifying_turn(seeded, agent
     )
     handoff = seeded.query(Handoff).filter_by(session_id="live-1").one()
     assert handoff.detected_retroactively is False
+    # Read back, the transcript says it was escalated, not "qualified and missed"
+    # (the conversation page showed a miss above its own hand-off).
+    turns = seeded.query(ConversationTurn).filter_by(session_id="live-1").all()
+    replay = assess(turns, get_policy(seeded, agent_id))
+    assert replay.escalated is True and replay.missed is False
     # A later turn on the same conversation does not queue a second one.
     _conversation(seeded, agent_id, [("hello?", "Still here.", {})], session_id="live-1")
     assert seeded.query(Handoff).filter_by(session_id="live-1").count() == 1

@@ -166,13 +166,19 @@ const RULE_TITLES: Record<string, string> = {
   "intent.misaligned": "Actions off the user's task",
   "code.insecure": "Insecure code",
   "grounding.unsupported": "Answers not backed by sources",
+  "answerability.unknowable": "Questions nobody can know (abstained)",
+  "answerability.out_of_coverage": "Outside the history it covers (abstained)",
+  "answerability.out_of_scope_entity": "About something it does not know (abstained)",
+  "answerability.unsupported_question_type": "A kind of question it may not answer (abstained)",
+  "answerability.out_of_domain": "Outside its topics (abstained)",
 };
 
 /** A rule's name. Custom rules are named by their author: pass the rule's description. */
 export function ruleTitle(ruleId: string, description?: string): string {
   if (RULE_TITLES[ruleId]) return RULE_TITLES[ruleId];
-  // A fired custom rule carries its name in its reason: "<name> — your rule".
-  if (ruleId.startsWith("custom.") && description) return description.split(" — your rule")[0];
+  // A fired custom rule carries its name in its reason: "<name>: your rule"
+  // (older saves: "<name> — your rule").
+  if (ruleId.startsWith("custom.") && description) return description.split(/:\s*your rule| — your rule/)[0];
   const tail = ruleId.split(".").slice(1).join(" ") || ruleId;
   const words = tail.replace(/[_-]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);

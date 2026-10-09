@@ -155,7 +155,7 @@ def custom_rule_fields(
     tool: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
     """The arguments a tool is known to take, to suggest as a condition's field."""
-    from agentfox.apps.gateway.routes.library import known_arguments
+    from agentfox.platform.registry.service import known_arguments
 
     return {"tool": tool, "fields": sorted(known_arguments(session, tool) or [])}
 
