@@ -12,7 +12,7 @@ export default async function Protect({ params }: { params: Promise<{ slug: stri
   const slug = decodeURIComponent(raw);
   const [state, tools] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/protection`, null),
-    safeApi<any>("/api/tools", { tools: [] }),
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/tools`, { tools: [] }),
   ]);
   return (
     <>
@@ -21,7 +21,7 @@ export default async function Protect({ params }: { params: Promise<{ slug: stri
         {state ? (
           <ProtectWizard
             initial={state}
-            tools={(tools.tools || []).filter((t: any) => !t.key.startsWith("redteam.")).map((t: any) => ({ key: t.key, name: t.name }))}
+            tools={tools.tools || []}
           />
         ) : (
           <Empty>This agent could not be loaded.</Empty>

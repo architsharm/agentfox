@@ -21,7 +21,6 @@ import {
   ago,
   href,
   num,
-  pctOf,
 } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
@@ -59,7 +58,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   const tab = TABS.some((t) => t.key === requested) ? requested! : "overview";
   // One round of requests, in parallel: the range (when the URL names none), the
   // agent, and its kill-switch state.
-  const needsRange = ["overview", "rules", "activity"].includes(tab);
+  const needsRange = ["overview", "rules", "activity", "quality"].includes(tab);
   const [, outcome, controls] = await Promise.all([
     needsRange ? ensureRange(`/app/agents/${encodeURIComponent(slug)}`, sp, slug) : Promise.resolve(),
     api(`/api/agents/${encodeURIComponent(slug)}/posture`).then(
@@ -135,7 +134,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
       {tab === "access" && <Access slug={slug} prefill={sp.grant} />}
       {tab === "rules" && <Rules f={f} slug={slug} />}
       {tab === "activity" && <Activity f={f} outcome={sp.outcome} />}
-      {tab === "quality" && <Quality slug={slug} posture={posture} />}
+      {tab === "quality" && <Quality f={f} />}
       {tab === "settings" && <Settings a={a} state={state} />}
     </>
     </RangeProvider>
@@ -403,20 +402,202 @@ async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
   );
 }
 
-async function Quality({ slug, posture }: { slug: string; posture: any }) {
-  const report = await safeApi<any>(`/api/escalation/report?agent=${encodeURIComponent(slug)}`, null);
-  const slos: any[] = posture.slos || [];
+const FEEDBACK_LABEL: Record<string, string> = { false_positive: "False alarm", true_positive: "Confirmed", false_negative: "Missed" };
+
+const pct = (v?: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+
+async function Quality({ f }: { f: Filters }) {
+  const slug = f.agent!;
+  const q = await safeApi<any>(`/api/metrics/quality?${new URLSearchParams({ agent: slug, range: f.range })}`, null);
+  if (!q) {
+    return (
+      <Card>
+        <Empty>Quality could not be loaded.</Empty>
+      </Card>
+    );
+  }
+  const agentHref = (tab: string) => href(`/app/agents/${encodeURIComponent(slug)}`, { tab, range: f.range === "7d" ? undefined : f.range });
+  const wrong = q.wrong_answers;
+  const failed = q.failed_steps;
+  const runs: any[] = q.evals.runs || [];
+  const slos: any[] = q.evals.slos || [];
+  const labels = q.feedback.labels || {};
+  const feedbackTotal = Object.values(labels).reduce((a: number, b: any) => a + Number(b || 0), 0) as number;
+  const last = runs[0];
+  const scoreForm = (label: string, primary = false) => (
+    <form action="/api/eval/online" method="POST">
+      <input type="hidden" name="agent" value={slug} />
+      <input type="hidden" name="since_days" value={RANGE_DAYS[f.range]} />
+      <input type="hidden" name="return_to" value={agentHref("quality")} />
+      <button type="submit" className={primary ? "k-btn-primary" : "k-btn"}>{label}</button>
+    </form>
+  );
+  const rateHint = (n: number) => (q.requests ? `${num(n)} of ${num(q.requests)} requests` : "No requests in this period");
+
   return (
     <>
-      {report && (
-        <Grid cols={4}>
-          <Kpi label="Hand-offs to people" value={num(report.handoffs)} />
-          <Kpi label="Missed hand-offs" value={num(report.missed_escalations)} tone={report.missed_escalations ? "bad" : undefined} hint="Conversations that should have reached a person and didn't." />
-          <Kpi label="False resolutions" value={num(report.false_resolutions)} hint="Marked resolved when the problem wasn't." />
-          <Kpi label="Missed rate" value={pctOf(report.missed_escalations, report.qualified_for_escalation || 0)} />
-        </Grid>
+      <FilterBar />
+      <Grid cols={4}>
+        <Kpi
+          label="Wrong answers"
+          value={q.checked ? pct(wrong.rate) : "Not checked"}
+          tone={wrong.requests ? "bad" : undefined}
+          spark={q.trend.wrong_answers}
+          hint={q.checked ? rateHint(wrong.requests) : "No rule checks answers for this agent."}
+          href="#wrong"
+        />
+        <Kpi label="Failed steps" value={pct(failed.rate)} tone={failed.requests ? "bad" : undefined} spark={q.trend.failed_steps} hint={rateHint(failed.requests)} href={runsHref(f, { errors: true })} />
+        <Kpi label="Scored pass rate" value={last ? pct(last.pass_rate) : "Not scored"} tone={last?.pass_rate != null && last.pass_rate < 0.9 ? "warn" : undefined} hint={last ? `Last scored ${ago(last.created_at)}` : "Score recent traffic below."} href="#scored" />
+        <Kpi label="People said wrong" value={num(labels.false_negative || 0)} hint={`${num(feedbackTotal)} labels in this period`} href="#feedback" />
+      </Grid>
+
+      {q.findings.length > 0 && (
+        <Card title="Open quality issues" flush action={<Link href={href("/app/findings", { agent: slug })}>All issues</Link>}>
+          <ul className="k-list">
+            {q.findings.slice(0, 6).map((x: any) => (
+              <li key={x.id}>
+                <div className="k-list-main">
+                  <Link href={`/app/findings/${x.id}`}>{x.title}</Link>
+                </div>
+                <SeverityPill value={x.severity} />
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
-      <Card title="Reliability targets" action={<Link href="/app/test?tab=suites">Tests</Link>} flush>
+
+      <div id="wrong" />
+      <Card title="Wrong answers caught" hint="Unsupported claims, refusals outside what it may answer, wrong format, unverified completion, made-up tools." flush>
+        {wrong.rules.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>Check</th>
+                <th className="num">Fired</th>
+                <th className="num">Watching</th>
+                <th>Trend</th>
+                <th className="tight">Last</th>
+              </tr>
+            </thead>
+            <tbody>
+              {wrong.rules.map((r: any) => (
+                <tr key={r.rule_id}>
+                  <td>
+                    <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(r.rule_id)}`}>{ruleTitle(r.rule_id)}</Link>
+                  </td>
+                  <td className="num"><Link href={runsHref(f, { rule: r.rule_id })}>{num(r.fires)}</Link></td>
+                  <td className="num">{r.watched ? <Pill tone="outline">{num(r.watched)}</Pill> : "0"}</td>
+                  <td><Sparkline values={r.series} /></td>
+                  <td className="tight muted">{r.sample_trace_id ? <Link href={`/app/traces/${r.sample_trace_id}`}>{ago(r.last_fired)}</Link> : ago(r.last_fired)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : q.checked ? (
+          <Empty action={<Link className="k-btn" href={agentHref("access")}>Set what it may answer</Link>}>No wrong answers caught in this period.</Empty>
+        ) : (
+          <Empty action={<Link className="k-btn-primary" href={agentHref("access")}>Set what it may answer</Link>}>Nothing checks this agent&apos;s answers yet.</Empty>
+        )}
+      </Card>
+
+      <Card title="Failed steps" flush>
+        {failed.rows.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th className="num">Count</th>
+                <th className="tight">Last</th>
+              </tr>
+            </thead>
+            <tbody>
+              {failed.rows.map((e: any) => (
+                <tr key={`${e.kind}-${e.name}`}>
+                  <td>
+                    <Link className="k-name" href={`/app/traces/${e.sample_trace_id}`}>{e.name}</Link>
+                    {e.message && <span className="sub">{e.message}</span>}
+                  </td>
+                  <td className="num">{num(e.count)}</td>
+                  <td className="tight muted">{ago(e.last)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : q.requests ? (
+          <Empty>No failed tool or model calls in this period.</Empty>
+        ) : (
+          <Empty action={<Link className="k-btn" href={agentHref("activity")}>Activity</Link>}>No requests in this period.</Empty>
+        )}
+      </Card>
+
+      <div id="scored" />
+      <Card title="Scored runs" hint="Recent production traffic graded for groundedness, task completion and silent failures." action={runs.length ? scoreForm("Score again") : undefined} flush>
+        {runs.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th className="num">Runs scored</th>
+                <th>Measures</th>
+                <th className="tight">Pass rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runs.map((r: any) => (
+                <tr key={r.id}>
+                  <td className="muted">{ago(r.created_at)}</td>
+                  <td className="num">{num(r.cases || 0)}</td>
+                  <td className="muted">
+                    {Object.entries(r.scorers || {})
+                      .map(([k, v]: [string, any]) => `${k.replace(/_/g, " ")} ${pct(v)}`)
+                      .join(" · ") || "—"}
+                  </td>
+                  <td className="tight">
+                    {r.pass_rate == null ? <span className="k-muted">—</span> : <Pill tone={r.pass_rate >= 0.9 ? "ok" : r.pass_rate >= 0.7 ? "warn" : "bad"}>{pct(r.pass_rate)}</Pill>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <Empty action={scoreForm("Score recent traffic", true)}>Not scored yet.</Empty>
+        )}
+      </Card>
+
+      <Grid cols={2}>
+        <div id="feedback">
+          <Card title="Feedback" flush>
+            {feedbackTotal ? (
+              <ul className="k-list">
+                {(q.feedback.recent || []).map((x: any, i: number) => (
+                  <li key={i}>
+                    <div className="k-list-main">
+                      {x.trace_id ? <Link href={`/app/traces/${x.trace_id}`}>{x.note || x.detector_key || "Run"}</Link> : x.note || x.detector_key || "Run"}
+                      <span className="sub">{x.actor} · {ago(x.at)}</span>
+                    </div>
+                    <Pill tone={x.label === "false_negative" ? "bad" : x.label === "false_positive" ? "warn" : "ok"}>{FEEDBACK_LABEL[x.label] || x.label}</Pill>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Empty action={<Link className="k-btn" href={agentHref("activity")}>Open a run</Link>}>No feedback yet. Label a run from its detail page.</Empty>
+            )}
+          </Card>
+        </div>
+        <Card title="Hand-offs to people">
+          {q.handoffs.handoffs || q.handoffs.qualified ? (
+            <Grid cols={3}>
+              <Kpi label="Handed off" value={num(q.handoffs.handoffs)} />
+              <Kpi label="Missed" value={num(q.handoffs.missed)} tone={q.handoffs.missed ? "bad" : undefined} hint={`of ${num(q.handoffs.qualified)} that needed a person`} />
+              <Kpi label="False resolutions" value={num(q.handoffs.false_resolutions)} tone={q.handoffs.false_resolutions ? "bad" : undefined} />
+            </Grid>
+          ) : (
+            <Empty action={<Link className="k-btn" href="/app/escalation">Set up hand-offs</Link>}>No conversations recorded for hand-off checks.</Empty>
+          )}
+        </Card>
+      </Grid>
+
+      <Card title="Reliability targets" action={<Link href="/app/test?tab=reliability">Targets</Link>} flush>
         {slos.length ? (
           <table className="k-table">
             <thead>
@@ -443,7 +624,7 @@ async function Quality({ slug, posture }: { slug: string; posture: any }) {
             </tbody>
           </table>
         ) : (
-          <Empty action={<Link href="/app/test?tab=suites" className="k-btn">Set a target</Link>}>No reliability targets.</Empty>
+          <Empty action={<Link href="/app/test?tab=reliability" className="k-btn">Set a target</Link>}>No targets yet. Set one to track an error budget.</Empty>
         )}
       </Card>
     </>

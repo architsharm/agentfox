@@ -5,6 +5,7 @@ import { ApiError, api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, NotFound, findingTypeInfo } from "@/components/ui";
 import { Card, Header, Meta, Pill, SeverityPill, ago, num } from "@/components/kit";
 import { FindingEvidence } from "@/components/product/FindingEvidence";
+import { FindingActions, type Remedy } from "@/components/product/FindingActions";
 
 export const metadata: Metadata = appPageMetadata("Issue");
 export const dynamic = "force-dynamic";
@@ -49,6 +50,8 @@ export default async function IssueDetail({
   }
   const type = findingTypeInfo(f.type);
   const st = STATUS[f.status] || { label: f.status, tone: "outline" as const };
+  const remedies: Remedy[] = f.remedies || [];
+  const hasActions = remedies.some((r) => r.kind === "action");
 
   return (
     <>
@@ -75,20 +78,26 @@ export default async function IssueDetail({
       <div style={{ height: 14 }} />
       {review_error && <div className="error">{review_error}</div>}
 
+      {remedies.length > 0 && (
+        <Card title={f.status === "open" ? "Fix" : "Related"} hint={f.status === "open" && hasActions ? "Each action is recorded. The issue closes itself once the problem is gone." : undefined}>
+          <FindingActions findingId={id} remedies={remedies} />
+        </Card>
+      )}
+
       {f.status === "open" && (
-        <Card title="Close this issue">
+        <Card title="Close manually">
           {stillLooksUnresolved(f) && (
             <div className="k-muted" style={{ marginBottom: 10 }}>
-              The evidence still shows the problem. Accept it instead of marking it fixed.
+              The evidence still shows the problem. Accept it instead of marking it resolved.
             </div>
           )}
           <div className="k-form">
             <form action={`/api/findings/${id}`} method="POST" className="k-field">
               <input type="hidden" name="status" value="resolved" />
-              <label htmlFor="fix-note">Fixed</label>
+              <label htmlFor="fix-note">Fixed elsewhere</label>
               <span className="k-pills" style={{ gap: 8 }}>
                 <input id="fix-note" className="k-input" name="note" required placeholder="What fixed it?" style={{ width: 360 }} />
-                <button type="submit" className="k-btn-primary">Mark fixed</button>
+                <button type="submit" className={hasActions ? "k-btn" : "k-btn-primary"}>Mark resolved</button>
               </span>
             </form>
             <form action={`/api/findings/${id}`} method="POST" className="k-field">
@@ -110,7 +119,7 @@ export default async function IssueDetail({
       )}
       {f.status === "resolved" && (
         <Card>
-          <span className="k-muted">Fixed by {f.resolved_by}: </span>
+          <span className="k-muted">Resolved by {f.resolved_by}: </span>
           {f.resolution_note}
         </Card>
       )}

@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 254,
+ "count": 257,
  "routes": [
   {
    "method": "GET",
@@ -1525,6 +1525,35 @@
    "audience": "operator",
    "summary": "Mint (or rotate) an agent's HMAC signing key. Shown once — like an API token, nothing after this call can retrieve the raw value again.",
    "description": "Mint (or rotate) an agent's HMAC signing key. Shown once — like an API\ntoken, nothing after this call can retrieve the raw value again.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/tools",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "The tools this agent can be tested with: granted, in its code, or seen called, each with where it is known from and a blank argument skeleton.",
+   "description": "The tools this agent can be tested with: granted, in its code, or seen called,\neach with where it is known from and a blank argument skeleton.",
    "params": [
     {
      "name": "slug",
@@ -4909,6 +4938,51 @@
    }
   },
   {
+   "method": "POST",
+   "path": "/api/findings/{finding_id}/remedies/{key}",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "Take one of the issue's actions. Audited; the issue closes itself if the condition it is about cleared.",
+   "description": "Take one of the issue's actions. Audited; the issue closes itself if the\ncondition it is about cleared.",
+   "params": [
+    {
+     "name": "finding_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "RemedyIn",
+    "fields": [
+     {
+      "name": "inputs",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
    "method": "GET",
    "path": "/api/frameworks",
    "section": "frameworks",
@@ -6584,6 +6658,41 @@
      "in": "query",
      "required": false,
      "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/metrics/quality",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "Is this agent giving right answers: every quality signal already recorded for it.",
+   "description": "Is this agent giving right answers: every quality signal already recorded for it.\n\n* ``wrong_answers`` — fires of the rules that catch a wrong result (grounding,\n  answerability abstentions, reply format, unverified completion, made-up tools)\n* ``failed_steps`` — tool and model calls that errored\n* ``evals`` — scored runs of its production traffic, and its reliability targets\n* ``feedback`` — what people said about its decisions\n* ``handoffs`` — conversations that should have reached a person\n* ``findings`` — open quality issues\n\n``checked`` says whether any rule looks for wrong results at all, so \"0\" can be\ntold apart from \"nothing is looking\".",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "range",
+     "in": "query",
+     "required": false,
+     "type": "string"
     },
     {
      "name": "authorization",

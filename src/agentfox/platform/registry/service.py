@@ -418,6 +418,60 @@ def tool_input_schema(tool: Tool) -> dict[str, Any]:
     return {k: v for k, v in (tool.schema_json or {}).items() if k not in _MARKER_KEYS}
 
 
+def known_arguments(session: Session, tool_key: str) -> set[str] | None:
+    """The arguments a tool takes: from its declared input schema, else from the calls
+    seen. None when neither says anything."""
+    from agentfox.core.models import Decision
+
+    tool = session.scalar(select(Tool).where(Tool.key == tool_key))
+    declared = set((tool_input_schema(tool).get("properties") or {}).keys()) if tool else set()
+    if declared:
+        return declared
+    seen: set[str] = set()
+    recent = session.scalars(
+        select(Decision)
+        .where(Decision.tool_key == tool_key)
+        .order_by(Decision.created_at.desc())
+        .limit(50)
+    )
+    for decision in recent:
+        seen |= set(((decision.taint_summary_json or {}).get("arguments_snapshot") or {}).keys())
+    return seen or None
+
+
+#: A blank value of each JSON-schema type, for an argument skeleton to fill in.
+_BLANK_BY_TYPE: dict[str, Any] = {
+    "string": "",
+    "integer": 0,
+    "number": 0,
+    "boolean": False,
+    "array": [],
+    "object": {},
+}
+
+
+def argument_skeleton(session: Session, tool_key: str) -> dict[str, Any]:
+    """The tool's arguments with blank values, to prefill a test call.
+
+    Types come from the declared input schema; arguments known only from calls seen
+    are left as empty strings. Never the values a real call carried: those are
+    production data.
+    """
+    known = known_arguments(session, tool_key)
+    if not known:
+        return {}
+    tool = session.scalar(select(Tool).where(Tool.key == tool_key))
+    properties = (tool_input_schema(tool).get("properties") or {}) if tool else {}
+    out: dict[str, Any] = {}
+    for name in sorted(known):
+        spec = properties.get(name) or {}
+        kind = spec.get("type") if isinstance(spec, dict) else None
+        if isinstance(kind, list):
+            kind = next((k for k in kind if k != "null"), None)
+        out[name] = _BLANK_BY_TYPE.get(str(kind), "")
+    return out
+
+
 def is_listed(tool: Tool) -> bool:
     """True when the tool's description and schema came from a tool listing."""
     return bool((tool.schema_json or {}).get(LISTED_KEY))

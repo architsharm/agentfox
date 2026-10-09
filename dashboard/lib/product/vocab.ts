@@ -166,6 +166,11 @@ const RULE_TITLES: Record<string, string> = {
   "intent.misaligned": "Actions off the user's task",
   "code.insecure": "Insecure code",
   "grounding.unsupported": "Answers not backed by sources",
+  "answerability.unknowable": "Questions nobody can know (abstained)",
+  "answerability.out_of_coverage": "Outside the history it covers (abstained)",
+  "answerability.out_of_scope_entity": "About something it does not know (abstained)",
+  "answerability.unsupported_question_type": "A kind of question it may not answer (abstained)",
+  "answerability.out_of_domain": "Outside its topics (abstained)",
 };
 
 /** A rule's name. Custom rules are named by their author: pass the rule's description. */
