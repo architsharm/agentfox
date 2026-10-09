@@ -167,8 +167,17 @@ def test_rewriting_is_recorded_separately_from_blocking():
 
 
 def test_no_other_harness_is_claimed():
-    """One harness has been probed. The rest are absent, and absent means
-    unverified rather than a gap to fill with plausible values."""
+    """Claude Code has been probed and Codex read in source. The rest are absent, and
+    absent means unverified rather than a gap to fill with plausible values."""
     from agentfox.harnesses.capability import CAPABILITY
 
-    assert {harness for harness, _event in CAPABILITY} == {"claude"}
+    assert {harness for harness, _event in CAPABILITY} == {"claude", "codex"}
+
+
+def test_codex_rows_say_they_were_read_not_probed():
+    """Nobody has run Codex against these replies yet; the rows must not say otherwise."""
+    from agentfox.harnesses.capability import CAN_REWRITE_INPUT, CAPABILITY
+
+    codex = {event: row for (harness, event), row in CAPABILITY.items() if harness == "codex"}
+    assert codex and {row.evidence for row in codex.values()} == {"SOURCE"}
+    assert CAN_REWRITE_INPUT["codex"].evidence == "SOURCE"

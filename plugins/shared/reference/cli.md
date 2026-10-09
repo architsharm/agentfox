@@ -59,7 +59,7 @@ configs). They are the same commands as `admin hooks run` and `serve mcp`.
 
 | Command | Effect | Exit / notes |
 |---|---|---|
-| `agentfox init [--path/-p .] [--env/-e development] [--demo]` | W, F | Idempotent. DB, the control catalog, and the shipped policy packs, each listed with its real mode (`tool-containment` enforces). `coding-agent` is bound only to agents named in this repo's `.claude/settings.json` hook commands, and skipped when there are none; `hooks install --write` adds its agent. Writes `agentfox.toml`, which settings read from the working directory. |
+| `agentfox init [--path/-p .] [--env/-e development] [--demo]` | W, F | Idempotent. DB, the control catalog, and the shipped policy packs, each listed with its real mode (`tool-containment` enforces). `coding-agent` is bound only to agents named in this repo's `.claude/settings.json` or `.codex/hooks.json` hook commands, and skipped when there are none; `hooks install --write` adds its agent. Writes `agentfox.toml`, which settings read from the working directory. |
 | `agentfox demo` | W, F, **BLK** | 13-step offline walkthrough. Promotes `baseline` to enforce for step 8, then restores its previous mode. Writes demo data, so use a scratch DB. |
 | `agentfox scan [PATH=.] [--json] [--limit/-n 15] [--fail] [--submit/--no-submit]` | R (static AST scan, never imports target code) | Same as `scan repo`. `--fail` → exit 1 if any model call is ungoverned. Use in CI. |
 | `agentfox scan --sessions [PATH=.] [--json] [--skip-sessions] [--submit/--no-submit]` | R (reads `~/.claude/projects/**/*.jsonl` unless `--skip-sessions`) | Repo scan + local AI-tool sessions + a live detector check. Always exit 0. Pass `--skip-sessions` unless the user asked for the session scan. |
@@ -218,7 +218,7 @@ All framework mappings are `review_status: draft` and ship chip-labelled
 | `admin checkpoint` | W | Signed checkpoint over the audit chain head. |
 | `admin seed [--show-keys]` | W | Demo agents, policies, controls, eval suite. Agent keys are masked unless `--show-keys`; they're only created on first seed. |
 | `admin version` | R | Versions of every component that participates in a decision. |
-| `admin hooks install --agent SLUG [--harness claude] [--path .] [--write] [--env ENV] [--grant/--no-grant]` | R (F with `--write`) | Show, or write, the hook configuration for a harness. `--write` also registers the agent (development unless `--env`), declares the harness's built-in tools and grants them (`--no-grant` to skip). |
+| `admin hooks install --agent SLUG [--harness claude\|codex] [--path .] [--scope project\|local\|user] [--write] [--env ENV] [--grant/--no-grant]` | R (F with `--write`) | Show, or write, the hook configuration for a harness: `claude` (default) merges into `.claude/settings.json`, `codex` into `.codex/hooks.json` (`--scope user`: `$CODEX_HOME/hooks.json`; previous file kept as `hooks.json.bak`; Codex runs it only after `/hooks` trust). `--write` also registers the agent (development unless `--env`, framework = harness), declares the harness's built-in tools and grants them (`--no-grant` to skip). |
 | `admin hooks status` | R | Is the daemon up, and does a deny on this harness actually stop anything? |
 | `admin hooks daemon [--socket PATH]` · `admin hooks run --harness H [--agent]` | FG · stdio | The warm process and the per-call hook. Installed configs call `agentfox hooks run`, which stays at that path. |
 | `admin mcp tools` | R | Lists the MCP server's tools with one-line descriptions. |

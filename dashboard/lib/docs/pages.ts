@@ -32,6 +32,7 @@ export const DOC_NAV: DocSection[] = [
       { href: "/docs/guides/langgraph", label: "LangGraph", description: "Guard the retrieval, model and tool nodes." },
       { href: "/docs/guides/mcp", label: "MCP servers", description: "Scan configs, pin tools, govern calls." },
       { href: "/docs/guides/coding-agents", label: "Coding agents", description: "Claude Code hooks and the coding-agent pack." },
+      { href: "/docs/guides/codex", label: "Codex CLI", description: "Codex hooks: what is governed and what is not." },
       { href: "/docs/guides/gateway", label: "Any language: the gateway", description: "The proxy and the guard API over HTTP." },
       { href: "/docs/guides/rag", label: "Retrieval and answers", description: "Who may see what, and when to say I don't know." },
       { href: "/docs/guides/approvals", label: "Approvals and the kill switch", description: "Escalations, hand-offs, quarantine." },

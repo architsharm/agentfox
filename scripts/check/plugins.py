@@ -33,9 +33,9 @@ REPO = Path(__file__).resolve().parents[2]
 PLUGINS = REPO / "plugins"
 SHARED = PLUGINS / "shared"
 #: What `shared/` provides, copied verbatim into every runtime plugin below.
-SHARED_PARTS = ("AGENTS.md", "skills", "reference")
+SHARED_PARTS = ("AGENTS.md", "skills", "reference", "scripts")
 #: The runtime plugins that carry a copy of the shared parts.
-RUNTIMES = ("claude-code",)
+RUNTIMES = ("claude-code", "codex")
 sys.path.insert(0, str(REPO / "src"))
 
 try:

@@ -5271,7 +5271,7 @@
           "required": false,
           "multiple": false,
           "default": null,
-          "help": "Which harness to install for. Default: the only one registered."
+          "help": "Which harness to install for: claude (Claude Code) or codex (Codex CLI). Default: claude."
          },
          {
           "kind": "option",
@@ -5298,6 +5298,19 @@
           "multiple": false,
           "default": ".",
           "help": "Project to install into."
+         },
+         {
+          "kind": "option",
+          "name": "scope",
+          "opts": [
+           "--scope"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": false,
+          "multiple": false,
+          "default": "project",
+          "help": "Where the hook configuration goes: project (this repository), local (Claude Code's settings.local.json; the project file for Codex) or user (your home directory, every project)."
          },
          {
           "kind": "option",

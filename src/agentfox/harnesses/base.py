@@ -1,7 +1,7 @@
 """The harness adapter interface: what every coding agent AgentFox governs must provide.
 
-A harness is a coding agent that calls a hook around its own actions (Claude Code
-today). Each one speaks its own dialect of the same contract — JSON on stdin, a reply on
+A harness is a coding agent that calls a hook around its own actions (Claude Code and
+Codex CLI today). Each one speaks its own dialect of the same contract — JSON on stdin, a reply on
 stdout, an exit code — with its own event names, field names, tool names and failure
 behaviour. An adapter translates that dialect into the vocabulary here and back, and
 declares, per event, what a reply can actually do there.
@@ -85,6 +85,7 @@ CANONICAL_TOOLS: tuple[str, ...] = (
     "web.fetch",
     "web.search",
     "agent.spawn",
+    "plan.update",
 )
 
 Maturity = Literal["stable", "incubating", "sandbox"]
@@ -269,11 +270,19 @@ class FileChange:
     action: Literal["create", "update", "unchanged"]
     #: The harness events this change adds hooks for.
     events: tuple[str, ...] = ()
+    #: Keep the file's previous content beside it (``<name>.bak``) before an update.
+    backup: bool = False
+
+    @property
+    def backup_path(self) -> Path:
+        return self.path.with_name(self.path.name + ".bak")
 
     def apply(self) -> None:
         if self.action == "unchanged":
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.backup and self.path.is_file():
+            self.backup_path.write_bytes(self.path.read_bytes())
         self.path.write_text(self.content)
 
 

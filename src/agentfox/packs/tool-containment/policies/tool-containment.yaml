@@ -21,12 +21,17 @@ scope:
 
 rules:
   # --- Taint containment: the core rule -------------------------------
+  # All three are about a *call*: its arguments carry untrusted provenance. They are
+  # scoped to `tool_args` because on `tool_result` every piece of content is, by
+  # definition, a tool result, so a write tool's own output tripped them on every call
+  # (every Bash result at a coding-agent hook, found wiring up Codex CLI).
   - id: taint.irreversible_tool
     description: >
       An irreversible action whose arguments came from untrusted content requires a
       human. This is the rule that stops an indirect injection from moving money even
       when the model has already been persuaded to try.
     when:
+      surface: [tool_args]
       tool_impact: [irreversible]
       taint_exceeds: user
     effect: escalate
@@ -39,6 +44,7 @@ rules:
   - id: taint.high_impact_tool
     description: High-impact (but reversible) actions with untrusted arguments.
     when:
+      surface: [tool_args]
       tool_impact: [high_impact]
       taint_exceeds: user
     effect: escalate
@@ -51,6 +57,7 @@ rules:
       A write whose arguments were copied out of another tool's response — the
       agent-to-agent and tool-chaining poisoning path.
     when:
+      surface: [tool_args]
       tool_impact: [write]
       taint_exceeds: retrieved
     effect: escalate
