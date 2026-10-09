@@ -944,6 +944,14 @@ class GuardContentRequest(BaseModel):
     #: "input_tokens": 812, "output_tokens": 140}`, usually sent with the output.
     #: A caller that already knows the price can send `cost_usd` instead.
     usage: dict[str, Any] | None = None
+    #: With `surface: "tool_result"`: the tool that produced `content`, and the error
+    #: it raised if it failed. Recorded as a step on the run, so a tool that throws
+    #: shows under Failed steps; the result itself is checked like any untrusted text.
+    tool: str | None = None
+    error: str | None = None
+    #: The resend of a message a person approved (its `approval_id` came back when it
+    #: was held). The same content passes once; different content is held again.
+    approval_id: str | None = None
 
 
 class GuardToolCallRequest(BaseModel):
@@ -1069,6 +1077,19 @@ def guard_content(
         )
     if surface == "input" and not trace.summary:
         trace.summary = summarize(payload.content)
+    if surface == "tool_result" and (payload.tool or payload.error):
+        from agentfox.platform.ledger.trace import add_span
+
+        add_span(
+            session,
+            trace,
+            kind="tool",
+            name=payload.tool or "tool",
+            status="error" if payload.error else "ok",
+            error=(payload.error or None) and payload.error[:2000],
+        )
+        if payload.error and trace.status == "ok":
+            trace.status = "error"
     if surface == "completion":
         # The completion gate: the claim is checked like any output, and the
         # caller's reported facts decide the `completion_requires` rules.
@@ -1085,6 +1106,7 @@ def guard_content(
             surface=surface,
             taint_source=payload.taint_source,
             trace=trace,
+            approval_id=payload.approval_id,
         )
     # `evaluate` raises the trace's verdict to the strongest thing that happened on
     # it, so ending it must not overwrite that with the default: a second guard call

@@ -157,9 +157,24 @@ def test_a_gateway_completion_abstains_without_calling_the_model(seeded, enforce
         model="echo-1",
     )
     assert result.verdict == "abstain"
-    assert response is None
     assert result.content, "an abstention must still answer the user"
+    # The abstention is the reply; no provider produced it.
+    assert response is not None and response.text == result.content
+    assert response.provider == "" and response.usage == {}
     assert result.rules_fired[0]["rule_id"] == f"answerability.{UNKNOWABLE}"
+
+
+def test_an_abstention_is_recorded_as_a_decision(seeded, enforcer, boundary):
+    from agentfox.core.models import Decision
+
+    result, _ = enforcer.run_completion(
+        agent_slug="support-triage",
+        messages=[{"role": "user", "content": "what will our revenue be next year?"}],
+        model="echo-1",
+    )
+    decisions = seeded.query(Decision).filter_by(trace_id=result.trace_id).all()
+    assert [d.verdict for d in decisions] == ["abstain"]
+    assert decisions[0].rules_fired_json[0]["rule_id"] == f"answerability.{UNKNOWABLE}"
 
 
 def test_the_abstention_is_recorded_in_the_audit_chain(seeded, enforcer, boundary):
@@ -446,3 +461,15 @@ def test_an_unknown_question_type_is_rejected(client):
     )
     assert response.status_code == 400
     assert "vibes" in response.json()["detail"]
+
+
+def test_a_call_asking_for_json_is_not_an_answer_and_never_abstains(seeded, enforcer, boundary):
+    # The app's own guardrail or classifier: it asks for JSON about the question, it
+    # does not answer it. A sentence where its JSON should be would break the caller.
+    result, response = enforcer.run_completion(
+        agent_slug="support-triage",
+        messages=[{"role": "user", "content": "what will our revenue be next year?"}],
+        model="echo-1",
+        passthrough={"response_format": {"type": "json_schema", "json_schema": {"name": "x"}}},
+    )
+    assert result.verdict != "abstain"

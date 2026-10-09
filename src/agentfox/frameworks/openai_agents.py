@@ -131,7 +131,9 @@ def _refusal(result: EnforcementResult) -> str:
     if result.escalated:
         return (
             f"This tool call is held for human approval (approval_id: {result.approval_id}). "
-            "Do not retry it; tell the user it is waiting for approval."
+            "Tell the user it is waiting for a person to approve it. When the user says it "
+            "has been approved, call this tool again with exactly the same arguments: it "
+            "runs once if it was approved, and is held again if it was not."
         )
     message = result.user_message or result.reason or "blocked by policy"
     return f"This tool call was blocked by policy: {message}"
@@ -186,6 +188,46 @@ def output_text(output: Any) -> str:
         return str(output)
 
 
+def run_usage(ctx: Any, agent: Any) -> dict[str, Any] | None:
+    """The run's token usage so far and the agent's model, for the run's cost.
+
+    Only needed when model calls do not go through the gateway's proxy (which prices
+    them itself); a run whose model is not named reports tokens without a price.
+    """
+    usage = getattr(ctx, "usage", None)
+    inp = int(getattr(usage, "input_tokens", 0) or 0)
+    out = int(getattr(usage, "output_tokens", 0) or 0)
+    if not (inp or out):
+        return None
+    model = getattr(agent, "model", None)
+    name = model if isinstance(model, str) else getattr(model, "model", "") or ""
+    return {"model": name, "input_tokens": inp, "output_tokens": out}
+
+
+#: What each run's tools returned, for checking the answer against it. Keyed by the
+#: run's usage object, the one thing the output guardrail and every tool call of a run
+#: share; emptied when the run's output is checked, and bounded either way.
+_RUN_RESULTS: dict[int, list[str]] = {}
+_MAX_RUNS = 256
+_MAX_RESULTS = 20
+
+
+def _remember_result(ctx: Any, text: str) -> None:
+    usage = getattr(ctx, "usage", None)
+    if usage is None or not text:
+        return
+    if len(_RUN_RESULTS) >= _MAX_RUNS and id(usage) not in _RUN_RESULTS:
+        _RUN_RESULTS.pop(next(iter(_RUN_RESULTS)))
+    results = _RUN_RESULTS.setdefault(id(usage), [])
+    if len(results) < _MAX_RESULTS:
+        results.append(text[:4000])
+
+
+def _run_results(ctx: Any) -> list[str]:
+    usage = getattr(ctx, "usage", None)
+    return _RUN_RESULTS.pop(id(usage), []) if usage is not None else []
+
+
 # -- input and output guardrails ------------------------------------------------
 
 
@@ -205,12 +247,26 @@ def agentfox_input_guardrail(
     """
     agents = _agents()
     fox = _client(agent_slug, client)
+    held = _HeldCalls()
+
+    def check(text: str) -> dict[str, Any]:
+        # A message held for a person and sent again after they approved it passes
+        # once, the same way an approved tool call runs once.
+        arguments = {"content": text}
+        approval_id = held.approved(fox, "message:input", arguments)
+        kwargs: dict[str, Any] = {"surface": "input"}
+        if approval_id:
+            kwargs["approval_id"] = approval_id
+        decision = fox.check(text, **kwargs)
+        if decision.get("verdict") == "escalate" and decision.get("approval_id"):
+            held.hold("message:input", arguments, str(decision["approval_id"]))
+        return decision
 
     async def guardrail(ctx: Any, agent: Any, run_input: Any) -> Any:
         text = input_text(run_input)
         if not text:
             return agents.GuardrailFunctionOutput(output_info=None, tripwire_triggered=False)
-        decision = await _call(run_in_thread, fox.check, text, surface="input")
+        decision = await _call(run_in_thread, check, text)
         return agents.GuardrailFunctionOutput(
             output_info=_info(decision), tripwire_triggered=_stops(decision)
         )
@@ -225,18 +281,30 @@ def agentfox_output_guardrail(
     client: Any = None,
     name: str = "agentfox_output",
     run_in_thread: bool = True,
+    report_usage: bool = False,
 ) -> Any:
     """An Agents SDK ``OutputGuardrail`` that checks the agent's final output.
 
     Trips like `agentfox_input_guardrail`. When AgentFox asks for a re-ask rather than a
     refusal, ``output_info["fix"]["instruction"]`` is the correction to send the model.
     A redaction does not trip; the redacted text is in ``output_info["content"]``.
+    ``report_usage=True`` sends the run's tokens and model with the check, for runs
+    whose model calls do not go through the gateway's proxy (which prices them itself).
     """
     agents = _agents()
     fox = _client(agent_slug, client)
 
     async def guardrail(ctx: Any, agent: Any, output: Any) -> Any:
-        decision = await _call(run_in_thread, fox.check, output_text(output), surface="output")
+        kwargs: dict[str, Any] = {"surface": "output"}
+        usage = run_usage(ctx, agent) if report_usage else None
+        if usage:
+            kwargs["usage"] = usage
+        # What the tools returned in this run, so an answer they do not support can
+        # be caught (the grounding checks). Only when tool results were seen.
+        grounding = _run_results(ctx)
+        if grounding:
+            kwargs["context"] = grounding
+        decision = await _call(run_in_thread, fox.check, output_text(output), **kwargs)
         return agents.GuardrailFunctionOutput(
             output_info=_info(decision), tripwire_triggered=_stops(decision)
         )
@@ -307,7 +375,10 @@ class _HeldCalls:
 
     def remember(self, tool: str, arguments: dict[str, Any], result: EnforcementResult) -> None:
         if result.escalated and result.approval_id:
-            self._held[self._key(tool, arguments)] = result.approval_id
+            self.hold(tool, arguments, result.approval_id)
+
+    def hold(self, tool: str, arguments: dict[str, Any], approval_id: str) -> None:
+        self._held[self._key(tool, arguments)] = approval_id
 
 
 def _authorise_held(
@@ -480,6 +551,59 @@ def agentfox_tool_guardrail(
     return agents.tool_input_guardrail(guardrail)
 
 
+#: What the Agents SDK hands the model when a function tool raises, unless the tool
+#: sets its own `failure_error_function`.
+SDK_TOOL_ERROR = "An error occurred while running the tool"
+
+
+def agentfox_tool_output_guardrail(
+    client: Any,
+    *,
+    tools: Mapping[str, str] | None = None,
+    name: str = "agentfox_tool_result",
+    run_in_thread: bool = True,
+) -> Any:
+    """An Agents SDK ``ToolOutputGuardrail`` that checks what a tool returned.
+
+    The result is untrusted text (a fetched page, a record someone else wrote), so it
+    is checked for injected instructions and leaked data before the model reads it; a
+    stopped result is replaced with a refusal. A tool that raised is recorded as a
+    failed step on the run.
+    """
+    agents = _agents()
+    if not hasattr(agents, "tool_output_guardrail"):
+        raise ImportError("tool output guardrails need openai-agents 0.3 or later")
+    names = dict(tools or {})
+    fox = client
+
+    async def guardrail(data: Any) -> Any:
+        sdk_name = getattr(data.context, "tool_name", "") or ""
+        key = names.get(sdk_name, sdk_name)
+        text = output_text(data.output)
+        failed = text.startswith(SDK_TOOL_ERROR)
+        if not failed:
+            _remember_result(data.context, text)
+        decision = await _call(
+            run_in_thread,
+            fox.check,
+            text,
+            surface="tool_result",
+            taint_source="tool_result",
+            tool=key,
+            error=text if failed else None,
+        )
+        info = _info(decision)
+        if not _stops(decision):
+            return agents.ToolGuardrailFunctionOutput.allow(output_info=info)
+        message = info.get("user_message") or info.get("reason") or "blocked by policy"
+        return agents.ToolGuardrailFunctionOutput.reject_content(
+            message=f"This tool's result was withheld by policy: {message}", output_info=info
+        )
+
+    guardrail.__name__ = name
+    return agents.tool_output_guardrail(guardrail)
+
+
 __all__ = [
     "AgentFoxError",
     "ApprovalRequired",
@@ -487,6 +611,7 @@ __all__ = [
     "agentfox_input_guardrail",
     "agentfox_output_guardrail",
     "agentfox_tool_guardrail",
+    "agentfox_tool_output_guardrail",
     "guard_tool",
     "guarded_function_tool",
     "input_text",

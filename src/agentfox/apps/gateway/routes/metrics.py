@@ -395,7 +395,38 @@ def rules(
                 "tools": dict(s["tools"].most_common(5)),
             }
         )
-    return {"range": w.key, "bucket_seconds": int(w.step.total_seconds()), "rules": out}
+    return {
+        "range": w.key,
+        "bucket_seconds": int(w.step.total_seconds()),
+        "rules": out,
+        "checked": checked_categories(session),
+    }
+
+
+def checked_categories(session: Session) -> dict[str, bool]:
+    """Which areas any enabled rule in force covers, so a view can tell "nothing
+    happened" (0) from "nothing is looking" (not checked)."""
+    from agentfox.core.models import KnowledgeBoundary
+    from agentfox.platform.policy.store import active_layers
+
+    seen: set[str] = set()
+    for layer in active_layers(session):
+        for rule in layer.document.rules:
+            if not rule.enabled:
+                continue
+            detection = rule.when.detection
+            fired = (
+                {
+                    "entity_prefixes": [detection.entity_prefix] if detection.entity_prefix else [],
+                    "entities": [detection.entity] if detection.entity else [],
+                }
+                if detection
+                else None
+            )
+            seen.add(rule_category(rule.id, fired))
+    if session.scalar(select(func.count()).select_from(KnowledgeBoundary)):
+        seen.add("quality")
+    return {c: c in seen for c in ("attacks", "data", "content", "quality", "actions", "custom")}
 
 
 @router.get("/errors")

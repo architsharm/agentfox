@@ -17,7 +17,7 @@ from agentfox.capabilities.grounding.answerability import (
     get_boundary,
     verify_boundary,
 )
-from agentfox.core.models import Agent, TaintTag, Trace
+from agentfox.core.models import Agent, Decision, TaintTag, Trace
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger.findings import raise_finding
 from agentfox.platform.ledger.trace import (
@@ -28,7 +28,7 @@ from agentfox.platform.ledger.trace import (
     end_trace,
     start_trace,
 )
-from agentfox.platform.providers import CompletionRequest, get_provider
+from agentfox.platform.providers import CompletionRequest, CompletionResponse, get_provider
 from agentfox.runtime.enforcement.result import (
     EnforcementResult,
     PreflightOutcome,
@@ -62,6 +62,12 @@ def release_before_provider_call(session: Any) -> None:
         return
     if transaction.origin is SessionTransactionOrigin.AUTOBEGIN:
         session.commit()
+
+
+def wants_structured_output(passthrough: dict[str, Any] | None) -> bool:
+    """Whether the caller asked for JSON (OpenAI ``response_format``), not prose."""
+    fmt = (passthrough or {}).get("response_format")
+    return isinstance(fmt, dict) and fmt.get("type") in ("json_schema", "json_object")
 
 
 class _CompletionMixin:
@@ -138,6 +144,19 @@ class _CompletionMixin:
             content=verdict.response,
         )
         result.taint["answerability"] = verdict.to_json()
+        # Recorded like any other decision, watching or not, so the abstention is on
+        # the run and counted where wrong answers are counted.
+        self.session.add(
+            Decision(
+                trace_id=trace.id,
+                agent_id=agent.id if agent else None,
+                surface="input",
+                verdict=result.verdict,
+                rules_fired_json=[{**rule, "mode": boundary.mode}],
+                mode=boundary.mode,
+                taint_summary_json={"answerability": verdict.to_json()},
+            )
+        )
         return result if verdict.should_abstain else None
 
     def _answerability_postflight(self, agent: Agent | None, trace: Trace, answer: str) -> None:
@@ -206,6 +225,7 @@ class _CompletionMixin:
         correlation: dict[str, str] | list[Any] | None = None,
         known_entities: list[str] | None = None,
         approval_id: str | None = None,
+        structured: bool = False,
     ) -> PreflightOutcome:
         """Steps 2-6 of the request path, shared by buffered and streaming calls.
 
@@ -265,7 +285,12 @@ class _CompletionMixin:
         # after it exists, which cannot prevent fabrication — by then the number has
         # been invented, and a confident wrong number scored at 0.4 is still a
         # confident wrong number in front of a user.
-        abstain = self._answerability_gate(agent, trace, messages, known_entities)
+        # Only a reply to a person can abstain. A call asking for structured output
+        # (a classifier, an extraction, the app's own guardrail) is not answering the
+        # question, and a sentence where its JSON should be would break the caller.
+        abstain = (
+            None if structured else self._answerability_gate(agent, trace, messages, known_entities)
+        )
         if abstain is not None:
             end_trace(self.session, trace, verdict=abstain.verdict, status="abstained")
             self._push_correlation(trace, abstain, agent.slug if agent else agent_slug)
@@ -625,12 +650,17 @@ class _CompletionMixin:
             intent=intent,
             trust_map=trust_map,
             correlation=correlation,
+            structured=wants_structured_output(passthrough),
             known_entities=known_entities,
             approval_id=approval_id,
         )
         if evidence is not None:
             self.evidence = evidence
         if pre.stopped:
+            if pre.result.verdict == "abstain":
+                # An abstention is an answer: the agent says it cannot know rather
+                # than guessing, and the caller receives that as the reply.
+                return pre.result, CompletionResponse(text=pre.result.content or "", model=model)
             return pre.result, None
 
         agent, identity, trace = pre.agent, pre.identity, pre.trace

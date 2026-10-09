@@ -8,7 +8,10 @@ from typing import Any
 
 from agentfox.platform.ledger.trace import end_trace
 from agentfox.platform.providers import CompletionRequest
-from agentfox.runtime.enforcement.completion import release_before_provider_call
+from agentfox.runtime.enforcement.completion import (
+    release_before_provider_call,
+    wants_structured_output,
+)
 from agentfox.runtime.enforcement.result import StreamEvent
 
 
@@ -70,10 +73,16 @@ class _StreamingMixin:
             correlation=correlation,
             known_entities=known_entities,
             approval_id=approval_id,
+            structured=wants_structured_output(passthrough),
         )
         if evidence is not None:
             self.evidence = evidence
         if pre.stopped:
+            if pre.result.verdict == "abstain":
+                # An abstention is the reply, not an error: stream it as one.
+                yield StreamEvent(kind="delta", delta=pre.result.content or "")
+                yield StreamEvent(kind="done", finish_reason="stop", result=pre.result)
+                return
             yield StreamEvent(kind="blocked", result=pre.result)
             return
 

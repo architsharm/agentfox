@@ -378,6 +378,11 @@ class AgentFox:
         surface: str = "input",
         taint_source: str = "user",
         completion: dict[str, Any] | None = None,
+        usage: dict[str, Any] | None = None,
+        tool: str | None = None,
+        error: str | None = None,
+        context: list[str] | None = None,
+        approval_id: str | None = None,
     ) -> dict[str, Any]:
         """One decision on one piece of content, as a dict. Never raises on a verdict.
 
@@ -385,6 +390,13 @@ class AgentFox:
         claim ("your refund is processed") and ``completion`` the facts you observed,
         such as ``{"work_verified": True}``, which ``completion_requires`` rules check.
         A fact you do not report counts as unmet.
+
+        Remote mode also records, when given: ``usage`` (``model``, ``input_tokens``,
+        ``output_tokens``) so the run shows its cost, and with
+        ``surface="tool_result"`` the ``tool`` that produced the content and the
+        ``error`` it raised, so a failing tool shows as a failed step; ``context``
+        is what an answer was built from, for the grounding checks; ``approval_id``
+        resends a message a person approved after it was held.
         """
         if self.remote:
             body: dict[str, Any] = {
@@ -395,6 +407,15 @@ class AgentFox:
             }
             if completion is not None:
                 body["completion"] = completion
+            for field_name, value in (
+                ("usage", usage),
+                ("tool", tool),
+                ("error", error),
+                ("context", context),
+                ("approval_id", approval_id),
+            ):
+                if value:
+                    body[field_name] = value
             return self._post(
                 f"/v1/guard/{'output' if surface == 'output' else 'input'}",
                 body,

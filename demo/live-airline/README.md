@@ -67,6 +67,9 @@ prints a pass/fail table and exits 1 on a failure.
 | `injection` | A prompt attack: stopped before the model sees it. |
 | `secret` | A pasted AWS key: stopped before the model sees it. |
 | `pii` | Card and SSN: the baseline pack only watches, so AgentFox lets the turn run and each trace records that enforcing would have blocked it. (The app's own LLM Jailbreak Guardrail sometimes refuses this turn; that is the app's call.) |
+| `outage` | `flight_status_tool` fails (a simulated outage for flight `PA000`): the run shows a failed step. |
+| `planted` | The FAQ entry for wifi carries a planted instruction (simulated): AgentFox withholds the tool result before the model reads it (`injection.indirect`). |
+| `prediction` | "Will my flight be delayed?" is a prediction, outside what the agent may answer: it abstains instead of guessing (`answerability.unknowable`). |
 | `offtopic` | Not checked. The app's own Relevance Guardrail refuses it; AgentFox runs beside the app's guardrails, not instead of them. |
 | cancellation | `approval_flow.py`: `cancel_flight` is held, a person approves, the customer asks again and the flight is cancelled once. Asking a third time cancels nothing: an approval covers one call. |
 
@@ -74,6 +77,48 @@ A blocked message reaches the app as an error from whichever model call the gate
 refused first: an HTTP 403 whose body carries `user_message`, or an error event in a
 streamed reply. The streamed error event does not carry `user_message` yet, so for
 those `check.py` reads the message from the trace's decision.
+
+The two simulated faults live in `agentfox_wiring.py`; `AGENTFOX_FAULTS=0` turns them
+off. The app's own tools never fail or return hostile text, so without them the
+failure paths would have nothing to catch.
+
+### Every approval outcome
+
+```bash
+.venv/bin/python approvals.py          # approve, deny, changed, message, expire
+```
+
+| Case | What it checks |
+|---|---|
+| `approve` | Compensation is held; approved; asked again it is issued once; a third ask issues nothing; the approval ends `used`. |
+| `deny` | Held, denied, never issued. |
+| `changed` | An approval covers the call a person saw: presented with different arguments it is held again; with the approved ones it runs. |
+| `message` | The blocked-words rule switched to "ask a person": the message is held; once approved the same message goes through once. Needs `AGENTFOX_MODEL_DIRECT=1` (through the proxy the model call carries the whole conversation, which the approval does not cover). |
+| `expire` | Nobody answers. After `APPROVAL_TTL_MINUTES` (2 on `gateway.sh`) the approval expires, which denies. |
+
+### Watching, enforcing, asking a person
+
+```bash
+.venv/bin/python modes.py
+```
+
+Runs a prompt attack and a competitor's name with the packs watching (nothing stopped,
+each run records that enforcing would block), enforcing (both blocked), and with the
+two rules switched to "ask a person" (both held for approval). Leaves the packs
+enforcing.
+
+### Against a hosted gateway
+
+The hosted gateway may hold no OpenAI key, so call OpenAI directly and send only the
+checks to the gateway. Create a key on the dashboard (Settings, API keys) and run:
+
+```bash
+AGENTFOX_GATEWAY=https://your-gateway AGENTFOX_API_KEY=<agent key> AGENTFOX_MODEL_DIRECT=1 .venv/bin/python run_all.py
+```
+
+Each reply then reports its tokens, so runs show their cost. The scripts that change
+configuration (`configure.py`, `modes.py`, `approvals.py`) use the local development
+login and only work against `gateway.sh`.
 
 Other ways in:
 
@@ -112,4 +157,6 @@ front end per `upstream/README.md`.
 | `scenarios.json`, `run_all.py` | The scripted conversations and a runner. |
 | `approval_flow.py` | Hold, approve, finish once. `--auto-approve` approves via the API. |
 | `check.py` | Runs everything and asserts the outcomes. |
+| `approvals.py` | Every way an approval ends: approve, deny, changed call, held message, expiry. |
+| `modes.py` | The same attacks while watching, enforcing and asking a person. |
 | `common.py` | Gateway address, operator header, the blocked message. |
