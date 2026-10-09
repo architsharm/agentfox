@@ -36,6 +36,7 @@ export const DOC_NAV: DocSection[] = [
       { href: "/docs/guides/rag", label: "Retrieval and answers", description: "Who may see what, and when to say I don't know." },
       { href: "/docs/guides/approvals", label: "Approvals and the kill switch", description: "Escalations, hand-offs, quarantine." },
       { href: "/docs/guides/business-rules", label: "Business rules", description: "Threshold ladders, and policy compiled from prose." },
+      { href: "/docs/guides/import-policies", label: "Import existing policies", description: "Agent-governance rule YAML and policy manifests, translated." },
       { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", description: "Probe the deployment; fail the build on regression." },
       { href: "/docs/guides/live-probes", label: "Probe deployed agents", description: "Scheduled, opt-in attacks on a running agent." },
       { href: "/docs/guides/tuning", label: "Tune detectors", description: "Feedback, suppressions, simulate, canary." },
