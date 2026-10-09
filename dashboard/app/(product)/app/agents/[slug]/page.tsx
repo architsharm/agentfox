@@ -218,6 +218,7 @@ async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
           tried={access.tried}
           tools={access.tools}
           unused={access.unused}
+          inCode={access.in_code || []}
           prefill={prefill}
         />
       ) : (

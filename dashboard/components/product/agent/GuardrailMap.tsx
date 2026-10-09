@@ -20,6 +20,8 @@ type Tool = {
   rules: MapRule[];
   ladders: { key: string; name: string; mode: string; field: string | null }[];
   stats: Stats;
+  /** Where the tool is known from: its code, a grant, calls seen. */
+  sources?: ("code" | "granted" | "seen")[];
 };
 export type AgentMap = {
   agent: { slug: string; name: string };
@@ -48,6 +50,12 @@ function tone(rules: MapRule[], detectors: string[] = []): "on" | "watch" | "off
   if (c.enforcing) return "on";
   if (c.watching || detectors.length) return "watch";
   return "off";
+}
+
+const SOURCE: Record<string, string> = { code: "In code", granted: "Granted", seen: "Called" };
+
+function sourceLabel(tl: Tool): string {
+  return (tl.sources || []).map((x) => SOURCE[x]).join(" · ");
 }
 
 function stopped(s: Stats) {
@@ -122,6 +130,7 @@ function ToolNode({ data }: NodeProps<Node<{ tool: Tool; selected: boolean }>>) 
           {tl.stats.total} calls · {stopped(tl.stats)} stopped
         </span>
       ) : null}
+      {tl.sources?.length ? <span className="gm-sub gm-source">{sourceLabel(tl)}</span> : null}
     </div>
   );
 }
@@ -287,6 +296,7 @@ function Panel({ map, selected }: { map: AgentMap; selected: Selected }) {
         <span className={`k-pill k-pill-${PERMISSION[tl.permission].tone}`}>{PERMISSION[tl.permission].label}</span>
         <Pill tone="outline">{IMPACT[tl.impact || ""] || "Risk not set"}</Pill>
       </div>
+      {tl.sources?.length ? <p className="k-muted">Known from: {sourceLabel(tl)}</p> : null}
       <p className="k-muted">
         Last {map.window_days} days: {tl.stats.total || 0} calls · {tl.stats.blocked || 0} blocked · {tl.stats.held || 0} held
       </p>

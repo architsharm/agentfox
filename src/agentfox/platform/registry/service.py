@@ -139,7 +139,9 @@ def propose_from_scan(
     same in the dashboard whichever door it came through. ``sites`` is intentionally
     the redacted shape (``{"kind", "top_dir", "provider"}``, see
     ``discovery.ScanReport.to_submission_payload``): this function never needs, and
-    must never be given, a file's full path, line number or literal source text.
+    must never be given, a file's full path, line number or literal source text. A
+    ``tool`` site may carry its function's ``name`` (the connected-repo scan sends it);
+    those become the agent's declared tools.
     """
     repo_short = slugify(repo_slug_base)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -163,6 +165,9 @@ def propose_from_scan(
         # (e.g. gpt-researcher/gpt-researcher/) — slugifying both halves would
         # produce "gpt-researcher-gpt-researcher", which reads as a typo rather
         # than two distinct things.
+        tools = sorted(
+            {s["name"] for s in group_sites if s.get("kind") == "tool" and s.get("name")}
+        )
         group_slug = slugify(group_key)
         slug = repo_short if group_slug == repo_short else f"{repo_short}-{group_slug}"
         agent = register_agent(
@@ -176,6 +181,7 @@ def propose_from_scan(
             # Proposed, like the rest of a draft: a human confirms the class on
             # approval (`compliance.risk.classify` explains why it is a proposal).
             risk_tier="high" if group_key in trifecta_dirs else "limited",
+            declared_tools=tools or None,
             draft=True,
             source_scan_run_id=run_id,
         )

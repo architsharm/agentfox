@@ -210,6 +210,7 @@ export class AgentFox {
       trace_id: opts.traceId,
       environment: opts.environment ?? this.environment,
       context: opts.context,
+      usage: opts.usage,
     });
     return toResult(await this.request<GuardResponseBody>("POST", path, body));
   }

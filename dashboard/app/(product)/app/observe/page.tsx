@@ -151,7 +151,7 @@ async function Overview({ f }: { f: Filters }) {
 function byCategory(rules: any[]) {
   const out: Record<string, { fires: number; enforced: number; watched: number; series: number[]; rules: any[] }> = {};
   for (const r of rules) {
-    const c = ruleCategory(r.rule_id);
+    const c = r.category || ruleCategory(r.rule_id);
     const g = (out[c] ||= { fires: 0, enforced: 0, watched: 0, series: [], rules: [] });
     g.fires += r.fires;
     g.enforced += r.enforced;

@@ -411,6 +411,26 @@ CEILING_PROBE = ["capability.constraint_violation"]
 CEILING_TOOL = "redteam.sim.issue_refund"
 
 
+def _give_the_agent_the_refund_tool(session):
+    """The agent really holds the refund tool, capped at $1,000. Red-team runs set up
+    and then roll back their own simulated grants; a grant the deployment has is the
+    agent's and is reused as it stands."""
+    from agentfox.capabilities.evaluation.redteam import _provision_tool_and_grant
+    from agentfox.core.models import Agent
+    from agentfox.platform.identity.service import ensure_identity
+
+    agent = session.query(Agent).filter(Agent.slug == "support-triage").one()
+    _provision_tool_and_grant(
+        session,
+        ensure_identity(session, agent),
+        CEILING_TOOL,
+        "write",
+        grant=True,
+        constraints={"amount": {"lt": 1000}},
+        max_taint="tool_result",
+    )
+
+
 def _widen_the_refund_ceiling(session, constraints):
     """The regression this feature exists to catch, applied for real: somebody edits
     a capability grant and removes the argument ceiling on it. No policy changes, no
@@ -429,6 +449,7 @@ def test_posture_reports_weaker_when_the_configuration_regresses(enforcing):
     would notice, because the *prompt* is identical in both runs."""
     from agentfox.core.models import Finding
 
+    _give_the_agent_the_refund_tool(enforcing)
     kwargs = dict(adaptive=True, budget=1, probes=CEILING_PROBE, include_deployment_probes=False)
     tight = run_campaign(enforcing, "support-triage", name="tight", **kwargs)
     assert tight.summary_json["adaptive"]["escaping_probes"] == []
@@ -445,6 +466,7 @@ def test_posture_reports_weaker_when_the_configuration_regresses(enforcing):
 
 
 def test_posture_reports_stronger_when_the_configuration_improves(enforcing):
+    _give_the_agent_the_refund_tool(enforcing)
     kwargs = dict(adaptive=True, budget=1, probes=CEILING_PROBE, include_deployment_probes=False)
     run_campaign(enforcing, "support-triage", name="tight", **kwargs)
     _widen_the_refund_ceiling(enforcing, {})

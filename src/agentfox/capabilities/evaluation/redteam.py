@@ -542,6 +542,19 @@ class NativeRedTeamRunner:
     def run_probes(
         self, session: Session, agent_slug: str, probes: list[Probe] | None = None
     ) -> list[ProbeOutcome]:
+        # Everything a probe sets up — the simulated `redteam.sim.*` tools and the grants
+        # that let the agent call them — is rolled back when the run ends. Kept, those
+        # grants sat on the agent for good: its Access tab and map listed refund and
+        # wire-transfer tools it has never had, on a research agent.
+        savepoint = session.begin_nested()
+        try:
+            return self._run(session, agent_slug, probes)
+        finally:
+            savepoint.rollback()
+
+    def _run(
+        self, session: Session, agent_slug: str, probes: list[Probe] | None
+    ) -> list[ProbeOutcome]:
         from agentfox.capabilities.detection.taint import TaintTracker
         from agentfox.platform.identity.service import ensure_identity
         from agentfox.runtime.enforcement import Enforcer
