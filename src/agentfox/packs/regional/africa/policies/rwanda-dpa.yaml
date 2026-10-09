@@ -1,0 +1,137 @@
+# Translated from examples/policies/african-regulatory/rego/rwanda-dpa.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: rwanda-dpa
+name: Rwanda Law 058/2021
+description: 'Rwanda Law 058/2021: rules translated from the rwanda-dpa policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: rwanda-dpa.block-breach-suppression-48-hour-ncsa
+  description: 'Art. 43: Block breach suppression — 48-hour NCSA notification (strictest in Africa)'
+  when:
+    action_risk: rwanda-dpa.block-breach-suppression-48-hour-ncsa
+  effect: block
+  severity: high
+  reason: 'Rwanda Law 058/2021 Art. 43: Agent cannot suppress breach notifications — NCSA must be notified
+    within 48 hours (strictest timeline in Africa)'
+- id: rwanda-dpa.block-biometric-data-transmission
+  description: 'Art. 3(2)/10: Block biometric data transmission'
+  when:
+    action_risk: rwanda-dpa.block-biometric-data-transmission
+  effect: block
+  severity: high
+  reason: 'Rwanda Law 058/2021 Art. 3(2)/10: Biometric data detected — must not be transmitted without
+    documented lawful basis and NCSA notification'
+- id: rwanda-dpa.block-cross-border-transfer-non-permitted
+  description: 'Art. 48: Block cross-border transfer to non-permitted region'
+  when:
+    action_risk: rwanda-dpa.block-cross-border-transfer-non-permitted
+  effect: block
+  severity: high
+  reason: 'Rwanda Law 058/2021 Art. 48: Cross-border transfer to region <value> blocked — destination
+    country adequacy not established with NCSA'
+- id: rwanda-dpa.block-transfer-non-rw-country-without
+  description: 'Art. 48/49: Block transfer to non-RW country without documented consent'
+  when:
+    action_risk: rwanda-dpa.block-transfer-non-rw-country-without
+  effect: block
+  severity: high
+  reason: 'Rwanda Law 058/2021 Art. 48/49: Transfer to <value> blocked — no documented consent or contractual
+    safeguards on file'
+- id: rwanda-dpa.block-rwanda-national-id-output
+  description: 'NIDA: Block Rwanda National ID in output (16-digit format)'
+  when:
+    action_risk: rwanda-dpa.block-rwanda-national-id-output
+  effect: block
+  severity: high
+  reason: 'Rwanda Law 058/2021 Art. 43: Rwanda National ID (NIDA 16-digit) detected in agent output —
+    blocked to prevent identity data breach'
+- id: rwanda-dpa.block-large-record-exports
+  description: 'Art. 50: Block large record exports (storage location restrictions)'
+  when:
+    action_risk: rwanda-dpa.block-large-record-exports
+  effect: block
+  severity: high
+  reason: 'Rwanda Law 058/2021 Art. 50: Export of <value> records exceeds threshold — requires NCSA contractual
+    safeguards and DPO review'
+- id: rwanda-dpa.health-medical-sensitive-data
+  description: 'Art. 3(2)/10: Health/medical sensitive data'
+  when:
+    action_risk: rwanda-dpa.health-medical-sensitive-data
+  effect: escalate
+  severity: medium
+  reason: 'Rwanda Law 058/2021 Art. 3(2)/10: Health/medical sensitive data detected — requires explicit
+    consent or documented lawful basis'
+- id: rwanda-dpa.special-category-data
+  description: 'Art. 3(2)/10: Special category data'
+  when:
+    action_risk: rwanda-dpa.special-category-data
+  effect: escalate
+  severity: medium
+  reason: 'Rwanda Law 058/2021 Art. 3(2)/10: Special category personal data detected — requires specific
+    processing grounds (Art. 10)'
+- id: rwanda-dpa.automated-individual-decision-making-data-subject
+  description: 'Art. 21: Automated individual decision-making — data subject has right to human review'
+  when:
+    action_risk: rwanda-dpa.automated-individual-decision-making-data-subject
+  effect: escalate
+  severity: medium
+  reason: 'Rwanda Law 058/2021 Art. 21: Automated individual decision-making — data subject has right
+    to contest; escalate for human oversight'
+- id: rwanda-dpa.cross-border-language-output
+  description: 'Art. 48: Cross-border language in output'
+  when:
+    action_risk: rwanda-dpa.cross-border-language-output
+  effect: escalate
+  severity: medium
+  reason: 'Rwanda Law 058/2021 Art. 48: Cross-border data transfer language detected — adequacy and contractual
+    safeguards (Art. 49) required'
+- id: rwanda-dpa.transfer-action-with-missing-destination-metadata
+  description: 'Art. 48: Transfer action with missing destination metadata'
+  when:
+    action_risk: rwanda-dpa.transfer-action-with-missing-destination-metadata
+  effect: escalate
+  severity: medium
+  reason: 'Rwanda Law 058/2021 Art. 48: Cross-border transfer with no destination metadata — cannot verify
+    adequacy, requires human review'
+- id: rwanda-dpa.moderate-record-exports
+  description: 'Art. 50: Moderate record exports'
+  when:
+    action_risk: rwanda-dpa.moderate-record-exports
+  effect: escalate
+  severity: medium
+  reason: 'Rwanda Law 058/2021 Art. 50: Export of <value> records requires NCSA contractual safeguard
+    documentation'
+- id: rwanda-dpa.bulk-export-actions
+  description: 'Art. 50: Bulk export actions'
+  when:
+    action_risk: rwanda-dpa.bulk-export-actions
+  effect: escalate
+  severity: medium
+  reason: 'Rwanda Law 058/2021 Art. 50: Bulk personal data export requires documented lawful basis and
+    NCSA notification'
+- id: rwanda-dpa.personal-data-access-logged-data-subject
+  description: 'Rwanda Law 058/2021 Art. 18: Personal data access logged — data subject access right and
+    NCSA accountability requirement'
+  when:
+    action_risk: rwanda-dpa.personal-data-access-logged-data-subject
+  effect: allow
+  severity: low
+  reason: 'Rwanda Law 058/2021 Art. 18: Personal data access logged — data subject access right and NCSA
+    accountability requirement'
+- id: rwanda-dpa.personal-data-modification-erasure-logged-data
+  description: 'Rwanda Law 058/2021 Art. 23/24: Personal data modification/erasure logged — data subject
+    rights and NCSA accountability requirement'
+  when:
+    action_risk: rwanda-dpa.personal-data-modification-erasure-logged-data
+  effect: allow
+  severity: low
+  reason: 'Rwanda Law 058/2021 Art. 23/24: Personal data modification/erasure logged — data subject rights
+    and NCSA accountability requirement'

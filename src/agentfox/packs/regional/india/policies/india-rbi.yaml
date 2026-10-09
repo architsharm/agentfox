@@ -1,0 +1,56 @@
+# Translated from examples/policies/india-regulatory/rego/rbi-data-localization.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: india-rbi
+name: RBI payment data, KYC and IT governance
+description: 'RBI payment data, KYC and IT governance: rules translated from the rbi-data-localization
+  policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: india-rbi.payment-system-data-stored-only-india
+  description: '2018: payment system data stored only in India'
+  when:
+    action_risk: india-rbi.payment-system-data-stored-only-india
+  effect: block
+  severity: high
+  reason: 'RBI 2018 (Storage of Payment System Data): payment data must be stored only in India, configured
+    region: <value>'
+- id: india-rbi.foreign-processed-payment-data-purged-returned
+  description: '2018: foreign-processed payment data purged and returned within 24h'
+  when:
+    action_risk: india-rbi.foreign-processed-payment-data-purged-returned
+  effect: block
+  severity: high
+  reason: 'RBI 2018: payment data processed abroad must be purged and returned to India within 24h, configured:
+    <value>h'
+- id: india-rbi.kyc-mandatory-before-onboarding
+  description: 'KYC MD 2016: KYC mandatory before onboarding'
+  when:
+    action_risk: india-rbi.kyc-mandatory-before-onboarding
+  effect: block
+  severity: high
+  reason: 'RBI Master Direction KYC 2016: customer due diligence (KYC) is mandatory before onboarding'
+- id: india-rbi.third-party-cloud-ai-data-flows
+  description: 'Outsourcing/IT-Governance MDs 2023: third-party/cloud/AI data flows - escalate for due
+    diligence'
+  when:
+    action_risk: india-rbi.third-party-cloud-ai-data-flows
+  effect: escalate
+  severity: medium
+  reason: 'RBI Master Directions Outsourcing of IT Services / IT Governance 2023: due diligence, audit
+    rights, and data locality required for third-party/cloud/AI handling customer or payment data'
+- id: india-rbi.advisory-only-audit-never-deny
+  description: 'FREE-AI 2025: ADVISORY only - audit, never deny'
+  when:
+    action_risk: india-rbi.advisory-only-audit-never-deny
+  effect: allow
+  severity: low
+  reason: 'ADVISORY (non-binding, RBI FREE-AI 2025): board-approved AI policy, AI incident reporting,
+    and human oversight recommended for AI in financial services'

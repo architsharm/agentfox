@@ -1,0 +1,56 @@
+# Translated from examples/policies/india-regulatory/rego/dpdp-data-protection.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: india-dpdp
+name: DPDP Act 2023 and Rules 2025
+description: 'DPDP Act 2023 and Rules 2025: rules translated from the dpdp-data-protection policy. Starts
+  in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: india-dpdp.consent-required-before-processing-personal-data
+  description: 's.6: consent required before processing personal data'
+  when:
+    action_risk: india-dpdp.consent-required-before-processing-personal-data
+  effect: block
+  severity: high
+  reason: 'DPDP s.6: processing personal data requires a logged, purpose-specific consent record'
+- id: india-dpdp.security-safeguards-block-unencrypted-personal-data
+  description: 's.8(5): security safeguards - block unencrypted personal-data handling'
+  when:
+    action_risk: india-dpdp.security-safeguards-block-unencrypted-personal-data
+  effect: block
+  severity: high
+  reason: 'DPDP s.8(5): personal data must be processed with reasonable security safeguards (encryption,
+    access control)'
+- id: india-dpdp.cannot-suppress-delay-breach-notification
+  description: 's.8(6)+R7: cannot suppress/delay breach notification'
+  when:
+    action_risk: india-dpdp.cannot-suppress-delay-breach-notification
+  effect: block
+  severity: high
+  reason: 'DPDP s.8(6) and Rule 7: agent cannot suppress or delay breach notification to the Data Protection
+    Board and affected Data Principals (72h detailed report)'
+- id: india-dpdp.cross-border-transfer-escalate-adequacy-localization
+  description: 's.16: cross-border transfer - escalate for adequacy/localization review (negative list
+    currently empty)'
+  when:
+    action_risk: india-dpdp.cross-border-transfer-escalate-adequacy-localization
+  effect: escalate
+  severity: medium
+  reason: 'DPDP s.16: cross-border personal-data transfer requires review (Central-Govt restriction list
+    plus stricter sectoral localization under RBI/SEBI)'
+- id: india-dpdp.sdf-algorithmic-due-diligence-audit-automated
+  description: 'Rule 13: SDF algorithmic due diligence - audit automated decisions on personal data'
+  when:
+    action_risk: india-dpdp.sdf-algorithmic-due-diligence-audit-automated
+  effect: allow
+  severity: low
+  reason: 'DPDP Rule 13 (Significant Data Fiduciary): verify algorithms/AI do not endanger Data Principal
+    rights; DPIA plus annual independent audit'

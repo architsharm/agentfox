@@ -1,0 +1,270 @@
+# Golden events for regional/india, run by `agentfox policy packs test regional/india`.
+# One case per rule: the risk its rule-table entry raises (or the tool it names)
+# fires it with the effect its source outcome maps to (deny -> block, escalate ->
+# escalate, audit -> allow, recorded). What raises each risk is tested against the
+# source policies' own test inputs in tests/platform/packs/test_translated_packs.py.
+cases:
+- name: india-aadhaar.unmasked-12-digit-aadhaar-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-aadhaar.unmasked-12-digit-aadhaar-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-aadhaar.unmasked-12-digit-aadhaar-output
+- name: india-aadhaar.unmasked-12-digit-run-near-uid (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-aadhaar.unmasked-12-digit-run-near-uid
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-aadhaar.unmasked-12-digit-run-near-uid
+- name: india-aadhaar.1234-5678-9012-or-1234-5678 (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-aadhaar.1234-5678-9012-or-1234-5678
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-aadhaar.1234-5678-9012-or-1234-5678
+- name: india-aadhaar.core-biometric-information-never-shared-displayed (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-aadhaar.core-biometric-information-never-shared-displayed
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-aadhaar.core-biometric-information-never-shared-displayed
+- name: india-aadhaar.no-public-display-posting-aadhaar-number (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-aadhaar.no-public-display-posting-aadhaar-number
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-aadhaar.no-public-display-posting-aadhaar-number
+- name: india-cert-in.6-hour-reporting-cannot-suppress-delay (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-cert-in.6-hour-reporting-cannot-suppress-delay
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-cert-in.6-hour-reporting-cannot-suppress-delay
+- name: india-cert-in.180-day-india-log-retention (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-cert-in.180-day-india-log-retention
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-cert-in.180-day-india-log-retention
+- name: india-dpdp.consent-required-before-processing-personal-data (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-dpdp.consent-required-before-processing-personal-data
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-dpdp.consent-required-before-processing-personal-data
+- name: india-dpdp.security-safeguards-block-unencrypted-personal-data (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-dpdp.security-safeguards-block-unencrypted-personal-data
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-dpdp.security-safeguards-block-unencrypted-personal-data
+- name: india-dpdp.cannot-suppress-delay-breach-notification (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-dpdp.cannot-suppress-delay-breach-notification
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-dpdp.cannot-suppress-delay-breach-notification
+- name: india-dpdp.cross-border-transfer-escalate-adequacy-localization (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-dpdp.cross-border-transfer-escalate-adequacy-localization
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - india-dpdp.cross-border-transfer-escalate-adequacy-localization
+- name: india-dpdp.sdf-algorithmic-due-diligence-audit-automated (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-dpdp.sdf-algorithmic-due-diligence-audit-automated
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - india-dpdp.sdf-algorithmic-due-diligence-audit-automated
+- name: india-rbi.payment-system-data-stored-only-india (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-rbi.payment-system-data-stored-only-india
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-rbi.payment-system-data-stored-only-india
+- name: india-rbi.foreign-processed-payment-data-purged-returned (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-rbi.foreign-processed-payment-data-purged-returned
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-rbi.foreign-processed-payment-data-purged-returned
+- name: india-rbi.kyc-mandatory-before-onboarding (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-rbi.kyc-mandatory-before-onboarding
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-rbi.kyc-mandatory-before-onboarding
+- name: india-rbi.third-party-cloud-ai-data-flows (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-rbi.third-party-cloud-ai-data-flows
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - india-rbi.third-party-cloud-ai-data-flows
+- name: india-rbi.advisory-only-audit-never-deny (audit upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-rbi.advisory-only-audit-never-deny
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - india-rbi.advisory-only-audit-never-deny
+- name: india-sebi.re-solely-responsible-ai-ml-output (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-sebi.re-solely-responsible-ai-ml-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-sebi.re-solely-responsible-ai-ml-output
+- name: india-sebi.ai-ml-output-liability-cannot-disclaimed (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-sebi.ai-ml-output-liability-cannot-disclaimed
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-sebi.ai-ml-output-liability-cannot-disclaimed
+- name: india-sebi.immutable-india-retained-audit-logging (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-sebi.immutable-india-retained-audit-logging
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-sebi.immutable-india-retained-audit-logging
+- name: india-sebi.incident-reporting-cannot-suppress (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-sebi.incident-reporting-cannot-suppress
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - india-sebi.incident-reporting-cannot-suppress
+- name: india-sebi.vapt-audit-before-production-escalate (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: india-sebi.vapt-audit-before-production-escalate
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - india-sebi.vapt-audit-before-production-escalate
+- name: india-sebi.draft-advisory-audit-only (audit upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: india-sebi.draft-advisory-audit-only
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - india-sebi.draft-advisory-audit-only
+- name: an ordinary answer passes
+  event:
+    surface: output
+  expect:
+    verdict: allow
+- name: an ordinary tool call passes
+  event:
+    surface: tool_args
+    tool_key: search.docs
+  expect:
+    verdict: allow

@@ -1,0 +1,105 @@
+# Translated from examples/policies/african-regulatory/rego/nfiu-aml.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: nigeria-nfiu-aml
+name: Nigeria NFIU anti-money-laundering
+description: 'Nigeria NFIU anti-money-laundering: rules translated from the nfiu-aml policy. Starts in
+  observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: nigeria-nfiu-aml.transfer-exceeding-10m-cap-hard-block
+  description: 'MLPPA / CBN NIP: transfer exceeding ₦10M cap — hard block'
+  when:
+    action_risk: nigeria-nfiu-aml.transfer-exceeding-10m-cap-hard-block
+  effect: block
+  severity: high
+  reason: 'NFIU CTR / CBN NIP: ₦<value> exceeds ₦10,000,000 NIP single-transaction cap — blocked. CTR
+    filing required.'
+- id: nigeria-nfiu-aml.structuring-explicit-split-pattern-output
+  description: 'MLPPA s.14: Structuring (smurfing) — explicit split pattern in output'
+  when:
+    action_risk: nigeria-nfiu-aml.structuring-explicit-split-pattern-output
+  effect: block
+  severity: high
+  reason: 'NFIU Structuring (MLPPA s.14): Transaction splitting to avoid CTR threshold detected — constitutes
+    structuring, a criminal offence'
+- id: nigeria-nfiu-aml.kyc-bypass-attempt
+  description: 'CBN AML/CFT Framework: KYC bypass attempt'
+  when:
+    action_risk: nigeria-nfiu-aml.kyc-bypass-attempt
+  effect: block
+  severity: high
+  reason: 'NFIU / CBN AML: KYC bypass blocked — proceeding without customer verification violates MLPPA
+    and CBN AML/CFT Framework'
+- id: nigeria-nfiu-aml.transaction-unverified-customer
+  description: 'CBN AML/CFT Framework: transaction for unverified customer'
+  when:
+    action_risk: nigeria-nfiu-aml.transaction-unverified-customer
+  effect: block
+  severity: high
+  reason: 'NFIU / CBN AML: Transaction for unverified customer blocked — KYC must be completed before
+    processing'
+- id: nigeria-nfiu-aml.exact-numeric-ctr-threshold-structured-params
+  description: 'MLPPA s.10: Exact numeric CTR threshold on structured params'
+  when:
+    action_risk: nigeria-nfiu-aml.exact-numeric-ctr-threshold-structured-params
+  effect: escalate
+  severity: medium
+  reason: 'NFIU CTR (MLPPA s.10): Transfer of ₦<value> is at or above ₦5,000,000 CTR threshold — requires
+    human review and CTR filing assessment'
+- id: nigeria-nfiu-aml.round-trip-layering-pattern-output
+  description: 'NFIU STR: round-trip / layering pattern in output'
+  when:
+    action_risk: nigeria-nfiu-aml.round-trip-layering-pattern-output
+  effect: escalate
+  severity: medium
+  reason: 'NFIU STR Indicator: Round-trip or layering transaction pattern detected — requires human review
+    for STR assessment'
+- id: nigeria-nfiu-aml.unverified-or-unknown-counterparty
+  description: 'NFIU STR: unverified or unknown counterparty'
+  when:
+    action_risk: nigeria-nfiu-aml.unverified-or-unknown-counterparty
+  effect: escalate
+  severity: medium
+  reason: 'NFIU STR Indicator: Transfer to unverified or unknown counterparty — requires human review
+    before execution'
+- id: nigeria-nfiu-aml.cash-equivalent-or-crypto-conversion
+  description: 'NFIU STR: cash-equivalent or crypto conversion'
+  when:
+    action_risk: nigeria-nfiu-aml.cash-equivalent-or-crypto-conversion
+  effect: escalate
+  severity: medium
+  reason: 'NFIU STR Indicator: Cash-equivalent or crypto conversion — common money laundering typology,
+    requires human review'
+- id: nigeria-nfiu-aml.politically-exposed-person-transaction
+  description: 'NFIU STR / FATF Rec. 12: Politically Exposed Person transaction'
+  when:
+    action_risk: nigeria-nfiu-aml.politically-exposed-person-transaction
+  effect: escalate
+  severity: medium
+  reason: 'NFIU STR / FATF Rec. 12: Politically Exposed Person (PEP) transaction detected — enhanced due
+    diligence required'
+- id: nigeria-nfiu-aml.financial-transaction-logged-5-year-retention
+  description: 'NFIU Record-Keeping (MLPPA s.6): Financial transaction logged — 5-year retention required
+    for NFIU examination on demand'
+  when:
+    action_risk: nigeria-nfiu-aml.financial-transaction-logged-5-year-retention
+  effect: allow
+  severity: low
+  reason: 'NFIU Record-Keeping (MLPPA s.6): Financial transaction logged — 5-year retention required for
+    NFIU examination on demand'
+- id: nigeria-nfiu-aml.amount-just-under-threshold-zone
+  description: 'NFIU Structuring Alert: amount in just-under-threshold zone (₦4.5M–₦4.99M)'
+  when:
+    action_risk: nigeria-nfiu-aml.amount-just-under-threshold-zone
+  effect: allow
+  severity: low
+  reason: 'NFIU Structuring Alert: ₦<value> is just under ₦5M CTR threshold — logged for STR review. Multiple
+    occurrences in session may indicate structuring.'

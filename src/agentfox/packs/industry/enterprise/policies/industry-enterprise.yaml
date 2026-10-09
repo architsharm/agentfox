@@ -1,0 +1,76 @@
+# Translated from examples/policies/production/rego/enterprise.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: industry-enterprise
+name: Enterprise
+description: 'Enterprise: rules translated from the enterprise policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: industry-enterprise.file-deletion-not-permitted
+  description: File deletion is not permitted
+  when:
+    surface:
+    - tool_args
+    tool: delete_file
+  effect: block
+  severity: high
+  reason: File deletion is not permitted
+- id: industry-enterprise.code-execution-blocked
+  description: Code execution is blocked
+  when:
+    surface:
+    - tool_args
+    tool: execute_code
+  effect: block
+  severity: high
+  reason: Code execution is blocked
+- id: industry-enterprise.ssh-not-permitted
+  description: SSH is not permitted
+  when:
+    surface:
+    - tool_args
+    tool: ssh_connect
+  effect: block
+  severity: high
+  reason: SSH is not permitted
+- id: industry-enterprise.ssn-pattern-detected-output
+  description: SSN pattern detected in output
+  when:
+    action_risk: industry-enterprise.ssn-pattern-detected-output
+  effect: block
+  severity: high
+  reason: SSN pattern detected in output
+- id: industry-enterprise.file-writes-require-approval
+  description: File writes require approval
+  when:
+    surface:
+    - tool_args
+    tool: write_file
+  effect: escalate
+  severity: medium
+  reason: File writes require approval
+- id: industry-enterprise.email-requires-review
+  description: Email requires review
+  when:
+    surface:
+    - tool_args
+    tool: send_email
+  effect: escalate
+  severity: medium
+  reason: Email requires review
+- id: industry-enterprise.deployments-require-sign-off
+  description: Deployments require sign-off
+  when:
+    surface:
+    - tool_args
+    tool: deploy
+  effect: escalate
+  severity: medium
+  reason: Deployments require sign-off

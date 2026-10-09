@@ -1,0 +1,15 @@
+# Minimal pack: rules translated from examples/policies/production/ in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83), MIT License,
+# Copyright (c) Microsoft Corporation. Starts incubating, and in observe.
+id: industry/minimal
+version: 0.1.0
+maturity: incubating
+requires_core: '>=0.3'
+title: Minimal pack
+description: 'A light profile for internal tools: blocks file deletion, table drops, code execution and
+  SSH, and allows everything else.'
+owners:
+- agentfox-maintainers
+tags:
+- industry
+- minimal

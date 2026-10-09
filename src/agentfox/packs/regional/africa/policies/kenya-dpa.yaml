@@ -1,0 +1,131 @@
+# Translated from examples/policies/african-regulatory/rego/kdpa-data-protection.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: kenya-dpa
+name: Kenya Data Protection Act 2019
+description: 'Kenya Data Protection Act 2019: rules translated from the kdpa-data-protection policy. Starts
+  in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: kenya-dpa.block-breach-suppression
+  description: 'Kenya DPA s.41: Block breach suppression'
+  when:
+    action_risk: kenya-dpa.block-breach-suppression
+  effect: block
+  severity: high
+  reason: 'Kenya DPA s.41: Agent cannot suppress breach notifications — 72-hour ODPC reporting obligation
+    applies'
+- id: kenya-dpa.block-transfer-non-permitted-region
+  description: 'Kenya DPA s.49: Block transfer to non-permitted region'
+  when:
+    action_risk: kenya-dpa.block-transfer-non-permitted-region
+  effect: block
+  severity: high
+  reason: 'Kenya DPA s.49: Cross-border transfer to <value> blocked — region not in ODPC adequacy-approved
+    list'
+- id: kenya-dpa.block-transfer-non-ke-country-without
+  description: 'Kenya DPA s.49: Block transfer to non-KE country without consent'
+  when:
+    action_risk: kenya-dpa.block-transfer-non-ke-country-without
+  effect: block
+  severity: high
+  reason: 'Kenya DPA s.49: Transfer to country <value> blocked — no documented consent or adequacy basis
+    on file'
+- id: kenya-dpa.block-processing-explicitly-stated-without-consent
+  description: 'Kenya DPA s.26: Block processing explicitly stated without consent'
+  when:
+    action_risk: kenya-dpa.block-processing-explicitly-stated-without-consent
+  effect: block
+  severity: high
+  reason: 'Kenya DPA s.26: Data processing without consent is prohibited — valid consent or documented
+    legal basis required'
+- id: kenya-dpa.block-biometric-data-transmission
+  description: 'Kenya DPA s.25: Block biometric data transmission'
+  when:
+    action_risk: kenya-dpa.block-biometric-data-transmission
+  effect: block
+  severity: high
+  reason: 'Kenya DPA s.25: Biometric data detected — must not be transmitted without documented lawful
+    basis'
+- id: kenya-dpa.block-national-id-output
+  description: 'Kenya DPA: Block National ID in output'
+  when:
+    action_risk: kenya-dpa.block-national-id-output
+  effect: block
+  severity: high
+  reason: 'Kenya DPA: National ID number detected in agent output — blocked to prevent identity exposure'
+- id: kenya-dpa.block-large-record-exports
+  description: 'Kenya DPA s.30: Block large record exports (>1000 records)'
+  when:
+    action_risk: kenya-dpa.block-large-record-exports
+  effect: block
+  severity: high
+  reason: 'Kenya DPA s.30: Export of <value> records is disproportionate — requires Data Protection Officer
+    review'
+- id: kenya-dpa.health-medical-data-requires-approval
+  description: 'Kenya DPA s.25: Health/medical data requires approval'
+  when:
+    action_risk: kenya-dpa.health-medical-data-requires-approval
+  effect: escalate
+  severity: medium
+  reason: 'Kenya DPA s.25: Health/medical sensitive personal data detected — requires explicit consent
+    or documented legal basis'
+- id: kenya-dpa.special-category-data-requires-approval
+  description: 'Kenya DPA s.25: Special category data requires approval'
+  when:
+    action_risk: kenya-dpa.special-category-data-requires-approval
+  effect: escalate
+  severity: medium
+  reason: 'Kenya DPA s.25: Special category personal data detected — explicit consent or Schedule 3 condition
+    required'
+- id: kenya-dpa.cross-border-language-output
+  description: 'Kenya DPA s.49: Cross-border language in output'
+  when:
+    action_risk: kenya-dpa.cross-border-language-output
+  effect: escalate
+  severity: medium
+  reason: 'Kenya DPA s.49: Cross-border data transfer language detected — requires ODPC adequacy verification'
+- id: kenya-dpa.transfer-with-missing-destination-metadata
+  description: 'Kenya DPA s.49: Transfer with missing destination metadata'
+  when:
+    action_risk: kenya-dpa.transfer-with-missing-destination-metadata
+  effect: escalate
+  severity: medium
+  reason: 'Kenya DPA s.49: Cross-border transfer with no destination metadata — cannot verify adequacy,
+    requires human review'
+- id: kenya-dpa.moderate-record-exports
+  description: 'Kenya DPA s.30: Moderate record exports (100–1000 records)'
+  when:
+    action_risk: kenya-dpa.moderate-record-exports
+  effect: escalate
+  severity: medium
+  reason: 'Kenya DPA s.30: Export of <value> records requires Data Protection Officer approval before
+    execution'
+- id: kenya-dpa.bulk-export-actions
+  description: 'Kenya DPA s.30: Bulk export actions'
+  when:
+    action_risk: kenya-dpa.bulk-export-actions
+  effect: escalate
+  severity: medium
+  reason: 'Kenya DPA s.30: Bulk personal data export requires documented lawful basis and DPO approval'
+- id: kenya-dpa.all-personal-data-access-must-logged
+  description: 'Kenya DPA s.31: All personal data access must be logged'
+  when:
+    action_risk: kenya-dpa.all-personal-data-access-must-logged
+  effect: allow
+  severity: low
+  reason: 'Kenya DPA s.31: Personal data access logged — ODPC accountability audit trail requirement'
+- id: kenya-dpa.all-personal-data-modifications-must-logged
+  description: 'Kenya DPA s.31: All personal data modifications must be logged'
+  when:
+    action_risk: kenya-dpa.all-personal-data-modifications-must-logged
+  effect: allow
+  severity: low
+  reason: 'Kenya DPA s.31: Personal data modification logged — ODPC accountability audit trail requirement'

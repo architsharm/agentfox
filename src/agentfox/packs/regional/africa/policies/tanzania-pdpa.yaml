@@ -1,0 +1,131 @@
+# Translated from examples/policies/african-regulatory/rego/tanzania-pdpa.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: tanzania-pdpa
+name: Tanzania PDPA 2022
+description: 'Tanzania PDPA 2022: rules translated from the tanzania-pdpa policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: tanzania-pdpa.block-breach-suppression
+  description: 'PDPA s.28: Block breach suppression'
+  when:
+    action_risk: tanzania-pdpa.block-breach-suppression
+  effect: block
+  severity: high
+  reason: 'Tanzania PDPA s.28: Agent cannot suppress breach notifications — 72-hour PDPC reporting obligation
+    applies'
+- id: tanzania-pdpa.block-biometric-data-transmission
+  description: 'PDPA s.17: Block biometric data transmission'
+  when:
+    action_risk: tanzania-pdpa.block-biometric-data-transmission
+  effect: block
+  severity: high
+  reason: 'Tanzania PDPA s.17: Biometric data detected — must not be transmitted without documented lawful
+    basis'
+- id: tanzania-pdpa.block-transfer-non-permitted-region
+  description: 'PDPA s.13: Block transfer to non-permitted region'
+  when:
+    action_risk: tanzania-pdpa.block-transfer-non-permitted-region
+  effect: block
+  severity: high
+  reason: 'Tanzania PDPA s.13: Cross-border transfer to <value> blocked — region not in PDPC adequacy-approved
+    list'
+- id: tanzania-pdpa.block-transfer-non-tz-country-without
+  description: 'PDPA s.13: Block transfer to non-TZ country without consent'
+  when:
+    action_risk: tanzania-pdpa.block-transfer-non-tz-country-without
+  effect: block
+  severity: high
+  reason: 'Tanzania PDPA s.13: Transfer to country <value> blocked — no documented consent or adequacy
+    basis on file'
+- id: tanzania-pdpa.block-processing-without-consent
+  description: 'PDPA s.8: Block processing without consent'
+  when:
+    action_risk: tanzania-pdpa.block-processing-without-consent
+  effect: block
+  severity: high
+  reason: 'Tanzania PDPA s.8: Data processing without lawful basis is prohibited — valid consent or documented
+    legal basis required'
+- id: tanzania-pdpa.block-nida-national-id-output
+  description: 'PDPA: Block NIDA national ID in output'
+  when:
+    action_risk: tanzania-pdpa.block-nida-national-id-output
+  effect: block
+  severity: high
+  reason: 'Tanzania PDPA: NIDA national ID number detected in agent output — blocked to prevent identity
+    exposure'
+- id: tanzania-pdpa.block-large-record-exports
+  description: 'PDPA s.30: Block large record exports (>1000 records)'
+  when:
+    action_risk: tanzania-pdpa.block-large-record-exports
+  effect: block
+  severity: high
+  reason: 'Tanzania PDPA s.30: Export of <value> records is disproportionate — requires Data Protection
+    Officer review'
+- id: tanzania-pdpa.health-medical-data
+  description: 'PDPA s.17: Health/medical data'
+  when:
+    action_risk: tanzania-pdpa.health-medical-data
+  effect: escalate
+  severity: medium
+  reason: 'Tanzania PDPA s.17: Health/medical special category data detected — requires explicit consent
+    or documented legal basis'
+- id: tanzania-pdpa.special-category-data
+  description: 'PDPA s.17: Special category data'
+  when:
+    action_risk: tanzania-pdpa.special-category-data
+  effect: escalate
+  severity: medium
+  reason: 'Tanzania PDPA s.17: Special category personal data detected — explicit consent or lawful processing
+    condition required'
+- id: tanzania-pdpa.cross-border-language-output
+  description: 'PDPA s.13: Cross-border language in output'
+  when:
+    action_risk: tanzania-pdpa.cross-border-language-output
+  effect: escalate
+  severity: medium
+  reason: 'Tanzania PDPA s.13: Cross-border data transfer language detected — requires PDPC adequacy verification'
+- id: tanzania-pdpa.transfer-with-missing-destination-metadata
+  description: 'PDPA s.13: Transfer with missing destination metadata'
+  when:
+    action_risk: tanzania-pdpa.transfer-with-missing-destination-metadata
+  effect: escalate
+  severity: medium
+  reason: 'Tanzania PDPA s.13: Cross-border transfer with no destination metadata — cannot verify adequacy,
+    requires human review'
+- id: tanzania-pdpa.moderate-record-exports
+  description: 'PDPA s.30: Moderate record exports'
+  when:
+    action_risk: tanzania-pdpa.moderate-record-exports
+  effect: escalate
+  severity: medium
+  reason: 'Tanzania PDPA s.30: Export of <value> records requires Data Protection Officer approval'
+- id: tanzania-pdpa.bulk-export-actions
+  description: 'PDPA s.30: Bulk export actions'
+  when:
+    action_risk: tanzania-pdpa.bulk-export-actions
+  effect: escalate
+  severity: medium
+  reason: 'Tanzania PDPA s.30: Bulk personal data export requires documented lawful basis and DPO approval'
+- id: tanzania-pdpa.personal-data-access-logged-pdpc-accountability
+  description: 'Tanzania PDPA s.25: Personal data access logged — PDPC accountability audit trail requirement'
+  when:
+    action_risk: tanzania-pdpa.personal-data-access-logged-pdpc-accountability
+  effect: allow
+  severity: low
+  reason: 'Tanzania PDPA s.25: Personal data access logged — PDPC accountability audit trail requirement'
+- id: tanzania-pdpa.personal-data-modification-logged-pdpc-accountability
+  description: 'Tanzania PDPA s.25: Personal data modification logged — PDPC accountability audit trail
+    requirement'
+  when:
+    action_risk: tanzania-pdpa.personal-data-modification-logged-pdpc-accountability
+  effect: allow
+  severity: low
+  reason: 'Tanzania PDPA s.25: Personal data modification logged — PDPC accountability audit trail requirement'

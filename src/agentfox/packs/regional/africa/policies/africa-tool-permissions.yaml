@@ -1,0 +1,22 @@
+# Translated from examples/policies/african-regulatory/rego/agent-tool-permissions.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: africa-tool-permissions
+name: Restricted tools
+description: 'Restricted tools: rules translated from the agent-tool-permissions policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: africa-tool-permissions.v-restricted-tool-route-authorization-queue
+  description: 'Tool requires human approval: ''%v'' is a restricted tool — route to authorization queue.'
+  when:
+    action_risk: africa-tool-permissions.v-restricted-tool-route-authorization-queue
+  effect: escalate
+  severity: medium
+  reason: 'Tool requires human approval: <value> is a restricted tool — route to authorization queue.'

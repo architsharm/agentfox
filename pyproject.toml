@@ -248,4 +248,8 @@ ignore = ["B008"]  # FastAPI Depends() in defaults is the framework idiom
 # measures or a red-team demo fires. Every other rule still applies, so an
 # unused import or an undefined name in a benchmark still fails CI.
 "benchmarks/**" = ["E501"]
+# Rule tables translated from another project's policies: the long lines are
+# regulation citations and regular expressions copied verbatim, which rewrapping
+# could only alter.
+"src/agentfox/packs/*/*/checks/rules.py" = ["E501"]
 "demo/**" = ["E501"]
