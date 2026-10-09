@@ -28,6 +28,8 @@ from agentfox.core.vocab import TAINT_ORDER
 from agentfox.platform.identity import ensure_identity
 from agentfox.platform.identity.service import grant_capability, revoke_capability
 from agentfox.platform.ledger import chain
+from agentfox.platform.registry.impact import infer_impact
+from agentfox.platform.registry.service import impact_source_of, upsert_tool
 
 router = APIRouter(prefix="/api/agents", tags=["access"])
 
@@ -47,7 +49,12 @@ def _capability_json(c: Capability, tools: dict[str, Tool]) -> dict[str, Any]:
         "max_taint": c.max_taint,
         "granted_by": c.granted_by,
         "expires_at": c.expires_at.isoformat() if c.expires_at else None,
-        "tool": {"name": tool.name, "impact": tool.impact, "description": tool.description}
+        "tool": {
+            "name": tool.name,
+            "impact": tool.impact,
+            "impact_source": impact_source_of(tool),
+            "description": tool.description,
+        }
         if tool
         else None,
     }
@@ -136,6 +143,35 @@ class AccessIn(BaseModel):
     max_taint: str = "user"
     constraints: dict[str, Any] = Field(default_factory=dict)
     actions: list[str] = Field(default_factory=lambda: ["*"])
+    #: The tool's risk, when the operator chose one: read, write, high_impact or
+    #: irreversible. Absent, an undeclared tool is registered with a cautious guess.
+    impact: str | None = None
+
+
+IMPACTS = ("read", "write", "high_impact", "irreversible")
+
+
+def _declare(session: Session, key: str, impact: str | None, actor: str) -> None:
+    """Make sure the registry knows the tool being granted.
+
+    A grant for a tool the registry has never seen used to leave every call held by
+    `tool.not_declared` — the operator clicked Allow and nothing was allowed. So the
+    tool is registered here: with the impact the operator chose, or a cautious guess
+    from its name, marked as a guess for them to confirm.
+    """
+    if "*" in key:
+        return
+    known = session.scalar(select(Tool).where(Tool.key == key))
+    if impact is not None:
+        upsert_tool(session, key, impact=impact, actor=actor, name=known.name if known else key)
+    elif known is None:
+        upsert_tool(
+            session,
+            key,
+            impact=infer_impact(key, cautious=True),
+            impact_source="inferred",
+            actor=actor,
+        )
 
 
 @router.post("/{slug}/access", status_code=201)
@@ -148,7 +184,10 @@ def set_access(
     """Grant a tool, or change the existing grant for it (one grant per tool key)."""
     if payload.max_taint not in TAINT_ORDER:
         raise HTTPException(400, f"max_taint must be one of {', '.join(TAINT_ORDER)}")
+    if payload.impact is not None and payload.impact not in IMPACTS:
+        raise HTTPException(400, f"impact must be one of {', '.join(IMPACTS)}")
     agent = get_agent_or_404(session, slug)
+    _declare(session, payload.tool_key, payload.impact, user.email or user.id)
     identity = ensure_identity(session, agent)
     existing = next((c for c in identity.capabilities if c.tool_key == payload.tool_key), None)
     if existing:

@@ -1031,6 +1031,12 @@
       "type": "array",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "impact",
+      "type": "string",
+      "required": false,
+      "description": ""
      }
     ]
    }

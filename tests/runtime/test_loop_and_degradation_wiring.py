@@ -383,3 +383,21 @@ def test_the_control_plane_is_not_locked_out_by_the_outage(client, monkeypatch):
 
     assert client.get("/api/health").status_code == 200
     assert client.get("/api/reliability", headers=as_user("admin@example.com")).status_code == 200
+
+
+def test_a_provider_outage_does_not_stop_guard_checks(client, monkeypatch):
+    """Guard routes never call the model. Teams that call their provider themselves
+    still get their traffic checked when the gateway's own provider is down."""
+    monkeypatch.setenv("AGENTFOX_FAIL_MODE", "closed")
+    monkeypatch.setenv("AGENTFOX_DEFAULT_PROVIDER", "openai")
+    monkeypatch.setenv("AGENTFOX_ALLOW_EGRESS", "false")
+    reset_settings_cache()
+    reset_degradation_ledger()
+
+    guard = client.post("/v1/guard/input", json={"agent": "nobody", "content": "hi"})
+    assert guard.status_code == 200
+    proxied = client.post(
+        "/v1/chat/completions", json={"model": "m", "messages": [{"role": "user", "content": "hi"}]}
+    )
+    assert proxied.status_code == 503
+    assert proxied.json()["error"]["service"] == "model_provider"

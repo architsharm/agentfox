@@ -110,3 +110,91 @@ def test_sensitivity_on_a_rule_without_detection_is_refused(client):
         headers=ADMIN,
     )
     assert r.status_code == 400
+
+
+def test_granting_an_unknown_tool_registers_it_so_allow_means_allow(client):
+    """Allow used to leave every call held by `tool.not_declared`."""
+    r = client.post(
+        "/api/agents/support-triage/access",
+        json={"tool_key": "airline.cancel_flight"},
+        headers=as_user("admin@example.com"),
+    )
+    assert r.status_code == 201, r.text
+    caps = client.get(
+        "/api/agents/support-triage/access", headers=as_user("admin@example.com")
+    ).json()["capabilities"]
+    tool = next(c for c in caps if c["tool_key"] == "airline.cancel_flight")["tool"]
+    assert tool["impact"] == "irreversible" and tool["impact_source"] == "inferred"
+
+    client.post(
+        "/api/agents/support-triage/access",
+        json={"tool_key": "airline.cancel_flight", "impact": "high_impact"},
+        headers=as_user("admin@example.com"),
+    )
+    caps = client.get(
+        "/api/agents/support-triage/access", headers=as_user("admin@example.com")
+    ).json()["capabilities"]
+    tool = next(c for c in caps if c["tool_key"] == "airline.cancel_flight")["tool"]
+    assert tool["impact"] == "high_impact" and tool["impact_source"] == "declared"
+
+    out = client.post(
+        "/v1/guard/tool_call",
+        json={
+            "agent": "support-triage",
+            "tool": "airline.cancel_flight",
+            "arguments": {},
+            "provenance": {},
+        },
+    ).json()
+    assert "tool.not_declared" not in {f["rule_id"] for f in out["rules_fired"]}
+
+
+def test_a_bad_impact_is_refused(client):
+    r = client.post(
+        "/api/agents/support-triage/access",
+        json={"tool_key": "airline.x", "impact": "catastrophic"},
+        headers=as_user("admin@example.com"),
+    )
+    assert r.status_code == 400
+
+
+def test_a_retried_held_call_reuses_its_approval(client):
+    client.post(
+        "/api/agents/support-triage/access",
+        json={
+            "tool_key": "airline.cancel_flight",
+            "requires_approval": True,
+            "impact": "irreversible",
+        },
+        headers=ADMIN,
+    )
+
+    def call(args):
+        return client.post(
+            "/v1/guard/tool_call",
+            json={
+                "agent": "support-triage",
+                "tool": "airline.cancel_flight",
+                "arguments": args,
+                "provenance": {},
+            },
+        ).json()
+
+    first, again = call({"booking": "IR-D204"}), call({"booking": "IR-D204"})
+    assert first["approval_id"] and again["approval_id"] == first["approval_id"]
+    assert call({"booking": "ZZ-0001"})["approval_id"] != first["approval_id"]
+
+    client.post(
+        f"/api/approvals/{first['approval_id']}/approve", json={"rationale": "ok"}, headers=ADMIN
+    )
+    out = client.post(
+        "/v1/guard/tool_call",
+        json={
+            "agent": "support-triage",
+            "tool": "airline.cancel_flight",
+            "arguments": {"booking": "IR-D204"},
+            "provenance": {},
+            "approval_id": first["approval_id"],
+        },
+    ).json()
+    assert out["verdict"] == "allow"

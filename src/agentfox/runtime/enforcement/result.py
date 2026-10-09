@@ -114,6 +114,8 @@ class StreamEvent:
 
     kind: str = "delta"
     delta: str = ""
+    #: Tool-call fragments the model streamed (OpenAI ``delta.tool_calls`` shape).
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
     finish_reason: str | None = None
     usage: dict[str, int] = field(default_factory=dict)
     result: EnforcementResult | None = None

@@ -40,7 +40,7 @@ const EXAMPLE =
  * executable rule (shown back in plain terms), or to a specific question when the
  * wording leaves something open. Added rules start watching.
  */
-export function DescribeRule({ agent }: { agent?: string }) {
+export function DescribeRule({ agent, tools = [] }: { agent?: string; tools?: string[] }) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -48,11 +48,11 @@ export function DescribeRule({ agent }: { agent?: string }) {
   const [error, setError] = useState("");
   const [added, setAdded] = useState<string[]>([]);
 
-  const compile = async () => {
+  const compile = async (source: string = text) => {
     setBusy(true);
     setError("");
     try {
-      setResult(await callJson("/api/business/compile", "POST", { text }));
+      setResult(await callJson("/api/business/compile", "POST", { text: source }));
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -84,7 +84,7 @@ export function DescribeRule({ agent }: { agent?: string }) {
         aria-label="Describe the rule"
       />
       <div className="k-pills" style={{ gap: 8 }}>
-        <button className="k-btn-primary" disabled={busy || !text.trim()} onClick={compile}>
+        <button className="k-btn-primary" disabled={busy || !text.trim()} onClick={() => compile()}>
           {busy && !result ? "Reading…" : "Create rule"}
         </button>
         {!text && (
@@ -134,8 +134,29 @@ export function DescribeRule({ agent }: { agent?: string }) {
             <div key={i} className="k-preview" style={{ maxWidth: "none" }}>
               <strong>{q.question}</strong>
               <span className="k-muted">“{q.source}”</span>
-              {q.options?.length > 0 && <span className="k-muted">Options: {q.options.join(" · ")}</span>}
-              <span className="k-muted" style={{ fontSize: "var(--t-micro)" }}>Reword the sentence above to answer it, then create again.</span>
+              {toolSubject(q.question) && tools.length > 0 ? (
+                <div className="k-pills" style={{ gap: 6, flexWrap: "wrap" }}>
+                  {tools.map((t) => (
+                    <button
+                      key={t}
+                      className="k-btn k-mono"
+                      disabled={busy}
+                      onClick={() => {
+                        const next = text.replace(new RegExp(escape(toolSubject(q.question)!), "gi"), t);
+                        setText(next);
+                        compile(next);
+                      }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {q.options?.length > 0 && <span className="k-muted">Options: {q.options.join(" · ")}</span>}
+                  <span className="k-muted" style={{ fontSize: "var(--t-micro)" }}>Reword the sentence above to answer it, then create again.</span>
+                </>
+              )}
             </div>
           ))}
           {result.ignored?.length > 0 && (
@@ -150,4 +171,14 @@ export function DescribeRule({ agent }: { agent?: string }) {
       )}
     </div>
   );
+}
+
+/** "Which tool handles compensation?" → "compensation": the word to replace with a tool. */
+function toolSubject(question: string): string | null {
+  const m = /^Which tool handles (.+?)\?$/i.exec(question || "");
+  return m ? m[1] : null;
+}
+
+function escape(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

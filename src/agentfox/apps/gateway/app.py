@@ -174,6 +174,10 @@ def _key_rotation_status() -> dict[str, str]:
         return {"token_encryption": "unknown", "audit_signing": "unknown"}
 
 
+#: The inline routes that call a model provider on the caller's behalf.
+MODEL_ROUTES = ("/v1/chat/completions", "/v1/messages")
+
+
 def create_app() -> FastAPI:
     # Before anything else, and here rather than in `lifespan`: a serverless host may
     # never run the lifespan, and a process that is going to refuse should refuse
@@ -249,6 +253,10 @@ def create_app() -> FastAPI:
         # thousand is a blip, and a fraction over failures alone cannot tell them apart.
         observe_governed_request()
         events = check_services()
+        if not request.url.path.startswith(MODEL_ROUTES):
+            # Guard, MCP and trace routes never call the model: a provider outage is
+            # no reason to stop checking the traffic of teams that call it themselves.
+            events = [e for e in events if e.control != "model_provider"]
         blocking = [e for e in events if e.verdict == "block"]
         if blocking:
             event = blocking[0]

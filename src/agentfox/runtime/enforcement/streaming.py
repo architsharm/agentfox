@@ -8,6 +8,7 @@ from typing import Any
 
 from agentfox.platform.ledger.trace import end_trace
 from agentfox.platform.providers import CompletionRequest
+from agentfox.runtime.enforcement.completion import release_before_provider_call
 from agentfox.runtime.enforcement.result import StreamEvent
 
 
@@ -34,6 +35,8 @@ class _StreamingMixin:
         max_tokens: int | None = None,
         mode: str | None = None,
         approval_id: str | None = None,
+        passthrough: dict[str, Any] | None = None,
+        passthrough_protocol: str | None = None,
     ) -> Iterator[StreamEvent]:
         """Enforced streaming completion.
 
@@ -76,12 +79,15 @@ class _StreamingMixin:
 
         agent, identity, trace = pre.agent, pre.identity, pre.trace
         tracker, redacted_messages, worst = pre.tracker, pre.messages, pre.result
+        release_before_provider_call(self.session)
 
         request = CompletionRequest(
             messages=redacted_messages,
             model=model,
             temperature=temperature,
             max_tokens=max_tokens,
+            passthrough=passthrough,
+            passthrough_protocol=passthrough_protocol,
         )
 
         started = time.perf_counter()
@@ -89,6 +95,9 @@ class _StreamingMixin:
             request, provider=provider, model=model, stream=True
         )
         accumulated: list[str] = []
+        # Tool calls the model proposes arrive as fragments keyed by index; they are
+        # forwarded as they come and assembled for the record.
+        tool_calls: dict[int, dict[str, Any]] = {}
         usage: dict[str, int] = {}
         finish_reason: str | None = None
         pending: list[StreamEvent] = []
@@ -100,6 +109,13 @@ class _StreamingMixin:
                 usage = chunk.usage
             if chunk.finish_reason:
                 finish_reason = chunk.finish_reason
+            if chunk.tool_calls:
+                _merge_tool_calls(tool_calls, chunk.tool_calls)
+                call_event = StreamEvent(kind="delta", tool_calls=chunk.tool_calls)
+                if mode == "windowed":
+                    yield call_event
+                else:
+                    pending.append(call_event)
             if not chunk.delta:
                 continue
             accumulated.append(chunk.delta)
@@ -139,6 +155,7 @@ class _StreamingMixin:
             model=model,
             provider=model_provider.key,
             usage=usage,
+            tool_calls=[tool_calls[i] for i in sorted(tool_calls)],
         )
 
         final, released = self._finish_completion(
@@ -167,6 +184,7 @@ class _StreamingMixin:
                 yield from pending
             else:
                 yield StreamEvent(kind="delta", delta=text)
+                yield from (e for e in pending if e.tool_calls)
         elif final.blocked:
             # Windowed mode: the tail was blocked after content had already been sent.
             yield StreamEvent(kind="blocked", result=final)
@@ -175,3 +193,16 @@ class _StreamingMixin:
         yield StreamEvent(
             kind="done", finish_reason=finish_reason or "stop", usage=usage, result=final
         )
+
+
+def _merge_tool_calls(into: dict[int, dict[str, Any]], fragments: list[dict[str, Any]]) -> None:
+    """Assemble OpenAI-style streamed tool-call fragments into whole calls."""
+    for fragment in fragments:
+        index = int(fragment.get("index", 0))
+        call = into.setdefault(
+            index, {"id": "", "type": "function", "function": {"name": "", "arguments": ""}}
+        )
+        call["id"] = fragment.get("id") or call["id"]
+        function = fragment.get("function") or {}
+        call["function"]["name"] += function.get("name") or ""
+        call["function"]["arguments"] += function.get("arguments") or ""

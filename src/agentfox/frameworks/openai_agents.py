@@ -272,6 +272,58 @@ def _authorise(
         )
 
 
+class _HeldCalls:
+    """Approvals this process is waiting on, so an approved call can run when retried.
+
+    A held call returns to the model as a refusal naming its approval; the model, or
+    the user, tries again later. Without this the retry was a new call — a new
+    approval for a reviewer, and the approved one never used. Calls are matched on
+    tool and arguments; an approved match is retried with its ``approval_id`` and
+    runs once, a denied or expired one is forgotten.
+    """
+
+    def __init__(self) -> None:
+        self._held: dict[tuple[str, str], str] = {}
+
+    @staticmethod
+    def _key(tool: str, arguments: dict[str, Any]) -> tuple[str, str]:
+        return tool, json.dumps(arguments, sort_keys=True, default=str)
+
+    def approved(self, fox: Any, tool: str, arguments: dict[str, Any]) -> str | None:
+        key = self._key(tool, arguments)
+        approval_id = self._held.get(key)
+        if approval_id is None:
+            return None
+        try:
+            status = str((fox.approval(approval_id) or {}).get("status", "pending"))
+        except Exception:  # noqa: BLE001 - an unreadable approval is decided afresh
+            status = "unknown"
+        if status == "approved":
+            self._held.pop(key, None)
+            return approval_id
+        if status != "pending":
+            self._held.pop(key, None)
+        return None
+
+    def remember(self, tool: str, arguments: dict[str, Any], result: EnforcementResult) -> None:
+        if result.escalated and result.approval_id:
+            self._held[self._key(tool, arguments)] = result.approval_id
+
+
+def _authorise_held(
+    fox: Any,
+    held: _HeldCalls,
+    tool: str,
+    arguments: dict[str, Any],
+    provenance: dict[str, str] | None,
+) -> EnforcementResult:
+    """`_authorise`, redeeming an approval a person granted for this exact call."""
+    approval_id = held.approved(fox, tool, arguments)
+    result = _authorise(fox, tool, arguments, provenance, approval_id)
+    held.remember(tool, arguments, result)
+    return result
+
+
 def _arguments(fn: Callable[..., Any], args: tuple, kwargs: dict[str, Any]) -> dict[str, Any]:
     """The call's arguments by name, without the context the SDK injects."""
     try:
@@ -304,6 +356,8 @@ def guard_tool(
     signature is preserved so ``function_tool`` builds the same schema.
     """
 
+    held = _HeldCalls()
+
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         key = tool or fn.__name__
 
@@ -321,7 +375,9 @@ def guard_tool(
             @functools.wraps(fn)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 arguments = _arguments(fn, args, kwargs)
-                result = await _call(run_in_thread, _authorise, client, key, arguments, provenance)
+                result = await _call(
+                    run_in_thread, _authorise_held, client, held, key, arguments, provenance
+                )
                 refusal = settle(result)
                 if refusal is not None:
                     return refusal
@@ -332,7 +388,7 @@ def guard_tool(
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            result = _authorise(client, key, _arguments(fn, args, kwargs), provenance)
+            result = _authorise_held(client, held, key, _arguments(fn, args, kwargs), provenance)
             refusal = settle(result)
             if refusal is not None:
                 return refusal
@@ -395,6 +451,7 @@ def agentfox_tool_guardrail(
             "tool guardrails need openai-agents 0.3 or later; use guard_tool() instead"
         )
     names = dict(tools or {})
+    held = _HeldCalls()
 
     async def guardrail(data: Any) -> Any:
         ctx = data.context
@@ -407,7 +464,9 @@ def agentfox_tool_guardrail(
         if not isinstance(arguments, dict):
             arguments = {"_value": arguments}
         key = names.get(sdk_name, sdk_name)
-        result = await _call(run_in_thread, _authorise, client, key, arguments, provenance)
+        result = await _call(
+            run_in_thread, _authorise_held, client, held, key, arguments, provenance
+        )
         info = _info(result.to_json())
         if result.verdict not in STOPPING_VERDICTS:
             return agents.ToolGuardrailFunctionOutput.allow(output_info=info)
