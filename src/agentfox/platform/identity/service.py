@@ -24,8 +24,6 @@ import secrets
 from dataclasses import dataclass, field
 from typing import Any
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -41,9 +39,8 @@ from agentfox.core.models import (
     utcnow,
 )
 from agentfox.core.vocab import COMPARATORS, taint_rank
+from agentfox.platform.identity.keyhash import check_key, hash_key
 from agentfox.platform.ledger.findings import auto_resolve, raise_finding
-
-_hasher = PasswordHasher()
 
 AGENT_KEY_PREFIX = "nom_agt_"
 API_KEY_PREFIX = "nom_api_"
@@ -78,7 +75,7 @@ def issue_credential(
     credential = Credential(
         identity_id=identity.id,
         key_prefix=raw[: len(AGENT_KEY_PREFIX) + 8],
-        key_hash=_hasher.hash(raw),
+        key_hash=hash_key(raw),
         expires_at=utcnow() + dt.timedelta(days=ttl_days) if ttl_days else None,
         rotated_from_id=rotated_from,
     )
@@ -90,7 +87,7 @@ def issue_credential(
 def verify_credential(session: Session, raw_key: str) -> Identity | None:
     """Resolve a presented key to its identity, or None.
 
-    Lookup is narrowed by prefix so verification is one argon2 call in the common
+    Lookup is narrowed by prefix so verification is one hash check in the common
     case rather than one per stored credential.
     """
     if not raw_key:
@@ -100,10 +97,11 @@ def verify_credential(session: Session, raw_key: str) -> Identity | None:
     for credential in candidates:
         if not credential.active:
             continue
-        try:
-            _hasher.verify(credential.key_hash, raw_key)
-        except VerifyMismatchError:
+        matches, upgraded = check_key(credential.key_hash, raw_key)
+        if not matches:
             continue
+        if upgraded:
+            credential.key_hash = upgraded
         credential.last_used_at = utcnow()
         identity = session.get(Identity, credential.identity_id)
         if identity is None or identity.status != "active":

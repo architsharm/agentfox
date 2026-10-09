@@ -23,6 +23,7 @@ from agentfox.apps.cli.commands.agents import agents_app
 from agentfox.apps.cli.commands.audit import audit_app, evidence_app
 from agentfox.apps.cli.commands.compliance import compliance_app
 from agentfox.apps.cli.commands.db import db_app
+from agentfox.apps.cli.commands.detectors import detectors_app
 from agentfox.apps.cli.commands.evals import eval_app
 from agentfox.apps.cli.commands.hooks import hooks_app
 from agentfox.apps.cli.commands.policy import policy_app
@@ -54,6 +55,7 @@ app.add_typer(compliance_app, name="compliance")
 app.add_typer(redteam_app, name="redteam")
 app.add_typer(scan_app, name="scan")
 app.add_typer(tools_app, name="tools")
+app.add_typer(detectors_app, name="detectors")
 app.add_typer(access_app, name="access")
 app.add_typer(db_app, name="db")
 app.add_typer(hooks_app, name="hooks")

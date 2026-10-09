@@ -29,8 +29,10 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
     { key: "packs", label: "Packs" },
     { key: "import", label: "Import" },
   ];
-  const tab = tabs.some((t) => t.key === sp.from) ? sp.from! : tabs[0].key;
   const keep = { run: sp.run, agent: sp.agent };
+  // No builder chosen yet: start from what the person wants, not from our mechanisms.
+  if (!sp.from && !sp.run) return <Start agent={sp.agent} />;
+  const tab = tabs.some((t) => t.key === sp.from) ? sp.from! : tabs[0].key;
 
   return (
     <>
@@ -40,7 +42,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
       {tab === "describe" && <Describe agent={sp.agent} />}
       {tab === "custom" && (
         <Card>
-          <CustomRule agent={sp.agent} />
+          <CustomRule agent={sp.agent} startKind={sp.kind as any} />
         </Card>
       )}
       {tab === "packs" && <LibraryPacks />}
@@ -161,5 +163,49 @@ async function Describe({ agent }: { agent?: string }) {
     <Card>
       <DescribeRule agent={agent} tools={tools.slice(0, 24)} />
     </Card>
+  );
+}
+
+const GOALS: { title: string; text: string; to: Record<string, string> | string }[] = [
+  { title: "Block words or names", text: "Competitors, internal project names, banned phrases.", to: { from: "custom", kind: "terms" } },
+  { title: "Block a pattern", text: "Account numbers, internal IDs, anything with a shape.", to: { from: "custom", kind: "patterns" } },
+  { title: "Keep off a topic", text: "Legal or medical advice, politics, anything described in words.", to: { from: "custom", kind: "topic" } },
+  { title: "Keep on topic", text: "Only answer about orders, shipping, billing…", to: { from: "custom", kind: "allow" } },
+  { title: "Approve above an amount", text: "Refunds over $100 need a manager.", to: { from: "describe" } },
+  { title: "Choose which tools it may use", text: "Allow, ask first, limit arguments.", to: { from: "access" } },
+  { title: "Stop a risky sequence", text: "After reading customer data, never email outside.", to: { from: "custom", kind: "sequence" } },
+  { title: "Turn on a ready-made pack", text: "Prompt attacks, personal data, EU AI Act…", to: { from: "packs" } },
+  { title: "Bring rules you already have", text: "From Guardrails AI, or a workspace file.", to: { from: "import" } },
+];
+
+function Start({ agent }: { agent?: string }) {
+  return (
+    <>
+      <Header back={{ href: "/app/policies", label: "Policies" }} title={agent ? `Add rule for ${agent}` : "What do you want to do?"} />
+      {agent && (
+        <Card>
+          <div className="k-pills" style={{ gap: 10, justifyContent: "space-between", flexWrap: "wrap" }}>
+            <span>Set up everything for {agent} in one go: protections, words, topics and the message users see.</span>
+            <Link className="k-btn-primary" href={`/app/agents/${encodeURIComponent(agent)}/protect`}>
+              Protect {agent}
+            </Link>
+          </div>
+        </Card>
+      )}
+      <div className="k-grid k-grid-3">
+        {GOALS.map((g) => (
+          <Link
+            key={g.title}
+            href={typeof g.to === "string" ? g.to : href("/app/policies/new", { ...g.to, agent })}
+            className="k-card k-tile k-goal"
+          >
+            <div className="k-card-body">
+              <strong>{g.title}</strong>
+              <p className="k-tile-text">{g.text}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </>
   );
 }

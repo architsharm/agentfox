@@ -198,3 +198,11 @@ def test_a_retried_held_call_reuses_its_approval(client):
         },
     ).json()
     assert out["verdict"] == "allow"
+
+
+def test_the_policy_list_can_carry_every_detail_in_one_request(client):
+    full = client.get("/api/policies?full=1", headers=ADMIN).json()["policies"]
+    one = client.get("/api/policies/baseline", headers=ADMIN).json()
+    row = next(p for p in full if p["key"] == "baseline")
+    assert row["live_compiled"] == one["live_compiled"] and row["live_body"] == one["live_body"]
+    assert len(row["version_history"]) == len(one["versions"])

@@ -163,3 +163,26 @@ def test_a_run_with_no_checks_says_so(client):
         session.add(Trace(agent_slug="otel-bot", verdict="allow"))
     rows = client.get("/api/traces?agent=otel-bot", headers=ADMIN).json()["traces"]
     assert rows and rows[0]["checks"] == 0
+
+
+def test_a_run_says_what_was_asked_with_personal_data_masked(client):
+    client.post(
+        "/v1/guard/input",
+        json={"agent": "summary-bot", "content": "Refund order 7 to jane.doe@example.com please"},
+    )
+    client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "echo-1",
+            "messages": [
+                {"role": "system", "content": "be nice"},
+                {"role": "user", "content": "Where is my parcel?"},
+            ],
+        },
+        headers={"X-AgentFox-Agent": "summary-bot"},
+    )
+    rows = client.get("/api/traces?agent=summary-bot", headers=ADMIN).json()["traces"]
+    summaries = {r["summary"] for r in rows}
+    assert "Where is my parcel?" in summaries
+    masked = next(s for s in summaries if s and s.startswith("Refund"))
+    assert "jane.doe@example.com" not in masked and "REDACTED" in masked

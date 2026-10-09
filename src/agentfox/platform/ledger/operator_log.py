@@ -82,6 +82,11 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "changes the thresholds that decide what is auto-approved",
     ),
     PrivilegedAction(
+        "agentfox.capabilities.business.store.delete_ladder",
+        "operator.business_rule.deleted",
+        "removes a threshold rule — what it held for approval goes through unchecked",
+    ),
+    PrivilegedAction(
         "agentfox.capabilities.business.store.set_mode",
         "operator.business_rule.mode_changed",
         "moves a rule between observe and enforce — the same rule, opposite effect",

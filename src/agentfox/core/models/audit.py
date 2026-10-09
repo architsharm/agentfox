@@ -28,6 +28,8 @@ class Trace(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(24), default="ok")
     verdict: Mapped[str] = mapped_column(String(16), default="allow", index=True)
     intent: Mapped[str | None] = mapped_column(Text)
+    #: What the user asked, masked (`runtime/enforcement/summary.py`): the runs list's label.
+    summary: Mapped[str | None] = mapped_column(String(200))
     model: Mapped[str | None] = mapped_column(String(120))
     provider: Mapped[str | None] = mapped_column(String(64))
     token_usage_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)

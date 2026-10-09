@@ -300,6 +300,21 @@ def _semantic_topics_on(context: DetectionContext) -> bool:
     return local_embedder().available()
 
 
+def _calibrated(similarity: float, threshold: float) -> float:
+    """A topic match on the scale every other detection uses: 0.5 at the scorer's own
+    threshold, 1.0 at a perfect match.
+
+    Scorers differ (lexical overlap matches at 0.34, embeddings at 0.55), and a policy
+    rule reads one ``min_score``. Reported raw, a lexical match between 0.34 and the
+    rule's default 0.5 was detected and then ignored — the topic matched and nothing
+    fired. Calibrated, 0.5 means "matched", and the Low/Medium/High sensitivity levels
+    (0.9/0.7/0.5) mean the same thing for topics as for everything else.
+    """
+    if threshold >= 1.0:
+        return 1.0
+    return round(min(1.0, 0.5 + 0.5 * (similarity - threshold) / (1.0 - threshold)), 3)
+
+
 def _topic_detections(
     content: str, rules: list[CompiledRule], context: DetectionContext, scorer: TopicScorer
 ) -> list[Detection]:
@@ -318,11 +333,16 @@ def _topic_detections(
             out.append(
                 Detection(
                     entity_type=rule.entity,
-                    score=round(score, 3),
+                    score=_calibrated(score, scorer.threshold),
                     start=0,
                     end=len(content),
                     sample=redact_sample(content[:80]),
-                    detail={"custom_rule": rule.key, "kind": "topic", "scorer": scorer.name},
+                    detail={
+                        "custom_rule": rule.key,
+                        "kind": "topic",
+                        "scorer": scorer.name,
+                        "similarity": round(score, 3),
+                    },
                 )
             )
     # Allowed topics are judged together: content is off-topic only when it is close
@@ -336,8 +356,11 @@ def _topic_detections(
                 out.append(
                     Detection(
                         entity_type=rule.entity,
-                        # Distance from the nearest allowed topic: 1.0 is nowhere near.
-                        score=round(1.0 - best, 3),
+                        # How far from the nearest allowed topic, calibrated: 0.5 is just
+                        # outside it, 1.0 is nowhere near.
+                        score=round(
+                            min(1.0, 0.5 + 0.5 * (scorer.threshold - best) / scorer.threshold), 3
+                        ),
                         start=0,
                         end=len(content),
                         sample=redact_sample(content[:80]),

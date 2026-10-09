@@ -410,6 +410,7 @@ def search_traces(
             "model": t.model,
             "provider": t.provider,
             "intent": t.intent,
+            "summary": t.summary,
             "cost_usd": t.cost_usd,
             "rules": fired.get(t.id, []),
             "tools": tools.get(t.id, []),

@@ -161,7 +161,22 @@ def test_only_a_hash_is_stored(ready):
     with system_scope("verify"), session_scope() as session:
         stored = session.scalars(select(ApiToken)).all()
     assert all(raw not in token.key_hash for token in stored)
-    assert all(token.key_hash.startswith("$argon2") for token in stored)
+    assert all(token.key_hash.startswith("sha256$") for token in stored)
+
+
+def test_a_token_stored_as_argon2_still_works_and_is_upgraded(ready, production):
+    """Tokens issued before the switch to SHA-256 keep working, and are re-stored."""
+    from argon2 import PasswordHasher
+
+    raw = _token()
+    with system_scope("downgrade"), session_scope() as session:
+        token = session.scalars(select(ApiToken)).first()
+        token.key_hash = PasswordHasher().hash(raw)
+    client = TestClient(create_app())
+    assert client.get("/api/agents", headers={"Authorization": f"Bearer {raw}"}).status_code == 200
+    with system_scope("verify"), session_scope() as session:
+        assert session.scalars(select(ApiToken)).first().key_hash.startswith("sha256$")
+    assert client.get("/api/agents", headers={"Authorization": f"Bearer {raw}"}).status_code == 200
 
 
 def test_a_revoked_token_stops_working(ready, production):

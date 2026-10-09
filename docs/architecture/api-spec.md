@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-240 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+244 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -157,6 +157,7 @@ from the code. Regenerate after changing any route:
 | `DELETE` | `/api/agents/{slug}/access/{capability_id}` | Remove Access |
 | `POST` | `/api/agents/{slug}/kill` | Stop an agent now. Requires the stronger role — this is an incident action. |
 | `GET` | `/api/agents/{slug}/lineage` | Agent Lineage |
+| `GET` | `/api/agents/{slug}/map` | Which guardrails apply at each step of this agent's requests, with recent traffic. |
 | `GET` | `/api/agents/{slug}/posture` | Agent Posture |
 | `GET` | `/api/agents/{slug}/protection` | Get Protection |
 | `POST` | `/api/agents/{slug}/protection` | Save Protection |
@@ -393,6 +394,9 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/business/compile` | Compile written policy into rules and questions. Nothing is saved. |
 | `GET` | `/api/business/rules` | List Business Rules |
 | `POST` | `/api/business/rules` | Save Business Rule |
+| `DELETE` | `/api/business/rules/{key}` | Remove Business Rule |
+| `GET` | `/api/business/rules/{key}` | Get Business Rule |
+| `PUT` | `/api/business/rules/{key}` | Change a rule's thresholds in place. It keeps its mode; changing an enforcing |
 | `POST` | `/api/business/rules/{key}/mode` | Business Rule Mode |
 | `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
 | `GET` | `/api/custom-rules` | Get Custom Rules |

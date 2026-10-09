@@ -5,7 +5,7 @@ token, and the deployment's authentication posture (whether the development iden
 header is accepted). The CLI and the gateway both use these; resolving a request to a
 principal is the gateway's job (`agentfox.apps.gateway.auth`).
 
-API tokens are argon2-hashed and prefix-narrowed, so verifying one is one hash
+API tokens are hashed (`keyhash`) and prefix-narrowed, so verifying one is one hash
 comparison rather than one per token, and a database disclosure does not hand over
 working credentials. Lookups run in system scope because the token is what says which
 tenant to scope to.
@@ -16,8 +16,6 @@ from __future__ import annotations
 import datetime as dt
 import secrets
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +23,7 @@ from agentfox.core.config import DEV_ENVIRONMENTS as _DEV_ENVIRONMENTS
 from agentfox.core.config import get_settings
 from agentfox.core.models import ApiToken, User, utcnow
 from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.platform.identity.keyhash import check_key, hash_key
 from agentfox.platform.ledger.operator_log import record
 
 API_KEY_PREFIX = "nom_api_"
@@ -32,7 +31,6 @@ API_KEY_PREFIX = "nom_api_"
 #: token in practice, short enough to be safe to log and to print in a listing.
 PREFIX_LENGTH = len(API_KEY_PREFIX) + 8
 
-_hasher = PasswordHasher()
 
 #: Environments where an unverified identity header is acceptable. Defined in
 #: core.config (the published-secrets guard uses the same set) and re-exported here.
@@ -156,7 +154,7 @@ def issue_token(
 ) -> tuple[ApiToken, str]:
     """Mint an operator token. The raw value is returned once and never stored.
 
-    Only the argon2 hash is persisted, so a database disclosure does not hand over
+    Only a hash is persisted (`keyhash`), so a database disclosure does not hand over
     working credentials — which is the whole reason the audit log and the token store
     can sit in the same database.
 
@@ -170,7 +168,7 @@ def issue_token(
         user_id=user.id,
         name=name or "unnamed",
         key_prefix=raw[:PREFIX_LENGTH],
-        key_hash=_hasher.hash(raw),
+        key_hash=hash_key(raw),
         expires_at=(utcnow() + dt.timedelta(days=ttl_days)) if ttl_days else None,
         org_id=user.org_id,
     )
@@ -263,9 +261,11 @@ def resolve_token_record(session: Session, raw: str) -> ApiToken | None:
         for token in candidates:
             if not _token_is_live(token, now):
                 continue
-            try:
-                _hasher.verify(token.key_hash, raw)
-            except VerifyMismatchError:
+            matches, upgraded = check_key(token.key_hash, raw)
+            if not matches:
                 continue
+            if upgraded:
+                token.key_hash = upgraded
+                session.flush()
             return token
     return None

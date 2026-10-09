@@ -44,6 +44,7 @@ from agentfox.exporters.otel import ingest_otlp
 from agentfox.platform.registry.service import detect_shadow_agents
 from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
+from agentfox.runtime.enforcement.summary import summarize
 
 log = logging.getLogger(__name__)
 
@@ -561,6 +562,9 @@ def _stream_openai(events, model: str):
                     "error": {
                         "type": _stream_error_type(result),
                         "message": result.reason or "blocked by policy",
+                        # What the end user should see; a non-streamed block carries it
+                        # in its 403 body, so a streaming app must get it here.
+                        "user_message": result.user_message,
                         "approval_id": result.approval_id,
                         "verdict": result.verdict,
                         "applied_verdict": result.verdict,
@@ -578,6 +582,23 @@ def _stream_openai(events, model: str):
             yield _sse(
                 _openai_chunk(model, finish=event.finish_reason or "stop", chunk_id=chunk_id)
             )
+            if event.usage:
+                # OpenAI's own final chunk shape for `stream_options.include_usage`.
+                prompt = int(event.usage.get("input_tokens", 0))
+                completion = int(event.usage.get("output_tokens", 0))
+                yield _sse(
+                    {
+                        "id": chunk_id,
+                        "object": "chat.completion.chunk",
+                        "model": model,
+                        "choices": [],
+                        "usage": {
+                            "prompt_tokens": prompt,
+                            "completion_tokens": completion,
+                            "total_tokens": prompt + completion,
+                        },
+                    }
+                )
             # Trailing governance metadata: verdict is only knowable at the end, and
             # headers were already flushed when the stream opened.
             yield _sse(
@@ -621,6 +642,7 @@ def _stream_anthropic(events, model: str):
                     "error": {
                         "type": _stream_error_type(result),
                         "message": result.reason or "blocked by policy",
+                        "user_message": result.user_message,
                         "approval_id": result.approval_id,
                         "trace_id": result.trace_id,
                         "rules_fired": result.rules_fired,
@@ -1013,6 +1035,8 @@ def guard_content(
             intent=payload.intent,
             trace_id=payload.trace_id,
         )
+    if surface == "input" and not trace.summary:
+        trace.summary = summarize(payload.content)
     if surface == "completion":
         # The completion gate: the claim is checked like any output, and the
         # caller's reported facts decide the `completion_requires` rules.

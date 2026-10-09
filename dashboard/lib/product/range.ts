@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { href } from "@/components/kit";
 import { safeApi } from "@/lib/product/api";
 import type { RangeKey } from "@/lib/product/vocab";
 
@@ -17,12 +15,12 @@ export async function activeRange(agent?: string): Promise<{ range: RangeKey; la
 }
 
 /**
- * For a page whose numbers depend on the range: with no range in the URL, send the
- * reader to the URL with the range that has data, so the filter bar, the links to
- * other tabs and everything on the page agree on one window.
+ * For a page whose numbers depend on the range: with no range in the URL, fill in
+ * the one that has data, in place, so every component reading ``sp.range`` agrees.
+ * Wrap the page in `RangeProvider` with the result so the filter bar shows it. (This
+ * redirected to the URL with the range before; that cost a full extra round trip.)
  */
-export async function ensureRange(path: string, sp: SP, agent?: string): Promise<void> {
+export async function ensureRange(_path: string, sp: SP, agent?: string): Promise<void> {
   if (sp.range) return;
-  const { range } = await activeRange(agent ?? sp.agent);
-  if (range !== "7d") redirect(href(path, { ...sp, range }));
+  sp.range = (await activeRange(agent ?? sp.agent)).range;
 }

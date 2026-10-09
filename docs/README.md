@@ -97,5 +97,6 @@ a quoted figure drifts from its source.
 | Document | What it is |
 |---|---|
 | [../plugins/claude-code/README.md](../plugins/claude-code/README.md) | The Claude Code operator plugin: skills, commands, subagents, MCP server and safety hooks for driving the product from a coding agent. Its runtime-neutral parts are in `plugins/shared/`. |
+| [../demo/live-airline/README.md](../demo/live-airline/README.md) | OpenAI's open-source multi-agent airline app run live through a local gateway with the OpenAI Agents SDK adapter: setup, configuration over the HTTP API, scripted scenarios and a check that asserts what was blocked, held and approved. |
 | [../sdk/typescript/README.md](../sdk/typescript/README.md) | `@agentfox/sdk`, the dependency-free TypeScript client for the `/v1/guard/*` routes, and the OpenAI client pointed at the gateway proxy. |
 | [../plugins/shared/reference/docs-map.md](../plugins/shared/reference/docs-map.md) | Which document an agent should read for which question. Every tracked markdown file must be classified there. |

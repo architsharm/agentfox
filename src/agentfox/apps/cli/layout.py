@@ -319,6 +319,7 @@ def apply_layout(app: typer.Typer) -> None:
     admin_app.add_typer(sub["auth"].typer_instance, name="auth")
     admin_app.add_typer(sub["users"].typer_instance, name="users")
     admin_app.add_typer(sub["db"].typer_instance, name="db")
+    admin_app.add_typer(sub["detectors"].typer_instance, name="detectors")
     catalog_app = _new_group("Keep the control catalog and its computed status current.")
     for name in ("sync", "compute", "validate"):
         _alias(catalog_app, find("compliance", name), name)

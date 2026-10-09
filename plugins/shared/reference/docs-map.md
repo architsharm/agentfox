@@ -71,7 +71,7 @@ Quote coverage numbers only from these, and only after regenerating.
 |---|---|
 | `benchmarks/REPORT.md`, `benchmarks/*/README.md` (one per benchmark area) | running or changing that benchmark |
 | `benchmarks/injection/data/README.md`, `benchmarks/generalization/data/README.md`, `docs/evaluation/dataset-sourcing.md` | dataset provenance and licensing |
-| `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md` | running or deploying the live demos |
+| `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md`, `demo/live-airline/README.md` | running or deploying the live demos |
 | `src/agentfox/harnesses/*/fixtures/README.md` | capturing a harness's hook payloads (written by `just new-harness`) |
 | `src/agentfox/packs/*/README.md` (one per capability pack, and the scaffolding template's) | working on that pack: the risk it covers, what it ships, how to test it (`agentfox policy packs show <id>`, `agentfox policy packs test <id>`) |
 | `CONTRIBUTING.md` | setting up to work on the code: `just setup`/`just ci` (the `justfile` mirrors CI), test layout, generated files and their checks, the vendored-wheel rule, branch and docstring conventions |

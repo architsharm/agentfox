@@ -72,3 +72,65 @@ def test_a_compiled_ladder_saves_watching_and_can_be_enforced(client):
 
 def test_unknown_pack_is_404(client):
     assert client.post("/api/library/packs/nope/install", headers=ADMIN).status_code == 404
+
+
+def test_a_limit_on_an_argument_the_tool_never_takes_is_flagged(client):
+    client.post(
+        "/v1/guard/tool_call",
+        json={
+            "agent": "support-triage",
+            "tool": "airline.issue_compensation",
+            "arguments": {"reason": "delay"},
+            "provenance": {},
+        },
+    )
+    out = client.post(
+        "/api/business/compile",
+        json={"text": "airline.issue_compensation above $200 requires approval from a supervisor."},
+        headers=as_user("admin@example.com"),
+    ).json()
+    [rule] = out["rules"]
+    assert any("takes no `amount`" in w for w in rule.get("warnings", []))
+
+
+def _ladder(key="refund-cap", upto=100.0):
+    return {
+        "key": key,
+        "name": "Refund cap",
+        "tool": "payments.refund",
+        "field": "arguments.amount",
+        "unit": "USD",
+        "bands": [
+            {"upto": upto, "outcome": "allow"},
+            {"outcome": "escalate", "approver_role": "manager"},
+        ],
+    }
+
+
+def test_a_business_rule_can_be_edited_in_place_and_deleted(client):
+    assert (
+        client.post(
+            "/api/business/rules", json={"definition": _ladder()}, headers=ADMIN
+        ).status_code
+        == 201
+    )
+    edited = client.put(
+        "/api/business/rules/refund-cap", json={"definition": _ladder(upto=250.0)}, headers=ADMIN
+    )
+    assert edited.status_code == 200, edited.text
+    rule = client.get("/api/business/rules/refund-cap", headers=ADMIN).json()
+    assert rule["definition"]["bands"][0]["upto"] == 250.0 and rule["mode"] == "observe"
+    assert client.delete("/api/business/rules/refund-cap", headers=ADMIN).status_code == 200
+    assert client.get("/api/business/rules/refund-cap", headers=ADMIN).status_code == 404
+
+
+def test_editing_an_enforcing_rule_needs_the_production_role(client):
+    client.post("/api/business/rules", json={"definition": _ladder()}, headers=ADMIN)
+    client.post("/api/business/rules/refund-cap/mode", json={"mode": "enforce"}, headers=ADMIN)
+    r = client.put(
+        "/api/business/rules/refund-cap",
+        json={"definition": _ladder(upto=999.0)},
+        headers=as_user("priya@example.com"),
+    )
+    assert r.status_code == 403
+    assert client.get("/api/business/rules/refund-cap", headers=ADMIN).json()["mode"] == "enforce"

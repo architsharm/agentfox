@@ -148,13 +148,17 @@ class _StreamingMixin:
                 pending.append(event)
 
         provider_ms = (time.perf_counter() - started) * 1000
-        from agentfox.platform.providers import CompletionResponse
+        from agentfox.platform.providers import CompletionResponse, estimate_cost
 
         response = CompletionResponse(
             text="".join(accumulated),
             model=model,
             provider=model_provider.key,
             usage=usage,
+            # A streamed answer costs what a whole one does; it used to be recorded as 0.
+            cost_usd=estimate_cost(
+                model, int(usage.get("input_tokens", 0)), int(usage.get("output_tokens", 0))
+            ),
             tool_calls=[tool_calls[i] for i in sorted(tool_calls)],
         )
 

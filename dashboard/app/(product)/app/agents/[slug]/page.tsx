@@ -30,12 +30,15 @@ import { AccessEditor } from "@/components/product/agent/AccessEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 import { ensureRange } from "@/lib/product/range";
+import { GuardrailMapLazy as GuardrailMap } from "@/components/product/agent/GuardrailMapLazy";
+import { RangeProvider } from "@/components/kit/RangeContext";
 
 export const metadata: Metadata = appPageMetadata("Agent");
 export const dynamic = "force-dynamic";
 
 const TABS = [
   { key: "overview", label: "Overview" },
+  { key: "map", label: "Map" },
   { key: "access", label: "Access" },
   { key: "rules", label: "Rules" },
   { key: "activity", label: "Activity" },
@@ -53,13 +56,21 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   const requested = LEGACY[sp.tab || ""] || sp.tab;
   const tab = TABS.some((t) => t.key === requested) ? requested! : "overview";
-  if (["overview", "rules", "activity"].includes(tab)) await ensureRange(`/app/agents/${encodeURIComponent(slug)}`, sp, slug);
+  // One round of requests, in parallel: the range (when the URL names none), the
+  // agent, and its kill-switch state.
+  const needsRange = ["overview", "rules", "activity"].includes(tab);
+  const [, outcome, controls] = await Promise.all([
+    needsRange ? ensureRange(`/app/agents/${encodeURIComponent(slug)}`, sp, slug) : Promise.resolve(),
+    api(`/api/agents/${encodeURIComponent(slug)}/posture`).then(
+      (posture: any) => ({ posture, error: null as any }),
+      (error: any) => ({ posture: null, error }),
+    ),
+    safeApi<any>("/api/agent-controls", { controls: [] }),
+  ]);
   const f: Filters = { range: rangeOf(sp.range), agent: slug };
 
-  let posture: any;
-  try {
-    posture = await api(`/api/agents/${encodeURIComponent(slug)}/posture`);
-  } catch (e: any) {
+  if (outcome.error) {
+    const e = outcome.error;
     return (
       <>
         <Header title={slug} back={{ href: "/app/agents", label: "Agents" }} />
@@ -71,12 +82,13 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
       </>
     );
   }
+  const posture = outcome.posture;
   const a = posture.agent;
-  const controls = await safeApi<any>("/api/agent-controls", { controls: [] });
   const state = (controls.controls || []).find((c: any) => c.agent === a.slug)?.state || "active";
   const tabHref = (k: string) => href(`/app/agents/${encodeURIComponent(slug)}`, { tab: k === "overview" ? undefined : k, range: sp.range });
 
   return (
+    <RangeProvider range={sp.range}>
     <>
       <Header
         back={{ href: "/app/agents", label: "Agents" }}
@@ -118,12 +130,14 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
       <Tabs items={TABS.map((t) => ({ ...t, href: tabHref(t.key) }))} active={tab} />
 
       {tab === "overview" && <Overview f={f} posture={posture} />}
+      {tab === "map" && <MapTab slug={slug} />}
       {tab === "access" && <Access slug={slug} prefill={sp.grant} />}
       {tab === "rules" && <Rules f={f} slug={slug} />}
       {tab === "activity" && <Activity f={f} outcome={sp.outcome} />}
       {tab === "quality" && <Quality slug={slug} posture={posture} />}
       {tab === "settings" && <Settings a={a} state={state} />}
     </>
+    </RangeProvider>
   );
 }
 
@@ -456,4 +470,9 @@ function Settings({ a, state }: { a: any; state: string }) {
       </Card>
     </>
   );
+}
+
+async function MapTab({ slug }: { slug: string }) {
+  const map = await safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null);
+  return map ? <GuardrailMap map={map} /> : <Card><Empty>The map could not be loaded.</Empty></Card>;
 }

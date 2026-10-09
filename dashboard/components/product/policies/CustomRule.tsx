@@ -46,17 +46,40 @@ const slug = (s: string) =>
  * may discuss, or a sequence of tool calls. Try it on a sample before saving. Saved
  * rules join the "Your rules" pack, in that pack's current mode.
  */
-export function CustomRule({ agent }: { agent?: string }) {
+export type CustomRuleSpec = {
+  key: string;
+  name: string;
+  kind: "terms" | "patterns" | "topic" | "sequence";
+  polarity?: "deny" | "allow";
+  entries?: string[];
+  examples?: string[];
+  description?: string;
+  surfaces?: string[];
+  agents?: string[];
+  sequence?: { after?: string; then?: string; unless_path?: string | null; unless_matches?: string | null } | null;
+};
+
+function kindOf(spec?: CustomRuleSpec): Kind {
+  if (!spec) return "terms";
+  if (spec.kind === "topic") return spec.polarity === "allow" ? "allow" : "topic";
+  return spec.kind;
+}
+
+export function CustomRule({ agent, initial, startKind }: { agent?: string; initial?: CustomRuleSpec; startKind?: Kind }) {
   const router = useRouter();
-  const [kind, setKind] = useState<Kind>("terms");
-  const [name, setName] = useState("");
-  const [entries, setEntries] = useState("");
-  const [examples, setExamples] = useState("");
-  const [checks, setChecks] = useState<string[]>(["input", "output"]);
-  const [after, setAfter] = useState("");
-  const [then, setThen] = useState("");
-  const [unlessPath, setUnlessPath] = useState("");
-  const [unlessMatches, setUnlessMatches] = useState("");
+  // Editing an existing rule: same form, prefilled; its key, and so its id, stay put.
+  const editing = Boolean(initial);
+  const [kind, setKind] = useState<Kind>(initial ? kindOf(initial) : KINDS.some((k) => k.key === startKind) ? startKind! : "terms");
+  const [name, setName] = useState(initial?.name || "");
+  const [entries, setEntries] = useState(
+    initial ? (initial.kind === "topic" ? initial.description || (initial.entries || []).join(", ") : (initial.entries || []).join("\n")) : "",
+  );
+  const [examples, setExamples] = useState((initial?.examples || []).join("\n"));
+  const [checks, setChecks] = useState<string[]>(initial?.surfaces?.length ? initial.surfaces : startKind === "allow" ? ["input"] : ["input", "output"]);
+  const [after, setAfter] = useState(initial?.sequence?.after || "");
+  const [then, setThen] = useState(initial?.sequence?.then || "");
+  const [unlessPath, setUnlessPath] = useState(initial?.sequence?.unless_path || "");
+  const [unlessMatches, setUnlessMatches] = useState(initial?.sequence?.unless_matches || "");
   const [effect, setEffect] = useState("block");
   const [message, setMessage] = useState("");
   const [reask, setReask] = useState(false);
@@ -68,7 +91,11 @@ export function CustomRule({ agent }: { agent?: string }) {
 
   const isTopic = kind === "topic" || kind === "allow";
   const spec = (): Record<string, unknown> => {
-    const base = { key: slug(name), name: name.trim() || "Untitled rule", agents: agent ? [agent] : [] };
+    const base = {
+      key: initial?.key || slug(name),
+      name: name.trim() || "Untitled rule",
+      agents: initial ? initial.agents || [] : agent ? [agent] : [],
+    };
     if (kind === "sequence")
       return {
         ...base,
@@ -104,6 +131,13 @@ export function CustomRule({ agent }: { agent?: string }) {
       setTried(await callJson("/api/custom-rules/try", "POST", { rule: spec(), text: sample, surface: checks[0] || "input" }));
     });
 
+  const remove = () =>
+    run(async () => {
+      if (!initial || !window.confirm(`Delete "${initial.name}"? It stops checking traffic now.`)) return;
+      await callJson(`/api/custom-rules/${encodeURIComponent(initial.key)}`, "DELETE");
+      router.push("/app/policies");
+    });
+
   const save = () =>
     run(async () => {
       const out = await callJson("/api/custom-rules", "POST", {
@@ -120,7 +154,9 @@ export function CustomRule({ agent }: { agent?: string }) {
     return (
       <div className="k-form">
         <div className="k-pills" style={{ gap: 8 }}>
-          <span className="k-pill k-pill-ok">Added · {saved.mode === "enforce" ? "enforcing" : "watching"}</span>
+          <span className="k-pill k-pill-ok">
+            {editing ? "Saved" : "Added"} · {saved.mode === "enforce" ? "enforcing" : "watching"}
+          </span>
           <Link className="k-btn" href={`/app/policies/rules/${encodeURIComponent(saved.ruleId)}`}>
             Open rule
           </Link>
@@ -217,6 +253,9 @@ export function CustomRule({ agent }: { agent?: string }) {
         </>
       )}
 
+      {/* What it does and what the user is told live on the Tune tab once a rule exists. */}
+      {!editing && (
+        <>
       <div className="k-field">
         <label>When it matches</label>
         <div className="k-seg" role="group" aria-label="Action">
@@ -241,6 +280,9 @@ export function CustomRule({ agent }: { agent?: string }) {
         </label>
       )}
 
+        </>
+      )}
+
       {kind !== "sequence" && (
         <div className="k-field">
           <label htmlFor="cr-sample">Try it</label>
@@ -260,9 +302,16 @@ export function CustomRule({ agent }: { agent?: string }) {
 
       {error && <div className="error">{error}</div>}
       <div>
-        <button className="k-btn-primary" disabled={busy || !ready} onClick={save}>
-          {busy ? "Saving…" : "Add rule"}
-        </button>
+        <div className="k-pills" style={{ gap: 8 }}>
+          <button className="k-btn-primary" disabled={busy || !ready} onClick={save}>
+            {busy ? "Saving…" : editing ? "Save changes" : "Add rule"}
+          </button>
+          {editing && (
+            <button className="k-btn-danger" disabled={busy} onClick={remove}>
+              Delete rule
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

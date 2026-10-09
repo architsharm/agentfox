@@ -47,6 +47,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       ["Issues", "/app/findings"],
       ["Agents", "/app/agents"],
       ["Policies", "/app/policies"],
+      ["Map", "/app/map"],
       ["Approvals", "/app/approvals"],
       ["Test", "/app/test", ["/app/evals"]],
       ["Reports", "/app/reports", ["/app/compliance", "/app/coverage"]],

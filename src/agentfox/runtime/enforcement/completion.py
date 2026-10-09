@@ -35,6 +35,7 @@ from agentfox.runtime.enforcement.result import (
     ProviderUnavailable,
 )
 from agentfox.runtime.enforcement.rules import _RANK, _fired_rule
+from agentfox.runtime.enforcement.summary import summarize
 from agentfox.runtime.reliability import BREAKER, DegradationRecord, FallbackLadder, ProviderAttempt
 from agentfox.runtime.reliability import Rung as _Rung
 from agentfox.runtime.trace_exporters import trace_exporters
@@ -335,6 +336,9 @@ class _CompletionMixin:
                 worst = outcome
 
         worst.trace_id = trace.id
+        if not trace.summary:
+            asked = next((m for m in reversed(messages) if m.get("role") == "user"), None)
+            trace.summary = summarize(_flatten(asked.get("content"))) if asked else None
         if worst.blocked or worst.escalated:
             end_trace(self.session, trace, verdict=worst.verdict, status="blocked")
             return PreflightOutcome(
