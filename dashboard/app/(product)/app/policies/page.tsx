@@ -24,7 +24,7 @@ import { ImportGuard } from "@/components/product/policies/ImportGuard";
 import { LibraryPacks } from "@/components/product/policies/LibraryPacks";
 import { PackMode } from "@/components/product/policies/PackMode";
 import { WorkspaceCode } from "@/components/product/policies/WorkspaceCode";
-import { LegacyJudgmentTab, LegacyPacksTab, LegacyTuningTab } from "@/components/product/policies/legacy";
+import { AdvancedJudges, AdvancedNav, AdvancedPacks, AdvancedTuning } from "@/components/product/policies/advanced";
 import { metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
@@ -476,21 +476,12 @@ async function ChangesTab() {
 
 function AdvancedTab({ sec, agent }: { sec?: string; agent?: string }) {
   const section = sec === "tuning" || sec === "judges" ? sec : "packs";
-  const chip = (key: string, label: string) => (
-    <Link href={href("/app/policies", { tab: "advanced", sec: key === "packs" ? undefined : key })} className={section === key ? "chip active" : "chip"}>
-      {label}
-    </Link>
-  );
   return (
     <>
-      <div className="chipbar">
-        {chip("packs", "Packs & detectors")}
-        {chip("tuning", "Detector tuning")}
-        {chip("judges", "AI judges & egress")}
-      </div>
-      {section === "packs" && <LegacyPacksTab agent={agent} />}
-      {section === "tuning" && <LegacyTuningTab agent={agent} />}
-      {section === "judges" && <LegacyJudgmentTab />}
+      <AdvancedNav section={section} agent={agent} />
+      {section === "packs" && <AdvancedPacks agent={agent} />}
+      {section === "tuning" && <AdvancedTuning agent={agent} />}
+      {section === "judges" && <AdvancedJudges />}
     </>
   );
 }

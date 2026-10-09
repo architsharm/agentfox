@@ -30,10 +30,13 @@ from sqlalchemy.orm import Session
 
 from agentfox.capabilities.detection import all_detectors
 from agentfox.capabilities.detection.detector_settings import enabled_for
+from agentfox.capabilities.protection import layer_key
+from agentfox.capabilities.protection.scope import agent_changes
 from agentfox.core.models import (
     Agent,
     BusinessRule,
     Capability,
+    CustomRule,
     Decision,
     Identity,
     LineageEdge,
@@ -130,7 +133,10 @@ def _granted_keys(grants: list[Capability]) -> set[str]:
 
 
 def _grant_for(grants: list[Capability], key: str) -> Capability | None:
-    return next((g for g in grants if fnmatch.fnmatch(key, g.tool_key)), None)
+    """The tool's own grant first, then any pattern that covers it."""
+    return next((g for g in grants if g.tool_key == key), None) or next(
+        (g for g in grants if fnmatch.fnmatch(key, g.tool_key)), None
+    )
 
 
 def _permission(grant: Capability | None) -> str:
@@ -239,23 +245,50 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
                 hits[r["rule_id"]] += 1
 
     # --- rules in force ------------------------------------------------------
+    # One entry per rule: the copy that won for this agent (its own, when it has
+    # one), plus what the workspace copy does when they differ. `policy` is the pack
+    # a per-agent change is made against.
     effective = effective_for(session, slug)
+    own_key = layer_key(slug)
+    defaults = {c["rule_id"]: c["default"] for c in agent_changes(session, slug)} if agent else {}
     by_stage: dict[str, list[dict[str, Any]]] = defaultdict(list)
     tool_rules: list[tuple[Rule, dict[str, Any]]] = []
-    seen: set[tuple[str, str]] = set()
-    for layer in effective.applicable:
+    # A custom rule written for some agents lives in the one workspace `custom` pack,
+    # but its detection only runs for those agents; on anyone else's map it would be a
+    # rule that can never fire.
+    scoped_away = {
+        f"custom.{r.key}"
+        for r in session.scalars(select(CustomRule))
+        if r.agents_json and not any(fnmatch.fnmatch(slug, a) for a in r.agents_json)
+    }
+    for resolved in effective.rules:
+        rule, layer = resolved.rule, resolved.layer
+        if layer is None or rule.id in scoped_away:
+            continue
+        own = layer.document.key == own_key
+        if not rule.enabled and not own:
+            continue
         mode = layer.document.mode
-        for rule in effective.rules_in_force(layer):
-            if not rule.enabled or (rule.id, mode) in seen:
-                continue
-            seen.add((rule.id, mode))
-            entry = _rule_json(rule, mode, layer.level, hits)
-            stages = _stages_for(rule)
-            if stages == ["tool_call"] and (rule.when.tool or rule.when.tool_impact):
-                tool_rules.append((rule, entry))
-                continue
-            for stage in stages:
-                by_stage[stage].append(entry)
+        entry = _rule_json(rule, mode, layer.level, hits)
+        base = defaults.get(rule.id) if own else None
+        broader = [(src, r) for src, r in resolved.superseded if r.enabled]
+        entry.update(
+            enabled=rule.enabled,
+            own=own,
+            policy=(base or {}).get("policy") or layer.document.key,
+            overridable=bool(base["overridable"]) if base else rule.overridable,
+            # Broader copies still in force beside a tightened one, each in its own
+            # layer's mode: an enforcing workspace rule keeps enforcing.
+            also=[{"effect": r.effect, "mode": src.document.mode} for src, r in broader],
+        )
+        if own and base:
+            entry["workspace"] = {"effect": base["effect"], "enabled": base["enabled"]}
+        stages = _stages_for(rule)
+        if stages == ["tool_call"] and (rule.when.tool or rule.when.tool_impact):
+            tool_rules.append((rule, entry))
+            continue
+        for stage in stages:
+            by_stage[stage].append(entry)
 
     # --- detectors -----------------------------------------------------------
     detectors = all_detectors()
@@ -291,6 +324,16 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
                 "impact": impact,
                 "permission": _permission(grant),
                 "limits": grant.constraints_json if grant else {},
+                # The grant behind the permission, so it can be changed in place. Its
+                # key is a pattern when the tool is reached through a wildcard grant.
+                "grant": {
+                    "id": grant.id,
+                    "key": grant.tool_key,
+                    "max_taint": grant.max_taint,
+                    "actions": list(grant.actions or ["*"]),
+                }
+                if grant
+                else None,
                 "rules": [e for r, e in tool_rules if _matches_tool(r, key, impact)],
                 "ladders": [
                     {
