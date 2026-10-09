@@ -196,7 +196,7 @@ export default function Glossary() {
                 A dated duty a regulation puts on you, such as a filing or a review
                 that has to happen by a particular date, tracked against the agents it
                 applies to. Listed on the{" "}
-                <a href="/app/compliance?tab=obligations">Obligations tab</a>. A date in
+                <a href="/app/compliance?tab=regulations">Regulations tab</a>, under each framework. A date in
                 the calendar is a reminder, not proof the duty was met.
               </td>
             </tr>

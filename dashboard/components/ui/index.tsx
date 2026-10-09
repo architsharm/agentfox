@@ -237,7 +237,7 @@ export function ControlStatus({ value }: { value: string }) {
 export function ControlChip({ code, titles }: { code: string; titles: Record<string, string> }) {
   const title = titles[code];
   return (
-    <Link href={`/app/compliance#${code}`} title={title || code} className="ctrl-chip">
+    <Link href={`/app/compliance/controls/${encodeURIComponent(code)}`} title={title || code} className="ctrl-chip">
       {code}
     </Link>
   );
