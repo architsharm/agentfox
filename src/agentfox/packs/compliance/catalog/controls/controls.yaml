@@ -584,7 +584,7 @@ controls:
       nist-ai-rmf: ["MEASURE 2.7", "MANAGE 2.2"]
       iso-42001: ["A.6", "A.9"]
       soc2: ["CC6.6", "CC6.7"]
-      owasp-llm: ["LLM04 Data & Model Poisoning"]
+      owasp-llm: ["LLM04 Data and Model Poisoning"]
       owasp-agentic: ["T1 Memory Poisoning"]
       mitre-atlas: ["AML.T0020 Poison Training Data"]
 

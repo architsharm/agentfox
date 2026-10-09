@@ -1,0 +1,16 @@
+# Healthcare pack: rules translated from examples/policies/production/ in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83), MIT License,
+# Copyright (c) Microsoft Corporation. Starts incubating, and in observe.
+id: industry/healthcare
+version: 0.1.0
+maturity: incubating
+requires_core: '>=0.3'
+title: Healthcare pack
+description: 'HIPAA-style controls: blocks SSN and medical record numbers and deletions, and holds patient,
+  clinical and medical actions for clinician approval.'
+owners:
+- agentfox-maintainers
+tags:
+- industry
+- healthcare
+- hipaa

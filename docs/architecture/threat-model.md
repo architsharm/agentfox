@@ -41,7 +41,7 @@ Taxonomy anchors: OWASP LLM Top 10 (2025), OWASP Agentic Threats T1–T15, MITRE
 | Confused deputy — agent used as a proxy to reach data the caller cannot | Capabilities bound to the *identity*, evaluated per call; taint provenance in the decision |
 | Runaway loop / resource exhaustion (LLM10, T4) | NOM-RTG-08 depth + budget limits, loop breaking |
 | Tool poisoning — malicious instructions inside an MCP tool description; silent schema swap | NOM-DSC-05 — snapshot digests, description-injection and poisoning-pattern scanning (`agentfox scan mcp` exits 1 on a critical finding), pinning; an `mcp_server` monitor re-reads a remote server's listing on a schedule and raises drift as a finding |
-| A coding agent widens its own permissions by running the CLI | The Claude Code operator plugin turns every `agentfox` command that changes what is blocked or granted (`permit`, capability and enforcement commands) into a permission prompt for the person (`plugins/claude-code/scripts/guard_blocking_commands.py`) |
+| A coding agent widens its own permissions by running the CLI | The Claude Code operator plugin turns every `agentfox` command that changes what is blocked or granted (`permit`, capability and enforcement commands) into a permission prompt for the person, and the Codex plugin refuses them, since Codex cannot ask from a hook (`plugins/shared/scripts/guard_blocking_commands.py`, copied into each plugin) |
 
 ### E.1.4 Correctness failures (the pillar security vendors omit)
 

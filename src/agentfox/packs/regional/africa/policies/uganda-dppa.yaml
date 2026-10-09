@@ -1,0 +1,129 @@
+# Translated from examples/policies/african-regulatory/rego/uganda-dppa.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: uganda-dppa
+name: Uganda DPPA 2019
+description: 'Uganda DPPA 2019: rules translated from the uganda-dppa policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: uganda-dppa.block-breach-suppression
+  description: 'DPPA s.22: Block breach suppression'
+  when:
+    action_risk: uganda-dppa.block-breach-suppression
+  effect: block
+  severity: high
+  reason: 'Uganda DPPA s.22: Agent cannot suppress breach notifications — 72-hour PDPO reporting obligation
+    applies'
+- id: uganda-dppa.block-biometric-data-transmission
+  description: 'DPPA s.13: Block biometric data transmission'
+  when:
+    action_risk: uganda-dppa.block-biometric-data-transmission
+  effect: block
+  severity: high
+  reason: 'Uganda DPPA s.13: Biometric data detected — must not be transmitted without documented lawful
+    basis'
+- id: uganda-dppa.block-transfer-non-permitted-region
+  description: 'DPPA s.19: Block transfer to non-permitted region'
+  when:
+    action_risk: uganda-dppa.block-transfer-non-permitted-region
+  effect: block
+  severity: high
+  reason: 'Uganda DPPA s.19: Cross-border transfer to <value> blocked — region not in PDPO adequacy-approved
+    list'
+- id: uganda-dppa.block-transfer-non-ug-country-without
+  description: 'DPPA s.19: Block transfer to non-UG country without consent'
+  when:
+    action_risk: uganda-dppa.block-transfer-non-ug-country-without
+  effect: block
+  severity: high
+  reason: 'Uganda DPPA s.19: Transfer to country <value> blocked — no documented consent or adequacy basis
+    on file'
+- id: uganda-dppa.block-national-id-output
+  description: 'DPPA: Block National ID (NIRA) in output'
+  when:
+    action_risk: uganda-dppa.block-national-id-output
+  effect: block
+  severity: high
+  reason: 'Uganda DPPA: National ID number (NIRA) detected in agent output — blocked to prevent identity
+    exposure'
+- id: uganda-dppa.block-large-record-exports
+  description: 'DPPA s.4: Block large record exports (>1000 records)'
+  when:
+    action_risk: uganda-dppa.block-large-record-exports
+  effect: block
+  severity: high
+  reason: 'Uganda DPPA s.4(e): Export of <value> records is disproportionate — requires Data Protection
+    Officer review'
+- id: uganda-dppa.health-medical-data-requires-approval
+  description: 'DPPA s.13: Health/medical data requires approval'
+  when:
+    action_risk: uganda-dppa.health-medical-data-requires-approval
+  effect: escalate
+  severity: medium
+  reason: 'Uganda DPPA s.13: Health/medical sensitive personal data detected — requires explicit consent
+    or documented legal basis'
+- id: uganda-dppa.special-category-data-requires-approval
+  description: 'DPPA s.13: Special category data requires approval'
+  when:
+    action_risk: uganda-dppa.special-category-data-requires-approval
+  effect: escalate
+  severity: medium
+  reason: 'Uganda DPPA s.13: Special category personal data detected — explicit consent or lawful condition
+    required'
+- id: uganda-dppa.financial-data-requires-approval
+  description: 'DPPA s.13: Financial data requires approval'
+  when:
+    action_risk: uganda-dppa.financial-data-requires-approval
+  effect: escalate
+  severity: medium
+  reason: 'Uganda DPPA s.13: Financial personal data detected — requires documented lawful basis'
+- id: uganda-dppa.cross-border-language-output
+  description: 'DPPA s.19: Cross-border language in output'
+  when:
+    action_risk: uganda-dppa.cross-border-language-output
+  effect: escalate
+  severity: medium
+  reason: 'Uganda DPPA s.19: Cross-border data transfer language detected — requires PDPO adequacy verification'
+- id: uganda-dppa.transfer-with-missing-destination-metadata
+  description: 'DPPA s.19: Transfer with missing destination metadata'
+  when:
+    action_risk: uganda-dppa.transfer-with-missing-destination-metadata
+  effect: escalate
+  severity: medium
+  reason: 'Uganda DPPA s.19: Cross-border transfer with no destination metadata — cannot verify adequacy,
+    requires human review'
+- id: uganda-dppa.moderate-record-exports
+  description: 'DPPA s.4(e): Moderate record exports (100–1000 records)'
+  when:
+    action_risk: uganda-dppa.moderate-record-exports
+  effect: escalate
+  severity: medium
+  reason: 'Uganda DPPA s.4(e): Export of <value> records requires Data Protection Officer approval'
+- id: uganda-dppa.bulk-export-actions
+  description: 'DPPA s.4(e): Bulk export actions'
+  when:
+    action_risk: uganda-dppa.bulk-export-actions
+  effect: escalate
+  severity: medium
+  reason: 'Uganda DPPA s.4(e): Bulk personal data export requires documented lawful basis and DPO approval'
+- id: uganda-dppa.all-personal-data-access-must-logged
+  description: 'DPPA s.25: All personal data access must be logged'
+  when:
+    action_risk: uganda-dppa.all-personal-data-access-must-logged
+  effect: allow
+  severity: low
+  reason: 'Uganda DPPA s.25: Personal data access logged — PDPO accountability audit trail requirement'
+- id: uganda-dppa.all-personal-data-modifications-must-logged
+  description: 'DPPA s.25: All personal data modifications must be logged'
+  when:
+    action_risk: uganda-dppa.all-personal-data-modifications-must-logged
+  effect: allow
+  severity: low
+  reason: 'Uganda DPPA s.25: Personal data modification logged — PDPO accountability audit trail requirement'

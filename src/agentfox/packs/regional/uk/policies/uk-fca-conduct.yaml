@@ -1,0 +1,70 @@
+# Translated from examples/policies/uk-regulatory/rego/fca-financial-conduct.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: uk-fca-conduct
+name: FCA Consumer Duty, SM&CR and market conduct
+description: 'FCA Consumer Duty, SM&CR and market conduct: rules translated from the fca-financial-conduct
+  policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: uk-fca-conduct.consumer-harm-language
+  description: 'PRIN 2A: consumer harm language'
+  when:
+    action_risk: uk-fca-conduct.consumer-harm-language
+  effect: block
+  severity: high
+  reason: 'FCA Consumer Duty (PRIN 2A): agent cannot propose actions that foreseeably harm customers'
+- id: uk-fca-conduct.fair-value-bypass
+  description: 'PRIN 2A: fair value bypass'
+  when:
+    action_risk: uk-fca-conduct.fair-value-bypass
+  effect: block
+  severity: high
+  reason: 'FCA Consumer Duty (PRIN 2A.4): firms must ensure products and services provide fair value'
+- id: uk-fca-conduct.accountability-delegation-ai
+  description: 'SM&CR: accountability delegation to AI'
+  when:
+    action_risk: uk-fca-conduct.accountability-delegation-ai
+  effect: block
+  severity: high
+  reason: 'FCA SM&CR: senior managers remain accountable for AI risks — delegating to an algorithm does
+    not transfer responsibility'
+- id: uk-fca-conduct.autonomous-trading-without-platform-documented-approval
+  description: 'Market conduct: autonomous trading without platform-documented approval'
+  when:
+    action_risk: uk-fca-conduct.autonomous-trading-without-platform-documented-approval
+  effect: block
+  severity: high
+  reason: 'FCA market conduct: autonomous agent trading requires documented governance and senior manager
+    approval'
+- id: uk-fca-conduct.pricing-without-assessment
+  description: 'Consumer Duty: pricing without assessment'
+  when:
+    action_risk: uk-fca-conduct.pricing-without-assessment
+  effect: escalate
+  severity: medium
+  reason: 'FCA Consumer Duty: AI-influenced pricing or eligibility decision — document testing for fairness
+    and foreseeable harm'
+- id: uk-fca-conduct.customer-communications
+  description: 'Consumer Duty: customer communications'
+  when:
+    action_risk: uk-fca-conduct.customer-communications
+  effect: allow
+  severity: low
+  reason: 'FCA Consumer Duty: AI-generated customer communication — verify clarity, accuracy, and information
+    needs'
+- id: uk-fca-conduct.third-party-ai
+  description: 'Outsourcing / operational resilience: third-party AI'
+  when:
+    action_risk: uk-fca-conduct.third-party-ai
+  effect: allow
+  severity: low
+  reason: 'FCA operational resilience: third-party AI component — map to governance, testing, and critical
+    third-party risk'

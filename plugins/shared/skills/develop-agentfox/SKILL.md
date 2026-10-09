@@ -51,7 +51,7 @@ Fixtures live in `tests/conftest.py`: `session`, `seeded`, `enforcer`, `client`,
 
 | You changed | Also update |
 |---|---|
-| a CLI command or flag (`src/agentfox/apps/cli/`) | `plugins/shared/reference/cli.md`; BLK commands also `plugins/claude-code/scripts/guard_blocking_commands.py` |
+| a CLI command or flag (`src/agentfox/apps/cli/`) | `plugins/shared/reference/cli.md`; BLK commands also `plugins/shared/scripts/guard_blocking_commands.py` |
 | a `AGENTFOX_*` setting | `plugins/shared/reference/config.md` |
 | a gateway route | `plugins/shared/reference/http-api.md` (and ideally Appendix C) |
 | the policy schema or shipped packs | `plugins/shared/reference/policy-schema.md` |

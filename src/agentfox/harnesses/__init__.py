@@ -42,6 +42,7 @@ ENTRY_POINT_GROUP = "agentfox.harnesses"
 #: installed entry points did not provide.
 BUILTIN: dict[str, str] = {
     "claude": "agentfox.harnesses.claude_code:ADAPTER",
+    "codex": "agentfox.harnesses.codex:ADAPTER",
 }
 
 _registry: dict[str, HarnessAdapter] | None = None

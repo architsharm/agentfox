@@ -1,0 +1,30 @@
+# Translated from examples/policies/african-regulatory/rego/agent-prompt-injection.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: africa-prompt-injection
+name: Injection phrases in tool arguments
+description: 'Injection phrases in tool arguments: rules translated from the agent-prompt-injection policy.
+  Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: africa-prompt-injection.input-contains-known-injection-pattern-action
+  description: 'Prompt injection detected: input contains known injection pattern — action blocked.'
+  when:
+    action_risk: africa-prompt-injection.input-contains-known-injection-pattern-action
+  effect: block
+  severity: high
+  reason: 'Prompt injection detected: input contains known injection pattern — action blocked.'
+- id: africa-prompt-injection.structural-injection-marker-detected-route-review
+  description: 'Potential prompt injection: structural injection marker detected — route to review.'
+  when:
+    action_risk: africa-prompt-injection.structural-injection-marker-detected-route-review
+  effect: escalate
+  severity: medium
+  reason: 'Potential prompt injection: structural injection marker detected — route to review.'

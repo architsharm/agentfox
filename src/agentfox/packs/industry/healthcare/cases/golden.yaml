@@ -1,0 +1,61 @@
+# Golden events for industry/healthcare, run by `agentfox policy packs test industry/healthcare`.
+# One case per rule: the risk its rule-table entry raises (or the tool it names)
+# fires it with the effect its source outcome maps to (deny -> block, escalate ->
+# escalate, audit -> allow, recorded). What raises each risk is tested against the
+# source policies' own test inputs in tests/platform/packs/test_translated_packs.py.
+cases:
+- name: industry-healthcare.ssn-pattern-detected (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: industry-healthcare.ssn-pattern-detected
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - industry-healthcare.ssn-pattern-detected
+- name: industry-healthcare.medical-record-number-detected (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: industry-healthcare.medical-record-number-detected
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - industry-healthcare.medical-record-number-detected
+- name: industry-healthcare.deletion-prohibited-healthcare (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: industry-healthcare.deletion-prohibited-healthcare
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - industry-healthcare.deletion-prohibited-healthcare
+- name: industry-healthcare.clinical-data-requires-clinician-approval (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: industry-healthcare.clinical-data-requires-clinician-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - industry-healthcare.clinical-data-requires-clinician-approval
+- name: an ordinary answer passes
+  event:
+    surface: output
+  expect:
+    verdict: allow
+- name: an ordinary tool call passes
+  event:
+    surface: tool_args
+    tool_key: search.docs
+  expect:
+    verdict: allow

@@ -139,3 +139,75 @@ rules:
     reason: >
       Personal data in a tool-call argument from a coding session.
     controls: [NOM-DSC-01]
+
+  # --- The command blocklist ------------------------------------------------
+  #
+  # Shapes ported from a Claude Code governance plugin's default policy (MIT;
+  # see capabilities/detection/shell_blocklist.py for the source and the one
+  # change made). `tool-containment` already blocks the catastrophic versions
+  # (`rm -rf /`, `curl | sh`); these are the narrower ones that matter on a
+  # developer machine, raised at `high` by the action analyser so this pack,
+  # not the analyser, decides what they mean.
+
+  - id: code.recursive_delete
+    description: >
+      `rm` with both a recursive and a force flag, read through a shell
+      tokenizer: wrappers (`sudo`, `env`, `timeout`), quoted flags and command
+      substitutions count; text that only mentions `rm -rf` does not, nor does a
+      plain cleanup of build artefacts such as `node_modules` or `dist`.
+    when:
+      surface: [tool_args]
+      action_risk: "shell.recursive-delete"
+    effect: block
+    severity: high
+    reason: "Recursive forced delete outside build artefacts."
+    controls: [NOM-RTG-04]
+
+  - id: code.download_to_shell
+    description: A downloaded script run straight in a shell (`curl … | bash`, `bash <(wget …)`).
+    when:
+      surface: [tool_args]
+      action_risk: "shell.download-to-shell"
+    effect: block
+    severity: high
+    reason: "Downloaded shell bootstrap."
+    controls: [NOM-RTG-04]
+
+  - id: code.cloud_metadata
+    description: >
+      A cloud instance-metadata endpoint (169.254.169.254, 100.100.100.200,
+      metadata.google.internal), in a command or in any URL argument. It hands
+      out the machine's credentials.
+    when:
+      surface: [tool_args]
+      action_risk: "net.cloud-metadata"
+    effect: block
+    severity: high
+    reason: "Direct access to a cloud metadata endpoint."
+    controls: [NOM-RTG-04]
+
+  - id: code.secret_read
+    description: >
+      A command that reads a credential file (`.env`, SSH keys, cloud and
+      registry credentials) or dumps the environment. `.env.example`,
+      `.sample` and `.template` files are exempt.
+    when:
+      surface: [tool_args]
+      action_risk: "shell.secret-read"
+    effect: block
+    severity: high
+    reason: "Read of a credential file or of the environment."
+    controls: [NOM-RTG-04, NOM-IAM-02]
+
+  - id: code.credential_path
+    description: >
+      A read tool pointed at a credential file or directory (`~/.ssh`,
+      `~/.aws`, `.env`, `/proc/<pid>/environ`). Writes are left to the rules
+      on writes.
+    when:
+      surface: [tool_args]
+      action_risk: "fs.credential-path"
+    effect: block
+    severity: high
+    reason: "Direct read of a credential path."
+    controls: [NOM-RTG-04, NOM-IAM-02]

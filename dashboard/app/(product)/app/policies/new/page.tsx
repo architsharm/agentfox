@@ -47,7 +47,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
       )}
       {tab === "packs" && <LibraryPacks />}
       {tab === "import" && (
-        <Card title="From Guardrails AI">
+        <Card title="From another tool">
           <ImportGuard />
         </Card>
       )}

@@ -45,6 +45,51 @@
         "cd /Users/architsharma/guardrails/.claude/worktrees/gap-analysis-failure-modes-2a3ba9/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8081 NEXT_DIST_DIR=.next-dev PORT=3001 npm run dev -- -p 3001"
       ],
       "port": 3001
+    },
+    {
+      "name": "uxgw",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/architsharma/guardrails/.claude/worktrees/agent-fox-ux-redesign-b53bd5 && AGENTFOX_DATABASE_URL=sqlite:////private/tmp/claude-501/-Users-architsharma-guardrails--claude-worktrees-agent-fox-ux-redesign-b53bd5/4c812705-c075-4073-9941-d6c9742dcf4f/scratchpad/ux.db uv run uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8090"
+      ],
+      "port": 8090
+    },
+    {
+      "name": "uxdash",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/architsharma/guardrails/.claude/worktrees/agent-fox-ux-redesign-b53bd5/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8090 NEXT_DIST_DIR=.next-ux PORT=3010 npm run dev -- -p 3010"
+      ],
+      "port": 3010
+    },
+    {
+      "name": "livegw",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.zshrc >/dev/null 2>&1; cd /Users/architsharma/guardrails/.claude/worktrees/agent-fox-ux-redesign-b53bd5 && AGENTFOX_DATABASE_URL=sqlite:////private/tmp/claude-501/-Users-architsharma-guardrails--claude-worktrees-agent-fox-ux-redesign-b53bd5/4c812705-c075-4073-9941-d6c9742dcf4f/scratchpad/live.db AGENTFOX_DEFAULT_PROVIDER=openai AGENTFOX_ALLOW_EGRESS=true AGENTFOX_OPENAI_API_KEY=$OPENAI_API_KEY PYTHONPATH=src /Users/architsharma/guardrails/.venv/bin/python -m uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8091"
+      ],
+      "port": 8091
+    },
+    {
+      "name": "livedash",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/architsharma/guardrails/.claude/worktrees/agent-fox-ux-redesign-b53bd5/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8091 NEXT_DIST_DIR=.next-live PORT=3011 npm run dev -- -p 3011"
+      ],
+      "port": 3011
+    },
+    {
+      "name": "airlinegw",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.zshrc >/dev/null 2>&1; cd /Users/architsharma/guardrails/.claude/worktrees/agent-fox-ux-redesign-b53bd5/demo/live-airline && ./gateway.sh"
+      ],
+      "port": 8091
     }
   ]
 }

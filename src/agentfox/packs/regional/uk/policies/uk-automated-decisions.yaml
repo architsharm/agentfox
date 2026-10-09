@@ -1,0 +1,95 @@
+# Translated from examples/policies/uk-regulatory/rego/ico-automated-decisions.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: uk-automated-decisions
+name: UK GDPR Arts. 22A-22D automated decisions
+description: 'UK GDPR Arts. 22A-22D automated decisions: rules translated from the ico-automated-decisions
+  policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: uk-automated-decisions.withhold-explanation
+  description: 'Art. 22C(1): withhold explanation'
+  when:
+    action_risk: uk-automated-decisions.withhold-explanation
+  effect: block
+  severity: high
+  reason: 'UK GDPR Art. 22C(1): individuals must receive decision-specific information explaining how
+    and why the outcome was reached'
+- id: uk-automated-decisions.block-human-review
+  description: 'Art. 22C(2)-(3): block human review'
+  when:
+    action_risk: uk-automated-decisions.block-human-review
+  effect: block
+  severity: high
+  reason: 'UK GDPR Art. 22C(2)-(3): individuals must be able to make representations and obtain genuine
+    human intervention'
+- id: uk-automated-decisions.block-contest-right
+  description: 'Art. 22C(4): block contest right'
+  when:
+    action_risk: uk-automated-decisions.block-contest-right
+  effect: block
+  severity: high
+  reason: 'UK GDPR Art. 22C(4): individuals must be able to contest the decision through an accessible
+    process'
+- id: uk-automated-decisions.special-category-adm-explicit-consent-or
+  description: 'Art. 22B + Art. 9: special category ADM — explicit consent or legal authorisation required'
+  when:
+    action_risk: uk-automated-decisions.special-category-adm-explicit-consent-or
+  effect: block
+  severity: high
+  reason: 'UK GDPR Art. 22B: automated decisions based on special category data require explicit consent
+    or legal authorisation — human review alone is insufficient'
+- id: uk-automated-decisions.significant-decision-without-safeguards-metadata
+  description: 'Art. 22A: significant decision without safeguards metadata'
+  when:
+    action_risk: uk-automated-decisions.significant-decision-without-safeguards-metadata
+  effect: escalate
+  severity: medium
+  reason: 'UK GDPR Art. 22A: solely automated significant decision — verify Art. 22C safeguards (information,
+    representations, human intervention, contest)'
+- id: uk-automated-decisions.significant-decision-without-explanation
+  description: 'Art. 22A: significant decision without explanation'
+  when:
+    action_risk: uk-automated-decisions.significant-decision-without-explanation
+  effect: escalate
+  severity: medium
+  reason: 'UK GDPR Art. 22C(1): decision-specific explanation must be available to the individual'
+- id: uk-automated-decisions.recruitment-adm-language
+  description: 'ICO March 2026: recruitment ADM language'
+  when:
+    action_risk: uk-automated-decisions.recruitment-adm-language
+  effect: escalate
+  severity: medium
+  reason: 'ICO March 2026: automated recruitment decisions are in scope of Art. 22A — review safeguards
+    before proceeding'
+- id: uk-automated-decisions.agentic-orchestration-step
+  description: 'Art. 22A: agentic orchestration step'
+  when:
+    action_risk: uk-automated-decisions.agentic-orchestration-step
+  effect: escalate
+  severity: medium
+  reason: 'UK GDPR Art. 22A (agentic AI): each orchestration step taking a solely automated significant
+    decision must meet Art. 22C safeguards and Art. 28 processor contracts'
+- id: uk-automated-decisions.dpia-deployment
+  description: 'Art. 35: DPIA for deployment'
+  when:
+    action_risk: uk-automated-decisions.dpia-deployment
+  effect: allow
+  severity: low
+  reason: 'UK GDPR Art. 35: data protection impact assessment required before deploying high-risk automated
+    decision-making'
+- id: uk-automated-decisions.significant-decision-audit-trail
+  description: 'Art. 22A: significant decision audit trail'
+  when:
+    action_risk: uk-automated-decisions.significant-decision-audit-trail
+  effect: allow
+  severity: low
+  reason: 'UK GDPR Art. 22A: solely automated significant decision logged — verify lawful basis and Art.
+    22C safeguards'

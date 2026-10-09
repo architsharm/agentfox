@@ -20,6 +20,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / "plugins" / "claude-code" / "scripts" / "guard_blocking_commands.py"
+CODEX_HOOK = REPO / "plugins" / "codex" / "scripts" / "guard_blocking_commands.py"
 
 
 def _run(args: list[str], **kwargs) -> subprocess.CompletedProcess:
@@ -130,3 +131,18 @@ def test_read_only_and_look_alike_commands_pass_silently(command):
 def test_hook_never_breaks_on_garbage_input():
     result = _run([sys.executable, str(HOOK)], input="not json")
     assert result.returncode == 0 and result.stdout == ""
+
+
+def test_the_codex_plugin_refuses_where_it_cannot_ask():
+    """Codex rejects `permissionDecision: "ask"` and runs the call, so its plugin hook
+    runs the same check with --deny: refused, with the command handed to the person."""
+    hooks = json.loads((REPO / "plugins" / "codex" / "hooks" / "hooks.json").read_text())
+    command = hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    assert command.endswith("--deny")
+    payload = json.dumps({"tool_input": {"command": "agentfox policy enforce baseline"}})
+    result = _run([sys.executable, str(CODEX_HOOK), "--deny"], input=payload)
+    out = json.loads(result.stdout)["hookSpecificOutput"]
+    assert out["permissionDecision"] == "deny"
+    assert "let them run it themselves" in out["permissionDecisionReason"]
+    quiet = json.dumps({"tool_input": {"command": "agentfox findings"}})
+    assert _run([sys.executable, str(CODEX_HOOK), "--deny"], input=quiet).stdout == ""

@@ -354,7 +354,7 @@ re-registered under one of the thirteen visible verbs (`VISIBLE`); a working nam
 re-homed there is not reachable. `tests/apps/cli/test_cli_layout.py` enforces the ceiling, the
 removed names, and the two protocol endpoints kept at their old paths (`hooks run`,
 `mcp serve`). Add a row to `plugins/shared/reference/cli.md` (mark it **BLK** if it changes
-whether traffic is blocked, and add a pattern to `plugins/claude-code/scripts/guard_blocking_commands.py`),
+whether traffic is blocked, and add a pattern to `plugins/shared/scripts/guard_blocking_commands.py`),
 then run `scripts/gen/docs_reference.py --write` so the website's CLI reference picks it up.
 
 **Add an HTTP route.** Add it to the router for its family in `apps/gateway/routes/` (use

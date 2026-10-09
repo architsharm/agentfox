@@ -1,0 +1,16 @@
+# A threshold ladder: which outcome applies depends on where a number falls.
+# Verified against `agentfox policy rules explain threshold_ladder`.
+# Apply with:  agentfox policy rules apply <this file> --mode observe
+kind: threshold_ladder
+key: refund-approval            # stable id; used by `guardrails show/test`
+tool: payments.refund           # the tool key the agent calls
+field: arguments.amount         # dotted path into the tool call; must exist or the rule is inert
+unit: USD                       # USD | EUR | GBP | JPY | *_CENTS | count | days
+bands:                          # ordered; `upto` is inclusive; the last band has no `upto`
+  - upto: 100
+    outcome: allow
+  - upto: 500
+    outcome: verify
+    verify: {check: risk.refund_check, on_fail: escalate}
+  - outcome: escalate
+    approver_role: finance

@@ -10,7 +10,7 @@ import { CodeSnippet } from "@/components/product/start/CodeSnippet";
  * their agent is built, and get one snippet with this deployment's gateway URL
  * already in it.
  *
- * The in-process paths (Python `auto()`, Claude Code hooks) record to the
+ * The in-process paths (Python `auto()`, Claude Code and Codex hooks) record to the
  * database their own process is configured with. They only show up on this
  * dashboard when that is the same database its gateway uses — true for a
  * self-hosted install, not for the hosted one — so each says so rather than
@@ -21,6 +21,7 @@ export const PATHS = [
   { key: "proxy", label: "OpenAI-compatible client" },
   { key: "python", label: "Python, in-process" },
   { key: "claude-code", label: "Claude Code" },
+  { key: "codex", label: "Codex CLI" },
   { key: "scan", label: "Scan a repo or API" },
 ] as const;
 
@@ -130,6 +131,25 @@ agentfox.auto(agent="my-agent")`}
             label="In the repository"
             code={`pip install agentfox
 agentfox admin hooks install --agent my-coding-agent --write`}
+          />
+          <p className="small muted">{SAME_DB_NOTE}</p>
+        </>
+      )}
+
+      {path === "codex" && (
+        <>
+          <p className="small">
+            Governs OpenAI&rsquo;s Codex CLI: writes <span className="mono">.codex/hooks.json</span>,
+            registers the agent, and grants Codex&rsquo;s built-in tools. Shell commands, file edits
+            and MCP calls are checked before they run. Then run <span className="mono">/hooks</span>{" "}
+            in Codex and trust the AgentFox hooks; Codex skips untrusted ones.{" "}
+            <Link href="/docs/guides/codex">What is and is not covered</Link>
+          </p>
+          <CodeSnippet
+            label="In the repository"
+            code={`pip install agentfox
+agentfox admin hooks install --harness codex --agent my-codex-agent --write
+agentfox admin hooks daemon`}
           />
           <p className="small muted">{SAME_DB_NOTE}</p>
         </>

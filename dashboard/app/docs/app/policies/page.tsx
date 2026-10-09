@@ -407,6 +407,18 @@ injection.heuristic  support-triage  INJECTION.INSTRUCTION_OVERRIDE  quoted text
   "effect": "escalate"
 }'`}</Code>
 
+      <h2 id="import">Import rules from another tool</h2>
+      <InTheApp path="/app/policies?tab=library&sec=import">Policies → Library → Import</InTheApp>
+      <p>
+        Pick the format first. <strong>Guardrails AI guard</strong> reads a guard&apos;s Python,
+        RAIL or JSON and maps each validator to a rule, detector or pack.{" "}
+        <strong>Agent governance YAML or policy manifest</strong> takes rule YAML or a manifest
+        with its <code>.rego</code> files (paste, or upload them together), and previews every
+        rule as translated, translated with a note, or not translated with the reason; it leads
+        with whether unmatched calls pass. Untick what you do not want and import: everything
+        lands watching. See <Link href="/docs/guides/import-policies">Import existing policies</Link>.
+      </p>
+
       <h2>Common tasks</h2>
       <TaskTable
         rows={[
@@ -416,6 +428,7 @@ injection.heuristic  support-triage  INJECTION.INSTRUCTION_OVERRIDE  quoted text
           { task: "Promote / demote", run: "agentfox policy enforce baseline" },
           { task: "Demote", run: "agentfox policy observe baseline" },
           { task: "What applies to one agent", run: "agentfox policy effective --agent payments-ops" },
+          { task: "Import a policy written for another engine", run: "agentfox policy import policy.yaml" },
         ]}
       />
 

@@ -93,6 +93,7 @@ agentfox = "agentfox.apps.cli.main:main"
 # exactly as an external `agentfox-harness-*` package registers its own.
 [project.entry-points."agentfox.harnesses"]
 claude = "agentfox.harnesses.claude_code:ADAPTER"
+codex = "agentfox.harnesses.codex:ADAPTER"
 
 [build-system]
 requires = ["hatchling"]
@@ -180,7 +181,7 @@ source_modules = [
     "agentfox.core",
     "agentfox.errors",
 ]
-forbidden_modules = ["agentfox.harnesses.claude_code"]
+forbidden_modules = ["agentfox.harnesses.claude_code", "agentfox.harnesses.codex"]
 
 # The Enforcer runs the checks it finds in the registry (`platform/checks.py`); it
 # names the modules that register the built-in ones (`runtime/checks.py`) and never
@@ -230,7 +231,11 @@ target-version = "py311"
 # Alembic writes these. Reformatting a shipped revision to satisfy a line
 # length is a change to a migration that has already run somewhere, for no
 # benefit — and the generated header is over the limit in every one of them.
-extend-exclude = ["migrations/versions"]
+#
+# The vendored third-party modules are kept as upstream wrote them (their header
+# lists the only changes), so a later upstream fix can be diffed in; reformatting
+# them to our style would make every such diff a rewrite.
+extend-exclude = ["migrations/versions", "src/agentfox/capabilities/detection/vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -248,4 +253,8 @@ ignore = ["B008"]  # FastAPI Depends() in defaults is the framework idiom
 # measures or a red-team demo fires. Every other rule still applies, so an
 # unused import or an undefined name in a benchmark still fails CI.
 "benchmarks/**" = ["E501"]
+# Rule tables translated from another project's policies: the long lines are
+# regulation citations and regular expressions copied verbatim, which rewrapping
+# could only alter.
+"src/agentfox/packs/*/*/checks/rules.py" = ["E501"]
 "demo/**" = ["E501"]

@@ -41,6 +41,10 @@ jobs:
             "$RUNNER_TEMP/out.json" "$RUNNER_TEMP/out_tiered.json" "$RUNNER_TEMP/traces_v1.2.2.json"
       - name: Crescendo trajectory
         run: uv run python -m benchmarks.crescendo.run_crescendo_benchmark
+      - name: Third-party injection corpus and red-team scenarios
+        run: |
+          uv run python -m benchmarks.toolkit_corpus.run_prompt_injection_corpus
+          uv run python -m benchmarks.toolkit_corpus.run_redteam_scenarios
       - name: Published claims still match fresh measurements
         run: uv run python scripts/check/claims.py --check
       - name: Coverage map does not overstate the product
@@ -54,3 +58,4 @@ jobs:
             benchmarks/containment/results/
             benchmarks/agentdojo/results/
             benchmarks/crescendo/results/
+            benchmarks/toolkit_corpus/results/

@@ -5581,6 +5581,12 @@
       "type": "array",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "files",
+      "type": "object",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -5624,6 +5630,12 @@
      {
       "name": "skip",
       "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "files",
+      "type": "object",
       "required": false,
       "description": ""
      }

@@ -1,0 +1,27 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+agent_control_specification_version: 0.4.0-alpha.1
+metadata:
+  name: sebi-governance
+  version: "1.0"
+extends: []
+policies:
+  sebi_governance:
+    type: rego
+    bundle: rego
+intervention_points:
+  input:
+    policy_target: $.input.body
+    policy:
+      id: sebi_governance
+      query: data.agt_policies_india.sebi.acs_input_result
+  output:
+    policy_target: $.output.content
+    policy:
+      id: sebi_governance
+      query: data.agt_policies_india.sebi.acs_output_result
+  pre_tool_call:
+    policy_target: $.tool_call.args
+    policy:
+      id: sebi_governance
+      query: data.agt_policies_india.sebi.acs_pre_tool_call_result

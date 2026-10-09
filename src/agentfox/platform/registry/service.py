@@ -14,6 +14,8 @@ requires the shadow team to cooperate discovers nothing.
 
 from __future__ import annotations
 
+import base64
+import binascii
 import datetime as dt
 import hashlib
 import json
@@ -820,7 +822,84 @@ _DESCRIPTION_INJECTION = [
         re.I,
     ),
     re.compile(r"\b(?:conversation|chat)\s+history\b.{0,60}\b(?:to|into)\b", re.I),
+    # Override phrasings the first pattern misses. From the MCP scanner vendored in
+    # capabilities/detection/vendor/mcp_security.py (MIT, Copyright (c) Microsoft
+    # Corporation; upstream commit c767f83), as are the hiding checks below.
+    re.compile(r"override\s+(the\s+)?(previous|above|original)", re.I),
+    re.compile(r"instead\s+of\s+(the\s+)?(above|previous|described)", re.I),
+    re.compile(r"do\s+not\s+follow", re.I),
+    re.compile(r"disregard\s+(all\s+)?(above|prior|previous)", re.I),
 ]
+
+#: Text hidden from the person reading a tool description but not from the model:
+#: invisible characters, comments a renderer drops, instructions pushed below the
+#: fold, and encoded payloads. Each is a reason on its own, whatever the hidden
+#: text says. From the vendored MCP scanner (see above), with two narrowings: a
+#: long base64 run counts only when it decodes to one of the scanner's suspicious
+#: keywords (the source flags every such run, which a description quoting a hash
+#: or a sample token would trip), and its `system:`/`assistant:`, "actually do",
+#: role-override and exfiltration lists are not taken, because "Operating system:",
+#: "you must pass an id" and a documentation URL are ordinary in a description.
+_HIDING: list[tuple[str, re.Pattern[str]]] = [
+    ("invisible unicode", re.compile(r"[​‌‍﻿‪-‮⁦-⁩­⁠᠎]")),
+    (
+        "hidden comment",
+        re.compile(r"<!--.*?-->|\[//\]:\s*#\s*\(.*?\)|\[comment\]:\s*<>\s*\(.*?\)", re.S),
+    ),
+    ("text after a run of blank lines", re.compile(r"\n{5,}.+", re.S)),
+    ("hex-escaped payload", re.compile(r"(?:\\x[0-9a-fA-F]{2}){4,}")),
+]
+_BASE64_RUN = re.compile(r"[A-Za-z0-9+/]{40,}={0,2}")
+_SUSPICIOUS_DECODED = (
+    "ignore",
+    "override",
+    "system",
+    "password",
+    "secret",
+    "admin",
+    "root",
+    "exec",
+    "eval",
+    "import os",
+    "send",
+    "curl",
+    "fetch",
+)
+
+
+def _schema_strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [s for v in value.values() for s in _schema_strings(v)]
+    if isinstance(value, list):
+        return [s for v in value for s in _schema_strings(v)]
+    return []
+
+
+def _hidden_content(tool: dict[str, Any]) -> list[str]:
+    """What, if anything, a tool's metadata hides from the person reading it."""
+    description = str(tool.get("description", "") or "")
+    texts = [description, *_schema_strings(tool.get("inputSchema", {}))]
+    found: list[str] = []
+    for label, pattern in _HIDING:
+        targets = [description] if label == "text after a run of blank lines" else texts
+        if any(pattern.search(t) for t in targets):
+            found.append(label)
+    for text in texts:
+        for run in _BASE64_RUN.findall(text):
+            try:
+                decoded = base64.b64decode(run + "=" * (-len(run) % 4)).decode(
+                    "utf-8", errors="ignore"
+                )
+            except (ValueError, binascii.Error):
+                continue
+            if any(word in decoded.lower() for word in _SUSPICIOUS_DECODED):
+                found.append("encoded instruction")
+                break
+        if "encoded instruction" in found:
+            break
+    return found
 
 
 def normalise_tool_list(data: Any) -> list[dict[str, Any]]:
@@ -915,6 +994,7 @@ def scan_mcp_server(
     for tool in tools:
         text = f"{tool.get('description', '')} {json.dumps(tool.get('inputSchema', {}))}"
         hits = [p.pattern for p in _DESCRIPTION_INJECTION if p.search(text)]
+        hits += [f"hidden: {label}" for label in _hidden_content(tool)]
         if hits:
             issues.append(
                 {

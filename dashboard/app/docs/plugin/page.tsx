@@ -83,9 +83,11 @@ Validating marketplace manifest: …/.claude-plugin/marketplace.json
 
 ✔ Validation passed`}</Output>
       <p>
-        Other coding agents (Codex, Cursor, Gemini CLI, Aider) can use the same material: point
-        them at <code>plugins/shared/AGENTS.md</code>. The skills are plain markdown, and the
-        Claude Code plugin carries a copy of the same files.
+        Codex CLI has its own plugin with the same skills, MCP server and safety hook (
+        <code>plugins/codex</code>; see <Link href="/docs/guides/codex">Codex CLI</Link>). Other
+        coding agents (Cursor, Gemini CLI, Aider) can use the same material: point them at{" "}
+        <code>plugins/shared/AGENTS.md</code>. The skills are plain markdown, and each plugin
+        carries a copy of the same files.
       </p>
       <p>
         The plugin finds the CLI through <code>plugins/claude-code/scripts/agentfox.sh</code>: an{" "}
