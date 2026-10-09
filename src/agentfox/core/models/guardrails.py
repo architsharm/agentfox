@@ -110,7 +110,7 @@ class CustomRule(Base, TimestampMixin):
     #: Slug; the policy rule is `custom.<key>` and detections are `CUSTOM.<KEY>`.
     key: Mapped[str] = mapped_column(String(80), index=True)
     name: Mapped[str] = mapped_column(String(200), default="")
-    #: terms | patterns | topic | sequence
+    #: terms | patterns | topic | sequence | condition
     kind: Mapped[str] = mapped_column(String(24), default="terms")
     #: For topics: "deny" fires on a match, "allow" fires on content matching none
     #: of the allowed topics (keep the agent on-topic).
@@ -122,7 +122,8 @@ class CustomRule(Base, TimestampMixin):
     surfaces_json: Mapped[list[str]] = mapped_column(JSON, default=list)
     agents_json: Mapped[list[str]] = mapped_column(JSON, default=list)
     case_sensitive: Mapped[bool] = mapped_column(Boolean, default=False)
-    #: Kind-specific settings, e.g. a sequence's `after` / `then` tool patterns.
+    #: Kind-specific settings: a sequence's `after` / `then` tool patterns, or a
+    #: condition's surface, field, operator and value.
     config_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     version: Mapped[int] = mapped_column(Integer, default=1)

@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 247,
+ "count": 248,
  "routes": [
   {
    "method": "GET",
@@ -233,6 +233,24 @@
       "type": "object",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "error",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "approval_id",
+      "type": "string",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -387,6 +405,24 @@
      {
       "name": "usage",
       "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "error",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "approval_id",
+      "type": "string",
       "required": false,
       "description": ""
      }
@@ -2653,6 +2689,12 @@
       "description": ""
      },
      {
+      "name": "condition",
+      "type": "ConditionSpec",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "enabled",
       "type": "boolean",
       "required": false,
@@ -2684,6 +2726,35 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/custom-rules/fields",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "The arguments a tool is known to take, to suggest as a condition's field.",
+   "description": "The arguments a tool is known to take, to suggest as a condition's field.",
+   "params": [
+    {
+     "name": "tool",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -2723,6 +2794,12 @@
      },
      {
       "name": "surface",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tool",
       "type": "string",
       "required": false,
       "description": ""

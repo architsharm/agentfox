@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
+import { ConditionFields, blankCondition, canMask, conditionFrom, conditionReady, conditionSpec, describeCondition } from "@/components/product/policies/ConditionFields";
+import type { Condition, ConditionSpec } from "@/components/product/policies/ConditionFields";
 
-type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence";
+type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition";
 
 const KINDS: { key: Kind; label: string; placeholder: string }[] = [
   { key: "terms", label: "Words", placeholder: "Globex\nInitech" },
@@ -13,6 +15,7 @@ const KINDS: { key: Kind; label: string; placeholder: string }[] = [
   { key: "topic", label: "Topic to avoid", placeholder: "Medical diagnosis, symptoms, treatment" },
   { key: "allow", label: "Allowed topics", placeholder: "Orders, shipping, returns, billing" },
   { key: "sequence", label: "Sequence", placeholder: "" },
+  { key: "condition", label: "Value check", placeholder: "" },
 ];
 
 const CHECKS: { key: string; label: string }[] = [
@@ -24,7 +27,7 @@ const CHECKS: { key: string; label: string }[] = [
 const ACTIONS: { effect: string; label: string; only?: Kind[] }[] = [
   { effect: "block", label: "Block" },
   { effect: "escalate", label: "Ask a human" },
-  { effect: "redact", label: "Mask", only: ["terms", "patterns"] },
+  { effect: "redact", label: "Mask", only: ["terms", "patterns", "condition"] },
   { effect: "allow", label: "Log only" },
 ];
 
@@ -49,7 +52,7 @@ const slug = (s: string) =>
 export type CustomRuleSpec = {
   key: string;
   name: string;
-  kind: "terms" | "patterns" | "topic" | "sequence";
+  kind: "terms" | "patterns" | "topic" | "sequence" | "condition";
   polarity?: "deny" | "allow";
   entries?: string[];
   examples?: string[];
@@ -57,6 +60,7 @@ export type CustomRuleSpec = {
   surfaces?: string[];
   agents?: string[];
   sequence?: { after?: string; then?: string; unless_path?: string | null; unless_matches?: string | null } | null;
+  condition?: ConditionSpec | null;
 };
 
 function kindOf(spec?: CustomRuleSpec): Kind {
@@ -65,7 +69,18 @@ function kindOf(spec?: CustomRuleSpec): Kind {
   return spec.kind;
 }
 
-export function CustomRule({ agent, initial, startKind }: { agent?: string; initial?: CustomRuleSpec; startKind?: Kind }) {
+export function CustomRule({
+  agent,
+  initial,
+  startKind,
+  startOperator,
+}: {
+  agent?: string;
+  initial?: CustomRuleSpec;
+  startKind?: Kind;
+  /** For a value check: the comparison to start from, e.g. "not_in" for "only allow these values". */
+  startOperator?: string;
+}) {
   const router = useRouter();
   // Editing an existing rule: same form, prefilled; its key, and so its id, stay put.
   const editing = Boolean(initial);
@@ -80,11 +95,12 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
   const [then, setThen] = useState(initial?.sequence?.then || "");
   const [unlessPath, setUnlessPath] = useState(initial?.sequence?.unless_path || "");
   const [unlessMatches, setUnlessMatches] = useState(initial?.sequence?.unless_matches || "");
-  const [effect, setEffect] = useState("block");
+  const [cond, setCond] = useState<Condition>(initial?.condition ? conditionFrom(initial.condition) : blankCondition(startOperator));
+  const [effect, setEffect] = useState(startKind === "condition" && startOperator !== "not_in" ? "escalate" : "block");
   const [message, setMessage] = useState("");
   const [reask, setReask] = useState(false);
   const [sample, setSample] = useState("");
-  const [tried, setTried] = useState<null | { matched: boolean; matches: any[] }>(null);
+  const [tried, setTried] = useState<null | { matched: boolean; matches: any[]; observed?: unknown[] }>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<null | { ruleId: string; mode: string }>(null);
@@ -102,6 +118,7 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
         kind: "sequence",
         sequence: { after: after.trim(), then: then.trim(), ...(unlessPath ? { unless_path: unlessPath.trim(), unless_matches: unlessMatches.trim() } : {}) },
       };
+    if (kind === "condition") return { ...base, kind: "condition", condition: conditionSpec(cond) };
     if (isTopic)
       return { ...base, kind: "topic", polarity: kind === "allow" ? "allow" : "deny", description: entries.trim(), examples: lines(examples), surfaces: checks };
     return { ...base, kind, entries: lines(entries), surfaces: checks };
@@ -111,7 +128,7 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
     setKind(k);
     setTried(null);
     if (k === "allow") setChecks(["input"]);
-    if (effect === "redact" && !["terms", "patterns"].includes(k)) setEffect("block");
+    if (effect === "redact" && !["terms", "patterns", "condition"].includes(k)) setEffect("block");
   };
 
   const run = async (fn: () => Promise<void>) => {
@@ -128,7 +145,14 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
 
   const tryIt = () =>
     run(async () => {
-      setTried(await callJson("/api/custom-rules/try", "POST", { rule: spec(), text: sample, surface: checks[0] || "input" }));
+      setTried(
+        await callJson("/api/custom-rules/try", "POST", {
+          rule: spec(),
+          text: sample,
+          surface: kind === "condition" ? cond.surface : checks[0] || "input",
+          tool: kind === "condition" && cond.tool.trim() && !cond.tool.includes("*") ? cond.tool.trim() : undefined,
+        }),
+      );
     });
 
   const remove = () =>
@@ -178,7 +202,10 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
 
   const first = tried?.matches.find((m) => m.end > m.start);
   const hit = first ? sample.slice(first.start, first.end) : "";
-  const ready = name.trim() && (kind === "sequence" ? after.trim() && then.trim() : entries.trim());
+  const ready = name.trim() && (kind === "sequence" ? after.trim() && then.trim() : kind === "condition" ? conditionReady(cond) : entries.trim());
+  const surfaces = kind === "condition" ? [cond.surface] : checks;
+  const toolSample = kind === "condition" && (cond.surface === "tool_args" || cond.surface === "tool_result");
+  const read = (tried?.observed || []).map((v) => (typeof v === "string" ? v : JSON.stringify(v))).join(", ");
 
   return (
     <div className="k-form">
@@ -195,7 +222,19 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
         <input id="cr-name" className="k-input" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder="Competitor mentions" />
       </div>
 
-      {kind === "sequence" ? (
+      {kind === "condition" ? (
+        <>
+          <ConditionFields
+            value={cond}
+            onChange={(c) => {
+              setCond(c);
+              setTried(null);
+              if (effect === "redact" && !canMask(c)) setEffect("block");
+            }}
+          />
+          <p className="muted">{describeCondition(cond, editing ? undefined : effect)}</p>
+        </>
+      ) : kind === "sequence" ? (
         <>
           <div className="k-pills" style={{ gap: 8, flexWrap: "wrap" }}>
             <div className="k-field" style={{ flex: 1, minWidth: 180 }}>
@@ -259,7 +298,7 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
       <div className="k-field">
         <label>When it matches</label>
         <div className="k-seg" role="group" aria-label="Action">
-          {ACTIONS.filter((a) => !a.only || a.only.includes(kind)).map((a) => (
+          {ACTIONS.filter((a) => (!a.only || a.only.includes(kind)) && !(a.effect === "redact" && kind === "condition" && !canMask(cond))).map((a) => (
             <button key={a.effect} className={effect === a.effect ? "active" : ""} onClick={() => setEffect(a.effect)}>
               {a.label}
             </button>
@@ -274,7 +313,7 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
         </div>
       )}
 
-      {effect === "block" && checks.includes("output") && kind !== "sequence" && (
+      {effect === "block" && surfaces.includes("output") && kind !== "sequence" && (
         <label className="k-check">
           <input type="checkbox" checked={reask} onChange={(e) => setReask(e.target.checked)} /> Ask the model to fix a blocked reply
         </label>
@@ -287,15 +326,23 @@ export function CustomRule({ agent, initial, startKind }: { agent?: string; init
         <div className="k-field">
           <label htmlFor="cr-sample">Try it</label>
           <div className="k-pills" style={{ gap: 8 }}>
-            <input id="cr-sample" className="k-input" style={{ flex: 1, minWidth: 240 }} value={sample} onChange={(e) => setSample(e.target.value)} placeholder="Paste a message" />
+            <input
+              id="cr-sample"
+              className={`k-input${toolSample ? " k-mono" : ""}`}
+              style={{ flex: 1, minWidth: 240 }}
+              value={sample}
+              onChange={(e) => setSample(e.target.value)}
+              placeholder={toolSample ? '{"amount": 750}' : "Paste a message"}
+            />
             <button className="k-btn" disabled={busy || !ready || !sample.trim()} onClick={tryIt}>
               Try
             </button>
             {tried && (
               <span className={`k-pill ${tried.matched ? "k-pill-bad" : "k-pill-ok"}`}>
-                {tried.matched ? (hit ? `Matches “${hit}”` : "Matches") : "No match"}
+                {tried.matched ? (hit && kind !== "condition" ? `Matches “${hit}”` : "Matches") : "No match"}
               </span>
             )}
+            {tried && kind === "condition" && <span className="muted">{read ? `Read ${read}` : "Field not found"}</span>}
           </div>
         </div>
       )}

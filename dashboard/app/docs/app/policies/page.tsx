@@ -379,6 +379,34 @@ injection.heuristic  support-triage  INJECTION.INSTRUCTION_OVERRIDE  quoted text
         <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>.
       </p>
 
+      <h2 id="value-checks">Your own rule: value checks</h2>
+      <InTheApp path="/app/policies/new">Policies → Add rule → A value crosses a line</InTheApp>
+      <p>
+        A value check compares one value and acts when the comparison holds. Pick where to
+        look (a tool call&apos;s arguments, a tool result, the reply, or the user&apos;s
+        message), an optional tool (<code>payments.*</code>), a field as a dot path into the
+        JSON (<code>amount</code>, <code>refund.total</code>, <code>items.0.price</code>,{" "}
+        <code>items.*.price</code>), and a comparison: more than, at least, less than, at most,
+        is, is not, one of, not one of, contains, does not contain, matches a pattern, present
+        or missing. With no field the whole text is read, and you can compare its length or
+        the first number in it. &quot;Only allow certain values&quot; is <em>is not one of</em>:
+        anything outside the list fires.
+      </p>
+      <p>
+        Like every rule you write, it becomes <code>custom.&lt;key&gt;</code> in the Your rules
+        pack, watches first, and blocks, asks a person or masks once the pack enforces. On a
+        tool call it runs before the tool does, so Ask a person holds the call for approval.
+        When guarding a tool result with <code>/v1/guard/input</code>, send{" "}
+        <code>&quot;tool&quot;</code> so a check scoped to a tool applies.
+      </p>
+      <Code>{`curl -X POST $AGENTFOX_URL/api/custom-rules -H "Authorization: Bearer $TOKEN" \\
+  -H "Content-Type: application/json" -d '{
+  "key": "big-refunds", "name": "Big refunds", "kind": "condition",
+  "condition": {"surface": "tool_args", "tool": "payments.*",
+                "field": "amount", "operator": "gt", "value": 500},
+  "effect": "escalate"
+}'`}</Code>
+
       <h2>Common tasks</h2>
       <TaskTable
         rows={[

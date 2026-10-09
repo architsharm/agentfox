@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-247 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+248 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -404,6 +404,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
 | `GET` | `/api/custom-rules` | Get Custom Rules |
 | `POST` | `/api/custom-rules` | Post Custom Rule |
+| `GET` | `/api/custom-rules/fields` | The arguments a tool is known to take, to suggest as a condition's field. |
 | `POST` | `/api/custom-rules/try` | Match one text against a rule that has not been saved. Records nothing. |
 | `DELETE` | `/api/custom-rules/{key}` | Remove Custom Rule |
 | `POST` | `/api/import/{tool}` | Apply Import |
