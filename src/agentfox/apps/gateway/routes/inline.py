@@ -1129,6 +1129,9 @@ def guard_content(
     # it, so ending it must not overwrite that with the default: a second guard call
     # on the same trace_id that allows must not erase the first one that blocked.
     usage, cost = _reported_usage(payload.usage, trace)
+    if usage and usage.get("model") and not trace.model:
+        # So Cost by model can split runs checked here, not only proxied ones.
+        trace.model = str(usage["model"])
     end_trace(
         session, trace, verdict=trace.verdict, status=trace.status, usage=usage, cost_usd=cost
     )
