@@ -407,6 +407,9 @@ class Enforcer(
             # thread pool where the session is not safe to use.
             extra={
                 "custom_rules": self._custom_rules(call.agent_slug),
+                # The tool a content-only check is about (a tool result sent to
+                # `/v1/guard/input`), for custom conditions scoped to a tool.
+                "tool": call.tool_key or self.evidence.get("tool"),
                 # What the answer was built from, for detectors that check an
                 # answer against it (grounding.nli). Supplied by the caller.
                 "context": [

@@ -944,6 +944,9 @@ class GuardContentRequest(BaseModel):
     #: "input_tokens": 812, "output_tokens": 140}`, usually sent with the output.
     #: A caller that already knows the price can send `cost_usd` instead.
     usage: dict[str, Any] | None = None
+    #: With `surface: "tool_result"`, the tool that returned this content, so a
+    #: custom condition scoped to a tool (`payments.*`) applies to it.
+    tool: str | None = None
 
 
 class GuardToolCallRequest(BaseModel):
@@ -1045,6 +1048,8 @@ def guard_content(
             **enforcer.evidence,
             "chunks": [{"text": c} for c in payload.context if c],
         }
+    if payload.tool:
+        enforcer.evidence = {**enforcer.evidence, "tool": payload.tool}
     # Resolve before starting the trace so the trace carries an agent id, which is
     # what gives the agent a last-seen and lets the Traces page filter by agent.
     # `resolve` also registers an unknown slug as shadow traffic, which is the

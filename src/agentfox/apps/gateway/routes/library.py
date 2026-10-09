@@ -180,7 +180,7 @@ class CompileIn(BaseModel):
     text: str = Field(min_length=1, max_length=20000)
 
 
-def _known_arguments(session: Session, tool_key: str) -> set[str] | None:
+def known_arguments(session: Session, tool_key: str) -> set[str] | None:
     """The arguments a tool takes: from its declared input schema, else from the calls
     seen. None when neither says anything."""
     from agentfox.core.models import Decision, Tool
@@ -212,7 +212,7 @@ def _field_warnings(session: Session, compiled: dict[str, Any]) -> dict[str, Any
         field = path.removeprefix("arguments.").split(".")[0]
         if not tool or not field:
             continue
-        known = _known_arguments(session, tool)
+        known = known_arguments(session, tool)
         if known is None:
             rule.setdefault("warnings", []).append(
                 f"No calls to {tool} have been seen yet, so `{field}` cannot be "

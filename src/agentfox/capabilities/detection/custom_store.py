@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from agentfox.capabilities.detection.custom import (
     CONTENT_KINDS,
     CompiledRule,
+    ConditionSpec,
     CustomRuleSpec,
     SequenceSpec,
     compile_rule,
@@ -70,6 +71,9 @@ def spec_of(row: CustomRule) -> CustomRuleSpec:
         case_sensitive=row.case_sensitive,
         sequence=SequenceSpec(**row.config_json["sequence"])
         if (row.config_json or {}).get("sequence")
+        else None,
+        condition=ConditionSpec(**row.config_json["condition"])
+        if (row.config_json or {}).get("condition")
         else None,
         enabled=row.enabled,
     )
@@ -172,7 +176,13 @@ def save_rules(
         row.surfaces_json = spec.surfaces
         row.agents_json = spec.agents
         row.case_sensitive = spec.case_sensitive
-        row.config_json = {"sequence": spec.sequence.model_dump()} if spec.sequence else {}
+        row.config_json = (
+            {"sequence": spec.sequence.model_dump()}
+            if spec.sequence
+            else {"condition": spec.condition.model_dump()}
+            if spec.condition
+            else {}
+        )
         row.enabled = spec.enabled
         session.flush()
         operator_log.record(
@@ -219,6 +229,7 @@ def _row_json(row: CustomRule) -> dict[str, Any]:
         "kind": row.kind,
         "polarity": row.polarity,
         "entries": list(row.entries_json or []),
+        "config": dict(row.config_json or {}),
         "agents": list(row.agents_json or []),
         "enabled": row.enabled,
     }
@@ -270,7 +281,7 @@ def sync_policy(
         name=POLICY_NAME,
         description=(
             "Rules written in your own words: blocked words and patterns, topics, "
-            "and sequences of actions."
+            "sequences of actions, and limits on values."
         ),
         rules=[
             _policy_rule(r, previous.get(rule_id_for(r.key)), seed.get(rule_id_for(r.key), {}))

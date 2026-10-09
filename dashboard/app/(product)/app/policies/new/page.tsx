@@ -23,7 +23,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
   const sp = await searchParams;
   const tabs = [
     ...(sp.run ? [{ key: "run", label: "From this run" }] : []),
-    { key: "custom", label: "Words & topics" },
+    { key: "custom", label: "Your own rule" },
     { key: "describe", label: "Approval limits" },
     { key: "access", label: "Tool access" },
     { key: "packs", label: "Packs" },
@@ -42,7 +42,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
       {tab === "describe" && <Describe agent={sp.agent} />}
       {tab === "custom" && (
         <Card>
-          <CustomRule agent={sp.agent} startKind={sp.kind as any} />
+          <CustomRule agent={sp.agent} startKind={sp.kind as any} startOperator={sp.op} />
         </Card>
       )}
       {tab === "packs" && <LibraryPacks />}
@@ -173,6 +173,8 @@ const GOALS: { title: string; text: string; to: Record<string, string> | string 
   { title: "Keep on topic", text: "Only answer about orders, shipping, billing…", to: { from: "custom", kind: "allow" } },
   { title: "Approve above an amount", text: "Refunds over $100 need a manager.", to: { from: "describe" } },
   { title: "Choose which tools it may use", text: "Allow, ask first, limit arguments.", to: { from: "access" } },
+  { title: "A value crosses a line", text: "A refund over 500, a reply longer than 2,000 characters.", to: { from: "custom", kind: "condition" } },
+  { title: "Only allow certain values", text: "Ship only to US or EU, pay only in USD.", to: { from: "custom", kind: "condition", op: "not_in" } },
   { title: "Stop a risky sequence", text: "After reading customer data, never email outside.", to: { from: "custom", kind: "sequence" } },
   { title: "Turn on a ready-made pack", text: "Prompt attacks, personal data, EU AI Act…", to: { from: "packs" } },
   { title: "Bring rules you already have", text: "From Guardrails AI, or a workspace file.", to: { from: "import" } },
