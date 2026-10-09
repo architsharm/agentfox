@@ -19,6 +19,7 @@ the scanner taxonomy of LLM Guard (archived Jul 2026). Reimplemented, not depend
 from __future__ import annotations
 
 import base64
+import codecs
 import re
 
 from agentfox.capabilities.detection.base import (
@@ -29,6 +30,7 @@ from agentfox.capabilities.detection.base import (
     snippet,
 )
 from agentfox.capabilities.detection.normalize import (
+    View,
     despaced,
     evasion_score,
     hidden_markup,
@@ -346,7 +348,9 @@ _COMPACT_OVERRIDE: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
-            r"(?:reveal|print|repeat|show|output)(?:me)?(?:all)?(?:your|the)(?:system)?prompt"
+            r"(?:reveal|print|repeat|show|output|dump|leak|disclose)(?:me)?(?:all)?(?:your|the)"
+            r"(?:hidden|secret|internal|original|initial|underlying|full|entire|exact)?"
+            r"(?:system)?prompt"
         ),
         "INJECTION.SYSTEM_PROMPT_LEAK",
     ),
@@ -473,8 +477,13 @@ _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
     ),
     (
         re.compile(
-            r"\b(?:reveal|print|repeat|show|output|display)\s+(?:me\s+)?(?:all\s+)?"
-            r"(?:your|the)\s+(?:following\s+)?(?:system\s+)?(?:prompt|instruction|rule)s?"
+            r"\b(?:reveal|print|repeat|show|output|display|dump|leak|disclose)\s+"
+            r"(?:me\s+)?(?:all\s+)?(?:your|the)\s+(?:following\s+)?"
+            # "the hidden system prompt", "your original instructions": a word or two
+            # between the article and the thing asked for.
+            r"(?:(?:hidden|secret|internal|original|initial|underlying|full|entire|"
+            r"exact|confidential|developer)\s+){0,2}"
+            r"(?:system\s+)?(?:prompt|instruction|rule)s?"
             r"(?:\s+text)?\b",
             re.I,
         ),
@@ -527,6 +536,18 @@ _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
         ),
         "INJECTION.EXFILTRATION",
         0.75,
+    ),
+    (
+        # Data smuggled out through an image the client renders: an instruction to
+        # load/render a markdown image whose URL carries a query string. Rendering
+        # it sends the request, and whatever was put in the query, to that host.
+        re.compile(
+            r"\b(?:load|render|display|show|include|embed|fetch|append|insert|add)\b"
+            r".{0,40}?!\[[^\]]{0,60}\]\(\s*https?://[^)\s]+\?[^)\s]*=[^)\s]+\)",
+            re.I,
+        ),
+        "INJECTION.EXFILTRATION",
+        0.8,
     ),
     (
         re.compile(
@@ -650,6 +671,17 @@ class InjectionHeuristicDetector(BaseDetector):
         if despaced_view is not None:
             views.append(despaced_view)
         views.extend(hidden_views)
+        # Rot13: a cipher every model reads and no pattern does. Ordinary text read
+        # this way is gibberish, so it cannot match an attack pattern by accident.
+        if len(content) >= 20 and any(c.isalpha() for c in content):
+            views.append(
+                View(
+                    text=codecs.encode(content, "rot13"),
+                    offsets=list(range(len(content))),
+                    kind="rot13",
+                    note="rot13",
+                )
+            )
 
         lowered = [LoweredText(view.text) for view in views]
         for pattern, entity, base_score, literals in _PATTERNS:

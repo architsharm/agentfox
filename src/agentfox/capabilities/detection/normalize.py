@@ -160,6 +160,8 @@ _CONFUSABLES = {**_CONFUSABLE_LETTERS, **_CONFUSABLE_PUNCT}
 #: Conservative leetspeak. Deliberately excludes 8→b and 6→g, which appear constantly
 #: in legitimate technical text ("8GB", "IPv6").
 _LEET = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
+#: "1" stands for "l" as often as for "i" ("r3v341" is "reveal"); one reading each.
+_LEET_L = {**_LEET, "1": "l"}
 
 #: Every ASCII punctuation or symbol character, plus the space and the Unicode dashes
 #: and middle dot. Deliberately a *complete* class rather than a curated one: the
@@ -534,7 +536,9 @@ def _collapse_whitespace(pairs: list[tuple[str, int]]) -> tuple[list[tuple[str, 
     return out, 0
 
 
-def _fold_leet(pairs: list[tuple[str, int]]) -> tuple[list[tuple[str, int]], int]:
+def _fold_leet(
+    pairs: list[tuple[str, int]], table: dict[str, str] = _LEET
+) -> tuple[list[tuple[str, int]], int]:
     """Fold digits to letters only inside tokens that mix both.
 
     Applying this everywhere would rewrite "30 days" as "eo days" and "8GB" as "8gb",
@@ -548,11 +552,11 @@ def _fold_leet(pairs: list[tuple[str, int]]) -> tuple[list[tuple[str, int]], int
     changed = 0
     for token in re.finditer(r"\S+|\s+", text):
         chunk = token.group(0)
-        mixed = any(c.isalpha() for c in chunk) and any(c in _LEET for c in chunk)
+        mixed = any(c.isalpha() for c in chunk) and any(c in table for c in chunk)
         for index, ch in enumerate(chunk, start=token.start()):
-            if mixed and ch in _LEET:
+            if mixed and ch in table:
                 changed += 1
-                out.append((_LEET[ch], offsets[index]))
+                out.append((table[ch], offsets[index]))
             else:
                 out.append((ch, offsets[index]))
     return out, changed
@@ -836,6 +840,11 @@ def normalize(text: str, *, aggressive: bool = True) -> Normalized:
             leet_text, leet_offsets = _render(leet_pairs)
             result.views.append(View(text=leet_text, offsets=leet_offsets, kind="leet"))
             result.transforms.append("leet")
+            if "1" in text:
+                alt_pairs, _ = _fold_leet(pairs, _LEET_L)
+                alt_text, alt_offsets = _render(alt_pairs)
+                if alt_text != leet_text:
+                    result.views.append(View(text=alt_text, offsets=alt_offsets, kind="leet"))
 
         decoded, decoded_evasion = _decoded_views(text)
         result.views.extend(decoded)
