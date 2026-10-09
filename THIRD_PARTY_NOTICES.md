@@ -63,6 +63,49 @@ unless `AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`, and they are excluded from
 **Granite Guardian (Apache-2.0) is the default safety classifier precisely because it
 avoids these terms.**
 
+## Incorporated material (MIT)
+
+### microsoft/agent-governance-toolkit
+
+Source: https://github.com/microsoft/agent-governance-toolkit, commit `c767f83`.
+Licence: MIT. Copyright (c) Microsoft Corporation. Incorporated as data and small
+modules; each copied file keeps the upstream copyright header, or sits beside a
+`LICENSE` file with the full MIT text where the format has no comments (JSON).
+The project's names and marks are not used for any AgentFox product or feature.
+
+| Upstream path | Where in AgentFox | How |
+|---|---|---|
+| `policy-engine/policy/lib/*.rego` | `src/agentfox/platform/policy/stdlib/rego/` | copied unchanged (header added to `ifc.rego`, `ifc_test.rego`) |
+| `policy-engine/policy/cedar-lib/*.cedar`, `*_test.json` | `src/agentfox/platform/policy/stdlib/cedar/` | copied unchanged |
+| `policy-engine/spec/schema/**` | `src/agentfox/platform/policy/compat/schema/` | copied unchanged |
+| `examples/policies/production/`, `uk-regulatory/`, `india-regulatory/`, `african-regulatory/` | `src/agentfox/packs/industry/*`, `src/agentfox/packs/regional/*` | rules translated into AgentFox policy packs; each file names its source |
+| `agent-governance-claude-code/config/default-policy.json`, `lib/recursive-delete.mjs` | coding-agent shell checks (see file headers) | patterns and logic ported to Python |
+| `agent-governance-python/agent-os/src/agent_os/credential_redactor.py`, `mcp_security.py` | `src/agentfox/capabilities/detection/vendor/` | vendored with minimal import changes listed in each file |
+
+```
+MIT License
+
+Copyright (c) Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## Standards and taxonomies (adopted as language, not code)
 
 | Source | Terms | Use |
@@ -91,14 +134,14 @@ Recorded because "why not" is a licence decision worth auditing (Appendix A §A.
 | **systemprompt-core** | **BSL-1.1** — source-available, not open source; usage restrictions. Reference only. |
 | **OpenAI Guardrails** | MIT but provider-centric; adopting it would contradict vendor neutrality (X-2). |
 | **Langfuse** | MIT core, but ClickHouse-acquired with an EE tier. Supported as an export target, never as our system of record. |
-| **Microsoft Agent Governance Toolkit** | MIT, competitor-adjacent. Its OWASP Agentic coverage map used as a reference only. |
 
 ## Attribution
 
 Apache-2.0 projects above are distributed under the Apache License, Version 2.0
 (<http://www.apache.org/licenses/LICENSE-2.0>). MIT and BSD projects retain their
-original copyright and permission notices in their distributed packages. No modified
-copies of any third-party source are vendored into this repository; all integrations
-are adapters against published interfaces.
+original copyright and permission notices in their distributed packages. Apart from the
+material listed under "Incorporated material (MIT)" above, no third-party source is
+vendored into this repository; all other integrations are adapters against published
+interfaces.
 
-_Last reviewed: 2026-08-17._
+_Last reviewed: 2026-10-09._
