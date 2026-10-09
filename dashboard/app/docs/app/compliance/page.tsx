@@ -72,41 +72,38 @@ export default function Page() {
   36 effective · 0 degraded · 4 failing · 2 not implemented
   effectiveness 90%`}</Output>
 
-      <h2>Frameworks tab, and reviewing mappings</h2>
+      <h2>Regulations tab</h2>
       <p>
-        Each framework with controls mapped, mappings, how many are reviewed, status (
-        <code>draft</code> until all are reviewed) and <strong>Review mappings →</strong>. Under
-        the table, each framework&apos;s declared gaps: what this product does not cover for it.
+        One row per framework: how many requirements (cited articles or clauses) the
+        controls answer, how many of those controls are effective, failing or degraded, how
+        many carry a current review, and the next dated obligation. Each row opens{" "}
+        <code>/app/compliance/frameworks/&lt;key&gt;</code> (<code>GET /api/frameworks/&#123;key&#125;</code>):
+        every requirement with the controls mapped to it, each control&apos;s computed status
+        and review, the framework&apos;s deadlines with the agents in scope, and what it does
+        not cover.
       </p>
-      <p>
-        <code>/app/compliance/frameworks/&lt;key&gt;</code> (<code>GET /api/frameworks/&#123;key&#125;</code>)
-        lists every control with the clauses it is mapped to and <strong>Mark reviewed</strong>.
-        Marking one reviewed records you as the reviewer (<code>POST /api/frameworks/review</code>)
-        and needs owner, admin or compliance. Only do it if you are the person accountable for
-        the claim.
-      </p>
-      <Output title="EU AI Act, page text">{`43 of 43 controls mapped, 0 of 70 mappings reviewed.
-Declared gaps
-  Conformity assessment procedure (Art. 43), CE marking and notified-body interaction
-  Registration in the EU database (Art. 49)
-  Fundamental rights impact assessment content (Art. 27) — we provide inputs, not the filing
-control                                                    reference(s)                                status
-The complete execution path of every invocation is recorded  Art. 12 — record-keeping and automatic logging  draft  Mark reviewed`}</Output>
-      <p>
-        The CLI equivalent attests by name, per control and optionally per clause, and{" "}
-        <code>report review-packet</code> writes everything a reviewer needs for one
-        framework into one file:
-      </p>
-      <Code>{`agentfox report review-packet --framework eu-ai-act --out eu-ai-act-review.md
-agentfox report signoff NOM-AUD-01 --framework eu-ai-act --reviewer "Dana Reviewer"`}</Code>
 
-      <h2>Obligations tab</h2>
+      <h2 id="reviews">Reviewing a control</h2>
       <p>
-        Dated duties from regulations: effective date, framework, the obligation, live or
-        upcoming, how many of your agents it applies to, and a build-by date. A row is a
-        calendar entry, not a record that the duty was met. <code>agentfox report obligations</code>{" "}
-        prints the same calendar.
+        A control row opens <code>/app/compliance/controls/&lt;key&gt;</code> (
+        <code>GET /api/controls/&#123;key&#125;</code>): its computed status and rationale, the
+        bound rules that implement it with when each last fired, the runs they acted on, open
+        findings, and evidence packages that cover it. <strong>Record a review</strong> is a
+        named attestation against one framework: an outcome (meets, partially meets, does not
+        meet, not applicable) and a note, required for anything short of meets. It posts{" "}
+        <code>POST /api/controls/&#123;key&#125;/reviews</code> and needs owner, admin,
+        compliance or auditor. The reviewer is always you.
       </p>
+      <p>
+        A review freezes the evidence shown at that moment onto the review, is recorded on the
+        audit chain as <code>compliance.control_reviewed</code>, and expires after 90 days,
+        when it reads <code>Review expired</code> until someone reviews again. Evidence
+        packages carry every review in <code>control_reviews.json</code>.
+      </p>
+      <p>
+        The CLI writes everything a reviewer needs for one framework into one file:
+      </p>
+      <Code>{`agentfox report review-packet --framework eu-ai-act --out eu-ai-act-review.md`}</Code>
 
       <h2 id="risk">Risk register tab</h2>
       <p>
@@ -183,12 +180,25 @@ CHAIN INTACT — 99 entries verified (seq 1..99)`}</Output>
 
       <h2>Retention &amp; legal hold tab</h2>
       <p>
-        <strong>Retention policies</strong> is read-only: each data class, how many days it is
-        kept, and which fields are redacted. If there are none, nothing is purged on a schedule,
-        and there is no way to add one from the web app. <strong>Place a legal hold</strong>{" "}
-        takes agents (blank for all) and a required reason, and posts{" "}
-        <code>POST /api/legal-holds</code> (owner, admin or compliance). Holds are listed with
-        who placed them, scope, reason and whether they are active. There is no release button.
+        Each data class (prompt and response content, detection samples, runs, decisions,
+        evaluation output, and the audit log), how long it is kept and what happens after:
+        deleted, or content redacted with the record kept. <strong>Change</strong> sets the
+        period with a required reason (<code>PUT /api/retention/&#123;class&#125;</code>, owner,
+        admin or compliance), recorded on the audit chain with the before and after. The audit
+        log is locked: it cannot be given a period and is never purged.
+      </p>
+      <p>
+        A daily job, <code>retention.purge</code>, applies every period. A class with no period
+        is kept. An active legal hold wins: a hold with no agents stops the purge, an
+        agent-scoped hold keeps that agent&apos;s data. Each pass is recorded (
+        <code>GET /api/retention/runs</code>) and on the audit chain as{" "}
+        <code>retention.purged</code>. The tab shows the last purge and the next one;{" "}
+        <strong>Run purge now</strong> posts <code>POST /api/retention/purge</code>.
+      </p>
+      <p>
+        <strong>Place a hold</strong> takes agents (blank for all) and a required reason, and
+        posts <code>POST /api/legal-holds</code> (owner, admin or compliance). Holds are listed
+        with who placed them, scope, reason and whether they are active.
       </p>
 
       <h2>Board snapshot tab</h2>
