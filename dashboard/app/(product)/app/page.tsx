@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { safeApi } from "@/lib/product/api";
-import { Card, Dot, Empty, Grid, Header, Kpi, Pill, SeverityPill, StackBar, TimeChart, ago, num, pctOf } from "@/components/kit";
+import { Card, Dot, Empty, Grid, Header, Kpi, Pill, SeverityPill, StackBar, TimeChart, ago, href, num, pctOf } from "@/components/kit";
 import { Countdown } from "@/components/product/Countdown";
 import { SetupProgress } from "@/components/product/home/SetupProgress";
 import { runsHref } from "@/lib/product/observe";
-import { severityRank } from "@/lib/product/vocab";
+import { activeRange } from "@/lib/product/range";
+import { RANGE_WORDS, severityRank } from "@/lib/product/vocab";
 
 // `appPageMetadata`, not a literal: it also clears the canonical URL, so this page
 // does not declare itself a duplicate of the marketing home page.
@@ -21,11 +22,13 @@ type SP = { review_notice?: string; review_error?: string };
  */
 export default async function Home({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const f = { range: "7d" as const };
+  // The week, or the smallest window that holds the latest traffic in a quiet workspace.
+  const { range, last } = await activeRange();
+  const f = { range };
   const [onboarding, summary, byAgent, agents, approvals, findings, policies] = await Promise.all([
     safeApi<any>("/api/onboarding", null),
-    safeApi<any>("/api/metrics/summary?range=7d", null),
-    safeApi<any>("/api/metrics/breakdown?dim=agent&range=7d", { rows: [] }),
+    safeApi<any>(`/api/metrics/summary?range=${range}`, null),
+    safeApi<any>(`/api/metrics/breakdown?dim=agent&range=${range}`, { rows: [] }),
     safeApi<any>("/api/agents", { agents: [] }),
     safeApi<any>("/api/approvals?status=pending", { approvals: [] }),
     safeApi<any>("/api/findings?status=open&limit=200", { findings: [] }),
@@ -41,11 +44,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
     .sort((a: any, c: any) => severityRank(a.severity) - severityRank(c.severity))
     .slice(0, 4);
   const agentName: Record<string, string> = Object.fromEntries((agents.agents || []).map((a: any) => [a.id, a.name || a.slug]));
-  const watching = (policies.policies || []).filter((x: any) => x.mode === "observe");
+  const watching = (policies.policies || []).filter((x: any) => x.mode === "observe" && x.rules > 0);
   const usage: Record<string, any> = Object.fromEntries((byAgent.rows || []).map((r: any) => [r.key, r]));
   const live = (agents.agents || []).filter((a: any) => a.status !== "draft");
   const max = Math.max(1, ...Object.values(usage).map((r: any) => r.requests));
-  const noTraffic = !t.requests && !p.requests;
+  const noTraffic = !last;
 
   return (
     <>
@@ -114,7 +117,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
       ) : (
         <>
           <Grid cols={4}>
-            <Kpi label="Requests · 7 days" value={num(t.requests)} current={t.requests} prev={p.requests} better="none" href="/app/observe" spark={b.map((x: any) => x.allowed + x.masked + x.held + x.blocked)} />
+            <Kpi label={`Requests · ${RANGE_WORDS[range]}`} value={num(t.requests)} current={t.requests} prev={p.requests} better="none" href={href("/app/observe", { range })} spark={b.map((x: any) => x.allowed + x.masked + x.held + x.blocked)} />
             <Kpi label="Blocked" value={num(t.blocked)} current={t.blocked} prev={p.blocked} href={runsHref(f, { outcome: "blocked" })} spark={b.map((x: any) => x.blocked)} />
             <Kpi label="Held for a person" value={num(t.held)} current={t.held} prev={p.held} href={runsHref(f, { outcome: "held" })} spark={b.map((x: any) => x.held)} />
             <Kpi label="Errors" value={num(t.errors)} current={t.errors} prev={p.errors} tone={t.errors ? "bad" : undefined} href={runsHref(f, { errors: true })} />

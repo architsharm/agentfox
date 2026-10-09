@@ -45,7 +45,13 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
               </td>
               <td className="tight">
                 <span className="k-pills">
-                  <OutcomePill outcome={outcomeOf(t.verdict)} />
+                  {t.checks === 0 ? (
+                    <Pill tone="outline" title="This run reached AgentFox as telemetry only; no check ran on it.">
+                      Not checked
+                    </Pill>
+                  ) : (
+                    <OutcomePill outcome={outcomeOf(t.verdict)} />
+                  )}
                   {t.would_verdict && outcomeOf(t.verdict) === "allowed" && (
                     <Pill tone="outline" title="The rule is only watching. Enforced, this run would have been stopped.">
                       {WOULD[t.would_verdict]}

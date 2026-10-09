@@ -42,7 +42,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
     safeApi<any>("/api/agents", { agents: [] }),
     Promise.all(STATUSES.map((s) => safeApi<any>(`/api/findings?status=${s.key}&limit=500${sp.agent ? `&agent=${sp.agent}` : ""}`, { findings: [] }))),
   ]);
-  const rows = [...(data.findings || [])].sort(
+  const rows = group(data.findings || []).sort(
     (a, b) => severityRank(a.severity) - severityRank(b.severity) || String(b.last_seen_at).localeCompare(String(a.last_seen_at)),
   );
   const keep = { agent: sp.agent, severity: sp.severity };
@@ -55,7 +55,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
         items={STATUSES.map((s, i) => ({
           key: s.key,
           label: s.label,
-          count: counts[i].findings?.length,
+          count: group(counts[i].findings || []).length,
           href: href("/app/findings", { ...keep, status: s.key === "open" ? undefined : s.key }),
         }))}
       />
@@ -106,4 +106,25 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
       </Card>
     </>
   );
+}
+
+/**
+ * One row per problem. Issues raised before findings carried a fingerprint (Sept
+ * 2026) were never merged, so the same problem can appear as many rows; they are
+ * counted together here, linking to the most recent.
+ */
+function group(findings: any[]): any[] {
+  const byKey = new Map<string, any>();
+  for (const f of findings) {
+    const key = [f.type, f.title, f.agent_slug || "", f.subject_type || "", f.subject_id || "", f.status].join("|");
+    const seen = byKey.get(key);
+    const at = String(f.last_seen_at || f.created_at || "");
+    if (!seen) {
+      byKey.set(key, { ...f, occurrences: f.occurrences || 1 });
+      continue;
+    }
+    seen.occurrences += f.occurrences || 1;
+    if (at > String(seen.last_seen_at || seen.created_at || "")) Object.assign(seen, { id: f.id, last_seen_at: at });
+  }
+  return Array.from(byKey.values());
 }

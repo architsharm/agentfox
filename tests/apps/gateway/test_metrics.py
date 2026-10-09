@@ -135,3 +135,31 @@ def test_playground_runs_are_excluded_unless_asked_for(client):
         "/api/traces?agent=metrics-bot&environment=playground", headers=ADMIN
     ).json()["traces"]
     assert len(played) == 1
+
+
+def test_activity_names_the_smallest_range_with_traffic(client):
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Trace
+
+    old = dt.datetime.now(dt.UTC) - dt.timedelta(days=20)
+    with session_scope() as session:
+        session.add(Trace(agent_slug="old-bot", verdict="allow", started_at=old))
+        session.add(
+            Trace(agent_slug="old-bot", verdict="allow", started_at=old, environment="playground")
+        )
+    out = client.get("/api/metrics/activity?agent=old-bot", headers=ADMIN).json()
+    assert out["range"] == "30d" and out["last_request_at"].startswith(old.date().isoformat())
+    assert client.get("/api/metrics/activity?agent=nobody", headers=ADMIN).json() == {
+        "last_request_at": None,
+        "range": "7d",
+    }
+
+
+def test_a_run_with_no_checks_says_so(client):
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Trace
+
+    with session_scope() as session:
+        session.add(Trace(agent_slug="otel-bot", verdict="allow"))
+    rows = client.get("/api/traces?agent=otel-bot", headers=ADMIN).json()["traces"]
+    assert rows and rows[0]["checks"] == 0

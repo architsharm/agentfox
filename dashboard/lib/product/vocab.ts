@@ -93,6 +93,9 @@ export const RANGES = [
 
 export type RangeKey = (typeof RANGES)[number]["key"];
 
+/** A range in words, for labels: "Requests · 30 days". */
+export const RANGE_WORDS: Record<RangeKey, string> = { "24h": "24 hours", "7d": "7 days", "30d": "30 days", "90d": "90 days" };
+
 export function rangeOf(value?: string | null): RangeKey {
   return (RANGES.find((r) => r.key === value)?.key || "7d") as RangeKey;
 }

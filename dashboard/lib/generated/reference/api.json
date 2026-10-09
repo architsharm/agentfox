@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 239,
+ "count": 240,
  "routes": [
   {
    "method": "GET",
@@ -5940,6 +5940,41 @@
      "in": "path",
      "required": true,
      "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/metrics/activity",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "Activity",
+   "description": "",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "environment",
+     "in": "query",
+     "required": false,
+     "type": null
     },
     {
      "name": "authorization",

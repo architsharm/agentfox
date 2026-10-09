@@ -29,6 +29,7 @@ import { AgentMap } from "@/components/product/AgentMap";
 import { AccessEditor } from "@/components/product/agent/AccessEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
+import { ensureRange } from "@/lib/product/range";
 
 export const metadata: Metadata = appPageMetadata("Agent");
 export const dynamic = "force-dynamic";
@@ -52,6 +53,7 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   const requested = LEGACY[sp.tab || ""] || sp.tab;
   const tab = TABS.some((t) => t.key === requested) ? requested! : "overview";
+  if (["overview", "rules", "activity"].includes(tab)) await ensureRange(`/app/agents/${encodeURIComponent(slug)}`, sp, slug);
   const f: Filters = { range: rangeOf(sp.range), agent: slug };
 
   let posture: any;

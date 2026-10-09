@@ -371,6 +371,9 @@ def search_traces(
     fired: dict[str, list[str]] = {}
     tools: dict[str, list[str]] = {}
     surfaces: dict[str, list[str]] = {}
+    # How many checks ran. A run that reached us only as telemetry has none, and
+    # must not read as "allowed": nothing decided anything about it.
+    checks: dict[str, int] = {}
     # What a rule that is only watching would have done: the strongest effect among
     # fired rules in observe mode. A run that was allowed but would have been
     # blocked is the fact a team needs before switching a rule to enforce.
@@ -380,6 +383,7 @@ def search_traces(
         for d in session.scalars(
             select(Decision).where(Decision.trace_id.in_({t.id for t in traces}))
         ):
+            checks[d.trace_id] = checks.get(d.trace_id, 0) + 1
             for r in d.rules_fired_json or []:
                 rid = r.get("rule_id") if isinstance(r, dict) else None
                 if rid and rid not in fired.setdefault(d.trace_id, []):
@@ -411,6 +415,7 @@ def search_traces(
             "tools": tools.get(t.id, []),
             "surfaces": surfaces.get(t.id, []),
             "would_verdict": would.get(t.id),
+            "checks": checks.get(t.id, 0),
         }
         for t in traces
     ]
