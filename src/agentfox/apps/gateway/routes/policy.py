@@ -16,8 +16,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.deps import current_user, db, require
-from agentfox.core.models import Policy, PolicyCanary, PolicyVersion, User
+from agentfox.apps.gateway.deps import WRITE_ROLES, current_user, db, require
+from agentfox.capabilities.protection import scope as agent_scope
+from agentfox.core.models import Agent, Policy, PolicyCanary, PolicyVersion, User
 from agentfox.platform.ledger import chain
 from agentfox.platform.policy import (
     LEVELS,
@@ -144,10 +145,24 @@ def get_effective(
     session: Session = Depends(db),
     _u: User = Depends(current_user),
 ) -> dict[str, Any]:
-    """The policy actually in force for a subject, with per-rule provenance."""
-    return effective_for(
+    """The policy actually in force for a subject, with per-rule provenance.
+
+    With ``agent``, each rule also says whether it was changed for that agent only
+    (``changed_for_agent``), and ``agent_changes`` lists every rule the agent's own
+    layer sets beside the workspace default it replaces.
+    """
+    out = effective_for(
         session, agent_slug=agent, environment=environment, team=team, user=user
     ).explain()
+    if agent:
+        changes = agent_scope.agent_changes(session, agent)
+        by_id = {c["rule_id"]: c for c in changes}
+        for rule in out["rules"]:
+            change = by_id.get(rule["rule_id"])
+            rule["changed_for_agent"] = bool(change and change["kind"] == "changed")
+            rule["added_for_agent"] = bool(change and change["kind"] == "added")
+        out["agent_changes"] = changes
+    return out
 
 
 @router.get("/lint")
@@ -286,7 +301,14 @@ class RulePatchIn(BaseModel):
     #: Detection threshold, 0–1: lower catches more. Only for rules that test a
     #: detection; the dashboard's Low/Medium/High sensitivity sets this.
     min_score: float | None = Field(None, ge=0.0, le=1.0)
+    #: Let narrower levels (one agent, say) loosen this rule. A grant, so it needs a
+    #: role that may bind policies to enforce.
+    overridable: bool | None = None
     notes: str = ""
+
+
+#: Roles that may let agents loosen a workspace rule.
+_GRANT_ROLES = WRITE_ROLES.get("policy_production", set())
 
 
 @router.post("/{key}/rules/{rule_id}", status_code=201)
@@ -323,6 +345,10 @@ def patch_rule(
     rule = next((r for r in doc.rules if r.id == rule_id), None)
     if rule is None:
         raise HTTPException(404, f"policy '{key}' has no rule '{rule_id}'")
+    if payload.overridable and user.role not in _GRANT_ROLES:
+        raise HTTPException(
+            403, f"role '{user.role}' may not let agents loosen a rule. Ask an admin."
+        )
     try:
         if payload.min_score is not None and rule.when.detection is None:
             raise HTTPException(
@@ -341,6 +367,8 @@ def patch_rule(
                     r["on_block"] = payload.on_block
                 if payload.min_score is not None:
                     r["when"]["detection"]["min_score"] = payload.min_score
+                if payload.overridable is not None:
+                    r["overridable"] = payload.overridable
         patched = PolicyDocument.model_validate(data)
     except HTTPException:
         raise
@@ -355,6 +383,7 @@ def patch_rule(
             "message": payload.message,
             "on_block": payload.on_block,
             "min_score": payload.min_score,
+            "overridable": payload.overridable,
         }.items()
         if v is not None
     }
@@ -385,6 +414,127 @@ def patch_rule(
         "mode": binding.mode if binding else None,
         "needs_simulation": bool(binding and binding.mode == "enforce"),
     }
+
+
+class ScopedChangeIn(BaseModel):
+    """One rule change, for every agent or only some."""
+
+    #: Empty: every agent (the rule is changed in its pack). Otherwise only these.
+    agents: list[str] = Field(default_factory=list, max_length=500)
+    #: Also every agent the chosen ones hand work to, through `delegates_to` lineage.
+    include_delegates: bool = False
+    effect: str | None = None
+    enabled: bool | None = None
+    message: str | None = None
+    on_block: str | None = None
+    min_score: float | None = Field(None, ge=0.0, le=1.0)
+    #: True: say what would change and replay the agents' traffic; write nothing.
+    preview: bool = False
+    reason: str = ""
+
+
+@router.get("/{key}/rules/{rule_id}/agents")
+def get_rule_agents(
+    key: str,
+    rule_id: str,
+    session: Session = Depends(db),
+    user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """Every agent, nested by hand-off, and whether each has its own copy of the rule."""
+    if session.scalar(select(Policy).where(Policy.key == key)) is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+    return {
+        **agent_scope.rule_agents(session, key, rule_id),
+        "can_allow_loosening": user.role in _GRANT_ROLES,
+    }
+
+
+@router.post("/{key}/rules/{rule_id}/scope")
+def change_rule_scope(
+    key: str,
+    rule_id: str,
+    payload: ScopedChangeIn,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Change a rule for every agent, or for only some (and what they hand off to).
+
+    Every agent: the same as ``POST /{key}/rules/{rule_id}`` (a saved version to
+    promote). Some agents: the changed rule is written into each agent's own layer,
+    live in the mode that layer is in, after a simulation when it enforces. A change
+    that would loosen the workspace rule for an agent is refused with 409 unless the
+    workspace rule is ``overridable``.
+    """
+    change = payload.model_dump(include=set(agent_scope.FIELDS), exclude_none=True)
+    if not payload.agents:
+        if payload.preview:
+            raise HTTPException(
+                400, "preview a change for every agent with POST /api/policies/simulate"
+            )
+        out = patch_rule(key, rule_id, RulePatchIn(**change), session=session, user=user)
+        return {**out, "scope": "every"}
+
+    if session.scalar(select(Policy).where(Policy.key == key)) is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+    for slug in payload.agents:
+        if session.scalar(select(Agent.id).where(Agent.slug == slug)) is None:
+            raise HTTPException(404, f"unknown agent '{slug}'")
+    try:
+        planned = agent_scope.plan(
+            session,
+            key,
+            rule_id,
+            payload.agents,
+            change,
+            include_delegates=payload.include_delegates,
+        )
+    except agent_scope.LooseningNotAllowed as exc:
+        raise HTTPException(
+            409,
+            {
+                "message": str(exc),
+                "rule_id": exc.rule_id,
+                "agent": exc.agent,
+                "policy": exc.policy,
+                # Whether this user could mark the workspace rule overridable.
+                "can_allow_loosening": not exc.protected and user.role in _GRANT_ROLES,
+            },
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    agents = [p.to_json() for p in planned]
+    if payload.preview:
+        return {
+            "scope": "agents",
+            "agents": agents,
+            "simulation": agent_scope.preview(session, planned),
+        }
+    reason = payload.reason.strip() or f"{rule_id} changed for {', '.join(payload.agents)}"
+    applied = agent_scope.apply_for_agents(
+        session, planned, rule_id=rule_id, actor=user.email or user.id, reason=reason
+    )
+    return {"scope": "agents", "agents": applied}
+
+
+@router.delete("/agents/{slug}/rules/{rule_id}")
+def reset_agent_rule(
+    slug: str,
+    rule_id: str,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Drop an agent's own copy of a rule: the workspace rule applies to it again."""
+    out = agent_scope.reset_for_agent(
+        session,
+        slug,
+        rule_id,
+        actor=user.email or user.id,
+        reason=f"{rule_id} reset to the workspace default for {slug}",
+    )
+    if out is None:
+        raise HTTPException(404, f"agent '{slug}' has no change of its own to '{rule_id}'")
+    return out
 
 
 @router.post("/validate")

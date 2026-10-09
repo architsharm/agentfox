@@ -106,7 +106,7 @@ def preview_protection(
 ) -> dict[str, Any]:
     """Replay this agent's last week against the protections, as if enforcing."""
     get_agent_or_404(session, slug)
-    doc = _layer(slug, payload)
+    doc = protection.with_agent_rules(session, slug, _layer(slug, payload))
     since = dt.datetime.now(dt.UTC) - dt.timedelta(days=7)
     return simulate(session, doc, agent_slug=slug, since=since).to_json()
 

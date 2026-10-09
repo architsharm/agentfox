@@ -236,6 +236,45 @@ No production traffic would newly block.`}</Output>
 …,"min_sample":20,"started_by":"admin@example.com",…}`}</Output>
       <p>There is no CLI command for canaries; use the page or the routes above.</p>
 
+      <h3 id="agent-scope">Change a rule for some agents only</h3>
+      <InTheApp path="/app/policies">Policies → a rule → Change → Applies to</InTheApp>
+      <p>
+        On a rule&apos;s <strong>Tune</strong> tab, <strong>Applies to</strong> picks who the
+        change reaches:
+      </p>
+      <ul>
+        <li>
+          <strong>Every agent</strong> edits the rule in its pack: a new version, simulated and
+          then applied like any other.
+        </li>
+        <li>
+          <strong>Only some agents</strong> writes a copy of the changed rule into each chosen
+          agent&apos;s own layer (<code>agent.&lt;slug&gt;</code>, at the agent level). Sub-agents
+          are listed under the agent that hands work to them; tick{" "}
+          <strong>Include the agents they hand off to</strong> to reach every agent it delegates
+          to, directly or not. Other agents keep the workspace rule.
+        </li>
+      </ul>
+      <p>
+        Stricter for one agent is always allowed, and the workspace rule stays in force beside
+        it. Looser (a weaker action, off, or less sensitive) is allowed only when the workspace
+        rule is marked <code>overridable</code>; otherwise the change is refused with a note, and
+        an owner, admin or security user can choose <strong>Let agents loosen this rule</strong>.
+        The rule that stops an agent switching off the others (<code>control_plane.tamper</code>)
+        is never loosened per agent. Each agent&apos;s layer goes live in the mode it is already
+        in: watching layers record, enforcing ones are simulated on that agent&apos;s last 7 days
+        first. Every change is in the audit log.
+      </p>
+      <p>
+        The agent&apos;s <strong>Rules</strong> tab lists what was changed for it, next to the
+        workspace default, with <strong>Reset to workspace default</strong>. The map&apos;s side
+        panel links each rule to <strong>Change for this agent only</strong>.
+      </p>
+      <Output title="routes">{`GET    /api/policies/{key}/rules/{rule_id}/agents   agents, nested by hand-off, and who has a copy
+POST   /api/policies/{key}/rules/{rule_id}/scope    {"agents": [...], "include_delegates": true, "effect": "block", "preview": true}
+DELETE /api/policies/agents/{slug}/rules/{rule_id}  back to the workspace default
+GET    /api/policies/effective?agent=<slug>          per rule: changed_for_agent; plus agent_changes`}</Output>
+
       <h2 id="tuning">Guardrail tuning tab</h2>
       <InTheApp path="/app/policies?tab=advanced&sec=tuning">Policies → Guardrail tuning</InTheApp>
       <p>

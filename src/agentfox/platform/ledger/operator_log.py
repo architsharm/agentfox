@@ -145,6 +145,17 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "switching an agent's protection off or down removes rules that guarded it",
     ),
     PrivilegedAction(
+        "agentfox.capabilities.protection.scope.apply_for_agents",
+        "operator.agent_rule.changed",
+        "changes a workspace rule for some agents only; where the rule allows it, that "
+        "can loosen it for them",
+    ),
+    PrivilegedAction(
+        "agentfox.capabilities.protection.scope.reset_for_agent",
+        "operator.agent_rule.reset",
+        "removes an agent's own copy of a rule, which can loosen what it was held to",
+    ),
+    PrivilegedAction(
         "agentfox.capabilities.detection.detector_settings.set_enabled",
         "operator.detector.toggled",
         "switching a detector off silences it for the whole workspace, like a suppression",

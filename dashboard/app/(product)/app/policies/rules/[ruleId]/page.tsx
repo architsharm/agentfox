@@ -7,9 +7,9 @@ import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
 import { CustomRule } from "@/components/product/policies/CustomRule";
 import { RuleTests } from "@/components/product/policies/RuleTests";
-import { RuleTuner } from "@/components/product/policies/RuleTuner";
+import { RuleTuner, type RuleScope } from "@/components/product/policies/RuleTuner";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
-import { loadRules, ruleMode } from "@/lib/product/rules";
+import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
@@ -47,7 +47,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
   const rule = rules.find((r) => r.rule_id === ruleId);
   const s = (stats.rules || []).find((r: any) => r.rule_id === ruleId);
   const mode = rule ? ruleMode(rule) : null;
-  const tabHref = (k: string) => href(`/app/policies/rules/${encodeURIComponent(ruleId)}`, { tab: k === "overview" ? undefined : k, range: sp.range });
+  const tabHref = (k: string) => href(`/app/policies/rules/${encodeURIComponent(ruleId)}`, { tab: k === "overview" ? undefined : k, range: sp.range, agent: k === "tune" ? sp.agent : undefined });
 
   return (
     <RangeProvider range={sp.range}>
@@ -122,7 +122,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
 
       {tab === "tune" && (
         <Card title="What this rule does">
-          {rule ? <RuleTuner ruleId={ruleId} packs={rule.packs} exact={own ? own.kind !== "topic" : false} /> : <Empty>Not in any installed pack.</Empty>}
+          {rule ? <Tune ruleId={ruleId} packs={rule.packs} exact={own ? own.kind !== "topic" : false} agent={sp.agent} /> : <Empty>Not in any installed pack.</Empty>}
         </Card>
       )}
 
@@ -156,6 +156,19 @@ export default async function RulePage({ params, searchParams }: { params: Promi
     </>
     </RangeProvider>
   );
+}
+
+/** The tuner, with every agent (sub-agents nested) for "Only some agents". */
+async function Tune({ ruleId, packs, exact, agent }: { ruleId: string; packs: RuleInfo["packs"]; exact: boolean; agent?: string }) {
+  const workspace = packs.filter((p) => !p.key.startsWith("agent."));
+  const scopes: Record<string, RuleScope> = {};
+  await Promise.all(
+    workspace.map(async (p) => {
+      const out = await safeApi<RuleScope | null>(`/api/policies/${encodeURIComponent(p.key)}/rules/${encodeURIComponent(ruleId)}/agents`, null);
+      if (out) scopes[p.key] = out;
+    }),
+  );
+  return <RuleTuner ruleId={ruleId} packs={packs} exact={exact} scopes={scopes} agent={agent} />;
 }
 
 async function Examples({ ruleId, range }: { ruleId: string; range: keyof typeof RANGE_DAYS }) {

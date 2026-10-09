@@ -226,7 +226,7 @@ function layout(map: AgentMap, selected: Selected): { nodes: Node[]; edges: Edge
 
 // --- panel -----------------------------------------------------------------------
 
-function RuleList({ rules }: { rules: MapRule[] }) {
+function RuleList({ rules, slug }: { rules: MapRule[]; slug: string }) {
   if (!rules.length) return <p className="k-muted">No rules here.</p>;
   const sorted = [...rules].sort((a, b) => Number(b.mode === "enforce") - Number(a.mode === "enforce") || b.hits - a.hits);
   return (
@@ -242,6 +242,9 @@ function RuleList({ rules }: { rules: MapRule[] }) {
             {r.level === "agent" && <Pill tone="outline">This agent</Pill>}
             {r.hits ? <span className="k-muted">{r.hits} hits</span> : null}
           </span>
+          <Link className="k-muted" style={{ fontSize: "var(--t-micro)" }} href={`/app/policies/rules/${encodeURIComponent(r.id)}?tab=tune&agent=${encodeURIComponent(slug)}`}>
+            Change for this agent only
+          </Link>
         </li>
       ))}
     </ul>
@@ -257,7 +260,7 @@ function Panel({ map, selected }: { map: AgentMap; selected: Selected }) {
         {map.everywhere.length > 0 && (
           <>
             <h4>At every step</h4>
-            <RuleList rules={map.everywhere} />
+            <RuleList rules={map.everywhere} slug={map.agent.slug} />
           </>
         )}
       </div>
@@ -283,7 +286,7 @@ function Panel({ map, selected }: { map: AgentMap; selected: Selected }) {
           <p className="k-muted">None.</p>
         )}
         <h4>Rules that act on them</h4>
-        <RuleList rules={s.rules} />
+        <RuleList rules={s.rules} slug={map.agent.slug} />
       </div>
     );
   }
@@ -325,7 +328,7 @@ function Panel({ map, selected }: { map: AgentMap; selected: Selected }) {
         </>
       )}
       <h4>Rules for this tool</h4>
-      <RuleList rules={tl.rules} />
+      <RuleList rules={tl.rules} slug={map.agent.slug} />
       <p className="k-muted">Every tool call also passes the checks on the Tool calls step.</p>
       <Link className="k-btn" href={`/app/agents/${encodeURIComponent(map.agent.slug)}?tab=access`}>
         Change access
