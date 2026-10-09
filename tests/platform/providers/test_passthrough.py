@@ -103,3 +103,14 @@ def test_streamed_tool_call_fragments_assemble():
     )
     assert calls[0]["id"] == "c1"
     assert calls[0]["function"] == {"name": "cancel_flight", "arguments": '{"confirmation": "X"}'}
+
+
+def test_the_vendors_own_key_variable_is_accepted(monkeypatch):
+    # Hosting dashboards tell people to set ANTHROPIC_API_KEY / OPENAI_API_KEY; a
+    # gateway that only read AGENTFOX_* had a key configured and could not use it.
+    from agentfox.platform.providers.remote import AnthropicProvider, OpenAIProvider
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert AnthropicProvider()._api_key() == "sk-ant-test"
+    assert OpenAIProvider()._api_key() == "sk-test"
