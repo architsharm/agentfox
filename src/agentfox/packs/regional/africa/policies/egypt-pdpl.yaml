@@ -14,20 +14,20 @@ scope:
   - '*'
 rules:
 - id: egypt-pdpl.block-breach-suppression-72h-pdpc-3
-  description: 'Art. 7: Block breach suppression — 72h PDPC + 3-day subject notification'
+  description: 'Art. 7: Block breach suppression - 72h PDPC + 3-day subject notification'
   when:
     action_risk: egypt-pdpl.block-breach-suppression-72h-pdpc-3
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Art. 7: Agent cannot suppress breach notifications — PDPC must be notified
+  reason: 'Egypt PDPL No. 151/2020 Art. 7: Agent cannot suppress breach notifications - PDPC must be notified
     within 72 hours and data subjects within 3 working days'
 - id: egypt-pdpl.block-biometric-data-triggers-art-7
-  description: 'Art. 1/4: Block biometric data — triggers Art. 7 breach notification'
+  description: 'Art. 1/4: Block biometric data - triggers Art. 7 breach notification'
   when:
     action_risk: egypt-pdpl.block-biometric-data-triggers-art-7
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Art. 1/4: Biometric sensitive data detected — must not be transmitted;
+  reason: 'Egypt PDPL No. 151/2020 Art. 1/4: Biometric sensitive data detected - must not be transmitted;
     breach triggers 72h PDPC notification (Art. 7)'
 - id: egypt-pdpl.block-egypt-national-id-output-format
   description: 'Art. 1/7: Block Egypt National ID in output (14-digit format) Format: [2|3][YYMMDD][Governorate
@@ -44,7 +44,7 @@ rules:
     action_risk: egypt-pdpl.block-cross-border-transfer-non-permitted
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer to region <value> blocked — PDPC approval
+  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer to region <value> blocked - PDPC approval
     or equivalent protection documentation required'
 - id: egypt-pdpl.block-transfer-non-eg-country-without
   description: 'Art. 14/15: Block transfer to non-EG country without documented consent/derogation'
@@ -52,7 +52,7 @@ rules:
     action_risk: egypt-pdpl.block-transfer-non-eg-country-without
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Arts. 14-15: Transfer to <value> blocked — no documented consent or
+  reason: 'Egypt PDPL No. 151/2020 Arts. 14-15: Transfer to <value> blocked - no documented consent or
     Art. 15 derogation (vital interest, legal necessity, contract) on file'
 - id: egypt-pdpl.block-agents-advising-unlicensed-data-processing
   description: 'Art. 26: Block agents advising unlicensed data processing'
@@ -60,7 +60,7 @@ rules:
     action_risk: egypt-pdpl.block-agents-advising-unlicensed-data-processing
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Art. 26: Agent cannot advise bypassing PDPC licensing — processing
+  reason: 'Egypt PDPL No. 151/2020 Art. 26: Agent cannot advise bypassing PDPC licensing - processing
     without registration is a criminal offence (up to EGP 2,000,000 + imprisonment)'
 - id: egypt-pdpl.block-disproportionate-bulk-record-exports
   description: 'Art. 6 / s.17: Block disproportionate bulk record exports'
@@ -68,7 +68,7 @@ rules:
     action_risk: egypt-pdpl.block-disproportionate-bulk-record-exports
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Art. 6/14: Export of <value> records exceeds threshold — requires documented
+  reason: 'Egypt PDPL No. 151/2020 Art. 6/14: Export of <value> records exceeds threshold - requires documented
     lawful basis and PDPC approval'
 - id: egypt-pdpl.health-medical-sensitive-data
   description: 'Art. 1/4: Health/medical sensitive data'
@@ -76,10 +76,10 @@ rules:
     action_risk: egypt-pdpl.health-medical-sensitive-data
   effect: escalate
   severity: medium
-  reason: 'Egypt PDPL No. 151/2020 Art. 1/4: Health/medical/genetic sensitive data detected — requires
+  reason: 'Egypt PDPL No. 151/2020 Art. 1/4: Health/medical/genetic sensitive data detected - requires
     explicit consent or Art. 5 exception (PDPC)'
 - id: egypt-pdpl.financial-data-unique-sensitive-category-egypt
-  description: 'Art. 1/4: Financial data — unique sensitive category in Egypt'
+  description: 'Art. 1/4: Financial data - unique sensitive category in Egypt'
   when:
     action_risk: egypt-pdpl.financial-data-unique-sensitive-category-egypt
   effect: escalate
@@ -92,15 +92,15 @@ rules:
     action_risk: egypt-pdpl.special-category-data
   effect: escalate
   severity: medium
-  reason: 'Egypt PDPL No. 151/2020 Art. 1/4: Special category personal data detected — requires explicit
+  reason: 'Egypt PDPL No. 151/2020 Art. 1/4: Special category personal data detected - requires explicit
     consent or Art. 5 exception (PDPC)'
 - id: egypt-pdpl.children-s-data-classified-as-sensitive
-  description: 'Art. 1/3: Children''s data — classified as sensitive in Egypt (unique in Africa)'
+  description: 'Art. 1/3: Children''s data - classified as sensitive in Egypt (unique in Africa)'
   when:
     action_risk: egypt-pdpl.children-s-data-classified-as-sensitive
   effect: escalate
   severity: medium
-  reason: 'Egypt PDPL No. 151/2020 Art. 1/3: Children''s data is a sensitive category — requires parental/guardian
+  reason: 'Egypt PDPL No. 151/2020 Art. 1/3: Children''s data is a sensitive category - requires parental/guardian
     consent (unique classification in African data protection law)'
 - id: egypt-pdpl.cross-border-language-output
   description: 'Art. 14: Cross-border language in output'
@@ -108,7 +108,7 @@ rules:
     action_risk: egypt-pdpl.cross-border-language-output
   effect: escalate
   severity: medium
-  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border data transfer language detected — PDPC approval
+  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border data transfer language detected - PDPC approval
     or documented Art. 15 derogation required'
 - id: egypt-pdpl.transfer-action-with-missing-destination-metadata
   description: 'Art. 14: Transfer action with missing destination metadata'
@@ -116,7 +116,7 @@ rules:
     action_risk: egypt-pdpl.transfer-action-with-missing-destination-metadata
   effect: escalate
   severity: medium
-  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer with no destination metadata — cannot
+  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer with no destination metadata - cannot
     verify equivalent protection; requires PDPC review'
 - id: egypt-pdpl.moderate-record-exports
   description: 'Art. 6: Moderate record exports'
@@ -135,28 +135,28 @@ rules:
   reason: 'Egypt PDPL No. 151/2020 Art. 6: Bulk personal data export requires documented lawful basis,
     PDPC accountability, and licensing verification'
 - id: egypt-pdpl.dpo-escalate-if-agent-advises-against
-  description: 'Art. 8: DPO — escalate if agent advises against DPO appointment'
+  description: 'Art. 8: DPO - escalate if agent advises against DPO appointment'
   when:
     action_risk: egypt-pdpl.dpo-escalate-if-agent-advises-against
   effect: escalate
   severity: medium
-  reason: 'Egypt PDPL No. 151/2020 Art. 8: DPO appointment is mandatory for all data controllers — agent
+  reason: 'Egypt PDPL No. 151/2020 Art. 8: DPO appointment is mandatory for all data controllers - agent
     cannot advise against it'
 - id: egypt-pdpl.personal-data-access-logged-data-subject
-  description: 'Egypt PDPL No. 151/2020 Art. 2: Personal data access logged — data subject rights (access,
+  description: 'Egypt PDPL No. 151/2020 Art. 2: Personal data access logged - data subject rights (access,
     information) and PDPC accountability requirement'
   when:
     action_risk: egypt-pdpl.personal-data-access-logged-data-subject
   effect: allow
   severity: low
-  reason: 'Egypt PDPL No. 151/2020 Art. 2: Personal data access logged — data subject rights (access,
+  reason: 'Egypt PDPL No. 151/2020 Art. 2: Personal data access logged - data subject rights (access,
     information) and PDPC accountability requirement'
 - id: egypt-pdpl.personal-data-modification-erasure-logged-data
-  description: 'Egypt PDPL No. 151/2020 Art. 2: Personal data modification/erasure logged — data subject
+  description: 'Egypt PDPL No. 151/2020 Art. 2: Personal data modification/erasure logged - data subject
     rights (correction, deletion, objection) and PDPC accountability'
   when:
     action_risk: egypt-pdpl.personal-data-modification-erasure-logged-data
   effect: allow
   severity: low
-  reason: 'Egypt PDPL No. 151/2020 Art. 2: Personal data modification/erasure logged — data subject rights
+  reason: 'Egypt PDPL No. 151/2020 Art. 2: Personal data modification/erasure logged - data subject rights
     (correction, deletion, objection) and PDPC accountability'

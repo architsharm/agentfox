@@ -566,6 +566,24 @@ def test_a_streamed_completion_records_its_turn(client):
     assert turn.signals_json.get("explicit_request") is True
 
 
+def test_a_streamed_anthropic_completion_records_its_turn(client):
+    response = client.post(
+        "/v1/messages",
+        json={
+            "model": "echo-1",
+            "stream": True,
+            "max_tokens": 64,
+            "messages": [{"role": "user", "content": "I want to speak to a manager"}],
+        },
+        headers={"X-AgentFox-Agent": "support-triage", "X-AgentFox-Session": "gw-stream-a"},
+    )
+    assert response.status_code == 200
+    with session_scope() as session:
+        turn = session.query(ConversationTurn).filter_by(session_id="gw-stream-a").one()
+    assert turn.user_text == "I want to speak to a manager"
+    assert turn.agent_text
+
+
 def test_a_json_classifier_call_is_not_a_turn(client):
     """An app's own guardrail call (JSON out) on the same user message is not the agent
     replying; recorded, every message counted as said twice."""

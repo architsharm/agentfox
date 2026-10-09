@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiBase } from "@/lib/env";
 import { SESSION_COOKIE } from "@/lib/product/api";
+import { requestOrigin } from "@/lib/product/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
       // Unreachable gateway: still sign the browser out (see above).
     }
   }
-  const res = NextResponse.redirect(new URL("/login", req.nextUrl.origin), 303);
+  const res = NextResponse.redirect(new URL("/login", requestOrigin(req)), 303);
   res.cookies.delete(SESSION_COOKIE);
   return res;
 }

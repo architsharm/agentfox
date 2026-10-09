@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { proxyCustomBody } from "@/lib/product/proxy";
+import { requestOrigin } from "@/lib/product/origin";
 
 /**
  * The escalation conditions (turn-depth limit, sentiment threshold, which
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
   try {
     conditions = JSON.parse(conditionsRaw);
   } catch {
-    const target = new URL("/app/approvals?tab=handoffs", req.nextUrl.origin);
+    const target = new URL("/app/approvals?tab=handoffs", requestOrigin(req));
     target.searchParams.set("review_error", "conditions must be valid JSON");
     return NextResponse.redirect(target);
   }

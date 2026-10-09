@@ -20,7 +20,7 @@ rules:
     action_risk: nigeria-cbn-limits.agent-cannot-self-approve-transactions
   effect: block
   severity: high
-  reason: 'CBN Maker-Checker: AI agent cannot self-approve financial transactions — segregation of duties
+  reason: 'CBN Maker-Checker: AI agent cannot self-approve financial transactions - segregation of duties
     violated'
 - id: nigeria-cbn-limits.single-transaction-cannot-exceed-10-000
   description: 'CBN NIP Cap: single transaction cannot exceed ₦10,000,000'
@@ -28,21 +28,21 @@ rules:
     action_risk: nigeria-cbn-limits.single-transaction-cannot-exceed-10-000
   effect: block
   severity: high
-  reason: 'CBN NIP Framework: Transaction of ₦<value> exceeds ₦10,000,000 single-transaction cap — blocked'
+  reason: 'CBN NIP Framework: Transaction of ₦<value> exceeds ₦10,000,000 single-transaction cap - blocked'
 - id: nigeria-cbn-limits.detect-10m-text-output
   description: 'CBN NIP Cap: detect >₦10M in text output (defence-in-depth)'
   when:
     action_risk: nigeria-cbn-limits.detect-10m-text-output
   effect: block
   severity: high
-  reason: 'CBN NIP Framework: Transaction amount exceeding ₦10,000,000 detected in output — blocked'
+  reason: 'CBN NIP Framework: Transaction amount exceeding ₦10,000,000 detected in output - blocked'
 - id: nigeria-cbn-limits.transfers-between-5m-10m-require-human
   description: 'CBN Tier 3: transfers between ₦5M and ₦10M require human approval'
   when:
     action_risk: nigeria-cbn-limits.transfers-between-5m-10m-require-human
   effect: escalate
   severity: medium
-  reason: 'CBN Tier 3: Transfer of ₦<value> is at or above ₦5,000,000 daily ceiling — routed to human
+  reason: 'CBN Tier 3: Transfer of ₦<value> is at or above ₦5,000,000 daily ceiling - routed to human
     approval queue'
 - id: nigeria-cbn-limits.transfers-above-tier-2-ceiling-unverified
   description: 'CBN Tier 2: transfers above Tier 2 ceiling for unverified customers'
@@ -50,7 +50,7 @@ rules:
     action_risk: nigeria-cbn-limits.transfers-above-tier-2-ceiling-unverified
   effect: escalate
   severity: medium
-  reason: 'CBN Tier 2: Transfer of ₦<value> exceeds ₦200,000 Tier 2 daily limit — requires verification
+  reason: 'CBN Tier 2: Transfer of ₦<value> exceeds ₦200,000 Tier 2 daily limit - requires verification
     upgrade or approval'
 - id: nigeria-cbn-limits.any-transfer-above-50-000-unverified
   description: 'CBN Tier 1: any transfer above ₦50,000 for unverified customers'
@@ -58,14 +58,14 @@ rules:
     action_risk: nigeria-cbn-limits.any-transfer-above-50-000-unverified
   effect: escalate
   severity: medium
-  reason: 'CBN Tier 1: Transfer of ₦<value> exceeds ₦50,000 Tier 1 limit — KYC upgrade required'
+  reason: 'CBN Tier 1: Transfer of ₦<value> exceeds ₦50,000 Tier 1 limit - KYC upgrade required'
 - id: nigeria-cbn-limits.all-refunds-require-human-approval-never
-  description: All refunds require human approval — never autonomous
+  description: All refunds require human approval - never autonomous
   when:
     action_risk: nigeria-cbn-limits.all-refunds-require-human-approval-never
   effect: escalate
   severity: medium
-  reason: 'CBN / Fraud Controls: Refund action requires human approval — agent cannot autonomously issue
+  reason: 'CBN / Fraud Controls: Refund action requires human approval - agent cannot autonomously issue
     refunds'
 - id: nigeria-cbn-limits.bulk-payments-always-require-human-approval
   description: Bulk payments always require human approval
@@ -73,21 +73,21 @@ rules:
     action_risk: nigeria-cbn-limits.bulk-payments-always-require-human-approval
   effect: escalate
   severity: medium
-  reason: 'CBN: Bulk/batch payment requires human approval — aggregate amount must be verified'
+  reason: 'CBN: Bulk/batch payment requires human approval - aggregate amount must be verified'
 - id: nigeria-cbn-limits.ussd-transactions-require-approval
   description: USSD transactions require approval (enforce channel limits)
   when:
     action_risk: nigeria-cbn-limits.ussd-transactions-require-approval
   effect: escalate
   severity: medium
-  reason: 'CBN USSD Guidelines: USSD transaction requires human review — verify ₦20,000 per-transaction
+  reason: 'CBN USSD Guidelines: USSD transaction requires human review - verify ₦20,000 per-transaction
     / ₦100,000 daily limits'
 - id: nigeria-cbn-limits.financial-transaction-action-logged-required-cbn
-  description: 'CBN Record-Keeping: Financial transaction action logged — required for CBN examination
+  description: 'CBN Record-Keeping: Financial transaction action logged - required for CBN examination
     and NFIU reporting'
   when:
     action_risk: nigeria-cbn-limits.financial-transaction-action-logged-required-cbn
   effect: allow
   severity: low
-  reason: 'CBN Record-Keeping: Financial transaction action logged — required for CBN examination and
+  reason: 'CBN Record-Keeping: Financial transaction action logged - required for CBN examination and
     NFIU reporting'

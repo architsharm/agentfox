@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { proxyReviewAction } from "@/lib/product/proxy";
+import { requestOrigin } from "@/lib/product/origin";
 
 /**
  * "Someone has to act on it" only means something if there is a way to say "I've
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const id = String(form.get("id") || "");
   if (!id) {
-    const target = new URL("/app/approvals?tab=handoffs", req.nextUrl.origin);
+    const target = new URL("/app/approvals?tab=handoffs", requestOrigin(req));
     target.searchParams.set("review_error", "missing hand-off id");
     return NextResponse.redirect(target);
   }

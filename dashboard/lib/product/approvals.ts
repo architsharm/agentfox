@@ -88,7 +88,7 @@ export function readableReason(reason?: string | null): string {
 
 /** When the approval reached its status, under the right word. */
 export function endedLabel(status: string): string {
-  return status === "used" ? "Used" : status === "expired" ? "Expired" : "Decided";
+  return status === "used" ? "Used" : status === "expired" ? "Expired" : status === "lapsed" ? "Lapsed" : "Decided";
 }
 
 /** The reason's first sentence, for a card line. Not cut at "Art." in "EU AI Act Art. 14". */

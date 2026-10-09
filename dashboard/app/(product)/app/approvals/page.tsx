@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
 
-const HISTORY = ["approved", "denied", "expired", "used"];
+// "lapsed": approved, then not used inside its window, so it can no longer run.
+const HISTORY = ["approved", "denied", "expired", "used", "lapsed"];
 
 function source(s?: string) {
   return TRUST.find((t) => t.key === s)?.label.replace(/^\+ /, "") || s || "";

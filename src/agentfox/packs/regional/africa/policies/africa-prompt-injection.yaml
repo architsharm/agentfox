@@ -15,16 +15,16 @@ scope:
   - '*'
 rules:
 - id: africa-prompt-injection.input-contains-known-injection-pattern-action
-  description: 'Prompt injection detected: input contains known injection pattern — action blocked.'
+  description: 'Prompt injection detected: input contains known injection pattern - action blocked.'
   when:
     action_risk: africa-prompt-injection.input-contains-known-injection-pattern-action
   effect: block
   severity: high
-  reason: 'Prompt injection detected: input contains known injection pattern — action blocked.'
+  reason: 'Prompt injection detected: input contains known injection pattern - action blocked.'
 - id: africa-prompt-injection.structural-injection-marker-detected-route-review
-  description: 'Potential prompt injection: structural injection marker detected — route to review.'
+  description: 'Potential prompt injection: structural injection marker detected - route to review.'
   when:
     action_risk: africa-prompt-injection.structural-injection-marker-detected-route-review
   effect: escalate
   severity: medium
-  reason: 'Potential prompt injection: structural injection marker detected — route to review.'
+  reason: 'Potential prompt injection: structural injection marker detected - route to review.'

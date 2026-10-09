@@ -34,7 +34,7 @@ rules:
       tool_impact: [irreversible]
     effect: escalate
     severity: high
-    reason: "EU AI Act Art. 14 — irreversible action by a high-risk system requires human oversight."
+    reason: "EU AI Act Art. 14 - irreversible action by a high-risk system requires human oversight."
     controls: [NOM-IAM-03, NOM-GOV-03]
 
   - id: eu.art14.no_covert_action
@@ -44,7 +44,7 @@ rules:
       detection: {entity_prefix: INJECTION.COVERT_INSTRUCTION, min_score: 0.6}
     effect: block
     severity: critical
-    reason: "EU AI Act Art. 14 — content instructing the agent to act without informing the user."
+    reason: "EU AI Act Art. 14 - content instructing the agent to act without informing the user."
     controls: [NOM-IAM-03, NOM-RTG-01]
 
   # --- Art. 15 — accuracy, robustness, cybersecurity -------------------
@@ -57,7 +57,7 @@ rules:
       detector_degraded: true
     effect: block
     severity: high
-    reason: "EU AI Act Art. 15 — high-risk system operating with degraded protective measures."
+    reason: "EU AI Act Art. 15 - high-risk system operating with degraded protective measures."
     controls: [NOM-RTG-06]
 
   - id: eu.art15.injection_resistance
@@ -67,7 +67,7 @@ rules:
       detection: {entity_prefix: INJECTION, min_score: 0.5}
     effect: block
     severity: critical
-    reason: "EU AI Act Art. 15 — resilience against attempts to alter system behaviour."
+    reason: "EU AI Act Art. 15 - resilience against attempts to alter system behaviour."
     controls: [NOM-RTG-01]
 
   # --- Art. 10 — data governance ---------------------------------------
@@ -79,7 +79,7 @@ rules:
       detection: {entity_prefix: PII, min_score: 0.6}
     effect: block
     severity: critical
-    reason: "EU AI Act Art. 10 / GDPR — personal data in a high-risk system's prompt."
+    reason: "EU AI Act Art. 10 / GDPR - personal data in a high-risk system's prompt."
     controls: [NOM-RTG-02, NOM-AUD-05]
 
   # --- Art. 12 — record-keeping ----------------------------------------
@@ -101,7 +101,7 @@ rules:
       action_risk: "disclosure.claims_human"
     effect: escalate
     severity: medium
-    reason: "EU AI Act Art. 50 — review required for disclosure obligations."
+    reason: "EU AI Act Art. 50 - review required for disclosure obligations."
     controls: [NOM-RTG-05]
 
   # --- Prohibited practices (Art. 5) -----------------------------------
@@ -113,5 +113,5 @@ rules:
       risk_tier: [prohibited]
     effect: block
     severity: critical
-    reason: "EU AI Act Art. 5 — agent is classified as a prohibited practice and must not operate."
+    reason: "EU AI Act Art. 5 - agent is classified as a prohibited practice and must not operate."
     controls: [NOM-GOV-03, NOM-GOV-05]

@@ -877,6 +877,14 @@ async def messages(
             evidence=evidence,
             approval_id=x_agentfox_approval,
         )
+        # As on the OpenAI route: a streamed reply is a turn too.
+        events = _recording_turn(
+            events,
+            session,
+            agent_slug=x_agentfox_agent,
+            session_id=x_agentfox_session,
+            messages=payload,
+        )
         return StreamingResponse(
             _stream_anthropic(events, body.get("model", "")),
             media_type="text/event-stream",

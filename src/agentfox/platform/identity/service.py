@@ -716,9 +716,26 @@ def expire_stale_approvals(session: Session) -> int:
         )
     ).all()
     for request in stale:
-        request.status = "expired" if request.timeout_action == "deny" else "approved"
+        if request.timeout_action == "deny":
+            request.status = "expired"
+        else:
+            request.status = "approved"
+            # Approved by timeout: it gets the same window to be used as one a
+            # person approved, or it would lapse the moment it was granted.
+            request.expires_at = now + dt.timedelta(minutes=REDEEM_WINDOW_MINUTES)
+    # Approved but never used inside its window: it can no longer run, and the
+    # history should say so rather than read "approved" forever.
+    lapsed = session.scalars(
+        select(ApprovalRequest).where(
+            ApprovalRequest.status == "approved",
+            ApprovalRequest.expires_at.is_not(None),
+            ApprovalRequest.expires_at < now,
+        )
+    ).all()
+    for request in lapsed:
+        request.status = "lapsed"
     session.flush()
-    return len(stale)
+    return len(stale) + len(lapsed)
 
 
 # ---------------------------------------------------------------------------

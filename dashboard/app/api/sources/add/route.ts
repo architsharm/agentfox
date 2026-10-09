@@ -3,6 +3,7 @@ import { apiBase } from "@/lib/env";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/product/api";
 import { connectionBody } from "@/lib/product/sourceConnection";
+import { requestOrigin } from "@/lib/product/origin";
 
 const API_BASE = apiBase();
 
@@ -15,7 +16,7 @@ const API_BASE = apiBase();
  * than "do step 1, then remember to also do step 2".
  */
 export async function POST(req: NextRequest) {
-  const target = new URL("/app/sources", req.nextUrl.origin);
+  const target = new URL("/app/sources", requestOrigin(req));
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) {
     target.searchParams.set("review_error", "not signed in");

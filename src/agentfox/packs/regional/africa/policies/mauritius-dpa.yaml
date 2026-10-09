@@ -21,16 +21,16 @@ rules:
     action_risk: mauritius-dpa.72-hour-commissioner-notification-data-subjects
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Breach Notification): Agent cannot suppress breach notifications — Commissioner
+  reason: 'Mauritius DPA 2017 (Breach Notification): Agent cannot suppress breach notifications - Commissioner
     must be notified within 72 hours; data subjects notified without undue delay where high risk'
 - id: mauritius-dpa.biometric-data-uniquely-identifying-genetic-or
-  description: 'DPA 2017 (Special Categories): Biometric data — uniquely identifying Genetic or biometric
+  description: 'DPA 2017 (Special Categories): Biometric data - uniquely identifying Genetic or biometric
     data that uniquely identifies a person is a special category.'
   when:
     action_risk: mauritius-dpa.biometric-data-uniquely-identifying-genetic-or
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Special Categories): Biometric data detected — uniquely identifying biometrics
+  reason: 'Mauritius DPA 2017 (Special Categories): Biometric data detected - uniquely identifying biometrics
     are a special category; must not be transmitted without documented lawful basis and safeguards'
 - id: mauritius-dpa.all-controllers-processors-must-register-registration
   description: 'DPA 2017 (Registration): ALL controllers and processors must register. Registration valid
@@ -58,7 +58,7 @@ rules:
     action_risk: mauritius-dpa.cross-border-non-permitted-region-requires
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Transfer): Cross-border transfer to region <value> blocked — proof of appropriate
+  reason: 'Mauritius DPA 2017 (Transfer): Cross-border transfer to region <value> blocked - proof of appropriate
     safeguards must be filed with the Commissioner or a valid derogation (consent, contract, public interest,
     legal claims) established'
 - id: mauritius-dpa.transfer-non-mu-country-without-documented
@@ -67,7 +67,7 @@ rules:
     action_risk: mauritius-dpa.transfer-non-mu-country-without-documented
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Transfer): Transfer to <value> blocked — no documented consent or derogation
+  reason: 'Mauritius DPA 2017 (Transfer): Transfer to <value> blocked - no documented consent or derogation
     (contract, vital interest, public interest, legal claims) filed with Commissioner'
 - id: mauritius-dpa.large-record-exports-without-documented-safeguards
   description: 'DPA 2017 (Transfer / Security): Large record exports without documented safeguards.'
@@ -75,7 +75,7 @@ rules:
     action_risk: mauritius-dpa.large-record-exports-without-documented-safeguards
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Transfer / Security): Export of <value> records exceeds threshold — requires
+  reason: 'Mauritius DPA 2017 (Transfer / Security): Export of <value> records exceeds threshold - requires
     proof of appropriate safeguards filed with Commissioner and documented lawful basis'
 - id: mauritius-dpa.health-medical-genetic-mental-health-data
   description: 'DPA 2017 (Special Categories): Health/medical/genetic/mental health data'
@@ -83,7 +83,7 @@ rules:
     action_risk: mauritius-dpa.health-medical-genetic-mental-health-data
   effect: escalate
   severity: medium
-  reason: 'Mauritius DPA 2017 (Special Categories): Health/genetic/mental health data detected — requires
+  reason: 'Mauritius DPA 2017 (Special Categories): Health/genetic/mental health data detected - requires
     lawful basis + legitimate controller activities + appropriate safeguards filed with Commissioner'
 - id: mauritius-dpa.racial-ethnic-political-religious-trade-union
   description: 'DPA 2017 (Special Categories): Racial/ethnic, political, religious, trade union, sexual
@@ -92,15 +92,15 @@ rules:
     action_risk: mauritius-dpa.racial-ethnic-political-religious-trade-union
   effect: escalate
   severity: medium
-  reason: 'Mauritius DPA 2017 (Special Categories): Special category personal data detected — requires
+  reason: 'Mauritius DPA 2017 (Special Categories): Special category personal data detected - requires
     lawful basis + controller''s legitimate activities + appropriate safeguards'
 - id: mauritius-dpa.mandatory-all-controllers-processors-deny-if
-  description: 'DPA 2017 (DPO): Mandatory for ALL controllers/processors — deny if advised against.'
+  description: 'DPA 2017 (DPO): Mandatory for ALL controllers/processors - deny if advised against.'
   when:
     action_risk: mauritius-dpa.mandatory-all-controllers-processors-deny-if
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (DPO): DPO appointment is mandatory for ALL controllers and processors —
+  reason: 'Mauritius DPA 2017 (DPO): DPO appointment is mandatory for ALL controllers and processors -
     stricter than GDPR; no size threshold exemption applies in Mauritius'
 - id: mauritius-dpa.cross-border-language-agent-output
   description: 'DPA 2017 (Transfer): Cross-border language in agent output'
@@ -108,7 +108,7 @@ rules:
     action_risk: mauritius-dpa.cross-border-language-agent-output
   effect: escalate
   severity: medium
-  reason: 'Mauritius DPA 2017 (Transfer): Cross-border data transfer language detected — proof of appropriate
+  reason: 'Mauritius DPA 2017 (Transfer): Cross-border data transfer language detected - proof of appropriate
     safeguards must be filed with the Commissioner before data leaves Mauritius'
 - id: mauritius-dpa.transfer-action-with-missing-destination-metadata
   description: 'DPA 2017 (Transfer): Transfer action with missing destination metadata'
@@ -116,7 +116,7 @@ rules:
     action_risk: mauritius-dpa.transfer-action-with-missing-destination-metadata
   effect: escalate
   severity: medium
-  reason: 'Mauritius DPA 2017 (Transfer): Cross-border transfer action with no destination metadata —
+  reason: 'Mauritius DPA 2017 (Transfer): Cross-border transfer action with no destination metadata -
     destination and safeguards must be documented before Commissioner review'
 - id: mauritius-dpa.moderate-record-exports
   description: 'DPA 2017 (Transfer / Security): Moderate record exports (100-1000)'
@@ -135,13 +135,13 @@ rules:
   reason: 'Mauritius DPA 2017 (Transfer / Security): Bulk personal data export requires proof of appropriate
     safeguards filed with Commissioner and documented lawful basis'
 - id: mauritius-dpa.transparency-obligation-data-subjects-must-informed
-  description: 'DPA 2017 (Automated Decisions): Transparency obligation — data subjects must be informed
+  description: 'DPA 2017 (Automated Decisions): Transparency obligation - data subjects must be informed
     of logic, significance, and envisaged consequences before automated decisions are applied.'
   when:
     action_risk: mauritius-dpa.transparency-obligation-data-subjects-must-informed
   effect: escalate
   severity: medium
-  reason: 'Mauritius DPA 2017 (Automated Decisions): Automated decision-making including profiling — data
+  reason: 'Mauritius DPA 2017 (Automated Decisions): Automated decision-making including profiling - data
     subject must be informed of the logic involved, significance and envisaged consequences before the
     decision is applied'
 - id: mauritius-dpa.access-rectification-restriction-erasure-objection-complaint
@@ -150,7 +150,7 @@ rules:
     action_risk: mauritius-dpa.access-rectification-restriction-erasure-objection-complaint
   effect: allow
   severity: low
-  reason: 'Mauritius DPA 2017 (Collection / Data Subject Rights): Personal data access logged — data subject
+  reason: 'Mauritius DPA 2017 (Collection / Data Subject Rights): Personal data access logged - data subject
     rights (access, information) and Commissioner accountability requirement'
 - id: mauritius-dpa.personal-data-modification-erasure-logged-data
   description: 'Mauritius DPA 2017 (Collection / Data Subject Rights): Personal data modification/erasure

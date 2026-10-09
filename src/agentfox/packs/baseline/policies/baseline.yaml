@@ -151,7 +151,7 @@ rules:
 
   # --- Safety (NOM-RTG-05) --------------------------------------------
   - id: safety.harm
-    description: Content that's unsafe to send — hate speech, self-harm encouragement, and similar.
+    description: Content that's unsafe to send - hate speech, self-harm encouragement, and similar.
     when:
       detection: {entity_prefix: SAFETY, min_score: 0.7}
     effect: block

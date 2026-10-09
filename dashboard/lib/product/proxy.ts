@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiBase } from "@/lib/env";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "./api";
+import { requestOrigin } from "@/lib/product/origin";
 
 const API_BASE = apiBase();
 
@@ -222,7 +223,7 @@ export async function proxyPublicFormPost(
   handleResult: (res: Response, body: any) => { notice?: string; error?: string },
   params: { noticeParam: string; errorParam: string },
 ): Promise<NextResponse> {
-  const target = new URL(sameOriginPath(returnTo, fallbackReturnTo), req.nextUrl.origin);
+  const target = new URL(sameOriginPath(returnTo, fallbackReturnTo), requestOrigin(req));
   try {
     const res = await fetch(`${API_BASE}${gatewayPath}`, {
       method: "POST",
@@ -272,7 +273,7 @@ export async function proxyRedirectWithHandler(
 ): Promise<NextResponse> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const errorParam = opts?.errorParam || "review_error";
-  const target = new URL(redirectTo, req.nextUrl.origin);
+  const target = new URL(redirectTo, requestOrigin(req));
   if (!token) {
     target.searchParams.set(errorParam, "not signed in");
     return NextResponse.redirect(target);

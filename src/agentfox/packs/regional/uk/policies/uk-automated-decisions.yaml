@@ -39,7 +39,7 @@ rules:
   reason: 'UK GDPR Art. 22C(4): individuals must be able to contest the decision through an accessible
     process'
 - id: uk-automated-decisions.special-category-adm-explicit-consent-or
-  description: 'Art. 22B + Art. 9: special category ADM — explicit consent or legal authorisation required'
+  description: 'Art. 22B + Art. 9: special category ADM - explicit consent or legal authorisation required'
   when:
     action_risk: uk-automated-decisions.special-category-adm-explicit-consent-or
   effect: block
@@ -52,7 +52,7 @@ rules:
     action_risk: uk-automated-decisions.significant-decision-without-safeguards-metadata
   effect: escalate
   severity: medium
-  reason: 'UK GDPR Art. 22A: solely automated significant decision — verify Art. 22C safeguards (information,
+  reason: 'UK GDPR Art. 22A: solely automated significant decision - verify Art. 22C safeguards (information,
     representations, human intervention, contest)'
 - id: uk-automated-decisions.significant-decision-without-explanation
   description: 'Art. 22A: significant decision without explanation'
@@ -67,7 +67,7 @@ rules:
     action_risk: uk-automated-decisions.recruitment-adm-language
   effect: escalate
   severity: medium
-  reason: 'ICO March 2026: automated recruitment decisions are in scope of Art. 22A — review safeguards
+  reason: 'ICO March 2026: automated recruitment decisions are in scope of Art. 22A - review safeguards
     before proceeding'
 - id: uk-automated-decisions.agentic-orchestration-step
   description: 'Art. 22A: agentic orchestration step'
@@ -91,5 +91,5 @@ rules:
     action_risk: uk-automated-decisions.significant-decision-audit-trail
   effect: allow
   severity: low
-  reason: 'UK GDPR Art. 22A: solely automated significant decision logged — verify lawful basis and Art.
+  reason: 'UK GDPR Art. 22A: solely automated significant decision logged - verify lawful basis and Art.
     22C safeguards'

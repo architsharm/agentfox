@@ -34,7 +34,7 @@ rules:
     action_risk: uk-fca-conduct.accountability-delegation-ai
   effect: block
   severity: high
-  reason: 'FCA SM&CR: senior managers remain accountable for AI risks — delegating to an algorithm does
+  reason: 'FCA SM&CR: senior managers remain accountable for AI risks - delegating to an algorithm does
     not transfer responsibility'
 - id: uk-fca-conduct.autonomous-trading-without-platform-documented-approval
   description: 'Market conduct: autonomous trading without platform-documented approval'
@@ -50,7 +50,7 @@ rules:
     action_risk: uk-fca-conduct.pricing-without-assessment
   effect: escalate
   severity: medium
-  reason: 'FCA Consumer Duty: AI-influenced pricing or eligibility decision — document testing for fairness
+  reason: 'FCA Consumer Duty: AI-influenced pricing or eligibility decision - document testing for fairness
     and foreseeable harm'
 - id: uk-fca-conduct.customer-communications
   description: 'Consumer Duty: customer communications'
@@ -58,7 +58,7 @@ rules:
     action_risk: uk-fca-conduct.customer-communications
   effect: allow
   severity: low
-  reason: 'FCA Consumer Duty: AI-generated customer communication — verify clarity, accuracy, and information
+  reason: 'FCA Consumer Duty: AI-generated customer communication - verify clarity, accuracy, and information
     needs'
 - id: uk-fca-conduct.third-party-ai
   description: 'Outsourcing / operational resilience: third-party AI'
@@ -66,5 +66,5 @@ rules:
     action_risk: uk-fca-conduct.third-party-ai
   effect: allow
   severity: low
-  reason: 'FCA operational resilience: third-party AI component — map to governance, testing, and critical
+  reason: 'FCA operational resilience: third-party AI component - map to governance, testing, and critical
     third-party risk'

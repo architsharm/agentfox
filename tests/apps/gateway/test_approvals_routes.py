@@ -75,3 +75,35 @@ def test_deciding_after_expiry_is_refused_not_reported_as_approved(client):
         assert row.status == "expired" and row.resolver_user_id is None
     retry = client.post("/v1/guard/tool_call", json={**TOOL_CALL, "approval_id": approval_id})
     assert retry.json()["verdict"] == "escalate"
+
+
+def test_an_approval_nobody_used_lapses_after_its_window(seeded):
+    import datetime as dt
+
+    from agentfox.core.models import ApprovalRequest
+    from agentfox.core.models.base import utcnow
+    from agentfox.platform.identity.service import expire_stale_approvals
+
+    used_late = ApprovalRequest(
+        tool_key="payments.refund",
+        arguments_json={},
+        reason="r",
+        status="approved",
+        expires_at=utcnow() - dt.timedelta(minutes=1),
+        timeout_action="deny",
+    )
+    auto = ApprovalRequest(
+        tool_key="payments.refund",
+        arguments_json={"a": 1},
+        reason="r",
+        status="pending",
+        expires_at=utcnow() - dt.timedelta(minutes=1),
+        timeout_action="approve",
+    )
+    seeded.add_all([used_late, auto])
+    seeded.flush()
+    expire_stale_approvals(seeded)
+    assert used_late.status == "lapsed"
+    # Approved by timeout gets its own window to be used, not an instant lapse.
+    assert auto.status == "approved"
+    assert auto.expires_at.replace(tzinfo=dt.UTC) > utcnow()

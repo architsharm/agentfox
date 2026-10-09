@@ -15,12 +15,12 @@ scope:
   - '*'
 rules:
 - id: ethiopia-pdp.block-breach-suppression-eca-must-notified
-  description: 'Art. 43: Block breach suppression — ECA must be notified within 72 hours'
+  description: 'Art. 43: Block breach suppression - ECA must be notified within 72 hours'
   when:
     action_risk: ethiopia-pdp.block-breach-suppression-eca-must-notified
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 43: Agent cannot suppress breach notifications — ECA must be notified
+  reason: 'Ethiopia PDPP 1321/2024 Art. 43: Agent cannot suppress breach notifications - ECA must be notified
     within 72 hours of awareness'
 - id: ethiopia-pdp.block-biometric-data-transmission
   description: 'Art. 9: Block biometric data transmission'
@@ -28,7 +28,7 @@ rules:
     action_risk: ethiopia-pdp.block-biometric-data-transmission
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 9: Biometric data detected — must not be transmitted without documented
+  reason: 'Ethiopia PDPP 1321/2024 Art. 9: Biometric data detected - must not be transmitted without documented
     lawful basis and ECA notification'
 - id: ethiopia-pdp.block-cross-border-transfer-non-permitted
   description: 'Art. 18/19: Block cross-border transfer to non-permitted region'
@@ -36,7 +36,7 @@ rules:
     action_risk: ethiopia-pdp.block-cross-border-transfer-non-permitted
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 18: Cross-border transfer to <value> blocked — region not in ECA
+  reason: 'Ethiopia PDPP 1321/2024 Art. 18: Cross-border transfer to <value> blocked - region not in ECA
     adequacy-approved list'
 - id: ethiopia-pdp.block-transfer-non-et-country-without
   description: 'Art. 20: Block transfer to non-ET country without documented consent or adequacy'
@@ -44,7 +44,7 @@ rules:
     action_risk: ethiopia-pdp.block-transfer-non-et-country-without
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 20: Transfer to <value> blocked — no documented consent or adequacy
+  reason: 'Ethiopia PDPP 1321/2024 Art. 20: Transfer to <value> blocked - no documented consent or adequacy
     basis on file'
 - id: ethiopia-pdp.block-unauthorised-access-signals
   description: 'Proclamation 958/2016: Block unauthorised access signals'
@@ -52,7 +52,7 @@ rules:
     action_risk: ethiopia-pdp.block-unauthorised-access-signals
   effect: block
   severity: high
-  reason: 'Ethiopia Proclamation 958/2016: Unauthorised system access signal detected — blocked. This
+  reason: 'Ethiopia Proclamation 958/2016: Unauthorised system access signal detected - blocked. This
     constitutes a criminal offence.'
 - id: ethiopia-pdp.block-fayda-national-id-output-fayda
   description: 'Art. 43: Block Fayda/national ID in output (identity data breach) Fayda falls under Art.
@@ -61,15 +61,15 @@ rules:
     action_risk: ethiopia-pdp.block-fayda-national-id-output-fayda
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 43: Fayda/National ID number detected in agent output — blocked
+  reason: 'Ethiopia PDPP 1321/2024 Art. 43: Fayda/National ID number detected in agent output - blocked
     to prevent identity data breach'
 - id: ethiopia-pdp.block-large-record-exports-data-sovereignty
-  description: 'Art. 22: Block large record exports — data sovereignty'
+  description: 'Art. 22: Block large record exports - data sovereignty'
   when:
     action_risk: ethiopia-pdp.block-large-record-exports-data-sovereignty
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 22: Export of <value> records is disproportionate — requires Data
+  reason: 'Ethiopia PDPP 1321/2024 Art. 22: Export of <value> records is disproportionate - requires Data
     Protection Officer review and ECA notification'
 - id: ethiopia-pdp.health-genetic-sensitive-data
   description: 'Art. 9: Health/genetic sensitive data'
@@ -77,7 +77,7 @@ rules:
     action_risk: ethiopia-pdp.health-genetic-sensitive-data
   effect: escalate
   severity: medium
-  reason: 'Ethiopia PDPP 1321/2024 Art. 9: Health/genetic sensitive data detected — requires explicit
+  reason: 'Ethiopia PDPP 1321/2024 Art. 9: Health/genetic sensitive data detected - requires explicit
     consent or documented lawful condition'
 - id: ethiopia-pdp.special-category-data
   description: 'Art. 9: Special category data (ethnic, religious, political, trade union)'
@@ -85,7 +85,7 @@ rules:
     action_risk: ethiopia-pdp.special-category-data
   effect: escalate
   severity: medium
-  reason: 'Ethiopia PDPP 1321/2024 Art. 9: Special category personal data detected — requires explicit
+  reason: 'Ethiopia PDPP 1321/2024 Art. 9: Special category personal data detected - requires explicit
     consent or lawful processing condition'
 - id: ethiopia-pdp.cross-border-language-agent-output
   description: 'Art. 18: Cross-border language in agent output'
@@ -93,7 +93,7 @@ rules:
     action_risk: ethiopia-pdp.cross-border-language-agent-output
   effect: escalate
   severity: medium
-  reason: 'Ethiopia PDPP 1321/2024 Art. 18: Cross-border data transfer language detected — requires ECA
+  reason: 'Ethiopia PDPP 1321/2024 Art. 18: Cross-border data transfer language detected - requires ECA
     adequacy verification'
 - id: ethiopia-pdp.transfer-action-with-missing-destination-metadata
   description: 'Art. 20: Transfer action with missing destination metadata'
@@ -101,10 +101,10 @@ rules:
     action_risk: ethiopia-pdp.transfer-action-with-missing-destination-metadata
   effect: escalate
   severity: medium
-  reason: 'Ethiopia PDPP 1321/2024 Art. 20: Cross-border transfer with no destination metadata — cannot
+  reason: 'Ethiopia PDPP 1321/2024 Art. 20: Cross-border transfer with no destination metadata - cannot
     verify adequacy, requires human review'
 - id: ethiopia-pdp.moderate-record-exports-data-sovereignty
-  description: 'Art. 22: Moderate record exports — data sovereignty'
+  description: 'Art. 22: Moderate record exports - data sovereignty'
   when:
     action_risk: ethiopia-pdp.moderate-record-exports-data-sovereignty
   effect: escalate
@@ -120,20 +120,20 @@ rules:
   reason: 'Ethiopia PDPP 1321/2024 Art. 22: Bulk personal data export requires documented lawful basis
     and ECA notification'
 - id: ethiopia-pdp.personal-data-access-logged-record-processing
-  description: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data access logged — record of processing
+  description: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data access logged - record of processing
     operations and accountability requirement'
   when:
     action_risk: ethiopia-pdp.personal-data-access-logged-record-processing
   effect: allow
   severity: low
-  reason: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data access logged — record of processing operations
+  reason: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data access logged - record of processing operations
     and accountability requirement'
 - id: ethiopia-pdp.personal-data-modification-logged-record-processing
-  description: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data modification logged — record of processing
+  description: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data modification logged - record of processing
     operations and accountability requirement'
   when:
     action_risk: ethiopia-pdp.personal-data-modification-logged-record-processing
   effect: allow
   severity: low
-  reason: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data modification logged — record of processing
+  reason: 'Ethiopia PDPP 1321/2024 Art. 46/52: Personal data modification logged - record of processing
     operations and accountability requirement'

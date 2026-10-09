@@ -22,13 +22,13 @@ rules:
   severity: high
   reason: 'Model routing denied: model <value> is not approved for sensitive task type <value>.'
 - id: africa-model-routing.sensitive-task-type-v-requires-explicitly
-  description: 'Model routing: sensitive task type ''%v'' requires an explicitly approved model — none
+  description: 'Model routing: sensitive task type ''%v'' requires an explicitly approved model - none
     specified.'
   when:
     action_risk: africa-model-routing.sensitive-task-type-v-requires-explicitly
   effect: escalate
   severity: medium
-  reason: 'Model routing: sensitive task type <value> requires an explicitly approved model — none specified.'
+  reason: 'Model routing: sensitive task type <value> requires an explicitly approved model - none specified.'
 - id: africa-model-routing.sensitive-task-v-processed-by-approved
   description: 'Model routing audit: sensitive task ''%v'' processed by approved model ''%v''.'
   when:
