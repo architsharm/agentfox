@@ -42,6 +42,27 @@ from agentfox.runtime.trace_exporters import trace_exporters
 log = logging.getLogger("agentfox.runtime.enforcement")
 
 
+def release_before_provider_call(session: Any) -> None:
+    """Commit what preflight wrote before waiting on the model.
+
+    Preflight touches the agent row (``last_seen_at``) and opens the trace. Holding
+    that transaction across a model call of several seconds holds the agent's row
+    lock with it, so every other request for the same agent waits behind the model
+    — and on Postgres fails once the 5 s ``lock_timeout`` passes. The records are
+    complete facts on their own; committing them first costs nothing.
+
+    Only a transaction the session began on its own is committed. One a caller
+    opened deliberately (``with session.begin():``, a savepoint) is theirs to end.
+    """
+    from sqlalchemy.orm import SessionTransactionOrigin
+
+    transaction = session.get_transaction()
+    if transaction is None or session.in_nested_transaction():
+        return
+    if transaction.origin is SessionTransactionOrigin.AUTOBEGIN:
+        session.commit()
+
+
 class _CompletionMixin:
     """Enforcer's inline completion path. Mixed into :class:`Enforcer`, never used alone."""
 
@@ -280,6 +301,15 @@ class _CompletionMixin:
                 "tool": "tool_result",
                 "function": "tool_result",
             }.get(role, "user")
+            if source == "none":
+                # The application's own text — its system and developer prompts, and
+                # replies it already got (checked as output when they were made). They
+                # are not user input, and scanning them as such blocks any app whose
+                # instructions talk about instructions: a guardrail prompt describing
+                # jailbreaks reads as one. Untrusted text an app puts in these roles
+                # (retrieved passages in a system prompt) is marked with
+                # X-AgentFox-Trust and is checked under that source instead.
+                continue
             surface = {
                 "tool_result": "tool_result",
                 "retrieved": "retrieved",
@@ -374,6 +404,8 @@ class _CompletionMixin:
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 tools=request.tools,
+                passthrough=request.passthrough,
+                passthrough_protocol=request.passthrough_protocol,
             )
             try:
                 result = (
@@ -570,8 +602,14 @@ class _CompletionMixin:
         temperature: float = 0.0,
         max_tokens: int | None = None,
         approval_id: str | None = None,
+        passthrough: dict[str, Any] | None = None,
+        passthrough_protocol: str | None = None,
     ) -> tuple[EnforcementResult, Any]:
-        """The complete request path. Returns (result, response|None)."""
+        """The complete request path. Returns (result, response|None).
+
+        ``passthrough`` is the client's request beyond messages and model, forwarded
+        to a provider speaking ``passthrough_protocol`` (see `CompletionRequest`).
+        """
         pre = self.preflight(
             agent_slug=agent_slug,
             messages=messages,
@@ -593,6 +631,7 @@ class _CompletionMixin:
 
         agent, identity, trace = pre.agent, pre.identity, pre.trace
         tracker, redacted_messages, worst = pre.tracker, pre.messages, pre.result
+        release_before_provider_call(self.session)
 
         def severity(result: EnforcementResult) -> tuple[int, int]:
             return (_RANK[result.verdict], _RANK[result.effective_verdict])
@@ -605,6 +644,8 @@ class _CompletionMixin:
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                passthrough=passthrough,
+                passthrough_protocol=passthrough_protocol,
             ),
             provider=provider,
             model=model,
@@ -635,6 +676,8 @@ class _CompletionMixin:
                     model=model,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    passthrough=passthrough,
+                    passthrough_protocol=passthrough_protocol,
                 )
             ),
         )

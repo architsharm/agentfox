@@ -35,6 +35,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from agentfox.apps.gateway.deps import agent_credential, db, ingest_credential
 from agentfox.apps.gateway.verdicts import verdict_headers, with_verdict_aliases
@@ -502,20 +503,32 @@ def _sse(payload: Any) -> str:
     return f"data: {json.dumps(payload, default=str)}\n\n"
 
 
+#: Request fields the gateway reads itself; everything else in a proxied request is
+#: the client's and is forwarded to the provider untouched (`CompletionRequest`).
+_GOVERNED_FIELDS = frozenset({"messages", "model", "stream", "stream_options", "system"})
+
+
+def _passthrough(body: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in body.items() if k not in _GOVERNED_FIELDS}
+
+
 def _openai_chunk(
-    model: str, delta: str = "", finish: str | None = None, chunk_id: str = ""
+    model: str,
+    delta: str = "",
+    finish: str | None = None,
+    chunk_id: str = "",
+    tool_calls: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    if delta:
+        out["content"] = delta
+    if tool_calls:
+        out["tool_calls"] = tool_calls
     return {
         "id": chunk_id or "chatcmpl-stream",
         "object": "chat.completion.chunk",
         "model": model,
-        "choices": [
-            {
-                "index": 0,
-                "delta": {"content": delta} if delta else {},
-                "finish_reason": finish,
-            }
-        ],
+        "choices": [{"index": 0, "delta": out, "finish_reason": finish}],
     }
 
 
@@ -536,7 +549,11 @@ def _stream_openai(events, model: str):
     chunk_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     for event in events:
         if event.kind == "delta":
-            yield _sse(_openai_chunk(model, delta=event.delta, chunk_id=chunk_id))
+            yield _sse(
+                _openai_chunk(
+                    model, delta=event.delta, chunk_id=chunk_id, tool_calls=event.tool_calls
+                )
+            )
         elif event.kind == "blocked":
             result = event.result
             yield _sse(
@@ -684,6 +701,8 @@ async def chat_completions(
             temperature=float(body.get("temperature", 0.0)),
             max_tokens=body.get("max_tokens"),
             mode=x_agentfox_stream_mode,
+            passthrough=_passthrough(body),
+            passthrough_protocol="openai",
             evidence=evidence,
             approval_id=x_agentfox_approval,
         )
@@ -693,7 +712,10 @@ async def chat_completions(
             headers=_stream_headers(),
         )
 
-    result, response = enforcer.run_completion(
+    # Off the event loop: this waits on the model, and an `async` route that blocks
+    # stops the worker from serving anything else meanwhile.
+    result, response = await run_in_threadpool(
+        enforcer.run_completion,
         agent_slug=x_agentfox_agent,
         messages=body.get("messages", []),
         model=body.get("model", "default"),
@@ -708,6 +730,8 @@ async def chat_completions(
         max_tokens=body.get("max_tokens"),
         evidence=evidence,
         approval_id=x_agentfox_approval,
+        passthrough=_passthrough(body),
+        passthrough_protocol="openai",
     )
     if result.blocked:
         return _blocked_response(result)
@@ -770,6 +794,8 @@ async def messages(
             temperature=float(body.get("temperature", 0.0)),
             max_tokens=body.get("max_tokens"),
             mode=x_agentfox_stream_mode,
+            passthrough=_passthrough(body),
+            passthrough_protocol="anthropic",
             evidence=evidence,
             approval_id=x_agentfox_approval,
         )
@@ -779,7 +805,10 @@ async def messages(
             headers=_stream_headers(),
         )
 
-    result, response = enforcer.run_completion(
+    # Off the event loop: this waits on the model, and an `async` route that blocks
+    # stops the worker from serving anything else meanwhile.
+    result, response = await run_in_threadpool(
+        enforcer.run_completion,
         agent_slug=x_agentfox_agent,
         messages=payload,
         model=body.get("model", "default"),
@@ -794,6 +823,8 @@ async def messages(
         max_tokens=body.get("max_tokens"),
         evidence=evidence,
         approval_id=x_agentfox_approval,
+        passthrough=_passthrough(body),
+        passthrough_protocol="anthropic",
     )
     if result.blocked:
         return _blocked_response(result)

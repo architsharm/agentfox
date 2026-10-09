@@ -243,7 +243,9 @@ export function ProtectWizard({
 
 /** First-run choice: the protection's default, never below what every agent already gets. */
 function startLevel(p: Protection): string {
-  if (!p.graded) return p.default === "off" ? "off" : "on";
+  // A protection whose model is not installed here would check nothing.
+  if (p.needs && p.needs_installed === false) return "off";
+  if (!p.graded) return p.default === "off" && !p.inherited ? "off" : "on";
   if (p.inherited && RANK[p.inherited] > RANK[p.default]) return p.inherited;
   return p.default;
 }

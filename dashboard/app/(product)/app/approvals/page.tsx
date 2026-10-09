@@ -79,7 +79,7 @@ async function Pending({ approvals }: { approvals: any[] }) {
                   })}
                 </div>
                 <div className="k-muted" style={{ fontSize: "var(--t-micro)" }}>
-                  {String(a.reason || "").split(/(?<=\.)\s/)[0]} · expires <Countdown at={a.expires_at} />
+                  {String(a.reason || "").split(/(?<=\.)\s/)[0]} · expires <Countdown at={a.expires_at} /> · <span className="k-mono" title="The id the agent quoted to the user">{a.id}</span>
                   {a.trace_id && (
                     <>
                       {" · "}

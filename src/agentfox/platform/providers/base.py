@@ -26,6 +26,16 @@ class CompletionRequest:
     max_tokens: int | None = None
     tools: list[dict[str, Any]] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
+    #: The client's own request fields beyond ``messages`` and ``model`` (``tools``,
+    #: ``tool_choice``, ``response_format``, ``temperature``…), as the inline proxy
+    #: received them. A provider speaking ``passthrough_protocol`` sends exactly these
+    #: instead of its own defaults: a proxy that rebuilds the request drops whatever
+    #: it did not think of, and an agent framework depends on all of it.
+    passthrough: dict[str, Any] | None = None
+    passthrough_protocol: str | None = None  # "openai" | "anthropic"
+
+    def passthrough_for(self, protocol: str) -> dict[str, Any] | None:
+        return self.passthrough if self.passthrough_protocol == protocol else None
 
     def last_user_message(self) -> str:
         for message in reversed(self.messages):

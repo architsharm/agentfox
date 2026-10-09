@@ -37,11 +37,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
       <Header back={{ href: "/app/policies", label: "Policies" }} title={sp.agent ? `Add rule for ${sp.agent}` : "Add rule"} />
       <Tabs items={tabs.map((t) => ({ ...t, href: href("/app/policies/new", { ...keep, from: t.key }) }))} active={tab} />
       {tab === "run" && sp.run && <FromRun id={sp.run} />}
-      {tab === "describe" && (
-        <Card>
-          <DescribeRule agent={sp.agent} />
-        </Card>
-      )}
+      {tab === "describe" && <Describe agent={sp.agent} />}
       {tab === "custom" && (
         <Card>
           <CustomRule agent={sp.agent} />
@@ -148,6 +144,22 @@ async function ToolAccess({ agent }: { agent?: string }) {
       ) : (
         <Empty>No agents.</Empty>
       )}
+    </Card>
+  );
+}
+
+/** Approval limits, offering the agent's own tools (or every declared tool) as answers. */
+async function Describe({ agent }: { agent?: string }) {
+  const [access, all] = await Promise.all([
+    agent ? safeApi<any>(`/api/agents/${encodeURIComponent(agent)}/access`, null) : Promise.resolve(null),
+    safeApi<any>("/api/tools", { tools: [] }),
+  ]);
+  const tools: string[] = access
+    ? Array.from(new Set([...(access.capabilities || []).map((c: any) => c.tool_key), ...(access.tried || []).map((t: any) => t.tool_key)])).filter((k) => !k.includes("*"))
+    : (all.tools || []).map((t: any) => t.key).filter((k: string) => !k.startsWith("redteam."));
+  return (
+    <Card>
+      <DescribeRule agent={agent} tools={tools.slice(0, 24)} />
     </Card>
   );
 }

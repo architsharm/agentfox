@@ -273,6 +273,47 @@ def test_an_escalated_tool_surfaces_the_approval_id(fake_agents):
     assert "apr_7" in refund(order_id="o1")
 
 
+class _ApprovingFox(_Fox):
+    """Holds a call until a person approves it, then lets the retry carrying it run."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.status = "pending"
+        self.approvals_presented: list[str | None] = []
+
+    def approval(self, approval_id: str) -> dict[str, Any]:
+        return {"id": approval_id, "status": self.status}
+
+    @contextmanager
+    def session(self, intent=None, session_id=None):
+        fox = self
+
+        class _S:
+            def guard_tool(self, tool, arguments, *, approval_id=None, **_):
+                fox.approvals_presented.append(approval_id)
+                if approval_id and fox.status == "approved":
+                    return EnforcementResult(verdict="allow")
+                return EnforcementResult(verdict="escalate", approval_id="apr_9")
+
+        yield _S()
+
+
+def test_an_approved_call_runs_when_the_agent_retries_it(fake_agents):
+    fox = _ApprovingFox()
+    runs: list[str] = []
+
+    @oa.guard_tool(fox, tool="airline.cancel_flight")
+    def cancel_flight(booking: str) -> str:
+        runs.append(booking)
+        return "cancelled"
+
+    assert "apr_9" in cancel_flight(booking="IR-D204")
+    assert "apr_9" in cancel_flight(booking="IR-D204")  # still pending: not re-asked as new
+    fox.status = "approved"
+    assert cancel_flight(booking="IR-D204") == "cancelled"
+    assert runs == ["IR-D204"] and fox.approvals_presented[-1] == "apr_9"
+
+
 def test_raise_on_block_raises_the_sdk_exceptions(fake_agents):
     fox = _Fox()
 

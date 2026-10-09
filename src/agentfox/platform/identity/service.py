@@ -522,6 +522,29 @@ def request_approval(
     ttl_minutes: int = 30,
     approver_role: str = "security",
 ) -> ApprovalRequest:
+    """Open an approval for a held call — or return the one already waiting for it.
+
+    An agent told its call is held usually tries again, and every retry used to open
+    another request: the same refund, four times in the reviewer's queue. The same
+    agent asking for the same tool with the same arguments while a request is still
+    pending gets that request back.
+    """
+    now = utcnow()
+    waiting = session.scalars(
+        select(ApprovalRequest).where(
+            ApprovalRequest.agent_id == agent_id,
+            ApprovalRequest.tool_key == tool_key,
+            ApprovalRequest.status == "pending",
+        )
+    )
+    for existing in waiting:
+        expires = existing.expires_at
+        if expires is not None and expires.tzinfo is None:
+            expires = expires.replace(tzinfo=dt.UTC)
+        if (expires is None or expires > now) and (existing.arguments_json or {}) == (
+            arguments or {}
+        ):
+            return existing
     request = ApprovalRequest(
         decision_id=decision_id,
         trace_id=trace_id,

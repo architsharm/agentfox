@@ -3200,6 +3200,7 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .k-steps button.active .k-step-n { background: var(--text); color: var(--panel); }
 .k-steps button.done .k-step-n { background: var(--viz-allowed); color: var(--panel); }
 .k-form > .k-seg { align-self: flex-start; }
+.k-select-sm { padding: 2px 22px 2px 8px; font-size: var(--t-micro); border-radius: var(--r-pill); }
 .k-code { margin: 0; max-height: 520px; overflow: auto; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-2); background: var(--panel-2); font-size: var(--t-small); line-height: 1.5; }
 .k-details { margin-top: 14px; }
 .k-details > summary { cursor: pointer; color: var(--muted); font-size: var(--t-small); margin-bottom: 10px; }

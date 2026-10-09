@@ -11,7 +11,7 @@ type Cap = {
   requires_approval: boolean;
   max_taint: string;
   constraints: Record<string, any>;
-  tool: { name: string; impact: string } | null;
+  tool: { name: string; impact: string; impact_source?: string } | null;
   usage: { calls: number; blocked: number; held: number; last_used: string | null };
 };
 
@@ -173,9 +173,25 @@ export function AccessEditor({
                       <span className="sub k-mono">{c.tool_key}</span>
                     </td>
                     <td className="tight">
-                      <span className={`k-pill k-pill-${impactTone(c.tool?.impact)}`}>
-                        {IMPACT[c.tool?.impact || ""] || (c.tool_key.includes("*") ? "Mixed" : "Not declared")}
-                      </span>
+                      {c.tool_key.includes("*") ? (
+                        <span className="k-pill k-pill-neutral">Mixed</span>
+                      ) : (
+                        <select
+                          className={`k-select k-select-sm k-pill-${impactTone(c.tool?.impact)}`}
+                          aria-label={`Risk of ${c.tool_key}`}
+                          title={c.tool?.impact_source === "inferred" ? "Guessed from the name. Confirm or change it." : undefined}
+                          value={c.tool?.impact || ""}
+                          onChange={(e) => save(c.tool_key, { ...payload(c, {}), impact: e.target.value })}
+                        >
+                          {!c.tool && <option value="">Not declared</option>}
+                          {Object.entries(IMPACT).map(([k, label]) => (
+                            <option key={k} value={k}>
+                              {label}
+                              {c.tool?.impact === k && c.tool?.impact_source === "inferred" ? " (guess)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="tight">
                       <div className="k-seg" role="group" aria-label="Permission">
@@ -233,7 +249,8 @@ export function AccessEditor({
                         </span>
                       )}
                     </td>
-                    <td className="tight muted">
+                    {/* Relative time differs between the server render and the browser by a minute. */}
+                    <td className="tight muted" suppressHydrationWarning>
                       {unused.includes(c.id) ? <span className="k-pill k-pill-outline">Unused</span> : ago(c.usage.last_used)}
                     </td>
                     <td className="tight" style={{ paddingRight: 16 }}>
@@ -260,7 +277,7 @@ export function AccessEditor({
                 <li key={t.tool_key}>
                   <div className="k-list-main">
                     <span className="k-mono">{t.tool_key}</span>
-                    <span className="muted">
+                    <span className="muted" suppressHydrationWarning>
                       Refused {t.count}× · last {ago(t.last)}
                     </span>
                   </div>

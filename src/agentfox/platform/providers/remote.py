@@ -110,8 +110,15 @@ class OpenAIProvider(_HttpProvider):
     def _api_key(self) -> str | None:
         return self._settings().openai_api_key
 
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
-        settings = self._settings()
+    def _body(self, request: CompletionRequest) -> dict[str, Any]:
+        passthrough = request.passthrough_for("openai")
+        if passthrough is not None:
+            # The client's request as sent, with the (possibly redacted) messages.
+            return {
+                **passthrough,
+                "model": request.model or "gpt-4o-mini",
+                "messages": request.messages,
+            }
         body: dict[str, Any] = {
             "model": request.model or "gpt-4o-mini",
             "messages": request.messages,
@@ -121,6 +128,11 @@ class OpenAIProvider(_HttpProvider):
             body["max_tokens"] = request.max_tokens
         if request.tools:
             body["tools"] = request.tools
+        return body
+
+    def complete(self, request: CompletionRequest) -> CompletionResponse:
+        settings = self._settings()
+        body = self._body(request)
 
         r = httpx.post(
             f"{settings.openai_base_url}/v1/chat/completions",
@@ -148,17 +160,7 @@ class OpenAIProvider(_HttpProvider):
 
     def stream(self, request: CompletionRequest) -> Iterator[StreamChunk]:  # pragma: no cover
         settings = self._settings()
-        body: dict[str, Any] = {
-            "model": request.model or "gpt-4o-mini",
-            "messages": request.messages,
-            "temperature": request.temperature,
-            "stream": True,
-            "stream_options": {"include_usage": True},
-        }
-        if request.max_tokens:
-            body["max_tokens"] = request.max_tokens
-        if request.tools:
-            body["tools"] = request.tools
+        body = {**self._body(request), "stream": True, "stream_options": {"include_usage": True}}
 
         with httpx.stream(
             "POST",
@@ -178,6 +180,7 @@ class OpenAIProvider(_HttpProvider):
                     delta = (choice.get("delta") or {}).get("content") or ""
                     yield StreamChunk(
                         delta=delta,
+                        tool_calls=(choice.get("delta") or {}).get("tool_calls") or [],
                         finish_reason=choice.get("finish_reason"),
                         usage={
                             "input_tokens": int(usage.get("prompt_tokens", 0)),
@@ -204,20 +207,33 @@ class AnthropicProvider(_HttpProvider):
     def _api_key(self) -> str | None:
         return self._settings().anthropic_api_key
 
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
-        settings = self._settings()
+    def _body(self, request: CompletionRequest) -> dict[str, Any]:
         system = request.system_prompt()
         messages = [m for m in request.messages if m.get("role") not in ("system", "developer")]
-        body: dict[str, Any] = {
-            "model": request.model or "claude-sonnet-4",
-            "messages": messages,
-            "max_tokens": request.max_tokens or 1024,
-            "temperature": request.temperature,
-        }
+        passthrough = request.passthrough_for("anthropic")
+        if passthrough is not None:
+            body: dict[str, Any] = {
+                "max_tokens": request.max_tokens or 1024,
+                **passthrough,
+                "model": request.model or "claude-sonnet-4",
+                "messages": messages,
+            }
+        else:
+            body = {
+                "model": request.model or "claude-sonnet-4",
+                "messages": messages,
+                "max_tokens": request.max_tokens or 1024,
+                "temperature": request.temperature,
+            }
+            if request.tools:
+                body["tools"] = request.tools
         if system:
             body["system"] = system
-        if request.tools:
-            body["tools"] = request.tools
+        return body
+
+    def complete(self, request: CompletionRequest) -> CompletionResponse:
+        settings = self._settings()
+        body = self._body(request)
 
         r = httpx.post(
             f"{settings.anthropic_base_url}/v1/messages",
@@ -257,19 +273,7 @@ class AnthropicProvider(_HttpProvider):
 
     def stream(self, request: CompletionRequest) -> Iterator[StreamChunk]:  # pragma: no cover
         settings = self._settings()
-        system = request.system_prompt()
-        messages = [m for m in request.messages if m.get("role") not in ("system", "developer")]
-        body: dict[str, Any] = {
-            "model": request.model or "claude-sonnet-4",
-            "messages": messages,
-            "max_tokens": request.max_tokens or 1024,
-            "temperature": request.temperature,
-            "stream": True,
-        }
-        if system:
-            body["system"] = system
-        if request.tools:
-            body["tools"] = request.tools
+        body = {**self._body(request), "stream": True}
 
         with httpx.stream(
             "POST",
