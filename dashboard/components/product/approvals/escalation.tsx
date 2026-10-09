@@ -7,7 +7,11 @@ import { api, safeApi, apiErrorProps } from "@/lib/product/api";
 import { AgentLink, ApiDown, ArgsCell, Empty, InfoTip, InventoryStrip, Severity, ts } from "@/components/ui";
 import { PageHeader } from "@/components/product/PageHeader";
 import { Countdown } from "@/components/product/Countdown";
+import { Card } from "@/components/kit";
 
+function clip(text: string, n: number): string {
+  return text.length > n ? `${text.slice(0, n - 1)}…` : text;
+}
 
 function ReasonCell({ reason }: { reason?: string }) {
   if (!reason) return <span className="muted">—</span>;
@@ -114,36 +118,35 @@ export async function EscalationTab({ agent }: { agent?: string }) {
       <h2 id="handoffs">Hand-off queue</h2>
       <p className="sub">
         Each row needs a person.{" "}
-        <InfoTip text="'Completeness' scores whether the hand-off carries enough for a human to act without re-interviewing the user: the original request, a summary, what was already tried, why it was blocked, and a customer reference. Missing any of these is its own failure — the hand-off happened and was still unusable." />
+        <InfoTip text="'Completeness' scores whether the hand-off carries enough for a human to act without re-interviewing the user: the original request, a summary, what was already tried, why it was blocked, and a customer reference. Missing any of these is its own failure: the hand-off happened and was still unusable." />
       </p>
-      <div className="panel">
+      <Card flush>
         {handoffs.handoffs?.length ? (
-          <table>
+          <table className="k-table">
             <thead>
               <tr>
-                <th>conversation</th>
-                <th>agent</th>
-                <th>status</th>
-                <th>owner</th>
-                <th>context</th>
-                <th>due</th>
-                <th>reason</th>
-                <th></th>
+                <th>Conversation</th>
+                <th className="tight">Agent</th>
+                <th className="tight">Status</th>
+                <th className="tight">Context</th>
+                <th className="tight">Due</th>
+                <th>Reason</th>
+                <th className="tight"></th>
               </tr>
             </thead>
             <tbody>
               {handoffs.handoffs.map((h: any) => (
                 <tr key={h.id}>
-                  <td className="small">
-                    <Link href={`/app/escalation/conversations/${encodeURIComponent(h.session_id)}`}>
-                      {h.summary || h.reason || "Conversation escalated"}
+                  <td style={{ minWidth: 260 }}>
+                    <Link className="k-name" href={`/app/escalation/conversations/${encodeURIComponent(h.session_id)}`}>
+                      {clip(h.summary || h.reason || "Conversation escalated", 120)}
                     </Link>
                     <div className="mono small muted">{h.session_id}</div>
                     {h.session_id?.startsWith("seed-") && (
                       <div>
                         <span
                           className="tag"
-                          title="Created by `agentfox admin seed` for demo purposes — not a real conversation."
+                          title="Created by `agentfox admin seed` for demo purposes, not a real conversation."
                         >
                           sample data
                         </span>
@@ -157,21 +160,21 @@ export async function EscalationTab({ agent }: { agent?: string }) {
                       </div>
                     )}
                   </td>
-                  <td className="small">
+                  <td className="tight">
                     {h.agent_slug ? (
                       <AgentLink slug={h.agent_slug} agents={agents.agents || []} />
                     ) : (
                       <span className="muted">unattributed</span>
                     )}
                   </td>
-                  <td>
+                  <td className="tight">
                     <span className={`tag ${h.status === "breached" ? "bad" : h.status === "resolved" ? "ok" : ""}`}>
                       {h.status}
                     </span>
-                    {h.detected_retroactively && <span className="tag warn">retroactive</span>}
+                    {h.detected_retroactively && <span className="tag warn">late</span>}
+                    <div className="small muted">{h.owner_role}</div>
                   </td>
-                  <td>{h.owner_role}</td>
-                  <td>
+                  <td className="tight">
                     <span className={h.completeness.complete ? "tag ok" : "tag warn"}>
                       {Math.round(h.completeness.score * 100)}%
                     </span>
@@ -179,9 +182,9 @@ export async function EscalationTab({ agent }: { agent?: string }) {
                       <span className="small muted"> missing {h.completeness.missing.join(", ")}</span>
                     )}
                   </td>
-                  <td className="small muted">{ts(h.due_at)}</td>
-                  <td className="small">{h.reason?.slice(0, 80)}</td>
-                  <td className="small">
+                  <td className="tight small muted">{ts(h.due_at)}</td>
+                  <td className="small">{clip(h.reason || "", 80)}</td>
+                  <td className="tight small">
                     {h.status === "pending" ? (
                       <form action="/api/escalation/handoffs/acknowledge" method="POST">
                         <input type="hidden" name="id" value={h.id} />
@@ -198,16 +201,16 @@ export async function EscalationTab({ agent }: { agent?: string }) {
         ) : (
           <Empty>No hand-offs raised.</Empty>
         )}
-      </div>
+      </Card>
 
       <h2 id="missed">Missed escalations</h2>
       <p className="sub">
         Detected after the fact.{" "}
-        <InfoTip text="At runtime there is nothing to see — the failure is the absence of an event." />
+        <InfoTip text="At runtime there is nothing to see: the failure is the absence of an event." />
       </p>
-      <div className="panel">
+      <Card flush>
         {missed.missed?.length ? (
-          <table>
+          <table className="k-table">
             <thead>
               <tr>
                 <th>conversation</th>
@@ -248,19 +251,19 @@ export async function EscalationTab({ agent }: { agent?: string }) {
         ) : (
           <Empty>
             None in this window. Either escalation is working, or nothing has been
-            recorded yet — check <a href="/app/start">Get started</a>.
+            recorded yet. See <a href="/app/start">Get started</a>.
           </Empty>
         )}
-      </div>
+      </Card>
 
       {/* The policy editor is configuration: a role, an SLA, a mode and a blob
           of JSON conditions. It is not something anyone reads on the way to
           clearing a queue, so it stops sitting under one. */}
       <details className="rt-more" style={{ marginTop: 26 }}>
-        <summary>Escalation policy — what qualifies a conversation for a hand-off</summary>
+        <summary>Escalation policy: what qualifies a conversation for a hand-off</summary>
         <h2>
           Escalation policy
-          <InfoTip text="What actually qualifies a conversation for a hand-off — org-wide by default. Agent-scoped overrides exist in the API (?agent=slug) but aren't exposed here yet; this edits the default every agent inherits." />
+          <InfoTip text="What actually qualifies a conversation for a hand-off, org-wide by default. Agent-scoped overrides exist in the API (?agent=slug) but aren't exposed here yet; this edits the default every agent inherits." />
         </h2>
         <p className="sub">
           Every condition is a signal, not a guarantee.{" "}
@@ -302,7 +305,7 @@ export async function EscalationTab({ agent }: { agent?: string }) {
           </div>
           <div>
             <label className="small muted" style={{ display: "block", marginBottom: 4 }}>
-              Conditions (JSON — explicit_request, repeated_failure, repeated_abstention,
+              Conditions (JSON: explicit_request, repeated_failure, repeated_abstention,
               turn_depth, sentiment_below, regulated_topics, confidence_below)
             </label>
             <textarea

@@ -266,6 +266,11 @@ def handoff_if_due(
     assessment = assess(turns, policy)
     if not assessment.missed:
         return None
+    # The conversation was handed to a person on this turn. Without marking it, every
+    # later reading of the transcript (`assess`) still said "qualified, never
+    # escalated", and the conversation page reported a miss above the hand-off it had.
+    latest = max(turns, key=lambda t: t.turn_index)
+    latest.escalated = True
     return raise_handoff(
         session,
         agent_id=agent_id,
@@ -682,7 +687,8 @@ def detect_missed_escalation(
             qualified += 1
         if not assessment.missed:
             continue
-        if session.scalar(select(Handoff).where(Handoff.session_id == session_id)) is not None:
+        existing = session.scalar(select(Handoff).where(Handoff.session_id == session_id))
+        if existing is not None and not existing.detected_retroactively:
             continue
 
         record = {
@@ -693,6 +699,13 @@ def detect_missed_escalation(
             "first_qualifying_turn": min(t.turn_index for t in assessment.triggers),
         }
         missed.append(record)
+        if existing is not None:
+            # A hand-off queued after the fact by an earlier scan does not un-miss the
+            # escalation: nobody was handed the conversation while it was happening.
+            # Counting it as handled turned the headline rate to 0% the moment a scan
+            # acted. It is still missed; it has already been acted on, so not again.
+            record["handed_off"] = True
+            continue
 
         if raise_findings:
             policy = get_policy(session, agent_id)

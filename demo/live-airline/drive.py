@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import uuid
 from types import SimpleNamespace
 from typing import Any
 
@@ -20,6 +21,7 @@ from common import use_upstream
 use_upstream()
 
 import main  # noqa: E402,F401  (the upstream app: wires AgentFox, governs the agents)
+from agentfox_wiring import CONVERSATION  # noqa: E402
 from agents import (  # noqa: E402
     InputGuardrailTripwireTriggered,
     OutputGuardrailTripwireTriggered,
@@ -66,8 +68,17 @@ class Conversation:
         )
         self.agent = triage_agent
         self.items: list[Any] = []
+        # The gateway's session for this conversation (agentfox_wiring.CONVERSATION).
+        self.id = f"airline-{uuid.uuid4().hex[:12]}"
 
     async def say(self, text: str) -> dict[str, Any]:
+        token = CONVERSATION.set(self.id)
+        try:
+            return await self._say(text)
+        finally:
+            CONVERSATION.reset(token)
+
+    async def _say(self, text: str) -> dict[str, Any]:
         turn: dict[str, Any] = {"user": text}
         history = [*self.items, {"role": "user", "content": text}]
         try:

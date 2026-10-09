@@ -180,6 +180,10 @@ def _set_words_effect(effect: str) -> None:
     )
 
 
+def _stopped_at_input(turn: dict) -> bool:
+    return str(turn.get("stopped") or "").startswith("input guardrail")
+
+
 async def message() -> list[Row]:
     if os.environ.get("AGENTFOX_MODEL_DIRECT") != "1":
         # Through the gateway's model proxy the same message is also checked as part
@@ -205,10 +209,13 @@ async def message() -> list[Row]:
         decide(approval_id, "approve")
         second = await Conversation().say(text)
         third = await Conversation().say(text)
+        # The approval covers the message the person saw, not the reply: a reply that
+        # names the competitor too is checked on its own and may be held again. So
+        # this asks whether the input check let the message through, once.
         rows.append(
             (
                 "message: approved message goes through once",
-                not second.get("stopped") and bool(third.get("stopped")),
+                not _stopped_at_input(second) and _stopped_at_input(third),
                 f"then: {second.get('stopped') or 'answered'}; again: {third.get('stopped') or 'answered'}",
             )
         )

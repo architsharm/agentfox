@@ -34,7 +34,7 @@ export default async function EscalationConversation({
         {e instanceof ApiError && e.status === 404 ? (
           <NotFound
             what="recorded conversation"
-            detail={`${sessionId} — no turns were recorded for this session`}
+            detail={`${sessionId}: no turns were recorded for this session`}
             back={{ href: "/app/approvals?tab=escalation", label: "Escalation" }}
           />
         ) : (
@@ -56,7 +56,7 @@ export default async function EscalationConversation({
       <Header back={{ href: "/app/approvals?tab=handoffs", label: "Hand-offs" }} title={data.handoff?.summary || data.handoff?.reason || "Conversation"} />
       <p className="mono small muted" style={{ marginTop: -8 }}>{sessionId}</p>
       <p className="sub">
-        Every turn of this conversation, replayed against the escalation policy — so
+        Every turn of this conversation, replayed against the escalation policy, so
         you can see exactly what the user said and which condition did or didn&rsquo;t
         fire, rather than trusting a summary of it.
         {data.agent_slug && (
@@ -83,7 +83,7 @@ export default async function EscalationConversation({
           <div className="n">{data.turn_depth?.depth ?? "—"}</div>
           <div className="l">
             depth vs {data.turn_depth?.limit ?? "?"} limit
-            <InfoTip text="Once a conversation runs past half the configured turn-depth limit, a rising rate of abstention among those later turns is treated as quality degradation — not evaluated behavior, drifting past the point anyone checked it." />
+            <InfoTip text="Once a conversation runs past half the configured turn-depth limit, a rising rate of abstention among those later turns is treated as quality degradation: not evaluated behavior, drifting past the point anyone checked it." />
           </div>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default async function EscalationConversation({
       {assessment.missed && (
         <div className="note-panel" style={{ borderLeftColor: "var(--bad)" }}>
           <strong>This conversation met an escalation condition and no hand-off was raised.</strong>{" "}
-          That is the failure this control exists to catch — the telemetry looks
+          That is the failure this control exists to catch: the telemetry looks
           ordinary, so nothing else would have surfaced it.
         </div>
       )}
@@ -99,7 +99,7 @@ export default async function EscalationConversation({
       {data.handoff && (
         <div className="note-panel">
           A hand-off <strong>was</strong> raised for this conversation
-          {data.handoff.detected_retroactively ? " (detected retroactively)" : ""} — status{" "}
+          {data.handoff.detected_retroactively ? " (detected retroactively)" : ""}. Status{" "}
           <span className={`tag ${data.handoff.status === "breached" ? "bad" : data.handoff.status === "resolved" ? "ok" : ""}`}>
             {data.handoff.status}
           </span>
@@ -120,7 +120,7 @@ export default async function EscalationConversation({
               <th>agent</th>
               <th>
                 triggers on this turn
-                <InfoTip text="What the escalation policy detected on this specific turn — the same conditions replayed by the missed-escalation scan." />
+                <InfoTip text="What the escalation policy detected on this specific turn, the same conditions replayed by the missed-escalation scan." />
               </th>
             </tr>
           </thead>
