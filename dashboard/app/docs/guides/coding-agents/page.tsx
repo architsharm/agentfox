@@ -26,7 +26,7 @@ export default function Page() {
       <ul>
         <li>Developers run Claude Code against real repositories, credentials and infrastructure.</li>
         <li>You want <code>curl … | sh</code>, <code>cat .env</code>, <code>rm -rf</code>, <code>terraform apply</code> and &quot;turn AgentFox off&quot; refused, and injected instructions in fetched content flagged.</li>
-        <li>Claude Code is the only harness with an adapter today; <code>--harness</code> accepts <code>claude</code>.</li>
+        <li><code>--harness</code> accepts <code>claude</code> (the default) and <code>codex</code>; for Codex CLI see <Link href="/docs/guides/codex">Codex CLI</Link>.</li>
       </ul>
 
       <TaskTable
@@ -272,7 +272,7 @@ agentfox: this tool call was NOT checked. Nothing was blocked and nothing was re
         <li><strong>A tool is denied with <code>capability.denied</code></strong>: it is not one of Claude Code&apos;s built-ins (an MCP tool, say), or the hooks were installed with <code>--no-grant</code>. Grant it with <code>agentfox permit grant</code>, or re-run <code>hooks install --write</code>.</li>
         <li><strong><code>AF_UNIX path too long</code></strong>: shorten <code>AGENTFOX_STATE_DIR</code>, or start the daemon with <code>--socket</code> (the hook reads the default path, so the state directory is the setting that works for both).</li>
         <li><strong><code>coding-agent not enabled</code></strong> from init: install the hooks first, then run <code>agentfox init</code> again.</li>
-        <li><strong><code>no adapter for &apos;…&apos;</code></strong>: only <code>claude</code> is supported.</li>
+        <li><strong><code>no adapter for &apos;…&apos;</code></strong>: <code>--harness</code> takes <code>claude</code> or <code>codex</code>.</li>
       </ul>
 
       <h2>Limits</h2>
@@ -286,6 +286,7 @@ agentfox: this tool call was NOT checked. Nothing was blocked and nothing was re
       <NextSteps
         items={[
           { href: "/docs/plugin", label: "Claude Code plugin", why: "skills, slash commands and the read-only MCP server" },
+          { href: "/docs/guides/codex", label: "Codex CLI", why: "the same hooks for OpenAI's Codex, and its coverage" },
           { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "grants and the containment rules in full" },
           { href: "/docs/guides/mcp", label: "MCP servers", why: "scan the MCP servers your sessions load" },
           { href: "/docs/reference/cli#cmd-admin-hooks-install", label: "agentfox admin hooks reference", why: "every flag" },
