@@ -484,7 +484,7 @@ def _print_import_plan(plan: dict) -> None:
             _STATUS_MARK[item["status"]],
             item["source"][:60],
             item["effect"] or "—",
-            (why or "—")[:90],
+            (why or "—")[:240],
         )
     console.print(table)
     summary = plan["summary"]

@@ -232,7 +232,7 @@ export function ImportPolicyFormat() {
           {plan.default_action.map((d) => (
             <div key={d.document} className="k-pills" style={{ gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
               <span className={d.unmatched_pass ? "k-pill k-pill-warn" : "k-pill"}>
-                {d.unmatched_pass ? "Unmatched calls pass" : "Unmatched calls are blocked"}
+                {d.unmatched_pass ? "Unmatched calls pass" : "Default deny"}
               </span>
               <span className={d.unmatched_pass ? "" : "muted"}>{d.note}</span>
             </div>
@@ -268,7 +268,7 @@ export function ImportPolicyFormat() {
                     <td className="tight">
                       <span className={STATUS[it.status].pill}>{STATUS[it.status].label}</span>
                     </td>
-                    <td className="tight muted">{it.effect ? EFFECT_LABEL[it.effect] || it.effect : ""}</td>
+                    <td className="tight muted">{!it.skippable && it.effect === "allow" ? "Exception to the default" : it.effect ? EFFECT_LABEL[it.effect] || it.effect : ""}</td>
                   </tr>
                 );
               })}
