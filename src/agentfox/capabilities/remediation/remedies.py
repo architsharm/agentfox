@@ -1010,6 +1010,17 @@ def apply_remedy(
         after={"remedy": key, "type": finding.type, "result": message, "inputs": inputs},
     )
     holds = recheck(session, finding, after=remedy.label)
+    # One action can clear another issue about the same subject (registering a shadow
+    # agent with an owner also answers "no owner"): re-check those too.
+    for sibling in session.scalars(
+        select(Finding).where(
+            Finding.subject_type == finding.subject_type,
+            Finding.subject_id == finding.subject_id,
+            Finding.status == OPEN,
+            Finding.id != finding.id,
+        )
+    ).all():
+        recheck(session, sibling, after=f"{remedy.label} on another issue")
     return {
         "remedy": key,
         "message": message,

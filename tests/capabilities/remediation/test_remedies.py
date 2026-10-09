@@ -175,12 +175,18 @@ def test_retiring_a_stale_identity_revokes_keys_and_grants(client):
 
 
 def test_registering_a_shadow_agent_closes_the_issue(client):
-    from agentfox.platform.registry.service import observe_agent
+    from agentfox.platform.registry.service import observe_agent, unowned_agents
 
     with session_scope() as s:
         agent, _ = observe_agent(s, "ghost-bot", model="gpt-x")
+        unowned_agents(s)
         fid = s.scalar(
             select(Finding.id).where(Finding.type == "shadow_agent", Finding.subject_id == agent.id)
+        )
+        unowned = s.scalar(
+            select(Finding.id).where(
+                Finding.type == "unowned_agent", Finding.subject_id == agent.id
+            )
         )
     assert set(_remedies(client, fid)) == {"register", "block_agent"}
 
@@ -191,6 +197,8 @@ def test_registering_a_shadow_agent_closes_the_issue(client):
         agent = s.scalar(select(Agent).where(Agent.slug == "ghost-bot"))
         assert agent.registered and agent.owner_email == "o@example.com"
         assert agent.declared_models == ["gpt-x"]
+    # Registering it with an owner also answered "no owner".
+    assert _finding(unowned).status == "resolved" and _closed_automatically(unowned)
 
 
 def test_blocking_needs_a_reason_and_stops_the_agent(client):

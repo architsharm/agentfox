@@ -50,40 +50,46 @@ function Action({ findingId, remedy, onDone }: { findingId: string; remedy: Reme
   return (
     <li>
       <div className="k-list-main">
-        <span className="k-pills" style={{ gap: 8, flexWrap: "wrap" }}>
-          {remedy.fields.map((f) =>
-            f.kind === "select" ? (
-              <select key={f.name} className="k-select" value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} aria-label={f.label}>
-                {!f.default && <option value="">{f.label}</option>}
-                {f.options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                key={f.name}
-                className="k-input"
-                type={f.kind === "email" ? "email" : "text"}
-                value={values[f.name]}
-                onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
-                placeholder={f.placeholder || f.label}
-                aria-label={f.label}
-                style={{ width: 220 }}
-              />
-            ),
-          )}
-          <button type="button" className={remedy.primary ? "k-btn-primary" : "k-btn"} disabled={busy || missing || remedy.allowed === false} onClick={run} title={remedy.allowed === false ? "Your role cannot do this" : undefined}>
-            {busy ? "…" : remedy.label}
-          </button>
-        </span>
-        {remedy.hint && <span className="sub">{remedy.hint}</span>}
+        <span>{remedy.hint || remedy.label}</span>
         {error && (
           <span className="k-act-error" role="alert">
             {error}
           </span>
         )}
+      </div>
+      <div className="k-list-end" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
+        {remedy.fields.map((f) =>
+          f.kind === "select" ? (
+            <select key={f.name} className="k-select" value={values[f.name]} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} aria-label={f.label}>
+              {!f.default && <option value="">{f.label}</option>}
+              {f.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              key={f.name}
+              className="k-input"
+              type={f.kind === "email" ? "email" : "text"}
+              value={values[f.name]}
+              onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+              placeholder={f.placeholder || f.label}
+              aria-label={f.label}
+              style={{ width: 220 }}
+            />
+          ),
+        )}
+        <button
+          type="button"
+          className={remedy.primary ? "k-btn-primary" : "k-btn"}
+          disabled={busy || missing || remedy.allowed === false}
+          onClick={run}
+          title={remedy.allowed === false ? "Your role cannot do this" : undefined}
+        >
+          {busy ? "…" : remedy.label}
+        </button>
       </div>
     </li>
   );
@@ -101,7 +107,11 @@ export function FindingActions({ findingId, remedies }: { findingId: string; rem
   const links = remedies.filter((r) => r.kind === "link");
   return (
     <>
-      {done && <div className="note-panel" style={{ margin: "0 0 10px" }}>{done}</div>}
+      {done && (
+        <div className="note-panel" style={{ margin: "0 0 10px" }}>
+          {done}
+        </div>
+      )}
       {actions.length > 0 && (
         <ul className="k-list" style={{ margin: "-4px -14px 0" }}>
           {actions.map((r) => (
