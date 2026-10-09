@@ -22,6 +22,7 @@ import {
 import { FilterBar } from "@/components/kit/FilterBar";
 import { filtersFrom, metricsQs, observeTabs, runsHref, type Filters } from "@/lib/product/observe";
 import { ensureRange } from "@/lib/product/range";
+import { RangeProvider } from "@/components/kit/RangeContext";
 import { CATEGORIES, categoryLabel, detectorName, dimLabel, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Observe");
@@ -41,6 +42,7 @@ export default async function Observe({ searchParams }: { searchParams: Promise<
   ]);
 
   return (
+    <RangeProvider range={sp.range}>
     <>
       <Header title="Observe" />
       <Tabs items={observeTabs(f)} active={tab} />
@@ -54,6 +56,7 @@ export default async function Observe({ searchParams }: { searchParams: Promise<
       {tab === "review" && <Review f={f} agents={agents.agents || []} />}
       {tab === "cost" && <Cost f={f} />}
     </>
+    </RangeProvider>
   );
 }
 

@@ -28,6 +28,7 @@ import { LegacyJudgmentTab, LegacyPacksTab, LegacyTuningTab } from "@/components
 import { metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
+import { RangeProvider } from "@/components/kit/RangeContext";
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Policies", "What your agents may do, and how well each rule is working.");
@@ -63,6 +64,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
   if (tab === "rules" || tab === "performance") await ensureRange("/app/policies", sp);
 
   return (
+    <RangeProvider range={sp.range}>
     <>
       <Header title="Policies" actions={<Link href="/app/policies/new" className="k-btn-primary">Add rule</Link>} />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/policies", { tab: t.key === "rules" ? undefined : t.key }) }))} active={tab} />
@@ -75,6 +77,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
       {tab === "code" && <CodeTab />}
       {tab === "advanced" && <AdvancedTab sec={sec} agent={sp.agent} />}
     </>
+    </RangeProvider>
   );
 }
 
@@ -160,7 +163,7 @@ async function RulesTab({ sp }: { sp: SP }) {
               {business.rules.map((b: any) => (
                 <tr key={b.key}>
                   <td>
-                    <span className="k-name">{b.name}</span>
+                    <Link className="k-name" href={`/app/policies/business/${encodeURIComponent(b.key)}`}>{b.name}</Link>
                     <span className="sub">{b.tool || "Any tool"}{b.description ? ` · ${b.description}` : ""}</span>
                   </td>
                   <td className="tight"><ModePill mode={b.enabled ? b.mode : null} /></td>

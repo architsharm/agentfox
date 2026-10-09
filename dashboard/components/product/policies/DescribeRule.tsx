@@ -112,6 +112,11 @@ export function DescribeRule({ agent, tools = [] }: { agent?: string; tools?: st
               ) : (
                 <span className="k-muted">{r.kind.replace(/_/g, " ")}</span>
               )}
+              {r.warnings?.map((w: string) => (
+                <span key={w} className="k-pill k-pill-warn" style={{ alignSelf: "flex-start", whiteSpace: "normal" }}>
+                  {w}
+                </span>
+              ))}
               {r.assumptions?.length > 0 && (
                 <span className="k-muted" style={{ fontSize: "var(--t-micro)" }}>
                   Assumed: {r.assumptions.map((a: any) => a.what).join("; ")}

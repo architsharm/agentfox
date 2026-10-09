@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 240,
+ "count": 244,
  "routes": [
   {
    "method": "GET",
@@ -1152,6 +1152,35 @@
   },
   {
    "method": "GET",
+   "path": "/api/agents/{slug}/map",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Which guardrails apply at each step of this agent's requests, with recent traffic.",
+   "description": "Which guardrails apply at each step of this agent's requests, with recent traffic.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/agents/{slug}/posture",
    "section": "agents",
    "audience": "operator",
@@ -2195,6 +2224,103 @@
       "name": "agent",
       "type": "string",
       "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/business/rules/{key}",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Remove Business Rule",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/business/rules/{key}",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Get Business Rule",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/business/rules/{key}",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Change a rule's thresholds in place. It keeps its mode; changing an enforcing rule changes what is approved right now, so it needs the production role.",
+   "description": "Change a rule's thresholds in place. It keeps its mode; changing an enforcing\nrule changes what is approved right now, so it needs the production role.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "BusinessRuleEdit",
+    "fields": [
+     {
+      "name": "definition",
+      "type": "object",
+      "required": true,
       "description": ""
      }
     ]
@@ -6680,6 +6806,12 @@
      "in": "query",
      "required": false,
      "type": null
+    },
+    {
+     "name": "full",
+     "in": "query",
+     "required": false,
+     "type": "boolean"
     },
     {
      "name": "authorization",

@@ -4994,6 +4994,51 @@
       ]
      },
      {
+      "path": "admin detectors",
+      "name": "detectors",
+      "summary": "See which detectors can run here, and download the models some of them need.",
+      "help": "See which detectors can run here, and download the models some of them need.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "commands": [
+       {
+        "path": "admin detectors list",
+        "name": "list",
+        "summary": "Every detector, whether it can run here, and what it needs if not.",
+        "help": "Every detector, whether it can run here, and what it needs if not.",
+        "panel": null,
+        "params": [],
+        "default_subcommand": null,
+        "commands": []
+       },
+       {
+        "path": "admin detectors pull",
+        "name": "pull",
+        "summary": "Download the model weights a detector loads, so it can run without a network.",
+        "help": "Download the model weights a detector loads, so it can run without a network.",
+        "panel": null,
+        "params": [
+         {
+          "kind": "argument",
+          "name": "key",
+          "opts": [
+           "key"
+          ],
+          "type": "text",
+          "choices": [],
+          "required": true,
+          "multiple": false,
+          "default": null,
+          "help": ""
+         }
+        ],
+        "default_subcommand": null,
+        "commands": []
+       }
+      ]
+     },
+     {
       "path": "admin catalog",
       "name": "catalog",
       "summary": "Keep the control catalog and its computed status current.",

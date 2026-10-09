@@ -16,6 +16,7 @@ const PATHS: Record<string, React.ReactNode> = {
   "/app/traces": <path d="M3 12h4l2-7 4 14 2-7h6" />,
   "/app/policies": <><rect x="5.5" y="3" width="13" height="18" rx="2" /><path d="M9 3v2h6V3" /><path d="M9 11h6M9 15h6" /></>,
   "/app/entitlement": <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7.5a4 4 0 0 1 8 0V11" /></>,
+  "/app/map": <><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="18" r="2.5" /><path d="M8.5 6h7M7.3 8.2l3.5 7.6M16.7 8.2l-3.5 7.6" /></>,
   "/app/approvals": <><path d="M9 12.5l2 2 4-4.5" /><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" /></>,
   "/app/evals": <><rect x="3.5" y="3.5" width="17" height="17" rx="2.5" /><path d="M9 12l2 2 4-4.5" /></>,
   "/app/sources": <><ellipse cx="12" cy="5.5" rx="7.5" ry="2.6" /><path d="M4.5 5.5v13c0 1.4 3.4 2.6 7.5 2.6s7.5-1.2 7.5-2.6v-13" /><path d="M4.5 12c0 1.4 3.4 2.6 7.5 2.6s7.5-1.2 7.5-2.6" /></>,

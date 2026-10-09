@@ -54,6 +54,7 @@ router = APIRouter(prefix="/api/policies", tags=["policy"])
 @router.get("")
 def list_policies(
     agent: str | None = None,
+    full: bool = False,
     session: Session = Depends(db),
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
@@ -112,6 +113,20 @@ def list_policies(
                 "proposed": policy.proposed,
             }
         )
+        if full:
+            # Everything a policy screen needs, in this one request: the dashboard
+            # used to fetch each policy's detail separately, one request per pack.
+            out[-1].update(
+                {
+                    "version_history": history(session, policy.key),
+                    "live_body": bound.body if bound else "",
+                    "live_compiled": bound.compiled_json if bound else {},
+                    "body": latest.body if latest else "",
+                    "compiled": latest.compiled_json if latest else {},
+                    "level": binding.level if binding else "org",
+                    "scope_id": binding.scope_id if binding else "*",
+                }
+            )
     return {"policies": out, "unloadable_policies": [exc.to_json() for exc in unloadable]}
 
 

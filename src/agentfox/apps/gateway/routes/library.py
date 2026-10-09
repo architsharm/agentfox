@@ -28,8 +28,8 @@ from sqlalchemy.orm import Session
 from agentfox.apps.gateway.deps import current_user, db, require
 from agentfox.capabilities.business import Ladder
 from agentfox.capabilities.business.compile import compile_document
-from agentfox.capabilities.business.store import save_ladder, set_mode
-from agentfox.core.models import BusinessRule, Policy, User
+from agentfox.capabilities.business.store import delete_ladder, save_ladder, set_mode
+from agentfox.core.models import Agent, BusinessRule, Policy, User
 from agentfox.platform.ledger import chain
 from agentfox.platform.packs.loader import load_packs
 from agentfox.platform.policy import PolicyDocument, current_binding, save_policy
@@ -180,10 +180,58 @@ class CompileIn(BaseModel):
     text: str = Field(min_length=1, max_length=20000)
 
 
+def _known_arguments(session: Session, tool_key: str) -> set[str] | None:
+    """The arguments a tool takes: from its declared input schema, else from the calls
+    seen. None when neither says anything."""
+    from agentfox.core.models import Decision, Tool
+    from agentfox.platform.registry.service import tool_input_schema
+
+    tool = session.scalar(select(Tool).where(Tool.key == tool_key))
+    declared = set((tool_input_schema(tool).get("properties") or {}).keys()) if tool else set()
+    if declared:
+        return declared
+    seen: set[str] = set()
+    recent = session.scalars(
+        select(Decision)
+        .where(Decision.tool_key == tool_key)
+        .order_by(Decision.created_at.desc())
+        .limit(50)
+    )
+    for decision in recent:
+        seen |= set(((decision.taint_summary_json or {}).get("arguments_snapshot") or {}).keys())
+    return seen or None
+
+
+def _field_warnings(session: Session, compiled: dict[str, Any]) -> dict[str, Any]:
+    """A limit on an argument the tool does not take can never apply; say so before it
+    is saved rather than letting it sit in force doing nothing."""
+    for rule in compiled.get("rules", []):
+        definition = rule.get("definition") or {}
+        tool = definition.get("tool")
+        path = str(definition.get("field") or definition.get("field_path") or "")
+        field = path.removeprefix("arguments.").split(".")[0]
+        if not tool or not field:
+            continue
+        known = _known_arguments(session, tool)
+        if known is None:
+            rule.setdefault("warnings", []).append(
+                f"No calls to {tool} have been seen yet, so `{field}` cannot be "
+                "checked against its arguments."
+            )
+        elif field not in known:
+            rule.setdefault("warnings", []).append(
+                f"{tool} takes no `{field}` argument "
+                f"({', '.join(sorted(known)) or 'none'}), so this limit would never apply."
+            )
+    return compiled
+
+
 @router.post("/api/business/compile")
-def compile_text(payload: CompileIn, _user: User = Depends(current_user)) -> dict[str, Any]:
+def compile_text(
+    payload: CompileIn, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
     """Compile written policy into rules and questions. Nothing is saved."""
-    return compile_document(payload.text, key_prefix="custom").to_json()
+    return _field_warnings(session, compile_document(payload.text, key_prefix="custom").to_json())
 
 
 class BusinessRuleIn(BaseModel):
@@ -212,6 +260,65 @@ def save_business_rule(
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return _rule_json(rule)
+
+
+@router.get("/api/business/rules/{key}")
+def get_business_rule(
+    key: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    rule = session.scalar(select(BusinessRule).where(BusinessRule.key == key))
+    if rule is None:
+        raise HTTPException(404, f"unknown business rule '{key}'")
+    return _rule_json(rule)
+
+
+class BusinessRuleEdit(BaseModel):
+    definition: dict[str, Any]
+
+
+@router.put("/api/business/rules/{key}")
+def edit_business_rule(
+    key: str,
+    payload: BusinessRuleEdit,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Change a rule's thresholds in place. It keeps its mode; changing an enforcing
+    rule changes what is approved right now, so it needs the production role."""
+    from agentfox.apps.gateway.deps import WRITE_ROLES
+
+    rule = session.scalar(select(BusinessRule).where(BusinessRule.key == key))
+    if rule is None:
+        raise HTTPException(404, f"unknown business rule '{key}'")
+    if rule.mode == "enforce" and user.role not in WRITE_ROLES["policy_production"]:
+        raise HTTPException(
+            403, "this rule is enforcing; changing it needs a production policy role"
+        )
+    definition = {k: v for k, v in payload.definition.items() if k != "kind"}
+    definition.update({"key": key, "mode": rule.mode})
+    try:
+        ladder = Ladder.model_validate(definition)
+    except Exception as exc:
+        raise HTTPException(400, f"not a valid rule: {exc}") from exc
+    agent = session.get(Agent, rule.agent_id) if rule.agent_id else None
+    saved = save_ladder(
+        session,
+        ladder,
+        agent_slug=agent.slug if agent else None,
+        enabled=rule.enabled,
+        actor=user.email or "",
+        reason="edited in the dashboard",
+    )
+    return _rule_json(saved)
+
+
+@router.delete("/api/business/rules/{key}")
+def remove_business_rule(
+    key: str, session: Session = Depends(db), user: User = Depends(require("policy_production"))
+) -> dict[str, Any]:
+    if not delete_ladder(session, key, actor=user.email or "", reason="deleted in the dashboard"):
+        raise HTTPException(404, f"unknown business rule '{key}'")
+    return {"deleted": key}
 
 
 class ModeIn(BaseModel):

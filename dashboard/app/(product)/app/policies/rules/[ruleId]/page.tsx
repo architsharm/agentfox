@@ -5,11 +5,13 @@ import { post, safeApi } from "@/lib/product/api";
 import { ActionPill, BarList, Card, Empty, Grid, Header, Kpi, ModePill, Pill, Tabs, ago, href, num } from "@/components/kit";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
+import { CustomRule } from "@/components/product/policies/CustomRule";
 import { RuleTests } from "@/components/product/policies/RuleTests";
 import { RuleTuner } from "@/components/product/policies/RuleTuner";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
+import { RangeProvider } from "@/components/kit/RangeContext";
 import { categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Rule");
@@ -29,7 +31,9 @@ export default async function RulePage({ params, searchParams }: { params: Promi
   const { ruleId: raw } = await params;
   const ruleId = decodeURIComponent(raw);
   const sp = await searchParams;
-  const tab = TABS.some((t) => t.key === sp.tab) ? sp.tab! : "overview";
+  // A rule written in the workspace's own words can also be edited and deleted here.
+  const tabs = ruleId.startsWith("custom.") ? [TABS[0], { key: "edit", label: "Edit" }, ...TABS.slice(1)] : TABS;
+  const tab = tabs.some((t) => t.key === sp.tab) ? sp.tab! : "overview";
   if (tab === "overview" || tab === "examples") await ensureRange(`/app/policies/rules/${encodeURIComponent(ruleId)}`, sp);
   const range = rangeOf(sp.range);
 
@@ -46,6 +50,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
   const tabHref = (k: string) => href(`/app/policies/rules/${encodeURIComponent(ruleId)}`, { tab: k === "overview" ? undefined : k, range: sp.range });
 
   return (
+    <RangeProvider range={sp.range}>
     <>
       <Header
         back={{ href: "/app/policies", label: "Policies" }}
@@ -64,7 +69,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
           </Link>
         }
       />
-      <Tabs items={TABS.map((t) => ({ ...t, href: tabHref(t.key) }))} active={tab} />
+      <Tabs items={tabs.map((t) => ({ ...t, href: tabHref(t.key) }))} active={tab} />
 
       {tab === "overview" && (
         <>
@@ -104,6 +109,10 @@ export default async function RulePage({ params, searchParams }: { params: Promi
       )}
 
       {tab === "examples" && <Examples ruleId={ruleId} range={range} />}
+
+      {tab === "edit" && (
+        <Card>{own ? <CustomRule initial={own} /> : <Empty>This rule's definition could not be found.</Empty>}</Card>
+      )}
 
       {tab === "tests" && (
         <Card>
@@ -145,6 +154,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
         </Card>
       )}
     </>
+    </RangeProvider>
   );
 }
 

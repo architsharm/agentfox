@@ -12,6 +12,7 @@ type Detector = {
   always_on: boolean;
   unavailable_reason: string | null;
   install: string | null;
+  pull: string | null;
   stats: { runs?: number; avg_ms?: number };
 };
 
@@ -68,7 +69,13 @@ export async function Detectors() {
                       <span className="sub">{checks(d)}</span>
                     </td>
                     <td className="muted" title={d.unavailable_reason || undefined}>
-                      {d.install ? <code className="k-mono">pip install {d.install}</code> : "Needs setup"}
+                      {d.pull ? (
+                        <code className="k-mono">{d.pull}</code>
+                      ) : d.install ? (
+                        <code className="k-mono">pip install {d.install}</code>
+                      ) : (
+                        <span className="k-muted">{d.unavailable_reason?.split(". ")[0] || "Needs setup"}</span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -21,6 +21,7 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
           const rules: string[] = t.rules || [];
           const what =
             t.intent ||
+            t.summary ||
             (t.tools?.length ? t.tools.join(", ") : null) ||
             (t.surfaces || []).map((x: string) => SURFACES[x] || x).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(" · ") ||
             "Model call";

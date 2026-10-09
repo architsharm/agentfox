@@ -79,3 +79,18 @@ def test_no_rules_is_free():
 def test_patterns_that_could_hang_or_break_are_refused(bad):
     with pytest.raises(ValueError):
         validate_pattern(bad)
+
+
+def test_a_weak_topic_match_still_reaches_the_rules_default_threshold():
+    """Lexical matches start at 0.34; the rule fires at 0.5. Scores are calibrated so a
+    match is never detected-and-ignored."""
+    from agentfox.capabilities.detection.custom import _calibrated
+
+    assert _calibrated(0.34, 0.34) == 0.5
+    assert 0.5 < _calibrated(0.43, 0.34) < 0.7
+    assert _calibrated(1.0, 0.34) == 1.0
+    [d] = _match(
+        {"kind": "topic", "description": "medical diagnosis symptoms treatment"},
+        "Which medicine treats these symptoms?",
+    )
+    assert d.score >= 0.5 and "similarity" in d.detail

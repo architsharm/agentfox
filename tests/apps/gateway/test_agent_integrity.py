@@ -333,3 +333,49 @@ def test_a_system_prompt_about_jailbreaks_is_not_a_jailbreak(client):
         headers={"X-AgentFox-Agent": "airline-bot"},
     )
     assert attack.status_code == 403
+
+
+# --- streaming carries what a non-streamed answer carries -------------------------
+
+
+def test_a_streamed_block_carries_the_user_message(client):
+    client.post(
+        "/api/custom-rules",
+        json={
+            "key": "rivals",
+            "name": "Rivals",
+            "kind": "terms",
+            "entries": ["Globex"],
+            "surfaces": ["input"],
+            "message": "Let's talk about our plans.",
+        },
+        headers=ADMIN,
+    )
+    _enforce(client, "custom")
+    r = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "echo-1",
+            "stream": True,
+            "messages": [{"role": "user", "content": "Is Globex cheaper?"}],
+        },
+        headers={"X-AgentFox-Agent": "sales-bot"},
+    )
+    events = [json.loads(line[6:]) for line in r.text.splitlines() if line.startswith("data: {")]
+    [error] = [e["error"] for e in events if "error" in e]
+    assert error["user_message"] == "Let's talk about our plans."
+
+
+def test_a_streamed_answer_reports_usage(client):
+    r = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "echo-1",
+            "stream": True,
+            "messages": [{"role": "user", "content": "hello there"}],
+        },
+        headers={"X-AgentFox-Agent": "sales-bot"},
+    )
+    events = [json.loads(line[6:]) for line in r.text.splitlines() if line.startswith("data: {")]
+    usage = [e["usage"] for e in events if e.get("usage")]
+    assert usage and usage[0]["total_tokens"] >= 0

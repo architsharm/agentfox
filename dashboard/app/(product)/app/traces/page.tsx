@@ -8,6 +8,7 @@ import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
 import { RANGE_DAYS, filtersFrom, keep, metricsQs, observeTabs, verdictsFor } from "@/lib/product/observe";
 import { ensureRange } from "@/lib/product/range";
+import { RangeProvider } from "@/components/kit/RangeContext";
 import { ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Runs");
@@ -66,6 +67,7 @@ export default async function Runs({ searchParams }: { searchParams: Promise<SP>
   if (sp.start || sp.end) chips.push({ label: `${when(sp.start)} – ${when(sp.end)}`, clear: { start: undefined, end: undefined } });
 
   return (
+    <RangeProvider range={sp.range}>
     <>
       <Header title="Observe" />
       <Tabs items={observeTabs(f)} active="runs" />
@@ -99,5 +101,6 @@ export default async function Runs({ searchParams }: { searchParams: Promise<SP>
         <RunsTable runs={data.traces} />
       </Card>
     </>
+    </RangeProvider>
   );
 }

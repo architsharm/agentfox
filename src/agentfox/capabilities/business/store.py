@@ -146,6 +146,25 @@ def set_mode(
     return rule
 
 
+def delete_ladder(session: Session, key: str, *, actor: str = "", reason: str = "") -> bool:
+    """Remove a business rule. Recorded with its bands, since what it decided stops."""
+    rule = session.scalar(select(BusinessRule).where(BusinessRule.key == key))
+    if rule is None:
+        return False
+    record(
+        session,
+        "operator.business_rule.deleted",
+        actor=actor or "unknown",
+        reason=reason or "rule deleted",
+        subject_type="business_rule",
+        subject_id=key,
+        before={"bands": (rule.definition_json or {}).get("bands"), "mode": rule.mode},
+    )
+    session.delete(rule)
+    session.flush()
+    return True
+
+
 def summary(session: Session) -> dict[str, Any]:
     records = list(session.scalars(select(BusinessRule)))
     return {

@@ -168,8 +168,14 @@ def init_db(stamp: bool = True) -> None:
     already there.
     """
     engine = get_engine()
-    fresh = not inspect(engine).has_table("agents")
-    Base.metadata.create_all(engine)
+    # One query for what exists, then create only what is missing. `create_all` on its
+    # own asks the database about every table in turn — some eighty round trips — and
+    # this runs on every cold start of a serverless gateway, before its first request.
+    existing = set(inspect(engine).get_table_names())
+    fresh = "agents" not in existing
+    missing = [t for t in Base.metadata.sorted_tables if t.name not in existing]
+    if missing:
+        Base.metadata.create_all(engine, tables=missing, checkfirst=False)
     if not fresh:
         _add_missing_columns(engine)
     if stamp and fresh:
@@ -190,6 +196,8 @@ _ADDITIVE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # d4f1b8e6a3c7 — a registered tool keeps its reviewed impact annotations (NULL: none
     # recorded yet, which the MCP governor reads as "compare without them").
     ("tools", "annotations_json", "JSON"),
+    # f3b7c1d9a254 — a run keeps a masked preview of what the user asked.
+    ("traces", "summary", "VARCHAR(200)"),
 )
 
 

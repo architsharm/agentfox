@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { RANGES } from "@/lib/product/vocab";
+import { usePageRange } from "./RangeContext";
 
 /**
  * Time range, agent and environment — the same three filters on every view that
@@ -33,7 +34,8 @@ export function FilterBar({
     router.replace(`${pathname}${next.toString() ? `?${next}` : ""}`, { scroll: false });
   };
 
-  const current = params.get("range") || defaultRange;
+  const pageRange = usePageRange();
+  const current = params.get("range") || pageRange || defaultRange;
   return (
     <div className="k-toolbar">
       {range && (

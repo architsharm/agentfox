@@ -57,6 +57,17 @@ def _words_and_topics(session: Session, slug: str) -> dict[str, Any]:
     return out
 
 
+@router.get("/{slug}/map")
+def get_map(
+    slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Which guardrails apply at each step of this agent's requests, with recent traffic."""
+    from agentfox.capabilities.protection.map import agent_map
+
+    get_agent_or_404(session, slug)
+    return agent_map(session, slug)
+
+
 @router.get("/{slug}/protection")
 def get_protection(
     slug: str, session: Session = Depends(db), _user: User = Depends(current_user)

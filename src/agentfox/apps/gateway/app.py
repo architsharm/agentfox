@@ -472,6 +472,8 @@ def create_app() -> FastAPI:
                 "max_ms": round(float(max_ms or 0), 3),
             }
 
+        from agentfox.capabilities.detection.models import pull_hint
+
         available = available_detectors()
         from agentfox.capabilities.detection.detector_settings import (
             ALWAYS_ON as DETECTORS_ALWAYS_ON,
@@ -525,9 +527,15 @@ def create_app() -> FastAPI:
                         if key in available
                         else getattr(detector, "unavailable_reason", None)
                         or unavailable_reason.get(key)
+                        or (
+                            f"Its model is not downloaded here. Run `{pull_hint(detector)}`."
+                            if pull_hint(detector)
+                            else None
+                        )
                     ),
                     "label": getattr(detector, "label", None),
                     "install": getattr(detector, "package", None),
+                    "pull": None if key in available else pull_hint(detector),
                     "stats": stats.get(key, {}),
                 }
                 for key, detector in sorted(all_detectors().items())

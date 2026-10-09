@@ -37,11 +37,9 @@ export type RuleInfo = {
 
 /** Every installed pack with its live rules, and every rule with the packs it is in. */
 export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[] }> {
-  const list = await safeApi<any>("/api/policies", { policies: [] });
-  const details = await Promise.all(
-    (list.policies || []).map((p: any) => safeApi<any>(`/api/policies/${encodeURIComponent(p.key)}`, null)),
-  );
-  const packs: PackInfo[] = details.filter(Boolean).map((d: any) => {
+  // One request for every pack and its live rules (`?full=1`), not one per pack.
+  const list = await safeApi<any>("/api/policies?full=1", { policies: [] });
+  const packs: PackInfo[] = (list.policies || []).map((d: any) => {
     const compiled = d.live_compiled && d.live_compiled.rules ? d.live_compiled : d.compiled || {};
     return {
       key: d.key,
@@ -51,7 +49,7 @@ export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[
       boundVersion: d.bound_version,
       latestVersion: d.latest_version,
       liveBody: d.live_body || d.body || "",
-      versions: d.versions || [],
+      versions: d.version_history || [],
       rules: compiled.rules || [],
     };
   });
