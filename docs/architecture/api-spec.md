@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-255 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+256 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -136,6 +136,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/activity` | Activity |
 | `GET` | `/api/metrics/breakdown` | Breakdown |
 | `GET` | `/api/metrics/errors` | Steps that failed — a tool that threw, a model call that errored — grouped. |
+| `GET` | `/api/metrics/quality` | Is this agent giving right answers: every quality signal already recorded for it. |
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |

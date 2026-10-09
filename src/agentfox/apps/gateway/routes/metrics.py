@@ -440,7 +440,16 @@ def errors(
     """Steps that failed — a tool that threw, a model call that errored — grouped."""
     w = Window(window)
     traces = {t.id: t for t in _traces(session, w.start, w.end, agent, environment)}
+    rows, _ = _error_rows(session, traces)
+    return {"range": w.key, "rows": rows}
+
+
+def _error_rows(
+    session: Session, traces: dict[str, Trace]
+) -> tuple[list[dict[str, Any]], list[dt.datetime]]:
+    """Failed steps in these traces, grouped by step, and when each one failed."""
     groups: dict[tuple[str, str], dict[str, Any]] = {}
+    when: list[dt.datetime] = []
     if traces:
         for s in session.scalars(
             select(Span).where(Span.trace_id.in_(set(traces)), Span.status == "error")
@@ -462,8 +471,215 @@ def errors(
             t = traces.get(s.trace_id)
             if t and t.agent_slug:
                 g["agents"][t.agent_slug] += 1
-            at = _aware(s.started_at).isoformat()
+            started = _aware(s.started_at)
+            when.append(started)
+            at = started.isoformat()
             if not g["last"] or at > g["last"]:
                 g["last"], g["sample_trace_id"] = at, s.trace_id
     rows = sorted(groups.values(), key=lambda g: g["count"], reverse=True)
-    return {"range": w.key, "rows": [{**g, "agents": dict(g["agents"])} for g in rows]}
+    return [{**g, "agents": dict(g["agents"])} for g in rows], when
+
+
+#: Finding types that say an answer or an outcome was wrong, rather than unsafe.
+_QUALITY_FINDING_OWNERS = ("grounding",)
+_QUALITY_FINDING_TYPES = ("drift", "missed_escalation", "false_resolution", "incomplete_handoff")
+
+
+@router.get("/quality")
+def quality(
+    agent: str,
+    window: str = Query("7d", alias="range"),
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """Is this agent giving right answers: every quality signal already recorded for it.
+
+    * ``wrong_answers`` — fires of the rules that catch a wrong result (grounding,
+      answerability abstentions, reply format, unverified completion, made-up tools)
+    * ``failed_steps`` — tool and model calls that errored
+    * ``evals`` — scored runs of its production traffic, and its reliability targets
+    * ``feedback`` — what people said about its decisions
+    * ``handoffs`` — conversations that should have reached a person
+    * ``findings`` — open quality issues
+
+    ``checked`` says whether any rule looks for wrong results at all, so "0" can be
+    told apart from "nothing is looking".
+    """
+    from agentfox.capabilities.containment.escalation import escalation_report
+    from agentfox.capabilities.evaluation.drift import evaluate_slos
+    from agentfox.core.models import EvalRun, Finding, GuardrailFeedback
+    from agentfox.platform.ledger.finding_types import all_types
+
+    record = session.scalar(select(Agent).where(Agent.slug == agent))
+    if record is None:
+        raise HTTPException(404, f"unknown agent '{agent}'")
+    w = Window(window)
+    traces = {t.id: t for t in _traces(session, w.start, w.end, agent, None)}
+
+    # --- wrong answers -----------------------------------------------------------
+    rules: dict[str, dict[str, Any]] = {}
+    wrong_series = [0] * w.count
+    wrong_traces: set[str] = set()
+    abstained = 0
+    for d in _decisions(session, w, agent, None):
+        fired_quality = [
+            f
+            for f in d.rules_fired_json or []
+            if isinstance(f, dict)
+            and f.get("rule_id")
+            and rule_category(f["rule_id"], f) == "quality"
+        ]
+        if d.verdict == "abstain":
+            abstained += 1
+        if not fired_quality:
+            continue
+        i = w.index(d.created_at)
+        if i is not None:
+            wrong_series[i] += 1
+        if d.trace_id:
+            wrong_traces.add(d.trace_id)
+        at = _aware(d.created_at).isoformat()
+        for fired in fired_quality:
+            r = rules.setdefault(
+                fired["rule_id"],
+                {
+                    "rule_id": fired["rule_id"],
+                    "fires": 0,
+                    "enforced": 0,
+                    "watched": 0,
+                    "last_fired": None,
+                    "sample_trace_id": d.trace_id,
+                    "series": [0] * w.count,
+                },
+            )
+            r["fires"] += 1
+            watched = (fired.get("mode") or d.mode) == "observe"
+            r["watched" if watched else "enforced"] += 1
+            if i is not None:
+                r["series"][i] += 1
+            if not r["last_fired"] or at > r["last_fired"]:
+                r["last_fired"], r["sample_trace_id"] = at, d.trace_id
+
+    # --- failed steps and requests -----------------------------------------------
+    error_rows, error_times = _error_rows(session, traces)
+    error_series = [0] * w.count
+    for at in error_times:
+        if (i := w.index(at)) is not None:
+            error_series[i] += 1
+    request_series = [0] * w.count
+    for t in traces.values():
+        if (i := w.index(t.started_at)) is not None:
+            request_series[i] += 1
+    failed_traces = _error_trace_ids(session, set(traces)) | {
+        t.id for t in traces.values() if t.status == "error"
+    }
+
+    # --- evaluations -------------------------------------------------------------
+    runs = [
+        r
+        for r in session.scalars(select(EvalRun).order_by(EvalRun.created_at.desc()).limit(200))
+        if (r.target_json or {}).get("agent") == agent
+    ][:10]
+
+    def scorer_rates(run: EvalRun) -> dict[str, float | None]:
+        scorers = (run.summary_json or {}).get("scorers") or {}
+        return {k: v.get("pass_rate") for k, v in scorers.items() if isinstance(v, dict)}
+
+    def mean(values: list[float | None]) -> float | None:
+        known = [v for v in values if v is not None]
+        return round(sum(known) / len(known), 4) if known else None
+
+    evals = [
+        {
+            "id": r.id,
+            "mode": r.mode,
+            "status": r.status,
+            "created_at": _aware(r.created_at).isoformat() if r.created_at else None,
+            "cases": (r.summary_json or {}).get("cases"),
+            "pass_rate": mean(list(scorer_rates(r).values())),
+            "scorers": scorer_rates(r),
+        }
+        for r in runs
+    ]
+
+    # --- feedback ----------------------------------------------------------------
+    labels: Counter = Counter()
+    recent_feedback = []
+    for row in session.scalars(
+        select(GuardrailFeedback)
+        .where(GuardrailFeedback.agent_id == record.id, GuardrailFeedback.created_at >= w.start)
+        .order_by(GuardrailFeedback.created_at.desc())
+    ):
+        labels[row.label] += 1
+        if len(recent_feedback) < 5:
+            recent_feedback.append(
+                {
+                    "label": row.label,
+                    "detector_key": row.detector_key,
+                    "trace_id": row.trace_id,
+                    "note": row.note,
+                    "actor": row.actor,
+                    "at": _aware(row.created_at).isoformat(),
+                }
+            )
+
+    # --- open quality findings ---------------------------------------------------
+    quality_types = {t.type for t in all_types() if t.owner in _QUALITY_FINDING_OWNERS} | set(
+        _QUALITY_FINDING_TYPES
+    )
+    findings = [
+        {"id": f.id, "type": f.type, "severity": f.severity, "title": f.title}
+        for f in session.scalars(
+            select(Finding)
+            .where(
+                Finding.subject_id.in_([record.id, agent]),
+                Finding.status == "open",
+                Finding.type.in_(quality_types),
+            )
+            .order_by(Finding.created_at.desc())
+        )
+    ]
+
+    hours = int(w.length.total_seconds() // 3600)
+    escalation = escalation_report(session, since_hours=hours, agent_slug=agent)
+    total = len(traces)
+    return {
+        "agent": agent,
+        "range": w.key,
+        "bucket_seconds": int(w.step.total_seconds()),
+        "buckets": w.bucket_starts(),
+        "checked": checked_categories(session)["quality"],
+        "requests": total,
+        "trend": {
+            "requests": request_series,
+            "wrong_answers": wrong_series,
+            "failed_steps": error_series,
+        },
+        "wrong_answers": {
+            "total": sum(r["fires"] for r in rules.values()),
+            "requests": len(wrong_traces),
+            "rate": round(len(wrong_traces) / total, 4) if total else None,
+            "abstained": abstained,
+            "rules": sorted(rules.values(), key=lambda r: r["fires"], reverse=True),
+        },
+        "failed_steps": {
+            "total": len(error_times),
+            "requests": len(failed_traces),
+            "rate": round(len(failed_traces) / total, 4) if total else None,
+            "rows": error_rows,
+        },
+        "evals": {"runs": evals, "slos": evaluate_slos(session, agent)},
+        "feedback": {
+            "labels": {
+                k: labels.get(k, 0) for k in ("false_positive", "true_positive", "false_negative")
+            },
+            "recent": recent_feedback,
+        },
+        "handoffs": {
+            "handoffs": escalation["handoffs"],
+            "qualified": escalation["qualified_for_escalation"],
+            "missed": escalation["missed_escalations"],
+            "false_resolutions": escalation["false_resolutions"],
+        },
+        "findings": findings,
+    }

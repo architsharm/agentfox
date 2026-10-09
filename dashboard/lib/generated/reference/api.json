@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 255,
+ "count": 256,
  "routes": [
   {
    "method": "GET",
@@ -6613,6 +6613,41 @@
      "in": "query",
      "required": false,
      "type": null
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/metrics/quality",
+   "section": "metrics",
+   "audience": "operator",
+   "summary": "Is this agent giving right answers: every quality signal already recorded for it.",
+   "description": "Is this agent giving right answers: every quality signal already recorded for it.\n\n* ``wrong_answers`` — fires of the rules that catch a wrong result (grounding,\n  answerability abstentions, reply format, unverified completion, made-up tools)\n* ``failed_steps`` — tool and model calls that errored\n* ``evals`` — scored runs of its production traffic, and its reliability targets\n* ``feedback`` — what people said about its decisions\n* ``handoffs`` — conversations that should have reached a person\n* ``findings`` — open quality issues\n\n``checked`` says whether any rule looks for wrong results at all, so \"0\" can be\ntold apart from \"nothing is looking\".",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "range",
+     "in": "query",
+     "required": false,
+     "type": "string"
     },
     {
      "name": "authorization",

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/product/proxy";
+import { proxyRedirectWithHandler, sameOriginPath } from "@/lib/product/proxy";
 
 /**
  * Scores already-recorded production traces for an agent with the same scorers an
@@ -13,12 +13,14 @@ export async function POST(req: NextRequest) {
   const agent = ((form.get("agent") as string) || "").trim();
   const since_days = Number(form.get("since_days")) || 7;
   const rate = Number(form.get("rate")) || 1;
+  // The agent page's Quality tab scores from where the reader is looking.
+  const back = sameOriginPath(form.get("return_to") as string | null, "/app/test?tab=reliability");
 
   return proxyRedirectWithHandler(
     req,
     "POST",
     "/api/eval/online",
-    "/app/test?tab=reliability",
+    back,
     { agent, since_days, rate },
     (res, body) => {
       if (!res.ok) return { error: body.detail || res.statusText };
