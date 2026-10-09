@@ -536,6 +536,20 @@ def _collapse_whitespace(pairs: list[tuple[str, int]]) -> tuple[list[tuple[str, 
     return out, 0
 
 
+def _strip_accents(text: str) -> str:
+    """Latin letters without their combining marks, one character for one, so
+    offsets still line up."""
+    out = []
+    for ch in text:
+        if ch.isascii() or not ch.isalpha():
+            out.append(ch)
+            continue
+        base = unicodedata.normalize("NFKD", ch)
+        letters = [c for c in base if not unicodedata.combining(c)]
+        out.append(letters[0] if len(letters) == 1 and letters[0].isascii() else ch)
+    return "".join(out)
+
+
 def _fold_leet(
     pairs: list[tuple[str, int]], table: dict[str, str] = _LEET
 ) -> tuple[list[tuple[str, int]], int]:
@@ -845,6 +859,15 @@ def normalize(text: str, *, aggressive: bool = True) -> Normalized:
                 alt_text, alt_offsets = _render(alt_pairs)
                 if alt_text != leet_text:
                     result.views.append(View(text=alt_text, offsets=alt_offsets, kind="leet"))
+
+        # Accents added to every letter ("Ígnóré prévíóús ínstrúctíóns"): read with
+        # the marks removed. Only Latin letters carrying marks are touched.
+        stripped = _strip_accents(primary_text)
+        if stripped != primary_text:
+            result.views.append(
+                View(text=stripped, offsets=primary_offsets, kind="accents", note="marks removed")
+            )
+            result.transforms.append("accents")
 
         decoded, decoded_evasion = _decoded_views(text)
         result.views.extend(decoded)

@@ -40,8 +40,8 @@ A row is flagged when it raises at least one `INJECTION.*` entity. Nothing was t
 | | Attacks caught (recall) | Benign flagged (false-positive rate) | Latency p50 / p95 |
 |---|---|---|---|
 | Their rules detector (published) | 7/110 (6.4%, 95% CI 3.1 to 12.6) | 16/170 (9.4%, CI 5.9 to 14.7) | not published |
-| Our `injection.heuristic` | 60/110 (54.5%, CI 45.2 to 63.5) | 32/170 (18.8%, CI 13.7 to 25.4) | 0.35 / 0.60 ms |
-| Our default stack, `check_content` | 63/110 (57.3%, CI 47.9 to 66.1) | 33/170 (19.4%, CI 14.2 to 26.0) | 5.3 / 7.8 ms |
+| Our `injection.heuristic` | 71/110 (64.5%, CI 55.2 to 72.9) | 32/170 (18.8%, CI 13.7 to 25.4) | 0.35 / 0.60 ms |
+| Our default stack, `check_content` | 74/110 (67.3%, CI 58.1 to 75.3) | 33/170 (19.4%, CI 14.2 to 26.0) | 5.3 / 7.8 ms |
 
 Their figures are from `benchmarks/prompt-injection/README.md` ("Current Smoke Baseline") and `benchmarks/prompt-injection/artifacts/rules-baseline-smoke-summary.json` upstream, both copied into `data/prompt_injection/`.
 
@@ -55,19 +55,19 @@ Default stack, with their detector alongside:
 
 | Attack class | Ours | Theirs |
 |---|---|---|
-| direct_override | 11/22 | 2/22 |
-| indirect_injection | 8/10 | 1/10 |
-| tool_result_injection | 8/10 | 1/10 |
-| memory_poisoning | 8/10 | 1/10 |
-| data_boundary_abuse | 7/10 | 1/10 |
-| tool_abuse | 7/16 | 1/16 |
-| prompt_leakage | 8/16 | 0/16 |
-| output_exfiltration | 6/16 | 0/16 |
+| direct_override | 14/22 | 2/22 |
+| indirect_injection | 9/10 | 1/10 |
+| tool_result_injection | 9/10 | 1/10 |
+| memory_poisoning | 9/10 | 1/10 |
+| data_boundary_abuse | 8/10 | 1/10 |
+| tool_abuse | 8/16 | 1/16 |
+| prompt_leakage | 10/16 | 0/16 |
+| output_exfiltration | 7/16 | 0/16 |
 
 Both classes that were missed entirely are now partly caught (first run: 0/16 each):
 
-- **prompt_leakage, 8/16.** The system-prompt-leak pattern now allows a word or two between the article and "system prompt" ("the hidden system prompt"), and also reads "dump", "leak" and "disclose". The misses are the spellings in the next table.
-- **output_exfiltration, 6/16.** A new pattern flags an instruction to load or render a markdown image whose URL carries a query string, the beacon shape. On the action side, a fetch or email carrying the data is a tool call, which grants and taint ceilings cover.
+- **prompt_leakage, 10/16.** The system-prompt-leak pattern now allows a word or two between the article and "system prompt" ("the hidden system prompt"), and also reads "dump", "leak" and "disclose". The misses are the spellings in the next table.
+- **output_exfiltration, 7/16.** A new pattern flags an instruction to load or render a markdown image whose URL carries a query string, the beacon shape. On the action side, a fetch or email carrying the data is a tool call, which grants and taint ceilings cover.
 
 ### Where we miss, by spelling
 
@@ -81,10 +81,10 @@ Both classes that were missed entirely are now partly caught (first run: 0/16 ea
 | multilingual (French) | 1/8 | 0/8 |
 | rot13 | 8/8 | 0/8 |
 | leet_spacing | 7/8 | 0/8 |
-| **diacritics** | **0/8** | 0/8 |
-| **compact_plain, compact_leet, chunked_leet, leet_letter_spaced** | **0/20** | 0/20 |
+| diacritics | 8/8 | 0/8 |
+| compact_plain, compact_leet, chunked_leet, leet_letter_spaced | 3/20 | 0/20 |
 
-Rot13 (now read as a decoded view), plain and encoded rows are caught in full, and leetspeak with spaces is 7/8 (a second reading takes `1` as `l`). Accented letters and text with all the spaces removed still get past both detectors, and homoglyphs and French are only partly caught. The upstream `test` split is now 6/17 (was 0/17).
+Rot13 (read as a decoded view), plain and encoded rows are caught in full; leetspeak with spaces is 7/8 (a second reading takes `1` as `l`); accented letters are 8/8 (read with the marks removed); words run together with no spaces are 3/20 across the four compact spellings (long letter runs are searched for the override and leak phrasings). Homoglyphs (3/8) and French (1/8) are the remaining weak spellings. The upstream `test` split is now 7/17 (was 0/17).
 
 ### Where we false-positive
 

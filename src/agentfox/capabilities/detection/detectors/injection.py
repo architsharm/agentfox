@@ -586,6 +586,13 @@ _PATTERNS: list[tuple[re.Pattern[str], str, float, frozenset[str] | None]] = [
     for pattern, entity, score in _LEXICAL + _EXTRA_LEXICAL
 ]
 
+#: A token of 24+ letters and digits: long enough to be a phrase written without
+#: spaces, longer than any ordinary word.
+_LONG_TOKEN = re.compile(r"[A-Za-z0-9@$]{24,}")
+_LEET_FOLD = str.maketrans(
+    {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
+)
+
 # --- 2. Structural signals -------------------------------------------------
 _ROLE_DELIMITER = re.compile(r"(?:^|\n)\s*(?:###\s*)?(?:system|assistant|user)\s*:\s*", re.I | re.M)
 _CHATML = re.compile(r"<\|(?:im_start|im_end|system|endoftext)\|>", re.I)
@@ -742,6 +749,32 @@ class InjectionHeuristicDetector(BaseDetector):
                     )
                 )
                 break
+
+        # Words run together with no spaces at all ("ignoreallpreviousinstructions",
+        # "1gn0r3pr3v10u5..."): one long token of letters, searched as one string for
+        # the overrides, as a letter-spaced run is. Only tokens long enough to hold a
+        # whole phrase are read this way, so ordinary words never are.
+        for token in _LONG_TOKEN.finditer(content):
+            raw = token.group(0)
+            for compact in {raw.lower(), raw.lower().translate(_LEET_FOLD)}:
+                compact = re.sub(r"[^a-z]", "", compact)
+                for pattern, entity in _COMPACT_OVERRIDE:
+                    key = (entity, token.start(), token.end())
+                    if key in seen or pattern.search(compact) is None:
+                        continue
+                    seen.add(key)
+                    out.append(
+                        Detection(
+                            entity_type=entity,
+                            score=min(1.0, 0.85 + boost + 0.1),
+                            start=token.start(),
+                            end=token.end(),
+                            sample=snippet(content, token.start(), token.end()),
+                            owasp_id="LLM07" if "SYSTEM_PROMPT_LEAK" in entity else OWASP,
+                            atlas_id=ATLAS,
+                            detail={"signal": "lexical", "view": "run_together", "compact": True},
+                        )
+                    )
 
         # Hidden text addressed to the model and telling it to do something. Neither
         # half is unusual alone ("<!-- nav -->", "<!-- assistant editor: Jane -->"); a
