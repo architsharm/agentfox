@@ -7,6 +7,7 @@ import { Card, Header, Tabs, href, when } from "@/components/kit";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
 import { RANGE_DAYS, filtersFrom, keep, metricsQs, observeTabs, verdictsFor } from "@/lib/product/observe";
+import { ensureRange } from "@/lib/product/range";
 import { ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Runs");
@@ -24,6 +25,7 @@ const OUTCOME_CHIPS = [
 
 export default async function Runs({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
+  await ensureRange("/app/traces", sp);
   const f = filtersFrom(sp);
   const errorsOnly = sp.errors === "1" || sp.outcome === "errors";
 

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { api, apiErrorProps, safeApi } from "@/lib/product/api";
+import { activeRange } from "@/lib/product/range";
+import { RANGE_WORDS } from "@/lib/product/vocab";
 import { ApiDown } from "@/components/ui";
 import { Card, Dot, Empty, Header, Pill, StackBar, Tabs, ago, href, num, pctOf } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
@@ -24,8 +26,9 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
       </>
     );
   }
+  const { range } = await activeRange();
   const [usage, findings] = await Promise.all([
-    safeApi<any>("/api/metrics/breakdown?dim=agent&range=7d", { rows: [] }),
+    safeApi<any>(`/api/metrics/breakdown?dim=agent&range=${range}`, { rows: [] }),
     safeApi<any>("/api/findings?status=open", { findings: [] }),
   ]);
 
@@ -88,7 +91,7 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
                   <th>Agent</th>
                   <th>Owner</th>
                   <th className="tight">Risk</th>
-                  <th style={{ width: "18%" }}>Last 7 days</th>
+                  <th style={{ width: "18%" }}>Last {RANGE_WORDS[range]}</th>
                   <th className="num">Requests</th>
                   <th className="num">Stopped</th>
                   <th className="num">Issues</th>

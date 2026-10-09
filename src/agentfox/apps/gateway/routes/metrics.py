@@ -11,6 +11,8 @@ Four shapes, all filtered the same way (`range`, `agent`, `environment`):
 * ``/breakdown`` — the same counts split by agent, environment, model, tool or surface
 * ``/rules``     — per rule: how often it fired, enforced vs only watching, trend
 * ``/errors``    — failed steps (tool and model errors), grouped
+* ``/activity``  — when the last request was, and the smallest range that shows it,
+  so a view with no range chosen opens on data instead of an empty week
 
 Outcomes use the dashboard's four words, not the six verdicts: ``allowed``,
 ``masked`` (redact/mask/tokenize), ``held`` (escalate) and ``blocked``.
@@ -23,7 +25,7 @@ from collections import Counter, defaultdict
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentfox.apps.gateway.deps import current_user, db
@@ -166,6 +168,34 @@ def _percentile(values: list[float], p: float) -> float:
     values = sorted(values)
     k = max(0, min(len(values) - 1, round(p * (len(values) - 1))))
     return round(values[k], 2)
+
+
+@router.get("/activity")
+def activity(
+    agent: str | None = None,
+    environment: str | None = None,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    q = select(func.max(Trace.started_at))
+    if agent:
+        q = q.where(Trace.agent_slug == agent)
+    if environment:
+        q = q.where(Trace.environment == environment)
+    else:
+        q = q.where(Trace.environment != PLAYGROUND)
+    last = session.scalar(q)
+    if last is None:
+        return {"last_request_at": None, "range": "7d"}
+    age = dt.datetime.now(dt.UTC) - _aware(last)
+    # The smallest range from the default week up that contains it; past the
+    # longest, the longest. Never narrower than a week: recent traffic still
+    # reads better against its week than against one day.
+    fits = [k for k, (length, _step) in RANGES.items() if k != "24h" and age <= length]
+    return {
+        "last_request_at": _aware(last).isoformat(),
+        "range": fits[0] if fits else list(RANGES)[-1],
+    }
 
 
 @router.get("/summary")

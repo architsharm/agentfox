@@ -27,6 +27,7 @@ import { WorkspaceCode } from "@/components/product/policies/WorkspaceCode";
 import { LegacyJudgmentTab, LegacyPacksTab, LegacyTuningTab } from "@/components/product/policies/legacy";
 import { metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
+import { ensureRange } from "@/lib/product/range";
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Policies", "What your agents may do, and how well each rule is working.");
@@ -59,6 +60,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
   const legacy = LEGACY[sp.tab || ""];
   const tab = legacy?.tab || (TABS.some((t) => t.key === sp.tab) ? sp.tab! : "rules");
   const sec = legacy?.sec || sp.sec;
+  if (tab === "rules" || tab === "performance") await ensureRange("/app/policies", sp);
 
   return (
     <>
@@ -110,7 +112,8 @@ async function RulesTab({ sp }: { sp: SP }) {
       <Card title="Packs" flush>
         <table className="k-table">
           <tbody>
-            {packs.map((p) => (
+            {/* A pack with no rules (a framework profile with nothing in it yet) decides nothing. */}
+            {packs.filter((p) => p.rules.length > 0).map((p) => (
               <tr key={p.key}>
                 <td>
                   <Link className="k-name" href={`/app/policies/${encodeURIComponent(p.key)}`}>{p.name}</Link>

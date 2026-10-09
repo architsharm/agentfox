@@ -21,6 +21,7 @@ import {
 } from "@/components/kit";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { filtersFrom, metricsQs, observeTabs, runsHref, type Filters } from "@/lib/product/observe";
+import { ensureRange } from "@/lib/product/range";
 import { CATEGORIES, categoryLabel, detectorName, dimLabel, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Observe");
@@ -30,6 +31,7 @@ type SP = Record<string, string | undefined>;
 
 export default async function Observe({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
+  await ensureRange("/app/observe", sp);
   const f = filtersFrom(sp);
   const tab = ["breaks", "security", "review", "cost"].includes(sp.tab || "") ? sp.tab! : "overview";
 

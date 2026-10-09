@@ -17,7 +17,9 @@ export function metricsQs(f: Filters, extra: Record<string, string> = {}): strin
 
 /** Filters carried from one view to the next, so switching tabs keeps them. */
 export function keep(f: Filters): Record<string, string | undefined> {
-  return { range: f.range === "7d" ? undefined : f.range, agent: f.agent, env: f.env };
+  // Always explicit: a view with no range picks one from the data (`lib/product/range.ts`),
+  // so dropping "7d" here would send a reader who chose a week back to the data's window.
+  return { range: f.range, agent: f.agent, env: f.env };
 }
 
 export const OBSERVE_TABS = [

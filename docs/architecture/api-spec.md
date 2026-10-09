@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-239 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+240 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -132,6 +132,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/memory` | List Entries |
 | `POST` | `/api/memory/{entry_id}/revoke` | Pull an entry immediately — the concrete fix for 'no way to find and |
 | `POST` | `/api/memory/{entry_id}/verify` | A human vouches for an entry — it stops decaying on the unverified TTL. |
+| `GET` | `/api/metrics/activity` | Activity |
 | `GET` | `/api/metrics/breakdown` | Breakdown |
 | `GET` | `/api/metrics/errors` | Steps that failed — a tool that threw, a model call that errored — grouped. |
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |

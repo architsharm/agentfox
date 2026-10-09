@@ -9,6 +9,7 @@ import { RuleTests } from "@/components/product/policies/RuleTests";
 import { RuleTuner } from "@/components/product/policies/RuleTuner";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode } from "@/lib/product/rules";
+import { ensureRange } from "@/lib/product/range";
 import { categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Rule");
@@ -29,6 +30,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
   const ruleId = decodeURIComponent(raw);
   const sp = await searchParams;
   const tab = TABS.some((t) => t.key === sp.tab) ? sp.tab! : "overview";
+  if (tab === "overview" || tab === "examples") await ensureRange(`/app/policies/rules/${encodeURIComponent(ruleId)}`, sp);
   const range = rangeOf(sp.range);
 
   const custom = ruleId.startsWith("custom.");

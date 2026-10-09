@@ -44,7 +44,7 @@ export function FilterBar({
               type="button"
               className={current === r.key ? "active" : ""}
               aria-pressed={current === r.key}
-              onClick={() => set("range", r.key === defaultRange ? "" : r.key)}
+              onClick={() => set("range", r.key)}
             >
               {r.label}
             </button>
