@@ -548,7 +548,9 @@ class Enforcer(
         # a well-formed string, and every argument check would pass it.
         action = (
             summarise_actions(
-                analyse_arguments(arguments or {}, dialect=self.settings.sql_dialect),
+                analyse_arguments(
+                    arguments or {}, dialect=self.settings.sql_dialect, tool=call.tool_key
+                ),
                 call.environment,
             )
             if arguments
