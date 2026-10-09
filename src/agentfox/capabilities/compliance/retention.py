@@ -32,6 +32,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from agentfox.core.config import get_settings
 from agentfox.core.models import (
     Agent,
     ConversationTurn,
@@ -494,6 +495,10 @@ def overview(session: Session) -> dict[str, Any]:
     next_run = None
     if schedule is not None and schedule.enabled:
         next_run = _iso(schedule.next_due_at) or "due"
+    elif schedule is None and get_settings().scheduler_enabled:
+        # The default schedule row is created by the first cron pass for this tenant,
+        # which then runs it at once.
+        next_run = "due"
     return {
         "classes": classes,
         "last_run": run_json(last),
