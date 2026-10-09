@@ -6,6 +6,7 @@ import datetime as dt
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -919,23 +920,40 @@ def list_approvals(
     query = select(ApprovalRequest).order_by(ApprovalRequest.requested_at.desc())
     if status:
         query = query.where(ApprovalRequest.status == status)
+    rows = list(session.scalars(query))
+    resolvers = _resolver_emails(session, rows)
+    return {"approvals": [_approval_json(a, resolvers) for a in rows]}
+
+
+def _resolver_emails(session: Session, rows: list[ApprovalRequest]) -> dict[str, str]:
+    ids = {a.resolver_user_id for a in rows if a.resolver_user_id}
+    if not ids:
+        return {}
+    return {u.id: u.email or u.id for u in session.scalars(select(User).where(User.id.in_(ids)))}
+
+
+def _approval_json(a: ApprovalRequest, resolvers: dict[str, str]) -> dict[str, Any]:
+    """One approval as the Approvals pages show it, including who decided and when.
+
+    `resolver` is null when nobody did: an approval that expired unanswered, or one
+    still pending. `resolved_at` is when its status last changed (approved, denied,
+    expired or used), null while pending.
+    """
     return {
-        "approvals": [
-            {
-                "id": a.id,
-                "agent_id": a.agent_id,
-                "tool": a.tool_key,
-                "arguments": a.arguments_json,
-                "reason": a.reason,
-                "status": a.status,
-                "requested_at": _iso(a.requested_at),
-                "expires_at": _iso(a.expires_at),
-                "trace_id": a.trace_id,
-                "decision_id": a.decision_id,
-                "timeout_action": a.timeout_action,
-            }
-            for a in session.scalars(query)
-        ]
+        "id": a.id,
+        "agent_id": a.agent_id,
+        "tool": a.tool_key,
+        "arguments": a.arguments_json,
+        "reason": a.reason,
+        "status": a.status,
+        "requested_at": _iso(a.requested_at),
+        "expires_at": _iso(a.expires_at),
+        "resolved_at": None if a.status == "pending" else _iso(a.updated_at),
+        "resolver": resolvers.get(a.resolver_user_id or "") or a.resolver_user_id,
+        "rationale": a.resolution_rationale or None,
+        "trace_id": a.trace_id,
+        "decision_id": a.decision_id,
+        "timeout_action": a.timeout_action,
     }
 
 
@@ -963,17 +981,11 @@ def get_approval(
     ):
         # Not "forbidden": another agent's approval is not this agent's to know of.
         raise HTTPException(404, "unknown approval")
-    return {
-        "id": approval.id,
-        "status": approval.status,
-        "reason": approval.reason,
-        "tool": approval.tool_key,
-        "arguments": approval.arguments_json,
-        "rationale": approval.resolution_rationale,
-        "agent_id": approval.agent_id,
-        "expires_at": _iso(approval.expires_at),
-        "trace_id": approval.trace_id,
-    }
+    body = _approval_json(approval, _resolver_emails(session, [approval]))
+    if isinstance(caller, Identity):
+        # The agent needs the outcome, not which operator decided it.
+        body["resolver"] = None
+    return body
 
 
 class ApprovalDecision(BaseModel):
@@ -1013,6 +1025,15 @@ def _resolve(
         raise HTTPException(409, str(exc)) from exc
     if approval is None:
         raise HTTPException(404, "unknown approval")
+    if approval.status == "expired":
+        # It ran out while the person was deciding. Recording it as their approval (a
+        # 200 the dashboard showed as "Request approved") would be false, and the
+        # expiry is not their act for the chain either. A response rather than a raise,
+        # so the change to "expired" is committed.
+        return JSONResponse(  # type: ignore[return-value]
+            status_code=409,
+            content={"detail": "This approval expired before it was decided."},
+        )
     chain.append(
         session,
         f"approval.{approval.status}",

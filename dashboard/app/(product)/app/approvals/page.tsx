@@ -6,6 +6,7 @@ import { Card, Empty, Header, Pill, Tabs, ago, href } from "@/components/kit";
 import { Countdown } from "@/components/product/Countdown";
 import { EscalationTab } from "@/components/product/approvals/escalation";
 import { TRUST } from "@/lib/product/vocab";
+import { STATUS_TONE, actionLabel, actionSummary, decidedBy, firstSentence, isMessage } from "@/lib/product/approvals";
 
 export const metadata: Metadata = appPageMetadata("Approvals", "Actions waiting for a person.");
 export const dynamic = "force-dynamic";
@@ -13,7 +14,6 @@ export const dynamic = "force-dynamic";
 type SP = Record<string, string | undefined>;
 
 const HISTORY = ["approved", "denied", "expired", "used"];
-const STATUS_TONE: Record<string, "ok" | "bad" | "warn" | "neutral"> = { approved: "ok", used: "ok", denied: "bad", expired: "warn" };
 
 function source(s?: string) {
   return TRUST.find((t) => t.key === s)?.label.replace(/^\+ /, "") || s || "";
@@ -64,22 +64,35 @@ async function Pending({ approvals }: { approvals: any[] }) {
             <div className="k-card-body">
               <div className="k-approval-main">
                 <div>
-                  <strong>{agent?.name || "An agent"}</strong> wants to run <span className="k-mono">{a.tool}</span>
+                  <strong>{agent?.name || "An agent"}</strong>{" "}
+                  {isMessage(a) ? (
+                    <>held: {actionLabel(a).toLowerCase()}</>
+                  ) : (
+                    <>
+                      wants to run <span className="k-mono">{a.tool}</span>
+                    </>
+                  )}
                 </div>
-                <div className="k-pills" style={{ flexWrap: "wrap", gap: 6 }}>
-                  {Object.entries(a.arguments || {}).map(([k, v]) => {
-                    const from = origin[k];
-                    const risky = from && from !== "user" && from !== "none";
-                    return (
-                      <Pill key={k} tone={risky ? "held" : "neutral"} title={from ? `From ${source(from)}` : undefined}>
-                        {k}: {typeof v === "string" ? v : JSON.stringify(v)}
-                        {risky ? ` · from ${source(from).toLowerCase()}` : ""}
-                      </Pill>
-                    );
-                  })}
-                </div>
+                {isMessage(a) ? (
+                  <blockquote className="k-quote">{actionSummary(a)}</blockquote>
+                ) : (
+                  <div className="k-pills" style={{ flexWrap: "wrap", gap: 6 }}>
+                    {Object.entries(a.arguments || {}).map(([k, v]) => {
+                      const from = origin[k];
+                      const risky = from && from !== "user" && from !== "none";
+                      return (
+                        <Pill key={k} tone={risky ? "held" : "neutral"} title={from ? `From ${source(from)}` : undefined}>
+                          {k}: {typeof v === "string" ? v : JSON.stringify(v)}
+                          {risky ? ` · from ${source(from).toLowerCase()}` : ""}
+                        </Pill>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="k-muted" style={{ fontSize: "var(--t-micro)" }}>
-                  {String(a.reason || "").split(/(?<=\.)\s/)[0]} · expires <Countdown at={a.expires_at} /> · <span className="k-mono" title="The id the agent quoted to the user">{a.id}</span>
+                  {firstSentence(a.reason)} · expires <Countdown at={a.expires_at} /> · <span className="k-mono" title="The id the agent quoted to the user">{a.id}</span>
+                  {" · "}
+                  <Link href={`/app/approvals/${a.id}`}>Details</Link>
                   {a.trace_id && (
                     <>
                       {" · "}
@@ -134,31 +147,29 @@ async function History({ status }: { status?: string }) {
             <thead>
               <tr>
                 <th className="tight">When</th>
-                <th>Agent</th>
+                <th className="tight">Agent</th>
                 <th>Action</th>
                 <th className="tight">Outcome</th>
+                <th className="tight">Decided by</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((a) => (
                 <tr key={a.id}>
                   <td className="tight muted">{ago(a.requested_at)}</td>
-                  <td>{name[a.agent_id]?.name || "—"}</td>
+                  <td className="tight">{name[a.agent_id]?.name || "—"}</td>
                   <td>
-                    {a.trace_id ? <Link className="k-name" href={`/app/traces/${a.trace_id}`}>{a.tool}</Link> : <span className="k-name">{a.tool}</span>}
-                    <span className="sub">
-                      {Object.entries(a.arguments || {})
-                        .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
-                        .join(" · ")}
-                    </span>
+                    <Link className="k-name" href={`/app/approvals/${a.id}`}>{actionLabel(a)}</Link>
+                    <span className="sub">{actionSummary(a)}</span>
                   </td>
                   <td className="tight"><Pill tone={STATUS_TONE[a.status] || "neutral"}>{a.status}</Pill></td>
+                  <td className="tight muted">{decidedBy(a) || "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <Empty>No decisions yet.</Empty>
+          <Empty>{status && HISTORY.includes(status) ? `Nothing ${status} yet.` : "No decisions yet."}</Empty>
         )}
       </Card>
     </>

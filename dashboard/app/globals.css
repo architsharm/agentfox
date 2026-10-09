@@ -3161,6 +3161,8 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .k-meta div { display: flex; gap: 6px; align-items: baseline; font-size: var(--t-small); }
 .k-meta dt { color: var(--muted); font-size: var(--t-micro); }
 .k-meta dd { margin: 0; }
+/* A held message, shown as what was said. */
+.k-quote { margin: 0; padding: 6px 10px; border-left: 3px solid var(--border); color: var(--text); font-size: var(--t-small); white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* A labelled row in a settings-style form. */
 .k-form { display: flex; flex-direction: column; gap: 12px; }
