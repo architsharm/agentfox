@@ -17,10 +17,11 @@ export default function Page() {
       <p className="docs-kicker">Web app</p>
       <h1>Start here and connect</h1>
       <p className="docs-lede">
-        Start here has three tabs: a checklist computed from live data, Connect for
-        repositories and hosted APIs, and API tokens for the CLI, SDK and scripts.
+        Get started walks a new workspace from an empty dashboard to an enforcing one, all in
+        the browser. Settings → Connections lists every way in, and Settings → API keys holds
+        the keys for agents, the CLI, the SDK and scripts.
       </p>
-      <InTheApp path="/app/start">Start here</InTheApp>
+      <InTheApp path="/app/start">Get started</InTheApp>
 
       <h2>When to use this</h2>
       <ul>
@@ -29,12 +30,13 @@ export default function Page() {
         <li>To get a token for a CI job or a script that calls the gateway.</li>
       </ul>
 
-      <h2>Checklist</h2>
+      <h2>Get started</h2>
       <p>
-        <code>/app/start</code>. Every step is computed from the database on each load by{" "}
-        <code>GET /api/onboarding</code>; nothing is stored as &quot;done&quot;, so the list
-        cannot disagree with the system. The first unfinished step is marked{" "}
-        <strong>next</strong> and also appears at the foot of Overview.
+        <code>/app/start</code>. Six steps, each finished in the browser, with the same step
+        from the command line underneath. Every step is computed from the database on each
+        load by <code>GET /api/onboarding</code>; nothing is stored as &quot;done&quot;, so the
+        list cannot disagree with the system. The first unfinished step opens marked{" "}
+        <strong>Next</strong>, and also appears at the top of Overview.
       </p>
       <table>
         <thead>
@@ -46,69 +48,69 @@ export default function Page() {
         </thead>
         <tbody>
           <tr>
-            <td>Connect a repo, point at a hosted API, or instrument it</td>
-            <td>A GitHub account is connected, or a hosted-API scan has run.</td>
-            <td>A <strong>Connect →</strong> button (Manage connection once done).</td>
-          </tr>
-          <tr>
-            <td>Govern your agent</td>
-            <td>At least one trace has been recorded.</td>
-            <td><code>POST /v1/guard/input</code>, or <code>agentfox.auto()</code> in Python.</td>
-          </tr>
-          <tr>
-            <td>Run it yourself, if you want it in your own infrastructure</td>
+            <td>Register your agent</td>
             <td>At least one agent exists.</td>
-            <td><code>pip install agentfox &amp;&amp; agentfox init</code></td>
+            <td>An id and name form, and a picker for which agent the later steps are about.</td>
           </tr>
           <tr>
-            <td>Review what it found</td>
-            <td>At least one decision has been recorded.</td>
-            <td><code>agentfox findings</code></td>
+            <td>Create an API key</td>
+            <td>A live API key exists, other than a GitHub sign-in session.</td>
+            <td>A button that mints a key and shows it once, with a copy button and the export line.</td>
+          </tr>
+          <tr>
+            <td>Send the first request</td>
+            <td>At least one trace has been recorded.</td>
+            <td>
+              Snippets for HTTP, Python, TypeScript, an OpenAI-compatible client, Claude Code,
+              Codex and OpenTelemetry, with the gateway URL and agent filled in. <strong>Send a
+              test request</strong> runs one message check through the gateway as that agent
+              (with the new key, if one was just created) and shows the verdict and a link to
+              the trace.
+            </td>
+          </tr>
+          <tr>
+            <td>Grant tools and choose protections</td>
+            <td>A tool grant exists, or an agent has its own protection layer.</td>
+            <td>
+              <strong>Protect</strong> opens the agent&apos;s protection wizard;{" "}
+              <strong>Grant tools</strong> opens its Access tab.
+            </td>
           </tr>
           <tr>
             <td>Declare what your agent can answer</td>
             <td>At least one knowledge boundary exists.</td>
-            <td>A link to Agents, to pick one (<Link href="/docs/app/agents#boundary">Knowledge boundary</Link>).</td>
-          </tr>
-          <tr>
-            <td>Tier your sources</td>
-            <td>At least one source is registered.</td>
-            <td>See <Link href="/docs/app/access-and-sources#sources">Verified sources</Link>.</td>
+            <td>A link to the boundary form on the agent&apos;s Access tab (<Link href="/docs/app/agents#boundary">Knowledge boundary</Link>).</td>
           </tr>
           <tr>
             <td>Turn enforcement on</td>
-            <td>At least one decision was made in enforce mode.</td>
-            <td><code>agentfox policy enforce baseline</code></td>
+            <td>
+              The <code>baseline</code> pack (injection, PII, safety) is bound in enforce mode.
+            </td>
+            <td>The same <strong>Start enforcing</strong> control as Policies, which simulates first.</td>
           </tr>
         </tbody>
       </table>
       <Callout kind="note">
-        &quot;Turn enforcement on&quot; ticks as soon as any decision is made in enforce
-        mode. Tool containment enforces from install, so the first refused tool call
-        completes it even while <code>baseline</code> (injection, PII, safety) is still in
-        observe. Check the mode column on <Link href="/docs/app/policies">Policies</Link>{" "}
-        rather than the tick.
+        Tool containment enforces from install; the last step is about the content policies,
+        which start in observe. The trace and decision counts on this page are counted up to
+        10,000 and shown as &quot;10,000+&quot; beyond that.
       </Callout>
-      <p>
-        Under the steps, <strong>What is connected</strong> counts GitHub accounts, agents,
-        traces, decisions, enforced decisions, knowledge boundaries and tiered sources. Two
-        notes follow: content policies start in observe while tool containment ships
-        enforcing, and not every detector is installed in every deployment (the Guardrail
-        tuning tab shows which are).
-      </p>
-      <p>
-        The &quot;Run it yourself&quot; step is about installing the package for the CLI or
-        your own control plane. It is optional on a hosted workspace: everything else works
-        over HTTP.
-      </p>
 
       <h2 id="connect">Connect</h2>
-      <InTheApp path="/app/start?tab=connect">Start here → Connect</InTheApp>
+      <InTheApp path="/app/start?tab=connect">Settings → Connections</InTheApp>
       <p>
-        Connect finds <em>agents</em>. For the data they read, see{" "}
-        <Link href="/docs/app/access-and-sources#sources">Verified sources</Link>. Both
-        options below are read-only, and what they propose is inert until a person approves
-        it on Agents and Policies.
+        One card per way in, each with its status and one action: <strong>Gateway</strong>{" "}
+        (the API base and the OpenAI-compatible base URL), <strong>GitHub</strong>,{" "}
+        <strong>Hosted API</strong>, <strong>SDK</strong> (Python, TypeScript, HTTP),{" "}
+        <strong>Coding agents</strong> (Claude Code, Codex) and <strong>OpenTelemetry</strong>{" "}
+        (OTLP/HTTP ingest at <code>/v1/traces</code>, observe only). A card whose action is a
+        snippet or a form opens in place.
+      </p>
+      <p>
+        GitHub and Hosted API find <em>agents</em>. For the data they read, see{" "}
+        <Link href="/docs/app/access-and-sources#sources">Verified sources</Link>. Both are
+        read-only, and what they propose is inert until a person approves it on Agents and
+        Policies.
       </p>
 
       <h3>A GitHub repository</h3>
