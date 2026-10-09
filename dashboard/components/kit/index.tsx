@@ -121,6 +121,7 @@ export function Card({
   action,
   children,
   flush,
+  id,
 }: {
   title?: ReactNode;
   hint?: string;
@@ -128,9 +129,11 @@ export function Card({
   children: ReactNode;
   /** Content runs to the card's edges (tables). */
   flush?: boolean;
+  /** An anchor other pages can link to. */
+  id?: string;
 }) {
   return (
-    <section className={`k-card${flush ? " k-flush" : ""}`}>
+    <section id={id} className={`k-card${flush ? " k-flush" : ""}`}>
       {(title || action) && (
         <div className="k-card-head">
           <h3>
