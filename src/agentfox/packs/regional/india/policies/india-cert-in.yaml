@@ -1,0 +1,31 @@
+# Translated from examples/policies/india-regulatory/rego/certin-2022-directions.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: india-cert-in
+name: CERT-In Directions 2022
+description: 'CERT-In Directions 2022: rules translated from the certin-2022-directions policy. Starts
+  in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: india-cert-in.6-hour-reporting-cannot-suppress-delay
+  description: 'Direction (ii): 6-hour reporting - cannot suppress/delay'
+  when:
+    action_risk: india-cert-in.6-hour-reporting-cannot-suppress-delay
+  effect: block
+  severity: high
+  reason: 'CERT-In 2022 Directions (ii): cyber incidents must be reported to CERT-In within 6 hours; suppressing/delaying
+    is prohibited'
+- id: india-cert-in.180-day-india-log-retention
+  description: 'Direction (iv): 180-day in-India log retention'
+  when:
+    action_risk: india-cert-in.180-day-india-log-retention
+  effect: block
+  severity: high
+  reason: 'CERT-In 2022 Directions (iv): ICT logs must be retained for 180 days, configured: <value>'

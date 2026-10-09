@@ -1,0 +1,38 @@
+# Translated from examples/policies/african-regulatory/rego/agent-model-routing.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: africa-model-routing
+name: Model routing for sensitive tasks
+description: 'Model routing for sensitive tasks: rules translated from the agent-model-routing policy.
+  Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: africa-model-routing.model-v-not-approved-sensitive-task
+  description: 'Model routing denied: model ''%v'' is not approved for sensitive task type ''%v''.'
+  when:
+    action_risk: africa-model-routing.model-v-not-approved-sensitive-task
+  effect: block
+  severity: high
+  reason: 'Model routing denied: model <value> is not approved for sensitive task type <value>.'
+- id: africa-model-routing.sensitive-task-type-v-requires-explicitly
+  description: 'Model routing: sensitive task type ''%v'' requires an explicitly approved model — none
+    specified.'
+  when:
+    action_risk: africa-model-routing.sensitive-task-type-v-requires-explicitly
+  effect: escalate
+  severity: medium
+  reason: 'Model routing: sensitive task type <value> requires an explicitly approved model — none specified.'
+- id: africa-model-routing.sensitive-task-v-processed-by-approved
+  description: 'Model routing audit: sensitive task ''%v'' processed by approved model ''%v''.'
+  when:
+    action_risk: africa-model-routing.sensitive-task-v-processed-by-approved
+  effect: allow
+  severity: low
+  reason: 'Model routing audit: sensitive task <value> processed by approved model <value>.'

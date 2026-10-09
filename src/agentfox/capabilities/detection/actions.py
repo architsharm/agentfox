@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agentfox.capabilities.detection.normalize import normalize
+from agentfox.capabilities.detection.shell_blocklist import command_risks, path_risk, url_risk
 from agentfox.core.finding import RiskFinding
 
 log = logging.getLogger(__name__)
@@ -585,6 +586,14 @@ def _shell_segments(command: str) -> list[str]:
     return [s.strip() for s in segments if s.strip()]
 
 
+#: Blocklist codes and the existing code that already reports the same shape.
+_BLOCKLIST_COVERED_BY = {
+    "shell.recursive-delete": "shell.destructive",
+    "shell.download-to-shell": "remote-code-execution",
+    "shell.secret-read": "credential-file-access",
+}
+
+
 def analyse_shell(command: str) -> ActionAnalysis:
     """Deny-list analysis of a shell command.
 
@@ -664,6 +673,25 @@ def analyse_shell(command: str) -> ActionAnalysis:
                 )
     if not analysis.risks:
         analysis.blast_radius = "unknown"
+    # The coding-agent blocklist (`shell_blocklist.py`): narrower shapes, each with
+    # its own code and at `high`, so the coding-agent pack decides what they mean.
+    # Added after the blast-radius line on purpose: they leave the analysis's
+    # operation, radius and reversibility exactly as the lists above set them.
+    # A shape the lists above already reported under their own code is not
+    # reported twice: the blocklist adds what they miss (`rm --recursive --force`,
+    # `| sudo -E bash`, an environment dump), not a second finding for `rm -rf`.
+    already = {r.code for r in analysis.risks}
+    for code, detail in command_risks(command):
+        if _BLOCKLIST_COVERED_BY.get(code) in already:
+            continue
+        analysis.risks.append(
+            ActionRisk(
+                code=code,
+                severity="high",
+                detail=f"command {detail}",
+                evidence={"segment": command.strip()},
+            )
+        )
     return analysis
 
 
@@ -1022,13 +1050,18 @@ def find_sql_argument(arguments: dict[str, Any]) -> str | None:
 
 
 def analyse_arguments(
-    arguments: dict[str, Any], *, dialect: str = "postgres"
+    arguments: dict[str, Any], *, dialect: str = "postgres", tool: str | None = None
 ) -> list[ActionAnalysis]:
-    """Find and analyse every executable artefact in a tool call's arguments."""
+    """Find and analyse every executable artefact in a tool call's arguments.
+
+    ``tool`` is the tool's key, when known; the credential-path check uses it to
+    tell a read from a write.
+    """
     out: list[ActionAnalysis] = []
     for key, _path, value in walk_arguments(arguments):
         lowered = str(key).lower()
         if isinstance(value, str) and value.strip():
+            before = len(out)
             if _is_sql_argument(key, value):
                 out.append(analyse_sql(value, dialect=dialect))
             elif lowered in _SHELL_KEYS:
@@ -1044,7 +1077,41 @@ def analyse_arguments(
                 scope = analyse_scope(key, value)
                 if scope is not None:
                     out.append(scope)
+            if lowered not in _SHELL_KEYS:  # a shell command's own analysis has run them
+                _blocklist_value(out, before, key, value, tool)
     return out
+
+
+def _blocklist_value(
+    out: list[ActionAnalysis], before: int, key: str, value: str, tool: str | None
+) -> None:
+    """The coding-agent blocklist's checks on one non-shell argument value.
+
+    A metadata URL is caught under any key (`link`, `target`), a credential path
+    under any path-like key. Neither changes what the argument's own analysis said
+    about operation or blast radius: the risk joins that analysis, or a neutral read
+    analysis when the value produced none.
+    """
+    found = [r for r in (url_risk(value), path_risk(key, value, tool)) if r is not None]
+    if not found:
+        return
+    risks = [
+        ActionRisk(code=code, severity="high", detail=f"argument {detail}", evidence={"key": key})
+        for code, detail in found
+    ]
+    if len(out) > before:
+        out[-1].risks.extend(risks)
+        return
+    out.append(
+        ActionAnalysis(
+            dialect="blocklist",
+            parsed=True,
+            operation=READ,
+            targets=[value],
+            risks=risks,
+            blast_radius="none",
+        )
+    )
 
 
 def environment_risk(analysis: ActionAnalysis, environment: str) -> ActionRisk | None:

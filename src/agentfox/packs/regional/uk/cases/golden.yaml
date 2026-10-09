@@ -1,0 +1,380 @@
+# Golden events for regional/uk, run by `agentfox policy packs test regional/uk`.
+# One case per rule: the risk its rule-table entry raises (or the tool it names)
+# fires it with the effect its source outcome maps to (deny -> block, escalate ->
+# escalate, audit -> allow, recorded). What raises each risk is tested against the
+# source policies' own test inputs in tests/platform/packs/test_translated_packs.py.
+cases:
+- name: uk-fca-conduct.consumer-harm-language (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-fca-conduct.consumer-harm-language
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-fca-conduct.consumer-harm-language
+- name: uk-fca-conduct.fair-value-bypass (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-fca-conduct.fair-value-bypass
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-fca-conduct.fair-value-bypass
+- name: uk-fca-conduct.accountability-delegation-ai (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-fca-conduct.accountability-delegation-ai
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-fca-conduct.accountability-delegation-ai
+- name: uk-fca-conduct.autonomous-trading-without-platform-documented-approval (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-fca-conduct.autonomous-trading-without-platform-documented-approval
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-fca-conduct.autonomous-trading-without-platform-documented-approval
+- name: uk-fca-conduct.pricing-without-assessment (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-fca-conduct.pricing-without-assessment
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-fca-conduct.pricing-without-assessment
+- name: uk-fca-conduct.customer-communications (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-fca-conduct.customer-communications
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uk-fca-conduct.customer-communications
+- name: uk-fca-conduct.third-party-ai (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-fca-conduct.third-party-ai
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uk-fca-conduct.third-party-ai
+- name: uk-automated-decisions.withhold-explanation (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-automated-decisions.withhold-explanation
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-automated-decisions.withhold-explanation
+- name: uk-automated-decisions.block-human-review (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-automated-decisions.block-human-review
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-automated-decisions.block-human-review
+- name: uk-automated-decisions.block-contest-right (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-automated-decisions.block-contest-right
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-automated-decisions.block-contest-right
+- name: uk-automated-decisions.special-category-adm-explicit-consent-or (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-automated-decisions.special-category-adm-explicit-consent-or
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-automated-decisions.special-category-adm-explicit-consent-or
+- name: uk-automated-decisions.significant-decision-without-safeguards-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-automated-decisions.significant-decision-without-safeguards-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-automated-decisions.significant-decision-without-safeguards-metadata
+- name: uk-automated-decisions.significant-decision-without-explanation (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-automated-decisions.significant-decision-without-explanation
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-automated-decisions.significant-decision-without-explanation
+- name: uk-automated-decisions.recruitment-adm-language (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-automated-decisions.recruitment-adm-language
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-automated-decisions.recruitment-adm-language
+- name: uk-automated-decisions.agentic-orchestration-step (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-automated-decisions.agentic-orchestration-step
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-automated-decisions.agentic-orchestration-step
+- name: uk-automated-decisions.dpia-deployment (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-automated-decisions.dpia-deployment
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uk-automated-decisions.dpia-deployment
+- name: uk-automated-decisions.significant-decision-audit-trail (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-automated-decisions.significant-decision-audit-trail
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uk-automated-decisions.significant-decision-audit-trail
+- name: uk-gdpr.block-breach-suppression (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.block-breach-suppression
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.block-breach-suppression
+- name: uk-gdpr.block-suppression-individual-notification (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.block-suppression-individual-notification
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.block-suppression-individual-notification
+- name: uk-gdpr.block-unencrypted-personal-data-handling-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.block-unencrypted-personal-data-handling-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.block-unencrypted-personal-data-handling-output
+- name: uk-gdpr.block-complaints-bypass (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.block-complaints-bypass
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.block-complaints-bypass
+- name: uk-gdpr.nhs-number-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.nhs-number-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.nhs-number-output
+- name: uk-gdpr.national-insurance-number-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.national-insurance-number-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.national-insurance-number-output
+- name: uk-gdpr.block-transfer-without-adequacy-platform-set (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-gdpr.block-transfer-without-adequacy-platform-set
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.block-transfer-without-adequacy-platform-set
+- name: uk-gdpr.block-large-exports-without-review (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-gdpr.block-large-exports-without-review
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uk-gdpr.block-large-exports-without-review
+- name: uk-gdpr.special-category-health-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.special-category-health-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-gdpr.special-category-health-data
+- name: uk-gdpr.other-special-category-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.other-special-category-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-gdpr.other-special-category-data
+- name: uk-gdpr.purpose-limitation-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.purpose-limitation-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-gdpr.purpose-limitation-language-output
+- name: uk-gdpr.escalate-transfer-action-when-destination-not (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-gdpr.escalate-transfer-action-when-destination-not
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-gdpr.escalate-transfer-action-when-destination-not
+- name: uk-gdpr.cross-border-language-without-structured-params (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uk-gdpr.cross-border-language-without-structured-params
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-gdpr.cross-border-language-without-structured-params
+- name: uk-gdpr.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-gdpr.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uk-gdpr.bulk-export-actions
+- name: uk-gdpr.personal-data-access-audit (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-gdpr.personal-data-access-audit
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uk-gdpr.personal-data-access-audit
+- name: uk-gdpr.personal-data-modification-audit (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uk-gdpr.personal-data-modification-audit
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uk-gdpr.personal-data-modification-audit
+- name: an ordinary answer passes
+  event:
+    surface: output
+  expect:
+    verdict: allow
+- name: an ordinary tool call passes
+  event:
+    surface: tool_args
+    tool_key: search.docs
+  expect:
+    verdict: allow

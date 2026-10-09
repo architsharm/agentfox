@@ -75,6 +75,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | `demo/redteam-live/README.md`, `demo/redteam-live-lang/README.md`, `demo/live-airline/README.md` | running or deploying the live demos |
 | `src/agentfox/harnesses/*/fixtures/README.md` | capturing a harness's hook payloads (written by `just new-harness`) |
 | `src/agentfox/packs/*/README.md` (one per capability pack, and the scaffolding template's) | working on that pack: the risk it covers, what it ships, how to test it (`agentfox policy packs show <id>`, `agentfox policy packs test <id>`) |
+| `src/agentfox/platform/policy/stdlib/README.md`, `src/agentfox/platform/policy/compat/schema/README.md`, `src/agentfox/platform/policy/compat/schema/wire/README.md` | hand-writing Rego or Cedar beside AgentFox policies (the stock libraries, their tests and how they relate to the Rego export), or importing external policy manifests (the third-party JSON schemas; MIT, see `THIRD_PARTY_NOTICES.md`) |
 | `CONTRIBUTING.md` | setting up to work on the code: `just setup`/`just ci` (the `justfile` mirrors CI), test layout, generated files and their checks, the vendored-wheel rule, branch and docstring conventions |
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant 2.1, verbatim. Reporting contact only; nothing project-specific to read |

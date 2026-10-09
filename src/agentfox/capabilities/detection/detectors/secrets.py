@@ -56,6 +56,59 @@ _KNOWN: list[tuple[str, re.Pattern[str], float]] = [
     ),
 ]
 
+# Formats the list above missed, adapted from the credential redactor vendored in
+# `capabilities/detection/vendor/credential_redactor.py` (MIT, Copyright (c) Microsoft
+# Corporation; upstream commit c767f83). Only the shapes this detector did not catch
+# at all were taken; the redactor's OpenAI, AWS access key, Google, JWT and Stripe
+# patterns are already covered above, its AWS secret key by the assignment rule
+# below, and its loose "Generic API secret" is left out on purpose: it needs neither
+# entropy nor length, which is the precision trade this detector does not make.
+# Two are narrowed, and say so: `Basic` needs an `Authorization:` in front (the
+# source matches "Basic authentication" in prose), and the ADO.NET `Password=` is
+# scored below the 0.9 the baseline blocks at, because `password=` in ordinary text
+# is common and the source requires nothing more than four characters after it.
+_VENDORED_KNOWN: list[tuple[str, re.Pattern[str], float]] = [
+    (
+        "SECRET.GITHUB_TOKEN",
+        re.compile(r"(?<![A-Za-z0-9])github_pat_[A-Za-z0-9_]{22,}(?![A-Za-z0-9])"),
+        0.97,
+    ),
+    ("SECRET.SLACK_TOKEN", re.compile(r"(?<![A-Za-z0-9])xapp-[A-Za-z0-9-]{10,}"), 0.97),
+    (
+        "SECRET.PRIVATE_KEY",
+        re.compile(r"-----BEGIN (?:DSA |ENCRYPTED )PRIVATE KEY-----"),
+        0.99,
+    ),
+    (
+        "SECRET.AZURE_KEY",
+        re.compile(
+            r"(?i)(?:accountkey|sharedaccesskey|azure[_-]?key)\s*[:=]\s*[A-Za-z0-9+/=]{20,}"
+        ),
+        0.95,
+    ),
+    ("SECRET.AZURE_SAS", re.compile(r"(?i)(?<![A-Za-z0-9])sig=[A-Za-z0-9%/+=_.~-]{43,}"), 0.9),
+    (
+        "SECRET.BEARER_TOKEN",
+        re.compile(r"(?<![A-Za-z0-9])Bearer\s+[A-Za-z0-9._\-+/=]{16,}\b"),
+        0.9,
+    ),
+    (
+        "SECRET.BASIC_AUTH",
+        re.compile(
+            r"(?i)(?:authorization\s*:\s*Basic\s+[A-Za-z0-9+/=]{8,}(?![A-Za-z0-9+/=])"
+            r"|[a-z0-9+.-]{1,64}://[^/\s:@]+:[^@\s/]+@)"
+        ),
+        0.9,
+    ),
+    (
+        "SECRET.CONNECTION_STRING",
+        re.compile(r"(?i)(?<![A-Za-z0-9])(?:password|pwd|sharedaccesssignature)\s*=\s*[^;\s]{4,}"),
+        0.75,
+    ),
+]
+
+_VENDORED_PATTERNS = frozenset(pattern for _, pattern, _ in _VENDORED_KNOWN)
+
 # Generic "assignment of a high-entropy value to a secret-looking name".
 _ASSIGNMENT = re.compile(
     r"(?P<name>[A-Za-z0-9_.\-]*(?:api[_-]?key|secret|token|passwd|password|credential|"
@@ -78,7 +131,7 @@ def shannon_entropy(value: str) -> float:
 class SecretsDetector(BaseDetector):
     covers_threats = ("LLM02", "AML.T0055")
     key = "secrets.native"
-    version = "1.1"
+    version = "1.2"
     surfaces = (
         "input",
         "output",
@@ -104,8 +157,15 @@ class SecretsDetector(BaseDetector):
         out: list[Detection] = []
         claimed: list[tuple[int, int]] = []
 
-        for entity, pattern, score in _KNOWN:
+        for entity, pattern, score in (*_KNOWN, *_VENDORED_KNOWN):
             for m in pattern.finditer(content):
+                # A vendored shape found inside a span the native list already
+                # claimed (a `postgres://user:pass@` URL is both a connection
+                # string and URL credentials) is one secret, reported once.
+                if pattern in _VENDORED_PATTERNS and any(
+                    s < m.end() and m.start() < e for s, e in claimed
+                ):
+                    continue
                 claimed.append((m.start(), m.end()))
                 out.append(
                     Detection(

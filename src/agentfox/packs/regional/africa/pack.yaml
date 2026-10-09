@@ -1,0 +1,16 @@
+# African regulatory pack: rules translated from examples/policies/african-regulatory/ in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83), MIT License,
+# Copyright (c) Microsoft Corporation. Starts incubating, and in observe.
+id: regional/africa
+version: 0.1.0
+maturity: incubating
+requires_core: '>=0.3'
+title: African regulatory pack
+description: Data protection rules for Egypt, Ethiopia, Ghana, Kenya, Mauritius, Nigeria (NDPA, CBN, NFIU,
+  BVN/NIN, POS), Rwanda, South Africa, Tanzania and Uganda, plus five general agent controls.
+owners:
+- agentfox-maintainers
+tags:
+- regional
+- africa
+- regulation

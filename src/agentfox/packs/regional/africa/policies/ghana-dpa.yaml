@@ -1,0 +1,129 @@
+# Translated from examples/policies/african-regulatory/rego/ghana-dpa.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: ghana-dpa
+name: Ghana Data Protection Act 843
+description: 'Ghana Data Protection Act 843: rules translated from the ghana-dpa policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: ghana-dpa.block-breach-suppression-dpc-must-notified
+  description: 's.31: Block breach suppression — DPC must be notified promptly'
+  when:
+    action_risk: ghana-dpa.block-breach-suppression-dpc-must-notified
+  effect: block
+  severity: high
+  reason: 'Ghana DPA Act 843 s.31: Agent cannot suppress breach notifications — DPC and affected data
+    subjects must be notified promptly'
+- id: ghana-dpa.block-biometric-data-transmission
+  description: 's.37: Block biometric data transmission'
+  when:
+    action_risk: ghana-dpa.block-biometric-data-transmission
+  effect: block
+  severity: high
+  reason: 'Ghana DPA Act 843 s.37: Biometric data detected — must not be transmitted without explicit
+    consent and DPC notification'
+- id: ghana-dpa.block-cross-border-transfer-non-permitted
+  description: 's.18(2): Block cross-border transfer to non-permitted region'
+  when:
+    action_risk: ghana-dpa.block-cross-border-transfer-non-permitted
+  effect: block
+  severity: high
+  reason: 'Ghana DPA Act 843 s.18(2): Cross-border transfer to region <value> blocked — destination country
+    adequacy not verified with DPC'
+- id: ghana-dpa.block-transfer-non-gh-country-without
+  description: 's.18(2): Block transfer to non-GH country without documented consent'
+  when:
+    action_risk: ghana-dpa.block-transfer-non-gh-country-without
+  effect: block
+  severity: high
+  reason: 'Ghana DPA Act 843 s.18(2): Transfer to <value> blocked — no documented consent or adequacy
+    basis on file'
+- id: ghana-dpa.block-ghana-card-national-id-output
+  description: 'NIA Act 707: Block Ghana Card national ID in output Format: GHA-XXXXXXXXX-X (GHA prefix
+    + 9 digits + 1 check digit)'
+  when:
+    action_risk: ghana-dpa.block-ghana-card-national-id-output
+  effect: block
+  severity: high
+  reason: 'Ghana DPA Act 843 / NIA Act 707: Ghana Card national ID detected in agent output — blocked
+    to prevent identity data exposure'
+- id: ghana-dpa.block-disproportionate-record-exports
+  description: 's.17: Block disproportionate record exports (data minimisation)'
+  when:
+    action_risk: ghana-dpa.block-disproportionate-record-exports
+  effect: block
+  severity: high
+  reason: 'Ghana DPA Act 843 s.17: Export of <value> records is disproportionate — data minimisation principle
+    requires DPC accountability'
+- id: ghana-dpa.health-medical-special-personal-data
+  description: 's.37: Health/medical special personal data'
+  when:
+    action_risk: ghana-dpa.health-medical-special-personal-data
+  effect: escalate
+  severity: medium
+  reason: 'Ghana DPA Act 843 s.37: Health/medical special personal data detected — requires explicit consent
+    or documented lawful basis'
+- id: ghana-dpa.special-category-data
+  description: 's.37: Special category data (ethnic, religious, political, trade union, criminal)'
+  when:
+    action_risk: ghana-dpa.special-category-data
+  effect: escalate
+  severity: medium
+  reason: 'Ghana DPA Act 843 s.37: Special personal data detected — requires explicit consent and restricted
+    processing'
+- id: ghana-dpa.cross-border-language-agent-output
+  description: 's.18(2): Cross-border language in agent output'
+  when:
+    action_risk: ghana-dpa.cross-border-language-agent-output
+  effect: escalate
+  severity: medium
+  reason: 'Ghana DPA Act 843 s.18(2): Cross-border data transfer language detected — destination country
+    adequacy must be verified with DPC'
+- id: ghana-dpa.transfer-action-with-missing-destination-metadata
+  description: 's.18(2): Transfer action with missing destination metadata'
+  when:
+    action_risk: ghana-dpa.transfer-action-with-missing-destination-metadata
+  effect: escalate
+  severity: medium
+  reason: 'Ghana DPA Act 843 s.18(2): Cross-border transfer with no destination metadata — cannot verify
+    adequacy, requires human review'
+- id: ghana-dpa.moderate-record-exports
+  description: 's.17: Moderate record exports (data minimisation principle)'
+  when:
+    action_risk: ghana-dpa.moderate-record-exports
+  effect: escalate
+  severity: medium
+  reason: 'Ghana DPA Act 843 s.17: Export of <value> records requires documented purpose and DPC accountability'
+- id: ghana-dpa.bulk-export-actions
+  description: 's.17: Bulk export actions'
+  when:
+    action_risk: ghana-dpa.bulk-export-actions
+  effect: escalate
+  severity: medium
+  reason: 'Ghana DPA Act 843 s.17: Bulk personal data export requires documented lawful purpose and DPC
+    notification'
+- id: ghana-dpa.personal-data-access-logged-data-subject
+  description: 'Ghana DPA Act 843 s.33: Personal data access logged — data subject participation and DPC
+    accountability requirement'
+  when:
+    action_risk: ghana-dpa.personal-data-access-logged-data-subject
+  effect: allow
+  severity: low
+  reason: 'Ghana DPA Act 843 s.33: Personal data access logged — data subject participation and DPC accountability
+    requirement'
+- id: ghana-dpa.personal-data-modification-deletion-logged-data
+  description: 'Ghana DPA Act 843 s.33: Personal data modification/deletion logged — data subject participation
+    and DPC accountability requirement'
+  when:
+    action_risk: ghana-dpa.personal-data-modification-deletion-logged-data
+  effect: allow
+  severity: low
+  reason: 'Ghana DPA Act 843 s.33: Personal data modification/deletion logged — data subject participation
+    and DPC accountability requirement'

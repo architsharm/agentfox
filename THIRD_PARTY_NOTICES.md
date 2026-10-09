@@ -63,6 +63,56 @@ unless `AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`, and they are excluded from
 **Granite Guardian (Apache-2.0) is the default safety classifier precisely because it
 avoids these terms.**
 
+## Incorporated material (MIT)
+
+### microsoft/agent-governance-toolkit
+
+Source: https://github.com/microsoft/agent-governance-toolkit, commit `c767f83`.
+Licence: MIT. Copyright (c) Microsoft Corporation. Incorporated as data and small
+modules; each copied file keeps the upstream copyright header, or sits beside a
+`LICENSE` file with the full MIT text where the format has no comments (JSON).
+The project's names and marks are not used for any AgentFox product or feature.
+
+| Upstream path | Where in AgentFox | How |
+|---|---|---|
+| `policy-engine/policy/lib/*.rego` | `src/agentfox/platform/policy/stdlib/rego/` | copied unchanged (header added to `ifc.rego`, `ifc_test.rego`) |
+| `policy-engine/policy/cedar-lib/*.cedar`, `*_test.json` | `src/agentfox/platform/policy/stdlib/cedar/` | copied unchanged |
+| `policy-engine/spec/schema/**` | `src/agentfox/platform/policy/compat/schema/` | copied unchanged |
+| `examples/policies/production/`, `uk-regulatory/`, `india-regulatory/`, `african-regulatory/` | `src/agentfox/packs/industry/*`, `src/agentfox/packs/regional/*` | rules translated into AgentFox policy packs (rule tables in each pack's `checks/rules.py`); each file names its source |
+| `agent-governance-claude-code/config/default-policy.json`, `lib/recursive-delete.mjs`, `lib/policy.mjs` | `src/agentfox/capabilities/detection/shell_blocklist.py` | command and path patterns and the recursive-delete tokenizer ported to Python (one documented change) |
+| `agent-governance-claude-code/test/policy.test.mjs`, `examples/policies/{uk,african}-regulatory/rego/*_test.rego` | `tests/capabilities/detection/fixtures/recursive_delete_cases.json`, `tests/platform/packs/fixtures/translated_policy_tests.json` | test inputs and expected outcomes, converted to JSON |
+| `agent-governance-python/agent-os/src/agent_os/credential_redactor.py`, `mcp_security.py` | `src/agentfox/capabilities/detection/vendor/` | vendored with minimal import changes listed in each file; selected patterns adapted into `detectors/secrets.py` and `platform/registry/service.py` |
+
+The upstream recursive-delete parser credits contributions by Ricky-G (PRs #4129,
+#4142) and talosrobotics (PR #3834), under the same MIT licence. The upstream
+project's community threat rules (agent-threat-rules) were not copied. Not taken at
+all: trust scoring, the multi-agent trust protocol, reinforcement-learning
+penalties and the identity module.
+
+```
+MIT License
+
+Copyright (c) Microsoft Corporation.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## Standards and taxonomies (adopted as language, not code)
 
 | Source | Terms | Use |
@@ -102,8 +152,6 @@ Recorded because "why not" is a licence decision worth auditing (Appendix A §A.
 | **systemprompt-core** | **BSL-1.1** — source-available, not open source; usage restrictions. Reference only. |
 | **OpenAI Guardrails** | MIT but provider-centric; adopting it would contradict vendor neutrality (X-2). |
 | **Langfuse** | MIT core, but ClickHouse-acquired with an EE tier. Supported as an export target, never as our system of record. |
-| **Microsoft Agent Governance Toolkit** | MIT, competitor-adjacent. No code or dependency taken. Its OWASP Agentic coverage map was used as a reference; two of its test fixtures are copied as benchmark data (see "Benchmark data" above); its policy formats are read by the policy importer, and its schemas and example policies are copied as data (see "Data files" below). |
-
 ## Data files copied from other projects
 
 | Files | Source | Licence | Use |
@@ -111,15 +159,16 @@ Recorded because "why not" is a licence decision worth auditing (Appendix A §A.
 | `src/agentfox/platform/policy/compat/schema/*.schema.json` | Agent Governance Toolkit, `policy-engine/spec/schema/` (commit c767f83), © Microsoft Corporation; the upstream Agent Control Specification notice (© 2026 responsibleai) is preserved alongside | MIT | Validating policy manifests before import. Copied unmodified; notices in `compat/schema/LICENSE`. |
 | `tests/corpus/agent_governance/policies/**` | Agent Governance Toolkit, `examples/policies/` (commit c767f83), © Microsoft Corporation | MIT | Test fixtures: every example policy is translated by the importer's tests. Copied unmodified; notice in `tests/corpus/agent_governance/LICENSE`. |
 
-The importer reads these formats; it does not use, link or redistribute any of that
-project's code, and AgentFox is not affiliated with or endorsed by it.
+AgentFox is not affiliated with or endorsed by that project. Code taken from it is
+listed under "Incorporated material (MIT)".
 
 ## Attribution
 
 Apache-2.0 projects above are distributed under the Apache License, Version 2.0
 (<http://www.apache.org/licenses/LICENSE-2.0>). MIT and BSD projects retain their
-original copyright and permission notices in their distributed packages. No modified
-copies of any third-party source are vendored into this repository; all integrations
-are adapters against published interfaces.
+original copyright and permission notices in their distributed packages. Apart from the
+material listed under "Incorporated material (MIT)" above, no third-party source is
+vendored into this repository; all other integrations are adapters against published
+interfaces.
 
 _Last reviewed: 2026-10-09._

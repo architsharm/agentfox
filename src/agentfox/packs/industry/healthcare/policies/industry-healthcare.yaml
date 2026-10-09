@@ -1,0 +1,43 @@
+# Translated from examples/policies/production/rego/healthcare.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: industry-healthcare
+name: Healthcare
+description: 'Healthcare: rules translated from the healthcare policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: industry-healthcare.ssn-pattern-detected
+  description: 'PHI: SSN pattern detected'
+  when:
+    action_risk: industry-healthcare.ssn-pattern-detected
+  effect: block
+  severity: high
+  reason: 'PHI: SSN pattern detected'
+- id: industry-healthcare.medical-record-number-detected
+  description: 'PHI: Medical Record Number detected'
+  when:
+    action_risk: industry-healthcare.medical-record-number-detected
+  effect: block
+  severity: high
+  reason: 'PHI: Medical Record Number detected'
+- id: industry-healthcare.deletion-prohibited-healthcare
+  description: Deletion prohibited in healthcare
+  when:
+    action_risk: industry-healthcare.deletion-prohibited-healthcare
+  effect: block
+  severity: high
+  reason: Deletion prohibited in healthcare
+- id: industry-healthcare.clinical-data-requires-clinician-approval
+  description: Clinical data requires clinician approval
+  when:
+    action_risk: industry-healthcare.clinical-data-requires-clinician-approval
+  effect: escalate
+  severity: medium
+  reason: Clinical data requires clinician approval

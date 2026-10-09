@@ -1,0 +1,63 @@
+# Translated from examples/policies/india-regulatory/rego/sebi-governance.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: india-sebi
+name: SEBI CSCRF 2024 and AI/ML amendment
+description: 'SEBI CSCRF 2024 and AI/ML amendment: rules translated from the sebi-governance policy. Starts
+  in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: india-sebi.re-solely-responsible-ai-ml-output
+  description: 'Feb 2025 amendment: RE solely responsible for AI/ML output; cannot disclaim'
+  when:
+    action_risk: india-sebi.re-solely-responsible-ai-ml-output
+  effect: block
+  severity: high
+  reason: 'SEBI Amendment 10 Feb 2025: regulated entity is solely responsible for AI/ML output; liability
+    cannot be disclaimed and human accountability is required'
+- id: india-sebi.ai-ml-output-liability-cannot-disclaimed
+  description: 'SEBI Amendment 10 Feb 2025: AI/ML output liability cannot be disclaimed by the regulated
+    entity'
+  when:
+    action_risk: india-sebi.ai-ml-output-liability-cannot-disclaimed
+  effect: block
+  severity: high
+  reason: 'SEBI Amendment 10 Feb 2025: AI/ML output liability cannot be disclaimed by the regulated entity'
+- id: india-sebi.immutable-india-retained-audit-logging
+  description: 'CSCRF 2024: immutable, India-retained audit logging'
+  when:
+    action_risk: india-sebi.immutable-india-retained-audit-logging
+  effect: block
+  severity: high
+  reason: 'SEBI CSCRF 2024: maintain immutable, India-retained audit logging with continuous SOC monitoring'
+- id: india-sebi.incident-reporting-cannot-suppress
+  description: 'CSCRF 2024: incident reporting - cannot suppress'
+  when:
+    action_risk: india-sebi.incident-reporting-cannot-suppress
+  effect: block
+  severity: high
+  reason: 'SEBI CSCRF 2024: cyber incidents must be reported to SEBI and the relevant CERT within mandated
+    timelines'
+- id: india-sebi.vapt-audit-before-production-escalate
+  description: 'CSCRF 2024: VAPT/audit before production - escalate'
+  when:
+    action_risk: india-sebi.vapt-audit-before-production-escalate
+  effect: escalate
+  severity: medium
+  reason: 'SEBI CSCRF 2024: periodic VAPT and cyber audit, data classification, and access control are
+    required before production'
+- id: india-sebi.draft-advisory-audit-only
+  description: 'June 2025 AI/ML guidelines: DRAFT/advisory - audit only'
+  when:
+    action_risk: india-sebi.draft-advisory-audit-only
+  effect: allow
+  severity: low
+  reason: 'ADVISORY (draft, SEBI Consultation Paper 20 Jun 2025): board-approved AI governance, explainability,
+    human-in-the-loop, and fallback plans proposed; not yet binding'

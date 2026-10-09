@@ -1,6 +1,5 @@
-The JSON Schema files in this directory (manifest.schema.json,
-approval.schema.json, cedar_advice.schema.json) are copied unmodified from
-policy-engine/spec/schema/ in the Agent Governance Toolkit repository
+The JSON Schema files in this directory and its wire/ subdirectory are copied
+unmodified from policy-engine/spec/schema/ in the Agent Governance Toolkit repository
 (https://github.com/microsoft/agent-governance-toolkit, commit c767f83).
 They are used as data, to validate policy manifests before importing them.
 They are not part of AgentFox's Apache-2.0 licensed source.
