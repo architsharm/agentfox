@@ -91,7 +91,17 @@ Recorded because "why not" is a licence decision worth auditing (Appendix A §A.
 | **systemprompt-core** | **BSL-1.1** — source-available, not open source; usage restrictions. Reference only. |
 | **OpenAI Guardrails** | MIT but provider-centric; adopting it would contradict vendor neutrality (X-2). |
 | **Langfuse** | MIT core, but ClickHouse-acquired with an EE tier. Supported as an export target, never as our system of record. |
-| **Microsoft Agent Governance Toolkit** | MIT, competitor-adjacent. Its OWASP Agentic coverage map used as a reference only. |
+| **Microsoft Agent Governance Toolkit** | MIT, competitor-adjacent. Its OWASP Agentic coverage map used as a reference only. Its policy formats are read by the policy importer (see "Data files" below); no code is taken. |
+
+## Data files copied from other projects
+
+| Files | Source | Licence | Use |
+|---|---|---|---|
+| `src/agentfox/platform/policy/compat/schema/*.schema.json` | Agent Governance Toolkit, `policy-engine/spec/schema/` (commit c767f83), © Microsoft Corporation; the upstream Agent Control Specification notice (© 2026 responsibleai) is preserved alongside | MIT | Validating policy manifests before import. Copied unmodified; notices in `compat/schema/LICENSE`. |
+| `tests/corpus/agent_governance/policies/**` | Agent Governance Toolkit, `examples/policies/` (commit c767f83), © Microsoft Corporation | MIT | Test fixtures: every example policy is translated by the importer's tests. Copied unmodified; notice in `tests/corpus/agent_governance/LICENSE`. |
+
+The importer reads these formats; it does not use, link or redistribute any of that
+project's code, and AgentFox is not affiliated with or endorsed by it.
 
 ## Attribution
 
