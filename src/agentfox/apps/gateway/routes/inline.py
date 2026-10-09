@@ -1111,6 +1111,20 @@ def guard_content(
             trace=trace,
             approval_id=payload.approval_id,
         )
+        if surface == "input" and result.get("verdict") not in ("block", "escalate"):
+            # What the agent may answer, as on the model proxy. An app that calls the
+            # model itself and checks here would otherwise never abstain: the
+            # question outside the boundary went straight to the model.
+            abstain = enforcer._answerability_gate(
+                agent, trace, [{"role": "user", "content": payload.content}]
+            )
+            if abstain is not None:
+                trace.verdict = abstain.verdict
+                result = {
+                    **abstain.to_json(),
+                    # The abstention is what the user should hear.
+                    "user_message": abstain.content or abstain.reason,
+                }
     # `evaluate` raises the trace's verdict to the strongest thing that happened on
     # it, so ending it must not overwrite that with the default: a second guard call
     # on the same trace_id that allows must not erase the first one that blocked.

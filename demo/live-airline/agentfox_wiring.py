@@ -67,7 +67,11 @@ if not MODEL_DIRECT:
         )
     )
 
-fox = AgentFox(AGENT, base_url=GATEWAY, api_key=os.environ.get("AGENTFOX_API_KEY"))
+fox = AgentFox(
+    AGENT,
+    base_url=GATEWAY,
+    api_key=os.environ.get("AGENTFOX_AGENT_KEY") or os.environ.get("AGENTFOX_API_KEY"),
+)
 
 
 def _with_fault(tool: FunctionTool) -> None:

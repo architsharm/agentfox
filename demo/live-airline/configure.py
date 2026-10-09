@@ -49,9 +49,11 @@ PACKS = [f"agent.{AGENT}", "custom"]
 
 
 def warm_up() -> None:
-    AgentFox(AGENT, base_url=GATEWAY, api_key=os.environ.get("AGENTFOX_API_KEY")).check(
-        "Hello, I have a question about my trip."
-    )
+    AgentFox(
+        AGENT,
+        base_url=GATEWAY,
+        api_key=os.environ.get("AGENTFOX_AGENT_KEY") or os.environ.get("AGENTFOX_API_KEY"),
+    ).check("Hello, I have a question about my trip.")
     agent = api("GET", f"/api/agents/{AGENT}")
     print(f"agent      {agent['slug']} recorded by the gateway")
 
