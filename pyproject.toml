@@ -230,7 +230,11 @@ target-version = "py311"
 # Alembic writes these. Reformatting a shipped revision to satisfy a line
 # length is a change to a migration that has already run somewhere, for no
 # benefit — and the generated header is over the limit in every one of them.
-extend-exclude = ["migrations/versions"]
+#
+# The vendored third-party modules are kept as upstream wrote them (their header
+# lists the only changes), so a later upstream fix can be diffed in; reformatting
+# them to our style would make every such diff a rewrite.
+extend-exclude = ["migrations/versions", "src/agentfox/capabilities/detection/vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
