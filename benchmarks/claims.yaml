@@ -627,6 +627,7 @@ claims:
     quoted_in:
       - {file: benchmarks/toolkit_corpus/README.md, text: "Our `injection.heuristic` | {ak}/{an} ({apct}%, CI {alo} to {ahi}) | {bk}/{bn} ({bpct}%, CI {blo} to {bhi})"}
       - {file: benchmarks/README.md, text: "`injection.heuristic` caught {ak}/{an} attack rows and flagged {bk}/{bn} benign rows"}
+      - {file: docs/design/architecture-differentiation.md, text: "our `injection.heuristic` caught {ak}/{an} attack rows and flagged {bk}/{bn} benign rows"}
 
   - id: toolkit_corpus.default_stack_detection
     source: benchmarks/toolkit_corpus/results/prompt_injection_corpus.json
@@ -657,6 +658,7 @@ claims:
       - {file: benchmarks/toolkit_corpus/README.md, text: "| Unsafe actions contained | {uon} | {uoff} |"}
       - {file: benchmarks/toolkit_corpus/README.md, text: "| Benign actions executed | {bon} | {boff} |"}
       - {file: benchmarks/README.md, text: "{uoff} unsafe actions contained with detectors off, {bon} benign actions executed with detectors on"}
+      - {file: docs/design/architecture-differentiation.md, text: "{uoff} of the unsafe scenarios contained with every detector off"}
 
 retired:
   - id: agentdojo.label_assigned_benign_utility

@@ -127,7 +127,7 @@ Each line follows one shape: architecture fact → mechanism → measured result
 - **Evidence**: tamper-evident logging.
 - **Delta**: the honest comparison, including where their architecture wins.
 
-Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`, guardrails `06d0ff2`, PurpleLlama `172c107`, invariant `2340fe2`, invariant-gateway `9baeade`, snyk/agent-scan `2d3ca36`, zenitysec/boundaries-as-code-template `d8d842e`, zenitysec/openclaw-security-platform `bc6d2ae`, Noma-Security/noma-marketplace `6e195a5`, lasso-security/mcp-gateway `7e7f1f6`, BerriAI/litellm `10444df` (Pillar and Prompt Security hooks).
+Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`, guardrails `06d0ff2`, PurpleLlama `172c107`, invariant `2340fe2`, invariant-gateway `9baeade`, snyk/agent-scan `2d3ca36`, zenitysec/boundaries-as-code-template `d8d842e`, zenitysec/openclaw-security-platform `bc6d2ae`, Noma-Security/noma-marketplace `6e195a5`, lasso-security/mcp-gateway `7e7f1f6`, BerriAI/litellm `10444df` (Pillar and Prompt Security hooks), microsoft/agent-governance-toolkit `c767f83`.
 
 ### Lakera Guard (Check Point)
 
@@ -380,6 +380,56 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
     - a kill switch through IdP revocation.
   - **Us:** deeper per-call semantics, which we have measured. Theirs is unmeasured publicly.
 
+### Microsoft agent-governance-toolkit (open source, MIT): platform-absorption risk
+
+This is not a point product. It is the risk that the platform owner gives the category away. The toolkit is free, MIT-licensed, Microsoft-maintained, and wired into Entra. A buyer already on Azure can get "agent governance" without a purchase order. Read at commit `c767f83`; every claim below cites a file there, and anything we could not confirm in the code was left out.
+
+- **Position.**
+  - In-process middleware or a sidecar per agent. The management plane is a separate Azure service: their FAQ calls the toolkit the enforcement engine and the Foundry Control Plane "the management dashboard" (`docs/FAQ.md:39-45`).
+  - Identity bridges to Entra Agent ID and managed identities (`agentmesh/identity/entra_agent_id.py`, `docs/FAQ.md:199-201`).
+- **Breadth, where it wins outright.**
+  - SDKs in five languages (`agent-governance-{python,typescript,dotnet,golang,rust}/`).
+  - Plugins or hooks for five coding agents: Claude Code, Codex CLI, Copilot CLI, OpenCode and Antigravity (`agent-governance-{claude-code,codex-cli,copilot-cli,opencode,antigravity-cli}/`). We ship one, for Claude Code (`plugins/claude-code/`).
+  - 18 framework adapters in one package (`agent_os/integrations/*_adapter.py`), plus more under `agentmesh-integrations/`.
+  - Ed25519-signed agent identities (`agentmesh/identity/agent_id.py:13, 172`).
+  - A sandbox package (`agent-governance-python/agent-sandbox/`). We have no sandbox.
+- **Decides.** Rules, parsed out of condition strings with regular expressions. Two engines are cited in their own NIST mapping:
+  - **AgentMesh `PolicyRule`** (`agentmesh/governance/policy.py:184-396`) matches each condition against anchored regexes for `==`, `!=`, `in`, `contains`, `startswith`, `endswith` and comparison with a *numeric literal*.
+    - It splits compound conditions on the bare strings `" or "` and `" and "` (`:216-223`).
+    - A field-to-field comparison such as `amount > limit.max` matches none of the patterns. It falls to "unrecognized syntax": a deny rule then matches, so it fails closed with a logged warning, and an allow rule does not match (`:386-396`). That is safe, but the comparison is unsupported.
+  - **The TypeScript MCP-server `PolicyEngine`** (`agent-os/extensions/mcp-server/src/services/policy-engine.ts`, their "TypeScript MCP policy engine") is weaker. `evaluateRule` (`:406-445`), commented "Simplified rule evaluation", understands only `action.type ==`, `action.type in [...]` and `true`. Every other condition returns `false` with no log, including:
+    - the shipped field-to-field rule `daily_cost > budget.daily` (`:93`);
+    - `estimated_cost > 10.00` (`:101`).
+
+    So those deny and approval rules never fire. A compound rule such as `action.type == "delete" && action.record_count > 100` (`:128`) fires on every delete, because only its first half is read.
+  - The trust-policy `matches` operator returns `False` for any pattern containing `{`, so `\d{16}` never matches, and the same holds for any pattern over 200 characters (`agentmesh/governance/trust_policy.py:96-97`).
+- **Provenance.** We found no per-argument taint or provenance ceiling in their SDK source; a search for "taint" finds none. Their data-provenance model is a documentation schema (`docs/compliance/data-provenance-model.md`).
+- **Evidence.**
+  - Their `verify` command's default mode (`agt verify` without `--evidence`, `agent_compliance/cli/agt.py:268-273`) reports OWASP ASI coverage, a letter grade and a badge. It counts a control as present when a Python module imports and a named class exists (`agent_compliance/verify.py:497-513, 728-775`). Importing `PromptInjectionDetector` scores ASI-01 whether or not anything calls it.
+  - A separate `--evidence` mode does check a runtime evidence file (`verify.py:515`).
+- **Measured.**
+  - Their own prompt-injection detector reports 7/110 attacks caught (6.4% recall) and 16/170 benign rows flagged (9.4%) on their smoke corpus (`benchmarks/prompt-injection/README.md:72-75`). On the same 280 rows our `injection.heuristic` caught 34/110 attack rows and flagged 32/170 benign rows (`benchmarks/toolkit_corpus/`). That is more recall at twice their false-positive rate, and neither detector catches prompt-leakage or markdown-image exfiltration.
+  - Their red-team benchmark marks a scenario contained exactly when it is labelled unsafe (`tests/redteam/benchmark/benchmark.py:332-334`). That is a contract test, not a measurement. We instantiated their 24 scenarios on our enforcement path: 12/12 of the unsafe scenarios contained with every detector off, at the cost of one hard-benign false block with detectors on.
+- **Delta.**
+  - **They win on:**
+    - price (free);
+    - distribution (Azure, Entra, Foundry);
+    - SDK and framework breadth;
+    - signed identities;
+    - a sandbox;
+    - a large published compliance-mapping set.
+
+    Some of that mapping set has errors; see [compliance-crosswalk-review.md](compliance-crosswalk-review.md).
+  - **We win on:**
+    - per-argument provenance with taint ceilings on the grant, which their rule engines have no field for;
+    - containment measured with detectors off, on AgentDojo and on their own scenarios;
+    - one deployable gateway with an approval queue bound to exact arguments and our own dashboard, where theirs splits enforcement from a hosted Azure management plane;
+    - a runtime answerability gate, grounding against registered sources, and per-requester entitlement. Their nearest equivalent is an offline eval that counts a sentence as grounded if any word longer than four letters appears in the context (`agent_sre/evals/__init__.py:194-203`).
+  - **Not a differentiator against them:**
+    - Zero egress. Both run self-hosted and in-process.
+    - Compliance mappings. Theirs and ours are both self-assessed drafts.
+  - **The risk to plan for:** a buyer who reads "Microsoft, free, OWASP 10/10" and never asks how a rule is evaluated. The answer is the evaluator behaviour above and a measured containment number, not a feature list.
+
 ---
 
 ## 5. Where our architecture loses or is unproven
@@ -391,6 +441,7 @@ Commit-pinned repositories read: llm-guard `168c103`, NeMo-Guardrails `fe6a9c0`,
 - **Detection is weak by default.**
   - The shipped lexical heuristic's held-out injection recall is 26.7% at 100% precision (`injection.heuristic_held_out`).
   - The opt-in ensemble reaches 85.6% recall on SPML (`generalization.classifier_spml_recall`), but it times out on long prompts (`benchmarks/REPORT.md`, round 7).
+- **The heuristic over-fires on text that quotes an attack.** On the third-party smoke corpus in `benchmarks/toolkit_corpus/`, it flags benign security notes, fixtures and changelogs that quote "ignore all previous instructions" at twice the rate of that project's own detector. It also misses prompt-leakage, markdown-image exfiltration and every leetspeak and rot13 spelling (see §4, Microsoft agent-governance-toolkit).
 - **The answerability gate is real, but its default recall is low.** It abstains on 57/676 contested questions; with a judgment tier that becomes 572/676 (`judgment.contested_recall_*`), at 6.8% over-refusal (`benchmarks/judgment/results/judgment_results.json`).
 - **Judgment costs latency.** The hosted tier adds 341.3 ms median and 1209.8 ms p95 per injection check (`judgment.injection_latency`), against 0.22 ms per example for the heuristic (`injection.heuristic_held_out`).
 - **The hook path fails open.** The default `fail_mode` is also open (`runtime/availability.py`). Only the four `NEVER_OPEN` controls are guaranteed closed.
