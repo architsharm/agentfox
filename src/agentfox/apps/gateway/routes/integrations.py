@@ -26,6 +26,7 @@ import json
 import logging
 import secrets
 import tempfile
+import time
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import urlparse
@@ -342,14 +343,25 @@ def connect(
     return {"connected": True, "github_login": conn.github_login}
 
 
-@router.get("/api/integrations/github/repos")
-def list_repos(
-    session: Session = Depends(db), _user: User = Depends(current_user)
-) -> dict[str, Any]:
-    conn = _get_connection(session)
-    if conn is None:
-        raise HTTPException(404, "no GitHub account connected")
-    token = _decrypt(conn.access_token_encrypted)
+#: How long one connection's repository list is reused. Listing a GitHub account's
+#: repositories is a call to GitHub that takes from half a second to a few, and
+#: Settings > Connections made it on every visit. A repository created a minute ago
+#: showing up a minute late is fine; reconnecting stores a new token, which misses.
+_REPO_CACHE_SECONDS = 60.0
+_repo_cache: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
+
+
+def _github_repos(conn: GithubConnection, token: str) -> list[dict[str, Any]]:
+    """The connection's repositories from GitHub, reused for a minute.
+
+    Keyed by connection and its stored (encrypted) token, so a reconnect is never
+    served the previous account's list.
+    """
+    key = (conn.id, conn.access_token_encrypted)
+    now = time.monotonic()
+    hit = _repo_cache.get(key)
+    if hit and now - hit[0] < _REPO_CACHE_SECONDS:
+        return hit[1]
     try:
         resp = httpx.get(
             f"{_GITHUB_API}/user/repos",
@@ -360,8 +372,33 @@ def list_repos(
         resp.raise_for_status()
     except httpx.HTTPError as exc:
         raise HTTPException(502, f"GitHub repo list failed: {exc}") from exc
+    repos = list(resp.json())
+    if len(_repo_cache) > 256:
+        _repo_cache.clear()
+    _repo_cache[key] = (now, repos)
+    return repos
 
-    already_scanned = set(session.scalars(select(ScanRun.repo_full_name)))
+
+@router.get("/api/integrations/github/repos")
+def list_repos(
+    session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    conn = _get_connection(session)
+    if conn is None:
+        raise HTTPException(404, "no GitHub account connected")
+    listed = _github_repos(conn, _decrypt(conn.access_token_encrypted))
+    names = [r["full_name"] for r in listed]
+    # Only the listed names, once each: this loaded every scan run ever recorded
+    # to answer a yes/no for at most a hundred repositories.
+    already_scanned = (
+        set(
+            session.scalars(
+                select(ScanRun.repo_full_name).where(ScanRun.repo_full_name.in_(names)).distinct()
+            )
+        )
+        if names
+        else set()
+    )
     repos = [
         {
             "full_name": r["full_name"],
@@ -375,7 +412,7 @@ def list_repos(
             "owner_type": (r.get("owner") or {}).get("type", "User"),
             "scanned": r["full_name"] in already_scanned,
         }
-        for r in resp.json()
+        for r in listed
     ]
     return {"github_login": conn.github_login, "repos": repos}
 
