@@ -102,6 +102,98 @@ def _matches_tool(rule: Rule, tool_key: str, impact: str | None) -> bool:
     return bool(when.tool_impact and impact and impact in when.tool_impact)
 
 
+def _tool_sources(
+    session: Session, agent: Agent | None, called: set[str]
+) -> tuple[list[Capability], set[str], set[str]]:
+    """``(grants, in_code, seen)``: where an agent's tools are known from.
+
+    Its identity's grants, the tools its code defines (a repo scan or a registration),
+    and the tools it was seen calling. Red-team tools are simulated, never its own.
+    """
+    grants: list[Capability] = []
+    if agent:
+        identity = session.scalar(select(Identity).where(Identity.agent_id == agent.id))
+        if identity is not None:
+            grants = list(identity.capabilities)
+    in_code = set(agent.declared_tools or []) if agent else set()
+    seen = {k for k in called if not k.startswith("redteam.")}
+    return grants, in_code, seen
+
+
+def _granted_keys(grants: list[Capability]) -> set[str]:
+    """Named grants. A wildcard grants a pattern, not a tool to list."""
+    return {
+        g.tool_key
+        for g in grants
+        if "*" not in g.tool_key and not g.tool_key.startswith("redteam.")
+    }
+
+
+def _grant_for(grants: list[Capability], key: str) -> Capability | None:
+    return next((g for g in grants if fnmatch.fnmatch(key, g.tool_key)), None)
+
+
+def _permission(grant: Capability | None) -> str:
+    if grant is None:
+        return "not_granted"
+    return "ask" if grant.requires_approval else "allowed"
+
+
+def _sources(key: str, grant: Capability | None, in_code: set[str], seen: set[str]) -> list[str]:
+    return [
+        name
+        for name, has in (
+            ("code", key in in_code),
+            ("granted", grant is not None),
+            ("seen", key in seen),
+        )
+        if has
+    ]
+
+
+def agent_tools(session: Session, slug: str) -> dict[str, Any]:
+    """The tools one agent can be tested with: the same set its guardrail map shows.
+
+    Each carries where it is known from and a blank argument skeleton to fill in.
+    """
+    from agentfox.platform.registry.service import argument_skeleton
+
+    agent = session.scalar(select(Agent).where(Agent.slug == slug))
+    since = dt.datetime.now(dt.UTC) - dt.timedelta(days=WINDOW_DAYS)
+    called: set[str] = set()
+    if agent:
+        called = {
+            k
+            for k in session.scalars(
+                select(Decision.tool_key)
+                .where(
+                    Decision.agent_id == agent.id,
+                    Decision.created_at >= since,
+                    Decision.tool_key.is_not(None),
+                )
+                .distinct()
+            )
+            if k
+        }
+    grants, in_code, seen = _tool_sources(session, agent, called)
+    registry = {t.key: t for t in session.scalars(select(Tool))}
+    out = []
+    for key in sorted(_granted_keys(grants) | in_code | seen):
+        grant = _grant_for(grants, key)
+        tool = registry.get(key)
+        out.append(
+            {
+                "key": key,
+                "name": (tool.name if tool else "") or key,
+                "impact": tool.impact if tool else None,
+                "permission": _permission(grant),
+                "sources": _sources(key, grant, in_code, seen),
+                "arguments": argument_skeleton(session, key),
+            }
+        )
+    return {"agent": slug, "window_days": WINDOW_DAYS, "tools": out}
+
+
 def _rule_json(rule: Rule, mode: str, level: str, hits: Counter) -> dict[str, Any]:
     return {
         "id": rule.id,
@@ -178,11 +270,7 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
                 detectors_by_stage[stage.key].append(key)
 
     # --- tools ---------------------------------------------------------------
-    grants: list[Capability] = []
-    if agent:
-        identity = session.scalar(select(Identity).where(Identity.agent_id == agent.id))
-        if identity is not None:
-            grants = list(identity.capabilities)
+    grants, in_code, seen_keys = _tool_sources(session, agent, set(tool_stats))
     registry = {t.key: t for t in session.scalars(select(Tool))}
     ladders = list(
         session.scalars(
@@ -191,18 +279,9 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
             )
         )
     )
-    # Red-team grants are for simulated tools, never the agent's own.
-    granted = {
-        g.tool_key
-        for g in grants
-        if "*" not in g.tool_key and not g.tool_key.startswith("redteam.")
-    }
-    in_code = set(agent.declared_tools or []) if agent else set()
-    seen_keys = {k for k in tool_stats if not k.startswith("redteam.")}
-    keys = granted | in_code | seen_keys
     tools = []
-    for key in sorted(keys):
-        grant = next((g for g in grants if fnmatch.fnmatch(key, g.tool_key)), None)
+    for key in sorted(_granted_keys(grants) | in_code | seen_keys):
+        grant = _grant_for(grants, key)
         tool = registry.get(key)
         impact = tool.impact if tool else None
         tools.append(
@@ -210,11 +289,7 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
                 "key": key,
                 "name": (tool.name if tool else "") or key,
                 "impact": impact,
-                "permission": "not_granted"
-                if grant is None
-                else "ask"
-                if grant.requires_approval
-                else "allowed",
+                "permission": _permission(grant),
                 "limits": grant.constraints_json if grant else {},
                 "rules": [e for r, e in tool_rules if _matches_tool(r, key, impact)],
                 "ladders": [
@@ -231,15 +306,7 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
                 "stats": dict(tool_stats.get(key, Counter())),
                 # Where this tool is known from: the agent's code (a repo scan or a
                 # registration), a grant, or calls actually seen.
-                "sources": [
-                    name
-                    for name, has in (
-                        ("code", key in in_code),
-                        ("granted", grant is not None),
-                        ("seen", key in seen_keys),
-                    )
-                    if has
-                ],
+                "sources": _sources(key, grant, in_code, seen_keys),
             }
         )
 

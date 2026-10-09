@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 254,
+ "count": 255,
  "routes": [
   {
    "method": "GET",
@@ -1525,6 +1525,35 @@
    "audience": "operator",
    "summary": "Mint (or rotate) an agent's HMAC signing key. Shown once — like an API token, nothing after this call can retrieve the raw value again.",
    "description": "Mint (or rotate) an agent's HMAC signing key. Shown once — like an API\ntoken, nothing after this call can retrieve the raw value again.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/tools",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "The tools this agent can be tested with: granted, in its code, or seen called, each with where it is known from and a blank argument skeleton.",
+   "description": "The tools this agent can be tested with: granted, in its code, or seen called,\neach with where it is known from and a blank argument skeleton.",
    "params": [
     {
      "name": "slug",

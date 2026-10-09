@@ -68,6 +68,18 @@ def get_map(
     return agent_map(session, slug)
 
 
+@router.get("/{slug}/tools")
+def get_tools(
+    slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """The tools this agent can be tested with: granted, in its code, or seen called,
+    each with where it is known from and a blank argument skeleton."""
+    from agentfox.capabilities.protection.map import agent_tools
+
+    get_agent_or_404(session, slug)
+    return agent_tools(session, slug)
+
+
 @router.get("/{slug}/protection")
 def get_protection(
     slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
