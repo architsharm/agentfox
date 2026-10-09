@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-244 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+254 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -127,6 +127,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/attention` | What needs a human, ranked. The home page is built from this. |
 | `GET` | `/api/detectors` | Which detectors exist, which are live, and how fast they are. |
 | `POST` | `/api/detectors/{key}` | Switch a detector on or off for this workspace. Turning one on that is not |
+| `POST` | `/api/detectors/{key}/pull` | Download the model weights this detector loads, in a background job. |
 | `GET` | `/api/health` | Liveness, plus what is currently not being checked. |
 | `GET` | `/api/me` | The signed-in identity, for the account menu. |
 | `GET` | `/api/memory` | List Entries |
@@ -202,6 +203,7 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `GET` | `/api/policies` | List Policies |
 | `POST` | `/api/policies` | Upsert Policy |
+| `DELETE` | `/api/policies/agents/{slug}/rules/{rule_id}` | Drop an agent's own copy of a rule: the workspace rule applies to it again. |
 | `GET` | `/api/policies/effective` | The policy actually in force for a subject, with per-rule provenance. |
 | `GET` | `/api/policies/lint` | Policy lint. `passed` is false when critical/high findings exist. |
 | `POST` | `/api/policies/simulate` | Replay recorded traffic against a candidate policy. |
@@ -214,6 +216,8 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/policies/{key}/mode` | Promote or demote a policy, optionally making a saved version live. |
 | `GET` | `/api/policies/{key}/rego` | Get Rego |
 | `POST` | `/api/policies/{key}/rules/{rule_id}` | Change one rule's action or switch it off, as a new saved version. |
+| `GET` | `/api/policies/{key}/rules/{rule_id}/agents` | Every agent, nested by hand-off, and whether each has its own copy of the rule. |
+| `POST` | `/api/policies/{key}/rules/{rule_id}/scope` | Change a rule for every agent, or for only some (and what they hand off to). |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |
 
@@ -399,8 +403,14 @@ from the code. Regenerate after changing any route:
 | `PUT` | `/api/business/rules/{key}` | Change a rule's thresholds in place. It keeps its mode; changing an enforcing |
 | `POST` | `/api/business/rules/{key}/mode` | Business Rule Mode |
 | `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
+| `GET` | `/api/custom-models` | Get Custom Models |
+| `POST` | `/api/custom-models` | Register (or update) a classifier endpoint as a detector. |
+| `DELETE` | `/api/custom-models/{key}` | Remove Custom Model |
+| `POST` | `/api/custom-models/{key}/enabled` | Toggle Custom Model |
+| `POST` | `/api/custom-models/{key}/test` | Send one text to a registered model and show what it would report. Records |
 | `GET` | `/api/custom-rules` | Get Custom Rules |
 | `POST` | `/api/custom-rules` | Post Custom Rule |
+| `GET` | `/api/custom-rules/fields` | The arguments a tool is known to take, to suggest as a condition's field. |
 | `POST` | `/api/custom-rules/try` | Match one text against a rule that has not been saved. Records nothing. |
 | `DELETE` | `/api/custom-rules/{key}` | Remove Custom Rule |
 | `POST` | `/api/import/{tool}` | Apply Import |

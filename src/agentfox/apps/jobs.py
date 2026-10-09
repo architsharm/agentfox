@@ -33,6 +33,8 @@ kind                   what it does
                        the current keys (``platform.keys.rotation``). Deployment-wide;
                        the job runner enqueues it while a previous key still protects
                        something.
+``detectors.pull``     Downloads the model weights one detector loads (``key``),
+                       for the Checks screen's Download button.
 ``probes.run``         Sends the live probe library to every *opted-in* probe target
                        in the tenant that is due (``evaluation.live_probes``), records
                        a campaign per target and opens/closes ``live_probe_escape``
@@ -340,6 +342,31 @@ def rotate_keys(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+# ---------------------------------------------------------------------------
+# detectors.pull
+# ---------------------------------------------------------------------------
+
+
+def pull_detector_models(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Download the model weights one detector loads (``key``) into the local cache.
+
+    Deployment-wide in effect (the cache is the process's), recorded per tenant
+    because a person in a tenant asked for it.
+    """
+    from agentfox.capabilities.detection import all_detectors
+    from agentfox.capabilities.detection.models import pull, pull_blocker
+
+    key = str(payload.get("key") or "")
+    detector = all_detectors().get(key)
+    if detector is None:
+        raise ValueError(f"unknown detector '{key}'")
+    blocked = pull_blocker(detector)
+    if blocked:
+        raise RuntimeError(blocked)
+    ids = pull(detector)
+    return {"key": key, "models": ids, "available": bool(detector.available())}
+
+
 HANDLERS = {
     "escalation.scan": scan_escalations,
     "tuning.propose": propose_threshold_changes,
@@ -352,6 +379,7 @@ HANDLERS = {
     "monitors.run": run_monitors,
     "probes.run": run_live_probes,
     "keys.rotate": rotate_keys,
+    "detectors.pull": pull_detector_models,
 }
 
 

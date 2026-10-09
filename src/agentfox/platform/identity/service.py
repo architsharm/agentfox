@@ -27,6 +27,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from agentfox.core.config import get_settings
 from agentfox.core.models import (
     Agent,
     ApprovalRequest,
@@ -517,7 +518,7 @@ def request_approval(
     reason: str,
     trace_id: str | None = None,
     decision_id: str | None = None,
-    ttl_minutes: int = 30,
+    ttl_minutes: int | None = None,
     approver_role: str = "security",
 ) -> ApprovalRequest:
     """Open an approval for a held call — or return the one already waiting for it.
@@ -527,6 +528,8 @@ def request_approval(
     agent asking for the same tool with the same arguments while a request is still
     pending gets that request back.
     """
+    if ttl_minutes is None:
+        ttl_minutes = int(getattr(get_settings(), "approval_ttl_minutes", 30) or 30)
     now = utcnow()
     waiting = session.scalars(
         select(ApprovalRequest).where(

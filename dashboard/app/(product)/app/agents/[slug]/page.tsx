@@ -23,6 +23,7 @@ import {
   num,
   pctOf,
 } from "@/components/kit";
+import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
 import { AgentMap } from "@/components/product/AgentMap";
@@ -218,6 +219,7 @@ async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
           tried={access.tried}
           tools={access.tools}
           unused={access.unused}
+          inCode={access.in_code || []}
           prefill={prefill}
         />
       ) : (
@@ -284,6 +286,7 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
   ]);
   const byId: Record<string, any> = Object.fromEntries((stats.rules || []).map((r: any) => [r.rule_id, r]));
   const rules: any[] = effective.rules || [];
+  const changes: any[] = effective.agent_changes || [];
   const groups = CATEGORIES.map((c) => ({ c, rules: rules.filter((r) => ruleCategory(r.rule_id) === c.key) })).filter((g) => g.rules.length);
   return (
     <>
@@ -297,6 +300,42 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
           </Link>
         </div>
       </div>
+      {changes.length > 0 && (
+        <Card title="Changed for this agent" flush>
+          <table className="k-table">
+            <tbody>
+              {changes.map((c) => {
+                const what = (x: any) => (x.enabled ? <ActionPill effect={x.effect} /> : <Pill tone="outline">Off</Pill>);
+                return (
+                  <tr key={c.rule_id}>
+                    <td>
+                      <Link className="k-name" href={href(`/app/policies/rules/${encodeURIComponent(c.rule_id)}`, { tab: "tune", agent: slug })}>
+                        {ruleTitle(c.rule_id)}
+                      </Link>
+                      <span className="sub">
+                        {c.kind === "added" ? "Only on this agent" : c.has_effect ? "Workspace default replaced for this agent" : "Looser than the workspace rule, which still applies"}
+                      </span>
+                    </td>
+                    <td className="tight">{c.default ? <span className="k-pills" style={{ gap: 6 }}><span className="k-muted">Workspace</span>{what(c.default)}</span> : null}</td>
+                    <td className="tight"><span className="k-pills" style={{ gap: 6 }}><span className="k-muted">This agent</span>{what(c.agent)}</span></td>
+                    <td className="tight">
+                      <Act
+                        url={`/api/agents/${encodeURIComponent(slug)}/rules/${encodeURIComponent(c.rule_id)}`}
+                        method="DELETE"
+                        className="k-btn-ghost"
+                        confirm={c.kind === "added" ? "Remove this rule from this agent?" : "Reset this rule to the workspace default for this agent?"}
+                        done="Done"
+                      >
+                        {c.kind === "added" ? "Remove" : "Reset to workspace default"}
+                      </Act>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
       {groups.map(({ c, rules }) => (
         <Card key={c.key} title={categoryLabel(c.key)} flush>
           <table className="k-table">
@@ -309,7 +348,11 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
                       <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(r.rule_id)}`}>
                         {ruleTitle(r.rule_id)}
                       </Link>
-                      {r.source && !String(r.source).startsWith("org:") && <span className="sub">Custom for this agent</span>}
+                      {r.changed_for_agent ? (
+                        <span className="sub">Changed for this agent</span>
+                      ) : r.added_for_agent || (r.source && !String(r.source).startsWith("org:")) ? (
+                        <span className="sub">Custom for this agent</span>
+                      ) : null}
                     </td>
                     <td className="tight"><ActionPill effect={r.effect} /></td>
                     <td className="tight"><ModePill mode={r.enforcement} /></td>

@@ -43,6 +43,9 @@ def _gateway_refusal(exc: APIError) -> dict[str, Any]:
         "status": getattr(exc, "status_code", None),
         "user_message": detail.get("user_message") or error.get("user_message"),
         "trace_id": detail.get("trace_id") or error.get("trace_id"),
+        # A held call or message: the gateway asks for a person's approval.
+        "verdict": detail.get("verdict") or error.get("verdict"),
+        "approval_id": detail.get("approval_id") or error.get("approval_id"),
         "body": body,
     }
 
@@ -113,6 +116,14 @@ class Conversation:
         turn["decisions"] = [
             {k: info.get(k) for k in ("verdict", "approval_id", "trace_id", "user_message")}
             for info in (_info(r.output.output_info) for r in result.tool_input_guardrail_results)
+        ]
+        # What AgentFox said about each tool's result: a withheld result, a failed tool.
+        turn["results"] = [
+            {k: info.get(k) for k in ("verdict", "trace_id", "rules_fired")}
+            for info in (
+                _info(r.output.output_info)
+                for r in getattr(result, "tool_output_guardrail_results", [])
+            )
         ]
         return turn
 

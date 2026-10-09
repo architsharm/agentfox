@@ -69,7 +69,12 @@ def get_access(
 ) -> dict[str, Any]:
     agent = get_agent_or_404(session, slug)
     identity = session.scalar(select(Identity).where(Identity.agent_id == agent.id))
-    caps = list(identity.capabilities) if identity else []
+    # A red-team run's simulated `redteam.*` grants are not the agent's access.
+    caps = [
+        c
+        for c in (identity.capabilities if identity else [])
+        if not c.tool_key.startswith("redteam.")
+    ]
     tools = {t.key: t for t in session.scalars(select(Tool))}
 
     since = dt.datetime.now(dt.UTC) - dt.timedelta(days=days)
@@ -82,6 +87,7 @@ def get_access(
             Decision.agent_id == agent.id,
             Decision.created_at >= since,
             Decision.tool_key.is_not(None),
+            Decision.tool_key.not_like("redteam.%"),
         )
     ):
         key = d.tool_key or ""
@@ -130,6 +136,10 @@ def get_access(
             reverse=True,
         ),
         "unused": [c["id"] for c in capabilities if c["usage"]["calls"] == 0],
+        # Tools the agent's code defines that it has no grant for yet.
+        "in_code": sorted(
+            k for k in agent.declared_tools or [] if not any(fnmatch.fnmatch(k, g) for g in granted)
+        ),
         "tools": [
             {"key": t.key, "name": t.name, "impact": t.impact, "description": t.description}
             for t in sorted(tools.values(), key=lambda t: t.key)

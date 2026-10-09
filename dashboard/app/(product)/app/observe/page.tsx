@@ -148,10 +148,15 @@ async function Overview({ f }: { f: Filters }) {
   );
 }
 
+/** True when no rule in force covers the area, so its 0 would mean "not looking". */
+function notChecked(rules: any, category: string): boolean {
+  return rules.checked ? rules.checked[category] === false : false;
+}
+
 function byCategory(rules: any[]) {
   const out: Record<string, { fires: number; enforced: number; watched: number; series: number[]; rules: any[] }> = {};
   for (const r of rules) {
-    const c = ruleCategory(r.rule_id);
+    const c = r.category || ruleCategory(r.rule_id);
     const g = (out[c] ||= { fires: 0, enforced: 0, watched: 0, series: [], rules: [] });
     g.fires += r.fires;
     g.enforced += r.enforced;
@@ -175,9 +180,13 @@ async function Breaks({ f }: { f: Filters }) {
   return (
     <>
       <Grid cols={5}>
-        {tiles.map((c) => (
-          <Kpi key={c} label={categoryLabel(c)} value={num(cats[c]?.fires || 0)} spark={cats[c]?.series} href="#rules" />
-        ))}
+        {tiles.map((c) =>
+          notChecked(rules, c) ? (
+            <Kpi key={c} label={categoryLabel(c)} value="Not checked" hint="No rule in force looks for this. Add one in Policies." href="/app/policies/new" />
+          ) : (
+            <Kpi key={c} label={categoryLabel(c)} value={num(cats[c]?.fires || 0)} spark={cats[c]?.series} href="#rules" />
+          ),
+        )}
         <Kpi label="Failed steps" value={num(errorTotal)} tone={errorTotal ? "bad" : undefined} href={runsHref(f, { errors: true })} />
       </Grid>
 
@@ -302,8 +311,8 @@ async function Security({ f, agents }: { f: Filters; agents: any }) {
   return (
     <>
       <Grid cols={4}>
-        <Kpi label="Attacks seen" value={num(cats.attacks?.fires || 0)} spark={cats.attacks?.series} href={runsHref(f, { outcome: "blocked" })} />
-        <Kpi label="Sensitive data caught" value={num(cats.data?.fires || 0)} spark={cats.data?.series} />
+        <Kpi label="Attacks seen" value={notChecked(rules, "attacks") ? "Not checked" : num(cats.attacks?.fires || 0)} spark={cats.attacks?.series} href={runsHref(f, { outcome: "blocked" })} />
+        <Kpi label="Sensitive data caught" value={notChecked(rules, "data") ? "Not checked" : num(cats.data?.fires || 0)} spark={cats.data?.series} />
         <Kpi label="Risky actions stopped" value={num(cats.actions?.enforced || 0)} spark={cats.actions?.series} href={runsHref(f, { outcome: "held" })} />
         <Kpi label="Unregistered agents" value={num(shadow)} tone={shadow ? "bad" : undefined} href="/app/agents?tab=attention" />
       </Grid>
@@ -333,8 +342,16 @@ async function Security({ f, agents }: { f: Filters; agents: any }) {
   );
 }
 
+/** What was held, in words: a tool, or a message held before it reached the agent. */
+function heldLabel(tool?: string | null): string {
+  if (!tool) return "—";
+  if (tool.startsWith("message:")) return { input: "User messages", output: "Agent replies" }[tool.slice(8)] || "Messages";
+  return tool;
+}
+
 async function Review({ f, agents }: { f: Filters; agents: any[] }) {
-  const statuses = ["pending", "approved", "denied", "expired"] as const;
+  // "used" is an approved call that has since run: still an approval.
+  const statuses = ["pending", "approved", "used", "denied", "expired"] as const;
   const agentQs = f.agent ? `?agent=${encodeURIComponent(f.agent)}` : "";
   const [lists, report] = await Promise.all([
     Promise.all(statuses.map((s) => safeApi<any>(`/api/approvals?status=${s}`, { approvals: [] }))),
@@ -362,13 +379,13 @@ async function Review({ f, agents }: { f: Filters; agents: any[] }) {
     <>
       <Grid cols={4}>
         <Kpi label="Waiting" value={num(by.pending.length)} tone={by.pending.length ? "warn" : undefined} href="/app/approvals" />
-        <Kpi label="Approved" value={num(by.approved.length)} href="/app/approvals?tab=history&status=approved" />
+        <Kpi label="Approved" value={num(by.approved.length + by.used.length)} href="/app/approvals?tab=history&status=approved" />
         <Kpi label="Denied" value={num(by.denied.length)} href="/app/approvals?tab=history&status=denied" />
         <Kpi label="Expired" value={num(by.expired.length)} tone={by.expired.length ? "warn" : undefined} hint="Nobody answered in time; the action was denied." href="/app/approvals?tab=history&status=expired" />
       </Grid>
       <Grid cols={2}>
         <Card title="Held by tool">
-          <BarList rows={count((a) => a.tool || "—")} empty="Nothing held" />
+          <BarList rows={count((a) => heldLabel(a.tool))} empty="Nothing held" />
         </Card>
         <Card title="Held by agent">
           <BarList rows={count((a) => slug[a.agent_id] || "—")} empty="Nothing held" />

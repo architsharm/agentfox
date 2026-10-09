@@ -26,11 +26,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.core.models import Policy
 from agentfox.platform.ledger import operator_log
 from agentfox.platform.packs.loader import load_packs
-from agentfox.platform.policy import PolicyDocument, Rule, effective_for
+from agentfox.platform.policy import (
+    PolicyDocument,
+    Rule,
+    current_binding,
+    effective_for,
+    load_version_document,
+)
 from agentfox.platform.policy.publish import Published, current_mode, publish_in_current_mode
 
 #: Sensitivity as a customer says it, and the detection threshold it means. Lower
@@ -86,6 +94,45 @@ BY_KEY = {p.key: p for p in CATALOGUE}
 
 def layer_key(slug: str) -> str:
     return f"agent.{slug}"
+
+
+def own_layer(session: Session, slug: str) -> PolicyDocument:
+    """The agent's own layer as it is live now (an empty one when it has none)."""
+    key = layer_key(slug)
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    _binding, live = current_binding(session, policy.id) if policy else (None, None)
+    if live is not None:
+        return load_version_document(live)
+    return PolicyDocument(
+        key=key,
+        name=f"{slug} protection",
+        description=f"Protections chosen for the agent '{slug}'.",
+    )
+
+
+def _catalogue_rule_ids() -> set[str]:
+    return {rid for p in CATALOGUE for rid in p.rules}
+
+
+def with_agent_rules(session: Session, slug: str, doc: PolicyDocument) -> PolicyDocument:
+    """``doc`` plus the rules this agent's layer holds outside the catalogue.
+
+    The same layer also carries rules changed for this agent only
+    (`capabilities/protection/scope.py`). Re-running the protection setup rewrites
+    the catalogue's rules and must leave those alone.
+    """
+    owned = _catalogue_rule_ids()
+    current = {r.id: r for r in own_layer(session, slug).rules}
+    rules = []
+    for rule in doc.rules:
+        before = current.get(rule.id)
+        if before is not None:
+            # The setup picks sensitivity and the message; an action chosen for
+            # this agent on the rule's own page stays.
+            rule = rule.model_copy(update={"effect": before.effect, "on_block": before.on_block})
+        rules.append(rule)
+    kept = [r for r in current.values() if r.id not in owned]
+    return doc.model_copy(update={"rules": [*rules, *kept]})
 
 
 def _template_rules() -> dict[str, Rule]:
@@ -258,7 +305,7 @@ def save(
     Switching a protection off removes this agent's copy of its rules, so this is
     recorded as an operator action with the before and after choices.
     """
-    doc = build_layer(slug, choices, message)
+    doc = with_agent_rules(session, slug, build_layer(slug, choices, message))
     before = {p.protection.key: p.level for p in state(session, slug).protections}
     operator_log.record(
         session,

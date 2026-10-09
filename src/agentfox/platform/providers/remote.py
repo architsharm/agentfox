@@ -29,19 +29,40 @@ from agentfox.platform.providers.base import (
 #: Deliberately conservative and clearly labelled — the platform must never present
 #: a stale price list as an authoritative spend figure in a compliance report.
 _PRICING: dict[str, tuple[float, float]] = {
-    "gpt-4o": (2.50, 10.00),
+    "gpt-5-nano": (0.05, 0.40),
+    "gpt-5-mini": (0.25, 2.00),
+    "gpt-5": (1.25, 10.00),
+    "gpt-4.1-nano": (0.10, 0.40),
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4.1": (2.00, 8.00),
     "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4o": (2.50, 10.00),
+    "o4-mini": (1.10, 4.40),
+    "o3-mini": (1.10, 4.40),
+    "o3": (2.00, 8.00),
     "claude-opus-4": (15.00, 75.00),
     "claude-sonnet-4": (3.00, 15.00),
-    "claude-haiku-4": (0.80, 4.00),
+    "claude-3-7-sonnet": (3.00, 15.00),
+    "claude-3-5-sonnet": (3.00, 15.00),
+    "claude-haiku-4": (1.00, 5.00),
+    "claude-3-5-haiku": (0.80, 4.00),
+    "gemini-2.5-pro": (1.25, 10.00),
+    "gemini-2.5-flash": (0.30, 2.50),
 }
 
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    for prefix, (inp, out) in _PRICING.items():
-        if model.startswith(prefix):
-            return (input_tokens * inp + output_tokens * out) / 1_000_000
-    return 0.0
+    """Dollars for a call, from list prices per million tokens.
+
+    The longest matching prefix wins, so `gpt-4o-mini` is never priced as `gpt-4o`;
+    a provider prefix (`openai/gpt-4o`) is ignored. Unknown models cost nothing.
+    """
+    name = (model or "").lower().rsplit("/", 1)[-1]
+    best = max((p for p in _PRICING if name.startswith(p)), key=len, default=None)
+    if best is None:
+        return 0.0
+    inp, out = _PRICING[best]
+    return (input_tokens * inp + output_tokens * out) / 1_000_000
 
 
 def _sse_lines(response) -> Iterator[str]:

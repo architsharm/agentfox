@@ -39,8 +39,12 @@ class _SurfacesMixin:
         taint_source: str = "user",
         persist: bool = True,
         trace: Trace | None = None,
+        approval_id: str | None = None,
     ) -> dict[str, Any]:
         """Light single-surface check. Used by the red-team runner and `/v1/guard`.
+
+        `approval_id` is the resend of a message a person approved: the same content
+        passes once; anything else is held again.
 
         `trace` is optional because the red-team runner has no trace to attach to and
         wants none: a simulated attack is not something the agent did. Every caller on
@@ -72,6 +76,7 @@ class _SurfacesMixin:
             tracker=tracker,
             persist=persist,
             trace=trace,
+            approval_id=approval_id,
         )
         return result.to_json()
 

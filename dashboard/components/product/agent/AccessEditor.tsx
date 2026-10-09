@@ -66,6 +66,7 @@ export function AccessEditor({
   tried,
   tools,
   unused,
+  inCode = [],
   prefill,
 }: {
   slug: string;
@@ -73,6 +74,8 @@ export function AccessEditor({
   tried: { tool_key: string; count: number; last: string | null }[];
   tools: Tool[];
   unused: string[];
+  /** Tools the agent's own code defines (from a repo scan) that it has no grant for. */
+  inCode?: string[];
   prefill?: string;
 }) {
   const router = useRouter();
@@ -265,6 +268,34 @@ export function AccessEditor({
           )}
         </div>
       </section>
+
+      {inCode.length > 0 && (
+        <section className="k-card">
+          <div className="k-card-head">
+            <h3>Found in its code</h3>
+            <span className="muted">Not allowed yet</span>
+          </div>
+          <div className="k-card-body" style={{ padding: "4px 0 0" }}>
+            <ul className="k-list">
+              {inCode.map((key) => (
+                <li key={key}>
+                  <div className="k-list-main">
+                    <span className="k-mono">{key}</span>
+                  </div>
+                  <div className="k-list-end">
+                    <button className="k-btn" disabled={busy === key} onClick={() => save(key, { tool_key: key, requires_approval: true, max_taint: "user", constraints: {} })}>
+                      Allow with approval
+                    </button>
+                    <button className="k-btn-primary" disabled={busy === key} onClick={() => save(key, { tool_key: key, requires_approval: false, max_taint: "user", constraints: {} })}>
+                      Allow
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {tried.length > 0 && (
         <section className="k-card">

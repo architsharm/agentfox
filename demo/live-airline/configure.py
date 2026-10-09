@@ -6,7 +6,9 @@
    person's approval.
 3. Protect the agent: prompt attacks and secrets at high, off-task actions on, the
    competitors' names as blocked words, topics to avoid, and the message users see.
-4. Enforce: switch the agent's protection pack and the custom-rules pack from watching
+4. What it may answer: facts and how-tos about the airline's own records, not
+   predictions or opinions (the dashboard's "What it may answer").
+5. Enforce: switch the agent's protection pack and the custom-rules pack from watching
    to enforcing. The gateway only enforces a version that has been simulated, so each
    pack is simulated over the last 7 days first (the dashboard's "Start enforcing").
 
@@ -65,6 +67,21 @@ def protect() -> None:
     print(f"protection {saved['policy']['key']} v{saved['policy']['version']}, custom rules saved")
 
 
+def answerable() -> None:
+    api(
+        "PUT",
+        "/api/answerability/boundary",
+        json={
+            "agent": AGENT,
+            "systems_of_record": ["bookings", "flight-status", "faq"],
+            "entity_types": ["booking", "flight", "seat", "baggage"],
+            "answerable_types": ["fact", "procedure", "aggregate"],
+            "mode": "enforce",
+        },
+    )
+    print("answers    facts and procedures only; predictions and opinions abstain")
+
+
 def enforce(key: str) -> None:
     policy = api("GET", f"/api/policies/{key}")
     sim = api(
@@ -83,6 +100,7 @@ def main() -> None:
     warm_up()
     grant_access()
     protect()
+    answerable()
     for key in PACKS:
         enforce(key)
 

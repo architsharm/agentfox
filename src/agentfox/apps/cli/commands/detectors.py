@@ -57,4 +57,4 @@ def detectors_pull(key: str) -> None:
         )
         raise typer.Exit(1) from exc
     console.print(f"[green]downloaded[/] {', '.join(ids)}")
-    console.print("Restart the gateway, then switch it on in Policies → Library → Detectors.")
+    console.print("Restart the gateway, then switch it on in Policies → Checks.")

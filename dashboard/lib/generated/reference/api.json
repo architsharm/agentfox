@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 244,
+ "count": 254,
  "routes": [
   {
    "method": "GET",
@@ -227,6 +227,30 @@
       "type": "object",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "usage",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "error",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "approval_id",
+      "type": "string",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -375,6 +399,30 @@
      {
       "name": "completion",
       "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "usage",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "error",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "approval_id",
+      "type": "string",
       "required": false,
       "description": ""
      }
@@ -2529,6 +2577,265 @@
   },
   {
    "method": "GET",
+   "path": "/api/custom-models",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Get Custom Models",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-models",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Register (or update) a classifier endpoint as a detector.",
+   "description": "Register (or update) a classifier endpoint as a detector.\n\nRefused with 409 when the endpoint is one this deployment may not send content\nto (egress off for a public address; a private address without\n`outbound_allow_private_hosts`; link-local never), and with 503 when a credential\nis given but this deployment cannot encrypt it.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CustomModelIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "url",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surfaces",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "labels",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "entity_prefix",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "threshold",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_ms",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "fail_mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_header",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_secret",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "clear_secret",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "effect",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/custom-models/{key}",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Remove Custom Model",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-models/{key}/enabled",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Toggle Custom Model",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ToggleIn",
+    "fields": [
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-models/{key}/test",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Send one text to a registered model and show what it would report. Records nothing. A model that cannot answer is reported, not raised.",
+   "description": "Send one text to a registered model and show what it would report. Records\nnothing. A model that cannot answer is reported, not raised.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TestIn",
+    "fields": [
+     {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surface",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
    "path": "/api/custom-rules",
    "section": "custom-rules",
    "audience": "operator",
@@ -2641,6 +2948,12 @@
       "description": ""
      },
      {
+      "name": "condition",
+      "type": "ConditionSpec",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "enabled",
       "type": "boolean",
       "required": false,
@@ -2672,6 +2985,35 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/custom-rules/fields",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "The arguments a tool is known to take, to suggest as a condition's field.",
+   "description": "The arguments a tool is known to take, to suggest as a condition's field.",
+   "params": [
+    {
+     "name": "tool",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -2711,6 +3053,12 @@
      },
      {
       "name": "surface",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tool",
       "type": "string",
       "required": false,
       "description": ""
@@ -2814,6 +3162,35 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/detectors/{key}/pull",
+   "section": "detectors",
+   "audience": "operator",
+   "summary": "Download the model weights this detector loads, in a background job.",
+   "description": "Download the model weights this detector loads, in a background job.\n\n409 with what to run instead when this server cannot keep a model (serverless,\nor the model libraries are not installed). Poll `GET /api/detectors` (its\n`pull_job`) or `GET /api/jobs/{id}` for the outcome; once it is `done`, switch\nthe detector on.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -6892,12 +7269,47 @@
    }
   },
   {
+   "method": "DELETE",
+   "path": "/api/policies/agents/{slug}/rules/{rule_id}",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Drop an agent's own copy of a rule: the workspace rule applies to it again.",
+   "description": "Drop an agent's own copy of a rule: the workspace rule applies to it again.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/policies/effective",
    "section": "policies",
    "audience": "operator",
    "summary": "The policy actually in force for a subject, with per-rule provenance.",
-   "description": "The policy actually in force for a subject, with per-rule provenance.",
+   "description": "The policy actually in force for a subject, with per-rule provenance.\n\nWith ``agent``, each rule also says whether it was changed for that agent only\n(``changed_for_agent``), and ``agent_changes`` lists every rule the agent's own\nlayer sets beside the workspace default it replaces.",
    "params": [
     {
      "name": "agent",
@@ -7412,7 +7824,141 @@
       "description": ""
      },
      {
+      "name": "overridable",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "notes",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/{key}/rules/{rule_id}/agents",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Every agent, nested by hand-off, and whether each has its own copy of the rule.",
+   "description": "Every agent, nested by hand-off, and whether each has its own copy of the rule.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/rules/{rule_id}/scope",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Change a rule for every agent, or for only some (and what they hand off to).",
+   "description": "Change a rule for every agent, or for only some (and what they hand off to).\n\nEvery agent: the same as ``POST /{key}/rules/{rule_id}`` (a saved version to\npromote). Some agents: the changed rule is written into each agent's own layer,\nlive in the mode that layer is in, after a simulation when it enforces. A change\nthat would loosen the workspace rule for an agent is refused with 409 unless the\nworkspace rule is ``overridable``.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ScopedChangeIn",
+    "fields": [
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "include_delegates",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "effect",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "on_block",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "min_score",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "preview",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
       "type": "string",
       "required": false,
       "description": ""

@@ -29,7 +29,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
@@ -113,6 +114,20 @@ def redact_payload(payload: Any, depth: int = 0) -> Any:
 # ---------------------------------------------------------------------------
 
 
+_APPEND_ATTEMPTS = 5
+
+
+def _lock_chain(session: Session, org_id: str | None) -> None:
+    """Hold this chain's append lock until the transaction ends (Postgres only)."""
+    bind = session.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    key = int.from_bytes(
+        hashlib.sha256(f"audit:{org_id}".encode()).digest()[:8], "big", signed=True
+    )
+    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": key})
+
+
 def append(
     session: Session,
     action: str,
@@ -153,33 +168,46 @@ def append(
 
     target_org = org_id or session_org(session)
 
-    last = session.scalars(
-        select(AuditEntry)
-        .where(AuditEntry.org_id == target_org)
-        .order_by(AuditEntry.seq.desc())
-        .limit(1)
-    ).first()
-    seq = (last.seq + 1) if last else 1
-    prev_digest = last.digest if last else GENESIS
     ts = occurred_at or utcnow()
-
     payload_digest = compute_payload_digest(payload)
-    entry = AuditEntry(
-        org_id=target_org,
-        seq=seq,
-        occurred_at=ts,
-        actor_type=actor_type,
-        actor_id=actor_id,
-        action=action,
-        subject_type=subject_type,
-        subject_id=subject_id,
-        payload_json=payload,
-        payload_digest=payload_digest,
-        prev_digest=prev_digest,
-        digest=compute_digest(seq, ts, action, payload_digest, prev_digest),
-    )
-    session.add(entry)
-    session.flush()
+
+    # Two requests appending at once used to read the same "last entry" and both
+    # claim its next `seq`; the second insert failed on the unique (org, seq) index
+    # and its whole request returned a 500. On Postgres a transaction-scoped
+    # advisory lock per chain serialises appends; elsewhere (SQLite, where the
+    # database serialises writers) a collision re-reads the chain and tries again.
+    _lock_chain(session, target_org)
+    for attempt in range(_APPEND_ATTEMPTS):
+        last = session.scalars(
+            select(AuditEntry)
+            .where(AuditEntry.org_id == target_org)
+            .order_by(AuditEntry.seq.desc())
+            .limit(1)
+        ).first()
+        seq = (last.seq + 1) if last else 1
+        prev_digest = last.digest if last else GENESIS
+        entry = AuditEntry(
+            org_id=target_org,
+            seq=seq,
+            occurred_at=ts,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            action=action,
+            subject_type=subject_type,
+            subject_id=subject_id,
+            payload_json=payload,
+            payload_digest=payload_digest,
+            prev_digest=prev_digest,
+            digest=compute_digest(seq, ts, action, payload_digest, prev_digest),
+        )
+        try:
+            with session.begin_nested():
+                session.add(entry)
+                session.flush()
+            break
+        except IntegrityError:
+            if attempt == _APPEND_ATTEMPTS - 1:
+                raise
 
     if settings.audit_checkpoint_interval and seq % settings.audit_checkpoint_interval == 0:
         write_checkpoint(session, entry)

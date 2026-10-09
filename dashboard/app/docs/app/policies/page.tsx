@@ -236,6 +236,45 @@ No production traffic would newly block.`}</Output>
 …,"min_sample":20,"started_by":"admin@example.com",…}`}</Output>
       <p>There is no CLI command for canaries; use the page or the routes above.</p>
 
+      <h3 id="agent-scope">Change a rule for some agents only</h3>
+      <InTheApp path="/app/policies">Policies → a rule → Change → Applies to</InTheApp>
+      <p>
+        On a rule&apos;s <strong>Tune</strong> tab, <strong>Applies to</strong> picks who the
+        change reaches:
+      </p>
+      <ul>
+        <li>
+          <strong>Every agent</strong> edits the rule in its pack: a new version, simulated and
+          then applied like any other.
+        </li>
+        <li>
+          <strong>Only some agents</strong> writes a copy of the changed rule into each chosen
+          agent&apos;s own layer (<code>agent.&lt;slug&gt;</code>, at the agent level). Sub-agents
+          are listed under the agent that hands work to them; tick{" "}
+          <strong>Include the agents they hand off to</strong> to reach every agent it delegates
+          to, directly or not. Other agents keep the workspace rule.
+        </li>
+      </ul>
+      <p>
+        Stricter for one agent is always allowed, and the workspace rule stays in force beside
+        it. Looser (a weaker action, off, or less sensitive) is allowed only when the workspace
+        rule is marked <code>overridable</code>; otherwise the change is refused with a note, and
+        an owner, admin or security user can choose <strong>Let agents loosen this rule</strong>.
+        The rule that stops an agent switching off the others (<code>control_plane.tamper</code>)
+        is never loosened per agent. Each agent&apos;s layer goes live in the mode it is already
+        in: watching layers record, enforcing ones are simulated on that agent&apos;s last 7 days
+        first. Every change is in the audit log.
+      </p>
+      <p>
+        The agent&apos;s <strong>Rules</strong> tab lists what was changed for it, next to the
+        workspace default, with <strong>Reset to workspace default</strong>. The map&apos;s side
+        panel links each rule to <strong>Change for this agent only</strong>.
+      </p>
+      <Output title="routes">{`GET    /api/policies/{key}/rules/{rule_id}/agents   agents, nested by hand-off, and who has a copy
+POST   /api/policies/{key}/rules/{rule_id}/scope    {"agents": [...], "include_delegates": true, "effect": "block", "preview": true}
+DELETE /api/policies/agents/{slug}/rules/{rule_id}  back to the workspace default
+GET    /api/policies/effective?agent=<slug>          per rule: changed_for_agent; plus agent_changes`}</Output>
+
       <h2 id="tuning">Guardrail tuning tab</h2>
       <InTheApp path="/app/policies?tab=advanced&sec=tuning">Policies → Guardrail tuning</InTheApp>
       <p>
@@ -339,6 +378,34 @@ injection.heuristic  support-triage  INJECTION.INSTRUCTION_OVERRIDE  quoted text
         <code>proposals</code> name; the current names are above. The full loop is in{" "}
         <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>.
       </p>
+
+      <h2 id="value-checks">Your own rule: value checks</h2>
+      <InTheApp path="/app/policies/new">Policies → Add rule → A value crosses a line</InTheApp>
+      <p>
+        A value check compares one value and acts when the comparison holds. Pick where to
+        look (a tool call&apos;s arguments, a tool result, the reply, or the user&apos;s
+        message), an optional tool (<code>payments.*</code>), a field as a dot path into the
+        JSON (<code>amount</code>, <code>refund.total</code>, <code>items.0.price</code>,{" "}
+        <code>items.*.price</code>), and a comparison: more than, at least, less than, at most,
+        is, is not, one of, not one of, contains, does not contain, matches a pattern, present
+        or missing. With no field the whole text is read, and you can compare its length or
+        the first number in it. &quot;Only allow certain values&quot; is <em>is not one of</em>:
+        anything outside the list fires.
+      </p>
+      <p>
+        Like every rule you write, it becomes <code>custom.&lt;key&gt;</code> in the Your rules
+        pack, watches first, and blocks, asks a person or masks once the pack enforces. On a
+        tool call it runs before the tool does, so Ask a person holds the call for approval.
+        When guarding a tool result with <code>/v1/guard/input</code>, send{" "}
+        <code>&quot;tool&quot;</code> so a check scoped to a tool applies.
+      </p>
+      <Code>{`curl -X POST $AGENTFOX_URL/api/custom-rules -H "Authorization: Bearer $TOKEN" \\
+  -H "Content-Type: application/json" -d '{
+  "key": "big-refunds", "name": "Big refunds", "kind": "condition",
+  "condition": {"surface": "tool_args", "tool": "payments.*",
+                "field": "amount", "operator": "gt", "value": 500},
+  "effect": "escalate"
+}'`}</Code>
 
       <h2>Common tasks</h2>
       <TaskTable

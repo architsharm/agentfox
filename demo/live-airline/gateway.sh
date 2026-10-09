@@ -26,6 +26,8 @@ export AGENTFOX_DATABASE_URL="sqlite:///$DATA/gateway.db"
 export AGENTFOX_DEFAULT_PROVIDER=openai
 export AGENTFOX_ALLOW_EGRESS=true
 export AGENTFOX_OPENAI_API_KEY="$OPENAI_API_KEY"
+# Short, so approvals.py can watch an unanswered approval expire.
+export AGENTFOX_APPROVAL_TTL_MINUTES="${APPROVAL_TTL_MINUTES:-2}"
 
 agentfox() { "$PY" -c "from agentfox.apps.cli.main import app; app()" "$@"; }
 

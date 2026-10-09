@@ -29,6 +29,7 @@ from agentfox.platform.policy.hierarchy import (
     lint_documents,
     lint_policy,
     lint_summary,
+    loosens,
     resolve_effective,
 )
 from agentfox.platform.policy.model import (
@@ -110,6 +111,7 @@ __all__ = [
     "lint_documents",
     "lint_policy",
     "lint_summary",
+    "loosens",
     "PROJECT_POLICY_DIR",
     "PolicyPackError",
     "load_available",

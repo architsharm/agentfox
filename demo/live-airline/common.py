@@ -16,8 +16,10 @@ BACKEND = HERE / "upstream" / "python-backend"
 GATEWAY = os.environ.get("AGENTFOX_GATEWAY", "http://127.0.0.1:8091")
 AGENT = os.environ.get("AGENTFOX_AGENT", "airline-cs")
 # The local gateway runs development auth: an /api request without a token acts as
-# the user this header names. gateway.sh creates this user as the owner.
-OPERATOR = {"X-AgentFox-User": "admin@example.com"}
+# the user this header names. gateway.sh creates this user as the owner. Against a
+# hosted gateway, AGENTFOX_API_KEY (an API token from Settings) is used instead.
+_KEY = os.environ.get("AGENTFOX_API_KEY")
+OPERATOR = {"Authorization": f"Bearer {_KEY}"} if _KEY else {"X-AgentFox-User": "admin@example.com"}
 
 # What users see when the agent's protection stops a message; configure.py sets it and
 # check.py expects it back.

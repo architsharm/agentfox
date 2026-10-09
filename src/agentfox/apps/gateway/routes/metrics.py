@@ -117,7 +117,11 @@ def _decisions(session: Session, w: Window, agent: str | None, environment: str 
     agent_id = _agent_id(session, agent)
     if agent_id:
         q = q.where(Decision.agent_id == agent_id)
-    decisions = list(session.scalars(q))
+    # Every number on these views links to the runs behind it, so a check that
+    # belongs to no run (and a red-team probe's simulated `redteam.*` tool, which is
+    # a test and not traffic) is left out rather than counted and then unopenable.
+    q = q.where(Decision.trace_id.is_not(None))
+    decisions = [d for d in session.scalars(q) if not (d.tool_key or "").startswith("redteam.")]
     played = {
         t.id
         for t in session.scalars(
@@ -275,6 +279,54 @@ def breakdown(
     return {"range": w.key, "dim": dim, "rows": [{"key": k, **v} for k, v in ordered]}
 
 
+#: What a rule caught, by the detection it matched on — the first thing a fired rule
+#: records — so `eu.art15.injection_resistance` counts as an attack, not compliance.
+_ENTITY_CATEGORY = (
+    ("INJECTION", "attacks"),
+    ("JAILBREAK", "attacks"),
+    ("PII", "data"),
+    ("SECRET", "data"),
+    ("SAFETY", "content"),
+    ("TOXIC", "content"),
+    ("GROUNDING", "quality"),
+    ("SCHEMA", "quality"),
+    ("HALLUCINATION", "quality"),
+    ("CUSTOM", "custom"),
+)
+_ID_CATEGORY = (
+    ("custom.", "custom"),
+    ("injection.", "attacks"),
+    ("pii.", "data"),
+    ("secrets.", "data"),
+    ("safety.", "content"),
+    ("eu.", "compliance"),
+    ("disclosure.", "compliance"),
+    ("budget.", "cost"),
+    ("loop.", "cost"),
+    ("schema.", "quality"),
+    ("completion.", "quality"),
+    ("grounding.", "quality"),
+    ("answerability.", "quality"),
+    ("control_plane.", "platform"),
+    ("pipeline.", "platform"),
+)
+
+
+def rule_category(rule_id: str, fired: dict[str, Any] | None = None) -> str:
+    """attacks, data, content, quality, custom, compliance, cost, platform or actions."""
+    for entity in [*(fired or {}).get("entity_prefixes", []), *(fired or {}).get("entities", [])]:
+        head = str(entity).upper()
+        for prefix, category in _ENTITY_CATEGORY:
+            if head.startswith(prefix):
+                return category
+    if rule_id == "tool.not_declared":
+        return "quality"
+    for prefix, category in _ID_CATEGORY:
+        if rule_id.startswith(prefix):
+            return category
+    return "actions"
+
+
 @router.get("/rules")
 def rules(
     window: str = Query("7d", alias="range"),
@@ -311,6 +363,7 @@ def rules(
                     "agents": Counter(),
                     "tools": Counter(),
                     "sample_trace_ids": [],
+                    "category": rule_category(rule_id, fired),
                 },
             )
             s["fires"] += 1
@@ -342,7 +395,38 @@ def rules(
                 "tools": dict(s["tools"].most_common(5)),
             }
         )
-    return {"range": w.key, "bucket_seconds": int(w.step.total_seconds()), "rules": out}
+    return {
+        "range": w.key,
+        "bucket_seconds": int(w.step.total_seconds()),
+        "rules": out,
+        "checked": checked_categories(session),
+    }
+
+
+def checked_categories(session: Session) -> dict[str, bool]:
+    """Which areas any enabled rule in force covers, so a view can tell "nothing
+    happened" (0) from "nothing is looking" (not checked)."""
+    from agentfox.core.models import KnowledgeBoundary
+    from agentfox.platform.policy.store import active_layers
+
+    seen: set[str] = set()
+    for layer in active_layers(session):
+        for rule in layer.document.rules:
+            if not rule.enabled:
+                continue
+            detection = rule.when.detection
+            fired = (
+                {
+                    "entity_prefixes": [detection.entity_prefix] if detection.entity_prefix else [],
+                    "entities": [detection.entity] if detection.entity else [],
+                }
+                if detection
+                else None
+            )
+            seen.add(rule_category(rule.id, fired))
+    if session.scalar(select(func.count()).select_from(KnowledgeBoundary)):
+        seen.add("quality")
+    return {c: c in seen for c in ("attacks", "data", "content", "quality", "actions", "custom")}
 
 
 @router.get("/errors")

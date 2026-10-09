@@ -244,6 +244,82 @@ print([(d["key"], d["status"], d["matched"]) for d in r["explanation"]["detector
         <Link href="/docs/reference/policies#conditions">policy conditions</Link>.
       </p>
 
+      <h2 id="checks">Choosing checks in the app</h2>
+      <p>
+        <strong>Policies → Checks</strong> is the one place to choose what runs. Every
+        detector is grouped by what it catches (prompt attacks, personal data and
+        secrets, harmful content, grounding and wrong answers, your own), with where it
+        runs, its average time, and where it comes from: built-in, an open-source model
+        (with its licence), an LLM judge, or yours. Settings and the guardrail map link
+        there too.
+      </p>
+      <ul>
+        <li>
+          <strong>Switch</strong>: on or off for the whole workspace. Recorded in the audit
+          log. The safety net (<code>injection.heuristic</code>, <code>secrets.native</code>)
+          stays on.
+        </li>
+        <li>
+          <strong>Download</strong>: an open-source model the gateway does not have yet is
+          downloaded in a background job (<code>POST /api/detectors/&#123;key&#125;/pull</code>),
+          then switched on after a restart. A serverless gateway has a read-only file
+          system, so the button shows the command to run where the gateway runs instead:
+        </li>
+      </ul>
+      <Code>{`agentfox admin detectors pull grounding.nli`}</Code>
+      <p>
+        <strong>AI judges</strong> (JEV and a hosted LLM) are switched on in the same
+        screen. A hosted judge sends checked text to its provider, so it is only offered
+        where the deployment allows egress, needs a reason, and asks you to confirm.
+        Every change is the audited <code>PUT /api/judgment/posture</code>.
+      </p>
+      <p>
+        <strong>Your own patterns</strong>: a regular expression is a custom rule of kind{" "}
+        <code>patterns</code> (Add a pattern, or <code>POST /api/custom-rules</code>).
+      </p>
+
+      <h3 id="your-models">Your own models</h3>
+      <p>
+        Register a classifier you run yourself (a fine-tuned model, an RL-trained safety
+        or reward model, anything that returns labels and scores) and it becomes a
+        detector. For each checked text on the surfaces you pick, the gateway posts:
+      </p>
+      <Code lang="json">{`{"text": "...", "inputs": "...", "surface": "input"}`}</Code>
+      <p>
+        and reads back any of <code>[&#123;"label", "score"&#125;]</code> (the Hugging Face
+        text-classification shape, nested or not), <code>&#123;"labels": [...]&#125;</code>,{" "}
+        <code>&#123;"label", "score"&#125;</code> or <code>&#123;"scores": &#123;label: score&#125;&#125;</code>.
+        Labels at or above the threshold become detections:
+      </p>
+      <ul>
+        <li>
+          Reported as <code>INJECTION</code>, <code>PII</code>, <code>SECRET</code>,{" "}
+          <code>SAFETY</code> and so on, a detection is <code>PREFIX.LABEL</code> (or the
+          name you mapped the label to), so the rules that already act on that kind of
+          problem act on your model too.
+        </li>
+        <li>
+          Reported as its own rule (<code>CUSTOM</code>), it is{" "}
+          <code>CUSTOM.&lt;KEY&gt;</code> with a rule <code>custom.&lt;key&gt;</code> in the
+          Your rules pack, watched first like any rule.
+        </li>
+        <li>
+          With no label mapping, every label except obviously negative ones (benign,
+          safe, LABEL_0, ...) counts.
+        </li>
+      </ul>
+      <p>
+        Each call has the model&apos;s own timeout (50 to 2000 ms). If the model is down,
+        times out or answers nonsense, the run is recorded as <code>error</code> and
+        traffic flows; choose <em>Treat as a hit</em> to make an outage count as a
+        detection instead. A public endpoint is only called where egress is allowed
+        (<code>AGENTFOX_ALLOW_EGRESS</code>); one on your own network needs{" "}
+        <code>outbound_allow_private_hosts</code>; link-local addresses never. An optional
+        auth header value is stored encrypted and never returned. API:{" "}
+        <code>/api/custom-models</code> (list, create, <code>/&#123;key&#125;/enabled</code>,{" "}
+        <code>/&#123;key&#125;/test</code>, delete).
+      </p>
+
       <h2 id="entities">Entity types</h2>
       <p>
         Every detection has an entity type, a score between 0 and 1, and a span. Rules

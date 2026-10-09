@@ -29,12 +29,14 @@ from sqlalchemy.orm import Session
 from agentfox.capabilities.detection.custom import (
     CONTENT_KINDS,
     CompiledRule,
+    ConditionSpec,
     CustomRuleSpec,
     SequenceSpec,
     compile_rule,
+    entity_for,
     rule_id_for,
 )
-from agentfox.core.models import CustomRule, Policy
+from agentfox.core.models import CustomModel, CustomRule, Policy
 from agentfox.platform.ledger import operator_log
 from agentfox.platform.policy import (
     DetectionCondition,
@@ -70,6 +72,9 @@ def spec_of(row: CustomRule) -> CustomRuleSpec:
         case_sensitive=row.case_sensitive,
         sequence=SequenceSpec(**row.config_json["sequence"])
         if (row.config_json or {}).get("sequence")
+        else None,
+        condition=ConditionSpec(**row.config_json["condition"])
+        if (row.config_json or {}).get("condition")
         else None,
         enabled=row.enabled,
     )
@@ -172,7 +177,13 @@ def save_rules(
         row.surfaces_json = spec.surfaces
         row.agents_json = spec.agents
         row.case_sensitive = spec.case_sensitive
-        row.config_json = {"sequence": spec.sequence.model_dump()} if spec.sequence else {}
+        row.config_json = (
+            {"sequence": spec.sequence.model_dump()}
+            if spec.sequence
+            else {"condition": spec.condition.model_dump()}
+            if spec.condition
+            else {}
+        )
         row.enabled = spec.enabled
         session.flush()
         operator_log.record(
@@ -219,6 +230,7 @@ def _row_json(row: CustomRule) -> dict[str, Any]:
         "kind": row.kind,
         "polarity": row.polarity,
         "entries": list(row.entries_json or []),
+        "config": dict(row.config_json or {}),
         "agents": list(row.agents_json or []),
         "enabled": row.enabled,
     }
@@ -253,6 +265,31 @@ def _policy_rule(row: CustomRule, previous: Rule | None, seed: dict[str, Any]) -
     )
 
 
+def _model_policy_rule(row: CustomModel, previous: Rule | None, seed: dict[str, Any]) -> Rule:
+    """The rule for a workspace model reporting under `CUSTOM` (`custom_models.py`)."""
+    rid = rule_id_for(row.key)
+    kept = previous or Rule(id=rid, **{k: v for k, v in seed.items() if v not in (None, "")})
+    return Rule(
+        id=rid,
+        description=row.name or row.key,
+        when=Condition(
+            detection=DetectionCondition(
+                entity_prefix=entity_for(row.key),
+                min_score=previous.when.detection.min_score
+                if previous and previous.when.detection
+                else row.threshold,
+            )
+        ),
+        effect=kept.effect,
+        reason=f"{row.name or row.key}: your model",
+        severity=kept.severity,
+        enabled=kept.enabled and row.enabled,
+        message=kept.message,
+        on_block=kept.on_block,
+        redaction=kept.redaction,
+    )
+
+
 def sync_policy(
     session: Session, *, actor: str, seed: dict[str, dict[str, Any]] | None = None
 ) -> SyncResult:
@@ -270,11 +307,22 @@ def sync_policy(
         name=POLICY_NAME,
         description=(
             "Rules written in your own words: blocked words and patterns, topics, "
-            "and sequences of actions."
+            "sequences of actions, limits on values, and your own models."
         ),
         rules=[
             _policy_rule(r, previous.get(rule_id_for(r.key)), seed.get(rule_id_for(r.key), {}))
             for r in rows
+        ]
+        + [
+            _model_policy_rule(
+                m, previous.get(rule_id_for(m.key)), seed.get(rule_id_for(m.key), {})
+            )
+            for m in session.scalars(
+                select(CustomModel)
+                .where(CustomModel.entity_prefix == "CUSTOM")
+                .order_by(CustomModel.key)
+            )
+            if m.key not in {r.key for r in rows}
         ],
     )
     return publish_in_current_mode(session, doc, actor=actor, notes="custom rules changed")

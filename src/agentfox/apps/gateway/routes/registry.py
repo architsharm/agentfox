@@ -1003,6 +1003,10 @@ def deny(
 def _resolve(
     session: Session, approval_id: str, approved: bool, user: User, rationale: str
 ) -> dict[str, Any]:
+    existing = session.get(ApprovalRequest, approval_id)
+    if existing is not None and existing.status != "pending":
+        # Deciding twice would record a second decision for one approval.
+        raise HTTPException(409, f"approval is already {existing.status}")
     try:
         approval = resolve_approval(session, approval_id, approved, user.id, rationale)
     except AgentStopped as exc:

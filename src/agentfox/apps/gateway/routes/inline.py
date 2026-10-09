@@ -940,6 +940,19 @@ class GuardContentRequest(BaseModel):
     # rules check. Without a way to send them, every completion claim over HTTP was
     # held by `completion.unverified_claim`. A fact not reported counts as unmet.
     completion: dict[str, Any] | None = None
+    #: What the model call cost, for the Cost view: `{"model": "gpt-4o-mini",
+    #: "input_tokens": 812, "output_tokens": 140}`, usually sent with the output.
+    #: A caller that already knows the price can send `cost_usd` instead.
+    usage: dict[str, Any] | None = None
+    #: With `surface: "tool_result"`: the tool that produced `content` (so a custom
+    #: condition scoped to a tool applies to it), and the error it raised if it
+    #: failed. Recorded as a step on the run, so a tool that throws shows under
+    #: Failed steps; the result itself is checked like any untrusted text.
+    tool: str | None = None
+    error: str | None = None
+    #: The resend of a message a person approved (its `approval_id` came back when it
+    #: was held). The same content passes once; different content is held again.
+    approval_id: str | None = None
 
 
 class GuardToolCallRequest(BaseModel):
@@ -961,6 +974,34 @@ class GuardToolCallRequest(BaseModel):
     # The retry of a call a person approved. The same agent, tool and
     # arguments run once; anything else escalates as it would have without it.
     approval_id: str | None = None
+
+
+def _reported_usage(
+    reported: dict[str, Any] | None, trace: Any
+) -> tuple[dict[str, Any] | None, float]:
+    """Add what this call reports to what the trace has already spent.
+
+    Guarding the input and then the output is two calls on one trace; usage usually
+    arrives with the second, and either may carry it, so it adds up.
+    """
+    from agentfox.platform.providers.remote import estimate_cost
+
+    so_far = dict(trace.token_usage_json or {})
+    cost = float(trace.cost_usd or 0.0)
+    if not reported:
+        return (so_far or None), cost
+    inp = int(reported.get("input_tokens") or reported.get("prompt_tokens") or 0)
+    out = int(reported.get("output_tokens") or reported.get("completion_tokens") or 0)
+    model = str(reported.get("model") or "")
+    if reported.get("cost_usd") is not None:
+        cost += float(reported["cost_usd"])
+    else:
+        cost += estimate_cost(model, inp, out)
+    so_far["input_tokens"] = int(so_far.get("input_tokens", 0)) + inp
+    so_far["output_tokens"] = int(so_far.get("output_tokens", 0)) + out
+    if model:
+        so_far["model"] = model
+    return so_far, cost
 
 
 @router.post("/v1/guard/input", summary="Enforce on an input without proxying")
@@ -1013,6 +1054,8 @@ def guard_content(
             **enforcer.evidence,
             "chunks": [{"text": c} for c in payload.context if c],
         }
+    if payload.tool:
+        enforcer.evidence = {**enforcer.evidence, "tool": payload.tool}
     # Resolve before starting the trace so the trace carries an agent id, which is
     # what gives the agent a last-seen and lets the Traces page filter by agent.
     # `resolve` also registers an unknown slug as shadow traffic, which is the
@@ -1037,6 +1080,19 @@ def guard_content(
         )
     if surface == "input" and not trace.summary:
         trace.summary = summarize(payload.content)
+    if surface == "tool_result" and (payload.tool or payload.error):
+        from agentfox.platform.ledger.trace import add_span
+
+        add_span(
+            session,
+            trace,
+            kind="tool",
+            name=payload.tool or "tool",
+            status="error" if payload.error else "ok",
+            error=(payload.error or None) and payload.error[:2000],
+        )
+        if payload.error and trace.status == "ok":
+            trace.status = "error"
     if surface == "completion":
         # The completion gate: the claim is checked like any output, and the
         # caller's reported facts decide the `completion_requires` rules.
@@ -1053,11 +1109,15 @@ def guard_content(
             surface=surface,
             taint_source=payload.taint_source,
             trace=trace,
+            approval_id=payload.approval_id,
         )
     # `evaluate` raises the trace's verdict to the strongest thing that happened on
     # it, so ending it must not overwrite that with the default: a second guard call
     # on the same trace_id that allows must not erase the first one that blocked.
-    end_trace(session, trace, verdict=trace.verdict, status=trace.status)
+    usage, cost = _reported_usage(payload.usage, trace)
+    end_trace(
+        session, trace, verdict=trace.verdict, status=trace.status, usage=usage, cost_usd=cost
+    )
     # On this route too, and on every verdict rather than only the blocking ones:
     # the commonest question about an *allowed* request is "why did you flag it and
     # let it through", which is the same page.

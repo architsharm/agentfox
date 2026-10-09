@@ -448,7 +448,14 @@ def trigger_scan(
         repo_display_name=payload.repo_full_name,
         frameworks=report.frameworks,
         sites=[
-            {"kind": s.kind, "top_dir": _top_dir(s.file), "provider": s.provider}
+            {
+                "kind": s.kind,
+                "top_dir": _top_dir(s.file),
+                "provider": s.provider,
+                # The function's own name, so the proposed agent lists the tools its
+                # code defines instead of none. Scanned here, never sent from a laptop.
+                **({"name": s.name} if s.kind == "tool" and s.name else {}),
+            }
             for s in report.sites
             if s.kind in ("agent_definition", "tool", "model_call", "lethal_trifecta")
         ],

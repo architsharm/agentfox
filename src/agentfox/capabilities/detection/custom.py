@@ -16,6 +16,10 @@ managed ``custom`` pack (``custom_store.py``), acting on ``CUSTOM.<KEY>`` detect
 so a custom rule is watched, enforced, simulated, tuned and audited exactly like a
 shipped one, and Mask rewrites the matched span because a detection has a span.
 
+A ``condition`` compares a value rather than matching words: a field of a tool
+call's arguments or result, a reply's length, the first number in it
+(``custom_conditions.py``). It is matched here too, so it is decided the same way.
+
 Topics are scored by a :class:`TopicScorer`. The default compares words and runs
 anywhere; with the local embedding model installed, meaning is compared instead.
 Neither sends anything off the machine.
@@ -35,11 +39,13 @@ from agentfox.capabilities.detection.base import (
     DetectionContext,
     redact_sample,
 )
+from agentfox.capabilities.detection.custom_conditions import ConditionSpec
+from agentfox.capabilities.detection.custom_conditions import evaluate as evaluate_condition
 from agentfox.core.text import content_tokens
 
-KINDS = ("terms", "patterns", "topic", "sequence")
+KINDS = ("terms", "patterns", "topic", "sequence", "condition")
 #: Kinds matched against content by the detector; a sequence is a check.
-CONTENT_KINDS = ("terms", "patterns", "topic")
+CONTENT_KINDS = ("terms", "patterns", "topic", "condition")
 #: Surfaces a content rule checks when its author did not choose.
 DEFAULT_SURFACES = ("input", "output")
 CONTENT_SURFACES = (
@@ -85,7 +91,7 @@ class CustomRuleSpec(BaseModel):
 
     key: str
     name: str = Field(min_length=1, max_length=200)
-    kind: Literal["terms", "patterns", "topic", "sequence"] = "terms"
+    kind: Literal["terms", "patterns", "topic", "sequence", "condition"] = "terms"
     polarity: Literal["deny", "allow"] = "deny"
     entries: list[str] = Field(default_factory=list)
     examples: list[str] = Field(default_factory=list)
@@ -94,6 +100,7 @@ class CustomRuleSpec(BaseModel):
     agents: list[str] = Field(default_factory=list)
     case_sensitive: bool = False
     sequence: SequenceSpec | None = None
+    condition: ConditionSpec | None = None
     enabled: bool = True
 
     @field_validator("key")
@@ -125,6 +132,17 @@ class CustomRuleSpec(BaseModel):
         if self.kind == "sequence":
             if self.sequence is None:
                 raise ValueError("a sequence rule needs `sequence`")
+            return self
+        if self.kind != "condition":
+            self.condition = None
+        if self.kind == "condition":
+            if self.condition is None:
+                raise ValueError("a condition rule needs `condition`")
+            if self.polarity != "deny":
+                raise ValueError("a condition fires when it holds; it has no allowed form")
+            # Where it checks is part of the condition, so the two never disagree.
+            self.surfaces = [self.condition.surface]
+            self.case_sensitive = self.condition.case_sensitive
             return self
         if self.kind in ("terms", "patterns") and not self.entries:
             raise ValueError(f"a {self.kind} rule needs at least one entry")
@@ -249,6 +267,7 @@ class CompiledRule:
     agents: tuple[str, ...]
     regex: re.Pattern[str] | None = None
     topic: TopicProfile | None = None
+    condition: ConditionSpec | None = None
 
     def applies(self, surface: str, agent_slug: str | None) -> bool:
         if surface not in self.surfaces:
@@ -288,6 +307,7 @@ def compile_rule(spec: CustomRuleSpec) -> CompiledRule | None:
         agents=tuple(spec.agents),
         regex=regex,
         topic=topic,
+        condition=spec.condition if spec.kind == "condition" else None,
     )
 
 
@@ -413,15 +433,47 @@ class CustomListDetector(BaseDetector):
                         detail={"custom_rule": rule.key, "kind": rule.kind},
                     )
                 )
+        for rule in rules:
+            if rule.condition is not None and rule.applies(context.surface, context.agent_slug):
+                out.extend(_condition_detections(content, rule, context))
         if any(r.kind == "topic" for r in rules) and not _semantic_topics_on(context):
             out.extend(_topic_detections(content, rules, context, self.scorer))
         return out
 
 
+def _condition_detections(
+    content: str, rule: CompiledRule, context: DetectionContext
+) -> list[Detection]:
+    """One detection for a condition that holds, at the first value that satisfied it."""
+    cond = rule.condition
+    tool = context.tool_key or (context.extra or {}).get("tool")
+    hits = evaluate_condition(cond, content, tool)  # type: ignore[arg-type]
+    if not hits:
+        return []
+    hit = hits[0]
+    start, end = (hit.start, hit.end) if hit.end > hit.start else (0, len(content))
+    return [
+        Detection(
+            entity_type=rule.entity,
+            score=1.0,
+            start=start,
+            end=end,
+            sample=redact_sample(content[start:end]),
+            detail={
+                "custom_rule": rule.key,
+                "kind": "condition",
+                "field": cond.field,  # type: ignore[union-attr]
+                "operator": cond.operator,  # type: ignore[union-attr]
+                "matches": len(hits),
+            },
+        )
+    ]
+
+
 class CustomTopicDetector(BaseDetector):
     """The workspace's topics, scored by meaning with the local embedding model.
 
-    Opt-in (Policies → Library → Detectors): a real forward pass per request with a
+    Opt-in (Policies → Checks): a real forward pass per request with a
     topic rule, so it declares its own allowance and warms the model at startup.
     Nothing leaves the machine.
     """

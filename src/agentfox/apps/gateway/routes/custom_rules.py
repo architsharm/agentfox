@@ -23,6 +23,8 @@ from agentfox.capabilities.detection.custom import (
     compile_rule,
     rule_id_for,
 )
+from agentfox.capabilities.detection.custom_conditions import observed_values
+from agentfox.capabilities.detection.custom_models import get_model
 from agentfox.capabilities.detection.custom_store import delete_rule, list_rules, save_rule, spec_of
 from agentfox.capabilities.detection.detector_settings import set_enabled
 from agentfox.core.models import User
@@ -64,6 +66,9 @@ def post_custom_rule(
     spec = CustomRuleSpec(
         **payload.model_dump(exclude={"effect", "message", "on_block", "severity"})
     )
+    # A model reporting under CUSTOM owns the rule `custom.<key>` (custom_models.py).
+    if get_model(session, spec.key) is not None:
+        raise HTTPException(409, f"one of your models is already called '{spec.key}'")
     row, sync = save_rule(
         session,
         spec,
@@ -93,6 +98,8 @@ class TryIn(BaseModel):
     rule: dict[str, Any]
     text: str
     surface: str = "input"
+    #: For a condition on a tool: the tool the sample call or result belongs to.
+    tool: str | None = None
 
 
 @router.post("/custom-rules/try")
@@ -105,17 +112,31 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
     compiled = compile_rule(spec)
     if compiled is None:
         raise HTTPException(400, "a sequence rule is checked against a run, not a text")
+    tool = payload.tool or (
+        spec.condition.tool
+        if spec.condition and spec.condition.tool and "*" not in spec.condition.tool
+        else None
+    )
     result = CustomListDetector().detect(
         payload.text,
         DetectionContext(
             surface=payload.surface
             if payload.surface in compiled.surfaces
             else compiled.surfaces[0],
+            tool_key=tool,
             extra={"custom_rules": [compiled]},
         ),
     )
+    # A condition also says which value it saw, so the author can tell a near miss
+    # ("amount is 450") from a field that is not there at all.
+    observed = (
+        [v[:80] if isinstance(v, str) else v for v in observed_values(spec.condition, payload.text)]
+        if spec.condition
+        else []
+    )
     return {
         "matched": bool(result.detections),
+        "observed": observed,
         "matches": [
             {
                 "start": d.start,
@@ -127,6 +148,16 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
             for d in result.detections
         ],
     }
+
+
+@router.get("/custom-rules/fields")
+def custom_rule_fields(
+    tool: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """The arguments a tool is known to take, to suggest as a condition's field."""
+    from agentfox.apps.gateway.routes.library import known_arguments
+
+    return {"tool": tool, "fields": sorted(known_arguments(session, tool) or [])}
 
 
 class DetectorToggleIn(BaseModel):

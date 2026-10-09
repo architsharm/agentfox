@@ -211,6 +211,7 @@ const DETECTORS: Record<string, string> = {
   "schema.json": "Output format",
   "custom.lists": "Your words & patterns",
   "custom.topics": "Topics (model)",
+  "custom.models": "Your models",
   "code.insecure": "Insecure code",
   "grounding.nli": "Grounding (model)",
   "injection.similarity": "Prompt injection (similarity)",

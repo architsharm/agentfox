@@ -58,6 +58,15 @@ export interface GuardContentRequest {
   environment?: string;
   context?: string[];
   completion?: Record<string, unknown>;
+  usage?: Usage;
+}
+
+/** What a model call cost: tokens and model name, or a price you already know. */
+export interface Usage {
+  model?: string;
+  input_tokens?: number;
+  output_tokens?: number;
+  cost_usd?: number;
 }
 
 /** Body of `POST /v1/guard/tool_call`. */
@@ -132,6 +141,8 @@ export interface ContentOptions {
 export interface OutputOptions extends ContentOptions {
   /** The passages the answer was built from, for the grounding checks. */
   context?: string[];
+  /** The model call's tokens, so the run shows what it cost. */
+  usage?: Usage;
 }
 
 export interface ToolCallOptions {

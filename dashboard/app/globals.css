@@ -3210,6 +3210,7 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .gm-node strong { font-weight: 600; }
 .gm-kicker { font-size: var(--t-micro); color: var(--muted); text-transform: none; }
 .gm-sub { font-size: var(--t-micro); color: var(--muted); }
+.gm-source { text-transform: uppercase; letter-spacing: .04em; }
 .gm-end { padding: 8px 14px; border-radius: 999px; font-weight: 600; cursor: default; }
 .gm-agent { min-width: 170px; border-width: 2px; border-color: var(--text); }
 .gm-stage { width: 200px; border-left-width: 4px; }

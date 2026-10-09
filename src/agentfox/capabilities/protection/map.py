@@ -191,12 +191,15 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
             )
         )
     )
-    # Red-team grants are for simulated tools; they are only shown once they see traffic.
-    keys = {
+    # Red-team grants are for simulated tools, never the agent's own.
+    granted = {
         g.tool_key
         for g in grants
         if "*" not in g.tool_key and not g.tool_key.startswith("redteam.")
-    } | set(tool_stats)
+    }
+    in_code = set(agent.declared_tools or []) if agent else set()
+    seen_keys = {k for k in tool_stats if not k.startswith("redteam.")}
+    keys = granted | in_code | seen_keys
     tools = []
     for key in sorted(keys):
         grant = next((g for g in grants if fnmatch.fnmatch(key, g.tool_key)), None)
@@ -226,6 +229,17 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
                     and fnmatch.fnmatch(key, b.tool or "")
                 ],
                 "stats": dict(tool_stats.get(key, Counter())),
+                # Where this tool is known from: the agent's code (a repo scan or a
+                # registration), a grant, or calls actually seen.
+                "sources": [
+                    name
+                    for name, has in (
+                        ("code", key in in_code),
+                        ("granted", grant is not None),
+                        ("seen", key in seen_keys),
+                    )
+                    if has
+                ],
             }
         )
 

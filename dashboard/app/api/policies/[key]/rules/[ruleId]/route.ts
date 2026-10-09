@@ -12,13 +12,14 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string; ruleId: string }> }) {
   const { key, ruleId } = await params;
-  const { effect, enabled, message, on_block, min_score, agent } = await req.json();
+  const { effect, enabled, message, on_block, min_score, overridable, agent } = await req.json();
   const saved = await proxyJson(`/api/policies/${encodeURIComponent(key)}/rules/${encodeURIComponent(ruleId)}`, "POST", {
     ...(effect ? { effect } : {}),
     ...(enabled === undefined ? {} : { enabled }),
     ...(typeof message === "string" ? { message } : {}),
     ...(on_block ? { on_block } : {}),
     ...(typeof min_score === "number" ? { min_score } : {}),
+    ...(typeof overridable === "boolean" ? { overridable } : {}),
   });
   if (!saved.ok) return saved;
   const version = await saved.json();

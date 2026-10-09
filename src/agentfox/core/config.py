@@ -293,6 +293,8 @@ class Settings(BaseSettings):
     default_policy_mode: str = "observe"  # observe | enforce
     # What happens when a detector errors or blows its budget.
     fail_mode: str = "open"  # open | closed
+    #: How long a held call waits for a person before it is denied (fails closed).
+    approval_ttl_minutes: int = 30
     #: What a tool call's provenance is, for the taint rules
     #: (`taint.irreversible_tool` and friends). The one setting that decides it.
     #:
