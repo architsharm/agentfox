@@ -79,6 +79,17 @@ avoids these terms.**
 > titles only**. No copyrighted standard text is reproduced. The mappings themselves
 > are our own drafting and are marked DRAFT until reviewed (Appendix B §B.6).
 
+## Benchmark data (copied unchanged, used as data only)
+
+| Data | Source | Licence | Where | Use |
+|---|---|---|---|---|
+| Prompt-injection smoke corpus (280 rows), its manifest, hygiene summary and published baseline scores | Microsoft agent-governance-toolkit, `benchmarks/prompt-injection/` at commit `c767f83` | MIT, Copyright (c) Microsoft Corporation | `benchmarks/toolkit_corpus/data/prompt_injection/` | Replayed through our detectors; their scores quoted for comparison |
+| Red-team smoke scenarios (24) and their contract schema | same repository, `tests/redteam/benchmark/` at commit `c767f83` | MIT, Copyright (c) Microsoft Corporation | `benchmarks/toolkit_corpus/data/redteam/` | Instantiated and replayed through our enforcement path |
+
+The MIT licence text and copyright notice are kept beside the copied files in
+`benchmarks/toolkit_corpus/data/LICENSE`. The files are unmodified; nothing from that
+repository is installed or executed. Using the data implies no endorsement by its authors.
+
 ## Studied but deliberately NOT used
 
 Recorded because "why not" is a licence decision worth auditing (Appendix A §A.3):
@@ -91,7 +102,7 @@ Recorded because "why not" is a licence decision worth auditing (Appendix A §A.
 | **systemprompt-core** | **BSL-1.1** — source-available, not open source; usage restrictions. Reference only. |
 | **OpenAI Guardrails** | MIT but provider-centric; adopting it would contradict vendor neutrality (X-2). |
 | **Langfuse** | MIT core, but ClickHouse-acquired with an EE tier. Supported as an export target, never as our system of record. |
-| **Microsoft Agent Governance Toolkit** | MIT, competitor-adjacent. Its OWASP Agentic coverage map used as a reference only. |
+| **Microsoft Agent Governance Toolkit** | MIT, competitor-adjacent. No code or dependency taken. Its OWASP Agentic coverage map was used as a reference, and two of its test fixtures are copied as benchmark data (see "Benchmark data" above). |
 
 ## Attribution
 
@@ -101,4 +112,4 @@ original copyright and permission notices in their distributed packages. No modi
 copies of any third-party source are vendored into this repository; all integrations
 are adapters against published interfaces.
 
-_Last reviewed: 2026-08-17._
+_Last reviewed: 2026-10-09._

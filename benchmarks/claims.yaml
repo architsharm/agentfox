@@ -607,6 +607,57 @@ claims:
       - {file: docs/design/architecture-differentiation.md, text: "{lp50} ms p50 per tool result, against {ap50} ms for containment"}
       - {file: benchmarks/README.md, text: "costs {lp50} ms p50 per tool result against {ap50} ms"}
 
+  # --- Third-party fixture: a published prompt-injection corpus and red-team scenarios ---
+  # Deterministic and offline (rules detectors, seeded database), so the nightly run re-measures
+  # them. Latency is reported in the README but deliberately not bound: it varies by machine.
+  - id: toolkit_corpus.heuristic_detection
+    source: benchmarks/toolkit_corpus/results/prompt_injection_corpus.json
+    render: fields
+    fields:
+      ak: [arms, injection_heuristic, overall, attacks_caught]
+      an: [arms, injection_heuristic, overall, attacks]
+      apct: {path: [arms, injection_heuristic, overall, attack_recall, estimate], scale: 100, format: ".1f"}
+      alo: {path: [arms, injection_heuristic, overall, attack_recall, lower], scale: 100, format: ".1f"}
+      ahi: {path: [arms, injection_heuristic, overall, attack_recall, upper], scale: 100, format: ".1f"}
+      bk: [arms, injection_heuristic, overall, benign_flagged]
+      bn: [arms, injection_heuristic, overall, benign]
+      bpct: {path: [arms, injection_heuristic, overall, benign_fp_rate, estimate], scale: 100, format: ".1f"}
+      blo: {path: [arms, injection_heuristic, overall, benign_fp_rate, lower], scale: 100, format: ".1f"}
+      bhi: {path: [arms, injection_heuristic, overall, benign_fp_rate, upper], scale: 100, format: ".1f"}
+    quoted_in:
+      - {file: benchmarks/toolkit_corpus/README.md, text: "Our `injection.heuristic` | {ak}/{an} ({apct}%, CI {alo} to {ahi}) | {bk}/{bn} ({bpct}%, CI {blo} to {bhi})"}
+      - {file: benchmarks/README.md, text: "`injection.heuristic` caught {ak}/{an} attack rows and flagged {bk}/{bn} benign rows"}
+
+  - id: toolkit_corpus.default_stack_detection
+    source: benchmarks/toolkit_corpus/results/prompt_injection_corpus.json
+    render: fields
+    fields:
+      ak: [arms, default_stack_detection, overall, attacks_caught]
+      an: [arms, default_stack_detection, overall, attacks]
+      apct: {path: [arms, default_stack_detection, overall, attack_recall, estimate], scale: 100, format: ".1f"}
+      alo: {path: [arms, default_stack_detection, overall, attack_recall, lower], scale: 100, format: ".1f"}
+      ahi: {path: [arms, default_stack_detection, overall, attack_recall, upper], scale: 100, format: ".1f"}
+      bk: [arms, default_stack_detection, overall, benign_flagged]
+      bn: [arms, default_stack_detection, overall, benign]
+      bpct: {path: [arms, default_stack_detection, overall, benign_fp_rate, estimate], scale: 100, format: ".1f"}
+      blo: {path: [arms, default_stack_detection, overall, benign_fp_rate, lower], scale: 100, format: ".1f"}
+      bhi: {path: [arms, default_stack_detection, overall, benign_fp_rate, upper], scale: 100, format: ".1f"}
+    quoted_in:
+      - {file: benchmarks/toolkit_corpus/README.md, text: "Our default stack, `check_content` | {ak}/{an} ({apct}%, CI {alo} to {ahi}) | {bk}/{bn} ({bpct}%, CI {blo} to {bhi})"}
+
+  - id: toolkit_corpus.redteam_containment
+    source: benchmarks/toolkit_corpus/results/redteam_scenarios.json
+    render: fields
+    fields:
+      uon: [headline, detectors_on_unsafe_contained]
+      uoff: [headline, detectors_off_unsafe_contained]
+      bon: [headline, detectors_on_benign_executed]
+      boff: [headline, detectors_off_benign_executed]
+    quoted_in:
+      - {file: benchmarks/toolkit_corpus/README.md, text: "| Unsafe actions contained | {uon} | {uoff} |"}
+      - {file: benchmarks/toolkit_corpus/README.md, text: "| Benign actions executed | {bon} | {boff} |"}
+      - {file: benchmarks/README.md, text: "{uoff} unsafe actions contained with detectors off, {bon} benign actions executed with detectors on"}
+
 retired:
   - id: agentdojo.label_assigned_benign_utility
     text: "552/552 legitimate"
