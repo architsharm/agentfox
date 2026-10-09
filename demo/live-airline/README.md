@@ -116,9 +116,10 @@ checks to the gateway. Create a key on the dashboard (Settings, API keys) and ru
 AGENTFOX_GATEWAY=https://your-gateway AGENTFOX_API_KEY=<agent key> AGENTFOX_MODEL_DIRECT=1 .venv/bin/python run_all.py
 ```
 
-Each reply then reports its tokens, so runs show their cost. The scripts that change
-configuration (`configure.py`, `modes.py`, `approvals.py`) use the local development
-login and only work against `gateway.sh`.
+Each reply then reports its tokens, so runs show their cost. With an owner's API
+token the other scripts work the same way (`configure.py`, `check.py`, `modes.py`,
+`approvals.py`); they change that workspace's configuration for `airline-cs` and its
+custom-rules pack, so point them at a workspace meant for it.
 
 Other ways in:
 
