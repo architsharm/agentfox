@@ -473,3 +473,28 @@ def test_a_call_asking_for_json_is_not_an_answer_and_never_abstains(seeded, enfo
         passthrough={"response_format": {"type": "json_schema", "json_schema": {"name": "x"}}},
     )
     assert result.verdict != "abstain"
+
+
+def test_the_guard_api_abstains_too(client):
+    # An app that calls the model itself and checks the question here: the question
+    # outside the boundary is refused before the model is asked, as on the proxy.
+    client.put(
+        "/api/answerability/boundary",
+        json={
+            "agent": "support-triage",
+            "systems_of_record": ["order-db"],
+            "answerable_types": ["fact", "procedure"],
+            "mode": "enforce",
+        },
+    ).raise_for_status()
+    body = client.post(
+        "/v1/guard/input",
+        json={"agent": "support-triage", "content": "what will our revenue be next year?"},
+    ).json()
+    assert body["verdict"] == "abstain"
+    assert body["user_message"]
+    assert body["rules_fired"][0]["rule_id"].startswith("answerability.")
+    answerable = client.post(
+        "/v1/guard/input", json={"agent": "support-triage", "content": "Where is my order?"}
+    ).json()
+    assert answerable["verdict"] != "abstain"

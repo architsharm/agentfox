@@ -26,6 +26,8 @@ def test_reported_usage_is_priced_and_adds_up_across_a_run(client):
     trace = client.get("/api/traces/tr_cost_test").json()["trace"]
     assert trace["cost_usd"] == pytest.approx(estimate_cost("gpt-4o-mini", 1000, 500))
     assert trace["cost_usd"] > 0
+    models = client.get("/api/metrics/breakdown?dim=model&range=24h").json()["rows"]
+    assert "gpt-4o-mini" in [r["key"] for r in models]
 
     client.post(
         "/v1/guard/output",

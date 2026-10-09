@@ -7,6 +7,7 @@ import { ApiDown, InfoTip, Panel, Empty } from "@/components/ui";
 import { SETTINGS_TABS } from "@/components/product/AreaTabs";
 import { Header, Tabs } from "@/components/kit";
 import { RepoTable } from "@/components/product/RepoTable";
+import { PackMode } from "@/components/product/policies/PackMode";
 import { TokenManager } from "@/components/product/TokenManager";
 import { ConnectGuide, PATHS, type PathKey } from "@/components/product/start/ConnectGuide";
 import { FirstRequestWatcher } from "@/components/product/start/FirstRequestWatcher";
@@ -133,6 +134,13 @@ export default async function Start({
   );
 }
 
+/** Steps the dashboard can do, and where. The command stays as the second way. */
+const STEP_LINKS: Record<string, { href: string; label: string }> = {
+  review: { href: "/app/findings", label: "Open issues" },
+  sources: { href: "/app/sources", label: "Tier your sources" },
+  enforce: { href: "/app/policies", label: "Choose what to enforce" },
+};
+
 async function ChecklistTab() {
   let onboarding: any;
   try {
@@ -142,6 +150,11 @@ async function ChecklistTab() {
   }
 
   const { steps, completed, total, next, counts, connected } = onboarding;
+  // The enforce step is done here, not by copying a command: the same control the
+  // Policies page uses, which simulates first and then switches the pack.
+  const baseline = steps.some((s: any) => s.id === "enforce" && !s.done)
+    ? await safeApi<any>("/api/policies/baseline", null)
+    : null;
 
   return (
     <>
@@ -172,9 +185,22 @@ async function ChecklistTab() {
                 <Link href="/app/agents" className="cta" style={{ display: "inline-block", marginBottom: 6 }}>
                   {step.done ? "Manage knowledge boundaries →" : "Pick an agent to declare a boundary for →"}
                 </Link>
+              ) : step.id === "enforce" && !step.done && baseline ? (
+                <div style={{ marginBottom: 6 }}>
+                  <PackMode packKey="baseline" mode={baseline.mode} body={baseline.live_body || baseline.body || ""} version={baseline.bound_version ?? baseline.latest_version ?? null} />
+                </div>
+              ) : STEP_LINKS[step.id] ? (
+                <Link href={STEP_LINKS[step.id].href} className="cta" style={{ display: "inline-block", marginBottom: 6 }}>
+                  {STEP_LINKS[step.id].label} →
+                </Link>
               ) : (
                 <code className="step-cmd">{step.command}</code>
               )}
+              {STEP_LINKS[step.id] || step.id === "enforce" ? (
+                <div className="small muted">
+                  Or from the command line: <code>{step.command}</code>
+                </div>
+              ) : null}
               <div className="small muted">{step.detail}</div>
             </div>
           </li>
