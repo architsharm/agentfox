@@ -144,7 +144,7 @@ async def changed() -> list[Row]:
     decide(approval_id, "approve")
     approved = api("GET", f"/api/approvals/{approval_id}")["arguments"]
     bigger = {**approved, "amount": 1500} if "amount" in approved else {**approved, "extra": 1}
-    fox = AgentFox(AGENT, base_url=GATEWAY)
+    fox = AgentFox(AGENT, base_url=GATEWAY, api_key=os.environ.get("AGENTFOX_API_KEY"))
     with fox.session() as s:
         other = s.guard_tool(TOOL, bigger, raise_on_block=False, approval_id=approval_id)
     with fox.session() as s:

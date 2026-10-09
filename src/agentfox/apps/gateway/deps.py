@@ -149,12 +149,23 @@ def agent_credential(
     An absent credential is not an error here: the inline path deliberately serves
     unregistered agents so that shadow traffic is *observed* rather than turned away.
     It simply stays in the default tenant. A presented ``nom_agt_`` key that
-    does not verify is a 401.
+    does not verify is a 401. An operator token (``nom_api_``) binds its workspace.
     """
     if not (authorization and authorization.lower().startswith("bearer ")):
         activate_posture(session)
         return None
-    token = authorization.split(" ", 1)[1]
+    token = authorization.split(" ", 1)[1].strip()
+    if token.startswith("nom_api_"):
+        # An operator's API token (Settings, API keys): the calls are that workspace's
+        # traffic. Ignored, they were governed and recorded in the default tenant, so
+        # a team integrating with the token from their own Settings page saw nothing
+        # on their dashboard. It names no agent, so the agent is the one in the body.
+        user = resolve_token(session, token)
+        if user is None:
+            raise HTTPException(status_code=401, detail="invalid, expired or revoked API token")
+        bind_session(session, user.org_id)
+        activate_posture(session)
+        return None
     if not token.startswith("nom_agt_"):
         activate_posture(session)
         return None

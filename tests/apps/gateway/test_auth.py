@@ -274,6 +274,35 @@ def test_an_agent_credential_binds_its_agents_tenant(isolated_db):
         assert not session.scalars(select(Trace)).all(), "and nowhere else"
 
 
+def test_an_operator_token_on_the_guard_api_binds_its_workspace(isolated_db, production):
+    """Found against the hosted gateway: a team calling `/v1/guard/*` with the API
+    token from its own Settings page had every check recorded in the default tenant,
+    so its dashboard stayed empty however much traffic it sent."""
+    with tenant("org_acme"), session_scope() as session:
+        session.add(User(email="admin@org_acme.com", name="A", role="admin", active=True))
+    token = _token("admin@org_acme.com")
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/v1/guard/input",
+        json={"agent": "acme-support", "content": "Where is my order?"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+
+    with tenant("org_acme"), session_scope() as session:
+        assert session.scalars(select(Trace)).all(), "the check lands in the token's workspace"
+    with tenant("org_default"), session_scope() as session:
+        assert not session.scalars(select(Trace)).all(), "and not in the default one"
+
+    forged = client.post(
+        "/v1/guard/input",
+        json={"agent": "acme-support", "content": "hi"},
+        headers={"Authorization": "Bearer nom_api_not-a-real-token"},
+    )
+    assert forged.status_code == 401
+
+
 def test_unregistered_agents_are_still_observed(ready):
     """The inline path deliberately serves unknown agents so shadow traffic is
     observed rather than turned away (P1-6). An absent credential is not an error."""
