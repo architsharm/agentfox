@@ -12,6 +12,7 @@ from inside a customer's regulated boundary.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterator
 from typing import Any
 
@@ -129,7 +130,9 @@ class OpenAIProvider(_HttpProvider):
     key = "openai"
 
     def _api_key(self) -> str | None:
-        return self._settings().openai_api_key
+        # The vendor's own variable name is accepted too: it is what hosting
+        # dashboards and SDK docs tell people to set.
+        return self._settings().openai_api_key or os.environ.get("OPENAI_API_KEY") or None
 
     def _body(self, request: CompletionRequest) -> dict[str, Any]:
         passthrough = request.passthrough_for("openai")
@@ -226,7 +229,7 @@ class AnthropicProvider(_HttpProvider):
     key = "anthropic"
 
     def _api_key(self) -> str | None:
-        return self._settings().anthropic_api_key
+        return self._settings().anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY") or None
 
     def _body(self, request: CompletionRequest) -> dict[str, Any]:
         system = request.system_prompt()
