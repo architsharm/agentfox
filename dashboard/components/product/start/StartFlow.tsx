@@ -22,6 +22,21 @@ export function StartKeyProvider({ children }: { children: ReactNode }) {
   return <KeyContext.Provider value={{ token, setToken }}>{children}</KeyContext.Provider>;
 }
 
+/**
+ * One checklist step. Open state is the user's after the first render: a refresh
+ * that ticks a step (the test request does one) must not snap shut the step they
+ * are reading, with its result in it.
+ */
+export function StepDetails({ defaultOpen, summary, children }: { defaultOpen: boolean; summary: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <details open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary>{summary}</summary>
+      {children}
+    </details>
+  );
+}
+
 const SLUG = /^[a-z0-9][a-z0-9-]{1,62}$/;
 
 /** Step 1: register an agent, or pick which registered one the next steps are for. */

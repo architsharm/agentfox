@@ -18,6 +18,7 @@ import {
   IntegrationPicker,
   RegisterAgent,
   StartKeyProvider,
+  StepDetails,
   TestRequest,
 } from "@/components/product/start/StartFlow";
 import { publicApiBase } from "@/lib/env";
@@ -168,22 +169,26 @@ async function Checklist({ agentParam, gateway }: { agentParam?: string; gateway
       <ol className="gs-steps">
         {steps.map((step, i) => (
           <li key={step.id} className={step.done ? "done" : next?.id === step.id ? "now" : ""}>
-            <details open={next?.id === step.id || (!next && i === 0)}>
-              <summary>
-                <span className="gs-marker" aria-hidden>
-                  {step.done ? "✓" : i + 1}
-                </span>
-                <span className="gs-title">{step.title}</span>
-                {step.done ? <Pill tone="ok">Done</Pill> : next?.id === step.id ? <Pill tone="info">Next</Pill> : null}
-              </summary>
+            <StepDetails
+              defaultOpen={next?.id === step.id || (!next && i === 0)}
+              summary={
+                <>
+                  <span className="gs-marker" aria-hidden>
+                    {step.done ? "✓" : i + 1}
+                  </span>
+                  <span className="gs-title">{step.title}</span>
+                  {step.done ? <Pill tone="ok">Done</Pill> : next?.id === step.id ? <Pill tone="info">Next</Pill> : null}
+                </>
+              }
+            >
               <div className="gs-body">
                 <p className="gs-detail">{step.detail}</p>
                 {body[step.id]}
                 <p className="gs-cli">
-                  Or from the command line: <code>{step.command}</code>
+                  Or from the command line: <code>{agent ? step.command.replace("my-agent", agent) : step.command}</code>
                 </p>
               </div>
-            </details>
+            </StepDetails>
           </li>
         ))}
       </ol>
