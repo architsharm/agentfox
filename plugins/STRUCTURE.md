@@ -30,19 +30,25 @@ plugins/
 │   │   ├── known-issues.md       bugs and doc drift an agent must route around
 │   │   ├── glossary.md           modes, terms, ID prefixes, commit conventions
 │   │   └── docs-map.md           classifies every repo .md: canonical / generated / drifted / task / human-only
-│   └── skills/               L2  PROCEDURES — one folder per job-to-be-done
-│       ├── using-agentfox/SKILL.md   entry skill: sends the agent to AGENTS.md (plugins load skills, not root files)
-│       └── <job>/SKILL.md        steps, decision points, safety gates; links to L1 for facts
-│           └── templates/ | references/   material only this skill needs
-└── claude-code/                  THE CLAUDE CODE PLUGIN (repo root holds marketplace.json → ./plugins/claude-code)
-    ├── README.md                     for humans: what this is, how to install it, how to use it
-    ├── .claude-plugin/plugin.json    Claude Code plugin manifest
-    ├── .mcp.json             L3  MCP server: `agentfox mcp serve`, 27 read-only tools for any MCP client
-    ├── AGENTS.md, reference/, skills/    COPIES of shared/, made by `scripts/check/plugins.py --write`
-    ├── commands/             L3  ENTRY POINTS — what a user types (/agentfox:<name>), thin, call a skill
-    ├── agents/               L3  ROLES — subagents with scoped tools (read-only auditor, policy author, …)
-    ├── hooks/hooks.json      L4  GUARDRAILS FOR THE PLUGIN — confirmation gate on blocking commands
-    └── scripts/              L4  launcher, hook implementation
+│   ├── skills/               L2  PROCEDURES — one folder per job-to-be-done
+│   │   ├── using-agentfox/SKILL.md   entry skill: sends the agent to AGENTS.md (plugins load skills, not root files)
+│   │   └── <job>/SKILL.md        steps, decision points, safety gates; links to L1 for facts
+│   │       └── templates/ | references/   material only this skill needs
+│   └── scripts/              L4  launcher (agentfox.sh) and the blocking-command hook (--deny where a runtime cannot ask)
+├── claude-code/                  THE CLAUDE CODE PLUGIN (repo root holds marketplace.json → ./plugins/claude-code)
+│   ├── README.md                     for humans: what this is, how to install it, how to use it
+│   ├── .claude-plugin/plugin.json    Claude Code plugin manifest
+│   ├── .mcp.json             L3  MCP server: `agentfox mcp serve`, 27 read-only tools for any MCP client
+│   ├── AGENTS.md, reference/, skills/, scripts/    COPIES of shared/, made by `scripts/check/plugins.py --write`
+│   ├── commands/             L3  ENTRY POINTS — what a user types (/agentfox:<name>), thin, call a skill
+│   ├── agents/               L3  ROLES — subagents with scoped tools (read-only auditor, policy author, …)
+│   ├── hooks/hooks.json      L4  GUARDRAILS FOR THE PLUGIN — confirmation gate on blocking commands
+│   └── scripts/              L4  (copy) launcher, hook implementation
+└── codex/                        THE CODEX CLI PLUGIN (.agents/plugins/marketplace.json → ./plugins/codex)
+    ├── .codex-plugin/plugin.json     Codex plugin manifest (skills, mcpServers, hooks)
+    ├── README.md, .mcp.json          for humans; the same read-only MCP server
+    ├── AGENTS.md, reference/, skills/, scripts/    COPIES of shared/
+    └── hooks/hooks.json      L4  the same guard with --deny: Codex cannot ask from a hook, so it refuses
 ```
 
 **Why copies.** An installed Claude Code plugin cannot load a component outside its own
@@ -73,7 +79,8 @@ never copies them.
    to a skill. If a command file grows logic, that logic belongs in a skill.
 5. **Safety is structural, not advisory.** Anything that changes whether traffic is blocked
    is (a) marked **BLK** in `reference/cli.md`, (b) gated in `hooks/hooks.json`, and (c) an
-   explicit confirm step in every skill that reaches it. All three change together.
+   explicit confirm step in every skill that reaches it. All three change together. (The
+   hook is `shared/scripts/guard_blocking_commands.py`; Codex runs it with `--deny`.)
 6. **Generated docs are regenerated, never edited.** `docs/status.md` and
    `docs/design/coverage-map.md` have commands in `reference/docs-map.md`.
 7. **Same-commit rule.** A change to `src/agentfox/apps/cli/`, `config.py`, `apps/gateway/routes/`,

@@ -42,7 +42,8 @@ doc to open.
 
 1. **Observe before enforce.** Everything starts in observe mode. Never run a **BLK**
    command (see [reference/cli.md](reference/cli.md)) unless the user asked for exactly that
-   outcome in this conversation. The plugin's safety hook will ask them. Let it, and don't
+   outcome in this conversation. The plugin's safety hook will ask them (in Codex, which cannot
+   ask from a hook, it refuses the command: show it to the user to run). Let it, and don't
    work around it.
 2. **Use a scratch database for demos and experiments.** Prefix commands with
    `AGENTFOX_DATABASE_URL=sqlite:////tmp/agentfox-scratch.db`. The demo and `seed` write demo
@@ -74,7 +75,8 @@ Skills write commands as `agentfox <args>`. If `agentfox` isn't on PATH:
 - In a source checkout of the AgentFox repo, use `uv run agentfox <args>`.
 - Anywhere, use the launcher `scripts/agentfox.sh <args>` in the runtime plugin's folder
   (`plugins/claude-code/scripts/agentfox.sh` in the repository). With the Claude Code plugin,
-  that's `${CLAUDE_PLUGIN_ROOT}/scripts/agentfox.sh`. It finds an
+  that's `${CLAUDE_PLUGIN_ROOT}/scripts/agentfox.sh`; with the Codex plugin, the plugin's own
+  `scripts/agentfox.sh`. It finds an
   installed CLI or a checkout, or prints the install line.
 
 Paths such as `src/…` and `docs/…` refer to the AgentFox repository

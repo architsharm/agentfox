@@ -1,0 +1,16 @@
+{
+  "name": "agentfox",
+  "version": "0.1.0",
+  "description": "Operator plugin for the AgentFox control plane in Codex CLI: onboard an agent codebase, triage findings, author and simulate policy, gate evals in CI, red-team, export audit evidence and respond to incidents, with a hook that refuses agent-run commands which change what is blocked.",
+  "keywords": ["ai-governance", "guardrails", "agents", "compliance", "audit", "red-team"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "AgentFox Control Plane",
+    "shortDescription": "Operate AgentFox from Codex: skills, read-only MCP tools and a safety hook.",
+    "developerName": "Archit Sharma",
+    "category": "Developer Tools",
+    "websiteURL": "https://github.com/architsharm/agentfox"
+  }
+}

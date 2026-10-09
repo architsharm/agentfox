@@ -91,7 +91,8 @@ Quote coverage numbers only from these, and only after regenerating.
 ## Plugin files (Class H — owned by `plugins/`)
 
 Everything under `plugins/` is agent-facing by design and follows `plugins/STRUCTURE.md`.
-`plugins/claude-code/` carries copies of `plugins/shared/` (AGENTS.md, skills/, reference/);
+`plugins/claude-code/` and `plugins/codex/` carry copies of `plugins/shared/` (AGENTS.md, skills/,
+reference/, scripts/);
 edit the shared originals and run `scripts/check/plugins.py --write`.
 
 ## Question → where to look
