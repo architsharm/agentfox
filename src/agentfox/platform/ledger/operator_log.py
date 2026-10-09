@@ -161,6 +161,22 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "switching a detector off silences it for the whole workspace, like a suppression",
     ),
     PrivilegedAction(
+        "agentfox.capabilities.detection.custom_models.save_model",
+        "operator.custom_model.saved",
+        "registers or changes a model that customer content is sent to, and whose "
+        "answers can block, mask or hold traffic",
+    ),
+    PrivilegedAction(
+        "agentfox.capabilities.detection.custom_models.set_model_enabled",
+        "operator.custom_model.toggled",
+        "switching a model off silences every rule that acted on it",
+    ),
+    PrivilegedAction(
+        "agentfox.capabilities.detection.custom_models.delete_model",
+        "operator.custom_model.deleted",
+        "removes a model — the protection it gave stops with it",
+    ),
+    PrivilegedAction(
         "agentfox.capabilities.judgment.posture.save",
         "operator.judgment_posture.changed",
         "decides whether customer payloads leave this machine for a third party — "

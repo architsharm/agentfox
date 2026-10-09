@@ -473,7 +473,7 @@ def _condition_detections(
 class CustomTopicDetector(BaseDetector):
     """The workspace's topics, scored by meaning with the local embedding model.
 
-    Opt-in (Policies → Library → Detectors): a real forward pass per request with a
+    Opt-in (Policies → Checks): a real forward pass per request with a
     topic rule, so it declares its own allowance and warms the model at startup.
     Nothing leaves the machine.
     """

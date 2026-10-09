@@ -30,6 +30,8 @@ from agentfox.capabilities.detection import (
 from agentfox.capabilities.detection.actions import analyse_arguments
 from agentfox.capabilities.detection.actions import summarise as summarise_actions
 from agentfox.capabilities.detection.composition import check_composed_escalation
+from agentfox.capabilities.detection.custom_models import DETECTOR_KEY
+from agentfox.capabilities.detection.custom_models import compiled_models as compiled_custom_models
 from agentfox.capabilities.detection.custom_store import compiled_rules as compiled_custom_rules
 from agentfox.capabilities.detection.detector_settings import enabled_for as detectors_enabled_for
 from agentfox.capabilities.detection.tuning import (
@@ -200,6 +202,7 @@ class Enforcer(
         # enforcer: an enforcer serves one request, and both change only by an
         # operator action.
         self._custom_rule_cache: dict[str | None, list[Any]] = {}
+        self._custom_model_cache: list[Any] | None = None
         self._enabled_detector_cache: frozenset[str] | None = None
 
     #: Context assembly is the caller's step, not ours: it needs the ranked
@@ -410,6 +413,9 @@ class Enforcer(
                 # The tool a content-only check is about (a tool result sent to
                 # `/v1/guard/input`), for custom conditions scoped to a tool.
                 "tool": call.tool_key or self.evidence.get("tool"),
+                # The workspace's own model endpoints, credentials decrypted
+                # (custom_models.py); only read when its detector is selected.
+                "custom_models": self._custom_models(),
                 # What the answer was built from, for detectors that check an
                 # answer against it (grounding.nli). Supplied by the caller.
                 "context": [
@@ -454,6 +460,15 @@ class Enforcer(
         if agent_slug not in self._custom_rule_cache:
             self._custom_rule_cache[agent_slug] = compiled_custom_rules(self.session, agent_slug)
         return self._custom_rule_cache[agent_slug]
+
+    def _custom_models(self) -> list[Any]:
+        """Compiled model endpoints for this workspace, once per enforcer."""
+        if self._custom_model_cache is None:
+            if DETECTOR_KEY in self._enabled_detectors():
+                self._custom_model_cache = compiled_custom_models(self.session)
+            else:
+                self._custom_model_cache = []
+        return self._custom_model_cache
 
     def _enabled_detectors(self) -> frozenset[str]:
         """This workspace's detector choice."""

@@ -14,7 +14,7 @@ something its retrieved context does not support.
 | `grounding.unsupported` | `GROUNDING.UNSUPPORTED` from the opt-in `grounding.nli` detector | Block, **re-asked** once on the model proxy |
 
 **Remediation.** Review what each rule would have held on Policies → Performance, then
-start enforcing. Turn on `grounding.nli` (Policies → Library → Detectors) once its model
+start enforcing. Turn on `grounding.nli` (Policies → Checks) once its model
 is installed; without it the grounding rule never fires.
 
 ```bash

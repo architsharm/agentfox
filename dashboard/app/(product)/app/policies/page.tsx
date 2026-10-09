@@ -19,7 +19,7 @@ import {
 } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
-import { Detectors } from "@/components/product/policies/Detectors";
+import { Checks } from "@/components/product/policies/Checks";
 import { ImportGuard } from "@/components/product/policies/ImportGuard";
 import { LibraryPacks } from "@/components/product/policies/LibraryPacks";
 import { PackMode } from "@/components/product/policies/PackMode";
@@ -38,6 +38,7 @@ type SP = Record<string, string | undefined>;
 
 const TABS = [
   { key: "rules", label: "Rules" },
+  { key: "checks", label: "Checks" },
   { key: "performance", label: "Performance" },
   { key: "library", label: "Library" },
   { key: "changes", label: "Changes" },
@@ -58,7 +59,8 @@ function firstSentence(text: string): string {
 
 export default async function Policies({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const legacy = LEGACY[sp.tab || ""];
+  // The detector list moved from Library to its own tab; old links still land there.
+  const legacy = sp.tab === "library" && sp.sec === "detectors" ? { tab: "checks", sec: undefined } : LEGACY[sp.tab || ""];
   const tab = legacy?.tab || (TABS.some((t) => t.key === sp.tab) ? sp.tab! : "rules");
   const sec = legacy?.sec || sp.sec;
   if (tab === "rules" || tab === "performance") await ensureRange("/app/policies", sp);
@@ -71,6 +73,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
       {sp.review_error && <div className="error">{sp.review_error}</div>}
       {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
       {tab === "rules" && <RulesTab sp={sp} />}
+      {tab === "checks" && <Checks />}
       {tab === "performance" && <PerformanceTab sp={sp} />}
       {tab === "library" && <LibraryTab sec={sec} />}
       {tab === "changes" && <ChangesTab />}
@@ -328,7 +331,6 @@ async function PerformanceTab({ sp }: { sp: SP }) {
 
 const LIBRARY = [
   { key: "packs", label: "Packs" },
-  { key: "detectors", label: "Detectors" },
   { key: "import", label: "Import" },
 ];
 
@@ -344,7 +346,6 @@ async function LibraryTab({ sec }: { sec?: string }) {
         ))}
       </div>
       {section === "packs" && <LibraryPacks />}
-      {section === "detectors" && <Detectors />}
       {section === "import" && (
         <Card title="From Guardrails AI">
           <ImportGuard />

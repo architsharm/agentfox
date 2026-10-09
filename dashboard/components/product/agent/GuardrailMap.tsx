@@ -285,6 +285,9 @@ function Panel({ map, selected }: { map: AgentMap; selected: Selected }) {
         ) : (
           <p className="k-muted">None.</p>
         )}
+        <p>
+          <Link href="/app/policies?tab=checks">Choose checks</Link>
+        </p>
         <h4>Rules that act on them</h4>
         <RuleList rules={s.rules} slug={map.agent.slug} />
       </div>

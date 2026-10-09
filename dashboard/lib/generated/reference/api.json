@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 248,
+ "count": 254,
  "routes": [
   {
    "method": "GET",
@@ -2577,6 +2577,265 @@
   },
   {
    "method": "GET",
+   "path": "/api/custom-models",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Get Custom Models",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-models",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Register (or update) a classifier endpoint as a detector.",
+   "description": "Register (or update) a classifier endpoint as a detector.\n\nRefused with 409 when the endpoint is one this deployment may not send content\nto (egress off for a public address; a private address without\n`outbound_allow_private_hosts`; link-local never), and with 503 when a credential\nis given but this deployment cannot encrypt it.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "CustomModelIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "url",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surfaces",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "labels",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "entity_prefix",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "threshold",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_ms",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "fail_mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_header",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_secret",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "clear_secret",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "effect",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/custom-models/{key}",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Remove Custom Model",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-models/{key}/enabled",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Toggle Custom Model",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ToggleIn",
+    "fields": [
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-models/{key}/test",
+   "section": "custom-models",
+   "audience": "operator",
+   "summary": "Send one text to a registered model and show what it would report. Records nothing. A model that cannot answer is reported, not raised.",
+   "description": "Send one text to a registered model and show what it would report. Records\nnothing. A model that cannot answer is reported, not raised.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "TestIn",
+    "fields": [
+     {
+      "name": "text",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surface",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
    "path": "/api/custom-rules",
    "section": "custom-rules",
    "audience": "operator",
@@ -2903,6 +3162,35 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/detectors/{key}/pull",
+   "section": "detectors",
+   "audience": "operator",
+   "summary": "Download the model weights this detector loads, in a background job.",
+   "description": "Download the model weights this detector loads, in a background job.\n\n409 with what to run instead when this server cannot keep a model (serverless,\nor the model libraries are not installed). Poll `GET /api/detectors` (its\n`pull_job`) or `GET /api/jobs/{id}` for the outcome; once it is `done`, switch\nthe detector on.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",

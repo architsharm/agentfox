@@ -147,6 +147,44 @@ class DetectorSetting(Base, TimestampMixin):
     updated_by: Mapped[str] = mapped_column(String(200), default="")
 
 
+class CustomModel(Base, TimestampMixin):
+    """A classifier the workspace runs itself, called over HTTP as a detector.
+
+    Bring-your-own model: the customer's fine-tuned classifier, an RL-trained
+    reward or safety model, anything that answers "which labels, how sure" for a
+    piece of text. The `custom.models` detector posts the text to `url` and turns
+    labels at or above `threshold` into detections, named so existing rules act on
+    them (`INJECTION.*`, `PII.*`) or, under `CUSTOM`, a rule of its own in the
+    managed `custom` pack.
+
+    The optional credential is encrypted at rest like every other stored secret
+    (`core.crypto`, listed in `platform.keys.rotation.ENCRYPTED_FIELDS`), and is
+    never returned by the API.
+    """
+
+    __tablename__ = "custom_models"
+    __table_args__ = (UniqueConstraint("org_id", "key", name="ux_custom_models_org_key"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("cmd"))
+    key: Mapped[str] = mapped_column(String(80), index=True)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    url: Mapped[str] = mapped_column(String(1000), default="")
+    surfaces_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    #: The model's label -> the entity suffix it is reported as ("" ignores the label).
+    labels_json: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+    #: CUSTOM | INJECTION | PII | SECRET | SAFETY | ...
+    entity_prefix: Mapped[str] = mapped_column(String(32), default="CUSTOM")
+    threshold: Mapped[float] = mapped_column(Float, default=0.5)
+    timeout_ms: Mapped[int] = mapped_column(Integer, default=800)
+    #: open: an unreachable model is recorded and traffic flows. closed: it counts as a hit.
+    fail_mode: Mapped[str] = mapped_column(String(8), default="open")
+    auth_header: Mapped[str] = mapped_column(String(100), default="")
+    auth_secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_by: Mapped[str] = mapped_column(String(200), default="")
+
+
 class EndUserPrincipal(Base, TimestampMixin):
     """The human the agent is acting for.
 

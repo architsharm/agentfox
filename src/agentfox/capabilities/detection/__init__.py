@@ -33,6 +33,7 @@ from agentfox.capabilities.detection.base import (
     warm_all,
 )
 from agentfox.capabilities.detection.custom import CustomListDetector, CustomTopicDetector
+from agentfox.capabilities.detection.custom_models import CustomModelDetector
 from agentfox.capabilities.detection.detectors.code import InsecureCodeDetector
 from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
 from agentfox.capabilities.detection.detectors.judgment import (
@@ -54,6 +55,9 @@ register_detector(SafetyLexiconDetector())
 register_detector(JsonSchemaDetector())
 # A workspace's own words, patterns and topics (custom.py); free with none defined.
 register_detector(CustomListDetector())
+# The workspace's own classifier endpoints (custom_models.py); runs only for a
+# workspace that registered one.
+register_detector(CustomModelDetector())
 # Insecure code in what a coding agent writes or runs (detectors/code.py).
 register_detector(InsecureCodeDetector())
 
@@ -87,6 +91,7 @@ register_detector(RestrictedClassifierDetector())
 
 __all__ = [
     "BaseDetector",
+    "CustomModelDetector",
     "Detection",
     "DetectionContext",
     "Detector",
