@@ -108,6 +108,8 @@ class ResolvedRule:
             "overrides": self.overrides,
             "loosened": self.loosened,
             "source": f"{self.level}:{self.scope_id}",
+            #: The pack this rule's winning copy lives in.
+            "policy": self.layer.document.key if self.layer is not None else None,
         }
 
 
@@ -129,6 +131,9 @@ class EffectivePolicy:
     applicable: list[PolicyLayer] = field(default_factory=list, repr=False)
     #: Bound versions left out because they no longer load (`store.load_version_document`).
     unloadable: list[dict[str, Any]] = field(default_factory=list)
+    #: Who this was resolved for, so a caller can re-resolve a subset of `applicable`
+    #: for the same subject (what an agent would get without its own layer).
+    subject: dict[str, str] = field(default_factory=dict, repr=False)
 
     def rules_in_force(self, layer: PolicyLayer) -> list[Rule]:
         """The rules from ``layer`` that resolution kept, in the layer's own order.
@@ -169,6 +174,30 @@ class EffectivePolicy:
         }
 
 
+def softens(rule: Rule, broader: Rule) -> bool:
+    """True when ``rule`` keeps ``broader``'s action but would fire less.
+
+    Switching a rule off, or raising its detection threshold (``min_score`` or
+    ``min_count``), loosens it without changing its effect.
+    """
+    if broader.enabled and not rule.enabled:
+        return True
+    mine, theirs = rule.when.detection, broader.when.detection
+    if mine is not None and theirs is not None:
+        return mine.min_score > theirs.min_score or mine.min_count > theirs.min_count
+    return False
+
+
+def loosens(rule: Rule, broader: Rule) -> bool:
+    """True when ``rule`` in a narrower layer would be weaker than ``broader``.
+
+    A weaker action, or the same action switched off or made less sensitive.
+    """
+    if EFFECT_RANK[rule.effect] < EFFECT_RANK[broader.effect]:
+        return True
+    return softens(rule, broader)
+
+
 def resolve_effective(
     layers: list[PolicyLayer], subject: dict[str, str] | None = None
 ) -> EffectivePolicy:
@@ -196,6 +225,7 @@ def resolve_effective(
             for layer in applicable
         ],
         applicable=applicable,
+        subject=dict(subject),
     )
     by_id: dict[str, ResolvedRule] = {}
     overridable: dict[str, bool] = {}
@@ -229,6 +259,17 @@ def resolve_effective(
                 continue
 
             tightening = EFFECT_RANK[rule.effect] >= EFFECT_RANK[existing.rule.effect]
+            # Same action, but switched off or made less sensitive. Where the broader
+            # rule grants overrides this is a loosening like any other and replaces
+            # it. Where it does not, the narrower copy sits beside the broader one,
+            # which stays in force, so the change does nothing (as it always has).
+            if (
+                tightening
+                and softens(rule, existing.rule)
+                and overridable.get(rule.id, False)
+                and layer.mode != "restrict"
+            ):
+                tightening = False
 
             # `restrict` may only tighten. A layer that declares restraint and then
             # loosens is a misconfiguration, not a permission — so it is rejected

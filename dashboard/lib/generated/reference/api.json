@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 244,
+ "count": 247,
  "routes": [
   {
    "method": "GET",
@@ -227,6 +227,12 @@
       "type": "object",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "usage",
+      "type": "object",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -374,6 +380,12 @@
      },
      {
       "name": "completion",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "usage",
       "type": "object",
       "required": false,
       "description": ""
@@ -6892,12 +6904,47 @@
    }
   },
   {
+   "method": "DELETE",
+   "path": "/api/policies/agents/{slug}/rules/{rule_id}",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Drop an agent's own copy of a rule: the workspace rule applies to it again.",
+   "description": "Drop an agent's own copy of a rule: the workspace rule applies to it again.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/policies/effective",
    "section": "policies",
    "audience": "operator",
    "summary": "The policy actually in force for a subject, with per-rule provenance.",
-   "description": "The policy actually in force for a subject, with per-rule provenance.",
+   "description": "The policy actually in force for a subject, with per-rule provenance.\n\nWith ``agent``, each rule also says whether it was changed for that agent only\n(``changed_for_agent``), and ``agent_changes`` lists every rule the agent's own\nlayer sets beside the workspace default it replaces.",
    "params": [
     {
      "name": "agent",
@@ -7412,7 +7459,141 @@
       "description": ""
      },
      {
+      "name": "overridable",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "notes",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/{key}/rules/{rule_id}/agents",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Every agent, nested by hand-off, and whether each has its own copy of the rule.",
+   "description": "Every agent, nested by hand-off, and whether each has its own copy of the rule.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/rules/{rule_id}/scope",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Change a rule for every agent, or for only some (and what they hand off to).",
+   "description": "Change a rule for every agent, or for only some (and what they hand off to).\n\nEvery agent: the same as ``POST /{key}/rules/{rule_id}`` (a saved version to\npromote). Some agents: the changed rule is written into each agent's own layer,\nlive in the mode that layer is in, after a simulation when it enforces. A change\nthat would loosen the workspace rule for an agent is refused with 409 unless the\nworkspace rule is ``overridable``.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ScopedChangeIn",
+    "fields": [
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "include_delegates",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "effect",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "on_block",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "min_score",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "preview",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
       "type": "string",
       "required": false,
       "description": ""

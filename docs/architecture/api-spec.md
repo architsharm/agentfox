@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-244 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+247 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -202,6 +202,7 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `GET` | `/api/policies` | List Policies |
 | `POST` | `/api/policies` | Upsert Policy |
+| `DELETE` | `/api/policies/agents/{slug}/rules/{rule_id}` | Drop an agent's own copy of a rule: the workspace rule applies to it again. |
 | `GET` | `/api/policies/effective` | The policy actually in force for a subject, with per-rule provenance. |
 | `GET` | `/api/policies/lint` | Policy lint. `passed` is false when critical/high findings exist. |
 | `POST` | `/api/policies/simulate` | Replay recorded traffic against a candidate policy. |
@@ -214,6 +215,8 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/policies/{key}/mode` | Promote or demote a policy, optionally making a saved version live. |
 | `GET` | `/api/policies/{key}/rego` | Get Rego |
 | `POST` | `/api/policies/{key}/rules/{rule_id}` | Change one rule's action or switch it off, as a new saved version. |
+| `GET` | `/api/policies/{key}/rules/{rule_id}/agents` | Every agent, nested by hand-off, and whether each has its own copy of the rule. |
+| `POST` | `/api/policies/{key}/rules/{rule_id}/scope` | Change a rule for every agent, or for only some (and what they hand off to). |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |
 

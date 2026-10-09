@@ -133,6 +133,50 @@ rules:
     assert "restrict" in effective.rejected[0]["reason"]
 
 
+GRANTING = """
+key: org
+mode: enforce
+rules:
+  - id: harm
+    when: {detection: {entity_prefix: HARM, min_score: 0.7}}
+    effect: block
+    overridable: true
+  - id: secrets
+    when: {detection: {entity_prefix: SECRET, min_score: 0.9}}
+    effect: block
+"""
+
+AGENT_SOFTER = """
+key: agent.a
+rules:
+  - id: harm
+    when: {detection: {entity_prefix: HARM, min_score: 0.7}}
+    effect: block
+    enabled: false
+  - id: secrets
+    when: {detection: {entity_prefix: SECRET, min_score: 0.99}}
+    effect: block
+"""
+
+
+def test_switching_off_or_desensitising_needs_the_grant():
+    """Same action, but fires less: a loosening, granted or not like any other."""
+    layers = [layer(GRANTING, "org"), layer(AGENT_SOFTER, "agent", "a")]
+    effective = resolve_effective(layers, {"agent": "a"})
+    org_layer, agent_layer = effective.applicable
+    by_id = rules_by_id(effective)
+    # Granted: the agent's switched-off copy replaces the workspace rule.
+    assert by_id["harm"].loosened and by_id["harm"].level == "agent"
+    assert "harm" not in {r.id for r in effective.rules_in_force(org_layer)}
+    # Not granted: the workspace rule stays in force beside the less sensitive copy.
+    assert not by_id["secrets"].loosened
+    assert "secrets" in {r.id for r in effective.rules_in_force(org_layer)}
+    assert "secrets" in {r.id for r in effective.rules_in_force(agent_layer)}
+    # Another agent never sees the agent layer.
+    other = rules_by_id(resolve_effective(layers, {"agent": "b"}))
+    assert other["harm"].level == "org" and other["harm"].rule.enabled
+
+
 def test_narrowest_level_wins_across_four_levels():
     def one(effect: str) -> str:
         return f"""
