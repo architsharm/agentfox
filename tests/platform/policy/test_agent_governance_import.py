@@ -33,279 +33,276 @@ UNTRANSLATABLE = [
     ("adk-agt-manifest.yaml", "adk_governance"),
     (
         "african-regulatory/agent-human-approval.yaml",
-        "agt_policies_agent.human_approval.escalate: Human approval required: '",
+        "escalate: Human approval required: '%v' is designated as a human-appro",
     ),
     (
         "african-regulatory/agent-human-approval.yaml",
-        "agt_policies_agent.human_approval.escalate: Human approval required: a",
+        "escalate: Human approval required: action risk level '%v' requires hum",
     ),
     (
         "african-regulatory/agent-human-approval.yaml",
-        "agt_policies_agent.human_approval.escalate: Human approval required: b",
+        "escalate: Human approval required: bulk operation on %v records exceed",
     ),
     (
         "african-regulatory/agent-human-approval.yaml",
-        "agt_policies_agent.human_approval.escalate: Human approval required: t",
+        "escalate: Human approval required: transaction amount %v exceeds confi",
     ),
     (
         "african-regulatory/agent-model-routing.yaml",
-        "agt_policies_agent.model_routing.audit: Model routing audit: sensitive",
+        "audit: Model routing audit: sensitive task '%v' processed by approved ",
     ),
     (
         "african-regulatory/agent-model-routing.yaml",
-        "agt_policies_agent.model_routing.deny: Model routing denied: model '%v",
+        "deny: Model routing denied: model '%v' is not approved for sensitive t",
     ),
     (
         "african-regulatory/agent-model-routing.yaml",
-        "agt_policies_agent.model_routing.deny: Model routing denied: model '%v",
+        "deny: Model routing denied: model '%v' is on the banned list.",
     ),
     (
         "african-regulatory/agent-model-routing.yaml",
-        "agt_policies_agent.model_routing.escalate: Model routing: sensitive ta",
+        "escalate: Model routing: sensitive task type '%v' requires an explicit",
     ),
     (
         "african-regulatory/agent-pii-leakage.yaml",
-        "agt_policies_agent.pii_leakage.audit: PII audit: action may produce pe",
+        "audit: PII audit: action may produce personal data — output logged for",
     ),
     (
         "african-regulatory/agent-pii-leakage.yaml",
-        "agt_policies_agent.pii_leakage.deny: PII leakage: BVN/NIN-format ident",
+        "deny: PII leakage: BVN/NIN-format identifier (11-digit) detected in ag",
     ),
     (
         "african-regulatory/agent-pii-leakage.yaml",
-        "agt_policies_agent.pii_leakage.deny: PII leakage: South African ID num",
+        "deny: PII leakage: South African ID number detected in agent output — ",
     ),
     (
         "african-regulatory/agent-pii-leakage.yaml",
-        "agt_policies_agent.pii_leakage.deny: PII leakage: credit/debit card nu",
+        "deny: PII leakage: credit/debit card number detected in agent output —",
     ),
     (
         "african-regulatory/agent-pii-leakage.yaml",
-        "agt_policies_agent.pii_leakage.deny: PII leakage: custom high-sensitiv",
+        "deny: PII leakage: custom high-sensitivity pattern detected in agent o",
     ),
     (
         "african-regulatory/agent-pii-leakage.yaml",
-        "agt_policies_agent.pii_leakage.escalate: PII leakage: email address de",
+        "escalate: PII leakage: email address detected in agent output — route ",
     ),
     (
         "african-regulatory/agent-pii-leakage.yaml",
-        "agt_policies_agent.pii_leakage.escalate: PII leakage: phone number det",
+        "escalate: PII leakage: phone number detected in agent output — route t",
     ),
     (
         "african-regulatory/agent-prompt-injection.yaml",
-        "agt_policies_agent.prompt_injection.deny: Prompt injection detected: i",
+        "deny: Prompt injection detected: input contains known injection patter",
     ),
     (
         "african-regulatory/agent-prompt-injection.yaml",
-        "agt_policies_agent.prompt_injection.escalate: Potential prompt injecti",
+        "escalate: Potential prompt injection: structural injection marker dete",
     ),
     (
         "african-regulatory/agent-tool-permissions.yaml",
-        "agt_policies_agent.tool_permissions.deny: Tool permission denied: '%v'",
+        "deny: Tool permission denied: '%v' is not in the allowed tools list.",
     ),
     (
         "african-regulatory/agent-tool-permissions.yaml",
-        "agt_policies_agent.tool_permissions.deny: Tool permission denied: '%v'",
+        "deny: Tool permission denied: '%v' is on the denied list — action bloc",
     ),
     (
         "african-regulatory/agent-tool-permissions.yaml",
-        "agt_policies_agent.tool_permissions.escalate: Tool requires human appr",
+        "escalate: Tool requires human approval: '%v' is a restricted tool — ro",
     ),
     (
         "african-regulatory/bvn-nin-protection.yaml",
-        "agt_policies_nigeria.bvn_nin.audit: NIMC Act 2026: Action '%v' is a ma",
+        "audit: NIMC Act 2026: Action '%v' is a mandatory-NIN service — bank ac",
     ),
     (
         "african-regulatory/bvn-nin-protection.yaml",
-        "agt_policies_nigeria.bvn_nin.escalate: BVN/NIN Gate: Action '%v' invol",
+        "escalate: BVN/NIN Gate: Action '%v' involves %v identifier — requires ",
     ),
     (
         "african-regulatory/bvn-nin-protection.yaml",
-        "agt_policies_nigeria.bvn_nin.escalate: NIMC Act 2026: BVN lookup attem",
+        "escalate: NIMC Act 2026: BVN lookup attempted without a declared purpo",
     ),
     (
         "african-regulatory/bvn-nin-protection.yaml",
-        "agt_policies_nigeria.bvn_nin.escalate: NIMC Act 2026: NIN lookup attem",
+        "escalate: NIMC Act 2026: NIN lookup attempted without a declared purpo",
     ),
     (
         "african-regulatory/bvn-nin-protection.yaml",
-        "agt_policies_nigeria.bvn_nin.escalate: NIMC Act 2026: Purpose mismatch",
+        "escalate: NIMC Act 2026: Purpose mismatch — NIN was consented for '%v'",
     ),
     (
         "african-regulatory/cbn-transaction-limits.yaml",
-        "agt_policies_nigeria.cbn.escalate: CBN Tier 1: Transfer of ₦%v exceeds",
+        "escalate: CBN Tier 1: Transfer of ₦%v exceeds ₦50,000 Tier 1 limit — K",
     ),
     (
         "african-regulatory/cbn-transaction-limits.yaml",
-        "agt_policies_nigeria.cbn.escalate: CBN Tier 2: Transfer of ₦%v exceeds",
+        "escalate: CBN Tier 2: Transfer of ₦%v exceeds ₦200,000 Tier 2 daily li",
     ),
     (
         "african-regulatory/cbn-transaction-limits.yaml",
-        "agt_policies_nigeria.cbn.escalate: CBN Tier 3: Transfer of ₦%v is at o",
+        "escalate: CBN Tier 3: Transfer of ₦%v is at or above ₦5,000,000 daily ",
     ),
     (
         "african-regulatory/egypt-pdpl.yaml",
-        "agt_policies_africa.egypt_pdpl.deny: Egypt PDPL No. 151/2020 Art. 14: ",
+        "deny: Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer to region",
     ),
     (
         "african-regulatory/egypt-pdpl.yaml",
-        "agt_policies_africa.egypt_pdpl.deny: Egypt PDPL No. 151/2020 Arts. 14-",
+        "deny: Egypt PDPL No. 151/2020 Arts. 14-15: Transfer to '%v' blocked — ",
     ),
     (
         "african-regulatory/egypt-pdpl.yaml",
-        "agt_policies_africa.egypt_pdpl.escalate: Egypt PDPL No. 151/2020 Art. ",
+        "escalate: Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer with ",
     ),
     (
         "african-regulatory/egypt-pdpl.yaml",
-        "agt_policies_africa.egypt_pdpl.escalate: Egypt PDPL No. 151/2020 Art. ",
+        "escalate: Egypt PDPL No. 151/2020 Art. 6/14: Export of %v records requ",
     ),
     (
         "african-regulatory/ethiopia-pdp.yaml",
-        "agt_policies_africa.ethiopia_pdp.deny: Ethiopia PDPP 1321/2024 Art. 18",
+        "deny: Ethiopia PDPP 1321/2024 Art. 18: Cross-border transfer to '%v' b",
     ),
     (
         "african-regulatory/ethiopia-pdp.yaml",
-        "agt_policies_africa.ethiopia_pdp.deny: Ethiopia PDPP 1321/2024 Art. 20",
+        "deny: Ethiopia PDPP 1321/2024 Art. 20: Transfer to '%v' blocked — no d",
     ),
     (
         "african-regulatory/ethiopia-pdp.yaml",
-        "agt_policies_africa.ethiopia_pdp.escalate: Ethiopia PDPP 1321/2024 Art",
+        "escalate: Ethiopia PDPP 1321/2024 Art. 20: Cross-border transfer with ",
     ),
     (
         "african-regulatory/ethiopia-pdp.yaml",
-        "agt_policies_africa.ethiopia_pdp.escalate: Ethiopia PDPP 1321/2024 Art",
+        "escalate: Ethiopia PDPP 1321/2024 Art. 22: Export of %v records requir",
     ),
     (
         "african-regulatory/ghana-dpa.yaml",
-        "agt_policies_africa.ghana_dpa.deny: Ghana DPA Act 843 s.18(2): Cross-b",
+        "deny: Ghana DPA Act 843 s.18(2): Cross-border transfer to region '%v' ",
     ),
     (
         "african-regulatory/ghana-dpa.yaml",
-        "agt_policies_africa.ghana_dpa.deny: Ghana DPA Act 843 s.18(2): Transfe",
+        "deny: Ghana DPA Act 843 s.18(2): Transfer to '%v' blocked — no documen",
     ),
     (
         "african-regulatory/ghana-dpa.yaml",
-        "agt_policies_africa.ghana_dpa.escalate: Ghana DPA Act 843 s.17: Export",
+        "escalate: Ghana DPA Act 843 s.17: Export of %v records requires docume",
     ),
     (
         "african-regulatory/ghana-dpa.yaml",
-        "agt_policies_africa.ghana_dpa.escalate: Ghana DPA Act 843 s.18(2): Cro",
+        "escalate: Ghana DPA Act 843 s.18(2): Cross-border transfer with no des",
     ),
     (
         "african-regulatory/kenya-dpa.yaml",
-        "agt_policies_africa.kdpa.deny: Kenya DPA s.49: Cross-border transfer t",
+        "deny: Kenya DPA s.49: Cross-border transfer to '%v' blocked — region n",
     ),
     (
         "african-regulatory/kenya-dpa.yaml",
-        "agt_policies_africa.kdpa.deny: Kenya DPA s.49: Transfer to country '%v",
+        "deny: Kenya DPA s.49: Transfer to country '%v' blocked — no documented",
     ),
     (
         "african-regulatory/kenya-dpa.yaml",
-        "agt_policies_africa.kdpa.escalate: Kenya DPA s.30: Export of %v record",
+        "escalate: Kenya DPA s.30: Export of %v records requires Data Protectio",
     ),
     (
         "african-regulatory/kenya-dpa.yaml",
-        "agt_policies_africa.kdpa.escalate: Kenya DPA s.49: Cross-border transf",
+        "escalate: Kenya DPA s.49: Cross-border transfer with no destination me",
     ),
     (
         "african-regulatory/mauritius-dpa.yaml",
-        "agt_policies_africa.mauritius_dpa.deny: Mauritius DPA 2017 (Transfer):",
+        "deny: Mauritius DPA 2017 (Transfer): Cross-border transfer to region '",
     ),
     (
         "african-regulatory/mauritius-dpa.yaml",
-        "agt_policies_africa.mauritius_dpa.deny: Mauritius DPA 2017 (Transfer):",
+        "deny: Mauritius DPA 2017 (Transfer): Transfer to '%v' blocked — no doc",
     ),
     (
         "african-regulatory/mauritius-dpa.yaml",
-        "agt_policies_africa.mauritius_dpa.escalate: Mauritius DPA 2017 (Transf",
+        "escalate: Mauritius DPA 2017 (Transfer / Security): Export of %v recor",
     ),
     (
         "african-regulatory/mauritius-dpa.yaml",
-        "agt_policies_africa.mauritius_dpa.escalate: Mauritius DPA 2017 (Transf",
+        "escalate: Mauritius DPA 2017 (Transfer): Cross-border transfer action ",
     ),
     (
         "african-regulatory/ndpa-data-residency.yaml",
-        "agt_policies_nigeria.ndpa.deny: NDPA s.25: Cross-border transfer to '%",
+        "deny: NDPA s.25: Cross-border transfer to '%v' blocked — region not in",
     ),
     (
         "african-regulatory/ndpa-data-residency.yaml",
-        "agt_policies_nigeria.ndpa.deny: NDPA s.25: Transfer to country '%v' bl",
+        "deny: NDPA s.25: Transfer to country '%v' blocked — no documented cons",
     ),
     (
         "african-regulatory/ndpa-data-residency.yaml",
-        "agt_policies_nigeria.ndpa.escalate: NDPA s.24: Export of %v records re",
+        "escalate: NDPA s.24: Export of %v records requires Data Protection Off",
     ),
     (
         "african-regulatory/ndpa-data-residency.yaml",
-        "agt_policies_nigeria.ndpa.escalate: NDPA s.25: Cross-border transfer a",
+        "escalate: NDPA s.25: Cross-border transfer action with no destination ",
     ),
     (
         "african-regulatory/nfiu-aml-str.yaml",
-        "agt_policies_nigeria.nfiu.audit: NFIU Structuring Alert: ₦%v is just u",
+        "audit: NFIU Structuring Alert: ₦%v is just under ₦5M CTR threshold — l",
     ),
     (
         "african-regulatory/nfiu-aml-str.yaml",
-        "agt_policies_nigeria.nfiu.escalate: NFIU CTR (MLPPA s.10): Transfer of",
+        "escalate: NFIU CTR (MLPPA s.10): Transfer of ₦%v is at or above ₦5,000",
     ),
     (
         "african-regulatory/popia-south-africa.yaml",
-        "agt_policies_africa.popia.deny: POPIA s.72: Transfer to '%v' blocked —",
+        "deny: POPIA s.72: Transfer to '%v' blocked — country not recognised as",
     ),
+    ("african-regulatory/pos-geofencing.yaml", "audit: CBN POS Audit: terminal action recorded"),
     (
         "african-regulatory/pos-geofencing.yaml",
-        "agt_policies_nigeria.pos_geofencing.audit: CBN POS Audit: terminal act",
-    ),
-    (
-        "african-regulatory/pos-geofencing.yaml",
-        "agt_policies_nigeria.pos_geofencing.deny: CBN POS Geo-Fencing: locatio",
+        "deny: CBN POS Geo-Fencing: location must be verified before a POS acti",
     ),
     (
         "african-regulatory/rwanda-dpa.yaml",
-        "agt_policies_africa.rwanda_dpa.deny: Rwanda Law 058/2021 Art. 48/49: T",
+        "deny: Rwanda Law 058/2021 Art. 48/49: Transfer to '%v' blocked — no do",
     ),
     (
         "african-regulatory/rwanda-dpa.yaml",
-        "agt_policies_africa.rwanda_dpa.deny: Rwanda Law 058/2021 Art. 48: Cros",
+        "deny: Rwanda Law 058/2021 Art. 48: Cross-border transfer to region '%v",
     ),
     (
         "african-regulatory/rwanda-dpa.yaml",
-        "agt_policies_africa.rwanda_dpa.escalate: Rwanda Law 058/2021 Art. 48: ",
+        "escalate: Rwanda Law 058/2021 Art. 48: Cross-border transfer with no d",
     ),
     (
         "african-regulatory/rwanda-dpa.yaml",
-        "agt_policies_africa.rwanda_dpa.escalate: Rwanda Law 058/2021 Art. 50: ",
+        "escalate: Rwanda Law 058/2021 Art. 50: Export of %v records requires N",
     ),
     (
         "african-regulatory/tanzania-pdpa.yaml",
-        "agt_policies_africa.tanzania_pdpa.deny: Tanzania PDPA s.13: Cross-bord",
+        "deny: Tanzania PDPA s.13: Cross-border transfer to '%v' blocked — regi",
     ),
     (
         "african-regulatory/tanzania-pdpa.yaml",
-        "agt_policies_africa.tanzania_pdpa.deny: Tanzania PDPA s.13: Transfer t",
+        "deny: Tanzania PDPA s.13: Transfer to country '%v' blocked — no docume",
     ),
     (
         "african-regulatory/tanzania-pdpa.yaml",
-        "agt_policies_africa.tanzania_pdpa.escalate: Tanzania PDPA s.13: Cross-",
+        "escalate: Tanzania PDPA s.13: Cross-border transfer with no destinatio",
     ),
     (
         "african-regulatory/tanzania-pdpa.yaml",
-        "agt_policies_africa.tanzania_pdpa.escalate: Tanzania PDPA s.30: Export",
+        "escalate: Tanzania PDPA s.30: Export of %v records requires Data Prote",
     ),
     (
         "african-regulatory/uganda-dppa.yaml",
-        "agt_policies_africa.uganda_dppa.deny: Uganda DPPA s.19: Cross-border t",
+        "deny: Uganda DPPA s.19: Cross-border transfer to '%v' blocked — region",
     ),
     (
         "african-regulatory/uganda-dppa.yaml",
-        "agt_policies_africa.uganda_dppa.deny: Uganda DPPA s.19: Transfer to co",
+        "deny: Uganda DPPA s.19: Transfer to country '%v' blocked — no document",
     ),
     (
         "african-regulatory/uganda-dppa.yaml",
-        "agt_policies_africa.uganda_dppa.escalate: Uganda DPPA s.19: Cross-bord",
+        "escalate: Uganda DPPA s.19: Cross-border transfer with no destination ",
     ),
     (
         "african-regulatory/uganda-dppa.yaml",
-        "agt_policies_africa.uganda_dppa.escalate: Uganda DPPA s.4(e): Export o",
+        "escalate: Uganda DPPA s.4(e): Export of %v records requires Data Prote",
     ),
     ("atr-community-rules.yaml", "categories"),
     ("atr-community-rules.yaml", "suspicious_decoded_keywords"),
@@ -314,79 +311,61 @@ UNTRANSLATABLE = [
     ("conversation-guardian.yaml", "thresholds"),
     (
         "india-regulatory/aadhaar-pii-protection.yaml",
-        "agt_policies_india.aadhaar.deny: Aadhaar Act s.29(4): no Aadhaar numbe",
+        "deny: Aadhaar Act s.29(4): no Aadhaar number shall be published, displ",
     ),
     (
         "india-regulatory/certin-2022-directions.yaml",
-        "agt_policies_india.certin.deny: CERT-In 2022 Directions (iv): logs mus",
+        "deny: CERT-In 2022 Directions (iv): logs must be retained within India",
     ),
     (
         "india-regulatory/certin-2022-directions.yaml",
-        "agt_policies_india.certin.escalate: CERT-In 2022 Directions (i): synch",
+        "escalate: CERT-In 2022 Directions (i): synchronise ICT system clocks t",
     ),
     (
         "india-regulatory/dpdp-data-protection.yaml",
-        "agt_policies_india.dpdp.deny: DPDP s.6: processing personal data requi",
+        "deny: DPDP s.6: processing personal data requires a logged, purpose-sp",
     ),
     (
         "india-regulatory/dpdp-data-protection.yaml",
-        "agt_policies_india.dpdp.deny: DPDP s.8(5): personal data must be proce",
+        "deny: DPDP s.8(5): personal data must be processed with reasonable sec",
     ),
     (
         "india-regulatory/rbi-data-localization.yaml",
-        "agt_policies_india.rbi.deny: RBI 2018 (Storage of Payment System Data)",
+        "deny: RBI 2018 (Storage of Payment System Data): payment data must be ",
     ),
     (
         "india-regulatory/rbi-data-localization.yaml",
-        "agt_policies_india.rbi.deny: RBI 2018: payment data processed abroad m",
+        "deny: RBI 2018: payment data processed abroad must be purged and retur",
     ),
     (
         "india-regulatory/rbi-data-localization.yaml",
-        "agt_policies_india.rbi.deny: RBI Master Direction KYC 2016: customer d",
+        "deny: RBI Master Direction KYC 2016: customer due diligence (KYC) is m",
     ),
     (
         "india-regulatory/sebi-governance.yaml",
-        "agt_policies_india.sebi.deny: SEBI Amendment 10 Feb 2025: regulated en",
+        "deny: SEBI Amendment 10 Feb 2025: regulated entity is solely responsib",
     ),
     (
         "india-regulatory/sebi-governance.yaml",
-        "agt_policies_india.sebi.deny: SEBI CSCRF 2024: audit logs must be reta",
+        "deny: SEBI CSCRF 2024: audit logs must be retained within India, confi",
     ),
     (
         "india-regulatory/sebi-governance.yaml",
-        "agt_policies_india.sebi.escalate: SEBI CSCRF 2024: periodic VAPT and c",
+        "escalate: SEBI CSCRF 2024: periodic VAPT and cyber audit, data classif",
     ),
     (
         "lotl_prevention_policy.yaml",
-        "agt.examples.lotl.denials: Potential remote code execution through a p",
+        "denials: Potential remote code execution through a piped download",
     ),
-    (
-        "lotl_prevention_policy.yaml",
-        "agt.examples.lotl.denials: Unauthorized access to sensitive system dat",
-    ),
+    ("lotl_prevention_policy.yaml", "denials: Unauthorized access to sensitive system data"),
     ("mcp-security.yaml", "detection_patterns"),
     ("mcp-security.yaml", "suspicious_decoded_keywords"),
     ("pii-detection.yaml", "builtin_patterns"),
-    (
-        "production/enterprise.yaml",
-        "agt.examples.production.enterprise.denials: Tool call budget exceeded ",
-    ),
-    (
-        "production/financial.yaml",
-        "agt.examples.production.financial.denials: Tool call budget exceeded (",
-    ),
-    (
-        "production/healthcare.yaml",
-        "agt.examples.production.healthcare.denials: Tool call budget exceeded ",
-    ),
-    (
-        "production/minimal.yaml",
-        "agt.examples.production.minimal.denials: Tool call budget exceeded (10",
-    ),
-    (
-        "production/strict.yaml",
-        "agt.examples.production.strict.denials: Tool call budget exceeded (10)",
-    ),
+    ("production/enterprise.yaml", "denials: Tool call budget exceeded (50)"),
+    ("production/financial.yaml", "denials: Tool call budget exceeded (30)"),
+    ("production/healthcare.yaml", "denials: Tool call budget exceeded (25)"),
+    ("production/minimal.yaml", "denials: Tool call budget exceeded (100)"),
+    ("production/strict.yaml", "denials: Tool call budget exceeded (10)"),
     ("prompt-injection-safety.yaml", "detection_patterns"),
     ("prompt-injection-safety.yaml", "sensitivity_min_threat"),
     ("prompt-injection-safety.yaml", "sensitivity_thresholds"),
@@ -398,27 +377,27 @@ UNTRANSLATABLE = [
     ("sql-strict.yaml", "sql_policy"),
     (
         "uk-regulatory/fca-financial-conduct.yaml",
-        "agt_policies_uk.fca_conduct.deny: FCA market conduct: autonomous agent",
+        "deny: FCA market conduct: autonomous agent trading requires documented",
     ),
     (
         "uk-regulatory/fca-financial-conduct.yaml",
-        "agt_policies_uk.fca_conduct.escalate: FCA Consumer Duty: AI-influenced",
+        "escalate: FCA Consumer Duty: AI-influenced pricing or eligibility deci",
     ),
     (
         "uk-regulatory/ico-automated-decisions.yaml",
-        "agt_policies_uk.ico_adm.escalate: UK GDPR Art. 22A: solely automated s",
+        "escalate: UK GDPR Art. 22A: solely automated significant decision — ve",
     ),
     (
         "uk-regulatory/ico-automated-decisions.yaml",
-        "agt_policies_uk.ico_adm.escalate: UK GDPR Art. 22C(1): decision-specif",
+        "escalate: UK GDPR Art. 22C(1): decision-specific explanation must be a",
     ),
     (
         "uk-regulatory/uk-gdpr-data-protection.yaml",
-        "agt_policies_uk.uk_gdpr.deny: UK GDPR Art. 44–46: transfer to '%v' blo",
+        "deny: UK GDPR Art. 44–46: transfer to '%v' blocked — requires adequacy",
     ),
     (
         "uk-regulatory/uk-gdpr-data-protection.yaml",
-        "agt_policies_uk.uk_gdpr.escalate: UK GDPR Art. 44–46: cross-border tra",
+        "escalate: UK GDPR Art. 44–46: cross-border transfer action — confirm a",
     ),
 ]
 

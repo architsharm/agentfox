@@ -1592,14 +1592,16 @@ def _rego_rule(
         return  # a helper set feeding other rules, not a decision
     reason, body = _reason_from(rule)
     item = Item(
-        source=f"{module.package}.{rule.name}: {reason or rule.head}"[:200],
+        source=f"{rule.name}: {reason or rule.head}"[:200],
         status="untranslatable",
         source_effect=rule.name,
         condition="; ".join(" ".join(s.split()) for s in body)[:600],
         line=rule.line,
         file=rule.file,
     )
-    if any(i.source == item.source and i.condition == item.condition for i in out.items):
+    if any(
+        i.file == item.file and i.line == item.line and i.source == item.source for i in out.items
+    ):
         return  # the same package bound at several points
     out.items.append(item)
     try:

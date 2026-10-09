@@ -9,7 +9,7 @@ import typer
 from rich.table import Table
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
-from agentfox.apps.cli.commands._shared import _session, console
+from agentfox.apps.cli.commands._shared import _emit, _session, console
 from agentfox.apps.cli.commands.packs import packs_app
 
 policy_app = typer.Typer(
@@ -370,3 +370,133 @@ def policy_apply(
                 f"in {sim.get('replayed', 0)} replayed requests"
             )
     console.print(f"[green]Applied {len(changes)} change(s).[/]")
+
+
+_STATUS_MARK = {
+    "translated": "[green]translated[/]",
+    "translated_with_note": "[yellow]with note[/]",
+    "untranslatable": "[red]not translated[/]",
+}
+
+
+@policy_app.command("import")
+def policy_import(
+    file: Path = typer.Argument(..., help="Agent-governance rule YAML or a policy manifest."),
+    source_format: str = typer.Option(
+        "agent-governance",
+        "--from",
+        help="The format FILE is written in. Only `agent-governance` is read today.",
+    ),
+    bundle: Path | None = typer.Option(
+        None,
+        "--bundle",
+        help="Directory of the manifest's Rego bundle. Default: the bundle path the "
+        "manifest names, next to it.",
+    ),
+    apply_plan: bool = typer.Option(
+        False, "--apply", help="Save the translated policies, in observe. Without it: plan only."
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Apply without asking."),
+    as_json: bool = typer.Option(False, "--json", help="Print the plan (or result) as JSON."),
+) -> None:
+    """Translate a policy written for another engine; show the plan, or apply it in observe.
+
+    Policies written for the Agent Governance Toolkit (rule YAML with `default_action`,
+    or a policy manifest with its Rego bundle) can be imported. Every source rule is
+    listed as translated, translated with a note, or not translatable with the reason.
+    Nothing is enforced: imported policies are saved in observe, and turning one on
+    still needs a simulation (`policy simulate`, then `policy enforce`).
+    Exits 1 when the file cannot be read.
+    """
+    from agentfox.capabilities.detection.importers import agent_governance as importer
+    from agentfox.platform.policy.compat.agent_governance import bundle_files
+
+    if source_format != importer.TOOL:
+        raise typer.BadParameter(f"choose {importer.TOOL}", param_hint="--from")
+    try:
+        source = file.read_text()
+    except OSError as exc:
+        console.print(f"[red]cannot read {file}:[/] {exc}")
+        raise typer.Exit(1) from exc
+    if bundle is not None:
+        files = {
+            str(path.relative_to(bundle)): path.read_text(errors="replace")
+            for path in sorted(bundle.rglob("*.rego"))
+        }
+    else:
+        files = bundle_files(file)
+    translation = importer.plan(source, files)
+    plan = importer.plan_json(translation)
+
+    if translation.errors:
+        if as_json:
+            _emit(plan, True)
+        else:
+            for error in translation.errors:
+                console.print(f"[red]{error}[/]")
+            for problem in plan["schema_errors"][:20]:
+                console.print(f"  {problem['path']}: {problem['message']}")
+        raise typer.Exit(1)
+
+    if not apply_plan:
+        if as_json:
+            _emit(plan, True)
+        else:
+            _print_import_plan(plan)
+        return
+
+    if not any(doc.rules for doc in translation.documents):
+        console.print("[red]Nothing in this policy could be translated; nothing to apply.[/]")
+        raise typer.Exit(1)
+    if not as_json:
+        _print_import_plan(plan)
+        if not yes and not typer.confirm("Save the translated policies, in observe?"):
+            raise typer.Exit(1)
+    with _session() as session:
+        result = importer.apply(session, translation, actor="cli")
+    if as_json:
+        _emit(result, True)
+        return
+    for saved in result["policies"]:
+        console.print(
+            f"[green]saved[/] {saved['key']} v{saved['version']} "
+            f"({saved['rules']} rules) — live v{saved['live_version']}, {saved['mode']}"
+        )
+    console.print(
+        "  [dim]Simulate before enforcing: `agentfox policy simulate`, then "
+        "`agentfox policy enforce KEY`.[/]"
+    )
+
+
+def _print_import_plan(plan: dict) -> None:
+    for default in plan["default_action"]:
+        if default["unmatched_pass"]:
+            console.print(f"[bold yellow]Unmatched calls pass[/] ({default['document']}): ")
+            console.print(f"  {default['note']}")
+        else:
+            console.print(f"[bold]default[/] ({default['document']}): {default['note']}")
+    table = Table(box=None, pad_edge=False)
+    for column in ("status", "rule", "effect", "why"):
+        table.add_column(column, style="bold" if column == "rule" else None)
+    for item in plan["items"]:
+        why = item["reason"] if item["status"] == "untranslatable" else "; ".join(item["notes"])
+        table.add_row(
+            _STATUS_MARK[item["status"]],
+            item["source"][:60],
+            item["effect"] or "—",
+            (why or "—")[:90],
+        )
+    console.print(table)
+    summary = plan["summary"]
+    console.print(
+        f"  {summary['translated']} translated, {summary['translated_with_note']} with a note, "
+        f"{summary['untranslatable']} not translated; "
+        f"{len(plan['patterns'])} text pattern(s) become custom rules"
+    )
+    for note in plan["notes"]:
+        console.print(f"  [dim]{note}[/]")
+    lint = plan["lint"]
+    if lint["findings"]:
+        _print_lint(lint)
+    else:
+        console.print("  [green]lint: no policy issues[/]")

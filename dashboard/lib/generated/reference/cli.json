@@ -2488,6 +2488,96 @@
       "commands": []
      },
      {
+      "path": "policy import",
+      "name": "import",
+      "summary": "Translate a policy written for another engine; show the plan, or apply it in observe.",
+      "help": "Translate a policy written for another engine; show the plan, or apply it in observe.\n\nPolicies written for the Agent Governance Toolkit (rule YAML with `default_action`,\nor a policy manifest with its Rego bundle) can be imported. Every source rule is\nlisted as translated, translated with a note, or not translatable with the reason.\nNothing is enforced: imported policies are saved in observe, and turning one on\nstill needs a simulation (`policy simulate`, then `policy enforce`).\nExits 1 when the file cannot be read.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "file",
+        "opts": [
+         "file"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "Agent-governance rule YAML or a policy manifest."
+       },
+       {
+        "kind": "option",
+        "name": "source_format",
+        "opts": [
+         "--from"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "agent-governance",
+        "help": "The format FILE is written in. Only `agent-governance` is read today."
+       },
+       {
+        "kind": "option",
+        "name": "bundle",
+        "opts": [
+         "--bundle"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Directory of the manifest's Rego bundle. Default: the bundle path the manifest names, next to it."
+       },
+       {
+        "kind": "option",
+        "name": "apply_plan",
+        "opts": [
+         "--apply"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Save the translated policies, in observe. Without it: plan only."
+       },
+       {
+        "kind": "option",
+        "name": "yes",
+        "opts": [
+         "--yes",
+         "-y"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Apply without asking."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Print the plan (or result) as JSON."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
       "path": "policy catalogue",
       "name": "catalogue",
       "summary": "Every kind of guardrail this product can enforce.",
