@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from agentfox.apps.gateway.deps import current_user, db, get_agent_or_404, require
 from agentfox.apps.report import evidence
 from agentfox.capabilities.compliance import (
+    FRAMEWORK_TITLES,
     all_frameworks,
     board_view,
     classify,
@@ -33,11 +34,13 @@ from agentfox.capabilities.compliance import (
     latest_statuses,
     obligation_calendar,
     posture,
-    sign_off_mapping,
+    requirements_for_framework,
 )
 from agentfox.capabilities.compliance import (
     register as risk_register,
 )
+from agentfox.capabilities.compliance import retention as retention_svc
+from agentfox.capabilities.compliance import reviews as reviews_svc
 from agentfox.capabilities.compliance.risk import assess
 from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.models import (
@@ -383,7 +386,9 @@ def download_evidence(
 def retention(
     session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
+    """Every data class with its period, the last purge, the next one, and legal holds."""
     return {
+        **retention_svc.overview(session),
         "policies": [
             {
                 "data_class": p.data_class,
@@ -404,6 +409,74 @@ def retention(
             for h in session.scalars(select(LegalHold))
         ],
     }
+
+
+class RetentionIn(BaseModel):
+    retain_days: int
+    #: Required: shortening retention destroys records, and the audit entry says why.
+    reason: str
+    redact_fields: list[str] | None = None
+
+
+@router.put("/retention/{data_class}")
+def set_retention(
+    data_class: str,
+    payload: RetentionIn,
+    session: Session = Depends(db),
+    user: User = Depends(require("retention")),
+) -> dict[str, Any]:
+    """Change how long one data class is kept. Audited as `operator.retention.changed`."""
+    from agentfox.platform.ledger.operator_log import ReasonRequired
+
+    try:
+        policy = retention_svc.set_policy(
+            session,
+            data_class,
+            payload.retain_days,
+            actor=user.email or user.id,
+            reason=payload.reason,
+            redact_fields=payload.redact_fields,
+        )
+    except (retention_svc.RetentionError, ReasonRequired) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {
+        "data_class": policy.data_class,
+        "retain_days": policy.retain_days,
+        "redact_fields": policy.redact_fields,
+    }
+
+
+@router.post("/retention/purge")
+def purge_now(
+    session: Session = Depends(db), user: User = Depends(require("retention"))
+) -> dict[str, Any]:
+    """Run the retention purge now, through the same job the daily schedule runs."""
+    from agentfox.apps import jobs as _jobs  # noqa: F401 - registers retention.purge
+
+    job = jobs_db.enqueue(
+        session,
+        "retention.purge",
+        payload={"trigger": "manual", "requested_by": user.email or user.id},
+        org_id=session_org(session),
+        requested_by=user.email or user.id,
+    )
+    jobs_db.run_job(session, job)
+    session.refresh(job)
+    if job.status != "done":
+        raise HTTPException(502, f"retention purge failed: {job.last_error}")
+    return {"job_id": job.id, **(job.result_json or {})}
+
+
+@router.get("/retention/runs")
+def retention_runs(
+    limit: int = 20, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    from agentfox.core.models import RetentionRun
+
+    rows = session.scalars(
+        select(RetentionRun).order_by(RetentionRun.started_at.desc()).limit(min(limit, 100))
+    )
+    return {"runs": [retention_svc.run_json(r) for r in rows]}
 
 
 class LegalHoldIn(BaseModel):
@@ -442,6 +515,7 @@ def list_controls(
     session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
     statuses = latest_statuses(session)
+    reviews = reviews_svc.latest_reviews(session)
     out = []
     for control in session.scalars(select(Control).order_by(Control.key)):
         mappings = list(
@@ -470,9 +544,83 @@ def list_controls(
                     }
                     for m in mappings
                 ],
+                "reviews": {
+                    fw: reviews_svc.review_state(r)
+                    for (key, fw), r in reviews.items()
+                    if key == control.key
+                },
             }
         )
     return {"controls": out, "posture": posture(session)}
+
+
+@router.get("/controls/{key}")
+def get_control(
+    key: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """One control: what it checks, the evidence computed for it, where it is mapped,
+    and every attestation made against it."""
+    control = session.scalar(select(Control).where(Control.key == key))
+    if control is None:
+        raise HTTPException(404, f"unknown control '{key}'")
+    mappings = list(
+        session.scalars(select(FrameworkMapping).where(FrameworkMapping.control_key == key))
+    )
+    latest = reviews_svc.latest_reviews(session)
+    frameworks: dict[str, dict[str, Any]] = {}
+    for m in mappings:
+        entry = frameworks.setdefault(
+            m.framework,
+            {
+                "framework": m.framework,
+                "title": FRAMEWORK_TITLES.get(m.framework, m.framework),
+                "references": [],
+                "review": reviews_svc.review_json(latest.get((key, m.framework))),
+            },
+        )
+        entry["references"].append(m.reference)
+    return {
+        "key": control.key,
+        "title": control.title,
+        "objective": control.objective,
+        "family": control.family,
+        "implemented_by": control.implemented_by,
+        "evidence_sources": control.evidence_sources,
+        "status_rule": control.status_rule_json,
+        "evidence": reviews_svc.control_evidence(session, key),
+        "frameworks": sorted(frameworks.values(), key=lambda f: f["title"]),
+        "history": [reviews_svc.review_json(r) for r in reviews_svc.review_history(session, key)],
+        "outcomes": list(reviews_svc.OUTCOMES),
+        "valid_days": reviews_svc.REVIEW_VALID_DAYS,
+    }
+
+
+class ControlReviewIn(BaseModel):
+    framework: str
+    outcome: str
+    note: str = ""
+
+
+@router.post("/controls/{key}/reviews", status_code=201)
+def review_control(
+    key: str,
+    payload: ControlReviewIn,
+    session: Session = Depends(db),
+    user: User = Depends(require("control_review")),
+) -> dict[str, Any]:
+    """Attest one control against one framework. The reviewer is always the caller."""
+    try:
+        review = reviews_svc.record_review(
+            session,
+            key,
+            payload.framework,
+            payload.outcome,
+            reviewer=user.email or user.id,
+            note=payload.note,
+        )
+    except reviews_svc.ReviewError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return reviews_svc.review_json(review) or {}
 
 
 @router.post("/controls/sync")
@@ -535,32 +683,21 @@ def frameworks(
 def framework(
     key: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
+    """One framework: its requirements, the controls mapped to each with live status
+    and attestation, its dated obligations, and its declared gaps."""
+    if key not in FRAMEWORK_TITLES and not session.scalar(
+        select(FrameworkMapping.id).where(FrameworkMapping.framework == key).limit(1)
+    ):
+        raise HTTPException(404, f"unknown framework '{key}'")
     coverage = framework_coverage(session, key)
-    coverage["controls"] = controls_for_framework(session, key)
+    controls = controls_for_framework(session, key)
+    coverage["controls"] = controls
+    coverage["requirements_detail"] = requirements_for_framework(session, key, controls)
     coverage["posture"] = posture(session, key)
+    coverage["obligations_detail"] = [
+        o for o in obligation_calendar(session) if o["framework"] == key
+    ]
     return coverage
-
-
-class ReviewIn(BaseModel):
-    control_key: str
-    framework: str
-    reference: str | None = None
-
-
-@router.post("/frameworks/review")
-def mark_reviewed(
-    payload: ReviewIn, session: Session = Depends(db), user: User = Depends(require("compliance"))
-) -> dict[str, Any]:
-    """Step 3 of the mapping review gate."""
-    count = sign_off_mapping(
-        session,
-        payload.control_key,
-        payload.framework,
-        user.email,
-        payload.reference,
-        actor_id=user.email or user.id,
-    )
-    return {"reviewed": count, "reviewer": user.email}
 
 
 @router.get("/compliance/status")

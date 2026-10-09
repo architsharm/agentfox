@@ -83,7 +83,7 @@ class _LimitsMixin:
                     "block",
                     reason,
                     severity="critical",
-                    controls=["NOM-DSC-02"],
+                    controls=["NOM-RTG-14", "NOM-DSC-02"],
                 )
             ],
         )

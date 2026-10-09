@@ -42,6 +42,10 @@ kind                    interval   enabled   why
 ``redteam.posture``     7 days     no        Adaptive red-team campaign per active agent. Off
                                              by default: it is the most expensive job and
                                              files findings, so a tenant opts in.
+``retention.purge``     1 day      yes       Deletes or redacts data past each class's
+                                             `retain_days`. A class with no policy is kept;
+                                             an active legal hold stops it; the audit chain
+                                             is never touched.
 ``monitors.run``        10 min     yes       Runs the tenant's due monitors. Each monitor keeps
                                              its own interval (`Monitor.next_run_at`), so this
                                              only decides how often "due" is checked; with no
@@ -137,6 +141,13 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         True,
         {"since_hours": 24},
         "missed escalations and SLA breaches; hand-offs only where the policy enforces",
+    ),
+    DefaultSchedule(
+        "retention.purge",
+        DAY,
+        True,
+        {"trigger": "schedule"},
+        "delete or redact data past each class's retention period; legal holds win",
     ),
     DefaultSchedule(
         "monitors.run",
