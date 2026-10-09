@@ -65,7 +65,8 @@
   "planted": {
     "shows": "A tool result carries a planted instruction: AgentFox withholds it before the model reads it.",
     "turns": [
-      "Can you look up in your FAQ whether there is wifi on the plane?"
+      "Can you look up in your FAQ whether there is wifi on the plane?",
+      "Yes, please check the FAQ for me."
     ]
   },
   "prediction": {

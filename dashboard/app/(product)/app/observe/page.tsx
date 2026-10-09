@@ -342,8 +342,16 @@ async function Security({ f, agents }: { f: Filters; agents: any }) {
   );
 }
 
+/** What was held, in words: a tool, or a message held before it reached the agent. */
+function heldLabel(tool?: string | null): string {
+  if (!tool) return "—";
+  if (tool.startsWith("message:")) return { input: "User messages", output: "Agent replies" }[tool.slice(8)] || "Messages";
+  return tool;
+}
+
 async function Review({ f, agents }: { f: Filters; agents: any[] }) {
-  const statuses = ["pending", "approved", "denied", "expired"] as const;
+  // "used" is an approved call that has since run: still an approval.
+  const statuses = ["pending", "approved", "used", "denied", "expired"] as const;
   const agentQs = f.agent ? `?agent=${encodeURIComponent(f.agent)}` : "";
   const [lists, report] = await Promise.all([
     Promise.all(statuses.map((s) => safeApi<any>(`/api/approvals?status=${s}`, { approvals: [] }))),
@@ -371,13 +379,13 @@ async function Review({ f, agents }: { f: Filters; agents: any[] }) {
     <>
       <Grid cols={4}>
         <Kpi label="Waiting" value={num(by.pending.length)} tone={by.pending.length ? "warn" : undefined} href="/app/approvals" />
-        <Kpi label="Approved" value={num(by.approved.length)} href="/app/approvals?tab=history&status=approved" />
+        <Kpi label="Approved" value={num(by.approved.length + by.used.length)} href="/app/approvals?tab=history&status=approved" />
         <Kpi label="Denied" value={num(by.denied.length)} href="/app/approvals?tab=history&status=denied" />
         <Kpi label="Expired" value={num(by.expired.length)} tone={by.expired.length ? "warn" : undefined} hint="Nobody answered in time; the action was denied." href="/app/approvals?tab=history&status=expired" />
       </Grid>
       <Grid cols={2}>
         <Card title="Held by tool">
-          <BarList rows={count((a) => a.tool || "—")} empty="Nothing held" />
+          <BarList rows={count((a) => heldLabel(a.tool))} empty="Nothing held" />
         </Card>
         <Card title="Held by agent">
           <BarList rows={count((a) => slug[a.agent_id] || "—")} empty="Nothing held" />

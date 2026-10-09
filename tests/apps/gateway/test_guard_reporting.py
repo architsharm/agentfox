@@ -71,3 +71,33 @@ def test_the_longest_matching_price_wins(model, expected_per_million_input):
 
 def test_an_unknown_model_costs_nothing():
     assert estimate_cost("some-local-model", 1000, 1000) == 0.0
+
+
+def test_the_sdk_keeps_the_rules_message_for_a_stopped_tool_call(monkeypatch):
+    import httpx
+
+    from agentfox.frameworks.sdk import AgentFox
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "verdict": "block",
+                "effective_verdict": "block",
+                "reason": "Seats we can assign: your rule",
+                "user_message": "That seat can't be assigned online.",
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    real_post = httpx.post
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda url, **kw: httpx.Client(transport=transport).post(url, **kw),
+    )
+    fox = AgentFox("airline-cs", base_url="http://gateway.test")
+    with fox.session() as s:
+        result = s.guard_tool("airline.update_seat", {"new_seat": "1A"}, raise_on_block=False)
+    monkeypatch.setattr(httpx, "post", real_post)
+    assert result.user_message == "That seat can't be assigned online."

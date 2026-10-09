@@ -23,10 +23,17 @@ export function PullButton({ detectorKey, job, blocked }: { detectorKey: string;
   }, [running, router]);
 
   if (blocked)
+    // The model can't be fetched from here (serverless, or the extra isn't
+    // installed): hand over the one command to run where the gateway runs.
     return (
-      <span className="k-muted" title={blocked}>
-        <code className="k-mono">agentfox admin detectors pull {detectorKey}</code>
-      </span>
+      <button
+        type="button"
+        className="k-btn"
+        title={`${blocked}\nagentfox admin detectors pull ${detectorKey}`}
+        onClick={() => navigator.clipboard?.writeText(`agentfox admin detectors pull ${detectorKey}`)}
+      >
+        Copy download command
+      </button>
     );
   if (running) return <span className="k-muted">Downloading…</span>;
   if (job?.status === "done")

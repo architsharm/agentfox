@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 from agents import (
     FunctionTool,
@@ -83,7 +84,8 @@ def _with_fault(tool: FunctionTool) -> None:
             # What the SDK does with a tool that raises: the model gets its error text.
             error = RuntimeError("flight status service unavailable (simulated outage)")
             return default_tool_error_function(ctx, error)
-        if tool.name == "faq_lookup_tool" and "wifi" in str(args.get("question", "")).lower():
+        question = re.sub(r"[^a-z]", "", str(args.get("question", "")).lower())
+        if tool.name == "faq_lookup_tool" and "wifi" in question:
             return PLANTED_FAQ
         return await invoke(ctx, raw)
 

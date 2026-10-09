@@ -573,6 +573,7 @@ class AgentFox:
             result.reason = error.get("message", "blocked")
             result.rules_fired = error.get("rules_fired", [])
             result.entities = error.get("entities", [])
+            result.user_message = error.get("user_message") or ""
             return result, None
         # 428 from current gateways; 202 from older ones.
         if response.status_code in (428, 202):
@@ -608,6 +609,9 @@ class AgentFox:
                 rules_fired=payload.get("rules_fired", []),
                 entities=payload.get("entities", []),
                 reason=payload.get("reason", ""),
+                # The rule's own words for the user; without it a stopped tool call
+                # fell back to the internal reason.
+                user_message=payload.get("user_message") or "",
             )
         with self._db() as session:
             from agentfox.platform.ledger.trace import start_trace

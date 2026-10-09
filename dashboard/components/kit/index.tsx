@@ -28,7 +28,9 @@ export function pctOf(part: number, whole: number): string {
 
 export function money(n?: number | null): string {
   if (!n) return "$0";
-  return n < 1 ? `$${n.toFixed(3)}` : `$${n.toFixed(2)}`;
+  if (n >= 0.01) return `$${n.toFixed(2)}`;
+  // Two significant figures below a cent: a request costs fractions of one.
+  return `$${n.toPrecision(2).replace(/0+$/, "").replace(/\.$/, "")}`;
 }
 
 export function ago(iso?: string | null): string {
