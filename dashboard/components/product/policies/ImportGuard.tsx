@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
+import { ImportPolicyFormat } from "@/components/product/policies/ImportPolicyFormat";
 import { ACTION_CHOICES } from "@/lib/product/vocab";
 
 type Item = {
@@ -33,12 +34,38 @@ const EXAMPLE = `guard = Guard().use_many(
     DetectPII(["EMAIL_ADDRESS", "PHONE_NUMBER"], on_fail="fix"),
 )`;
 
+const FORMATS = [
+  { key: "guardrails-ai", label: "Guardrails AI guard" },
+  { key: "agent-governance", label: "Agent governance YAML or policy manifest" },
+] as const;
+
+/**
+ * Import rules written for another tool. Two formats: a Guardrails AI guard, and
+ * agent-governance rule YAML or a policy manifest. Both plan first and import
+ * watching.
+ */
+export function ImportGuard() {
+  const [format, setFormat] = useState<(typeof FORMATS)[number]["key"]>("guardrails-ai");
+  return (
+    <div className="k-form">
+      <div className="k-seg" role="group" aria-label="Format">
+        {FORMATS.map((f) => (
+          <button key={f.key} className={format === f.key ? "active" : ""} aria-pressed={format === f.key} onClick={() => setFormat(f.key)}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {format === "guardrails-ai" ? <ImportGuardrailsAi /> : <ImportPolicyFormat />}
+    </div>
+  );
+}
+
 /**
  * Paste a Guardrails AI guard (Python, .rail or guard.to_dict()), see what each
  * validator becomes here, untick anything, import. Nothing is run; packs arrive
  * watching.
  */
-export function ImportGuard() {
+function ImportGuardrailsAi() {
   const router = useRouter();
   const [source, setSource] = useState("");
   const [plan, setPlan] = useState<Plan | null>(null);

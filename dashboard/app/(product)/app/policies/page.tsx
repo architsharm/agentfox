@@ -347,7 +347,7 @@ async function LibraryTab({ sec }: { sec?: string }) {
       </div>
       {section === "packs" && <LibraryPacks />}
       {section === "import" && (
-        <Card title="From Guardrails AI">
+        <Card title="From another tool">
           <ImportGuard />
         </Card>
       )}
