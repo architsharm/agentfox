@@ -78,9 +78,16 @@ The project's names and marks are not used for any AgentFox product or feature.
 | `policy-engine/policy/lib/*.rego` | `src/agentfox/platform/policy/stdlib/rego/` | copied unchanged (header added to `ifc.rego`, `ifc_test.rego`) |
 | `policy-engine/policy/cedar-lib/*.cedar`, `*_test.json` | `src/agentfox/platform/policy/stdlib/cedar/` | copied unchanged |
 | `policy-engine/spec/schema/**` | `src/agentfox/platform/policy/compat/schema/` | copied unchanged |
-| `examples/policies/production/`, `uk-regulatory/`, `india-regulatory/`, `african-regulatory/` | `src/agentfox/packs/industry/*`, `src/agentfox/packs/regional/*` | rules translated into AgentFox policy packs; each file names its source |
-| `agent-governance-claude-code/config/default-policy.json`, `lib/recursive-delete.mjs` | coding-agent shell checks (see file headers) | patterns and logic ported to Python |
-| `agent-governance-python/agent-os/src/agent_os/credential_redactor.py`, `mcp_security.py` | `src/agentfox/capabilities/detection/vendor/` | vendored with minimal import changes listed in each file |
+| `examples/policies/production/`, `uk-regulatory/`, `india-regulatory/`, `african-regulatory/` | `src/agentfox/packs/industry/*`, `src/agentfox/packs/regional/*` | rules translated into AgentFox policy packs (rule tables in each pack's `checks/rules.py`); each file names its source |
+| `agent-governance-claude-code/config/default-policy.json`, `lib/recursive-delete.mjs`, `lib/policy.mjs` | `src/agentfox/capabilities/detection/shell_blocklist.py` | command and path patterns and the recursive-delete tokenizer ported to Python (one documented change) |
+| `agent-governance-claude-code/test/policy.test.mjs`, `examples/policies/{uk,african}-regulatory/rego/*_test.rego` | `tests/capabilities/detection/fixtures/recursive_delete_cases.json`, `tests/platform/packs/fixtures/translated_policy_tests.json` | test inputs and expected outcomes, converted to JSON |
+| `agent-governance-python/agent-os/src/agent_os/credential_redactor.py`, `mcp_security.py` | `src/agentfox/capabilities/detection/vendor/` | vendored with minimal import changes listed in each file; selected patterns adapted into `detectors/secrets.py` and `platform/registry/service.py` |
+
+The upstream recursive-delete parser credits contributions by Ricky-G (PRs #4129,
+#4142) and talosrobotics (PR #3834), under the same MIT licence. The upstream
+project's community threat rules (agent-threat-rules) were not copied. Not taken at
+all: trust scoring, the multi-agent trust protocol, reinforcement-learning
+penalties and the identity module.
 
 ```
 MIT License
