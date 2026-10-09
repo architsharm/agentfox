@@ -216,6 +216,18 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
         # is good news, not-connected is a to-do, and they must not look the same.
         "connected": traces > 0,
         "count_cap": COUNT_CAP,
+        # Which agent the later steps are about. Newest first; a rejected scan
+        # proposal is not an agent anyone is setting up.
+        "agents": list(
+            session.scalars(
+                select(Agent.slug)
+                .where(Agent.status != "rejected")
+                .order_by(Agent.created_at.desc())
+                .limit(50)
+            )
+        )
+        if c["agents"]
+        else [],
         "counts": {
             "agents": c["agents"],
             "traces": traces,

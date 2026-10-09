@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Counts = { traces: number; agents: number; decisions: number };
@@ -18,9 +19,15 @@ const INTERVAL_MS = 4000;
 const GIVE_UP_MS = 10 * 60_000;
 
 export function FirstRequestWatcher({ initial }: { initial: Counts }) {
+  const router = useRouter();
   const [counts, setCounts] = useState(initial);
   const [gaveUp, setGaveUp] = useState(false);
   const received = counts.traces > 0;
+
+  // A refresh of the page (after a test request) hands in newer counts.
+  useEffect(() => {
+    if (initial.traces > counts.traces) setCounts(initial);
+  }, [initial, counts.traces]);
 
   useEffect(() => {
     if (received) return;
@@ -36,13 +43,17 @@ export function FirstRequestWatcher({ initial }: { initial: Counts }) {
         const res = await fetch("/api/onboarding", { cache: "no-store" });
         if (!res.ok) return;
         const body = await res.json();
-        if (body?.counts) setCounts(body.counts);
+        if (body?.counts) {
+          setCounts(body.counts);
+          // Tick the checklist too, which is server-rendered.
+          if (body.counts.traces > 0) router.refresh();
+        }
       } catch {
         // Transient: the next tick tries again.
       }
     }, INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [received]);
+  }, [received, router]);
 
   if (received) {
     return (
@@ -51,7 +62,8 @@ export function FirstRequestWatcher({ initial }: { initial: Counts }) {
         <div>
           <strong>Receiving traffic.</strong>{" "}
           <span className="muted">
-            {counts.traces} request(s) from {counts.agents} agent(s), {counts.decisions} decision(s) recorded.
+            {atLeast(counts.traces)} request(s) from {counts.agents} agent(s), {atLeast(counts.decisions)} decision(s)
+            recorded.
           </span>
         </div>
         <div className="watcher-actions">
@@ -69,9 +81,14 @@ export function FirstRequestWatcher({ initial }: { initial: Counts }) {
         <span className="muted">
           {gaveUp
             ? "Reload this page to keep waiting. Check the gateway URL and API key in your snippet."
-            : "Run your agent with one of the snippets above. This updates by itself."}
+            : "Run your agent with a snippet above, or send a test request. This updates by itself."}
         </span>
       </div>
     </div>
   );
+}
+
+/** The gateway counts large tables up to a cap (10,000), so the cap reads as "or more". */
+function atLeast(n: number): string {
+  return n >= 10_000 ? `${(10_000).toLocaleString()}+` : n.toLocaleString();
 }

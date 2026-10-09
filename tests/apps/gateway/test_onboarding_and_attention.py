@@ -103,8 +103,9 @@ def test_the_checklist_counts_are_one_round_trip(client):
     client.get("/api/onboarding", headers=ADMIN)  # first call may provision the caller
     me = _statements(lambda: client.get("/api/me", headers=ADMIN))
     sent = _statements(lambda: client.get("/api/onboarding", headers=ADMIN))
-    # /api/me is authentication plus one lookup; onboarding is the same plus one.
-    assert len(sent) <= len(me)
+    # /api/me is authentication plus one lookup. Onboarding is authentication, the
+    # counts, and the list of agent ids for the agent picker: one more, not eleven.
+    assert len(sent) <= len(me) + 1
 
 
 def test_the_combined_counts_stay_inside_the_tenant(isolated_db):

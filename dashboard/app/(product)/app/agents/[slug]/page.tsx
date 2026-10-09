@@ -228,6 +228,7 @@ async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
         </Card>
       )}
       <Card
+        id="boundary"
         title="What it may answer"
         hint="Questions outside this are refused before the model answers."
         action={<Link href={href("/app/policies/new", { from: "custom", agent: slug })}>Topic rule</Link>}

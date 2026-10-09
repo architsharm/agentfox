@@ -3250,3 +3250,46 @@ h2.k-section { font-size: var(--t-small); font-weight: 620; margin: 22px 0 10px;
 @media (max-width: 720px) { .k-approval .k-card-body { flex-direction: column; align-items: stretch; } }
 .k-seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
 .k-seg > * { white-space: nowrap; flex-shrink: 0; }
+
+/* --- Get started and Settings > Connections ------------------------------- */
+@keyframes k-skel { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+.k-skel { background: var(--dim-bg); border-radius: 6px; animation: k-skel 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .k-skel { animation: none; } }
+
+ol.gs-steps { list-style: none; padding: 0; margin: 0 0 18px; display: flex; flex-direction: column; gap: 8px; }
+ol.gs-steps > li { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-3); }
+ol.gs-steps > li.now { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+ol.gs-steps summary { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; list-style: none; }
+ol.gs-steps summary::-webkit-details-marker { display: none; }
+ol.gs-steps summary::after { content: "›"; margin-left: auto; color: var(--muted); transition: transform .15s; }
+ol.gs-steps details[open] > summary::after { transform: rotate(90deg); }
+.gs-marker { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--dim-bg); color: var(--muted); display: grid; place-items: center; font-size: var(--t-micro); font-weight: 600; }
+ol.gs-steps li.done .gs-marker { background: var(--ok-bg); color: var(--ok); }
+ol.gs-steps li.now .gs-marker { background: var(--accent); color: var(--accent-ink); }
+.gs-title { font-weight: 570; }
+ol.gs-steps li.done .gs-title { color: var(--muted); }
+.gs-body { padding: 0 16px 14px 52px; display: flex; flex-direction: column; gap: 10px; }
+.gs-detail, .gs-note { margin: 0; font-size: var(--t-small); color: var(--muted); max-width: var(--measure); }
+.gs-cli { margin: 0; font-size: var(--t-micro); color: var(--muted); }
+.gs-cli code { font-size: var(--t-micro); }
+.gs-action { display: flex; flex-direction: column; gap: 10px; }
+.gs-action .chipbar { margin-bottom: 0; }
+.gs-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--t-small); }
+.gs-row .k-input { width: auto; flex: 1 1 180px; max-width: 260px; }
+.gs-secret { display: flex; gap: 8px; align-items: center; padding: 8px 8px 8px 12px; border: 1px solid var(--ok); border-radius: var(--r-1); background: var(--ok-bg); }
+.gs-secret code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: var(--t-small); user-select: all; }
+.gs-result { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-left: 3px solid var(--ok); border-radius: var(--r-1); font-size: var(--t-small); }
+.gs-result.bad { border-left-color: var(--bad); }
+@media (max-width: 720px) { .gs-body { padding-left: 16px; } }
+
+.conn-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 16px 0 14px; }
+.conn-grid > .k-card + .k-card { margin-top: 0; }
+.conn-card { padding: 14px 16px; gap: 6px; }
+.conn-card.open { grid-column: 1 / -1; }
+.conn-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.conn-head h3 { margin: 0; font-size: var(--t-body); font-weight: 620; }
+.conn-text { margin: 0; flex: 1; font-size: var(--t-small); color: var(--muted); max-width: var(--measure); }
+.conn-foot { margin-top: 8px; display: flex; gap: 8px; }
+.conn-more { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 1100px) { .conn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .conn-grid { grid-template-columns: minmax(0, 1fr); } }
