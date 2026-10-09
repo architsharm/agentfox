@@ -281,23 +281,6 @@ class _CompletionMixin:
                 agent=agent, identity=identity, trace=trace, result=budget, stopped=True
             )
 
-        # Answerability, before generation. Every competitor scores the answer
-        # after it exists, which cannot prevent fabrication — by then the number has
-        # been invented, and a confident wrong number scored at 0.4 is still a
-        # confident wrong number in front of a user.
-        # Only a reply to a person can abstain. A call asking for structured output
-        # (a classifier, an extraction, the app's own guardrail) is not answering the
-        # question, and a sentence where its JSON should be would break the caller.
-        abstain = (
-            None if structured else self._answerability_gate(agent, trace, messages, known_entities)
-        )
-        if abstain is not None:
-            end_trace(self.session, trace, verdict=abstain.verdict, status="abstained")
-            self._push_correlation(trace, abstain, agent.slug if agent else agent_slug)
-            return PreflightOutcome(
-                agent=agent, identity=identity, trace=trace, result=abstain, stopped=True
-            )
-
         tracker = TaintTracker(trace_id=trace.id)
         tracker.mark_messages(messages, trust_map)
         for mark in tracker.marks:
@@ -374,6 +357,26 @@ class _CompletionMixin:
                 messages=redacted_messages,
                 result=worst,
                 stopped=True,
+            )
+
+        # Answerability, before generation. Every competitor scores the answer
+        # after it exists, which cannot prevent fabrication — by then the number has
+        # been invented, and a confident wrong number scored at 0.4 is still a
+        # confident wrong number in front of a user.
+        # Only for a message its own checks let through.
+        # Run first, an abstention could stand in for a block: a prompt attack or a
+        # competitor's name "abstained" instead of stopped, and recorded as neither.
+        # Only a reply to a person can abstain. A call asking for structured output
+        # (a classifier, an extraction, the app's own guardrail) is not answering the
+        # question, and a sentence where its JSON should be would break the caller.
+        abstain = (
+            None if structured else self._answerability_gate(agent, trace, messages, known_entities)
+        )
+        if abstain is not None:
+            end_trace(self.session, trace, verdict=abstain.verdict, status="abstained")
+            self._push_correlation(trace, abstain, agent.slug if agent else agent_slug)
+            return PreflightOutcome(
+                agent=agent, identity=identity, trace=trace, result=abstain, stopped=True
             )
 
         return PreflightOutcome(

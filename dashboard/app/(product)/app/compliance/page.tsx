@@ -113,7 +113,7 @@ export default async function Compliance({
           { n: counts.not_computed || 0, label: "not computed", tone: "idle" },
         ]}
         total={pct(controls.posture.effectiveness)}
-        unit={`effective of the ${assessed} control(s) with telemetry to assess; the ${counts.not_implemented || 0} not yet implemented are left out of the ratio, not counted as failing`}
+        unit={`of ${assessed} measured controls are working${counts.not_implemented ? `. ${counts.not_implemented} not set up yet, not counted.` : ""}`}
       />
 
       {/* Sections of Compliance, under the Reports tab bar — chips rather than a

@@ -3388,3 +3388,5 @@ ol.gs-steps li.done .gs-title { color: var(--muted); }
 .adv-stack > form { display: flex; flex-direction: column; gap: 14px; }
 .adv-stack .adv-fieldset { display: flex; flex-direction: column; gap: 14px; }
 .adv-stack .adv-fieldset > * { margin: 0; }
+.gm-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.gm-loading-bar { width: min(420px, 70%); height: 140px; }

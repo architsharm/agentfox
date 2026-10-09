@@ -6,6 +6,7 @@ import { ApiDown, NotFound, findingTypeInfo } from "@/components/ui";
 import { Card, Header, Meta, Pill, SeverityPill, ago, num } from "@/components/kit";
 import { FindingEvidence } from "@/components/product/FindingEvidence";
 import { FindingActions, type Remedy } from "@/components/product/FindingActions";
+import { sentence } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Issue");
 export const dynamic = "force-dynamic";
@@ -57,7 +58,7 @@ export default async function IssueDetail({
     <>
       <Header
         back={{ href: "/app/findings", label: "Issues" }}
-        title={f.title}
+        title={sentence(f.title)}
         hint={type.blurb}
         meta={
           <>

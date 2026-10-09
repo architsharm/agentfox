@@ -5,7 +5,7 @@ import { api, apiErrorProps, safeApi } from "@/lib/product/api";
 import { ApiDown, findingTypeInfo } from "@/components/ui";
 import { Card, Empty, Header, SeverityPill, Tabs, ago, href, num } from "@/components/kit";
 import { FilterBar } from "@/components/kit/FilterBar";
-import { severityRank } from "@/lib/product/vocab";
+import { severityRank, sentence } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Issues", "Problems that need a person, most severe first.");
 export const dynamic = "force-dynamic";
@@ -88,7 +88,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
                 <tr key={f.id}>
                   <td className="tight"><SeverityPill value={f.severity} /></td>
                   <td>
-                    <Link className="k-name" href={`/app/findings/${f.id}`}>{f.title}</Link>
+                    <Link className="k-name" href={`/app/findings/${f.id}`}>{sentence(f.title)}</Link>
                     <span className="sub">{findingTypeInfo(f.type).label}</span>
                   </td>
                   <td>

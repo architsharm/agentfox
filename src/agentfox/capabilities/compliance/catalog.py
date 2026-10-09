@@ -113,6 +113,25 @@ def load_obligations(directory: Path | None = None) -> list[dict[str, Any]]:
     return out
 
 
+def catalog_behind(session: Session) -> bool:
+    """Whether this tenant's stored catalog differs from the one this build ships:
+    a control added or removed, a different catalog version, or a different number of
+    framework mappings. Cheap: one query per table, no YAML written."""
+    from sqlalchemy import func
+
+    data = load_catalog()
+    shipped = data.get("controls") or []
+    keys = {c["key"] for c in shipped}
+    stored = set(session.scalars(select(Control.key)))
+    if keys != stored:
+        return True
+    version = str(data.get("version", "0.0.0"))
+    if session.scalar(select(Control.id).where(Control.catalog_version != version).limit(1)):
+        return True
+    mappings = sum(len(refs) for c in shipped for refs in (c.get("mappings") or {}).values())
+    return session.scalar(select(func.count()).select_from(FrameworkMapping)) != mappings
+
+
 def sync_catalog(session: Session, directory: Path | None = None) -> dict[str, Any]:
     """Load the YAML catalog into the database, preserving review status.
 

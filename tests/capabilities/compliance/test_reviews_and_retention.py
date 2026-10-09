@@ -475,3 +475,16 @@ def test_the_kill_switch_control_is_evidenced_by_its_use(seeded):
     seeded.flush()
     leaked = evaluate_control(seeded, control)
     assert leaked.status == "failing"
+
+
+def test_a_control_added_by_an_upgrade_reaches_a_workspace_with_the_old_catalog(client, seeded):
+    """The catalog was only loaded into an empty workspace, so a control a new build
+    adds was 'No such control' wherever an older catalog was already stored."""
+    from agentfox.core.models import Control, FrameworkMapping
+
+    seeded.query(FrameworkMapping).filter_by(control_key="NOM-RTG-14").delete()
+    seeded.query(Control).filter_by(key="NOM-RTG-14").delete()
+    seeded.commit()
+    assert client.get("/api/controls/NOM-RTG-14").status_code == 200
+    keys = {c["key"] for c in client.get("/api/controls").json()["controls"]}
+    assert "NOM-RTG-14" in keys

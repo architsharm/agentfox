@@ -261,3 +261,9 @@ export const WOULD: Record<string, string> = {
   mask: "Would mask",
   tokenize: "Would mask",
 };
+
+/** A title as a sentence: some are built from a phrase and start lowercase. */
+export function sentence(text?: string | null): string {
+  const t = String(text || "");
+  return t ? t[0].toUpperCase() + t.slice(1) : t;
+}

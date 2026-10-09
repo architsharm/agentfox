@@ -23,7 +23,7 @@ import { FilterBar } from "@/components/kit/FilterBar";
 import { filtersFrom, metricsQs, observeTabs, runsHref, type Filters } from "@/lib/product/observe";
 import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
-import { CATEGORIES, categoryLabel, detectorName, dimLabel, ruleCategory, ruleTitle } from "@/lib/product/vocab";
+import { CATEGORIES, categoryLabel, detectorName, dimLabel, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Observe");
 export const dynamic = "force-dynamic";
@@ -270,7 +270,7 @@ async function Breaks({ f }: { f: Filters }) {
               {findings.findings.slice(0, 6).map((x: any) => (
                 <li key={x.id}>
                   <div className="k-list-main">
-                    <Link href={`/app/findings/${x.id}`}>{x.title}</Link>
+                    <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
                     <span className="muted">{x.agent_slug || ""}</span>
                   </div>
                   <Pill tone={x.severity === "critical" ? "bad" : x.severity === "high" ? "held" : "neutral"}>{x.severity}</Pill>
