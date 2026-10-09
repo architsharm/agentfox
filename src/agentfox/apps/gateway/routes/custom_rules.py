@@ -23,6 +23,7 @@ from agentfox.capabilities.detection.custom import (
     compile_rule,
     rule_id_for,
 )
+from agentfox.capabilities.detection.custom_models import get_model
 from agentfox.capabilities.detection.custom_store import delete_rule, list_rules, save_rule, spec_of
 from agentfox.capabilities.detection.detector_settings import set_enabled
 from agentfox.core.models import User
@@ -64,6 +65,9 @@ def post_custom_rule(
     spec = CustomRuleSpec(
         **payload.model_dump(exclude={"effect", "message", "on_block", "severity"})
     )
+    # A model reporting under CUSTOM owns the rule `custom.<key>` (custom_models.py).
+    if get_model(session, spec.key) is not None:
+        raise HTTPException(409, f"one of your models is already called '{spec.key}'")
     row, sync = save_rule(
         session,
         spec,

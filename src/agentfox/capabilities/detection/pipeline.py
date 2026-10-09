@@ -228,7 +228,12 @@ class DetectorPipeline:
                 continue
 
             try:
-                result.results.append(future.result(timeout=allowance / 1000))
+                finished = future.result(timeout=allowance / 1000)
+                result.results.append(finished)
+                # A detector that caught its own failure (an unreachable endpoint)
+                # reports it rather than raising; it is still a failure to count.
+                if finished.status == "error":
+                    result.errored.append(detector.key)
             except FutureTimeout:
                 # The worker thread keeps running (Python cannot pre-empt it); we
                 # stop *waiting*, which is what protects the caller's latency. The

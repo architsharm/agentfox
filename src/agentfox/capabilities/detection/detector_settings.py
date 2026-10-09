@@ -43,6 +43,12 @@ def enabled_for(session: Session) -> frozenset[str]:
     if not deployment:
         return frozenset()
     enabled = set(deployment) | {WORKSPACE_RULES}
+    # Registering a model is the opt-in, like writing a rule; with none, the detector
+    # is not selected, so its network budget is never granted for nothing.
+    from agentfox.capabilities.detection.custom_models import DETECTOR_KEY, any_enabled
+
+    if any_enabled(session):
+        enabled.add(DETECTOR_KEY)
     for key, on in overrides(session).items():
         if on:
             enabled.add(key)

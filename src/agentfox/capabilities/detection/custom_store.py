@@ -32,9 +32,10 @@ from agentfox.capabilities.detection.custom import (
     CustomRuleSpec,
     SequenceSpec,
     compile_rule,
+    entity_for,
     rule_id_for,
 )
-from agentfox.core.models import CustomRule, Policy
+from agentfox.core.models import CustomModel, CustomRule, Policy
 from agentfox.platform.ledger import operator_log
 from agentfox.platform.policy import (
     DetectionCondition,
@@ -253,6 +254,31 @@ def _policy_rule(row: CustomRule, previous: Rule | None, seed: dict[str, Any]) -
     )
 
 
+def _model_policy_rule(row: CustomModel, previous: Rule | None, seed: dict[str, Any]) -> Rule:
+    """The rule for a workspace model reporting under `CUSTOM` (`custom_models.py`)."""
+    rid = rule_id_for(row.key)
+    kept = previous or Rule(id=rid, **{k: v for k, v in seed.items() if v not in (None, "")})
+    return Rule(
+        id=rid,
+        description=row.name or row.key,
+        when=Condition(
+            detection=DetectionCondition(
+                entity_prefix=entity_for(row.key),
+                min_score=previous.when.detection.min_score
+                if previous and previous.when.detection
+                else row.threshold,
+            )
+        ),
+        effect=kept.effect,
+        reason=f"{row.name or row.key}: your model",
+        severity=kept.severity,
+        enabled=kept.enabled and row.enabled,
+        message=kept.message,
+        on_block=kept.on_block,
+        redaction=kept.redaction,
+    )
+
+
 def sync_policy(
     session: Session, *, actor: str, seed: dict[str, dict[str, Any]] | None = None
 ) -> SyncResult:
@@ -270,11 +296,22 @@ def sync_policy(
         name=POLICY_NAME,
         description=(
             "Rules written in your own words: blocked words and patterns, topics, "
-            "and sequences of actions."
+            "sequences of actions, and your own models."
         ),
         rules=[
             _policy_rule(r, previous.get(rule_id_for(r.key)), seed.get(rule_id_for(r.key), {}))
             for r in rows
+        ]
+        + [
+            _model_policy_rule(
+                m, previous.get(rule_id_for(m.key)), seed.get(rule_id_for(m.key), {})
+            )
+            for m in session.scalars(
+                select(CustomModel)
+                .where(CustomModel.entity_prefix == "CUSTOM")
+                .order_by(CustomModel.key)
+            )
+            if m.key not in {r.key for r in rows}
         ],
     )
     return publish_in_current_mode(session, doc, actor=actor, notes="custom rules changed")

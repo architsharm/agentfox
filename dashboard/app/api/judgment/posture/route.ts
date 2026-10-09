@@ -1,5 +1,22 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody, sameOriginPath } from "@/lib/product/proxy";
+import { proxyCustomBody, proxyJson, sameOriginPath } from "@/lib/product/proxy";
+
+/**
+ * The same whole-document write, as JSON, for the Checks screen's tier switches.
+ * The switch sends the full posture with one tier changed, so the gateway still sees
+ * (and refuses or asks to confirm) the combination, never half of it.
+ */
+export async function PUT(req: NextRequest) {
+  const b = await req.json();
+  return proxyJson("/api/judgment/posture", "PUT", {
+    tiers: Array.isArray(b.tiers) ? b.tiers.map(String) : [],
+    pii_egress: String(b.pii_egress || "redact"),
+    backend: String(b.backend || "local"),
+    fail_closed: b.fail_closed !== false,
+    confirm_egress: b.confirm_egress === true,
+    reason: String(b.reason || "").trim(),
+  });
+}
 
 /**
  * Change the judgment posture — which optional tiers run, and what may leave the box.

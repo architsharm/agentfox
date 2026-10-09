@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-244 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+250 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -127,6 +127,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/attention` | What needs a human, ranked. The home page is built from this. |
 | `GET` | `/api/detectors` | Which detectors exist, which are live, and how fast they are. |
 | `POST` | `/api/detectors/{key}` | Switch a detector on or off for this workspace. Turning one on that is not |
+| `POST` | `/api/detectors/{key}/pull` | Download the model weights this detector loads, in a background job. |
 | `GET` | `/api/health` | Liveness, plus what is currently not being checked. |
 | `GET` | `/api/me` | The signed-in identity, for the account menu. |
 | `GET` | `/api/memory` | List Entries |
@@ -399,6 +400,11 @@ from the code. Regenerate after changing any route:
 | `PUT` | `/api/business/rules/{key}` | Change a rule's thresholds in place. It keeps its mode; changing an enforcing |
 | `POST` | `/api/business/rules/{key}/mode` | Business Rule Mode |
 | `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
+| `GET` | `/api/custom-models` | Get Custom Models |
+| `POST` | `/api/custom-models` | Register (or update) a classifier endpoint as a detector. |
+| `DELETE` | `/api/custom-models/{key}` | Remove Custom Model |
+| `POST` | `/api/custom-models/{key}/enabled` | Toggle Custom Model |
+| `POST` | `/api/custom-models/{key}/test` | Send one text to a registered model and show what it would report. Records |
 | `GET` | `/api/custom-rules` | Get Custom Rules |
 | `POST` | `/api/custom-rules` | Post Custom Rule |
 | `POST` | `/api/custom-rules/try` | Match one text against a rule that has not been saved. Records nothing. |

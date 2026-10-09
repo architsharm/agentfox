@@ -17,7 +17,7 @@ model instead: for each sentence of the answer, does the retrieved context entai
   scored 1 − P(entailment). The `agent-integrity` pack's rule acts on it, and is the
   showcase for re-asking instead of refusing.
 
-Opt-in: off until a workspace turns it on (Policies → Library → Detectors).
+Opt-in: off until a workspace turns it on (Policies → Checks).
 """
 
 from __future__ import annotations

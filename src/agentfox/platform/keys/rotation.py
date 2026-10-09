@@ -59,6 +59,7 @@ from agentfox.core.models import (
     AlertChannel,
     AuditCheckpoint,
     AuditEntry,
+    CustomModel,
     GithubConnection,
     Job,
     ProbeTarget,
@@ -84,6 +85,7 @@ ENCRYPTED_FIELDS: tuple[tuple[type, str], ...] = (
     (AlertChannel, "url_encrypted"),
     (ProbeTarget, "auth_header_ciphertext"),
     (AgentSigningKey, "key_encrypted"),
+    (CustomModel, "auth_secret_encrypted"),
 )
 
 #: Rotation states, per key.

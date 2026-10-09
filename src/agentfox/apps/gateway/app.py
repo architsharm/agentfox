@@ -45,6 +45,7 @@ from agentfox.apps.gateway.routes import (
     tuning,
     waitlist,
 )
+from agentfox.apps.gateway.routes import checks as check_routes
 from agentfox.apps.gateway.routes import custom_rules as custom_rule_routes
 from agentfox.apps.gateway.routes import imports as import_routes
 from agentfox.apps.gateway.routes import library as library_routes
@@ -346,6 +347,7 @@ def create_app() -> FastAPI:
     app.include_router(access_routes.router)
     app.include_router(library_routes.router)
     app.include_router(custom_rule_routes.router)
+    app.include_router(check_routes.router)
     app.include_router(import_routes.router)
     app.include_router(protection_routes.router)
     app.include_router(rule_example_routes.router)
@@ -481,6 +483,11 @@ def create_app() -> FastAPI:
         from agentfox.capabilities.detection.detector_settings import enabled_for
 
         workspace_enabled = enabled_for(session)
+        from agentfox.apps.gateway.routes.checks import latest_pull_jobs
+        from agentfox.capabilities.detection.catalog import GROUPS, describe
+        from agentfox.capabilities.detection.models import models_for, pull_blocker
+
+        pull_jobs = latest_pull_jobs(session)
         # Why the OSS-wrapped and licence-restricted detectors aren't live here —
         # shown in the UI so "not installed" doesn't read as a bug. The native
         # detectors (injection.heuristic, pii.native, safety.lexicon, schema.json,
@@ -537,9 +544,20 @@ def create_app() -> FastAPI:
                     "install": getattr(detector, "package", None),
                     "pull": None if key in available else pull_hint(detector),
                     "stats": stats.get(key, {}),
+                    # For the Checks screen: what it catches, where it runs, where it
+                    # comes from (built-in, open-source model, LLM judge, your own).
+                    **describe(detector),
+                    # Why the Download button cannot work on this server, if it cannot.
+                    "pull_blocked": (
+                        pull_blocker(detector)
+                        if key not in available and models_for(detector)
+                        else None
+                    ),
+                    "pull_job": pull_jobs.get(key),
                 }
                 for key, detector in sorted(all_detectors().items())
             ],
+            "groups": [{"key": k, "label": label} for k, label in GROUPS],
             "budget_ms": get_settings().enforcement_budget_ms,
             "detector_timeout_ms": get_settings().detector_timeout_ms,
             # The judgment tiers are the one capability whose posture an
