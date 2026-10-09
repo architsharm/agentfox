@@ -9,6 +9,9 @@ import typer
 
 from agentfox.apps.cli.commands._shared import _session, console
 
+#: The harness `hooks install` assumes when --harness is not given.
+DEFAULT_HARNESS = "claude"
+
 hooks_app = typer.Typer(
     help="Run AgentFox where the agent already is: a warm daemon and a thin per-call hook.",
     no_args_is_help=True,
@@ -70,10 +73,20 @@ def hooks_run(
 @hooks_app.command("install")
 def hooks_install(
     harness: str | None = typer.Option(
-        None, "--harness", help="Which harness to install for. Default: the only one registered."
+        None,
+        "--harness",
+        help="Which harness to install for: claude (Claude Code) or codex (Codex CLI). "
+        "Default: claude.",
     ),
     agent: str = typer.Option(..., "--agent", help="Agent slug these calls are governed as."),
     path: Path = typer.Option(Path("."), "--path", help="Project to install into."),
+    scope: str = typer.Option(
+        "project",
+        "--scope",
+        help="Where the hook configuration goes: project (this repository), local (Claude "
+        "Code's settings.local.json; the project file for Codex) or user (your home "
+        "directory, every project).",
+    ),
     write: bool = typer.Option(False, "--write", help="Actually write the settings file."),
     environment: str | None = typer.Option(
         None,
@@ -104,12 +117,12 @@ def hooks_install(
     from agentfox.harnesses import capability
 
     if harness is None:
-        # No default named here: with one adapter registered there is nothing to
-        # choose, and with more the operator has to say which agent they run.
-        if len(harnesses.known()) != 1:
-            console.print(f"[red]pass --harness[/] — known: {', '.join(harnesses.known())}")
-            raise typer.Exit(1)
-        harness = harnesses.known()[0]
+        # Claude Code was the only harness for long enough that every existing command
+        # line omits --harness; it stays the default rather than becoming an error.
+        harness = DEFAULT_HARNESS
+    if scope not in ("project", "local", "user"):
+        console.print(f"[red]--scope must be project, local or user[/], not {scope!r}")
+        raise typer.Exit(1)
     try:
         adapter = harnesses.get(harness)
     except harnesses.UnknownHarness:
@@ -121,7 +134,7 @@ def hooks_install(
     # PreToolUse sees arguments, PostToolUse sees results — the canonical
     # indirect-injection vector, and the one a tool-call-only hook is blind to —
     # and UserPromptSubmit sees the turn. The adapter decides the file and its shape.
-    settings, block = adapter.preview(path, "project", agent=agent)
+    settings, block = adapter.preview(path, scope, agent=agent)  # type: ignore[arg-type]
     events = list(adapter.events.values())
 
     console.print(f"  [bold]{settings}[/]")
@@ -139,6 +152,8 @@ def hooks_install(
                 f"  [yellow]{event} will record and must not be relied on to stop "
                 "anything[/] until that is probed."
             )
+    for note in getattr(adapter, "install_notes", ()):
+        console.print(f"  [yellow]{adapter.display_name}:[/] {note}")
     console.print(
         "\n  [dim]A hook governs the agent on this machine. It is not a boundary: "
         "anything not going through this harness is not going through this.[/]"
@@ -190,9 +205,9 @@ def hooks_install(
     from agentfox.harnesses.base import InstallError
 
     try:
-        changes = adapter.install(path, "project", agent=agent)
-    except InstallError:
-        console.print(f"[red]{settings} is not valid JSON[/] — not overwriting it.")
+        changes = adapter.install(path, scope, agent=agent)  # type: ignore[arg-type]
+    except InstallError as exc:
+        console.print(f"[red]{exc}[/] — not overwriting it.")
         raise typer.Exit(1) from None
     # Before the early return, so re-running install on an existing hook also
     # repairs a pack binding an older version left wildcarded.
@@ -202,8 +217,11 @@ def hooks_install(
         console.print("\n  [dim]already installed.[/]")
         return
     for change in added:
+        backed_up = change.backup and change.path.is_file()
         change.apply()
         console.print(f"\n  [green]written[/] {change.path} [dim]({', '.join(change.events)})[/]")
+        if backed_up:
+            console.print(f"  [dim]previous file kept as {change.backup_path}[/]")
 
 
 def _enable_coding_pack(agent: str) -> None:

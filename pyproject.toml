@@ -93,6 +93,7 @@ agentfox = "agentfox.apps.cli.main:main"
 # exactly as an external `agentfox-harness-*` package registers its own.
 [project.entry-points."agentfox.harnesses"]
 claude = "agentfox.harnesses.claude_code:ADAPTER"
+codex = "agentfox.harnesses.codex:ADAPTER"
 
 [build-system]
 requires = ["hatchling"]
@@ -180,7 +181,7 @@ source_modules = [
     "agentfox.core",
     "agentfox.errors",
 ]
-forbidden_modules = ["agentfox.harnesses.claude_code"]
+forbidden_modules = ["agentfox.harnesses.claude_code", "agentfox.harnesses.codex"]
 
 # The Enforcer runs the checks it finds in the registry (`platform/checks.py`); it
 # names the modules that register the built-in ones (`runtime/checks.py`) and never
