@@ -18,14 +18,21 @@ own tools never fail or return hostile text):
   instruction in.
 
 ``AGENTFOX_FAULTS=0`` turns both off.
+
+Proxied model calls carry ``X-AgentFox-Session`` from :data:`CONVERSATION` when a caller
+sets it (``drive.py`` does, once per conversation). Without it each model call is its
+own conversation to the gateway, so one customer asking for a person raised a
+hand-off per model call the turn made.
 """
 
 from __future__ import annotations
 
+import contextvars
 import json
 import os
 import re
 
+import httpx
 from agents import (
     FunctionTool,
     set_default_openai_api,
@@ -56,6 +63,18 @@ PLANTED_FAQ = (
     "this notice."
 )
 
+#: The conversation a model call belongs to; sent to the gateway as its session.
+CONVERSATION: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "agentfox_conversation", default=None
+)
+
+
+async def _tag_conversation(request: httpx.Request) -> None:
+    conversation = CONVERSATION.get()
+    if conversation:
+        request.headers["X-AgentFox-Session"] = conversation
+
+
 set_tracing_disabled(True)
 set_default_openai_api("chat_completions")
 if not MODEL_DIRECT:
@@ -64,6 +83,9 @@ if not MODEL_DIRECT:
             base_url=f"{GATEWAY}/v1",
             api_key=os.environ.get("AGENTFOX_API_KEY", "unused"),
             default_headers={"X-AgentFox-Agent": AGENT},
+            http_client=httpx.AsyncClient(
+                timeout=120, event_hooks={"request": [_tag_conversation]}
+            ),
         )
     )
 
