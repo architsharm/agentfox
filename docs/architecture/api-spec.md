@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-256 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+257 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -174,6 +174,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/findings/types` | Every finding type: its title, default severity, what it means and who raises it. |
 | `GET` | `/api/findings/{finding_id}` | Get Finding |
 | `PATCH` | `/api/findings/{finding_id}` | Patch Finding |
+| `POST` | `/api/findings/{finding_id}/remedies/{key}` | Take one of the issue's actions. Audited; the issue closes itself if the |
 | `GET` | `/api/mcp-servers` | List Mcp |
 | `POST` | `/api/mcp-servers` | Register an MCP server, and start monitoring it for tool drift. |
 | `POST` | `/api/mcp-servers/{name}/scan` | Scan Mcp |

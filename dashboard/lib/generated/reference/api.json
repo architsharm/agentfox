@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 256,
+ "count": 257,
  "routes": [
   {
    "method": "GET",
@@ -4931,6 +4931,51 @@
      {
       "name": "note",
       "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/findings/{finding_id}/remedies/{key}",
+   "section": "findings",
+   "audience": "operator",
+   "summary": "Take one of the issue's actions. Audited; the issue closes itself if the condition it is about cleared.",
+   "description": "Take one of the issue's actions. Audited; the issue closes itself if the\ncondition it is about cleared.",
+   "params": [
+    {
+     "name": "finding_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "RemedyIn",
+    "fields": [
+     {
+      "name": "inputs",
+      "type": "object",
       "required": false,
       "description": ""
      }

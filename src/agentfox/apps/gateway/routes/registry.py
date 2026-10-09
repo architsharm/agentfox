@@ -631,14 +631,37 @@ def list_finding_types(_user: User = Depends(current_user)) -> dict[str, Any]:
     return {"types": [entry.to_json() for entry in all_types()]}
 
 
+def _may_take(user: User, family: str | None) -> bool:
+    """Whether this caller may take a remedy needing ``family``'s write permission."""
+    from agentfox.capabilities.detection.tuning import LABEL_REFUSED_ROLES
+
+    if family is None:
+        return True
+    if family == "feedback":
+        return user.role not in LABEL_REFUSED_ROLES
+    return user.role in WRITE_ROLES.get(family, set())
+
+
+def _remedies_json(session: Session, finding: Finding, user: User) -> list[dict[str, Any]]:
+    from agentfox.capabilities.remediation import remedies_for
+
+    return [
+        {**r.to_json(), "allowed": r.kind == "link" or _may_take(user, r.family)}
+        for r in remedies_for(session, finding)
+    ]
+
+
 @router.get("/findings/{finding_id}")
 def get_finding(
-    finding_id: str, session: Session = Depends(db), _user: User = Depends(current_user)
+    finding_id: str, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
     finding = session.get(Finding, finding_id)
     if finding is None:
         raise HTTPException(404, "unknown finding")
     return {
+        # What can be done about it from here: actions the platform takes, and places
+        # the fix is made. `allowed` says whether this caller may take each action.
+        "remedies": _remedies_json(session, finding, user),
         "id": finding.id,
         "type": finding.type,
         "severity": finding.severity,
@@ -658,6 +681,46 @@ def get_finding(
         "created_at": _iso(finding.created_at),
         "resolved_at": _iso(finding.resolved_at),
     }
+
+
+class RemedyIn(BaseModel):
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/findings/{finding_id}/remedies/{key}")
+def take_remedy(
+    finding_id: str,
+    key: str,
+    payload: RemedyIn,
+    session: Session = Depends(db),
+    user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """Take one of the issue's actions. Audited; the issue closes itself if the
+    condition it is about cleared."""
+    from agentfox.capabilities.remediation import RemedyError, apply_remedy
+    from agentfox.capabilities.remediation.remedies import find_remedy
+
+    finding = session.get(Finding, finding_id)
+    if finding is None:
+        raise HTTPException(404, "unknown finding")
+    try:
+        remedy = find_remedy(session, finding, key)
+    except RemedyError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if not _may_take(user, remedy.family):
+        allowed = sorted(WRITE_ROLES.get(remedy.family or "", set()))
+        raise HTTPException(
+            403, f"role '{user.role}' may not {remedy.label.lower()}. Permitted: {allowed}."
+        )
+    try:
+        result = apply_remedy(
+            session, finding, key, actor=user.email or user.id, inputs=payload.inputs
+        )
+    except RemedyError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {**result, "remedies": _remedies_json(session, finding, user)}
 
 
 class FindingPatch(BaseModel):
