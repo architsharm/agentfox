@@ -5,13 +5,14 @@ regimes needs product integration and domain work rather than a library. That is
 precisely why it is the moat.
 """
 
-from agentfox.capabilities.compliance import catalog, risk, status
+from agentfox.capabilities.compliance import catalog, retention, reviews, risk, status
 from agentfox.capabilities.compliance.catalog import (
     FRAMEWORK_TITLES,
     all_frameworks,
     controls_for_framework,
     framework_coverage,
     load_catalog,
+    requirements_for_framework,
     review_mapping,
     sign_off_mapping,
     sync_catalog,
@@ -49,6 +50,9 @@ __all__ = [
     "obligation_calendar",
     "posture",
     "register",
+    "requirements_for_framework",
+    "retention",
+    "reviews",
     "review_mapping",
     "sign_off_mapping",
     "risk",

@@ -588,6 +588,26 @@ controls:
       owasp-agentic: ["T1 Memory Poisoning"]
       mitre-atlas: ["AML.T0020 Poison Training Data"]
 
+  - key: NOM-RTG-14
+    title: Any agent can be stopped at once, and the stop holds
+    objective: >
+      A named person can quarantine or kill any agent. A stopped agent is refused on
+      every governed surface before any other check runs, both the stop and the resume
+      are recorded on the audit chain, and no call is allowed after the stop.
+    family: NOM-RTG
+    pillar: 3
+    implemented_by: [PL-3]
+    evidence_sources: [agent_controls, decisions, audit_entries]
+    status_rule:
+      kind: kill_switch
+    mappings:
+      eu-ai-act: ["Art. 14 — human oversight"]
+      nist-ai-rmf: ["MANAGE 2.4", "MANAGE 4.1"]
+      iso-42001: ["A.9 — use of AI systems"]
+      soc2: ["CC7.4 — incident response"]
+      owasp-llm: ["LLM06 Excessive Agency"]
+      owasp-agentic: ["T13 Rogue Agents"]
+
   - key: NOM-EVL-01
     title: Changes are evaluated before release and regressions block deployment
     objective: >
@@ -795,10 +815,10 @@ controls:
     family: NOM-AUD
     pillar: 5
     implemented_by: [P5-5]
-    evidence_sources: [retention_policies, legal_holds]
+    evidence_sources: [retention_policies, retention_runs, legal_holds]
     status_rule:
       kind: presence
-      requires: [retention_policies]
+      requires: [retention_policies, retention_runs]
     mappings:
       eu-ai-act: ["Art. 10", "Art. 19"]
       nist-ai-rmf: ["MANAGE 2.2"]

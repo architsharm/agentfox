@@ -34,6 +34,7 @@ from agentfox.core.models.audit import (
     Job,
     LegalHold,
     RetentionPolicy,
+    RetentionRun,
     Span,
     Trace,
     TraceLink,
@@ -106,6 +107,7 @@ from agentfox.core.models.improvement import (
 )
 from agentfox.core.models.policy import (
     Control,
+    ControlReview,
     ControlStatus,
     Decision,
     FrameworkMapping,
@@ -157,6 +159,7 @@ __all__ = [
     "Capability",
     "ChangeProposal",
     "Control",
+    "ControlReview",
     "ControlStatus",
     "ConversationTurn",
     "Credential",
@@ -205,6 +208,7 @@ __all__ = [
     "RedTeamFinding",
     "ResourceGrant",
     "RetentionPolicy",
+    "RetentionRun",
     "RiskAssessment",
     "SLO",
     "ScanRun",

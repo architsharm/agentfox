@@ -189,6 +189,12 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "the one configuration change whose consequence is invisible from the screen "
         "that makes it",
     ),
+    PrivilegedAction(
+        "agentfox.capabilities.compliance.retention.set_policy",
+        "operator.retention.changed",
+        "shortening retention destroys records at the next purge; the before and after "
+        "are what an investigation into missing data asks for first",
+    ),
 )
 
 #: Call expressions that count as recording. `record` is the front door; a direct

@@ -183,6 +183,26 @@ class RetentionPolicy(Base, TimestampMixin):
     redact_fields: Mapped[list[str]] = mapped_column(JSON, default=list)
 
 
+class RetentionRun(Base, TimestampMixin):
+    """One pass of the retention purge: what each data class lost, and why not more.
+
+    `results_json` is keyed by data class: the cutoff applied, rows deleted or
+    redacted, and the reason a class was skipped (no policy, legal hold, locked).
+    """
+
+    __tablename__ = "retention_runs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("rtr"))
+    started_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(16), default="running")
+    #: schedule | manual
+    trigger: Mapped[str] = mapped_column(String(16), default="schedule")
+    requested_by: Mapped[str] = mapped_column(String(120), default="")
+    results_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    error: Mapped[str] = mapped_column(Text, default="")
+
+
 class LegalHold(Base, TimestampMixin):
     __tablename__ = "legal_holds"
 
