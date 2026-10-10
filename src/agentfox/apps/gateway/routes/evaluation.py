@@ -171,6 +171,72 @@ def promote_trace(
 
 
 # ---------------------------------------------------------------------------
+# Tool paths seen in production
+# ---------------------------------------------------------------------------
+
+
+@router.get("/agents/{slug}/tool-paths")
+def agent_tool_paths(
+    slug: str,
+    days: int = 7,
+    baseline_days: int = 30,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """The tool-call paths an agent took, which are new, and which no test expects.
+
+    A path no test expects is a case the suite does not cover; one first seen this
+    window is one nobody has looked at yet.
+    """
+    from agentfox.capabilities.evaluation.paths import tool_paths
+
+    if not 1 <= days <= 90 or not 1 <= baseline_days <= 365:
+        raise HTTPException(422, "days must be 1 to 90 and baseline_days 1 to 365")
+    agent = get_agent_or_404(session, slug)
+    return {
+        "agent": slug,
+        **tool_paths(session, agent.id, window_days=days, baseline_days=baseline_days),
+    }
+
+
+class PathToTestIn(BaseModel):
+    path: list[str] = Field(min_length=1, max_length=12)
+    trace_id: str | None = None
+    suite: str = "regressions"
+
+
+@router.post("/agents/{slug}/tool-paths/tests", status_code=201)
+def add_path_to_tests(
+    slug: str,
+    payload: PathToTestIn,
+    session: Session = Depends(db),
+    user: User = Depends(require("eval")),
+) -> dict[str, Any]:
+    """A regression case expecting this path, so the suite checks the agent keeps it."""
+    from agentfox.capabilities.evaluation.cases import ensure_suite
+    from agentfox.capabilities.evaluation.paths import promote_path
+
+    get_agent_or_404(session, slug)
+    suite = ensure_suite(
+        session,
+        payload.suite,
+        name="Regressions" if payload.suite == "regressions" else payload.suite,
+        description="Cases promoted from production runs.",
+    )
+    try:
+        case = promote_path(
+            session,
+            suite,
+            trace_id=payload.trace_id,
+            path=payload.path,
+            actor=user.email or user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"id": case.id, "suite": suite.key, "tools": case.expected_json.get("tools")}
+
+
+# ---------------------------------------------------------------------------
 # Runs & gating
 # ---------------------------------------------------------------------------
 

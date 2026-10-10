@@ -435,6 +435,13 @@ BUILTIN: tuple[FindingType, ...] = (
         "evaluation",
         "This model's outputs have measurably changed from its baseline.",
     ),
+    _t(
+        "new_tool_path",
+        "New tool path",
+        "low",
+        "evaluation",
+        "The agent called its tools in an order never seen before, and no test expects it.",
+    ),
     # --- continuous monitoring ---------------------------------------------------------
     _t(
         "monitor_lethal_trifecta",

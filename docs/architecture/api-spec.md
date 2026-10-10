@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-261 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+263 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -166,6 +166,8 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/protection/preview` | Replay this agent's last week against the protections, as if enforcing. |
 | `POST` | `/api/agents/{slug}/quarantine` | Stop an agent while you investigate. Reversible and audited. |
 | `POST` | `/api/agents/{slug}/resume` | Restart a stopped agent. Deliberately the same role as `kill` — restarting |
+| `GET` | `/api/agents/{slug}/tool-paths` | The tool-call paths an agent took, which are new, and which no test expects. |
+| `POST` | `/api/agents/{slug}/tool-paths/tests` | A regression case expecting this path, so the suite checks the agent keeps it. |
 | `GET` | `/api/agents/{slug}/tools` | The tools this agent can be tested with: granted, in its code, or seen called, |
 | `POST` | `/api/discovery/scan` | Sweep: lineage, unowned agents, registry drift, identity posture, delegation shape. |
 | `GET` | `/api/discovery/shadow` | Shadow Agents |

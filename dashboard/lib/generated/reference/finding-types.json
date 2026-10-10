@@ -372,6 +372,13 @@
    "owner": "evaluation"
   },
   {
+   "type": "new_tool_path",
+   "title": "New tool path",
+   "severity": "low",
+   "description": "The agent called its tools in an order never seen before, and no test expects it.",
+   "owner": "evaluation"
+  },
+  {
    "type": "monitor_lethal_trifecta",
    "title": "Lethal trifecta",
    "severity": "high",
