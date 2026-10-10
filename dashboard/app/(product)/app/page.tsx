@@ -8,7 +8,7 @@ import { Countdown } from "@/components/product/Countdown";
 import { SetupProgress } from "@/components/product/home/SetupProgress";
 import { runsHref } from "@/lib/product/observe";
 import { activeRange } from "@/lib/product/range";
-import { RANGE_WORDS, severityRank } from "@/lib/product/vocab";
+import { RANGE_WORDS, severityRank, sentence } from "@/lib/product/vocab";
 
 // `appPageMetadata`, not a literal: it also clears the canonical URL, so this page
 // does not declare itself a duplicate of the marketing home page.
@@ -100,7 +100,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
             {urgent.map((x: any) => (
               <li key={x.id}>
                 <div className="k-list-main">
-                  <Link href={`/app/findings/${x.id}`}>{x.title}</Link>
+                  <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
                   <span className="muted">{x.agent_slug || ""}</span>
                 </div>
                 <SeverityPill value={x.severity} />

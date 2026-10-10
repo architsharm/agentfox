@@ -261,3 +261,14 @@ export const WOULD: Record<string, string> = {
   mask: "Would mask",
   tokenize: "Would mask",
 };
+
+/**
+ * A title as a sentence: some are built from a phrase and start lowercase ("the answer
+ * reaches..."). Only a plain lowercase word is capitalised; a title that opens with an
+ * identifier ("support-triage tried...", "email.send ...") keeps it exactly.
+ */
+export function sentence(text?: string | null): string {
+  const t = String(text || "");
+  const first = t.match(/^\S+/)?.[0] || "";
+  return /^[a-z]+$/.test(first) ? t[0].toUpperCase() + t.slice(1) : t;
+}

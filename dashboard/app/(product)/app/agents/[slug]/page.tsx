@@ -28,7 +28,7 @@ import { RunsTable } from "@/components/kit/RunsTable";
 import { AgentMap } from "@/components/product/AgentMap";
 import { AccessEditor } from "@/components/product/agent/AccessEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
-import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
+import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
 import { ensureRange } from "@/lib/product/range";
 import { GuardrailMapLazy as GuardrailMap } from "@/components/product/agent/GuardrailMapLazy";
 import { RangeProvider } from "@/components/kit/RangeContext";
@@ -184,7 +184,7 @@ async function Overview({ f, posture }: { f: Filters; posture: any }) {
               {findings.slice(0, 6).map((x) => (
                 <li key={x.id}>
                   <div className="k-list-main">
-                    <Link href={`/app/findings/${x.id}`}>{x.title}</Link>
+                    <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
                   </div>
                   <SeverityPill value={x.severity} />
                 </li>
@@ -457,7 +457,7 @@ async function Quality({ f }: { f: Filters }) {
             {q.findings.slice(0, 6).map((x: any) => (
               <li key={x.id}>
                 <div className="k-list-main">
-                  <Link href={`/app/findings/${x.id}`}>{x.title}</Link>
+                  <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
                 </div>
                 <SeverityPill value={x.severity} />
               </li>

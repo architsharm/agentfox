@@ -171,6 +171,15 @@ def _rule_presence(session, control, rule, since) -> tuple[str, str, dict]:
     return "effective", f"Evidence present in {sorted(counts)}.", {"counts": counts}
 
 
+#: How a ratio reads to a person: "1 of 10 agents have an owner".
+_RATIO_WORDS = {
+    "owned_agents": "agents have an owner",
+    "agents_with_identity": "agents have an identity",
+    "assessed_agents": "agents have a risk assessment",
+    "registered_agents": "agents are registered",
+}
+
+
 def _rule_ratio(session, control, rule, since) -> tuple[str, str, dict]:
     numerator = _measure(session, rule.get("numerator", ""))
     denominator = _measure(session, rule.get("denominator", ""))
@@ -182,10 +191,10 @@ def _rule_ratio(session, control, rule, since) -> tuple[str, str, dict]:
     status = (
         "effective" if value >= effective_at else "degraded" if value >= degraded_at else "failing"
     )
+    what = _RATIO_WORDS.get(str(rule.get("numerator")), "meet it")
     return (
         status,
-        f"{rule.get('numerator')} / {rule.get('denominator')} = {numerator}/{denominator} "
-        f"= {value:.1%} (effective at {effective_at:.0%}).",
+        f"{numerator} of {denominator} {what} ({value:.0%}, needs {effective_at:.0%}).",
         {"numerator": numerator, "denominator": denominator, "ratio": round(value, 4)},
     )
 
@@ -566,9 +575,12 @@ def ensure_compliance_computed(session: Session, window_days: int = 30) -> bool:
     the screen an executive reads. Views a person reads call this first. Returns
     whether anything was computed.
     """
-    from agentfox.capabilities.compliance.catalog import sync_catalog
+    from agentfox.capabilities.compliance.catalog import catalog_behind, sync_catalog
 
-    if session.scalar(select(Control.id).limit(1)) is None:
+    # Not only when there are no controls: an upgrade that adds or changes controls
+    # must reach a tenant that already has the old catalog, or a new control is
+    # "No such control" until someone finds the manual sync.
+    if catalog_behind(session):
         sync_catalog(session)
     latest = session.scalar(
         select(ControlStatus.computed_at).order_by(ControlStatus.computed_at.desc()).limit(1)

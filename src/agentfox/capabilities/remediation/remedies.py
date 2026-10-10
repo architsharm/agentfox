@@ -615,8 +615,21 @@ def remedies_for(session: Session, finding: Finding) -> list[Remedy]:
         )
         out = [Remedy("open_conversation", "Open conversation", kind="link", href=href)]
     elif t in _REDTEAM_TYPES:
+        # Attacks got through: the fix is protection for this agent, then re-run them.
         out = [
-            Remedy("run_attack_test", "Run attack test", kind="link", href="/app/test?tab=attacks")
+            *(
+                [
+                    Remedy(
+                        "protect_agent",
+                        "Protect this agent",
+                        kind="link",
+                        href=f"/app/agents/{quote(ctx.slug, safe='')}/protect",
+                    )
+                ]
+                if ctx.slug
+                else []
+            ),
+            Remedy("run_attack_test", "Run attack test", kind="link", href="/app/test?tab=attacks"),
         ]
     elif t == "drift" and ctx.slug:
         out = [Remedy("open_quality", "Open quality", kind="link", href=_agent_tab(ctx, "quality"))]

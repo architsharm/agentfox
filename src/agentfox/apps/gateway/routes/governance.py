@@ -510,10 +510,21 @@ def place_hold(
 # ---------------------------------------------------------------------------
 
 
+def _catalog_current(session: Session) -> None:
+    """Bring this tenant's stored catalog up to the one this build ships. It was only
+    loaded into an empty workspace, so an upgrade that added a control left it "No such
+    control" everywhere until someone ran the manual sync."""
+    from agentfox.capabilities.compliance.catalog import catalog_behind, sync_catalog
+
+    if catalog_behind(session):
+        sync_catalog(session)
+
+
 @router.get("/controls")
 def list_controls(
     session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
+    _catalog_current(session)
     statuses = latest_statuses(session)
     reviews = reviews_svc.latest_reviews(session)
     out = []
@@ -560,6 +571,7 @@ def get_control(
 ) -> dict[str, Any]:
     """One control: what it checks, the evidence computed for it, where it is mapped,
     and every attestation made against it."""
+    _catalog_current(session)
     control = session.scalar(select(Control).where(Control.key == key))
     if control is None:
         raise HTTPException(404, f"unknown control '{key}'")
@@ -676,6 +688,7 @@ def compute_controls(
 def frameworks(
     session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
+    _catalog_current(session)
     return {"frameworks": all_frameworks(session)}
 
 
@@ -685,6 +698,7 @@ def framework(
 ) -> dict[str, Any]:
     """One framework: its requirements, the controls mapped to each with live status
     and attestation, its dated obligations, and its declared gaps."""
+    _catalog_current(session)
     if key not in FRAMEWORK_TITLES and not session.scalar(
         select(FrameworkMapping.id).where(FrameworkMapping.framework == key).limit(1)
     ):
@@ -706,6 +720,7 @@ def compliance_status(
     session: Session = Depends(db),
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
+    _catalog_current(session)
     return posture(session, framework)
 
 

@@ -9,7 +9,13 @@ import type { AgentMap } from "./GuardrailMap";
  */
 const Map = dynamic(() => import("./GuardrailMap").then((m) => m.GuardrailMap), {
   ssr: false,
-  loading: () => <div className="gm-canvas" aria-busy="true" />,
+  // Visible while the graph library downloads, so the tab never reads as empty.
+  loading: () => (
+    <div className="gm-canvas gm-loading" aria-busy="true">
+      <div className="k-skel gm-loading-bar" />
+      <span className="muted small">Drawing the map…</span>
+    </div>
+  ),
 });
 
 export function GuardrailMapLazy({ map }: { map: AgentMap }) {
