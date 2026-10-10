@@ -699,3 +699,17 @@ def test_the_create_route_refills_spares_after_responding(client):
 
     assert client.post("/api/playground/sessions").status_code == 201
     assert len(get_store()._ids_where(spare=True)) == SPARES
+
+
+def test_traffic_runs_due_jobs_at_most_every_few_minutes(client, monkeypatch):
+    """The hosted plan's cron runs once a day; traffic runs what is due in between."""
+    import agentfox.apps.gateway.app as app_mod
+    from agentfox.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "jobs_on_traffic", True)
+    monkeypatch.setattr(app_mod, "_last_jobs_kick", 0.0)
+    passes = []
+    monkeypatch.setattr(app_mod, "_run_due_jobs", lambda then=None: passes.append(1))
+    client.get("/health")
+    client.get("/health")
+    assert passes == [1], "one pass per interval, after the response"
