@@ -153,4 +153,17 @@ def run_pending_jobs(limit: int = 50, session: Session = Depends(db)) -> dict[st
     except Exception as exc:  # noqa: BLE001 - the showcase must never stop the cron
         log.warning("showcase setup failed: %s", exc, exc_info=True)
         showcase_state = {"error": f"{type(exc).__name__}: {exc}"}
-    return {**scheduler.run_due(session, limit=limit), "showcase": showcase_state}
+    # Spare playground sandboxes, so the first visitor of the day does not wait for a
+    # sandbox to be seeded (playground_sessions.PlaygroundStore.refill).
+    try:
+        from agentfox.apps.gateway.playground_sessions import get_store
+
+        spares_built = get_store().refill()
+    except Exception as exc:  # noqa: BLE001 - the playground must never stop the cron
+        log.warning("playground refill failed: %s", exc, exc_info=True)
+        spares_built = 0
+    return {
+        **scheduler.run_due(session, limit=limit),
+        "showcase": showcase_state,
+        "playground_spares_built": spares_built,
+    }

@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -53,7 +53,7 @@ def _client_key(request: Request) -> str:
 
 
 @router.post("/sessions", status_code=201)
-def create_session(request: Request) -> dict[str, Any]:
+def create_session(request: Request, background: BackgroundTasks) -> dict[str, Any]:
     """Create a playground sandbox.
 
     A private tenant in the deployment database, seeded with the demo fixtures.
@@ -73,6 +73,8 @@ def create_session(request: Request) -> dict[str, Any]:
         # 503 rather than 500: the playground is unavailable, the rest of the API is
         # not, and the message names what an operator has to run.
         raise HTTPException(503, str(exc)) from exc
+    # After the response: sweep, keep the cap, and build a spare for the next visitor.
+    background.add_task(get_store().refill)
     return {
         "session_id": record.id,
         "expires_in_seconds": SESSION_TTL_SECONDS,

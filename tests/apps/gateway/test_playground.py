@@ -659,3 +659,43 @@ def test_sandboxes_are_created_on_a_database_that_has_not_run_the_migration(tmp_
         reset_settings_cache()
         reset_engine()
         get_settings()
+
+
+def test_a_spare_sandbox_is_handed_over_instantly_and_only_once():
+    """Seeding a sandbox is a few hundred statements, seconds on a remote database.
+    A spare built ahead of time makes the visitor's wait one UPDATE."""
+    from sqlalchemy import event
+
+    from agentfox.apps.gateway.playground_sessions import SPARES, PlaygroundStore
+    from agentfox.core.db import get_engine
+
+    store = PlaygroundStore()
+    assert store.refill() == SPARES
+    assert store.refill() == 0, "already full"
+
+    statements = {"n": 0}
+
+    def count(*_args):
+        statements["n"] += 1
+
+    event.listen(get_engine(), "before_cursor_execute", count)
+    try:
+        first = store.create()
+    finally:
+        event.remove(get_engine(), "before_cursor_execute", count)
+    assert statements["n"] < 10, f"claiming a spare took {statements['n']} statements"
+    second = store.create()
+    assert first.id != second.id, "a spare is handed to one visitor"
+    # The claimed sandbox is a full, seeded world, and no longer a spare.
+    with store.get(first.id).session_scope() as s:
+        from agentfox.core.models import Agent
+
+        assert s.scalar(select(Agent).where(Agent.slug == "airline-cs")) is not None
+    assert store._ids_where(spare=True) == []
+
+
+def test_the_create_route_refills_spares_after_responding(client):
+    from agentfox.apps.gateway.playground_sessions import SPARES, get_store
+
+    assert client.post("/api/playground/sessions").status_code == 201
+    assert len(get_store()._ids_where(spare=True)) == SPARES

@@ -202,13 +202,19 @@ def _namespaced_email(email: str, namespace: str | None) -> str:
 
 
 def seed(
-    session: Session, *, with_policies: bool = True, email_namespace: str | None = None
+    session: Session,
+    *,
+    with_policies: bool = True,
+    email_namespace: str | None = None,
+    with_compliance: bool = True,
 ) -> dict[str, Any]:
     summary: dict[str, Any] = {}
 
     # --- Pillar 6 content -------------------------------------------
-    summary["catalog"] = sync_catalog(session)
-    summary["obligations"] = sync_obligations(session)
+    # The compliance catalog is ~150 rows; a playground sandbox never shows it.
+    if with_compliance:
+        summary["catalog"] = sync_catalog(session)
+        summary["obligations"] = sync_obligations(session)
 
     if with_policies:
         from agentfox.harnesses import hooked_agents
