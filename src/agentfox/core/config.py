@@ -436,6 +436,16 @@ class Settings(BaseSettings):
     fallback_chain: list[str] = []
     breaker_failure_threshold: int = 5
     breaker_recovery_seconds: float = 30.0
+    # Per-agent circuit breaker (platform/registry/breaker.py): trips when at least
+    # `min_calls` decisions in `window_seconds` were blocked at `block_ratio` or more.
+    # "alert" raises the issue only; "pause" also refuses the agent's calls for the
+    # cool-down, then probes. Each agent can override these from its settings.
+    agent_breaker_mode: str = "alert"  # off | alert | pause
+    agent_breaker_window_seconds: int = 300
+    agent_breaker_min_calls: int = 20
+    agent_breaker_block_ratio: float = 0.5
+    agent_breaker_cooldown_seconds: int = 300
+    agent_breaker_probe_calls: int = 5
     # Admission control on the inline surface — shed work before it reaches
     # governance, never after (availability.py's `AdmissionController`). Defaults
     # generous enough that no self-host demo ever notices them; sizing these to a

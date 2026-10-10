@@ -1172,6 +1172,62 @@ def resume_agent(
     return _set_agent_state(session, slug, "active", payload.reason, user)
 
 
+class BreakerIn(BaseModel):
+    mode: str | None = None
+    window_seconds: float | None = None
+    min_calls: float | None = None
+    block_ratio: float | None = None
+    cooldown_seconds: float | None = None
+    probe_calls: float | None = None
+
+
+@router.get("/agents/{slug}/breaker")
+def agent_breaker(
+    slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """The agent's circuit breaker: settings, state, and the current window's rate."""
+    from agentfox.platform.registry import breaker
+
+    return breaker.status(session, get_agent_or_404(session, slug))
+
+
+@router.put("/agents/{slug}/breaker")
+def configure_agent_breaker(
+    slug: str,
+    payload: BreakerIn,
+    session: Session = Depends(db),
+    user: User = Depends(require("identity")),
+) -> dict[str, Any]:
+    """Change when the breaker trips and what it does. The same role as the kill
+    switch: a breaker that pauses the agent is one."""
+    from agentfox.platform.registry import breaker
+
+    try:
+        return breaker.configure(
+            session,
+            get_agent_or_404(session, slug),
+            payload.model_dump(exclude_none=True),
+            actor=user.email,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/agents/{slug}/breaker/reset")
+def reset_agent_breaker(
+    slug: str,
+    payload: ControlIn,
+    session: Session = Depends(db),
+    user: User = Depends(require("identity")),
+) -> dict[str, Any]:
+    """Close the breaker now and let the agent's calls through."""
+    from agentfox.platform.registry import breaker
+
+    return breaker.reset(
+        session, get_agent_or_404(session, slug), actor=user.email, reason=payload.reason
+    )
+
+
 def _set_agent_state(
     session: Session, slug: str, state: str, reason: str, user: User
 ) -> dict[str, Any]:

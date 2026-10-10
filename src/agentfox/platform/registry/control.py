@@ -146,8 +146,11 @@ def resume(session: Session, slug: str, *, reason: str = "", actor: str = "syste
 
 def all_controls(session: Session) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
+    from agentfox.platform.registry.breaker import config_of
+
     for control in session.scalars(select(AgentControl)):
         agent = session.get(Agent, control.agent_id)
+        breaker = config_of(control)
         out.append(
             {
                 "agent": agent.slug if agent else control.agent_id,
@@ -156,6 +159,9 @@ def all_controls(session: Session) -> list[dict[str, Any]]:
                 "reason": control.reason,
                 "actor": control.actor,
                 "changed_at": control.changed_at.isoformat() if control.changed_at else None,
+                "breaker": {
+                    k: breaker[k] for k in ("mode", "state", "retry_at", "reason", "trips")
+                },
             }
         )
     return out

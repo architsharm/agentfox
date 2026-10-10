@@ -101,6 +101,9 @@ class AgentControl(Base, TimestampMixin):
     actor: Mapped[str | None] = mapped_column(String(120))
     changed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     previous_state: Mapped[str | None] = mapped_column(String(24))
+    #: The agent's circuit breaker: its settings and its state (closed, open, probing).
+    #: NULL means the defaults, never tripped. See `runtime.enforcement.breaker`.
+    breaker_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     @property
     def blocking(self) -> bool:

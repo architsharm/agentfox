@@ -84,7 +84,9 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   }
   const posture = outcome.posture;
   const a = posture.agent;
-  const state = (controls.controls || []).find((c: any) => c.agent === a.slug)?.state || "active";
+  const control = (controls.controls || []).find((c: any) => c.agent === a.slug);
+  const state = control?.state || "active";
+  const breakerOpen = state === "active" && control?.breaker?.state === "open";
   const tabHref = (k: string) => href(`/app/agents/${encodeURIComponent(slug)}`, { tab: k === "overview" ? undefined : k, range: sp.range });
 
   return (
@@ -95,7 +97,13 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
         title={a.name || a.slug}
         meta={
           <>
-            {state === "active" ? <Pill tone="ok">Active</Pill> : <Pill tone="bad">{state === "killed" ? "Stopped" : "Paused"}</Pill>}
+            {breakerOpen ? (
+              <Pill tone="bad">Paused by breaker</Pill>
+            ) : state === "active" ? (
+              <Pill tone="ok">Active</Pill>
+            ) : (
+              <Pill tone="bad">{state === "killed" ? "Stopped" : "Paused"}</Pill>
+            )}
             {a.risk_tier === "high" && <Pill tone="held">High risk</Pill>}
             {!a.registered && <Pill tone="bad">Unregistered</Pill>}
             {a.is_seed && <Pill tone="outline">Sample</Pill>}
@@ -631,8 +639,9 @@ async function Quality({ f }: { f: Filters }) {
   );
 }
 
-function Settings({ a, state }: { a: any; state: string }) {
+async function Settings({ a, state }: { a: any; state: string }) {
   const action = `/api/agents/${encodeURIComponent(a.slug)}/owner`;
+  const breaker = await safeApi<any>(`/api/agents/${encodeURIComponent(a.slug)}/breaker`, null);
   return (
     <>
       <Card title="Details">
@@ -693,7 +702,86 @@ function Settings({ a, state }: { a: any; state: string }) {
           )}
         </div>
       </Card>
+      {breaker && <Breaker slug={a.slug} b={breaker} />}
     </>
+  );
+}
+
+const BREAKER_STATE: Record<string, [string, "ok" | "bad" | "held"]> = {
+  closed: ["Closed", "ok"],
+  open: ["Open: calls refused", "bad"],
+  probing: ["Probing", "held"],
+};
+
+/**
+ * The circuit breaker: when a burst of this agent's calls is blocked, pause it (or
+ * only raise an issue) without anyone watching, then let calls through again once a
+ * few pass after the cool-down.
+ */
+function Breaker({ slug, b }: { slug: string; b: any }) {
+  const action = `/api/agents/${encodeURIComponent(slug)}/breaker`;
+  const [label, tone] = BREAKER_STATE[b.state] || BREAKER_STATE.closed;
+  const minutes = (s: number) => Math.round((Number(s) / 60) * 10) / 10;
+  return (
+    <Card
+      title="Circuit breaker"
+      hint="Trips when too many of this agent's calls are blocked in a short window. Attack tests do not count."
+    >
+      <div className="k-pills" style={{ gap: 8, marginBottom: 12 }}>
+        <Pill tone={tone}>{label}</Pill>
+        <span className="muted">
+          {num(b.window?.blocked || 0)} of {num(b.window?.calls || 0)} calls blocked in the last {minutes(b.window_seconds)} min
+          {b.trips ? ` · tripped ${num(b.trips)} time${b.trips === 1 ? "" : "s"}` : ""}
+        </span>
+      </div>
+      {b.state !== "closed" && (
+        <div className="note-panel" style={{ marginBottom: 12 }}>
+          {b.state === "probing" ? `Probing after: ${b.reason}.` : `${b.reason}.`}
+          {b.state === "open" && b.retry_at ? ` Calls go through again from ${new Date(b.retry_at).toLocaleTimeString()}.` : ""}
+          <form action={action} method="POST" className="k-pills" style={{ gap: 8, marginTop: 8 }}>
+            <input type="hidden" name="action" value="reset" />
+            <input className="k-input" name="reason" placeholder="What was dealt with (optional)" style={{ width: 260 }} />
+            <button type="submit" className="k-btn">Resume now</button>
+          </form>
+        </div>
+      )}
+      <form action={action} method="POST" className="k-form">
+        <div className="k-field">
+          <label htmlFor="b-mode">When it trips</label>
+          <select id="b-mode" name="mode" className="k-select" defaultValue={b.mode} style={{ width: 280 }}>
+            <option value="alert">Raise an issue only</option>
+            <option value="pause">Pause the agent and raise an issue</option>
+            <option value="off">Off</option>
+          </select>
+        </div>
+        <div className="k-field">
+          <label htmlFor="b-pct">Trip at</label>
+          <span className="k-pills" style={{ gap: 6 }}>
+            <input id="b-pct" className="k-input" type="number" name="block_percent" min={5} max={100} defaultValue={Math.round(b.block_ratio * 100)} style={{ width: 80 }} />
+            <span className="muted">% blocked, of at least</span>
+            <input className="k-input" type="number" name="min_calls" min={2} defaultValue={b.min_calls} style={{ width: 80 }} aria-label="Minimum calls" />
+            <span className="muted">calls in</span>
+            <input className="k-input" type="number" name="window_minutes" min={0.5} step={0.5} defaultValue={minutes(b.window_seconds)} style={{ width: 80 }} aria-label="Window in minutes" />
+            <span className="muted">min</span>
+          </span>
+        </div>
+        <div className="k-field">
+          <label htmlFor="b-cool">Pause for</label>
+          <span className="k-pills" style={{ gap: 6 }}>
+            <input id="b-cool" className="k-input" type="number" name="cooldown_minutes" min={0.5} max={60} step={0.5} defaultValue={minutes(b.cooldown_seconds)} style={{ width: 80 }} />
+            <span className="muted">min, then close after</span>
+            <input className="k-input" type="number" name="probe_calls" min={1} defaultValue={b.probe_calls} style={{ width: 80 }} aria-label="Clean calls to close" />
+            <span className="muted">clean calls. A blocked call while probing pauses it again, for twice as long.</span>
+          </span>
+        </div>
+        <div className="k-field">
+          <span />
+          <span>
+            <button type="submit" className="k-btn-primary">Save</button>
+          </span>
+        </div>
+      </form>
+    </Card>
   );
 }
 

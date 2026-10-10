@@ -33,6 +33,7 @@ containment (other)        view run · add to tests · not a problem
 guardrail_detection        add to tests · not a problem · suppress for this agent ·
                            tune threshold · view run
 agent_stopped              resume
+agent_breaker_tripped      resume now · breaker settings
 budget_breach              open checks (closes itself on recovery)
 grounding and quality      view run · add to tests · not a problem
 hand-off types             open the conversation
@@ -591,6 +592,31 @@ def _stopped(session: Session, ctx: _Ctx) -> list[Remedy]:
     ]
 
 
+def _breaker(session: Session, ctx: _Ctx) -> list[Remedy]:
+    from agentfox.platform.registry import breaker
+
+    if ctx.agent is None:
+        return []
+    out: list[Remedy] = []
+    if breaker.status(session, ctx.agent)["state"] != "closed":
+        out.append(
+            Remedy(
+                "reset_breaker",
+                "Resume now",
+                family="identity",
+                primary=True,
+                fields=(_reason_field("What was dealt with"),),
+                hint="Closes the breaker and lets the agent's calls through again.",
+            )
+        )
+    out.append(
+        Remedy(
+            "breaker_settings", "Breaker settings", kind="link", href=_agent_tab(ctx, "settings")
+        )
+    )
+    return out
+
+
 def _agent_tab(ctx: _Ctx, tab: str) -> str:
     return f"/app/agents/{quote(ctx.slug or '', safe='')}?tab={tab}"
 
@@ -618,6 +644,8 @@ def remedies_for(session: Session, finding: Finding) -> list[Remedy]:
         out = _detection(session, ctx)
     elif t == "agent_stopped":
         out = _stopped(session, ctx)
+    elif t == "agent_breaker_tripped":
+        out = _breaker(session, ctx)
     elif t == "budget_breach":
         out = [Remedy("open_checks", "Open Checks", kind="link", href="/app/policies?tab=checks")]
     elif t in _GROUNDING_TYPES:
@@ -1007,6 +1035,15 @@ def _do_add_path(session: Session, ctx: _Ctx, actor: str, inputs: dict[str, Any]
     return "Added to the Regressions suite: the tests now expect this path."
 
 
+def _do_reset_breaker(session: Session, ctx: _Ctx, actor: str, inputs: dict[str, Any]) -> str:
+    from agentfox.platform.registry import breaker
+
+    if ctx.agent is None:
+        raise RemedyError("this issue names no agent")
+    breaker.reset(session, ctx.agent, actor=actor, reason=str(inputs.get("reason") or ""))
+    return "Breaker closed; the agent's calls go through again."
+
+
 _HANDLERS: dict[str, Callable[[Session, _Ctx, str, dict[str, Any]], str]] = {
     "narrow_wildcard": _do_narrow,
     "revoke_wildcard": _do_revoke_wildcard,
@@ -1024,6 +1061,7 @@ _HANDLERS: dict[str, Callable[[Session, _Ctx, str, dict[str, Any]], str]] = {
     "suppress_for_agent": _do_suppress,
     "add_to_tests": _do_add_to_tests,
     "add_path_to_tests": _do_add_path,
+    "reset_breaker": _do_reset_breaker,
 }
 
 

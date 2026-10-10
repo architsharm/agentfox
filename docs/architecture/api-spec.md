@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-263 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+266 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -157,6 +157,9 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agents/{slug}/access` | Get Access |
 | `POST` | `/api/agents/{slug}/access` | Grant a tool, or change the existing grant for it (one grant per tool key). |
 | `DELETE` | `/api/agents/{slug}/access/{capability_id}` | Remove Access |
+| `GET` | `/api/agents/{slug}/breaker` | The agent's circuit breaker: settings, state, and the current window's rate. |
+| `PUT` | `/api/agents/{slug}/breaker` | Change when the breaker trips and what it does. The same role as the kill |
+| `POST` | `/api/agents/{slug}/breaker/reset` | Close the breaker now and let the agent's calls through. |
 | `POST` | `/api/agents/{slug}/kill` | Stop an agent now. Requires the stronger role — this is an incident action. |
 | `GET` | `/api/agents/{slug}/lineage` | Agent Lineage |
 | `GET` | `/api/agents/{slug}/map` | Which guardrails apply at each step of this agent's requests, with recent traffic. |

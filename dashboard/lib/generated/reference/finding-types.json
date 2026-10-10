@@ -232,6 +232,13 @@
    "owner": "platform.registry"
   },
   {
+   "type": "agent_breaker_tripped",
+   "title": "Circuit breaker tripped",
+   "severity": "high",
+   "description": "A burst of this agent's calls were blocked; its circuit breaker paused or flagged it.",
+   "owner": "platform.registry"
+  },
+  {
    "type": "schema_drift",
    "title": "Schema drift",
    "severity": "high",
