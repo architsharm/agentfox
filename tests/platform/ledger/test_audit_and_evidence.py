@@ -379,7 +379,7 @@ def test_a_scoped_package_leaves_other_agents_out_of_every_file(seeded, enforcer
 
     triage_id = agents["support-triage"].id
     assert {f["title"] for f in load("findings.json") if f["type"].startswith("test_")} == {
-        "Finding about support-triage"
+        "finding about support-triage"
     }
     assert {a["tool"] for a in load("approvals.json")} == {"support-triage.tool"}
     assert {r["target"]["agent"] for r in load("eval_runs.json")} == {"support-triage"}

@@ -110,9 +110,6 @@ def raise_finding(
     not a new occurrence and certainly not a recurrence after a fix, so an existing
     match in any status is returned untouched.
     """
-    # Some titles are built from a phrase ("the answer reaches a legal conclusion..."),
-    # and every list shows them as written.
-    title = title[:1].upper() + title[1:] if title else title
     finding_types.check(type)
     org_id = session_org(session)
     fp = fingerprint(org_id, type, subject_type, subject_id, fingerprint_parts)
