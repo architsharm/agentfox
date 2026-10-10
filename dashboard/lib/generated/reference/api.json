@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 263,
+ "count": 266,
  "routes": [
   {
    "method": "GET",
@@ -1123,6 +1123,143 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/breaker",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "The agent's circuit breaker: settings, state, and the current window's rate.",
+   "description": "The agent's circuit breaker: settings, state, and the current window's rate.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/agents/{slug}/breaker",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Change when the breaker trips and what it does. The same role as the kill switch: a breaker that pauses the agent is one.",
+   "description": "Change when the breaker trips and what it does. The same role as the kill\nswitch: a breaker that pauses the agent is one.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "BreakerIn",
+    "fields": [
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "window_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "min_calls",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "block_ratio",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "cooldown_seconds",
+      "type": "number",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "probe_calls",
+      "type": "number",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/breaker/reset",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Close the breaker now and let the agent's calls through.",
+   "description": "Close the breaker now and let the agent's calls through.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ControlIn",
+    "fields": [
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "POST",

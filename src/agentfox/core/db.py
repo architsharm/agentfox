@@ -199,6 +199,8 @@ _ADDITIVE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # f3b7c1d9a254 — a run keeps a masked preview of what the user asked.
     ("traces", "summary", "VARCHAR(200)"),
     ("playground_sandboxes", "spare", "BOOLEAN NOT NULL DEFAULT FALSE"),
+    # e2a8c5f1b964 — an agent's circuit breaker settings and state.
+    ("agent_controls", "breaker_json", "JSON"),
 )
 
 

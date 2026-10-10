@@ -65,7 +65,7 @@ class _LimitsMixin:
 
         control = self.session.scalar(select(AgentControl).where(AgentControl.agent_id == agent.id))
         if control is None or control.state == "active":
-            return None
+            return self._breaker_verdict(agent, control)
 
         reason = (
             f"Agent is {control.state}"
@@ -84,6 +84,29 @@ class _LimitsMixin:
                     reason,
                     severity="critical",
                     controls=["NOM-RTG-14", "NOM-DSC-02"],
+                )
+            ],
+        )
+
+    def _breaker_verdict(self, agent: Agent, control: Any) -> EnforcementResult | None:
+        """The agent's circuit breaker, open after a burst of blocked calls."""
+        from agentfox.platform.registry import breaker
+
+        reason = breaker.refusal(self.session, agent, control)
+        if reason is None:
+            return None
+        return EnforcementResult(
+            verdict="block",
+            effective_verdict="block",
+            mode="enforce",
+            reason=reason,
+            rules_fired=[
+                _fired_rule(
+                    "agent.circuit_open",
+                    "block",
+                    reason,
+                    severity="high",
+                    controls=["NOM-RTG-14"],
                 )
             ],
         )

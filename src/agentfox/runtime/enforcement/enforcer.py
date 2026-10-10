@@ -1174,6 +1174,10 @@ class Enforcer(
 
         self._raise_decision_findings(call, decision_row)
         self._file_approval_request(call, decision_row, result)
+        # The agent's circuit breaker counts this decision (only looks after a block).
+        from agentfox.platform.registry import breaker
+
+        breaker.observe(self.session, agent, decision_row)
 
         if trace_id:
             add_span(

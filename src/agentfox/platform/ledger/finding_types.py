@@ -292,6 +292,13 @@ BUILTIN: tuple[FindingType, ...] = (
         "Traffic was halted by a kill switch or quarantine.",
     ),
     _t(
+        "agent_breaker_tripped",
+        "Circuit breaker tripped",
+        "high",
+        "platform.registry",
+        "A burst of this agent's calls were blocked; its circuit breaker paused or flagged it.",
+    ),
+    _t(
         "schema_drift",
         "Schema drift",
         "high",
