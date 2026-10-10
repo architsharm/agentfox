@@ -4,6 +4,7 @@ import { Card, Empty, Pill } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
 import { detectorName } from "@/lib/product/vocab";
 import { ModelForm, ModelTest, PullButton, TierSwitch, type PostureDoc } from "./ChecksControls";
+import { AccessCheckForm, AccessCheckTest } from "./AccessChecks";
 
 type Detector = {
   key: string;
@@ -133,11 +134,12 @@ function Rows({ rows, canEdit, judgesOn }: { rows: Detector[]; canEdit: boolean;
  * happens when a check fires.
  */
 export async function Checks() {
-  const [data, detail, mine, me] = await Promise.all([
+  const [data, detail, mine, me, access] = await Promise.all([
     safeApi<any>("/api/detectors", { detectors: [] }),
     safeApi<any>("/api/judgment/posture", null),
     safeApi<any>("/api/custom-models", { models: [], prefixes: [] }),
     safeApi<any>("/api/me", null),
+    safeApi<any>("/api/authorizers", { authorizers: [] }),
   ]);
   const canEdit = ["owner", "admin", "security"].includes(me?.role ?? "");
   const all: Detector[] = (data.detectors || []).filter((d: Detector) => d.key !== "custom.models");
@@ -222,6 +224,52 @@ export async function Checks() {
           </Card>
         );
       })}
+
+      <div id="access">
+        <Card
+          title="Your access checks"
+          hint="Your own RBAC service decides what the person an agent acts for may do. Matching tool calls are sent to it, with that person, before they run."
+          flush
+        >
+          <ul className="k-list">
+            {(access.authorizers || []).map((a: any) => (
+              <li key={a.key}>
+                <div className="k-list-main">
+                  <span className="k-name">{a.name}</span>
+                  <span className="muted k-mono">{a.url}</span>
+                  <span className="muted">
+                    Decides {a.tools.join(", ")}
+                    {a.agents.length ? ` for ${a.agents.join(", ")}` : ""} · a no {a.on_deny === "escalate" ? "asks a person" : "blocks"} ·{" "}
+                    {a.fail_mode === "closed" ? "refuses calls when down" : "lets calls through when down"}
+                    {a.last_error ? <span className="k-act-error"> · Last error: {a.last_error}</span> : null}
+                  </span>
+                </div>
+                <div className="k-list-end">
+                  {a.enabled ? <Pill tone="ok">On</Pill> : <Pill tone="outline">Off</Pill>}
+                  {canEdit && (
+                    <>
+                      <AccessCheckTest checkKey={a.key} tool={a.tools[0] || ""} />
+                      <Act url={`/api/authorizers/${encodeURIComponent(a.key)}/enabled`} body={{ enabled: !a.enabled }} className="k-btn">
+                        {a.enabled ? "Turn off" : "Turn on"}
+                      </Act>
+                      <Act url={`/api/authorizers/${encodeURIComponent(a.key)}`} method="DELETE" className="k-btn-ghost" confirm={`Remove ${a.name}? Tool calls stop being checked against it now.`}>
+                        Remove
+                      </Act>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {canEdit ? (
+            <div style={{ padding: "8px 16px 14px" }}>
+              <AccessCheckForm />
+            </div>
+          ) : (
+            !(access.authorizers || []).length && <Empty>No access checks yet.</Empty>
+          )}
+        </Card>
+      </div>
 
       {detail && posture && (
         <div id="judges">

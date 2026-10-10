@@ -1038,6 +1038,29 @@ class GuardToolCallRequest(BaseModel):
     # The retry of a call a person approved. The same agent, tool and
     # arguments run once; anything else escalates as it would have without it.
     approval_id: str | None = None
+    # The person the agent acts for: a subject (an OIDC `sub`, an employee id) or
+    # {"subject", "groups", "attributes"}. Sent to the workspace's access checks
+    # (`platform.identity.authorizer`); a bare subject picks up the groups of a
+    # registered principal.
+    principal: str | dict[str, Any] | None = None
+
+
+def _principal_for(session: Session, agent_slug: str, value: Any) -> Any:
+    """A bare subject, filled in with a registered principal's groups if there is one."""
+    if not isinstance(value, str) or not value.strip():
+        return value
+    from agentfox.core.models import Agent, EndUserPrincipal
+
+    agent_id = session.scalar(select(Agent.id).where(Agent.slug == agent_slug))
+    known = session.scalars(
+        select(EndUserPrincipal).where(EndUserPrincipal.subject == value.strip())
+    ).all()
+    match = next((p for p in known if p.agent_id == agent_id), None) or next(
+        (p for p in known if p.agent_id is None), None
+    )
+    if match is None:
+        return value
+    return {"subject": match.subject, "groups": list(match.groups or [])}
 
 
 def _reported_usage(
@@ -1238,6 +1261,7 @@ def guard_tool_call(
         prior_tools=payload.prior_tools,
         prior_steps=payload.prior_steps,
         approval_id=payload.approval_id,
+        principal=_principal_for(session, payload.agent, payload.principal),
     )
     return with_verdict_aliases(result.to_json())
 

@@ -185,6 +185,45 @@ class CustomModel(Base, TimestampMixin):
     created_by: Mapped[str] = mapped_column(String(200), default="")
 
 
+class ExternalAuthorizer(Base, TimestampMixin):
+    """The customer's own access-control service, asked before a tool call runs.
+
+    Permissions for the person an agent acts for usually live in the customer's own
+    RBAC system, behind an HTTP endpoint, not in AgentFox grants. A tool call whose
+    tool matches `tools_json` (and agent `agents_json`, empty meaning every agent)
+    is posted there with the end user, agent, tool and arguments; a deny blocks the
+    call or sends it to a person (`on_deny`). See `platform.identity.authorizer`.
+    The credential is encrypted at rest and never returned by the API.
+    """
+
+    __tablename__ = "external_authorizers"
+    __table_args__ = (UniqueConstraint("org_id", "key", name="ux_external_authorizers_org_key"),)
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("ath"))
+    key: Mapped[str] = mapped_column(String(80), index=True)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    url: Mapped[str] = mapped_column(String(1000), default="")
+    #: Tool key patterns (fnmatch) this authorizer decides.
+    tools_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    #: Agent slugs it applies to; empty means every agent.
+    agents_json: Mapped[list[str]] = mapped_column(JSON, default=list)
+    timeout_ms: Mapped[int] = mapped_column(Integer, default=800)
+    #: closed: an unreachable authorizer counts as a deny. open: the call proceeds.
+    fail_mode: Mapped[str] = mapped_column(String(8), default="closed")
+    #: block | escalate: what a deny does.
+    on_deny: Mapped[str] = mapped_column(String(12), default="block")
+    #: A call with no end user named: skipped (False) or denied (True).
+    require_principal: Mapped[bool] = mapped_column(Boolean, default=False)
+    cache_seconds: Mapped[int] = mapped_column(Integer, default=60)
+    auth_header: Mapped[str] = mapped_column(String(100), default="")
+    auth_secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_by: Mapped[str] = mapped_column(String(200), default="")
+    last_called_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+
+
 class EndUserPrincipal(Base, TimestampMixin):
     """The human the agent is acting for.
 

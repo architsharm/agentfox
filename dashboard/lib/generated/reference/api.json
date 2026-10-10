@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 266,
+ "count": 271,
  "routes": [
   {
    "method": "GET",
@@ -504,6 +504,12 @@
      {
       "name": "approval_id",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "principal",
+      "type": "string | object",
       "required": false,
       "description": ""
      }
@@ -2419,6 +2425,277 @@
   },
   {
    "method": "GET",
+   "path": "/api/authorizers",
+   "section": "authorizers",
+   "audience": "operator",
+   "summary": "Get Authorizers",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/authorizers",
+   "section": "authorizers",
+   "audience": "operator",
+   "summary": "Register (or update) an access-check endpoint.",
+   "description": "Register (or update) an access-check endpoint.\n\n409 when this deployment may not reach the address (egress off for a public\none; a private one without `outbound_allow_private_hosts`; link-local never);\n503 when a credential is given but this deployment cannot encrypt it.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "AuthorizerIn",
+    "fields": [
+     {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "url",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "tools",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "timeout_ms",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "fail_mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "on_deny",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "require_principal",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "cache_seconds",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_header",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "auth_secret",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "clear_secret",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/authorizers/{key}",
+   "section": "authorizers",
+   "audience": "operator",
+   "summary": "Remove Authorizer",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/authorizers/{key}/enabled",
+   "section": "authorizers",
+   "audience": "operator",
+   "summary": "Toggle Authorizer",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ToggleIn",
+    "fields": [
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/authorizers/{key}/test",
+   "section": "authorizers",
+   "audience": "operator",
+   "summary": "Ask the access check about one example call and show its answer.",
+   "description": "Ask the access check about one example call and show its answer.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__authorizers__TestIn",
+    "fields": [
+     {
+      "name": "subject",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "groups",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "arguments",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
    "path": "/api/board",
    "section": "board",
    "audience": "operator",
@@ -3155,7 +3432,7 @@
     }
    ],
    "body": {
-    "model": "TestIn",
+    "model": "agentfox__apps__gateway__routes__checks__TestIn",
     "fields": [
      {
       "name": "text",

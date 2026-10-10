@@ -68,6 +68,7 @@ class _ToolCallMixin:
         dry_run: bool = False,
         approval_id: str | None = None,
         persist: bool = True,
+        principal: Any = None,
     ) -> EnforcementResult:
         """Authorise a tool call on the full execution path.
 
@@ -144,6 +145,7 @@ class _ToolCallMixin:
             tracker=tracker,
             approval_id=None if dry_run else approval_id,
             persist=persist,
+            principal=principal,
         )
 
         # An irreversible act on a record the agent has not read back from the
