@@ -73,6 +73,9 @@ class AgentSession:
     environment: str = "production"
     session_id: str | None = None
     trace_id: str | None = None
+    #: The person this run acts for: a subject, or {"subject", "groups", "attributes"}.
+    #: Sent with each tool call to the workspace's access checks.
+    principal: str | dict[str, Any] | None = None
     tracker: TaintTracker = field(default_factory=TaintTracker)
     prior_tools: list[str] = field(default_factory=list)
     _client: AgentFox = field(repr=False, default=None)  # type: ignore[assignment]
@@ -171,6 +174,7 @@ class AgentSession:
             prior_tools=list(self.prior_tools),
             approval_id=approval_id,
             session_id=self.session_id,
+            principal=self.principal,
         )
         self.prior_tools.append(tool)
         if raise_on_block:
@@ -279,13 +283,18 @@ class AgentFox:
 
     @contextmanager
     def session(
-        self, intent: str | None = None, session_id: str | None = None
+        self,
+        intent: str | None = None,
+        session_id: str | None = None,
+        principal: str | dict[str, Any] | None = None,
     ) -> Iterator[AgentSession]:
+        """One run. ``principal`` names the person it acts for (see `AgentSession`)."""
         agent_session = AgentSession(
             agent=self.agent,
             intent=intent,
             environment=self.environment,
             session_id=session_id,
+            principal=principal,
             _client=self,
         )
         token = self._active.set(agent_session)
@@ -601,6 +610,7 @@ class AgentFox:
                     # loop detection across calls, one conversation in the trace view.
                     **({"session_id": kwargs["session_id"]} if kwargs.get("session_id") else {}),
                     **({"approval_id": kwargs["approval_id"]} if kwargs.get("approval_id") else {}),
+                    **({"principal": kwargs["principal"]} if kwargs.get("principal") else {}),
                 },
             )
             return EnforcementResult(
@@ -640,6 +650,7 @@ class AgentFox:
                 tracker=kwargs.get("tracker"),
                 prior_tools=kwargs.get("prior_tools"),
                 approval_id=kwargs.get("approval_id"),
+                principal=kwargs.get("principal"),
             )
 
     def _headers(self) -> dict[str, str]:

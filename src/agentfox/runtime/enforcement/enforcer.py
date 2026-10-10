@@ -135,6 +135,7 @@ class _Evaluation:
     forced_rules: list[dict[str, Any]] | None
     extra_taint: dict[str, Any] | None
     approval_id: str | None
+    principal: Any = None
 
     # _resolve_tool
     agent_slug: str | None = None
@@ -288,6 +289,7 @@ class Enforcer(
         forced_rules: list[dict[str, Any]] | None = None,
         extra_taint: dict[str, Any] | None = None,
         approval_id: str | None = None,
+        principal: Any = None,
     ) -> EnforcementResult:
         """One decision on one surface. The single point every guarantee flows through.
 
@@ -346,6 +348,7 @@ class Enforcer(
             forced_rules=forced_rules,
             extra_taint=extra_taint,
             approval_id=approval_id,
+            principal=principal,
         )
         self._resolve_tool(call)
         self._run_detectors(call)
@@ -360,6 +363,7 @@ class Enforcer(
         self._summarise_taint(call)
         self._evaluate_policies(call)
         self._apply_capability(call)
+        self._apply_external_authorizers(call)
         self._raise_evidence_findings(call)
         self._apply_standing_refusals(call)
         self._apply_fail_modes(call)
@@ -767,6 +771,55 @@ class Enforcer(
                         mode=call.mode,
                     )
                 )
+
+    def _apply_external_authorizers(self, call: _Evaluation) -> None:
+        """The customer's own access check for the person the agent acts for.
+
+        Asked only for a tool call nothing has refused yet (a call already blocked
+        needs no second opinion, and asking would send its arguments out for
+        nothing). A deny blocks, or escalates where the authorizer says so; in
+        observe mode it is recorded as what would have happened.
+        """
+        if call.surface != "tool_args" or not call.tool_key or call.effective == "block":
+            return
+        from agentfox.platform.identity import authorizer
+
+        decisions = authorizer.authorize(
+            self.session,
+            agent_slug=call.agent_slug,
+            tool_key=call.tool_key,
+            impact=call.tool_impact,
+            arguments=call.arguments,
+            principal=authorizer.Principal.parse(call.principal),
+            environment=call.environment,
+        )
+        if not decisions:
+            return
+        call.taint_summary["authorization"] = [d.to_json() for d in decisions]
+        for d in decisions:
+            if d.allowed:
+                continue
+            effect = "escalate" if d.on_deny == "escalate" else "block"
+            kind = "unavailable" if d.outcome == "unavailable" else "deny"
+            rule_id = f"authz.{d.authorizer}.{kind}"
+            if rule_id in call.fired_ids:
+                continue
+            call.fired_ids.add(rule_id)
+            reason = d.reason or f"the '{d.authorizer}' access check denied this call"
+            call.rules_fired.append(
+                _fired_rule(
+                    rule_id,
+                    effect,
+                    f"Access check '{d.authorizer}': {reason}",
+                    severity="high",
+                    controls=["NOM-IAM-02"],
+                    mode=call.mode,
+                )
+            )
+            if effect == "block" or call.effective != "block":
+                call.effective = effect
+                if call.mode == "enforce":
+                    call.verdict = effect
 
     def _raise_evidence_findings(self, call: _Evaluation) -> None:
         """Integrity issues the content checks found become findings, not blocks."""

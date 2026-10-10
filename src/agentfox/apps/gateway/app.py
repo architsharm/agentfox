@@ -22,6 +22,7 @@ from agentfox.apps.gateway.deps import current_user, db
 from agentfox.apps.gateway.routes import access as access_routes
 from agentfox.apps.gateway.routes import (
     answerability,
+    authorizers,
     coverage,
     discovery,
     entitlement,
@@ -386,6 +387,7 @@ def create_app() -> FastAPI:
 
     app.include_router(inline.router)
     app.include_router(registry.router)
+    app.include_router(authorizers.router)
     app.include_router(policy.router)
     app.include_router(evaluation.router)
     app.include_router(governance.router)
