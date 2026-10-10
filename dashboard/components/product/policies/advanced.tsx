@@ -306,7 +306,7 @@ export async function AdvancedTuning({ agent }: { agent?: string }) {
       <Grid cols={4}>
         <Kpi label="Checks on" value={(detectors.detectors || []).filter((d: any) => d.enabled && d.available).length} href="/app/policies?tab=checks" />
         <Kpi label={`Runs, last ${latency.window_days} days`} value={latency.runs} href="/app/observe" />
-        <Kpi label="Ran late or skipped" value={`${(degraded * 100).toFixed(1)}%`} tone={degraded > 0.01 ? "warn" : undefined} hint="A check that timed out or was skipped to keep the agent responsive. High means gaps in the safety net." />
+        <Kpi label="Ran late or skipped" value={latency.runs ? `${(degraded * 100).toFixed(1)}%` : "—"} tone={degraded > 0.01 ? "warn" : undefined} hint="A check that timed out or was skipped to keep the agent responsive. High means gaps in the safety net." />
         <Kpi label="Suppressions" value={health.active || 0} tone={expiring ? "warn" : undefined} hint={expiring ? `${expiring} expire this week and start enforcing again.` : "Every exception expires."} />
       </Grid>
 

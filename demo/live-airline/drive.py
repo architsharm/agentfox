@@ -21,7 +21,7 @@ from common import use_upstream
 use_upstream()
 
 import main  # noqa: E402,F401  (the upstream app: wires AgentFox, governs the agents)
-from agentfox_wiring import CONVERSATION  # noqa: E402
+from agentfox_wiring import CONVERSATION, fox  # noqa: E402
 from agents import (  # noqa: E402
     InputGuardrailTripwireTriggered,
     OutputGuardrailTripwireTriggered,
@@ -74,7 +74,10 @@ class Conversation:
     async def say(self, text: str) -> dict[str, Any]:
         token = CONVERSATION.set(self.id)
         try:
-            return await self._say(text)
+            # The same id for the adapter's checks and tool calls as for the model
+            # calls, so the dashboard shows each conversation as one run.
+            with fox.session(session_id=self.id):
+                return await self._say(text)
         finally:
             CONVERSATION.reset(token)
 

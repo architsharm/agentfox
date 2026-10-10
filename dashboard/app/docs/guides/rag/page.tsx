@@ -126,7 +126,7 @@ agentfox permit user "hr/*" hr --purposes payroll`}</Code>
   ]
 }`}</Code>
           <Code>{`curl -s -X POST http://127.0.0.1:8080/api/entitlement/filter \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d @ana.json`}</Code>
           <Output>{`{
@@ -339,7 +339,7 @@ agentfox declare list sources`}</Code>
   "agent_domain": "support"
 }`}</Code>
           <Code>{`curl -s -X POST http://127.0.0.1:8080/api/sources/assess \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d @assess.json`}</Code>
           <Output>{`{
@@ -388,7 +388,7 @@ agentfox declare list sources`}</Code>
   ]
 }`}</Code>
           <Code>{`curl -s -X POST http://127.0.0.1:8080/api/sources/context-check \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d @chunks.json`}</Code>
           <Output>{`{
@@ -522,7 +522,7 @@ say:     That asks for a projection rather than a recorded fact. I can only repo
             over-refusals:
           </p>
           <Code>{`curl -s -X POST http://127.0.0.1:8080/api/answerability/check \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"agent": "support-triage", "question": "What caused the outage in 2019?"}'`}</Code>
           <Output>{`{
@@ -546,7 +546,7 @@ say:     That asks for a projection rather than a recorded fact. I can only repo
 }`}</Output>
           <p>With the identifiers the caller holds:</p>
           <Code>{`curl -s -X POST http://127.0.0.1:8080/api/answerability/check \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"agent": "support-triage", "question": "What is the status of ticket TKT-991?", "known_entities": ["TKT-100", "TKT-200"]}'`}</Code>
           <Output>{`{

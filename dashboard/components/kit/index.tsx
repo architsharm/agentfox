@@ -21,7 +21,8 @@ export function num(n?: number | null): string {
 }
 
 export function pctOf(part: number, whole: number): string {
-  if (!whole) return "0%";
+  // A rate over nothing is not 0%: it reads as "measured, and fine".
+  if (!whole) return "—";
   const v = (part / whole) * 100;
   return `${v < 1 && v > 0 ? v.toFixed(1) : Math.round(v)}%`;
 }

@@ -485,7 +485,7 @@ agentfox_traces_total 6
       <p>With token authentication on, issue a token for the export job and use it:</p>
       <Code>{`agentfox admin auth issue aisha@example.com --name siem-export --days 1
 curl -s "http://127.0.0.1:8080/api/export/siem?format=cef&since_days=1&limit=1" \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN"`}</Code>
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN"`}</Code>
       <p>
         Without a token, the same request gets <code>401</code> and an{" "}
         <code>authentication required</code> message. The response is{" "}

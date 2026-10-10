@@ -522,12 +522,19 @@ def quality(
     wrong_traces: set[str] = set()
     abstained = 0
     for d in _decisions(session, w, agent, None):
+        fired_all = [f for f in d.rules_fired_json or [] if isinstance(f, dict)]
+        # A real tool the agent was not given yet also trips "undeclared"; refused for
+        # want of a grant, that call is setup, not a wrong answer.
+        not_granted = any(
+            str(f.get("rule_id")) in ("capability.denied", "capability.default_deny")
+            for f in fired_all
+        )
         fired_quality = [
             f
-            for f in d.rules_fired_json or []
-            if isinstance(f, dict)
-            and f.get("rule_id")
+            for f in fired_all
+            if f.get("rule_id")
             and rule_category(f["rule_id"], f) == "quality"
+            and not (not_granted and f["rule_id"] == "tool.not_declared")
         ]
         if d.verdict == "abstain":
             abstained += 1

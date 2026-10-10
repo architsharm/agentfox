@@ -21,31 +21,79 @@ _PAST_TENSE = {
 }
 
 
-def _detection_title(effective: str, applied: str, surface: str, entity_types: list[str]) -> str:
+#: Where the content was, as a reader says it.
+_SURFACE_WORDS = {
+    "input": "a user message",
+    "output": "a reply",
+    "tool_args": "a tool call",
+    "tool_result": "a tool result",
+    "retrieved": "retrieved content",
+    "memory_write": "a memory write",
+    "agent_message": "a message between agents",
+    "reasoning": "the agent's reasoning",
+}
+
+#: What was found, by entity prefix, most specific first. A reader should never meet
+#: `INJECTION.SYSTEM_PROMPT_LEAK` in a title; the evidence keeps the exact type.
+_ENTITY_WORDS: tuple[tuple[str, str], ...] = (
+    ("INJECTION.SYSTEM_PROMPT", "system prompt extraction"),
+    ("INJECTION.", "a prompt attack"),
+    ("JAILBREAK", "a jailbreak"),
+    ("PII.", "personal data"),
+    ("SECRET.", "a secret or API key"),
+    ("CREDENTIAL", "credentials"),
+    ("SAFETY.", "harmful content"),
+    ("TOXIC", "harmful content"),
+    ("CODE.", "insecure code"),
+    ("GROUNDING.", "an unsupported claim"),
+    ("TOPIC.", "an off-limits topic"),
+    ("BRAND.", "a brand rule"),
+)
+
+_PRESENT = {"block": "Would block", "escalate": "Would hold", "redact": "Would redact"}
+
+
+def _entity_words(entity: str, rules_fired: list[dict[str, Any]]) -> str:
+    upper = entity.upper()
+    if upper.startswith("CUSTOM."):
+        # A rule the workspace wrote names itself: "support-bot: blocked words".
+        for rule in rules_fired:
+            if entity in (rule.get("entities") or []) or any(
+                upper.startswith(str(p).upper()) for p in rule.get("entity_prefixes") or []
+            ):
+                reason = str(rule.get("reason") or "").replace(": your rule", "")
+                name = reason.split(": ", 1)[-1].strip()
+                if name:
+                    return name
+        return "one of your rules"
+    for prefix, words in _ENTITY_WORDS:
+        if upper.startswith(prefix):
+            return words
+    return entity.lower().replace("_", " ").replace(".", ": ")
+
+
+def _detection_title(
+    effective: str,
+    applied: str,
+    surface: str,
+    entity_types: list[str],
+    rules_fired: list[dict[str, Any]] | None = None,
+) -> str:
     """What a detection finding is called, and it has to be what HAPPENED.
 
-    This read `f"{effective.capitalize()}ed on {surface}"`, where `effective` is
-    what the policy WOULD do rather than what was done. Under an observe-mode
-    policy the finding was therefore titled "Blocked on input" for a request
-    that was allowed through — a false statement, in the record the product
-    exists to keep.
-
-    It matters more now than it did: a deployment with nothing bound falls back
-    to the shipped baseline in observe, so an observe-mode finding is the first
-    one a new user sees rather than an edge case.
-
-    Same distinction the trace verdict carries: `applied` is what happened,
-    `effective` is what the policy asked for, and when they differ the title
-    says so rather than picking the more dramatic of the two.
+    `effective` is what the policy asked for and `applied` what was done; under a
+    watching policy they differ, and the title says "would", never "blocked", for a
+    request that went through. Plain words for what and where: the exact entity
+    types stay in the evidence.
     """
-    entities = ", ".join(entity_types)
+    where = _SURFACE_WORDS.get(surface, surface.replace("_", " "))
+    found = list(dict.fromkeys(_entity_words(e, rules_fired or []) for e in entity_types))
+    what = ", ".join(found[:3]) + (f" and {len(found) - 3} more" if len(found) > 3 else "")
     if applied == effective:
-        return f"{_PAST_TENSE.get(effective, effective.capitalize())} on {surface}: {entities}"
-    # Observe: recorded, not acted on. Naming both is what makes the row
-    # actionable — it says what would change if this policy were promoted.
-    return (
-        f"Would have been {_PAST_TENSE.get(effective, effective).lower()} on {surface}: {entities}"
-    )
+        verb = _PAST_TENSE.get(effective, effective.capitalize())
+        return f"{verb} {where}: {what}"
+    verb = _PRESENT.get(effective, f"Would {effective}")
+    return f"{verb} {where}: {what} (watching)"
 
 
 class _FindingsMixin:
@@ -85,6 +133,10 @@ class _FindingsMixin:
         ]
         entity_types = sorted(by_entity)
         severity = "high" if effective in ("block", "escalate") else "medium"
+        # A rule the workspace wrote itself (blocked words, topics) doing what it was
+        # set up to do is a record, not an incident; watching, it is worth a look.
+        if entity_types and all(e.upper().startswith("CUSTOM.") for e in entity_types):
+            severity = "low" if applied == effective else "medium"
 
         # One finding per (agent, surface, verdict, entity set): the same detector firing
         # on the same kind of content is one pattern with a count, and the refreshed
@@ -93,7 +145,7 @@ class _FindingsMixin:
             self.session,
             type="guardrail_detection",
             severity=severity,
-            title=_detection_title(effective, applied, surface, entity_types),
+            title=_detection_title(effective, applied, surface, entity_types, rules_fired),
             subject_type="agent",
             subject_id=agent.id if agent else None,
             fingerprint_parts=(surface, effective, *entity_types),

@@ -313,7 +313,30 @@ def search_traces(
     rule_id: str | None = None,
     errors_only: bool = False,
     limit: int = 100,
+    group: bool = False,
 ) -> list[dict[str, Any]]:
+    """Runs, newest first. ``group`` folds the runs of one conversation into one row.
+
+    An agent framework checks a message, its model call, each tool and the reply
+    separately, and each can be its own run; a person reads one conversation turn.
+    Grouped, a row is the conversation (its ``session_id``): its first message, its
+    worst outcome, every tool and rule, and ``runs`` for how many it folds.
+    """
+    if group:
+        rows = search_traces(
+            session,
+            agent_slug=agent_slug,
+            verdict=verdict,
+            environment=environment,
+            since=since,
+            until=until,
+            entity_type=entity_type,
+            tool_key=tool_key,
+            rule_id=rule_id,
+            errors_only=errors_only,
+            limit=min(limit * 10, 2000),
+        )
+        return _group_conversations(rows)[:limit]
     query = select(Trace).order_by(Trace.started_at.desc())
     if agent_slug:
         query = query.where(Trace.agent_slug == agent_slug)
@@ -417,9 +440,49 @@ def search_traces(
             "surfaces": surfaces.get(t.id, []),
             "would_verdict": would.get(t.id),
             "checks": checks.get(t.id, 0),
+            "session_id": t.session_id,
         }
         for t in traces
     ]
+
+
+_OUTCOME_RANK = {"block": 5, "escalate": 4, "abstain": 3, "redact": 2, "mask": 2, "allow": 0}
+
+
+def _group_conversations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Fold rows (newest first) sharing a session into one row per conversation."""
+    out: list[dict[str, Any]] = []
+    by_session: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        sid = row.get("session_id")
+        if not sid:
+            out.append({**row, "runs": 1})
+            continue
+        group = by_session.get(sid)
+        if group is None:
+            group = {**row, "runs": 1, "rules": list(row["rules"]), "tools": list(row["tools"])}
+            group["surfaces"] = list(row["surfaces"])
+            by_session[sid] = group
+            out.append(group)
+            continue
+        group["runs"] += 1
+        group["checks"] += row["checks"]
+        group["cost_usd"] = (group.get("cost_usd") or 0) + (row.get("cost_usd") or 0) or None
+        for key in ("rules", "tools", "surfaces"):
+            for item in row[key]:
+                if item not in group[key]:
+                    group[key].append(item)
+        if _OUTCOME_RANK.get(row["verdict"], 0) > _OUTCOME_RANK.get(group["verdict"], 0):
+            group["verdict"] = row["verdict"]
+        if _OUTCOME_RANK.get(row.get("would_verdict") or "", 0) > _OUTCOME_RANK.get(
+            group.get("would_verdict") or "", 0
+        ):
+            group["would_verdict"] = row["would_verdict"]
+        # Rows come newest first, so the last summary seen is the conversation's first.
+        if row.get("summary"):
+            group["summary"] = row["summary"]
+        group["model"] = group.get("model") or row.get("model")
+    return out
 
 
 def _iso(value: dt.datetime | None) -> str | None:

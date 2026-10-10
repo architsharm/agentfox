@@ -242,7 +242,7 @@ async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
       >
         <form action={`/api/agents/${encodeURIComponent(slug)}/boundary`} method="POST" className="k-form">
           <div className="k-field">
-            <label htmlFor="b-sor">Sources it answers from</label>
+            <label htmlFor="b-sor">Data it answers from (optional)</label>
             <input id="b-sor" className="k-input" name="systems_of_record" defaultValue={boundary?.systems_of_record?.join(", ") || ""} placeholder="price-book, ticket-history" />
           </div>
           <div className="k-field">
@@ -250,25 +250,25 @@ async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
             <input id="b-ent" className="k-input" name="entity_types" defaultValue={boundary?.entity_types?.join(", ") || ""} placeholder="customer, order, invoice" />
           </div>
           <div className="k-field">
-            <label htmlFor="b-out">Topics it refuses</label>
+            <label htmlFor="b-out">Topics it must not answer (optional)</label>
             <input id="b-out" className="k-input" name="out_of_scope_topics" defaultValue={boundary?.out_of_scope_topics?.join(", ") || ""} placeholder="legal advice, medical diagnosis" />
           </div>
           <div className="k-field">
-            <label htmlFor="b-cov">History covered</label>
+            <label htmlFor="b-cov">Its data covers (optional)</label>
             <span className="k-pills">
               <input id="b-cov" className="k-input" style={{ width: 90 }} type="number" min={0} name="coverage_months" defaultValue={boundary?.coverage_months ?? ""} />
-              <span className="k-muted">months</span>
+              <span className="k-muted">months back</span>
               <input className="k-input" style={{ width: 90, marginLeft: 12 }} type="number" min={0} name="freshness_hours" defaultValue={boundary?.freshness_hours ?? ""} aria-label="Freshness in hours" />
-              <span className="k-muted">hours fresh</span>
+              <span className="k-muted">hours old at most</span>
             </span>
           </div>
           <div className="k-field">
-            <label>Question types</label>
+            <label>It may answer</label>
             <span className="k-pills" style={{ flexWrap: "wrap", gap: 14 }}>
               {types.map((qt) => (
-                <label key={qt} className="k-check">
+                <label key={qt} className="k-check" title={QUESTION_HINT[qt]}>
                   <input type="checkbox" name="answerable_types" value={qt} defaultChecked={boundary ? boundary.answerable_types?.includes(qt) : true} />
-                  {qt}
+                  {QUESTION_LABEL[qt] || qt}
                 </label>
               ))}
             </span>
@@ -378,7 +378,7 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
 }
 
 async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
-  const qs = new URLSearchParams({ agent: f.agent!, limit: "100", since_days: String(RANGE_DAYS[f.range]) });
+  const qs = new URLSearchParams({ agent: f.agent!, limit: "100", since_days: String(RANGE_DAYS[f.range]), group: "true" });
   const v = verdictsFor(outcome);
   if (v) qs.set("verdict", v);
   if (outcome === "errors") qs.set("errors", "true");
@@ -784,6 +784,21 @@ function Breaker({ slug, b }: { slug: string; b: any }) {
     </Card>
   );
 }
+
+const QUESTION_LABEL: Record<string, string> = {
+  fact: "Facts",
+  aggregate: "Totals and counts",
+  prediction: "Predictions",
+  opinion: "Opinions",
+  procedure: "How-to steps",
+};
+const QUESTION_HINT: Record<string, string> = {
+  fact: "A single fact: \"What is the status of my order?\"",
+  aggregate: "Counts or totals: \"How many orders did I place this year?\"",
+  prediction: "Guesses about the future: \"Will it arrive on time?\"",
+  opinion: "Recommendations: \"Which plan is best for me?\"",
+  procedure: "Steps to follow: \"How do I update my address?\"",
+};
 
 async function MapTab({ slug }: { slug: string }) {
   const map = await safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null);

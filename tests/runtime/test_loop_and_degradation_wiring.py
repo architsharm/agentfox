@@ -401,3 +401,46 @@ def test_a_provider_outage_does_not_stop_guard_checks(client, monkeypatch):
     )
     assert proxied.status_code == 503
     assert proxied.json()["error"]["service"] == "model_provider"
+
+
+def test_a_conversation_that_repeats_across_turns_is_not_a_loop(client):
+    """Change a seat, confirm, change it again: each turn starts from the person's new
+    message. Counting across turns refused this ordinary conversation as a runaway."""
+    turn = [
+        ("transfer_to_seat_agent", {}, "ok"),
+        ("update_seat", {"seat": "23A"}, "done"),
+        ("transfer_to_triage_agent", {}, "ok"),
+    ]
+    messages = _openai_loop(turn)
+    for again in ("Actually, make it 14C", "Yes, please go ahead"):
+        messages.append({"role": "user", "content": again})
+        messages.extend(_openai_loop(turn)[1:])
+    response = client.post(
+        "/v1/chat/completions",
+        json={"model": "echo-1", "messages": messages},
+        headers=_with("sess-turns"),
+    )
+    assert response.status_code == 200, response.text
+
+
+def test_a_stopped_loop_is_a_blocked_run_with_a_decision(client):
+    from sqlalchemy import select
+
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Decision, Trace
+
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "echo-1",
+            "messages": _openai_loop([("crm.lookup", {"id": 1}, "pending")] * 4),
+        },
+        headers=_with("sess-recorded"),
+    )
+    trace_id = response.json()["error"]["trace_id"]
+    with session_scope() as s:
+        trace = s.get(Trace, trace_id)
+        assert trace.verdict == "block" and trace.summary
+        decision = s.scalar(select(Decision).where(Decision.trace_id == trace_id))
+        assert decision.verdict == "block"
+        assert decision.rules_fired_json[0]["rule_id"] == "loop.runaway"

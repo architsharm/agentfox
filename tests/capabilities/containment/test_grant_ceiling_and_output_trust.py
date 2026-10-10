@@ -336,11 +336,11 @@ def test_argument_scope_lets_a_typed_refund_through_after_a_page_was_read(
 # ---------------------------------------------------------------------------
 
 
-def test_default_deny_names_the_command_that_proposes_grants(session, bot):
+def test_default_deny_says_where_to_allow_it(session, bot):
     result = _call(session, REFUND, {"amount": 5}, _conversation())
     assert result.verdict == "block"
     assert "default deny" in result.reason
-    assert f"agentfox policy proposals from-traffic --agent {AGENT}" in result.reason
+    assert f"Agents → {AGENT} → Access" in result.reason, "the dashboard fix first"
     assert f"agentfox permit grant {AGENT} {REFUND}" in result.reason
 
 

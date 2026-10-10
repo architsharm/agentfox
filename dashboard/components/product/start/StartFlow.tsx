@@ -171,7 +171,7 @@ export function CreateKey({ done }: { done: boolean }) {
           </button>
         </div>
         <p className="k-muted gs-note">Shown once. Store it where your agent reads secrets.</p>
-        <CodeSnippet label="Then, in your shell" code={`export AGENTFOX_TOKEN=${token}`} />
+        <CodeSnippet label="Then, in your shell" code={`export AGENTFOX_API_TOKEN=${token}`} />
       </div>
     );
   }

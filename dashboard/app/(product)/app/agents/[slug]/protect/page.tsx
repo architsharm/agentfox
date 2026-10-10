@@ -10,17 +10,19 @@ export const dynamic = "force-dynamic";
 export default async function Protect({ params }: { params: Promise<{ slug: string }> }) {
   const { slug: raw } = await params;
   const slug = decodeURIComponent(raw);
-  const [state, tools] = await Promise.all([
+  const [state, tools, posture] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/protection`, null),
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/tools`, { tools: [] }),
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/posture`, null),
   ]);
+  const name = posture?.agent?.name || slug;
   return (
     <>
-      <Header back={{ href: `/app/agents/${encodeURIComponent(slug)}`, label: slug }} title={`Protect ${slug}`} />
+      <Header back={{ href: `/app/agents/${encodeURIComponent(slug)}`, label: name }} title={`Protect ${name}`} />
       <Card>
         {state ? (
           <ProtectWizard
-            initial={state}
+            initial={{ ...state, name }}
             tools={tools.tools || []}
           />
         ) : (

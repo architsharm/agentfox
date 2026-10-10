@@ -404,6 +404,39 @@ def _tool_steps(messages: list[dict[str, Any]]) -> list[Step]:
     ]
 
 
+def _is_person_turn(message: dict[str, Any]) -> bool:
+    """A message the person wrote: a user message with text in it.
+
+    Anthropic-format requests carry tool results in `user` messages too; those are
+    the agent's own loop, not a new instruction from the person.
+    """
+    if str(message.get("role") or "") != "user":
+        return False
+    content = message.get("content")
+    if isinstance(content, str):
+        return bool(content.strip())
+    if isinstance(content, list):
+        return any(
+            isinstance(b, dict) and b.get("type") == "text" and str(b.get("text") or "").strip()
+            for b in content
+        )
+    return False
+
+
+def _current_turn(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The messages since the person last wrote: the agent's work on this request.
+
+    A conversation legitimately repeats itself across turns (change a seat, then
+    confirm, then change it again); a runaway is the agent repeating itself with no
+    new instruction in between. Counting across turns refused ordinary conversations.
+    """
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if isinstance(message, dict) and _is_person_turn(message):
+            return messages[index + 1 :]
+    return messages
+
+
 def _loop_budget() -> LoopBudget:
     """The deployment's declared `AGENTFOX_LOOP_*` budgets — the same ones
     `enforcement/limits.py::_budget_state` reads, so the proxy and the direct guard endpoint
@@ -427,7 +460,7 @@ def _record_loop_stop(
     """
     trace_id = None
     try:
-        from agentfox.core.models import Agent
+        from agentfox.core.models import Agent, Decision
         from agentfox.platform.ledger.findings import raise_finding
         from agentfox.platform.ledger.trace import start_trace
 
@@ -441,6 +474,29 @@ def _record_loop_stop(
             session_id=session_id,
         )
         trace_id = trace.id
+        # The run is a stopped one: say so on the trace and record the decision, or the
+        # dashboard shows an allowed run with nothing in it and no reason the agent failed.
+        trace.verdict = "block"
+        trace.summary = "Stopped: the agent kept repeating the same tool calls"[:200]
+        session.add(
+            Decision(
+                trace_id=trace.id,
+                agent_id=agent.id if agent else None,
+                surface="input",
+                verdict="block",
+                mode="enforce",
+                rules_fired_json=[
+                    {
+                        "rule_id": "loop.runaway",
+                        "effect": "block",
+                        "reason": verdict.reason,
+                        "severity": "medium",
+                        "controls": ["NOM-RTG-08"],
+                    }
+                ],
+                taint_summary_json={"tools": [s.tool for s in steps], "session_id": session_id},
+            )
+        )
         # One finding per (agent, session): a loop that keeps being stopped in the same
         # session is one runaway with a count, not a row per refused step.
         raise_finding(
@@ -487,7 +543,7 @@ def _govern_tool_loop(
     if not session_id:
         return None
     try:
-        steps = _tool_steps(messages)
+        steps = _tool_steps(_current_turn(messages))
         if not steps:
             return None
         verdict = govern_loop(steps, budget=_loop_budget())

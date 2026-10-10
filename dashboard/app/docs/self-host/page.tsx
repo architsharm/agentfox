@@ -163,7 +163,7 @@ export AGENTFOX_SERVICE_AUTH_SECRET="…another generated value…"`}</Code>
 …`}</Output>
           <p>Against a production gateway, the header is refused and the token works:</p>
           <Code>{`curl -s -o /dev/null -w "%{http_code}\\n" -H "X-AgentFox-User: admin@example.com" http://localhost:8080/api/findings
-curl -s -o /dev/null -w "%{http_code}\\n" -H "Authorization: Bearer $AGENTFOX_TOKEN" http://localhost:8080/api/findings`}</Code>
+curl -s -o /dev/null -w "%{http_code}\\n" -H "Authorization: Bearer $AGENTFOX_API_TOKEN" http://localhost:8080/api/findings`}</Code>
           <Output>{`401
 200`}</Output>
           <Code>{`agentfox admin auth status`}</Code>

@@ -414,7 +414,8 @@ def test_enforcement_is_the_last_step(client):
     """
     body = client.get("/api/onboarding", headers=as_user("admin@example.com")).json()
     assert body["steps"][-1]["id"] == "enforce"
-    assert "observe to enforce" in body["steps"][-1]["detail"]
+    detail = body["steps"][-1]["detail"]
+    assert "watching" in detail and "Tool permissions already apply" in detail
 
 
 def test_attention_is_quiet_when_there_is_nothing_to_do(client):

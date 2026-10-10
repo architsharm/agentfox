@@ -204,3 +204,98 @@ def save_protection(
         "detectors": switched,
         "not_installed": not_installed,
     }
+
+
+# ---------------------------------------------------------------------------
+# Turning protection on for one agent
+# ---------------------------------------------------------------------------
+
+
+#: What "turn enforcement on" means for one agent, in the order a person reads it:
+#: the workspace's baseline checks, this agent's own protections, and the blocked
+#: words and topics written for it. Each switches only if it is watching now.
+def _enforcement_packs(slug: str) -> list[tuple[str, str]]:
+    return [
+        ("baseline", "Baseline checks (prompt attacks, personal data, secrets, harmful content)"),
+        (f"agent.{slug}", "This agent's protections"),
+        ("custom", "Blocked words and topics"),
+    ]
+
+
+def _watching_packs(session: Session, slug: str) -> list[dict[str, Any]]:
+    from sqlalchemy import select
+
+    from agentfox.core.models import Policy
+    from agentfox.platform.policy import current_binding, load_version_document
+
+    out: list[dict[str, Any]] = []
+    for key, label in _enforcement_packs(slug):
+        policy = session.scalar(select(Policy).where(Policy.key == key))
+        if policy is None:
+            continue
+        binding, live = current_binding(session, policy.id)
+        if live is None or (binding is not None and binding.mode == "enforce"):
+            continue
+        doc = load_version_document(live)
+        out.append({"key": key, "label": label, "version": live, "doc": doc})
+    return out
+
+
+@router.post("/{slug}/enforcement/preview")
+def preview_enforcement(
+    slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """What turning enforcement on for this agent switches, and what it would stop.
+
+    Counts the agent's requests in the last 7 days that went through and would now
+    be stopped or held. Saves nothing.
+    """
+    get_agent_or_404(session, slug)
+    since = dt.datetime.now(dt.UTC) - dt.timedelta(days=7)
+    packs = []
+    stopped: set[str] = set()
+    for pack in _watching_packs(session, slug):
+        diff = simulate(session, pack["doc"], agent_slug=slug, since=since)
+        runs = {
+            r["trace_id"]
+            for r in diff.would_stop
+            if r["trace_id"] and r.get("own") in ("block", "escalate")
+        }
+        stopped |= runs
+        packs.append({"key": pack["key"], "label": pack["label"], "would_stop": len(runs)})
+    return {"agent": slug, "packs": packs, "would_stop": len(stopped)}
+
+
+@router.post("/{slug}/enforcement")
+def enforce_agent(
+    slug: str, session: Session = Depends(db), user: User = Depends(require("policy_production"))
+) -> dict[str, Any]:
+    """Switch everything that protects this agent from watching to enforcing.
+
+    Each pack is simulated first and the simulation recorded, the same gate a
+    single pack's promotion has, then promoted and audited.
+    """
+    from agentfox.platform.ledger import chain
+    from agentfox.platform.policy import record_simulation, set_mode
+
+    get_agent_or_404(session, slug)
+    actor = user.email or user.id
+    since = dt.datetime.now(dt.UTC) - dt.timedelta(days=7)
+    switched: list[dict[str, Any]] = []
+    for pack in _watching_packs(session, slug):
+        diff = simulate(session, pack["doc"], agent_slug=slug, since=since)
+        record_simulation(
+            session, pack["doc"], diff, run_by=actor, scope={"agent": slug, "since_days": 7}
+        )
+        set_mode(session, pack["key"], "enforce", version=pack["version"].version)
+        chain.append(
+            session,
+            "policy.mode_enforce",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="policy",
+            subject_id=pack["key"],
+            payload={"mode": "enforce", "version": pack["version"].version, "for_agent": slug},
+        )
+        switched.append({"key": pack["key"], "label": pack["label"]})
+    return {"agent": slug, "enforcing": switched}

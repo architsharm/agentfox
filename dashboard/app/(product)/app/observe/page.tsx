@@ -141,7 +141,8 @@ async function Overview({ f }: { f: Filters }) {
           />
         </Card>
         <Card title="By model">
-          <BarList rows={breakdownRows(byModel.rows, f, () => undefined)} empty="No model calls" />
+          {/* Checks of messages and tool calls have no model; only model calls belong here. */}
+          <BarList rows={breakdownRows((byModel.rows || []).filter((r: any) => r.key !== "(unknown)"), f, () => undefined)} empty="No model calls" />
         </Card>
       </Grid>
     </>

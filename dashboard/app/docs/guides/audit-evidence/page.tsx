@@ -566,11 +566,11 @@ For each row: does this control, as implemented, support the clause claimed? App
         for a user with the compliance role:
       </p>
       <Code>{`curl -s -X POST http://127.0.0.1:8080/api/legal-holds \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
   -H 'Content-Type: application/json' \\
   -d '{"scope":{"agents":["payments-ops"],"from":"2026-09-01"},"reason":"Preservation request, matter 2026-114"}'`}</Code>
       <Output>{`{"id":"hld_01m469qszk6fk4h23b","placed_at":"2026-10-05T15:08:26.483424+00:00"}`}</Output>
-      <Code>{`curl -s http://127.0.0.1:8080/api/retention -H "Authorization: Bearer $AGENTFOX_TOKEN" | python3 -m json.tool`}</Code>
+      <Code>{`curl -s http://127.0.0.1:8080/api/retention -H "Authorization: Bearer $AGENTFOX_API_TOKEN" | python3 -m json.tool`}</Code>
       <Output>{`{
     "policies": [
         {

@@ -249,12 +249,14 @@ def agentfox_input_guardrail(
     fox = _client(agent_slug, client)
     held = _HeldCalls()
 
-    def check(text: str) -> dict[str, Any]:
+    def check(text: str, session_id: str | None = None) -> dict[str, Any]:
         # A message held for a person and sent again after they approved it passes
         # once, the same way an approved tool call runs once.
         arguments = {"content": text}
         approval_id = held.approved(fox, "message:input", arguments)
         kwargs: dict[str, Any] = {"surface": "input"}
+        if session_id:
+            kwargs["session_id"] = session_id
         if approval_id:
             kwargs["approval_id"] = approval_id
         decision = fox.check(text, **kwargs)
@@ -266,7 +268,7 @@ def agentfox_input_guardrail(
         text = input_text(run_input)
         if not text:
             return agents.GuardrailFunctionOutput(output_info=None, tripwire_triggered=False)
-        decision = await _call(run_in_thread, check, text)
+        decision = await _call(run_in_thread, check, text, _session_of(fox, ctx))
         return agents.GuardrailFunctionOutput(
             output_info=_info(decision), tripwire_triggered=_stops(decision)
         )
@@ -304,6 +306,9 @@ def agentfox_output_guardrail(
         grounding = _run_results(ctx)
         if grounding:
             kwargs["context"] = grounding
+        session_id = _session_of(fox, ctx)
+        if session_id:
+            kwargs["session_id"] = session_id
         decision = await _call(run_in_thread, fox.check, output_text(output), **kwargs)
         return agents.GuardrailFunctionOutput(
             output_info=_info(decision), tripwire_triggered=_stops(decision)
@@ -418,7 +423,7 @@ def _authorise_held(
 _RUN_TOOLS: dict[int, dict[str, Any]] = {}
 
 
-def _run_for(ctx: Any) -> dict[str, Any] | None:
+def _run_for(ctx: Any, fox: Any = None) -> dict[str, Any] | None:
     import uuid
 
     usage = getattr(ctx, "usage", None)
@@ -428,8 +433,18 @@ def _run_for(ctx: Any) -> dict[str, Any] | None:
     if key not in _RUN_TOOLS:
         if len(_RUN_TOOLS) >= _MAX_RUNS:
             _RUN_TOOLS.pop(next(iter(_RUN_TOOLS)))
-        _RUN_TOOLS[key] = {"session_id": f"run_{uuid.uuid4().hex[:16]}", "tools": []}
+        # The app's own conversation id when it runs inside `with fox.session(...)`,
+        # so its checks, tool calls and model calls group as one conversation.
+        current = getattr(fox, "current_session", None)
+        active = current() if callable(current) else None
+        sid = getattr(active, "session_id", None) or f"run_{uuid.uuid4().hex[:16]}"
+        _RUN_TOOLS[key] = {"session_id": sid, "tools": []}
     return _RUN_TOOLS[key]
+
+
+def _session_of(fox: Any, ctx: Any) -> str | None:
+    run = _run_for(ctx, fox)
+    return run["session_id"] if run else None
 
 
 def _arguments(fn: Callable[..., Any], args: tuple, kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -573,7 +588,14 @@ def agentfox_tool_guardrail(
             arguments = {"_value": arguments}
         key = names.get(sdk_name, sdk_name)
         result = await _call(
-            run_in_thread, _authorise_held, client, held, key, arguments, provenance, _run_for(ctx)
+            run_in_thread,
+            _authorise_held,
+            client,
+            held,
+            key,
+            arguments,
+            provenance,
+            _run_for(ctx, client),
         )
         info = _info(result.to_json())
         if result.verdict not in STOPPING_VERDICTS:
@@ -641,6 +663,59 @@ def agentfox_tool_output_guardrail(
     return agents.tool_output_guardrail(guardrail)
 
 
+def govern(client: Any, *agents: Any, tool_prefix: str | None = None) -> None:
+    """Govern these agents, everything they hand off to, and all their function tools.
+
+    The one-call wiring: an input and output guardrail on each agent, and an input
+    and output guardrail on each function tool, so every message and every tool call
+    is checked. Tools are reported as ``<tool_prefix>.<name>`` when a prefix is given
+    (``airline.update_seat``), else by their own name. Safe to call twice: an agent
+    or tool already governed is left as it is.
+
+        fox = AgentFox("support-bot", base_url=GATEWAY)
+        govern(fox, triage_agent)
+    """
+    sdk = _agents()
+    function_tool_type = getattr(sdk, "FunctionTool", None)
+    seen: set[int] = set()
+    pending = list(agents)
+    while pending:
+        agent = pending.pop()
+        if id(agent) in seen:
+            continue
+        seen.add(id(agent))
+        if not getattr(agent, "_agentfox", False):
+            agent._agentfox = True
+            agent.input_guardrails = [
+                *(agent.input_guardrails or []),
+                agentfox_input_guardrail(client=client),
+            ]
+            agent.output_guardrails = [
+                *(agent.output_guardrails or []),
+                agentfox_output_guardrail(client=client),
+            ]
+        for tool in getattr(agent, "tools", None) or []:
+            if function_tool_type is not None and not isinstance(tool, function_tool_type):
+                continue
+            if getattr(tool, "_agentfox", False):
+                continue  # shared by several agents: governed once
+            tool._agentfox = True
+            names = {tool.name: f"{tool_prefix}.{tool.name}" if tool_prefix else tool.name}
+            tool.tool_input_guardrails = [
+                *(getattr(tool, "tool_input_guardrails", None) or []),
+                agentfox_tool_guardrail(client, tools=names),
+            ]
+            tool.tool_output_guardrails = [
+                *(getattr(tool, "tool_output_guardrails", None) or []),
+                agentfox_tool_output_guardrail(client, tools=names),
+            ]
+        for handoff in getattr(agent, "handoffs", None) or []:
+            # A handoff is the agent itself, or a Handoff wrapping one.
+            target = getattr(handoff, "agent", None) or handoff
+            if hasattr(target, "input_guardrails"):
+                pending.append(target)
+
+
 __all__ = [
     "AgentFoxError",
     "ApprovalRequired",
@@ -649,6 +724,7 @@ __all__ = [
     "agentfox_output_guardrail",
     "agentfox_tool_guardrail",
     "agentfox_tool_output_guardrail",
+    "govern",
     "guard_tool",
     "guarded_function_tool",
     "input_text",

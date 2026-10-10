@@ -154,7 +154,7 @@ def revoke_credential(session: Session, credential_id: str) -> bool:
 #: Constraint keys that configure the grant rather than naming an argument path.
 #: Why a call is held when the grant itself asks for a person on every call. A taint
 #: ceiling holds a call for a different reason and says so (`taint_violation`).
-APPROVAL_REQUIRED_REASON = "The granting capability requires human approval for this action."
+APPROVAL_REQUIRED_REASON = "This tool is allowed only with a person's approval."
 
 RESERVED_CONSTRAINTS = frozenset({"requires_verified_state", "dry_run_only"})
 
@@ -300,13 +300,9 @@ def default_deny_hint(principal: str | None, tool_key: str) -> str:
     learns from.
     """
     slug = principal.split(":", 1)[1] if principal and principal.startswith("agent:") else None
-    agent = slug or "<agent>"
-    scoped = f" --agent {slug}" if slug else ""
-    return (
-        f"To have grants proposed from the calls this agent has made, run "
-        f"`agentfox policy proposals from-traffic{scoped}` and approve them; to grant this one "
-        f"directly, `agentfox permit grant {agent} {tool_key}`."
-    )
+    where = f"Agents → {slug} → Access" if slug else "the agent's Access tab"
+    command = f"agentfox permit grant {slug or '<agent>'} {tool_key}"
+    return f"Allow it in the dashboard ({where}), or run `{command}`."
 
 
 def check_capability(
@@ -329,7 +325,7 @@ def check_capability(
 
     if identity is None:
         decision.reasons.append(
-            "no resolved identity for the caller, so it holds no grants (default deny). "
+            f"'{tool_key}' has not been granted to this agent yet (default deny). "
             + default_deny_hint(None, tool_key)
         )
         return decision
@@ -349,7 +345,7 @@ def check_capability(
     ]
     if not matches:
         decision.reasons.append(
-            f"no capability grants '{tool_key}' (action '{action}') to {identity.principal} "
+            f"'{tool_key}' has not been granted to {identity.principal.split(':', 1)[-1]} "
             f"(default deny). {default_deny_hint(identity.principal, tool_key)}"
         )
         return decision
