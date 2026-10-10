@@ -85,6 +85,12 @@ _SANDBOX_ID = re.compile(r"^pg_[0-9a-f]{32}$")
 _ID_RANDOM_BITS = 128
 
 
+#: Sandboxes built ahead of time, ready for the next visitors.
+SPARES = 2
+#: How long an unclaimed spare is kept before the sweep removes it.
+SPARE_TTL_SECONDS = 24 * 3600
+
+
 def new_sandbox_id() -> str:
     """A sandbox id: 128 bits from :mod:`secrets`, and the sandbox's tenant key."""
     return f"pg_{secrets.token_hex(_ID_RANDOM_BITS // 8)}"
@@ -238,9 +244,18 @@ class PlaygroundStore:
     # -- creation ---------------------------------------------------------
 
     def create(self) -> PlaygroundSession:
-        self.sweep()
+        """A sandbox for a visitor: a spare built ahead of time when one is ready
+        (one UPDATE), otherwise built now. Housekeeping is not done here; see
+        :meth:`refill`, which the route runs after the response; the cap is kept here
+        because it bounds the deployment, and it is one query unless it is exceeded."""
         self._enforce_cap()
+        claimed = self._claim_spare()
+        if claimed is not None:
+            return claimed
+        session_id, now = self._build(spare=False)
+        return PlaygroundSession(id=session_id, expires_at=_ttl_from(now), created_at=now)
 
+    def _build(self, *, spare: bool) -> tuple[str, dt.datetime]:
         session_id = new_sandbox_id()
         now = utcnow()
         try:
@@ -248,9 +263,12 @@ class PlaygroundStore:
                 session.add(
                     PlaygroundSandbox(
                         id=session_id,
-                        expires_at=_ttl_from(now),
+                        expires_at=now + dt.timedelta(seconds=SPARE_TTL_SECONDS)
+                        if spare
+                        else _ttl_from(now),
                         last_used_at=now,
                         trace_ids=[],
+                        spare=spare,
                     )
                 )
                 # Seeded inside the same transaction and the same tenant binding, so a
@@ -269,7 +287,64 @@ class PlaygroundStore:
         except SQLAlchemyError as exc:  # pragma: no cover - unexpected driver failure
             log.error("playground: could not create a sandbox", exc_info=True)
             raise PlaygroundUnavailable("The playground could not create a sandbox.") from exc
-        return PlaygroundSession(id=session_id, expires_at=_ttl_from(now), created_at=now)
+        return session_id, now
+
+    def _claim_spare(self) -> PlaygroundSession | None:
+        """Hand over a ready spare, or None. Two visitors racing for one spare: the
+        conditional UPDATE lets exactly one of them have it."""
+        from sqlalchemy import update
+
+        now = utcnow()
+        session = get_sessionmaker()()
+        try:
+            with system_scope("playground spare claim", routine=True):
+                candidates = list(
+                    session.scalars(
+                        select(PlaygroundSandbox.id)
+                        .where(PlaygroundSandbox.spare.is_(True))
+                        .where(PlaygroundSandbox.expires_at > now)
+                        .order_by(PlaygroundSandbox.last_used_at)
+                        .limit(3)
+                    )
+                )
+                for candidate in candidates:
+                    taken = session.execute(
+                        update(PlaygroundSandbox)
+                        .where(
+                            PlaygroundSandbox.id == candidate,
+                            PlaygroundSandbox.spare.is_(True),
+                        )
+                        .values(spare=False, last_used_at=now, expires_at=_ttl_from(now))
+                    )
+                    if taken.rowcount == 1:
+                        session.commit()
+                        return PlaygroundSession(
+                            id=candidate, expires_at=_ttl_from(now), created_at=now
+                        )
+                session.rollback()
+        except SQLAlchemyError:
+            # No spare is not an error; neither is a registry that could not be read.
+            session.rollback()
+            log.warning("playground: could not claim a spare sandbox", exc_info=True)
+        finally:
+            session.close()
+        return None
+
+    def refill(self) -> int:
+        """Housekeeping and a spare for the next visitor: sweep what has expired, keep
+        the deployment-wide cap, and build spares up to :data:`SPARES`. Run after a
+        response, never in the path of one. Returns how many spares were built."""
+        built = 0
+        try:
+            self.sweep_if_due()
+            self._enforce_cap()
+            missing = SPARES - len(self._ids_where(spare=True))
+            for _ in range(max(0, missing)):
+                self._build(spare=True)
+                built += 1
+        except Exception:  # pragma: no cover - housekeeping must never surface
+            log.warning("playground: refill failed", exc_info=True)
+        return built
 
     # -- resolution -------------------------------------------------------
 
@@ -331,12 +406,14 @@ class PlaygroundStore:
 
     def _enforce_cap(self) -> None:
         """Keep the live sandbox count under :data:`MAX_SESSIONS`, deployment-wide."""
-        live = self._ids_where()
+        live = self._ids_where(spare=False)  # spares are kept, and few
         surplus = len(live) - MAX_SESSIONS + 1
         for session_id in live[:surplus] if surplus > 0 else []:
             self._drop(session_id)
 
-    def _ids_where(self, *, expired_before: dt.datetime | None = None) -> list[str]:
+    def _ids_where(
+        self, *, expired_before: dt.datetime | None = None, spare: bool | None = None
+    ) -> list[str]:
         """Sandbox ids, least recently used first.
 
         Cross-tenant on purpose and only here: the cap and the sweep are properties of
@@ -347,6 +424,8 @@ class PlaygroundStore:
         statement = select(PlaygroundSandbox.id).order_by(PlaygroundSandbox.last_used_at)
         if expired_before is not None:
             statement = statement.where(PlaygroundSandbox.expires_at <= expired_before)
+        if spare is not None:
+            statement = statement.where(PlaygroundSandbox.spare.is_(spare))
         session = get_sessionmaker()()
         try:
             with system_scope("playground sandbox registry sweep", routine=True):

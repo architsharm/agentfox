@@ -391,6 +391,9 @@ class Settings(BaseSettings):
     canary_max_block_rate_drop: float = 0.15
     #: Recurring work. The cron drains the queue; schedules fill it.
     scheduler_enabled: bool = True
+    #: Also run due jobs off ordinary traffic (at most every 10 minutes per instance),
+    #: for hosts whose cron runs once a day.
+    jobs_on_traffic: bool = True
     #: A job `running` for longer than this is treated as crashed and recovered.
     job_stuck_after_seconds: int = 900
     #: Base for exponential backoff between attempts.
