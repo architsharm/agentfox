@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import JSON, DateTime, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from agentfox.core import ids
@@ -47,6 +47,10 @@ class PlaygroundSandbox(Base, TimestampMixin):
     #: recomputed so the live sidebar shows the visitor's own actions in the order they
     #: happened and not the seeded fixtures' traces.
     trace_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    #: Built ahead of time and not yet handed to a visitor. Seeding a sandbox is a few
+    #: hundred statements, seconds on a remote database; a spare makes the visitor's
+    #: wait one UPDATE.
+    spare: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
 
 class WaitlistSignup(Base, TenantExempt):

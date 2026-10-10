@@ -144,11 +144,21 @@ def _fail_attempt(session: Session, job: Job, error: str, *, now: dt.datetime) -
 
 def _run_one(session: Session, job: Job, *, now: dt.datetime) -> None:
     # Caller has already bound the session to job.org_id.
-    job.status = RUNNING
-    job.attempts += 1
-    job.started_at = now
-    job.available_at = None
-    session.flush()
+    # Claimed with one conditional UPDATE, so two runners that both listed this job
+    # (the daily cron and a traffic-triggered pass on another instance) cannot both
+    # run it: on Postgres the second waits on the row and then matches nothing.
+    from sqlalchemy import update
+
+    claimed = session.execute(
+        update(Job)
+        .where(Job.id == job.id, Job.status == PENDING)
+        .values(status=RUNNING, attempts=Job.attempts + 1, started_at=now, available_at=None)
+        .execution_options(synchronize_session=False)
+    )
+    if claimed.rowcount != 1:
+        session.refresh(job)
+        return
+    session.refresh(job)
     try:
         result = _HANDLERS[job.kind](session, job.payload_json or {})
     except Exception as exc:  # noqa: BLE001 - a job's own failure must not propagate raw

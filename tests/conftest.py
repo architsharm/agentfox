@@ -35,6 +35,9 @@ os.environ["TERM"] = "dumb"
 # (`platform/ledger/finding_types.py`). Production only warns; here it is an error, so
 # a new finding type without a registry entry fails the test that raises it.
 os.environ["AGENTFOX_STRICT_FINDING_TYPES"] = "1"
+# No background job passes after test requests; tests that exercise the traffic
+# trigger turn it on themselves.
+os.environ["AGENTFOX_JOBS_ON_TRAFFIC"] = "0"
 
 from collections.abc import Iterator
 

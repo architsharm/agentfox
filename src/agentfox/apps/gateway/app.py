@@ -179,6 +179,46 @@ def _key_rotation_status() -> dict[str, str]:
 MODEL_ROUTES = ("/v1/chat/completions", "/v1/messages")
 
 
+#: Least gap between traffic-triggered job passes, per instance.
+JOBS_KICK_INTERVAL_SECONDS = 600
+_last_jobs_kick = 0.0
+
+
+def _jobs_kick_due(request: Request) -> bool:
+    global _last_jobs_kick
+    import time
+
+    settings = get_settings()
+    if not (settings.scheduler_enabled and settings.jobs_on_traffic):
+        return False
+    if request.url.path.startswith("/api/internal/jobs"):
+        return False
+    now = time.monotonic()
+    if now - _last_jobs_kick < JOBS_KICK_INTERVAL_SECONDS:
+        return False
+    _last_jobs_kick = now
+    return True
+
+
+def _run_due_jobs(then: Any = None) -> None:
+    """One scheduling and job pass, quietly; then whatever background the response
+    already carried."""
+    try:
+        from agentfox.core.db import session_scope
+        from agentfox.platform.jobs import scheduler
+
+        with session_scope() as session:
+            scheduler.run_due(session, limit=10)
+    except Exception:  # noqa: BLE001 - housekeeping must never surface to a caller
+        logging.getLogger(__name__).warning("traffic-triggered job pass failed", exc_info=True)
+    if then is not None:
+        import asyncio
+
+        result = then()
+        if asyncio.iscoroutine(result):
+            asyncio.run(result)
+
+
 def create_app() -> FastAPI:
     # Before anything else, and here rather than in `lifespan`: a serverless host may
     # never run the lifespan, and a process that is going to refuse should refuse
@@ -224,6 +264,24 @@ def create_app() -> FastAPI:
             "X-AgentFox-Latency-Ms",
         ],
     )
+
+    @app.middleware("http")
+    async def run_due_jobs_on_traffic(request: Request, call_next):
+        """Run due background jobs off ordinary traffic, after the response.
+
+        Scheduled jobs are driven by the cron route, and the hosted gateway's plan
+        allows one cron a day: every job meant to run hourly (escalation scan, repo
+        monitors, probes) ran daily. While the gateway serves traffic, an instance
+        now also runs whatever is due at most every few minutes. Jobs are claimed
+        atomically (jobs.store._run_one), so this and the cron never run one twice.
+        """
+        response = await call_next(request)
+        if _jobs_kick_due(request):
+            from starlette.background import BackgroundTask
+
+            existing = response.background
+            response.background = BackgroundTask(_run_due_jobs, existing)
+        return response
 
     @app.middleware("http")
     async def degradation_gate(request: Request, call_next):
