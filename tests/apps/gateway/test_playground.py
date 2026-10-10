@@ -707,9 +707,23 @@ def test_traffic_runs_due_jobs_at_most_every_few_minutes(client, monkeypatch):
     from agentfox.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "jobs_on_traffic", True)
-    monkeypatch.setattr(app_mod, "_last_jobs_kick", 0.0)
+    monkeypatch.setattr(app_mod, "_last_jobs_kick", None)
     passes = []
     monkeypatch.setattr(app_mod, "_run_due_jobs", lambda then=None: passes.append(1))
     client.get("/health")
     client.get("/health")
     assert passes == [1], "one pass per interval, after the response"
+
+
+def test_a_freshly_booted_instance_runs_its_first_job_pass(client, monkeypatch):
+    """Monotonic time counts from boot: a new container must not wait its first interval."""
+    import agentfox.apps.gateway.app as app_mod
+    from agentfox.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "jobs_on_traffic", True)
+    monkeypatch.setattr(app_mod, "_last_jobs_kick", None)
+    monkeypatch.setattr("time.monotonic", lambda: 5.0)  # booted five seconds ago
+    passes = []
+    monkeypatch.setattr(app_mod, "_run_due_jobs", lambda then=None: passes.append(1))
+    client.get("/health")
+    assert passes == [1]
