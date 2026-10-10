@@ -170,6 +170,7 @@ class AgentSession:
             tracker=self.tracker,
             prior_tools=list(self.prior_tools),
             approval_id=approval_id,
+            session_id=self.session_id,
         )
         self.prior_tools.append(tool)
         if raise_on_block:
@@ -596,6 +597,9 @@ class AgentFox:
                     "provenance": kwargs.get("provenance") or {},
                     "intent": kwargs.get("intent"),
                     "prior_tools": kwargs.get("prior_tools") or [],
+                    # Ties a run's tool calls together on the gateway: its tool paths,
+                    # loop detection across calls, one conversation in the trace view.
+                    **({"session_id": kwargs["session_id"]} if kwargs.get("session_id") else {}),
                     **({"approval_id": kwargs["approval_id"]} if kwargs.get("approval_id") else {}),
                 },
             )
@@ -624,6 +628,7 @@ class AgentFox:
                 agent_id=agent.id if agent else None,
                 agent_slug=slugify(kwargs["agent"]),
                 intent=kwargs.get("intent"),
+                session_id=kwargs.get("session_id"),
             )
             return enforcer.guard_tool_call(
                 agent_slug=kwargs["agent"],

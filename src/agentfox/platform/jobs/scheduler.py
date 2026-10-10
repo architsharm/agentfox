@@ -32,6 +32,9 @@ kind                    interval   enabled   why
 ``drift.check``         1 day      yes       Persists drift windows and drift findings
                                              (groundedness), so `GET /api/eval/drift` stays
                                              read-only.
+``paths.scan``          1 day      yes       New tool-call paths (last day, against a 30-day
+                                             baseline) that no test expects, as findings with
+                                             an "Add to tests" fix; covered ones close.
 ``grants.propose``      1 day      yes       Learned permissions: files ``tool.declare`` and
                                              ``capability.grant`` proposals from observed
                                              tool calls. Files only; a person approves.
@@ -120,6 +123,13 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         True,
         {"scorer": "groundedness"},
         "persist drift windows and findings",
+    ),
+    DefaultSchedule(
+        "paths.scan",
+        DAY,
+        True,
+        {"days": 1, "baseline_days": 30},
+        "new tool-call paths no test expects; covered ones close",
     ),
     DefaultSchedule(
         "tuning.propose",

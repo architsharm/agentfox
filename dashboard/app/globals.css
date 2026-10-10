@@ -3365,6 +3365,7 @@ ol.gs-steps li.done .gs-title { color: var(--muted); }
 .adv-key { font-size: var(--t-micro); }
 .adv-actions { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
 .adv-actions form { margin: 0; }
+.adv-actions > a { white-space: nowrap; }
 .adv-clamp { max-width: 320px; }
 .adv-bad { color: var(--bad); }
 .adv-more { margin-top: 14px; border: 1px solid var(--border); border-radius: var(--r-2); background: var(--panel); }
@@ -3390,3 +3391,8 @@ ol.gs-steps li.done .gs-title { color: var(--muted); }
 .adv-stack .adv-fieldset > * { margin: 0; }
 .gm-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
 .gm-loading-bar { width: min(420px, 70%); height: 140px; }
+/* Test → Tool paths */
+.tp-path { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.tp-step { display: inline-flex; align-items: center; gap: 4px; }
+.tp-arrow { color: var(--muted); }
+.tp-arrow.tp-new { color: var(--warn); font-weight: 700; }

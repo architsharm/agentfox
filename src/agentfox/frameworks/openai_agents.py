@@ -387,12 +387,49 @@ def _authorise_held(
     tool: str,
     arguments: dict[str, Any],
     provenance: dict[str, str] | None,
+    run: dict[str, Any] | None = None,
 ) -> EnforcementResult:
-    """`_authorise`, redeeming an approval a person granted for this exact call."""
+    """`_authorise`, redeeming an approval a person granted for this exact call.
+
+    ``run`` is this agent run's session id and the tools it already called, so the
+    gateway sees one run's calls as one path rather than unrelated single calls."""
     approval_id = held.approved(fox, tool, arguments)
-    result = _authorise(fox, tool, arguments, provenance, approval_id)
+    current = getattr(fox, "current_session", None)
+    if run is not None and not (callable(current) and current() is not None):
+        with fox.session(session_id=run["session_id"]) as active:
+            active.prior_tools.extend(run["tools"])
+            result = active.guard_tool(
+                tool,
+                arguments,
+                provenance=provenance,
+                raise_on_block=False,
+                approval_id=approval_id,
+            )
+    else:
+        result = _authorise(fox, tool, arguments, provenance, approval_id)
+    if run is not None:
+        run["tools"].append(tool)
     held.remember(tool, arguments, result)
     return result
+
+
+#: Each agent run's session id and tools called so far, keyed like `_RUN_RESULTS` by
+#: the run's usage object (shared by every tool call of one run); bounded.
+_RUN_TOOLS: dict[int, dict[str, Any]] = {}
+
+
+def _run_for(ctx: Any) -> dict[str, Any] | None:
+    import uuid
+
+    usage = getattr(ctx, "usage", None)
+    if usage is None:
+        return None
+    key = id(usage)
+    if key not in _RUN_TOOLS:
+        if len(_RUN_TOOLS) >= _MAX_RUNS:
+            _RUN_TOOLS.pop(next(iter(_RUN_TOOLS)))
+        _RUN_TOOLS[key] = {"session_id": f"run_{uuid.uuid4().hex[:16]}", "tools": []}
+    return _RUN_TOOLS[key]
 
 
 def _arguments(fn: Callable[..., Any], args: tuple, kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -536,7 +573,7 @@ def agentfox_tool_guardrail(
             arguments = {"_value": arguments}
         key = names.get(sdk_name, sdk_name)
         result = await _call(
-            run_in_thread, _authorise_held, client, held, key, arguments, provenance
+            run_in_thread, _authorise_held, client, held, key, arguments, provenance, _run_for(ctx)
         )
         info = _info(result.to_json())
         if result.verdict not in STOPPING_VERDICTS:

@@ -37,6 +37,7 @@ budget_breach              open checks (closes itself on recovery)
 grounding and quality      view run · add to tests · not a problem
 hand-off types             open the conversation
 red-team types             run attack test
+new_tool_path              add this path to tests · open tool paths · view run
 drift / over-refusal /
 boundary breach            quality tab / what it may answer
 monitor / skill / MCP      open sources
@@ -314,6 +315,30 @@ def _test_and_feedback(session: Session, ctx: _Ctx, *, primary_test: bool = Fals
             )
         )
     return out
+
+
+def _new_path(ctx: _Ctx) -> list[Remedy]:
+    out: list[Remedy] = []
+    if ctx.evidence.get("path"):
+        out.append(
+            Remedy(
+                "add_path_to_tests",
+                "Add path to tests",
+                family="eval",
+                primary=True,
+                hint="Adds a Regressions case that expects this sequence of tool calls.",
+            )
+        )
+    if ctx.slug:
+        out.append(
+            Remedy(
+                "open_tool_paths",
+                "Open tool paths",
+                kind="link",
+                href=f"/app/test?{urlencode({'tab': 'paths', 'agent': ctx.slug})}",
+            )
+        )
+    return out + _links(ctx)
 
 
 def _over_privileged(session: Session, ctx: _Ctx) -> list[Remedy]:
@@ -631,6 +656,8 @@ def remedies_for(session: Session, finding: Finding) -> list[Remedy]:
             ),
             Remedy("run_attack_test", "Run attack test", kind="link", href="/app/test?tab=attacks"),
         ]
+    elif t == "new_tool_path":
+        out = _new_path(ctx)
     elif t == "drift" and ctx.slug:
         out = [Remedy("open_quality", "Open quality", kind="link", href=_agent_tab(ctx, "quality"))]
     elif t == "over_refusal" and ctx.slug:
@@ -956,6 +983,30 @@ def _do_add_to_tests(session: Session, ctx: _Ctx, actor: str, inputs: dict[str, 
     return "Added to the Regressions suite."
 
 
+def _do_add_path(session: Session, ctx: _Ctx, actor: str, inputs: dict[str, Any]) -> str:
+    from agentfox.capabilities.evaluation.cases import REGRESSIONS_SUITE, ensure_suite
+    from agentfox.capabilities.evaluation.paths import promote_path
+
+    suite = ensure_suite(
+        session,
+        REGRESSIONS_SUITE,
+        name="Regressions",
+        description="Runs added from issues, checked before release.",
+    )
+    trace_id = ctx.evidence.get("trace_id")
+    try:
+        promote_path(
+            session,
+            suite,
+            trace_id=trace_id if trace_id and session.get(Trace, trace_id) else None,
+            path=[str(t) for t in ctx.evidence.get("path") or []],
+            actor=actor,
+        )
+    except ValueError as exc:
+        raise RemedyError(str(exc)) from exc
+    return "Added to the Regressions suite: the tests now expect this path."
+
+
 _HANDLERS: dict[str, Callable[[Session, _Ctx, str, dict[str, Any]], str]] = {
     "narrow_wildcard": _do_narrow,
     "revoke_wildcard": _do_revoke_wildcard,
@@ -972,6 +1023,7 @@ _HANDLERS: dict[str, Callable[[Session, _Ctx, str, dict[str, Any]], str]] = {
     "false_positive": _do_false_positive,
     "suppress_for_agent": _do_suppress,
     "add_to_tests": _do_add_to_tests,
+    "add_path_to_tests": _do_add_path,
 }
 
 
@@ -1057,6 +1109,11 @@ def _holds(session: Session, ctx: _Ctx) -> bool | None:
             return None
         found = assess_identity(session, ctx.identity)
         return found is not None and found.type == t
+    if t == "new_tool_path":
+        from agentfox.capabilities.evaluation.paths import covered_paths
+
+        path = tuple(str(x) for x in ctx.evidence.get("path") or [])
+        return (path not in covered_paths(session)) if path else None
     if ctx.agent is None:
         return None
     if t == "shadow_agent":

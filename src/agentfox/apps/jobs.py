@@ -225,6 +225,23 @@ def check_drift(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# paths.scan
+# ---------------------------------------------------------------------------
+
+
+def scan_tool_paths(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """New tool-call paths no test expects, as findings; covered ones close."""
+    from agentfox.capabilities.evaluation.paths import scan_new_paths
+
+    return scan_new_paths(
+        session,
+        window_days=int(payload.get("days", 1)),
+        baseline_days=int(payload.get("baseline_days", 30)),
+        agents=payload.get("agents") or None,
+    )
+
+
+# ---------------------------------------------------------------------------
 # redteam.posture
 # ---------------------------------------------------------------------------
 
@@ -397,6 +414,7 @@ HANDLERS = {
     "compliance.recompute": recompute_compliance,
     "canary.advance": advance_canaries,
     "drift.check": check_drift,
+    "paths.scan": scan_tool_paths,
     "redteam.posture": redteam_posture,
     "monitors.run": run_monitors,
     "probes.run": run_live_probes,

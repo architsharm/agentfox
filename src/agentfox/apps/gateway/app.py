@@ -181,7 +181,10 @@ MODEL_ROUTES = ("/v1/chat/completions", "/v1/messages")
 
 #: Least gap between traffic-triggered job passes, per instance.
 JOBS_KICK_INTERVAL_SECONDS = 600
-_last_jobs_kick = 0.0
+#: Monotonic time of the last pass; None until this instance has run one. Not 0.0:
+#: monotonic time counts from boot, so a fresh instance (a new serverless container, a
+#: CI runner) would read "ran one moments ago" and wait out its first ten minutes.
+_last_jobs_kick: float | None = None
 
 
 def _jobs_kick_due(request: Request) -> bool:
@@ -194,7 +197,7 @@ def _jobs_kick_due(request: Request) -> bool:
     if request.url.path.startswith("/api/internal/jobs"):
         return False
     now = time.monotonic()
-    if now - _last_jobs_kick < JOBS_KICK_INTERVAL_SECONDS:
+    if _last_jobs_kick is not None and now - _last_jobs_kick < JOBS_KICK_INTERVAL_SECONDS:
         return False
     _last_jobs_kick = now
     return True

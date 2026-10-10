@@ -5,6 +5,7 @@ import { safeApi } from "@/lib/product/api";
 import { Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num } from "@/components/kit";
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { TryIt } from "@/components/product/test/TryIt";
+import { AddPathToTests } from "@/components/product/test/AddPathToTests";
 import { publicApiBase } from "@/lib/env";
 
 export const metadata: Metadata = appPageMetadata("Test", "Check rules and agents before they meet real traffic.");
@@ -15,6 +16,7 @@ type SP = Record<string, string | undefined>;
 const TABS = [
   { key: "try", label: "Try it" },
   { key: "attacks", label: "Attack tests" },
+  { key: "paths", label: "Tool paths" },
   { key: "suites", label: "Test suites" },
   { key: "reliability", label: "Reliability" },
   { key: "ci", label: "CI" },
@@ -34,6 +36,7 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
       {sp.review_notice && <div className="note-panel">{sp.review_notice}</div>}
       {tab === "try" && <Try agents={live} />}
       {tab === "attacks" && <Attacks agents={live} />}
+      {tab === "paths" && <Paths agents={live} agent={sp.agent} days={sp.days} />}
       {tab === "suites" && <Suites />}
       {tab === "reliability" && <Reliability agents={live} />}
       {tab === "ci" && <Ci />}
@@ -52,6 +55,116 @@ async function Try({ agents }: { agents: any[] }) {
         <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No agents yet.</Empty>
       )}
     </Card>
+  );
+}
+
+/**
+ * The tool-call paths each agent took in production. A path first seen this window
+ * and expected by no test is a case the suites do not cover; one click adds it.
+ */
+async function Paths({ agents, agent, days }: { agents: any[]; agent?: string; days?: string }) {
+  if (!agents.length) {
+    return (
+      <Card>
+        <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No agents yet.</Empty>
+      </Card>
+    );
+  }
+  const slug = agents.some((a) => a.slug === agent) ? agent! : agents[0].slug;
+  const window = days === "30" ? 30 : days === "1" ? 1 : 7;
+  const data = await safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/tool-paths?days=${window}`, null);
+  const paths: any[] = data?.paths || [];
+  return (
+    <>
+      <div className="adv-row">
+        <form action="/app/test" className="adv-filter">
+          <input type="hidden" name="tab" value="paths" />
+          <input type="hidden" name="days" value={String(window)} />
+          <select name="agent" defaultValue={slug} className="k-select" aria-label="Agent">
+            {agents.map((a) => (
+              <option key={a.slug} value={a.slug}>
+                {a.name || a.slug}
+              </option>
+            ))}
+          </select>
+          <button className="k-btn" type="submit">Show</button>
+        </form>
+        <div className="k-seg adv-push">
+          {[1, 7, 30].map((d) => (
+            <Link key={d} href={href("/app/test", { tab: "paths", agent: slug, days: String(d) })} className={window === d ? "active" : ""}>
+              {d === 1 ? "24h" : `${d}d`}
+            </Link>
+          ))}
+        </div>
+      </div>
+      <Grid cols={3}>
+        <Kpi label="Runs with tool calls" value={num(data?.runs || 0)} />
+        <Kpi label="New paths" value={num(data?.new_paths || 0)} tone={data?.new_paths ? "warn" : undefined} hint={`First seen in the last ${window === 1 ? "24 hours" : `${window} days`}, never in the ${data?.baseline_days || 30} days before.`} />
+        <Kpi label="New, not in any test" value={num(data?.uncovered_new || 0)} tone={data?.uncovered_new ? "bad" : undefined} />
+      </Grid>
+      <Card title="Paths" flush>
+        {paths.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>Tools, in order</th>
+                <th className="num">Runs</th>
+                <th>First seen</th>
+                <th></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {paths.map((p) => {
+                const fresh = new Set((p.new_steps || []).map((s: string[]) => s.join(">")));
+                return (
+                  <tr key={p.path.join(">")}>
+                    <td>
+                      <span className="tp-path">
+                        {p.path.map((t: string, i: number) => (
+                          <span key={`${t}-${i}`} className="tp-step">
+                            {i > 0 && <span className={fresh.has(`${p.path[i - 1]}>${t}`) ? "tp-arrow tp-new" : "tp-arrow"}>→</span>}
+                            <code className="k-mono">{t}</code>
+                          </span>
+                        ))}
+                      </span>
+                      {p.stopped ? <span className="sub">{num(p.stopped)} stopped by a rule</span> : null}
+                    </td>
+                    <td className="num">{num(p.runs)}</td>
+                    <td className="muted">{ago(p.first_seen)}</td>
+                    <td>
+                      {p.new && <Pill tone="held">New</Pill>} {p.covered ? <Pill tone="ok">In tests</Pill> : null}
+                    </td>
+                    <td className="adv-actions">
+                      {p.sample_trace_id && <Link href={`/app/traces/${p.sample_trace_id}`}>View run</Link>}
+                      {!p.covered && <AddPathToTests slug={slug} path={p.path} traceId={p.sample_trace_id} />}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <Empty>No tool calls from this agent in this period.</Empty>
+        )}
+      </Card>
+      {data?.new_steps?.length ? (
+        <Card title="New steps" hint="Two tools called one after the other for the first time, even inside a familiar path." flush>
+          <ul className="k-list">
+            {data.new_steps.map((s: any) => (
+              <li key={`${s.from}>${s.to}`}>
+                <div className="k-list-main">
+                  <span className="k-mono">
+                    {s.from} → {s.to}
+                  </span>
+                </div>
+                <span className="muted">{num(s.runs)} runs</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+    </>
   );
 }
 

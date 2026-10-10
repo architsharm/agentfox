@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 261,
+ "count": 263,
  "routes": [
   {
    "method": "GET",
@@ -1546,6 +1546,98 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/tool-paths",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "The tool-call paths an agent took, which are new, and which no test expects.",
+   "description": "The tool-call paths an agent took, which are new, and which no test expects.\n\nA path no test expects is a case the suite does not cover; one first seen this\nwindow is one nobody has looked at yet.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "baseline_days",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/tool-paths/tests",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "A regression case expecting this path, so the suite checks the agent keeps it.",
+   "description": "A regression case expecting this path, so the suite checks the agent keeps it.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "PathToTestIn",
+    "fields": [
+     {
+      "name": "path",
+      "type": "array",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "trace_id",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "suite",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "GET",
