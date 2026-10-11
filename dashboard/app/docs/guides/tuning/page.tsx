@@ -120,9 +120,9 @@ safety.granite      enabled=False available=False  Wrapped IBM Granite Guardian,
       <h3>How much the detectors catch</h3>
       <p>
         On the held-out split of <code>deepset/prompt-injections</code> (116 examples), the
-        default heuristic detector catches <strong>26.7%</strong> of injections at 100%
+        default heuristic detector catches <strong>16.7%</strong> of injections at 100%
         precision. Adding the opt-in classifier ensemble raises that to{" "}
-        <strong>66.7%</strong> at the same precision, but on NotInject, a set of benign
+        <strong>68.3%</strong> at the same precision, but on NotInject, a set of benign
         prompts written to look like injections, the ensemble flags 140 of 339 (41.3%).
         Containment does not depend on these numbers: grants and provenance stop a tool call
         whether or not a detector fires. Details and every dataset are on{" "}

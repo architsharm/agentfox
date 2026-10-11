@@ -507,12 +507,11 @@ agentfox findings --json --limit 1`}</Code>
       </p>
       <ul>
         <li>
-          An adaptive attacker that reads the verdict and retries gets 71% of the
-          readable indirect attacks the default stack catches through within 50
+          An adaptive attacker that reads the verdict and retries gets 74% of the readable indirect attacks the default stack catches through within 50
           attempts.
         </li>
         <li>
-          The opt-in classifier ensemble reaches 85.6% recall on the SPML dataset. It is
+          The opt-in classifier ensemble reaches 86.4% recall on the SPML dataset. It is
           not the shipped default, and the default stack scores far lower there.
         </li>
         <li>

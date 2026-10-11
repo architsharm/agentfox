@@ -104,8 +104,9 @@ _OPINION_MARKERS = [
     # pineapple belong on pizza") carry no syntactic marker at all — that gap
     # needs semantic understanding, not more patterns, and is left open.
     r"\b(?:is|are|was|were)\s+(?:\w+\s+){0,4}(?:better|worse|superior|inferior)\s+than\b",
-    r"\bdeserves?\s+(?:to|the)\b",
-    r"\bbelongs?\s+on\b",
+    # `deserves (to|the)` and `belongs on` were removed in October 2026: each matched
+    # exactly one KUQ row, the set this is scored on, so they fitted the benchmark
+    # rather than describing debatable questions in general.
     r"\bis\s+it\s+(?:ok(?:ay)?|right|wrong|fair|moral|ethical|acceptable)\s+(?:to|for|that)\b",
     r"\bshould\s+(?:\w+\s+){0,3}(?:be allowed|have|get|receive|deserve|be able)\b",
 ]

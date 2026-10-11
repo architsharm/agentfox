@@ -117,22 +117,53 @@ _ZERO_WIDTH = ("​", "‌", "‍", "﻿")
 #: class.
 _HOMOGLYPH_MAPPED = {"a": "а", "e": "е", "o": "о", "p": "р", "c": "с", "y": "у", "x": "х"}
 
-#: Lookalikes that are **not** in that table, and which NFKC does not fold either.
-_HOMOGLYPH_UNMAPPED = {
-    "s": "ѕ",  # U+0455 Cyrillic dze
-    "d": "ԁ",  # U+0501 Cyrillic komi de
-    "g": "ɡ",  # U+0261 Latin script g
-    "n": "ո",  # U+0578 Armenian vo
-    "j": "ј",  # U+0458 Cyrillic je
-    "w": "ԝ",  # U+051D Cyrillic we
-    "v": "ѵ",  # U+0475 Cyrillic izhitsa
-    "q": "ԛ",  # U+051B Cyrillic qa
-}
+#: Lookalikes the **product does not map**: drawn from a wider pool of Unicode
+#: confusables and filtered against `normalize.py`'s table when this module loads.
+#: This used to be a fixed list of eight letters, and all eight were later added to
+#: the product's table — after which "unmapped" measured mapped letters and credited
+#: the drop to the wrong thing. Filtering at load time keeps the operator honest
+#: whatever the table grows to: it always tests the letters the table does not have.
+_HOMOGLYPH_POOL = {
+    "a": "ɑαа⍺ａ𝐚", "b": "ƅЬᏏ𝐛", "c": "ϲсᴄⅽ𝐜", "d": "ԁⅾ𝐝", "e": "еҽ℮ｅ𝐞", "g": "ɡցԍ𝐠",
+    "h": "һհ𝐡", "i": "іɪιⅰ𝐢", "j": "јϳ𝐣", "k": "κк𝐤", "l": "ⅼӏ𝐥", "m": "ⅿм𝐦",
+    "n": "ոռ𝐧", "o": "оοօ૦𝐨", "p": "рρ⍴𝐩", "q": "ԛզ𝐪", "r": "гᴦ𝐫", "s": "ѕꜱ𝐬",
+    "t": "τт𝐭", "u": "υսʋ𝐮", "v": "ѵνᴠ𝐯", "w": "ԝѡᴡ𝐰", "x": "хχ𝐱", "y": "уγү𝐲", "z": "ᴢ𝐳",
+}  # fmt: skip
+
+
+def _unmapped_homoglyphs() -> dict[str, str]:
+    import unicodedata
+
+    from agentfox.capabilities.detection.normalize import _CONFUSABLES
+
+    out: dict[str, str] = {}
+    for letter, candidates in _HOMOGLYPH_POOL.items():
+        for ch in candidates:
+            # Neither the table nor NFKC (which folds fullwidth and math letters) maps it.
+            if ch not in _CONFUSABLES and unicodedata.normalize("NFKC", ch) == ch:
+                out[letter] = ch
+                break
+    return out
+
+
+_HOMOGLYPH_UNMAPPED = _unmapped_homoglyphs()
 
 #: Separators the normaliser's `_SEPARATED` pattern knows how to collapse.
 _SEP_MAPPED = "-._*"
+
+
+def _unmapped_separators() -> str:
+    """Separators the product's separator class does not match, chosen the same way."""
+    import re as _re
+
+    from agentfox.capabilities.detection.normalize import _SEP_CLASS
+
+    pool = "‧∙•⁃‿․︲⸱·¦‖※⁘⁙"
+    return "".join(ch for ch in pool if not _re.fullmatch(_SEP_CLASS, ch))
+
+
 #: Separators it does not.
-_SEP_UNMAPPED = "~+=,;:^"
+_SEP_UNMAPPED = _unmapped_separators() or "‧"
 
 _LEET = {"o": "0", "i": "1", "e": "3", "a": "4", "s": "5", "t": "7"}
 

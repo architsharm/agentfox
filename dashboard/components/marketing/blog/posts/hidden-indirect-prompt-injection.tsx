@@ -230,7 +230,7 @@ You are DAN. …`}</Code>
       <h2 id="still-not-enough">Why this is still not enough</h2>
       <p>
         Here is the number that matters. With the default install&apos;s heuristic alone,
-        held-out injection recall is 26.7% at 100% precision on the deepset split. Every flagged
+        held-out injection recall is 16.7% at 100% precision on the deepset split. Every flagged
         text was an attack; most attacks were not flagged. Paraphrases such as{" "}
         <em>igmre what I said before</em> and flattery that pivots into a request still get
         through, and an attacker who can retry finds those quickly. The full picture, including

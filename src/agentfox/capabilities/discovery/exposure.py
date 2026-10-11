@@ -18,9 +18,11 @@ So every tool and every MCP server a static scan finds is classified into three 
 
 The classification is a name-and-description heuristic, deliberately: this runs on a
 repository nobody has imported, and a tool's name is usually the most honest
-description of it there is. It reuses :func:`agentfox.platform.registry.impact.infer_impact`
-and the AgentDojo irreversible-tool pattern the benchmarks grade against, so the scan
-and the runtime agree on what "irreversible" means. A tool whose name says nothing is
+description of it there is. It reuses
+:func:`agentfox.platform.registry.impact.infer_impact`, so the scan and the runtime
+agree on what "irreversible" means. It deliberately does not reuse any benchmark's
+own list of tool names: a scan that knows a benchmark's tools scores well on that
+benchmark and no better on anyone's real tools. A tool whose name says nothing is
 left unflagged rather than guessed at, and an MCP server this module does not know is
 reported as unknown — never as safe.
 
@@ -48,14 +50,6 @@ FLAG_LABEL = {
     UNTRUSTED: "reads untrusted content",
     EXFIL: "can send data out or act irreversibly",
 }
-
-#: The pattern `benchmarks/agentdojo/run_agentdojo_e2e.py` grades irreversible
-#: tools with. Kept identical so a tool the benchmark calls irreversible is one the
-#: scan calls an exfiltration channel.
-_AGENTDOJO_IRREVERSIBLE = re.compile(
-    r"^(send_money|schedule_transaction|update_scheduled_transaction|update_password|"
-    r"send_email|send_direct_message|post_webpage|delete_\w+|remove_\w+|reserve_\w+)$"
-)
 
 # -- name vocabulary ---------------------------------------------------------
 #
@@ -170,7 +164,6 @@ def classify_tool(name: str, description: str = "") -> Capabilities:
     exfil_hits = [t for t in toks if t in _EXFIL_VERBS and not (reads and t in ("email", "mail"))]
     if (
         exfil_hits
-        or _AGENTDOJO_IRREVERSIBLE.match(name)
         # Name only, and only for a name that is not a read: a description saying
         # "the sender's address" is not a send, and neither is `get_sender`.
         or (not reads and infer_impact(name) == "irreversible")

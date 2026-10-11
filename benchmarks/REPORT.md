@@ -94,20 +94,27 @@ either cost.
 
 ## Results (primary dataset)
 
+> **Correction, October 2026.** One earlier round (commit `10fc1b90`) wrote patterns
+> after reading this dataset's *held-out* misses, and other patterns copied single
+> training rows. Both were removed, together with similarity-corpus entries written
+> from benchmark misses, and every number below was re-measured. Default heuristic
+> held-out recall is **16.7%** (it had been reported as 26.7%). Train and combined
+> rows include the split the patterns were developed on; quote held_out.
+
 | Config | Split | n | Precision | Recall | F1 | Degraded* |
 |---|---|---|---|---|---|---|
-| `heuristic` | **held_out** | 116 | 100.0% | 26.7% | 0.421 | 0.0% |
-| `heuristic` | train | 546 | 97.1% | 33.5% | 0.498 | 0.0% |
-| `heuristic` | combined | 662 | 97.7% | 31.9% | 0.481 | 0.0% |
-| `heuristic_classifier` | **held_out** | 116 | 100.0% | **66.7%** | 0.800 | 0.0% |
-| `heuristic_classifier` | train | 546 | 97.4% | **90.6%** | 0.939 | 0.9% |
-| `heuristic_classifier` | combined | 662 | 97.8% | **85.2%** | 0.911 | 0.8% |
-| `heuristic_similarity` | **held_out** | 116 | 100.0% | 26.7% | 0.421 | 0.0% |
-| `heuristic_similarity` | train | 546 | 97.2% | 34.0% | 0.504 | 0.0% |
-| `heuristic_similarity` | combined | 662 | 97.7% | 32.3% | 0.486 | 0.0% |
-| `heuristic_classifier_similarity` | **held_out** | 116 | **100.0%** | **66.7%** | **0.800** | 0.0% |
-| `heuristic_classifier_similarity` | train | 546 | 97.4% | **91.1%** | 0.942 | 0.9% |
-| `heuristic_classifier_similarity` | combined | 662 | 97.8% | **85.5%** | 0.913 | 0.9% |
+| `heuristic` | **held_out** | 116 | 100.0% | 16.7% | 0.286 | 0.0% |
+| `heuristic` | train | 546 | 96.4% | 26.1% | 0.411 | 0.0% |
+| `heuristic` | combined | 662 | 96.9% | 23.9% | 0.384 | 0.0% |
+| `heuristic_classifier` | **held_out** | 116 | 100.0% | 68.3% | 0.812 | 0.9% |
+| `heuristic_classifier` | train | 546 | 96.3% | 90.6% | 0.934 | 1.1% |
+| `heuristic_classifier` | combined | 662 | 97.0% | 85.5% | 0.909 | 0.9% |
+| `heuristic_similarity` | **held_out** | 116 | 100.0% | 16.7% | 0.286 | 0.0% |
+| `heuristic_similarity` | train | 546 | 96.4% | 26.6% | 0.417 | 0.0% |
+| `heuristic_similarity` | combined | 662 | 97.0% | 24.3% | 0.389 | 0.0% |
+| `heuristic_classifier_similarity` | **held_out** | 116 | 100.0% | 68.3% | 0.812 | 0.0% |
+| `heuristic_classifier_similarity` | train | 546 | 96.4% | 91.1% | 0.937 | 0.9% |
+| `heuristic_classifier_similarity` | combined | 662 | 97.0% | 85.9% | 0.911 | 0.8% |
 
 \* Fraction of examples where a detector timed out and was scored as "no
 detection" rather than a genuine clean pass — see "A second infrastructure bug"
@@ -140,6 +147,8 @@ for a clean comparison.
 | Heuristic + classifier (round 2, protectai/deberta) | 45.0% (27/60 caught) | 100.0% | 0 |
 | Heuristic + classifier + similarity (round 2) | 48.3% (29/60 caught) | 100.0% | 0 |
 | **Heuristic + classifier + similarity (round 3, PIGuard)** | **66.7% (40/60 caught)** | **100.0%** | **0** |
+| Heuristic, after removing patterns fitted to this split (Oct 2026) | 16.7% (10/60 caught) | 100.0% | 0 |
+| **Heuristic + classifier, after the same removal (Oct 2026)** | **68.3% (41/60 caught)** | **100.0%** | **0** |
 
 Zero false positives held at every step, across three full rounds of extending
 this. Round 3's jump — the largest single-round gain so far — came entirely from

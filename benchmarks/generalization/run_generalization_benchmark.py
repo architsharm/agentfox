@@ -35,6 +35,7 @@ Same three configs as the primary benchmark (heuristic / +classifier /
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -117,6 +118,11 @@ def score(rows: list[dict], pipeline: DetectorPipeline) -> tuple[dict, list[dict
 
 
 def main() -> None:
+    # `--configs heuristic` (comma-separated) scores only those, merging into the
+    # existing summary.json, so a slow model-backed config can run on its own.
+    only: set[str] | None = None
+    if "--configs" in sys.argv:
+        only = set(sys.argv[sys.argv.index("--configs") + 1].split(","))
     datasets = {
         "spml": load("spml_sample.json"),
         "yanismiraoui": load("yanismiraoui.json"),
@@ -146,7 +152,8 @@ def main() -> None:
 
     classifier = get_detector("injection.classifier")
     similarity = get_detector("injection.similarity")
-    if classifier is not None and classifier.available():
+    wants_models = only is None or bool(only - {"heuristic"})
+    if wants_models and classifier is not None and classifier.available():
         warm_all()
         configs["heuristic_classifier"] = DetectorPipeline(
             detectors=[heuristic, classifier], max_workers=2
@@ -164,12 +171,18 @@ def main() -> None:
             "yanismiraoui": "yanismiraoui/prompt_injections (apache-2.0, recall-only, 7 languages)",
             "notinject": "leolee99/NotInject (MIT, all-benign, false-positive stress test)",
         },
-        "note": "None of these datasets informed injection.heuristic's patterns or "
-        "injection.similarity's corpus — this measures generalization, not fit.",
+        "note": "None of these datasets informs injection.heuristic's patterns or "
+        "injection.similarity's corpus (TrustAIRLab-derived corpus entries were removed "
+        "in October 2026) — this measures generalization, not fit.",
         "configs": {},
     }
 
     RESULTS_DIR.mkdir(exist_ok=True)
+    if only is not None:
+        configs = {k: v for k, v in configs.items() if k in only}
+        previous = RESULTS_DIR / "summary.json"
+        if previous.exists():
+            summary["configs"] = json.loads(previous.read_text()).get("configs", {})
     for config_name, pipeline in configs.items():
         summary["configs"][config_name] = {}
         for ds_name, rows in datasets.items():

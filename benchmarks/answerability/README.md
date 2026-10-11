@@ -28,7 +28,7 @@ Dropped as out of scope: `ambiguous`, `counterfactual`, `false assumption`, `uns
 | Category | Support | Metric | Before | After round 1 | Current (`results/kuq_summary.json`) |
 |---|---|---|---|---|---|
 | `future_unknown` | 659 | Recall | 39.0% | 69.0% | **68.4%** |
-| `controversial` | 676 | Recall | 0.74% | 5.62% | **5.77%** |
+| `controversial` | 676 | Recall | 0.74% | 5.62% | **5.47%** |
 | `known` | 3,447 | Over-refusal rate | 0.90% | 0.99% | **0.75%** |
 
 Every fix below was chosen on these same KUQ rows, so the current column is a tuned number, not a

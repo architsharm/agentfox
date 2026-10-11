@@ -113,12 +113,6 @@ _PARAPHRASE: list[tuple[str, str, float]] = [
         0.8,
     ),
     (r"\bforget\s+everything\s+before\s+(?:that|this)\b", "OVERRIDE", 0.8),
-    (
-        r"\b(?:leave|remove|drop)\b.{0,30}?\b(?:previous|prior|all)\b.{0,30}?"
-        r"\b(?:behind|out\s+of\s+your\s+head)\b",
-        "OVERRIDE",
-        0.75,
-    ),
     # "ignore" with the same wider object list, plus objects the canonical pattern
     # doesn't cover (orders, commands, context).
     (
@@ -128,82 +122,11 @@ _PARAPHRASE: list[tuple[str, str, float]] = [
         0.85,
     ),
     (r"\bignore\s+(?:the\s+)?above\s+and\s+(?:say|output|write|print)\b", "OVERRIDE", 0.8),
-    (
-        r"\bignore\s+(?:all\s+)?(?:provided\s+)?context\s+and\s+articles?\b",
-        "OVERRIDE",
-        0.7,
-    ),
     # A new task or instruction set announced as replacing the current one — the
     # "here's what happens next" framing an attacker uses right before the payload.
     (
         r"\b(?:new|further|more)\s+(?:tasks?|instructions?)\s+(?:follow|are\s+followed)\b",
         "OVERRIDE",
-        0.7,
-    ),
-    # System-prompt exfiltration phrasing not covered by the canonical
-    # SYSTEM_PROMPT_LEAK pattern in _LEXICAL (that one now also tolerates the "all"/
-    # "following"/"text" insertions this dataset's examples used).
-    (
-        r"\bwhat\s+(?:is|was)\s+written\s+(?:above|at\s+the\s+beginning\s+of\s+this\s+prompt)\b",
-        "LEAK",
-        0.7,
-    ),
-    (r"\buse\s+also\s+information\s+in\s+the\s+prompt\s+to\s+answer\b", "LEAK", 0.6),
-    # A covert override phrased as "don't answer that, output this instead" — the
-    # instruction hijacks the response rather than asking a question.
-    (
-        r"\bdo\s+not\s+answer\s+this\s+question\b.{0,30}?\b(?:just\s+)?output\b",
-        "OVERRIDE",
-        0.75,
-    ),
-    # Fictional/hypothetical framing that strips the assistant's identity —
-    # "if we're in a theoretical world where you're no longer X" — is a distinct,
-    # well-documented jailbreak shape from bare persona assignment: a legitimate
-    # hypothetical question doesn't need to first announce that the assistant isn't
-    # itself anymore.
-    (
-        r"\bif\s+we\s+(?:are\s+)?(?:speaking|talking)\s+about\s+an?\s+"
-        r"(?:\w+\s+)?(?:theoretical|hypothetical|fictional)\s+world\s+where\s+you\s+"
-        r"(?:are|were)\s+(?:no(?:\s+longer)?|not)\b",
-        "PERSONA",
-        0.75,
-    ),
-    # "Stay in character no matter what" is the standard marker of a roleplay
-    # jailbreak — it's the instruction that stops the model from ever exiting the
-    # persona to apply its own judgment, and it's rare in ordinary creative-writing
-    # requests, which don't need to forbid breaking character in the first place.
-    (
-        r"\b(?:never|without\s+ever)\s+break(?:ing)?\s+(?:character|role)\b",
-        "PERSONA",
-        0.7,
-    ),
-    (
-        r"\bstay(?:s|ing)?\s+(?:fully\s+)?in\s+(?:character|role)\b.{0,60}?"
-        r"\b(?:no\s+matter\s+what|regardless|even\s+if)\b",
-        "PERSONA",
-        0.7,
-    ),
-    # Overriding a refusal/abstention instruction specifically — "you're not
-    # supposed to say there's no answer, you must always respond" — targets the
-    # model's own safety/abstention behavior directly, which is a different (and
-    # more targeted) technique than a blanket instruction-override.
-    (
-        r"\b(?:never|don'?t|do\s+not)\s+refuse\s+to\s+answer\b",
-        "OVERRIDE",
-        0.65,
-    ),
-    (
-        r"\byou\s+(?:are|were)\s+not\s+supposed\s+to\s+(?:say|tell|mention)\b.{0,60}?"
-        r"\byou\s+(?:are|must)\s+(?:always\s+)?(?:supposed\s+to\s+)?(?:respond|answer)\b",
-        "OVERRIDE",
-        0.7,
-    ),
-    # Exfiltrating the model's internal representation rather than its
-    # instructions — the same LLM07 concern (LEAK), different target.
-    (
-        r"\b(?:return|output|show|reveal|give\s+me)\s+(?:your|the)\s+"
-        r"(?:embeddings?|internal\s+state|hidden\s+state|token\s+probabilit\w*)\b",
-        "LEAK",
         0.7,
     ),
 ]
@@ -227,27 +150,11 @@ _MULTILINGUAL: list[tuple[str, str, float]] = [
         0.85,
     ),
     (
-        r"\bh[oö]re?\s+nicht\s+auf\b.{0,40}?\bsondern\b",
-        "OVERRIDE",
-        0.7,
-    ),
-    (
         r"\bvergiss\b.{0,40}?\b(?:aufgaben|auftr[äa]ge|anweisungen|davor|alles)\b",
         "OVERRIDE",
         0.75,
     ),
     (r"\bignorier(?:en|e)?\s+(?:sie\s+)?die\s+obigen\s+anweisungen\b", "OVERRIDE", 0.85),
-    (
-        r"\b(?:nun|jetzt)\s+folgen\s+(?:neue|weitere)\s+(?:aufgaben|anweisungen)\b",
-        "OVERRIDE",
-        0.7,
-    ),
-    (
-        r"\balle\s+(?:vorherigen|bisherigen)\s+informationen\b.{0,50}?"
-        r"\b(?:irrelevant|nicht\s+ganz)\b",
-        "OVERRIDE",
-        0.7,
-    ),
     # Spanish / Portuguese
     (
         r"\b(?:ignora|olvida|ignore|esque[çc]a)\s+(?:todas?\s+)?(?:las?|as)\s+"

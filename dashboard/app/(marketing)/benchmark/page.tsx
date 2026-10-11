@@ -136,10 +136,10 @@ const CLAIMS: {
   },
   {
     question: "How good is our detection on its own?",
-    figure: "26.7",
+    figure: "16.7",
     unit: "%",
-    detail: "held-out recall at 100% precision for the default heuristic detector, on the deepset split of 116. The opt-in classifier ensemble reaches 66.7%.",
-    limit: "The ensemble needs the classifiers extra and a weights download. An adaptive attacker gets 70.8% of what the default stack catches through within 50 attempts.",
+    detail: "held-out recall at 100% precision for the default heuristic detector, on the deepset split of 116. The opt-in classifier ensemble reaches 68.3%.",
+    limit: "The ensemble needs the classifiers extra and a weights download. An adaptive attacker gets 74.5% of what the default stack catches through within 50 attempts.",
   },
 ];
 
@@ -223,11 +223,11 @@ export default function BenchmarkPage() {
           tool outputs, session-level taint contained 588 of 588 attack pairs,
           and only 24 of 97 benign tasks ran without escalating to a human.
           Per-argument taint ran 37 of 97 and contained 527 of 588. On
-          detection, the default heuristic catches 26.7% of held-out injections
-          and the opt-in classifier ensemble 66.7%; a real installed{" "}
+          detection, the default heuristic catches 16.7% of held-out injections
+          and the opt-in classifier ensemble 68.3%; a real installed{" "}
           <code className="mono">llm-guard</code> is more precise on the same 20
           indirect-injection cases, 81.8% against 66.7%, and an adaptive
-          attacker gets 70.8% of what the default stack catches through within
+          attacker gets 74.5% of what the default stack catches through within
           50 attempts.
         </p>
       </div>
@@ -730,36 +730,35 @@ export default function BenchmarkPage() {
       <p>
         On <code className="mono">deepset/prompt-injections</code> (662 labeled
         examples), heuristic plus classifier plus similarity reaches{" "}
-        <strong>66.7% recall at 100.0% precision</strong> on the held-out split
+        <strong>68.3% recall at 100.0% precision</strong> on the held-out split
         of 116, up from an unmodified regex detector&apos;s 0%. That is the
         opt-in configuration: it needs{" "}
         <code className="mono">agentfox[classifiers]</code> and a one-time
         weights download. <strong>The default install runs the heuristic alone,
-        which scores 26.7% recall</strong> at the same 100% precision. Held-out is the
+        which scores 16.7% recall</strong> at the same 100% precision. Held-out is the
         number to trust: the heuristic&apos;s patterns were tuned by reading the
-        train split&apos;s false negatives.
+        train split&apos;s false negatives. An earlier round also read the
+        held-out misses and added patterns for them, which had lifted this
+        figure to 26.7%; those patterns were removed in October 2026 and the
+        benchmark re-run.
       </p>
 
       <Figure
         label="Held-out injection recall, round by round · precision 100% throughout"
         caption={
           <>
-            <strong>A third of held-out positives still get through.</strong>{" "}
-            Four rounds of work took recall from 16.7% to 66.7% with the opt-in
-            classifier, and to 26.7% without it. It has not
-            moved since; the last round bought its gains on the training splits
-            and cost precision elsewhere. This is the number the rest of the
-            page assumes is lost.
+            <strong>About a third of held-out positives still get through.</strong>{" "}
+            With the opt-in classifier, recall is 68.3%. Without it, the
+            heuristic is at 16.7%: the 26.7% once shown here came from patterns
+            fitted to this held-out split, now removed. This is the number the
+            rest of the page assumes is lost.
           </>
         }
       >
         <Bars
           rows={[
-            { label: "Heuristic only (round 1)", value: 16.7, display: "16.7%", tone: "quiet" },
-            { label: "+ patterns (round 2, the default today)", value: 26.7, display: "26.7%", tone: "quiet" },
-            { label: "+ classifier (round 2)", value: 45.0, display: "45.0%", tone: "quiet" },
-            { label: "+ similarity (round 2)", value: 48.3, display: "48.3%", tone: "quiet" },
-            { label: "+ PIGuard (round 3, opt-in)", value: 66.7, display: "66.7%", tone: "accent" },
+            { label: "Heuristic only (the default today)", value: 16.7, display: "16.7%", tone: "quiet" },
+            { label: "+ classifier ensemble (opt-in)", value: 68.3, display: "68.3%", tone: "accent" },
           ]}
         />
       </Figure>
@@ -856,8 +855,8 @@ export default function BenchmarkPage() {
             </strong>{" "}
             Using only mutations that leave the instruction plainly readable —
             no base64, no hex, no fragment reassembly. With the full move set,
-            every seed falls on both surfaces within 25 attempts. The 71% quoted
-            on the home page is the 70.8% endpoint here.
+            every seed falls on both surfaces within 25 attempts. The 74% quoted
+            on the home page is the 74.5% endpoint here.
           </>
         }
       >
@@ -893,10 +892,10 @@ export default function BenchmarkPage() {
           </thead>
           <tbody>
             {[
-              ["indirect_retrieved / all operators (48)", "0.0%", "58.3%", "89.6%", "100.0%", "100.0%", "4"],
-              ["indirect_retrieved / readable only (48)", "0.0%", "25.0%", "37.5%", "62.5%", "70.8%", "9"],
-              ["direct_input / all operators (47)", "0.0%", "72.3%", "93.6%", "100.0%", "100.0%", "4"],
-              ["direct_input / readable only (47)", "0.0%", "27.7%", "44.7%", "72.3%", "74.5%", "7"],
+              ["indirect_retrieved / all operators (47)", "0.0%", "68.1%", "97.9%", "100.0%", "100.0%", "3"],
+              ["indirect_retrieved / readable only (47)", "0.0%", "34.0%", "48.9%", "72.3%", "74.5%", "7"],
+              ["direct_input / all operators (46)", "0.0%", "76.1%", "95.7%", "100.0%", "100.0%", "4"],
+              ["direct_input / readable only (46)", "0.0%", "50.0%", "76.1%", "82.6%", "82.6%", "5"],
             ].map(([config, a1, a5, a10, a25, a50, med]) => (
               <tr key={config}>
                 <td className="mono small">{config}</td>
@@ -1022,7 +1021,7 @@ export default function BenchmarkPage() {
                 <code className="mono">secrets.native</code>,{" "}
                 <code className="mono">safety.lexicon</code> and{" "}
                 <code className="mono">schema.json</code>. The opt-in ensemble
-                behind section 4&apos;s 66.7% is not running, because it needs a
+                behind section 4&apos;s 68.3% is not running, because it needs a
                 model download and this benchmark is offline by contract.
               </>
             ),

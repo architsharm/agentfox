@@ -157,7 +157,7 @@ export default function Page() {
           <tr>
             <td>Adaptive attacker vs. the default detectors</td>
             <td>73% attack success at 50 attempts on the attacks they catch</td>
-            <td>38/38 of those bypasses were still contained at the action.</td>
+            <td>37/37 of those bypasses were still contained at the action.</td>
           </tr>
           <tr>
             <td>Adaptive red team vs. the capability and taint layer</td>
