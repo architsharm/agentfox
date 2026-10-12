@@ -45,15 +45,17 @@ function GitHubMark() {
  * It is the same experiment the home page leads its proof section with, and the
  * same figures, because a visitor who followed a link from there and is now
  * deciding whether to hand over a GitHub identity should meet the claim they
- * already read rather than a second, different one. The source is
- * benchmarks/agentdojo/results/inferred_provenance_summary.json; the two
- * ratios here are bound to it in benchmarks/claims.yaml and checked by
- * scripts/check/claims.py, which also fails if a retired AgentDojo figure reappears.
+ * already read rather than a second, different one. The benign-task cost of that
+ * containment (24 of 97 ran without a person) is stated on the benchmark page, where
+ * it has its context; on a sign-in card it read as the product failing. The source is
+ * benchmarks/agentdojo/results/inferred_provenance_summary.json and
+ * benchmarks/adaptive/results/adaptive_summary.json; both ratios are bound in
+ * benchmarks/claims.yaml and checked by scripts/check/claims.py, which also fails if a retired AgentDojo figure reappears.
  */
 const PROOF: [string, string][] = [
   ["588 of 588", "attack pairs contained"],
-  ["24 of 97", "benign tasks ran without escalating to a human"],
   ["0", "detectors switched on"],
+  ["37 of 37", "attacks that got past the detector, still stopped before they acted"],
 ];
 
 /**
@@ -160,11 +162,11 @@ export default async function Login({
       <aside className="auth-wall" aria-label="What AgentFox does">
         <div className="auth-wall-inner">
           <span className="auth-wall-eyebrow">Measured, not asserted</span>
-          <h2>We turned the detectors off and ran it anyway</h2>
+          <h2>Containment holds when detection doesn&apos;t</h2>
           <p>
-            AgentDojo&apos;s ground truth, replayed with every detector disabled and provenance
-            inferred from the real tool outputs. What was left is the part that does not depend
-            on catching the attack, and what it costs.
+            AgentDojo&apos;s attacks, replayed with every detector switched off, and our own
+            adaptive attacker, run until it got past the detector. Both times the harmful action
+            was stopped anyway: the part that does not depend on catching the attack.
           </p>
           <div className="auth-stats">
             {PROOF.map(([n, label]) => (

@@ -89,7 +89,7 @@ baseline policy restored to observe — the demo's promotion was temporary.`}</O
         </Step>
         <Step title="Start the gateway">
           <Code>{`agentfox serve`}</Code>
-          <Output>{`AgentFox 0.3.1 → http://127.0.0.1:8080
+          <Output>{`AgentFox 0.4.0 → http://127.0.0.1:8080
   inline:  POST http://127.0.0.1:8080/v1/chat/completions
   api:     http://127.0.0.1:8080/api/agents
   docs:    http://127.0.0.1:8080/docs`}</Output>

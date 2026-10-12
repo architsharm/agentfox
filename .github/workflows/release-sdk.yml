@@ -1,0 +1,55 @@
+name: Release TypeScript SDK
+
+# Publishes sdk/typescript to npm as @agentfox/sdk when a maintainer pushes a tag:
+#
+#   git tag sdk-v0.1.0 && git push origin sdk-v0.1.0
+#
+# Nothing else triggers it. The tag's version must equal sdk/typescript/package.json's,
+# or it stops before publishing. Authentication: npm Trusted Publishing (OIDC) when the
+# package is configured for it on npmjs.com for architsharm/agentfox + this workflow;
+# otherwise an NPM_TOKEN repository secret (an automation token for the @agentfox
+# scope). With neither, `npm publish` fails closed.
+
+on:
+  push:
+    tags:
+      - "sdk-v*"
+
+permissions:
+  contents: read
+  id-token: write # npm provenance and Trusted Publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Refuse to publish unless package.json matches the tag
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#sdk-v}"
+          DECLARED="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$DECLARED" ]; then
+            echo "error: tag says $TAG, package.json says $DECLARED" >&2
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

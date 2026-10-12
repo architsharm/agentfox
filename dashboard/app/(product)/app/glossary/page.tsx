@@ -89,9 +89,10 @@ export default function Glossary() {
               <td className="mono small">Policies</td>
               <td className="small">
                 The rules that decide what a detector's result actually does — allow,
-                block, or escalate. A policy is in <span className="mono">observe</span>{" "}
-                mode (records only) or <span className="mono">enforce</span> mode
-                (actually blocks) — see <a href="/app/policies">Policies</a>.
+                block, or escalate. A policy is <strong>watching</strong> (it records what it
+                would do, and stops nothing) or <strong>enforcing</strong> (it actually blocks).
+                In the API and CLI these are the <span className="mono">observe</span> and{" "}
+                <span className="mono">enforce</span> modes — see <a href="/app/policies">Policies</a>.
               </td>
             </tr>
             <tr id="controls" data-term="controls">

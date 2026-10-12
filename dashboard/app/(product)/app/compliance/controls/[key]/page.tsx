@@ -17,6 +17,14 @@ export const dynamic = "force-dynamic";
  * evidence packages), where it is mapped, and the attestations people have made
  * against it. Recording a review freezes the evidence shown here onto the review.
  */
+/** Where the thing a control measures is set, for the controls a new workspace fails first. */
+const FIX: Record<string, { label: string; href: string }> = {
+  "NOM-DSC-03": { label: "Assign owners on Agents", href: "/app/agents" },
+  "NOM-GOV-03": { label: "Assess risk in the risk register", href: "/app/compliance?tab=risk" },
+  "NOM-AUD-05": { label: "Set retention periods", href: "/app/compliance?tab=retention" },
+  "NOM-RTG-05": { label: "Turn on content checks", href: "/app/policies?tab=checks" },
+};
+
 export default async function ControlPage({
   params,
   searchParams,
@@ -66,6 +74,13 @@ export default async function ControlPage({
           ]}
         />
         <p className="small muted" style={{ marginTop: 10 }}>{ev.rationale || "No status computed yet."}</p>
+        {FIX[c.key] && ev.status !== "effective" && (
+          <p style={{ marginTop: 8 }}>
+            <Link href={FIX[c.key].href} className="k-btn">
+              {FIX[c.key].label}
+            </Link>
+          </p>
+        )}
       </Card>
 
       <Card title="Rules that implement it" flush>

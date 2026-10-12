@@ -95,7 +95,6 @@ claims:
       - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
       - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "only {n} of {d} benign tasks ({pct}% {ci}) ran without escalating to a human"}
-      - {file: dashboard/app/(product)/login/page.tsx, text: '["{n} of {d}", "benign tasks ran without escalating to a human"]'}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} benign tasks ({pct}% {ci}) run without escalating to a human"}
       # The blog.
       - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'only {n} of {d} benign tasks ran without escalating to a human'}
@@ -203,6 +202,7 @@ claims:
       # The blog.
       - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: '{n}/{d} of those bypasses still contained at the action'}
       - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'value="{n}/{d}" label="adaptive bypasses of the detector, still contained at the action"'}
+      - {file: dashboard/app/(product)/login/page.tsx, text: '["{n} of {d}", "attacks that got past the detector, still stopped before they acted"]'}
 
   - id: crescendo.trajectory_detection
     source: benchmarks/crescendo/results/crescendo_results.json

@@ -32,9 +32,9 @@ export default function Page() {
 agentfox admin version
 agentfox doctor
 agentfox policy list`}</Code>
-      <Output>{`agentfox 0.3.1
+      <Output>{`agentfox 0.4.0
 ╭───────────────────────────────────────╮
-│ AgentFox 0.3.1                        │
+│ AgentFox 0.4.0                        │
 │ control catalog   0.1.0-draft (draft) │
 │ policy engine     native              │
 │ default provider  echo                │
