@@ -173,6 +173,8 @@ Fixing the three biggest problems in round 1 made the next tier of issues visibl
 
 127 real European Court of Human Rights judgments (`echr_test.json`), the only dataset in this suite built from real text rather than synthetic or templated generation. Multiple human annotators per document (1-10); ground truth is the union across annotators, deduplicated on exact span boundaries — a disclosed simplification of TAB's own weighted evaluation protocol, not a reproduction of it. In-scope types here are `PERSON`, `LOC` (→ `PII.LOCATION`), and `DATETIME` (→ `PII.DATE_TIME`, matching the taxonomy fix — see "Fixes applied") — `ORG`, `DEM`, `CODE`, `MISC`, `QUANTITY` have no corresponding AgentFox detector and are dropped from ground truth.
 
+These are public court records, but they name real people, so this file is never sent to a third-party API by default: a run that does needs `--allow-egress "<reason>"` (see [Sending benchmark data to a third-party API](../README.md#sending-benchmark-data-to-a-third-party-api)). The scripts in this folder run locally.
+
 ### Results, all 127 rows
 
 | Config | Precision | Recall | F1 | TP | FP | FN |

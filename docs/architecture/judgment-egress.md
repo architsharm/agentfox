@@ -7,9 +7,21 @@ logs. The same is true less obviously everywhere else: asking a hosted model
 whether a support reply leaks a customer's address puts the address in the
 question.
 
-An internal PII benchmark of the hosted judgment model sent 7,221 texts of synthetic
-personal data to `api.typesafe.ai`. That was fine for synthetic benchmark data
-and would be a serious defect in the product.
+An internal PII benchmark of the hosted judgment model sent 7,221 texts of
+personal data to `api.typesafe.ai`. 7,094 of them were synthetic (1,500 from
+presidio-research's synthetic set, 5,594 from gretel's synthetic multilingual
+set). The other 127 were not: they were the TAB test set, published European
+Court of Human Rights judgments that name real applicants, witnesses and
+officials. That text is public court data, not leaked data, but it is still
+real people's names and circumstances, and the run copied it into a third
+party's logs without anyone deciding to. When this was first written up, all
+7,221 were described as synthetic. That was wrong.
+
+In the product that would be a serious defect, and in a benchmark it should
+have been a decision. Benchmark scripts that send text to a hosted model now
+refuse to run without `--allow-egress "<reason>"`, and they say which datasets
+are real personal data before anything leaves (`benchmarks/_common/egress.py`,
+and the rule in [`benchmarks/README.md`](../../benchmarks/README.md#sending-benchmark-data-to-a-third-party-api)).
 
 ## What was actually wrong
 
