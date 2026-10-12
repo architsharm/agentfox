@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { scorerName } from "@/lib/product/vocab";
 import { appPageMetadata } from "@/lib/site";
 import { safeApi } from "@/lib/product/api";
 import { Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num } from "@/components/kit";
@@ -333,7 +334,7 @@ async function Reliability({ agents }: { agents: any[] }) {
               </select>
               <select className="k-select" name="scorer" required defaultValue="" aria-label="Measure">
                 <option value="" disabled>Measure</option>
-                {(scorers.scorers || []).map((s: any) => <option key={s.key} value={s.key}>{s.key}</option>)}
+                {(scorers.scorers || []).map((s: any) => <option key={s.key} value={s.key}>{scorerName(s.key)}</option>)}
               </select>
               <select className="k-select" name="window" defaultValue="7d" aria-label="Window">
                 <option value="1d">1 day</option>
@@ -373,7 +374,7 @@ function Ci() {
         <div className="k-form">
           <CodeSnippet label="Save the current run as the baseline" code="agentfox test baseline RUN_ID --label main" />
           <CodeSnippet label="In CI: fail on regression" code="agentfox test gate SUITE --baseline RUN_ID" />
-          <CodeSnippet label="Or over HTTP" code={`curl -s -X POST ${gateway}/api/eval/gate \\\n  -H "Authorization: Bearer $AGENTFOX_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
+          <CodeSnippet label="Or over HTTP" code={`curl -s -X POST ${gateway}/api/eval/gate \\\n  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
         </div>
       </Card>
       <Card title="Attack test in CI">

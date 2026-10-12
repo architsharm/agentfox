@@ -136,7 +136,7 @@ const STATS: { n: string; label: string; tone?: string }[] = [
   { n: "4 of 4", label: "legitimate calls still allowed in that same run" },
   { n: "588 of 588", label: "AgentDojo attack pairs contained, with provenance inferred" },
   { n: "24 of 97", label: "benign AgentDojo tasks ran without escalating to a human", tone: "weak" },
-  { n: "26.7%", label: "held-out injection recall of the default detector, our weakest layer", tone: "weak" },
+  { n: "16.7%", label: "held-out injection recall of the default detector, our weakest layer", tone: "weak" },
 ];
 
 export function Evidence() {
@@ -146,7 +146,7 @@ export function Evidence() {
         <SectionHead
           eyebrow="Evidence"
           title="Measured with every detector switched off"
-          lede="Most tools try to recognise the malicious text. We do that too, and we publish how badly it goes: the default detector finds 26.7% of a held-out set (66.7% with the opt-in classifier ensemble), and an attacker who reads the verdict and retries gets 73% of what the default stack does catch through. So we switched every detector off and measured what was left."
+          lede="Most tools try to recognise the malicious text. We do that too, and we publish how badly it goes: the default detector finds 16.7% of a held-out set (68.3% with the opt-in classifier ensemble), and an attacker who reads the verdict and retries gets 73% of what the default stack does catch through. So we switched every detector off and measured what was left."
           center
         />
         <div className="mk-grid mk-grid-5 mk-up mk-d2" style={{ marginTop: 40 }}>
@@ -269,7 +269,7 @@ const LIMITS: { title: string; body: React.ReactNode }[] = [
     title: "Detection is a speed bump, and we measure it against ourselves",
     body: (
       <>
-        Held-out injection recall is 26.7% for the default detector and 66.7% with the opt-in
+        Held-out injection recall is 16.7% for the default detector and 68.3% with the opt-in
         classifier ensemble. An attacker who reads our verdict and tries again gets 73% of what
         the default stack catches through within 50 attempts.
       </>

@@ -43,4 +43,4 @@ def test_a_grant_that_requires_approval_still_says_so(seeded):
                 {"to": "customer@example.com", "body": "receipt"},
                 provenance={"to": "user", "body": "user"},
             )
-    assert "The granting capability requires human approval for this action." in str(held.value)
+    assert "This tool is allowed only with a person's approval." in str(held.value)

@@ -111,9 +111,25 @@ def _onboarding_counts(session: Session) -> dict[str, int]:
         )
         .scalar_subquery()
     )
+    # Protection that is still only watching: baseline, an agent's own protections,
+    # and the blocked words and topics (the `custom` pack). Step 6 is done when none is.
+    protection_watching = (
+        select(func.count())
+        .select_from(PolicyBinding)
+        .join(PolicyVersion, PolicyVersion.id == PolicyBinding.policy_version_id)
+        .join(Policy, Policy.id == PolicyVersion.policy_id)
+        .where(
+            (Policy.key.in_(("baseline", "custom"))) | (Policy.key.like("agent.%")),
+            PolicyBinding.mode != "enforce",
+            PolicyBinding.effective_from <= now,
+            (PolicyBinding.effective_to.is_(None)) | (PolicyBinding.effective_to > now),
+        )
+        .scalar_subquery()
+    )
     row = session.execute(
         select(
             _count(Agent).label("agents"),
+            protection_watching.label("protection_watching"),
             _capped(select(Trace.id)).label("traces"),
             _capped(select(Decision.id)).label("decisions"),
             _capped(select(Decision.id).where(Decision.mode == "enforce")).label("enforcing"),
@@ -157,7 +173,9 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
             "title": "Register your agent",
             "done": c["agents"] > 0,
             "command": "agentfox agents register my-agent",
-            "detail": "A name for the traffic, an owner, and a risk tier.",
+            "detail": (
+                "The name its traffic is recorded under. Owner and risk level can be set later."
+            ),
         },
         {
             "id": "key",
@@ -190,18 +208,20 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
             "done": c["boundaries"] > 0,
             "command": "agentfox declare boundary my-agent",
             "detail": (
-                "Without a knowledge boundary nothing stops an agent inventing an answer "
-                "to a question it has no data for."
+                "List the topics it knows about. A question outside them gets an honest "
+                '"I don\'t know" instead of an invented answer.'
             ),
         },
         {
             "id": "enforce",
             "title": "Turn enforcement on",
-            "done": c["baseline_enforcing"] > 0,
+            "done": c["baseline_enforcing"] > 0 and c["protection_watching"] == 0,
             "command": "agentfox policy enforce baseline",
             "detail": (
-                "Promotes prompt injection, PII and safety from observe to enforce. Do it "
-                "when the findings look right. Tool containment already enforces."
+                "Your checks start by watching: they record what they would stop. When "
+                "that looks right, switch them to stopping it: the baseline checks, the "
+                "agent's protections, and your blocked words and topics. Tool permissions "
+                "already apply."
             ),
         },
     ]

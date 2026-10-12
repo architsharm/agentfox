@@ -86,6 +86,10 @@ _CAUSE_BY_PREFIX: tuple[tuple[str, str], ...] = (
     ("http.", "destructive"),
 )
 
+#: Reasons a call is held that come from how it was set up, not from what the call
+#: carried: held, they are the approval queue's business, not an issue.
+_HELD_BY_SETUP = frozenset({"approval_required", "no_intent"})
+
 #: Where an argument's data came from, in words. Keys are taint sources.
 _SOURCE_WORDS = {
     "retrieved": "a retrieved document or web page",
@@ -316,6 +320,7 @@ def raise_containment_findings(
         return 0
     source, origin, paths = untrusted_source(argument_taint, argument_propagated_from)
     slug = getattr(agent, "slug", None)
+    causes = {cause_of(str(r.get("rule_id") or "")) for r in rules}
     raised = 0
     seen: set[str] = set()
     for rule in rules:
@@ -325,7 +330,32 @@ def raise_containment_findings(
         seen.add(rule_id)
         applied = rule_applied(rule, decision_verdict, scope)
         cause = cause_of(rule_id)
+        # A tool the agent was never given is one problem with one fix (grant it or
+        # don't): "undeclared" on the same call is the same fact said twice.
+        if cause == "unknown_tool" and "no_permission" in causes:
+            continue
+        # A call held for the sign-off its grant asks for (or because no task was
+        # stated) waits in Approvals; an issue for it repeats the queue. Held because
+        # of where its data came from is a security signal and keeps its issue.
+        if (
+            applied
+            and decision_verdict == "escalate"
+            and rule.get("effect") == "escalate"
+            and cause in _HELD_BY_SETUP
+        ):
+            continue
         severity = str(rule.get("severity") or ("high" if rule["effect"] == "block" else "medium"))
+        # Refused because nobody granted it yet: contained, and usually just setup.
+        if (
+            cause in ("no_permission", "unknown_tool")
+            and applied
+            and severity
+            in (
+                "high",
+                "critical",
+            )
+        ):
+            severity = "medium"
         raise_finding(
             session,
             type=FINDING_TYPE,

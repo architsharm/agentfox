@@ -228,7 +228,19 @@ def set_access(
         subject_id=capability.id,
         payload={"agent": slug, **payload.model_dump()},
     )
-    return {"id": capability.id, "tool_key": capability.tool_key, "event": event}
+    # The agent's open issues about this tool ("tried to X without permission")
+    # close themselves now that it is granted, as they do from the issue's own button.
+    from agentfox.capabilities.remediation.remedies import recheck_agent_tool
+
+    session.flush()
+    session.expire(identity)
+    closed = recheck_agent_tool(session, agent, payload.tool_key, after=f"Granted {slug} access")
+    return {
+        "id": capability.id,
+        "tool_key": capability.tool_key,
+        "event": event,
+        "issues_closed": closed,
+    }
 
 
 @router.delete("/{slug}/access/{capability_id}")

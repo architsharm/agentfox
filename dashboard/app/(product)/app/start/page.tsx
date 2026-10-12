@@ -8,7 +8,7 @@ import { ApiDown } from "@/components/ui";
 import { SETTINGS_TABS } from "@/components/product/AreaTabs";
 import { Card, Empty, Header, Pill, Tabs } from "@/components/kit";
 import { RepoTable } from "@/components/product/RepoTable";
-import { PackMode } from "@/components/product/policies/PackMode";
+import { EnforceAgent } from "@/components/product/start/EnforceAgent";
 import { TokenManager } from "@/components/product/TokenManager";
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { ConnCard } from "@/components/product/start/ConnCard";
@@ -149,9 +149,7 @@ async function Checklist({ agentParam, gateway }: { agentParam?: string; gateway
         </Link>
       </div>
     ) : (
-      <Suspense fallback={<div className="k-skel" style={{ height: 32, width: 220 }} />}>
-        <EnforceControl />
-      </Suspense>
+      agent ? <EnforceAgent agent={agent} /> : <NeedsAgent />
     ),
   };
 
@@ -166,10 +164,20 @@ async function Checklist({ agentParam, gateway }: { agentParam?: string; gateway
         </span>
       </div>
 
+      {completed === total && (
+        <div className="note-panel" style={{ marginBottom: 14 }}>
+          <strong>You&apos;re set up.</strong> From here: <Link href="/app/approvals">Approvals</Link> is where held
+          actions wait for you, <Link href="/app/findings">Issues</Link> lists what needs a look, and{" "}
+          <Link href="/app/observe">Observe</Link> shows every request. Add another agent with Register another below.
+        </div>
+      )}
+
       <ol className="gs-steps">
         {steps.map((step, i) => (
           <li key={step.id} className={step.done ? "done" : next?.id === step.id ? "now" : ""}>
             <StepDetails
+              // Keyed on progress: finishing a step re-opens the one that is now next.
+              key={`${step.id}:${next?.id ?? "all"}`}
               defaultOpen={next?.id === step.id || (!next && i === 0)}
               summary={
                 <>
@@ -203,26 +211,6 @@ async function Checklist({ agentParam, gateway }: { agentParam?: string; gateway
 
 function NeedsAgent() {
   return <p className="k-muted gs-note">Register an agent first.</p>;
-}
-
-/** The enforce step's control, read only when that step is still open. */
-async function EnforceControl() {
-  const baseline = await safeApi<any>("/api/policies/baseline", null);
-  if (!baseline) {
-    return (
-      <Link href="/app/policies" className="k-btn-primary">
-        Choose what to enforce
-      </Link>
-    );
-  }
-  return (
-    <PackMode
-      packKey="baseline"
-      mode={baseline.mode}
-      body={baseline.live_body || baseline.body || ""}
-      version={baseline.bound_version ?? baseline.latest_version ?? null}
-    />
-  );
 }
 
 function StepsSkeleton() {

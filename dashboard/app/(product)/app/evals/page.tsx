@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
+import { scorerName } from "@/lib/product/vocab";
 import { api, safeApi, apiErrorProps } from "@/lib/product/api";
 import { AgentLink, ApiDown, Empty, InfoTip, InventoryStrip, Panel, ts } from "@/components/ui";
 
@@ -209,7 +210,7 @@ export default async function Evals({
             >
               <option value="">scorer…</option>
               {(scorers.scorers || []).map((s: any) => (
-                <option key={s.key} value={s.key}>{s.key}</option>
+                <option key={s.key} value={s.key}>{scorerName(s.key)}</option>
               ))}
             </select>
             <input

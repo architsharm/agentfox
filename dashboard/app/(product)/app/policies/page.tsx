@@ -263,7 +263,11 @@ async function PerformanceTab({ sp }: { sp: SP }) {
         <Kpi label="Rule hits" value={num(totals.fires)} />
         <Kpi label="Stopped something" value={num(totals.enforced)} />
         <Kpi label="Would have stopped" value={num(totals.watched)} hint="Hits by rules that are only watching." />
-        <Kpi label="Rules never fired" value={num(never.length)} hint="Switched on, but nothing matched in this period." />
+        <Kpi
+          label="Rules never fired"
+          value={totals.fires ? num(never.length) : "—"}
+          hint={totals.fires ? "Switched on, but nothing matched in this period." : "No traffic in this period yet."}
+        />
       </Grid>
       <Card flush>
         {list.length ? (

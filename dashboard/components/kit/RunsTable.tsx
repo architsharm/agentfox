@@ -19,9 +19,10 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
       <tbody>
         {runs.map((t) => {
           const rules: string[] = t.rules || [];
+          // What the person asked reads better than the developer's task label.
           const what =
-            t.intent ||
             t.summary ||
+            t.intent ||
             (t.tools?.length ? t.tools.join(", ") : null) ||
             (t.surfaces || []).map((x: string) => SURFACES[x] || x).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(" · ") ||
             "Model call";
@@ -43,6 +44,11 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
                 <Link className="k-name" href={`/app/traces/${t.id}`}>
                   {what}
                 </Link>
+                {t.runs > 1 && (
+                  <span className="sub" title="Model calls, checks and tool calls in this conversation">
+                    {t.runs} steps{t.tools?.length ? ` · ${t.tools.length} tool${t.tools.length === 1 ? "" : "s"}` : ""}
+                  </span>
+                )}
               </td>
               <td className="tight">
                 <span className="k-pills">

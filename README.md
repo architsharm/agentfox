@@ -129,10 +129,9 @@ set. [What each tier is worth, and what it costs](benchmarks/judgment/README.md)
 
 Detection is the layer we trust least, so we publish its numbers.
 
-- The default heuristic detector's held-out injection recall is **26.7%**, at 100% precision
+- The default heuristic detector's held-out injection recall is **16.7%**, at 100% precision
   ([REPORT.md](benchmarks/REPORT.md)). An [adaptive attacker](benchmarks/adaptive/README.md)
-  that reads our verdict and retries gets **71% of the attacks we catch through within 50
-  attempts** against the default stack.
+  that reads our verdict and retries gets **74% of the attacks we catch through within 50 attempts** against the default stack.
 - The deterministic answerability classifier abstains on 57/676 contested questions; with a
   judgment tier that becomes 572/676, at the cost of over-refusal rising from 0.75% to 6.8%.
 - Against a real, independently installed `llm-guard` on indirect injection via tool output, it
@@ -141,7 +140,7 @@ Detection is the layer we trust least, so we publish its numbers.
   ([agent_security](benchmarks/agent_security/README.md)).
 - On AgentDojo, per-argument taint misses 61 of 702 attacker write calls; session-level taint
   misses none of them and escalates three in four benign tasks.
-- The opt-in classifier ensemble reaches 85.6% and 98.6% recall on two independent datasets, but
+- The opt-in classifier ensemble reaches 86.4% and 98.6% recall on two independent datasets, but
   it is **not the shipped default**: on long prompts it mostly times out.
 
 Treat every detection number as a speed bump that raises attacker cost, never as a defence.

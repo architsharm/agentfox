@@ -92,3 +92,47 @@ def test_bad_choices_and_permissions(client):
         401,
         403,
     )
+
+
+# --- Get started, step 6: turn on everything that protects one agent -------------------
+
+
+def _modes(client) -> dict[str, str]:
+    policies = client.get("/api/policies", headers=ADMIN).json()["policies"]
+    return {p["key"]: p["mode"] for p in policies}
+
+
+def test_enforcing_an_agent_switches_baseline_its_protections_and_its_words(client):
+    client.post(URL, json=SETUP, headers=ADMIN).raise_for_status()
+    # A watching blocked word the agent already hit: the preview counts it.
+    client.post(
+        "/v1/guard/input", json={"agent": AGENT, "content": "Is Globex cheaper than you?"}
+    ).raise_for_status()
+
+    preview = client.post(f"/api/agents/{AGENT}/enforcement/preview", headers=ADMIN).json()
+    keys = {p["key"] for p in preview["packs"]}
+    assert {f"agent.{AGENT}", "custom"} <= keys
+    assert preview["would_stop"] >= 1, "a watching rule that hit counts as would-stop"
+
+    done = client.post(f"/api/agents/{AGENT}/enforcement", headers=ADMIN)
+    assert done.status_code == 200, done.text
+    modes = _modes(client)
+    assert modes["baseline"] == modes[f"agent.{AGENT}"] == modes["custom"] == "enforce"
+
+    blocked = client.post(
+        "/v1/guard/input", json={"agent": AGENT, "content": "Is Globex cheaper than you?"}
+    ).json()
+    assert blocked["verdict"] == "block", "the blocked word now stops the message"
+
+    again = client.post(f"/api/agents/{AGENT}/enforcement/preview", headers=ADMIN).json()
+    assert again["packs"] == []
+
+    steps = {s["id"]: s for s in client.get("/api/onboarding", headers=ADMIN).json()["steps"]}
+    assert steps["enforce"]["done"] is True
+
+
+def test_step_six_is_not_done_while_an_agents_protections_only_watch(client):
+    client.post(URL, json=SETUP, headers=ADMIN).raise_for_status()
+    client.post("/api/policies/baseline/mode", json={"mode": "observe"}, headers=ADMIN)
+    steps = {s["id"]: s for s in client.get("/api/onboarding", headers=ADMIN).json()["steps"]}
+    assert steps["enforce"]["done"] is False

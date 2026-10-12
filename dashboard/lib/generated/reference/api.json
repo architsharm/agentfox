@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 271,
+ "count": 273,
  "routes": [
   {
    "method": "GET",
@@ -1266,6 +1266,64 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/enforcement",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Switch everything that protects this agent from watching to enforcing.",
+   "description": "Switch everything that protects this agent from watching to enforcing.\n\nEach pack is simulated first and the simulation recorded, the same gate a\nsingle pack's promotion has, then promoted and audited.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/enforcement/preview",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "What turning enforcement on for this agent switches, and what it would stop.",
+   "description": "What turning enforcement on for this agent switches, and what it would stop.\n\nCounts the agent's requests in the last 7 days that went through and would now\nbe stopped or held. Saves nothing.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -10441,8 +10499,8 @@
    "path": "/api/traces",
    "section": "traces",
    "audience": "operator",
-   "summary": "List Traces",
-   "description": "",
+   "summary": "Runs, newest first. ``group=true`` gives one row per conversation.",
+   "description": "Runs, newest first. ``group=true`` gives one row per conversation.",
    "params": [
     {
      "name": "agent",
@@ -10509,6 +10567,12 @@
      "in": "query",
      "required": false,
      "type": "integer"
+    },
+    {
+     "name": "group",
+     "in": "query",
+     "required": false,
+     "type": "boolean"
     },
     {
      "name": "authorization",

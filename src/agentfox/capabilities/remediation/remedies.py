@@ -1172,9 +1172,31 @@ def _holds(session: Session, ctx: _Ctx) -> bool | None:
             identity = session.scalar(select(Identity).where(Identity.agent_id == ctx.agent.id))
             return _covering(identity, key) is None
         if cause == "unknown_tool":
+            # Granting it is a person saying they know the tool; so is declaring it.
+            identity = session.scalar(select(Identity).where(Identity.agent_id == ctx.agent.id))
+            if _covering(identity, key) is not None:
+                return False
             tool = session.scalar(select(Tool).where(Tool.key == key))
             return tool is None or impact_source_of(tool) == "inferred"
     return None
+
+
+def recheck_agent_tool(session: Session, agent: Agent, tool_key: str, *, after: str) -> int:
+    """Re-test this agent's open issues about one tool, after its access changed.
+
+    Granting a tool from the agent's Access tab is the same fix as the issue's own
+    "Grant" button; the issue has to notice either way. Returns how many closed.
+    """
+    closed = 0
+    for finding in session.scalars(
+        select(Finding).where(Finding.status == OPEN, Finding.type == "containment")
+    ).all():
+        ctx = _context(session, finding)
+        if ctx.agent is None or ctx.agent.id != agent.id or _tool_key(ctx) != tool_key:
+            continue
+        if recheck(session, finding, after=after) is False:
+            closed += 1
+    return closed
 
 
 def recheck(session: Session, finding: Finding, *, after: str = "") -> bool | None:
@@ -1204,5 +1226,6 @@ __all__ = [
     "apply_remedy",
     "find_remedy",
     "recheck",
+    "recheck_agent_tool",
     "remedies_for",
 ]

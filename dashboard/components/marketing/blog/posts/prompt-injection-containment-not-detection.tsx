@@ -62,8 +62,8 @@ export function Body() {
         against adaptive attacks reported success rates above 90% once the attacker could
         iterate (Nasr, Carlini, Schulhoff et al., <em>The Attacker Moves Second</em>, 2025). We
         ran the same kind of test against our own detector. An attacker who adapts gets
-        71% of the attacks we catch through within 50 attempts. And with the default
-        install&apos;s heuristic alone, held-out injection recall is 26.7% at 100% precision
+        74% of the attacks we catch through within 50 attempts. And with the default
+        install&apos;s heuristic alone, held-out injection recall is 16.7% at 100% precision
         on the deepset split. That is a speed bump, not a wall.
       </p>
       <p>
@@ -226,7 +226,7 @@ with fox.session(intent="Triage a support ticket and reply to the customer.") as
       <StatRow>
         <Stat value="8/8" label="attack scenarios contained with every detector off" source="Containment benchmark, detectors disabled" />
         <Stat value="4/4" label="legitimate calls still allowed in the same run" source="Containment benchmark, detectors disabled" />
-        <Stat value="38/38" label="adaptive bypasses of the detector, still contained at the action" source="Adaptive attack benchmark" />
+        <Stat value="37/37" label="adaptive bypasses of the detector, still contained at the action" source="Adaptive attack benchmark" />
       </StatRow>
       <p>
         The second test is larger and less flattering. We replayed AgentDojo (v1.2.2, 97 user
@@ -234,8 +234,7 @@ with fox.session(intent="Triage a support ticket and reply to the customer.") as
         actually ran and detectors off. On AgentDojo, session-level taint contained 588 of 588
         attack pairs. For comparison, grants and impact tiers on their own contain 61 of 702
         attacker write calls: the grant check is the floor, and provenance does most of the
-        work. Of the detector bypasses an adaptive attacker found, 38/38 of those bypasses still
-        contained at the action.
+        work. Of the detector bypasses an adaptive attacker found, 37/37 of those bypasses still contained at the action.
       </p>
       <Figure
         src="/blog/benchmark-containment.png"

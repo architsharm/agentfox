@@ -102,7 +102,7 @@ Authorization: <the value you stored, if any>
         security role.
       </p>
       <Code>{`curl -s http://localhost:8080/api/probes/targets \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" -H 'Content-Type: application/json' \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" -H 'Content-Type: application/json' \\
   -d '{"agent": "support-triage", "adapter": "http",
        "url": "https://support-bot.example.com/agentfox-probe",
        "forbidden_tools": ["payments.transfer"],
@@ -140,9 +140,9 @@ Authorization: <the value you stored, if any>
         the target and on the audit chain as <code>probe.opt_in</code>.
       </p>
       <Code>{`WARNING=$(curl -s http://localhost:8080/api/probes/warning \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" | jq -r .warning)
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" | jq -r .warning)
 curl -s http://localhost:8080/api/probes/targets/prb_01m47cbfbs44p7x069/opt-in \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" -H 'Content-Type: application/json' \\
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" -H 'Content-Type: application/json' \\
   -d "$(jq -n --arg w "$WARNING" '{acknowledgement: $w}')"`}</Code>
       <Output>{`{"id": "prb_01m47cbfbs44p7x069", "enabled": true,
  "opted_in_by": "marcus@example.com", "opted_in_at": "2026-10-06T01:13:22.573399+00:00", …}`}</Output>
@@ -158,7 +158,7 @@ curl -s http://localhost:8080/api/probes/targets/prb_01m47cbfbs44p7x069/opt-in \
         job is checked hourly, each target keeps its own interval). To run one now:
       </p>
       <Code>{`curl -s -X POST http://localhost:8080/api/probes/targets/$TARGET/run \\
-  -H "Authorization: Bearer $AGENTFOX_TOKEN"`}</Code>
+  -H "Authorization: Bearer $AGENTFOX_API_TOKEN"`}</Code>
       <Output>{`{
   "campaign_id": "rtc_01m47cbfd4f106qehc",
   "scoring": "gateway_verdict",

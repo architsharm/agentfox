@@ -492,3 +492,41 @@ async def test_the_real_sdk_builds_and_invokes_a_guarded_tool():
     data = agents.ToolInputGuardrailData(context=ctx, agent=agents.Agent(name="a"))
     out = await guard.run(data)
     assert out.behavior["type"] == "reject_content"
+
+
+# -- govern(): the one-call wiring ---------------------------------------------------
+
+
+class _Agent:
+    def __init__(self, name, tools=(), handoffs=()):
+        self.name = name
+        self.tools = list(tools)
+        self.handoffs = list(handoffs)
+        self.input_guardrails = []
+        self.output_guardrails = []
+
+
+class _Tool:
+    def __init__(self, name):
+        self.name = name
+        self.tool_input_guardrails = None
+        self.tool_output_guardrails = None
+
+
+def test_govern_wires_every_agent_handoff_and_tool_once(fake_agents):
+    from agentfox.frameworks.openai_agents import govern
+
+    fake_agents.tool_output_guardrail = lambda fn: _Guardrail(fn, fn.__name__)
+    shared = _Tool("lookup")
+    refunds = _Agent("refunds", tools=[shared, _Tool("refund")])
+    triage = _Agent("triage", tools=[shared], handoffs=[refunds])
+    fox = _Fox()
+
+    govern(fox, triage, tool_prefix="shop")
+    govern(fox, triage, tool_prefix="shop")  # twice is harmless
+
+    for agent in (triage, refunds):
+        assert len(agent.input_guardrails) == 1 and len(agent.output_guardrails) == 1
+    for tool in (shared, *refunds.tools):
+        assert len(tool.tool_input_guardrails) == 1, tool.name
+        assert len(tool.tool_output_guardrails) == 1, tool.name

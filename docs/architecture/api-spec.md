@@ -104,7 +104,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-271 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+273 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -160,6 +160,8 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agents/{slug}/breaker` | The agent's circuit breaker: settings, state, and the current window's rate. |
 | `PUT` | `/api/agents/{slug}/breaker` | Change when the breaker trips and what it does. The same role as the kill |
 | `POST` | `/api/agents/{slug}/breaker/reset` | Close the breaker now and let the agent's calls through. |
+| `POST` | `/api/agents/{slug}/enforcement` | Switch everything that protects this agent from watching to enforcing. |
+| `POST` | `/api/agents/{slug}/enforcement/preview` | What turning enforcement on for this agent switches, and what it would stop. |
 | `POST` | `/api/agents/{slug}/kill` | Stop an agent now. Requires the stronger role — this is an incident action. |
 | `GET` | `/api/agents/{slug}/lineage` | Agent Lineage |
 | `GET` | `/api/agents/{slug}/map` | Which guardrails apply at each step of this agent's requests, with recent traffic. |
@@ -291,7 +293,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/retention/purge` | Run the retention purge now, through the same job the daily schedule runs. |
 | `GET` | `/api/retention/runs` | Retention Runs |
 | `PUT` | `/api/retention/{data_class}` | Change how long one data class is kept. Audited as `operator.retention.changed`. |
-| `GET` | `/api/traces` | List Traces |
+| `GET` | `/api/traces` | Runs, newest first. ``group=true`` gives one row per conversation. |
 | `GET` | `/api/traces/resolve` | Their run id → our governance decision. |
 | `GET` | `/api/traces/{trace_id}` | Get Trace |
 

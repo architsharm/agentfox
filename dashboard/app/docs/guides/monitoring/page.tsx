@@ -271,7 +271,7 @@ github_repo acme/support-bot: baseline`}</Output>
         </tbody>
       </table>
       <p>On a shared deployment, ask for a secret of your own, shown once:</p>
-      <Code>{`curl -fsS -X POST -H "Authorization: Bearer $AGENTFOX_TOKEN" \\
+      <Code>{`curl -fsS -X POST -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
   https://api.example.com/api/integrations/github/webhook-secret`}</Code>
       <Output>{`{"secret":"q7…","payload_path":"/api/integrations/github/webhook","content_type":"application/json","events":["push"]}`}</Output>
       <p>

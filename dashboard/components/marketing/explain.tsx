@@ -48,15 +48,15 @@ const BEATS: Beat[] = [
     title: "Spotting the text is not enough",
     body: (
       <>
-        {/* Held-out injection recall, benchmarks/REPORT.md: 26.7% for the default
-            heuristic, 66.7% with the opt-in classifier ensemble. The adaptive attacker
+        {/* Held-out injection recall, benchmarks/REPORT.md: 16.7% for the default
+            heuristic, 68.3% with the opt-in classifier ensemble. The adaptive attacker
             getting 73% through within 50 attempts was measured on the default stack
             (benchmarks/adaptive/README.md), so it is paired with the default figure.
             The benchmark page cites the same numbers, at app/(marketing)/benchmark/page.tsx. */}
         <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)" }}>
           Most tools try to recognise the malicious text. We do that too, and we publish
-          how well it works: our default detector catches 26.7% of
-          injections in a held-out test set (66.7% with the opt-in classifier ensemble), and an
+          how well it works: our default detector catches 16.7% of
+          injections in a held-out test set (68.3% with the opt-in classifier ensemble), and an
           attacker who reads the verdict and tries again gets 73% of what the default catches
           through within 50 attempts.
         </p>

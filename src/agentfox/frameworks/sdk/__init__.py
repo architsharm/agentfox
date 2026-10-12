@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -250,7 +251,8 @@ class AgentFox:
         """
         self.agent = agent
         self.base_url = base_url.rstrip("/") if base_url else None
-        self.api_key = api_key
+        # The same variable the CLI reads, so one exported token serves both.
+        self.api_key = api_key or (os.environ.get("AGENTFOX_API_TOKEN") if base_url else None)
         self.environment = environment
         self.timeout = timeout
         # Stored as `_session`: `session` is the context-manager method above.
@@ -393,6 +395,7 @@ class AgentFox:
         error: str | None = None,
         context: list[str] | None = None,
         approval_id: str | None = None,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
         """One decision on one piece of content, as a dict. Never raises on a verdict.
 
@@ -406,8 +409,13 @@ class AgentFox:
         ``surface="tool_result"`` the ``tool`` that produced the content and the
         ``error`` it raised, so a failing tool shows as a failed step; ``context``
         is what an answer was built from, for the grounding checks; ``approval_id``
-        resends a message a person approved after it was held.
+        resends a message a person approved after it was held. ``session_id`` ties the
+        check to its conversation (default: the ``with fox.session(...)`` it is in), so
+        the dashboard shows the conversation as one run, not one row per check.
         """
+        if session_id is None:
+            active = self._active.get()
+            session_id = active.session_id if active is not None else None
         if self.remote:
             body: dict[str, Any] = {
                 "agent": self.agent,
@@ -423,6 +431,7 @@ class AgentFox:
                 ("error", error),
                 ("context", context),
                 ("approval_id", approval_id),
+                ("session_id", session_id),
             ):
                 if value:
                     body[field_name] = value

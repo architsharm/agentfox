@@ -224,7 +224,7 @@ export function Guardrails() {
             >
               <span className="mk-label">What this layer is worth</span>
               <p className="mk-body" style={{ ...BODY, marginTop: 8, fontSize: "var(--t-small)" }}>
-                26.7% recall on the held-out injection split with the default detector, 66.7%
+                16.7% recall on the held-out injection split with the default detector, 68.3%
                 with the opt-in classifier ensemble. An attacker who reads our verdict and retries
                 gets 73% of what the default stack catches through within 50 attempts. A speed
                 bump, never a defence.

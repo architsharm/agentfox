@@ -35,18 +35,31 @@ class SimulationDiff:
     newly_allowed: list[dict[str, Any]] = field(default_factory=list)
     newly_escalated: list[dict[str, Any]] = field(default_factory=list)
     unchanged: int = 0
+    #: Calls that went through, and would be stopped or held with the candidate
+    #: enforcing. `newly_*` compares against what each call *would* have had (a
+    #: watching rule's block counts as a block already), so turning a watching pack
+    #: on reads "0 newly blocked" however much it catches; this is the number the
+    #: question "what changes if I enforce this?" needs.
+    would_stop: list[dict[str, Any]] = field(default_factory=list)
+    #: Distinct runs (traces) the replayed checks belong to: what a person calls a
+    #: request. One user message is several checks (input, each tool, output).
+    runs: set[str] = field(default_factory=set)
 
     def to_json(self) -> dict[str, Any]:
         return {
             "replayed": self.replayed,
+            "runs_replayed": len(self.runs),
+            "runs_would_stop": len({r["trace_id"] for r in self.would_stop if r["trace_id"]}),
             "unchanged": self.unchanged,
             "newly_blocked": self.newly_blocked,
             "newly_allowed": self.newly_allowed,
             "newly_escalated": self.newly_escalated,
+            "would_stop": self.would_stop[:50],
             "counts": {
                 "newly_blocked": len(self.newly_blocked),
                 "newly_allowed": len(self.newly_allowed),
                 "newly_escalated": len(self.newly_escalated),
+                "would_stop": len(self.would_stop),
             },
         }
 
@@ -129,6 +142,8 @@ def simulate(
     diff = SimulationDiff()
     for decision in decisions:
         diff.replayed += 1
+        if decision.trace_id:
+            diff.runs.add(decision.trace_id)
         pinput = policy_input_from_decision(session, decision)
         in_scope = doc.matches_scope(pinput.agent_slug, pinput.environment)
         new: PolicyDecision = (
@@ -160,7 +175,14 @@ def simulate(
             "reasons": [r.reason for r in new.rules_fired][:3],
             # The candidate pack's rules that fired before and do not now.
             "no_longer_fires": sorted(fired_before - set(fired_now)),
+            # What the candidate's own rules asked for, without the other packs: a
+            # pack is only credited with stopping what its own rules stop.
+            "own": new.effective_verdict,
         }
+
+        applied = (decision.verdict or "allow").lower()
+        if new_effective in ("block", "escalate") and applied not in ("block", "escalate"):
+            diff.would_stop.append(record)
 
         if new_effective == old_effective:
             diff.unchanged += 1

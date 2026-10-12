@@ -22,6 +22,15 @@ count? Before this round, the answer to both was no, for structural reasons fixe
 uv run python -m benchmarks.redteam.run_redteam_benchmark
 ```
 
+> **What the recall here is not.** The probes are the product's own built-in library,
+> and some detector patterns were written after a probe got through (for example the
+> "repeat the text above" leak pattern, added when `system_prompt.leak` scored 0.0).
+> So this recall is a regression check that those layers stay wired and keep catching
+> what they were fixed to catch. It is **not** a measure of how well detection
+> generalises to attacks nobody wrote a probe for; for that, see the held-out and
+> generalization numbers in `benchmarks/REPORT.md`, which come from public datasets
+> the patterns are not fitted to.
+
 ## Two structural gaps, found by reading what a probe actually reaches
 
 **1. Every probe was `kind="content"`, which only ever calls `Enforcer.check_content()`.**

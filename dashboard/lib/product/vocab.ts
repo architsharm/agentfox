@@ -179,6 +179,9 @@ export function ruleTitle(ruleId: string, description?: string): string {
   // A fired custom rule carries its name in its reason: "<name>: your rule"
   // (older saves: "<name> — your rule").
   if (ruleId.startsWith("custom.") && description) return description.split(/:\s*your rule| — your rule/)[0];
+  // The protection wizard's own rules, named by what they are rather than by id.
+  const own = /^custom\.[a-z0-9-]+-(words|avoid|allowed)$/.exec(ruleId);
+  if (own) return { words: "Blocked words", avoid: "Topics to avoid", allowed: "Off-topic question" }[own[1]]!;
   const tail = ruleId.split(".").slice(1).join(" ") || ruleId;
   const words = tail.replace(/[_-]+/g, " ").trim();
   return words.charAt(0).toUpperCase() + words.slice(1);
@@ -271,4 +274,32 @@ export function sentence(text?: string | null): string {
   const t = String(text || "");
   const first = t.match(/^\S+/)?.[0] || "";
   return /^[a-z]+$/.test(first) ? t[0].toUpperCase() + t.slice(1) : t;
+}
+
+/** What each test scorer measures, in words; the id stays the value sent. */
+export const SCORERS: Record<string, string> = {
+  exact_match: "Exact answer",
+  fuzzy_match: "Close to the expected answer",
+  contains: "Answer contains the expected text",
+  regex: "Answer matches a pattern",
+  json_schema: "Valid JSON in the expected shape",
+  latency: "Response time",
+  cost: "Cost per run",
+  tool_trajectory: "Called the expected tools, in order",
+  safety: "Safe answer",
+  llm_judge: "Judged by a model",
+  groundedness: "Backed by its sources",
+  self_consistency: "Consistent across repeats",
+  hedging: "Doesn't hedge needlessly",
+  task_completion: "Finished the task",
+  silent_failure: "No silent failures",
+  model_groundedness: "Backed by its sources (model check)",
+  ragas_faithfulness: "Faithful to the context (Ragas)",
+  ragas_answer_relevancy: "Answers the question (Ragas)",
+  ragas_context_precision: "Retrieved the right context (Ragas)",
+  ragas_context_recall: "Retrieved all the context needed (Ragas)",
+};
+
+export function scorerName(key: string): string {
+  return SCORERS[key] || key.replace(/_/g, " ");
 }

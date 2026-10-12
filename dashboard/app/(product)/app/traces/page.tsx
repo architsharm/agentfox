@@ -30,7 +30,7 @@ export default async function Runs({ searchParams }: { searchParams: Promise<SP>
   const f = filtersFrom(sp);
   const errorsOnly = sp.errors === "1" || sp.outcome === "errors";
 
-  const qs = new URLSearchParams({ limit: "200", since_days: String(RANGE_DAYS[f.range]) });
+  const qs = new URLSearchParams({ limit: "200", since_days: String(RANGE_DAYS[f.range]), group: "true" });
   if (f.agent) qs.set("agent", f.agent);
   if (f.env) qs.set("environment", f.env);
   const verdict = verdictsFor(sp.outcome) || sp.verdict;

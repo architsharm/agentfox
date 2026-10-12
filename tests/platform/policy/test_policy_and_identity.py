@@ -304,7 +304,7 @@ def test_default_deny(session):
     decision = check_capability(session, identity, "payments.transfer")
     assert not decision.granted
     assert decision.state == "denied"
-    assert "no capability grants" in decision.reasons[0]
+    assert "has not been granted to svc (default deny)" in decision.reasons[0]
 
 
 def test_no_identity_is_denied(session):

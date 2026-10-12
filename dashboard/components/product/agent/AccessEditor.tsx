@@ -120,6 +120,62 @@ export function AccessEditor({
   return (
     <>
       {error && <div className="error">{error}</div>}
+      {/* What the agent is waiting on comes first; granting moves a row down into
+          the table below instead of shifting the rows still to decide. */}
+      {tried.length > 0 && (
+        <section className="k-card">
+          <div className="k-card-head">
+            <h3>Tried but not allowed</h3>
+            {tried.length > 1 && (
+              <div className="k-card-action">
+                <button
+                  className="k-btn"
+                  disabled={!!busy}
+                  onClick={async () => {
+                    if (!window.confirm(`Allow all ${tried.length} tools? Each can be changed or removed below.`)) return;
+                    setBusy("*");
+                    setError("");
+                    try {
+                      for (const t of tried) {
+                        await callJson(base, "POST", { tool_key: t.tool_key, requires_approval: false, max_taint: "user", constraints: {} });
+                      }
+                      router.refresh();
+                    } catch (e: any) {
+                      setError(e.message);
+                    } finally {
+                      setBusy("");
+                    }
+                  }}
+                >
+                  Allow all
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="k-card-body" style={{ padding: "4px 0 0" }}>
+            <ul className="k-list">
+              {tried.map((t) => (
+                <li key={t.tool_key}>
+                  <div className="k-list-main">
+                    <span className="k-mono">{t.tool_key}</span>
+                    <span className="muted" suppressHydrationWarning>
+                      Refused {t.count}× · last {ago(t.last)}
+                    </span>
+                  </div>
+                  <div className="k-list-end">
+                    <button className="k-btn" disabled={!!busy} onClick={() => save(t.tool_key, { tool_key: t.tool_key, requires_approval: true, max_taint: "user", constraints: {} })}>
+                      Allow with approval
+                    </button>
+                    <button className="k-btn-primary" disabled={!!busy} onClick={() => save(t.tool_key, { tool_key: t.tool_key, requires_approval: false, max_taint: "user", constraints: {} })}>
+                      Allow
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
       <section className="k-card">
         <div className="k-card-head">
           <h3>Tools</h3>
@@ -173,7 +229,7 @@ export function AccessEditor({
                       <span className="k-name">
                         {c.tool?.name || (c.tool_key.endsWith(".*") ? `All ${c.tool_key.slice(0, -2)} tools` : c.tool_key)}
                       </span>
-                      <span className="sub k-mono">{c.tool_key}</span>
+                      {(c.tool?.name || "") !== c.tool_key && <span className="sub k-mono">{c.tool_key}</span>}
                     </td>
                     <td className="tight">
                       {c.tool_key.includes("*") ? (
@@ -297,35 +353,6 @@ export function AccessEditor({
         </section>
       )}
 
-      {tried.length > 0 && (
-        <section className="k-card">
-          <div className="k-card-head">
-            <h3>Tried but not allowed</h3>
-          </div>
-          <div className="k-card-body" style={{ padding: "4px 0 0" }}>
-            <ul className="k-list">
-              {tried.map((t) => (
-                <li key={t.tool_key}>
-                  <div className="k-list-main">
-                    <span className="k-mono">{t.tool_key}</span>
-                    <span className="muted" suppressHydrationWarning>
-                      Refused {t.count}× · last {ago(t.last)}
-                    </span>
-                  </div>
-                  <div className="k-list-end">
-                    <button className="k-btn" disabled={busy === t.tool_key} onClick={() => save(t.tool_key, { tool_key: t.tool_key, requires_approval: true, max_taint: "user", constraints: {} })}>
-                      Allow with approval
-                    </button>
-                    <button className="k-btn-primary" disabled={busy === t.tool_key} onClick={() => save(t.tool_key, { tool_key: t.tool_key, requires_approval: false, max_taint: "user", constraints: {} })}>
-                      Allow
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
     </>
   );
 }

@@ -47,7 +47,13 @@ async function Summary() {
   const findings = board.open_findings || {};
   const posture = Object.values(board.control_posture || {}) as any[];
   const t = usage?.totals || { requests: 0, held: 0, blocked: 0 };
-  const best = posture.length ? Math.round((posture.reduce((n, p) => n + (p.effectiveness || 0), 0) / posture.length) * 100) : 0;
+  // Working out of every control that applies, not out of the ones measured: "8 of 8
+  // measured" read as 100% with 29 controls not set up at all.
+  const inScope = (p: any) => Math.max(0, (p.controls || 0) - (p.counts?.not_applicable || 0));
+  const working = (p: any) => p.counts?.effective || 0;
+  const share = (p: any) => (inScope(p) ? working(p) / inScope(p) : 0);
+  const best = posture.length ? Math.round((posture.reduce((n, p) => n + share(p), 0) / posture.length) * 100) : 0;
+  const computedAt = posture.map((p) => p.computed_at).filter(Boolean).sort()[0];
 
   return (
     <>
@@ -57,7 +63,17 @@ async function Summary() {
         <Kpi label="Open issues" value={num(findings.total || 0)} tone={findings.by_severity?.critical ? "bad" : undefined} href="/app/findings" />
         <Kpi label="Requests stopped (30d)" value={pctOf(t.held + t.blocked, t.requests)} hint={`${num(t.held + t.blocked)} of ${num(t.requests)} requests held or blocked.`} />
       </Grid>
-      <Card title="Frameworks" hint="Share of controls working, computed from live traffic. Mappings are drafts pending review." action={<span>{best}% average</span>} flush>
+      <Card
+        title="Frameworks"
+        hint="Controls working, out of every control that applies, computed from live traffic. Mappings are drafts pending review."
+        action={
+          <span>
+            {best}% average{computedAt ? <span className="k-muted"> · updated {ago(computedAt)} · </span> : " · "}
+            <Link href="/app/compliance">Recompute</Link>
+          </span>
+        }
+        flush
+      >
         <table className="k-table">
           <tbody>
             {posture.map((p) => (
@@ -69,12 +85,20 @@ async function Summary() {
                 </td>
                 <td style={{ width: "40%" }}>
                   <span className="k-stack">
-                    <span className="k-seg-solid" style={{ width: `${Math.round((p.effectiveness || 0) * 100)}%`, opacity: 0.7 }} />
+                    <span className="k-seg-solid" style={{ width: `${Math.round(share(p) * 100)}%`, opacity: 0.7 }} />
                   </span>
                 </td>
-                <td className="num tight">{Math.round((p.effectiveness || 0) * 100)}%</td>
+                <td className="num tight">
+                  {working(p)} of {inScope(p)}
+                </td>
                 <td className="tight">
-                  {p.failing_controls?.length ? <Pill tone="bad">{p.failing_controls.length} failing</Pill> : <Pill tone="ok">None failing</Pill>}
+                  {p.failing_controls?.length ? (
+                    <Pill tone="bad">{p.failing_controls.length} failing</Pill>
+                  ) : p.counts?.not_implemented ? (
+                    <Pill tone="outline">{p.counts.not_implemented} not set up</Pill>
+                  ) : (
+                    <Pill tone="ok">All working</Pill>
+                  )}
                 </td>
               </tr>
             ))}

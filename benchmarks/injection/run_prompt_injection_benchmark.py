@@ -31,11 +31,12 @@ on CPU) and a one-time download, which is why neither is the default — see
 config.py's `prompt_injection_classifier_model` / `embedding_similarity_model`
 docstrings for the trade-off.
 
-Each configuration is scored on all three splits (held_out/train/combined), same
-train/test discipline as before: `injection.heuristic`'s patterns were tuned by
-reading train.json's false negatives only; the classifier is a pretrained model,
-never fit to this dataset at all, so there's no tuning-leakage question for it —
-but it's scored the same way for a clean comparison.
+Each configuration is scored on all three splits (held_out/train/combined).
+`injection.heuristic`'s patterns were developed by reading train.json's false
+negatives, so train and combined include fitted data: held_out is the number to
+quote. (One earlier round also read the held-out misses; those patterns were removed
+in October 2026. See data/README.md.) The classifier is a pretrained model, never
+fit to this dataset, and is scored the same way for a clean comparison.
 """
 
 from __future__ import annotations

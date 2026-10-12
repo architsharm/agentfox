@@ -74,7 +74,11 @@ export default async function Coverage({
         <Stat n={`${pct}%`} label={`of ${data.scored} in-scope threats enforced`} tone={pct >= 80 ? "ok" : pct >= 50 ? "warn" : "bad"} />
         <Stat n={counts.uncovered || 0} label="nothing watching" tone={counts.uncovered ? "bad" : "ok"} />
         <Stat n={counts.observing || 0} label="watching, not stopping" tone={counts.observing ? "warn" : "ok"} />
-        <Stat n={counts.breached || 0} label="red team got through" tone={counts.breached ? "bad" : "ok"} />
+        {(data.threats || []).some((t: any) => t.redteam_attempts) ? (
+          <Stat n={counts.breached || 0} label="red team got through" tone={counts.breached ? "bad" : "ok"} />
+        ) : (
+          <Stat n="—" label="not attack-tested yet" href="/app/test?tab=attacks" />
+        )}
       </div>
 
       <p className="stat-note">
@@ -219,11 +223,18 @@ export default async function Coverage({
   );
 }
 
-function Stat({ n, label, tone }: { n: number | string; label: string; tone?: string }) {
-  return (
-    <div className={`card ${tone || ""}`}>
+function Stat({ n, label, tone, href }: { n: number | string; label: string; tone?: string; href?: string }) {
+  const body = (
+    <>
       <div className="n">{n}</div>
       <div className="label">{label}</div>
-    </div>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={`card ${tone || ""}`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={`card ${tone || ""}`}>{body}</div>
   );
 }

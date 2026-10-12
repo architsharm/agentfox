@@ -139,8 +139,11 @@ def evidence_check(ctx: CheckContext) -> dict[str, Any]:
                 "type": "integrity_error",
                 "severity": "high"
                 if issue["kind"] in ("hallucinated_record", "entity_confusion")
+                # A wording risk, not a wrong fact: worth seeing, not worth triage.
+                else "low"
+                if issue["kind"] == "timezone_ambiguity"
                 else "medium",
-                "title": issue["reason"],
+                "title": issue["reason"][:1].upper() + issue["reason"][1:],
                 **issue,
             }
         )

@@ -84,7 +84,7 @@ export async function EscalationTab({ agent }: { agent?: string }) {
       <InventoryStrip
         items={[
           {
-            n: `${(rate * 100).toFixed(1)}%`,
+            n: report.qualified_for_escalation ? `${(rate * 100).toFixed(1)}%` : "—",
             label: "missed-escalation rate",
             href: "/app/approvals?tab=escalation",
             ...(breaching ? { tone: "bad" as const } : {}),

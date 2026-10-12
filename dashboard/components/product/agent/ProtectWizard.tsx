@@ -20,6 +20,8 @@ type Protection = {
 
 export type ProtectionState = {
   agent: string;
+  /** Display name; the slug when the agent has none. */
+  name?: string;
   mode: string | null;
   message: string;
   levels: Record<string, number>;
@@ -113,6 +115,11 @@ export function ProtectWizard({
       </ol>
 
       {STEPS[step] === "Protections" && (
+        <>
+        <p className="k-muted" style={{ margin: "0 0 8px" }}>
+          Low stops only clear-cut cases. High catches more, and flags more by mistake. Everything starts by watching, so
+          you can see what it would stop before it stops anything.
+        </p>
         <table className="k-table">
           <tbody>
             {initial.protections.map((p) => {
@@ -124,7 +131,7 @@ export function ProtectWizard({
                     <span className="k-name">{p.title}</span>
                     {p.inherited && (
                       <span className="sub">
-                        {LABEL[p.inherited]} for every agent{p.inherited_mode === "enforce" ? "" : " · watching"}
+                        Workspace default: {LABEL[p.inherited]}{p.inherited_mode === "enforce" ? "" : ", watching"}
                       </span>
                     )}
                     {p.needs && p.needs_installed === false && choices[p.key] !== "off" && <span className="sub">Model not installed here</span>}
@@ -148,6 +155,7 @@ export function ProtectWizard({
             })}
           </tbody>
         </table>
+        </>
       )}
 
       {STEPS[step] === "Words & topics" && (
@@ -180,13 +188,19 @@ export function ProtectWizard({
           {preview && (
             <div className="k-preview" style={{ maxWidth: "none" }}>
               <div className="k-preview-head">
-                <strong>Last 7 days for {initial.agent}</strong>
-                <span className="k-muted"> · {preview.replayed} requests</span>
+                <strong>Last 7 days for {initial.name || initial.agent}</strong>
+                <span className="k-muted"> · {preview.runs_replayed ?? preview.replayed} requests replayed</span>
               </div>
               <div className="k-preview-nums">
-                <span><strong>{preview.counts?.newly_blocked ?? 0}</strong> newly blocked</span>
-                <span><strong>{preview.counts?.newly_escalated ?? 0}</strong> newly held</span>
+                <span>
+                  <strong>{preview.runs_would_stop ?? preview.counts?.would_stop ?? 0}</strong> would have been stopped or held once enforcing
+                </span>
               </div>
+              {(payload().words.length > 0 || avoid.trim() || allowed.trim()) && (
+                <p className="k-muted" style={{ margin: "6px 0 0" }}>
+                  Blocked words and topics apply to new messages from now on; past traffic was never checked for them, so they are not in this number.
+                </p>
+              )}
             </div>
           )}
           <ul className="k-plain">
@@ -220,6 +234,12 @@ export function ProtectWizard({
             </Link>
           </div>
           <TryIt agents={[{ slug: initial.agent }]} tools={tools} />
+          {saved.policy.mode !== "enforce" && (
+            <p className="k-muted" style={{ marginTop: 12 }}>
+              These protections are watching: they record what they would stop. When that looks right,{" "}
+              <Link href={`/app/start?agent=${encodeURIComponent(initial.agent)}`}>turn enforcement on</Link> from Get started.
+            </p>
+          )}
         </>
       )}
 
