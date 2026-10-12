@@ -37,6 +37,21 @@ One entry per capability area. Each links to a self-contained directory with its
 - Every script runs as a module from the repository root, so `benchmarks._common` imports without
   any `sys.path` edits: `uv run python -m benchmarks.containment.run_containment_benchmark`.
 
+## Sending benchmark data to a third-party API
+
+Benchmarks run with `allow_egress` off, like the product. A run that sends any non-synthetic
+dataset text to a third-party API needs `allow_egress` turned on explicitly for that run and a
+stated reason for doing it. Scripts that call a hosted model take that as
+`--allow-egress "<reason>"` and refuse without it, printing what would have been sent
+([`_common/egress.py`](_common/egress.py); `tests/repo/test_benchmark_egress.py` fails if a
+script reaches a hosted model without asking).
+
+The committed dataset this matters most for is TAB, `pii/data/tab_echr_test.json`: 127 published
+European Court of Human Rights judgments. It is public court data, but it is real text that names
+real people, not synthetic. An earlier internal run sent those 127 to a hosted judgment API in a
+batch of 7,221 texts that was described as all synthetic; the other 7,094 were. See
+[`docs/architecture/judgment-egress.md`](../docs/architecture/judgment-egress.md).
+
 ## Reading this table honestly
 
 The standing version of this, including the limits that apply before any number and how to report a

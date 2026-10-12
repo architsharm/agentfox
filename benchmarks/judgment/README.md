@@ -7,8 +7,13 @@ and scores exactly what it scored before.
 
 ```bash
 JEV_API_KEY=... ANTHROPIC_API_KEY=... \
-  uv run python -m benchmarks.judgment.run_judgment_benchmark
+  uv run python -m benchmarks.judgment.run_judgment_benchmark \
+    --allow-egress "<why this run needs the hosted models>"
 ```
+
+The runner sends dataset text to the hosted Jev API and the LLM provider, so it
+refuses without `--allow-egress` and a reason, and lists what it would send. None
+of that text is TAB; see [Sending benchmark data to a third-party API](../README.md#sending-benchmark-data-to-a-third-party-api).
 
 Results: [`results/judgment_results.json`](results/judgment_results.json).
 Every number published about these tiers is rendered from that file by
