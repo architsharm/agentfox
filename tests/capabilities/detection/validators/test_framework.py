@@ -209,3 +209,27 @@ def test_the_validator_rules_detector_is_not_even_submitted_without_a_rule(plugi
     )
     assert [r.detector_key for r in ruled.results] == ["custom.validators"]
     assert ruled.results[0].detections
+
+
+def test_a_missing_library_is_looked_for_once_not_on_every_request(monkeypatch):
+    """`available()` runs on every request; looking for an absent module walks the
+    whole import path, which cost CI about 250 ms per request across the validators."""
+    import importlib.util
+
+    from agentfox.capabilities.detection.validators.base import module_present
+
+    class _NeedsAbsentLib(Validator):
+        name = "test_needs_absent_lib"
+        entity_type = "FORMAT.TEST"
+        requires = ("agentfox_test_no_such_module",)
+
+    looked = []
+    real = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util, "find_spec", lambda name, *a: looked.append(name) or real(name, *a)
+    )
+    module_present.cache_clear()
+    v = _NeedsAbsentLib()
+    assert [v.available() for _ in range(5)] == [False] * 5
+    assert looked.count("agentfox_test_no_such_module") == 1
+    module_present.cache_clear()

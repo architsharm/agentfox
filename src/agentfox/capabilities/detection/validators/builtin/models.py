@@ -734,7 +734,9 @@ class BiasCheck(_ModelValidator):
     detector = True
 
     @staticmethod
+    @functools.cache
     def _tf_supported() -> bool:
+        # Cached: it imports transformers, and `available()` runs on every request.
         try:
             import transformers
 

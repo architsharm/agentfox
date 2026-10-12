@@ -22,6 +22,7 @@ one exactly as the built-in ones are added.
 
 from __future__ import annotations
 
+import functools
 import importlib.util
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Literal
@@ -99,10 +100,10 @@ class Validator:
     scan_views: ClassVar[bool] = True
 
     def available(self) -> bool:
-        return all(importlib.util.find_spec(m) is not None for m in self.requires)
+        return all(module_present(m) for m in self.requires)
 
     def unavailable_reason(self) -> str:
-        missing = [m for m in self.requires if importlib.util.find_spec(m) is None]
+        missing = [m for m in self.requires if not module_present(m)]
         if missing:
             return f"needs {', '.join(missing)} (install the extra that provides it)"
         return ""
@@ -151,6 +152,22 @@ class Validator:
             "available": self.available(),
             "unavailable_reason": "" if self.available() else self.unavailable_reason(),
         }
+
+
+@functools.cache
+def module_present(name: str) -> bool:
+    """Whether a module can be imported, decided once per process.
+
+    `available()` is asked on every request (the pipeline selects from available
+    detectors), and `find_spec` for a module that is *not* installed walks the whole
+    import path each time: on CI's runner that was 35,000 stat calls and about
+    250 ms per request across the validators, failing the 100 ms latency budget.
+    Installing a library needs a restart to take effect anyway.
+    """
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
 
 
 def span_finding(text: str, start: int, end: int, reason: str, **detail: Any) -> Finding:

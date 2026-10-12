@@ -14,8 +14,25 @@ import pytest
 
 from agentfox.capabilities.detection.base import DetectionContext
 from agentfox.capabilities.detection.validators import CheckContext, check, get_validator
+from agentfox.capabilities.detection.validators.base import module_present
 from agentfox.capabilities.detection.validators.builtin import models as m
 from agentfox.capabilities.detection.validators.detector import ValidatorDetector
+
+
+@pytest.fixture(autouse=True)
+def _fresh_dependency_checks():
+    """Availability is decided once per process; tests that fake an install need it
+    decided again."""
+
+    def clear():
+        module_present.cache_clear()
+        # A test may have swapped it for a plain function.
+        getattr(m.BiasCheck._tf_supported, "cache_clear", lambda: None)()
+
+    clear()
+    yield
+    clear()
+
 
 np = pytest.importorskip("numpy")
 
