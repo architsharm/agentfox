@@ -219,11 +219,23 @@ def test_every_decision_writes_an_audit_entry(seeded, enforcer):
 
 def test_enforcement_stays_inside_the_latency_budget(seeded, enforcer):
     """NFR-1 as a tested budget, not an aspiration."""
+    import cProfile
+    import io
+    import pstats
+
+    profile = cProfile.Profile()
+    profile.enable()
     result, _ = enforcer.run_completion(
         agent_slug="support-triage",
         messages=[{"role": "user", "content": "What is the refund window?"}],
         model="echo-1",
     )
+    profile.disable()
+    if result.latency_ms >= 100:
+        # Where the time went, so a CI-only overrun names its cause.
+        out = io.StringIO()
+        pstats.Stats(profile, stream=out).sort_stats("cumulative").print_stats(40)
+        print(out.getvalue())
     assert result.latency_ms < 100, f"added {result.latency_ms:.1f}ms"
 
 

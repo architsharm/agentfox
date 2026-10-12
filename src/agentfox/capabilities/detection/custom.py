@@ -578,6 +578,10 @@ class CustomValidatorDetector(BaseDetector):
             if r.validator is not None and r.applies(context.surface, context.agent_slug)
         ]
 
+    def applies(self, context: DetectionContext) -> bool:
+        """Selected only when a validator rule applies here (see `pipeline._applies`)."""
+        return bool(self._rules(context))
+
     def budget_for(self, context: DetectionContext) -> int:
         """The request budget the applicable rules need; 0 when the default will do."""
         return max((r.validator.requires_budget_ms or 0 for r in self._rules(context)), default=0)

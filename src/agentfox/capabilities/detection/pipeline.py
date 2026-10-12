@@ -129,6 +129,19 @@ class PipelineResult:
         }
 
 
+def _applies(detector: Detector, context: DetectionContext) -> bool:
+    """Whether a detector has anything to do on this request.
+
+    A detector whose work depends on the workspace's own rules (`custom.validators`)
+    says so through `applies(context)`. Without this it was submitted on every
+    request just to find no rules, and because it declares a timeout it queues in
+    the heavy pool: behind a slow model's stragglers, that empty check waited out
+    the request's budget (CI measured 100–101 ms against a 100 ms budget).
+    """
+    applies = getattr(detector, "applies", None)
+    return bool(applies(context)) if callable(applies) else True
+
+
 def _required_budget(detector: Detector, context: DetectionContext) -> int:
     """What a detector needs this request: its own `budget_for(context)` when its
     need depends on the request (a workspace rule that asks a model), else its
@@ -192,7 +205,11 @@ class DetectorPipeline:
         already been evaluated. Without it, a stack that respects 100 ms per call can
         still spend half a second on one request."""
         effective_budget = self.budget_ms if budget_ms is None else float(budget_ms)
-        detectors = self.select(context.surface, context.enabled_detectors)
+        detectors = [
+            d
+            for d in self.select(context.surface, context.enabled_detectors)
+            if _applies(d, context)
+        ]
         # A detector that cannot physically finish inside the default budget —
         # currently only the judgment tiers, which make a network round trip
         # measured at a 332ms median — declares `requires_budget_ms`. Without

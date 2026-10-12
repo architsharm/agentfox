@@ -184,3 +184,52 @@ def test_a_validator_needing_settings_can_still_be_wrapped_to_pull_its_weights()
     assert detector.key == "validator.ban_list"
     with pytest.raises(RuntimeError, match="needs settings"):
         detector.detect("text", DetectionContext(surface="output"))
+
+
+def test_the_validator_rules_detector_is_not_even_submitted_without_a_rule(plugin):
+    """It declares a timeout, so it runs in the heavy pool. Submitted on every request
+    with nothing to do, it queued behind slow models' stragglers and waited out the
+    request's budget; CI's latency test caught it at 100–101 ms."""
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
+
+    pipeline = DetectorPipeline(detectors=[CustomValidatorDetector()])
+    empty = pipeline.run("do it", DetectionContext(surface="output"))
+    assert [r.detector_key for r in empty.results] == []
+
+    rule = compile_rule(
+        CustomRuleSpec(
+            key="say-please",
+            name="Say please",
+            kind="validator",
+            validator={"name": "test_must_say_please", "params": {"word": "please"}},
+        )
+    )
+    ruled = pipeline.run(
+        "do it", DetectionContext(surface="output", extra={"custom_rules": [rule]})
+    )
+    assert [r.detector_key for r in ruled.results] == ["custom.validators"]
+    assert ruled.results[0].detections
+
+
+def test_a_missing_library_is_looked_for_once_not_on_every_request(monkeypatch):
+    """`available()` runs on every request; looking for an absent module walks the
+    whole import path, which cost CI about 250 ms per request across the validators."""
+    import importlib.util
+
+    from agentfox.capabilities.detection.validators.base import module_present
+
+    class _NeedsAbsentLib(Validator):
+        name = "test_needs_absent_lib"
+        entity_type = "FORMAT.TEST"
+        requires = ("agentfox_test_no_such_module",)
+
+    looked = []
+    real = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util, "find_spec", lambda name, *a: looked.append(name) or real(name, *a)
+    )
+    module_present.cache_clear()
+    v = _NeedsAbsentLib()
+    assert [v.available() for _ in range(5)] == [False] * 5
+    assert looked.count("agentfox_test_no_such_module") == 1
+    module_present.cache_clear()
