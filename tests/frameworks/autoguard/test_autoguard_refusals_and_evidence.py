@@ -23,9 +23,19 @@ def _db():
     return session_scope()
 
 
-def test_a_policy_mode_refusal_leads_with_the_rule_that_refused(fake_openai):  # noqa: F811
+def test_a_policy_mode_refusal_leads_with_the_rule_that_refused(fake_openai, monkeypatch):  # noqa: F811
     """#83: with no grants, capability default-deny is exempt in policy mode. It must
-    not be what the message says refused the call."""
+    not be what the message says refused the call.
+
+    The detector clock is raised out of the way: at the 40ms default a loaded CI
+    runner can time every detector out, and the shipped policy is fail_mode=closed,
+    so pipeline.fail_closed then leads the message instead of taint. That is the
+    product working, but it is not what this test is about."""
+    from agentfox.core.config import reset_settings_cache
+
+    monkeypatch.setenv("AGENTFOX_DETECTOR_TIMEOUT_MS", "60000")
+    monkeypatch.setenv("AGENTFOX_ENFORCEMENT_BUDGET_MS", "60000")
+    reset_settings_cache()
     _bind_shipped_policies()
     client, script, _calls = fake_openai
     messages, attack = _exfiltration_turn()
