@@ -104,9 +104,11 @@ class _StreamingMixin:
             request, provider=provider, model=model, stream=True
         )
         accumulated: list[str] = []
-        # Tool calls the model proposes arrive as fragments keyed by index; they are
-        # forwarded as they come and assembled for the record.
+        # Tool calls the model proposes arrive as fragments keyed by index. They are
+        # held in either mode until the whole call can be authorised: a fragment
+        # already forwarded is a call the client may already be running.
         tool_calls: dict[int, dict[str, Any]] = {}
+        held_calls: list[StreamEvent] = []
         usage: dict[str, int] = {}
         finish_reason: str | None = None
         pending: list[StreamEvent] = []
@@ -120,11 +122,7 @@ class _StreamingMixin:
                 finish_reason = chunk.finish_reason
             if chunk.tool_calls:
                 _merge_tool_calls(tool_calls, chunk.tool_calls)
-                call_event = StreamEvent(kind="delta", tool_calls=chunk.tool_calls)
-                if mode == "windowed":
-                    yield call_event
-                else:
-                    pending.append(call_event)
+                held_calls.append(StreamEvent(kind="delta", tool_calls=chunk.tool_calls))
             if not chunk.delta:
                 continue
             accumulated.append(chunk.delta)
@@ -184,10 +182,18 @@ class _StreamingMixin:
             provider_ms=provider_ms,
             intent=intent,
             schema=schema,
+            credential=credential,
+            prior_tools=pre.prior_tools,
+            tools=(passthrough or {}).get("tools"),
+            approval_id=approval_id,
         )
+        # A held tool call stops the stream like a block does: released, it is a
+        # call the client runs without the approval it needed. The error event
+        # carries the approval to retry with.
+        stopped = final.blocked or (final.escalated and bool(tool_calls))
 
         if mode == "buffered":
-            if final.blocked:
+            if stopped:
                 yield StreamEvent(kind="blocked", result=final)
                 return
             # Release the (possibly redacted) text. Redaction is why this is not a
@@ -197,11 +203,11 @@ class _StreamingMixin:
                 yield from pending
             else:
                 yield StreamEvent(kind="delta", delta=text)
-                yield from (e for e in pending if e.tool_calls)
-        elif final.blocked:
+        elif stopped:
             # Windowed mode: the tail was blocked after content had already been sent.
             yield StreamEvent(kind="blocked", result=final)
             return
+        yield from held_calls
 
         yield StreamEvent(
             kind="done", finish_reason=finish_reason or "stop", usage=usage, result=final

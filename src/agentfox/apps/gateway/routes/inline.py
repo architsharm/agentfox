@@ -1079,7 +1079,19 @@ class GuardToolCallRequest(BaseModel):
     agent: str
     tool: str
     arguments: dict[str, Any] = Field(default_factory=dict)
+    # Per-argument provenance the caller declares (`{"recipient": "tool_result"}`).
+    # Always wins over inference.
     provenance: dict[str, str] = Field(default_factory=dict)
+    # The conversation that led to this call, in OpenAI's or Anthropic's shape. With
+    # it, an undeclared argument's provenance is inferred by finding the value in it
+    # (a payee copied out of a tool result is `tool_result`), and `prior_tools`
+    # defaults to the tools it already called. Without it — and without
+    # `provenance` — nothing is known about where an argument came from, and it is
+    # treated as untainted.
+    messages: list[dict[str, Any]] | None = None
+    # Which of `messages` the caller vouches for, as `X-AgentFox-Trust` does on the
+    # proxy routes: index -> source.
+    trust: dict[str, str] | None = None
     intent: str | None = None
     prior_tools: list[str] = Field(default_factory=list)
     # A caller that already tracks its own step history (tool, arguments,
@@ -1293,6 +1305,14 @@ def guard_tool_call(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
+    """Authorise a tool call.
+
+    An argument's provenance comes from `provenance` when the caller declares it,
+    and is otherwise inferred from `messages`, the conversation that led to the
+    call. With neither, the gateway has nothing to infer from and the arguments
+    count as untainted: taint rules cannot fire.
+    """
+    from agentfox.capabilities.detection import TaintTracker
     from agentfox.platform.ledger.trace import start_trace
     from agentfox.platform.registry.service import slugify
 
@@ -1306,6 +1326,11 @@ def guard_tool_call(
         environment=payload.environment or "production",
         intent=payload.intent,
     )
+    tracker, prior_tools = None, payload.prior_tools
+    if payload.messages:
+        tracker = TaintTracker(trace_id=trace.id)
+        called = tracker.mark_messages(payload.messages, payload.trust)
+        prior_tools = prior_tools or called
     result = enforcer.guard_tool_call(
         agent_slug=payload.agent,
         tool_key=payload.tool,
@@ -1313,8 +1338,9 @@ def guard_tool_call(
         provenance=payload.provenance,
         intent=payload.intent,
         trace=trace,
+        tracker=tracker,
         credential=credential,
-        prior_tools=payload.prior_tools,
+        prior_tools=prior_tools,
         prior_steps=payload.prior_steps,
         approval_id=payload.approval_id,
         principal=_principal_for(session, payload.agent, payload.principal),

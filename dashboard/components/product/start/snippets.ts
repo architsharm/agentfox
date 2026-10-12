@@ -17,11 +17,10 @@ export type PathKey =
   | "codex"
   | "otlp";
 
-// TypeScript is left out until @agentfox/sdk is on npm: a tab whose first line is an
-// install that fails is worse than no tab. Its snippet stays below for when it is.
 export const PATHS: { key: PathKey; label: string }[] = [
   { key: "python", label: "Python" },
   { key: "openai-agents", label: "OpenAI Agents SDK" },
+  { key: "typescript", label: "TypeScript" },
   { key: "openai", label: "OpenAI-compatible" },
   { key: "http", label: "HTTP" },
   { key: "claude-code", label: "Claude Code" },

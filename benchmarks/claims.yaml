@@ -685,6 +685,14 @@ retired:
     text: "79% pre-fix"
     reason: "the pre-fix rate was 75.0% (benchmarks/adaptive/README.md)"
     files: [benchmarks/README.md, README.md, docs/evaluation/benchmarking-whitepaper.md]
+  - id: judgment.egress_run_all_synthetic
+    text: "texts of synthetic personal data"
+    reason: "127 of the 7,221 texts were TAB, real public ECHR judgments; see docs/architecture/judgment-egress.md"
+    files: [README.md, "docs/**/*.md", "benchmarks/**/*.md", "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx"]
+  - id: judgment.egress_run_fine_for_synthetic
+    text: "fine for synthetic benchmark data"
+    reason: "the run was not all synthetic; see docs/architecture/judgment-egress.md"
+    files: [README.md, "docs/**/*.md", "benchmarks/**/*.md", "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx"]
   - id: jev.modelled_latency
     text: "| ~150ms |"
     reason: "modelled, not measured; retracted in docs/evaluation/judgment/safepyramid.md"

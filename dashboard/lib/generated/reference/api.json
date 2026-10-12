@@ -434,8 +434,8 @@
    "path": "/v1/guard/tool_call",
    "section": "v1/guard",
    "audience": "public",
-   "summary": "Authorise a tool call",
-   "description": "",
+   "summary": "Authorise a tool call.",
+   "description": "Authorise a tool call.\n\nAn argument's provenance comes from `provenance` when the caller declares it,\nand is otherwise inferred from `messages`, the conversation that led to the\ncall. With neither, the gateway has nothing to infer from and the arguments\ncount as untainted: taint rules cannot fire.",
    "params": [
     {
      "name": "authorization",
@@ -467,6 +467,18 @@
      },
      {
       "name": "provenance",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "messages",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "trust",
       "type": "object",
       "required": false,
       "description": ""

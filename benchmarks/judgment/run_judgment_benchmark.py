@@ -9,7 +9,11 @@ forbidden, which is the control: if SQL blast radius moves, the routing table
 has failed at its only job.
 
     JEV_API_KEY=... ANTHROPIC_API_KEY=... \
-      uv run python -m benchmarks.judgment.run_judgment_benchmark
+      uv run python -m benchmarks.judgment.run_judgment_benchmark \
+        --allow-egress "<why this run needs the hosted models>"
+
+It sends dataset text to the hosted Jev API and to the LLM provider, so it refuses
+to run without ``--allow-egress`` and a reason (see ``benchmarks/_common/egress.py``).
 
 Writes results/judgment_results.json. Every number published anywhere about
 these tiers is rendered from that file by scripts/check/claims.py.
@@ -17,6 +21,7 @@ these tiers is rendered from that file by scripts/check/claims.py.
 
 from __future__ import annotations
 
+import argparse
 import collections
 import json
 import os
@@ -66,7 +71,38 @@ def score(rows: list[tuple[bool, bool]]) -> dict:
     }
 
 
-def main() -> int:
+#: Everything this runner sends out, relative to benchmarks/. None of it is
+#: TAB, the one committed dataset of real personal data.
+SENDS = [
+    "adaptive/results/adaptive_attempts.json",
+    "generalization/data/notinject.json",
+    "injection/data/test.json",
+    "injection/data/train.json",
+    "../src/agentfox/guardrails/data/injection_corpus.json",
+    "answerability/data/kuq.json",
+    "pii/data/synth_dataset_v2.json",
+    "judgment/data/jev_corpus.json",
+    "action_safety/results/test_*_predictions.json",
+]
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--allow-egress",
+        metavar="REASON",
+        help="required: why this run may send the datasets above to the hosted APIs",
+    )
+    args = ap.parse_args(argv)
+
+    from benchmarks._common.egress import require_egress
+
+    require_egress(
+        args.allow_egress,
+        destination="the hosted Jev API and the judgment LLM provider",
+        datasets=SENDS,
+    )
+
     from agentfox.capabilities.detection import DetectorPipeline
     from agentfox.capabilities.detection.base import DetectionContext
     from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector

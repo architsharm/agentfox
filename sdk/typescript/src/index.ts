@@ -144,6 +144,8 @@ export class AgentFox {
       intent: opts.intent,
       prior_tools: opts.priorTools,
       prior_steps: opts.priorSteps,
+      messages: opts.messages,
+      trust: opts.trust,
       session_id: opts.sessionId,
       environment: opts.environment ?? this.environment,
       approval_id: opts.approvalId,

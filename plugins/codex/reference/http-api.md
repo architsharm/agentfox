@@ -29,10 +29,10 @@ auditor). Reads need any operator.
 
 | Route | Use it for |
 |---|---|
-| `POST /v1/chat/completions` | **OpenAI-compatible proxy.** Point any OpenAI client's `base_url` at `http://host:8080/v1`. Streaming supported. |
-| `POST /v1/messages` | Anthropic-compatible proxy. |
+| `POST /v1/chat/completions` | **OpenAI-compatible proxy.** Point any OpenAI client's `base_url` at `http://host:8080/v1`. Streaming supported. Every tool call in the response is authorised (as `/v1/guard/tool_call` would, with provenance inferred from the conversation) before it is returned: refused is a 403, held a 428. |
+| `POST /v1/messages` | Anthropic-compatible proxy. Same tool-call authorisation; `tool_result` blocks are tainted as tool output, not user input, and the reply carries `tool_use` blocks. |
 | `POST /v1/guard/input`, `POST /v1/guard/output` | Check a piece of text. Body `{agent, content, surface?, taint_source?, intent?, session_id?, trace_id?, completion?, context?}`. `context` is the passages an answer was built from (read by the grounding model). With `surface: "completion"`, `completion` carries the facts observed when the agent claimed to be done (`{"work_verified": true}`); an unreported fact counts as unmet. **No auth.** |
-| `POST /v1/guard/tool_call` | Authorise a tool call before running it. Body `{agent, tool, arguments, provenance, intent?, prior_tools?, session_id?}`. |
+| `POST /v1/guard/tool_call` | Authorise a tool call before running it. Body `{agent, tool, arguments, provenance?, messages?, trust?, intent?, prior_tools?, session_id?}`. An argument's provenance is `provenance` if declared, else inferred from `messages` (the conversation, OpenAI or Anthropic shape). **With neither, nothing is inferred and arguments count as untainted.** |
 | `POST /v1/guard/memory_write` | Govern a write to agent memory. |
 | `POST /v1/guard/agent_message` | Govern an inter-agent message (signature, nonce, freshness). |
 | `POST /v1/mcp/call` | Govern a call to an MCP server tool. Body `{server, tool, arguments, provenance, result?}`. |
