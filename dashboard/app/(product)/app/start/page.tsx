@@ -303,7 +303,7 @@ async function ConnectTab({
 
         <ConnCard
           title="SDK"
-          status={<Pill tone="neutral">Python</Pill>}
+          status={<Pill tone="neutral">Python, TypeScript</Pill>}
           text="Check each message and tool call from your agent's own code."
           expandLabel="Show setup"
         >
