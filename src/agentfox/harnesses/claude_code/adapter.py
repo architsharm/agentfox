@@ -54,6 +54,7 @@ EVENTS: dict[str, str] = {
     "prompt.submit": "UserPromptSubmit",
     "tool.pre": "PreToolUse",
     "tool.post": "PostToolUse",
+    "stop": "Stop",
 }
 _KIND_OF = {native: kind for kind, native in EVENTS.items()}
 
@@ -121,6 +122,26 @@ VERIFIED: dict[str, Verified] = {
             "is weaker than LIVE_PROBE and this row should not stay SOURCE forever."
         ),
     ),
+    # Established by running it on Claude Code 2.1.292 (`claude -p`), later than the
+    # rows above. A Stop hook returned `decision: "block"` with a reason naming a
+    # sentinel command when `stop_hook_active` was false, and allowed otherwise.
+    #
+    # **"Block" here means the agent keeps going.** The reason arrived as the agent's
+    # next instruction, it ran the sentinel command, and the second Stop (now with
+    # `stop_hook_active: true`) was allowed and ended the session. So a deny on this
+    # event does not stop an action: it refuses to let the agent stop.
+    "Stop": Verified(
+        capability="block",
+        evidence="LIVE_PROBE",
+        version="2.1.292",
+        reference="probe: Stop decision='block' -> sentinel command ran, then stop_hook_active",
+        note=(
+            "Payload adds `stop_hook_active`, `last_assistant_message`, "
+            "`background_tasks` and `session_crons` to the common fields, and has no "
+            "tool fields. `stop_hook_active` is the loop guard: true means a stop hook "
+            "has already sent the agent back once this turn."
+        ),
+    ),
 }
 
 #: Probed: returning `updatedInput: {"command": "echo REWRITTEN_BY_HOOK"}` with
@@ -163,6 +184,12 @@ CAPABILITIES: dict[str, EventCaps] = {
         can_inject_context=True,
         verified=VERIFIED["PostToolUse"],
     ),
+    # A refusal keeps the agent working with the reason as its next instruction.
+    # Text without a refusal has no channel here, so `context` is not claimed.
+    "stop": EventCaps(
+        can_block=True,
+        verified=VERIFIED["Stop"],
+    ),
 }
 
 #: Appended to a refusal on PostToolUse, where the call has already run.
@@ -200,6 +227,24 @@ def _content_of(event: str, payload: Mapping[str, Any]) -> str:
     if response is None:
         return ""
     return json.dumps(response, default=str)
+
+
+def _background_tasks(value: Any) -> tuple[str, ...]:
+    """`background_tasks` as short strings. Its element shape was not observed (the
+    probe's list was empty), so a dict is described by its first identifying field."""
+    if not isinstance(value, list):
+        return ()
+    out = []
+    for item in value:
+        if isinstance(item, dict):
+            label = next(
+                (str(item[k]) for k in ("command", "description", "id", "name") if item.get(k)),
+                json.dumps(item, default=str),
+            )
+            out.append(label)
+        else:
+            out.append(str(item))
+    return tuple(out)
 
 
 class ClaudeCodeAdapter:
@@ -244,6 +289,8 @@ class ClaudeCodeAdapter:
             cwd=str(raw.get("cwd") or ""),
             permission_mode=str(raw.get("permission_mode") or ""),
             content=_content_of(event, raw),
+            reentered=bool(raw.get("stop_hook_active")),
+            background_tasks=_background_tasks(raw.get("background_tasks")),
         )
 
     def render(self, decision: Decision, event: AgentEvent) -> HookOutput:
@@ -256,6 +303,8 @@ class ClaudeCodeAdapter:
         applied = downgrade(decision, self.capabilities.get(event.kind))
         if event.event == "PostToolUse":
             body = self._render_post(applied)
+        elif event.event == "Stop":
+            body = self._render_stop(applied)
         elif event.event == "UserPromptSubmit":
             body = self._render_prompt(applied)
         else:
@@ -334,6 +383,16 @@ class ClaudeCodeAdapter:
         elif applied.kind == "context" and applied.context:
             out["hookSpecificOutput"]["additionalContext"] = applied.context
         return out
+
+    @staticmethod
+    def _render_stop(applied: Decision) -> dict[str, Any]:
+        """Stop. A refusal sends the agent back to work with the reason (probed, 2.1.292).
+
+        An allow prints an empty object: Stop has no `hookSpecificOutput` shape.
+        """
+        if applied.kind != "deny":
+            return {}
+        return {"decision": "block", "reason": refusal_text(applied, "not finished yet")}
 
     # --- the machine ------------------------------------------------------
 

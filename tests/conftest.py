@@ -57,6 +57,8 @@ def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
     # A developer's shell AGENTFOX_CONFIG, or a agentfox.toml left in the cwd by
     # `agentfox init`, must never leak into a test. Tests of file loading delenv this.
     monkeypatch.setenv("AGENTFOX_CONFIG", "none")
+    # The hook writes per-session delivery state; never into the developer's run dir.
+    monkeypatch.setenv("AGENTFOX_DELIVERY_STATE", str(tmp_path / "delivery"))
 
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache
