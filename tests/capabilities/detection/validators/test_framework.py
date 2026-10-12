@@ -184,3 +184,28 @@ def test_a_validator_needing_settings_can_still_be_wrapped_to_pull_its_weights()
     assert detector.key == "validator.ban_list"
     with pytest.raises(RuntimeError, match="needs settings"):
         detector.detect("text", DetectionContext(surface="output"))
+
+
+def test_the_validator_rules_detector_is_not_even_submitted_without_a_rule(plugin):
+    """It declares a timeout, so it runs in the heavy pool. Submitted on every request
+    with nothing to do, it queued behind slow models' stragglers and waited out the
+    request's budget; CI's latency test caught it at 100–101 ms."""
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
+
+    pipeline = DetectorPipeline(detectors=[CustomValidatorDetector()])
+    empty = pipeline.run("do it", DetectionContext(surface="output"))
+    assert [r.detector_key for r in empty.results] == []
+
+    rule = compile_rule(
+        CustomRuleSpec(
+            key="say-please",
+            name="Say please",
+            kind="validator",
+            validator={"name": "test_must_say_please", "params": {"word": "please"}},
+        )
+    )
+    ruled = pipeline.run(
+        "do it", DetectionContext(surface="output", extra={"custom_rules": [rule]})
+    )
+    assert [r.detector_key for r in ruled.results] == ["custom.validators"]
+    assert ruled.results[0].detections
