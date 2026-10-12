@@ -69,6 +69,10 @@ Direct enforcement without proxying — for teams that keep their own provider c
   "intent": "refund a duplicate charge"
 }
 ```
+Undeclared arguments are inferred from `messages`, the conversation that led to the call
+(OpenAI or Anthropic shape; `trust` vouches for messages by index, as `X-AgentFox-Trust`
+does). A value found in a tool's output is `tool_result`. With neither `provenance` nor
+`messages` the gateway has nothing to infer from, and the arguments count as untainted.
 ```jsonc
 // 200
 {
@@ -115,7 +119,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/v1/guard/input` | Enforce on content without proxying. |
 | `POST` | `/v1/guard/memory_write` | Authorise a memory write |
 | `POST` | `/v1/guard/output` | Enforce on content without proxying. |
-| `POST` | `/v1/guard/tool_call` | Authorise a tool call |
+| `POST` | `/v1/guard/tool_call` | Authorise a tool call. |
 | `POST` | `/v1/mcp/call` | Govern one MCP call for callers that are not in-process Python. |
 | `POST` | `/v1/messages` | Anthropic-compatible inline proxy |
 | `POST` | `/v1/traces` | OTLP/HTTP trace ingest |

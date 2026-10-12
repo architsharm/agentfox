@@ -569,6 +569,50 @@ def upsert_tool(
     return tool
 
 
+def register_called_tool(session: Session, name: str, descriptor: dict[str, Any] | None) -> None:
+    """Put a tool a model called into the registry the first time it is seen.
+
+    Containment reasons over `Tool.impact`, and an unregistered tool is reasoned
+    about as ``read`` — the least dangerous value there is. So the impact is
+    inferred from the tool's name and the description the request declared
+    (`platform.registry.impact.infer_impact`, the guess MCP governance already makes, read
+    cautiously: a name that moves money or sends a message is irreversible, as the
+    learned-permissions guess has it — an unconfirmed payment tool guessed `read`
+    is containment switched off for the one tool that needed it) and recorded as
+    ``impact_source="inferred"``, for a human to confirm with `agentfox declare tool`.
+    A declaration made in code (`@fox.tool(impact=...)`)
+    beats the guess. An existing row is never overwritten — except an inferred one
+    that code has since declared. Shared by the SDK's autoguard and the gateway's
+    proxy routes, which govern the same tool calls.
+    """
+    from agentfox.platform.registry.impact import declared_impact, infer_impact
+
+    declared = declared_impact(name)
+    existing = session.scalar(select(Tool).where(Tool.key == name))
+    if existing is not None:
+        if declared and impact_source_of(existing) == "inferred":
+            upsert_tool(session, name, impact=declared, impact_source="declared")
+        return
+    descriptor = descriptor or {}
+    guess = infer_impact(name, descriptor, cautious=True)
+    try:
+        # A savepoint, because two processes meeting the same new tool at once is
+        # ordinary, and losing that race must not roll back the decisions already
+        # written in this session.
+        with session.begin_nested():
+            upsert_tool(
+                session,
+                name,
+                name=name,
+                impact=declared or guess,
+                impact_source="declared" if declared else "inferred",
+                schema=descriptor.get("inputSchema") or {},
+                description=descriptor.get("description", ""),
+            )
+    except IntegrityError:
+        pass  # registered by someone else a moment ago; theirs stands
+
+
 def record_edge(
     session: Session,
     src_type: str,

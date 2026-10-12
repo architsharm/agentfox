@@ -98,17 +98,21 @@ recorded. New surfaces must call these methods, not reimplement them.
 3. **Pre-flight.** `_preflight` → `_run_preflight` opens a session (`core/db.py:session_scope`)
    and calls `Enforcer.preflight` (`runtime/enforcement/completion.py`): resolve the agent,
    kill switch/quarantine (`limits.py:_control_verdict`), hard budget (`_budget_gate`),
-   answerability (`_answerability_gate`), taint-mark every message, then `evaluate()` per
-   message. If the outcome must stop the call under the current mode (`_raises`), `Blocked`
+   answerability (`_answerability_gate`), taint-mark the conversation
+   (`capabilities/detection/taint.py:message_segments`: by role, except that a tool's output
+   is `tool_result` in either shape, an Anthropic `tool_result` block inside a `user` message
+   included), then `evaluate()` per segment. If the outcome must stop the call under the current mode (`_raises`), `Blocked`
    is raised before the provider is called.
 4. The real provider call runs.
 5. **Post-flight.** `_postflight` evaluates the response text (`_evaluate_output` →
    `Enforcer.evaluate` on the `output` surface), then reads tool calls out of the response
    (`frameworks/autoguard/tool_calls.py:_tool_calls_of`, OpenAI `tool_calls` or Anthropic
    `tool_use`) and hands them to `_govern_tool_calls`.
-6. `_govern_tool_calls` registers unseen tools with an inferred impact (`_register_tool`,
-   using `platform/registry/impact.py:infer_impact`) and calls `Enforcer.guard_tool_call` for each,
-   with a `TaintTracker` rebuilt from the request's conversation (`tool_calls.py:_provenance_of`).
+6. `_govern_tool_calls` registers unseen tools with an inferred impact
+   (`platform/registry/service.py:register_called_tool`, using
+   `platform/registry/impact.py:infer_impact`) and calls `Enforcer.guard_tool_call` for each,
+   with a `TaintTracker` rebuilt from the request's conversation (`tool_calls.py:_provenance_of`,
+   which is `TaintTracker.mark_messages`, the marking the gateway uses).
 7. `guard_tool_call` (`runtime/enforcement/tool_calls.py`) checks the kill switch again,
    marks each argument's provenance (`TaintTracker.taint_arguments`), writes `TaintTag`
    rows and a lineage edge, and calls `evaluate(surface="tool_args", …)`.
@@ -141,13 +145,16 @@ recorded. New surfaces must call these methods, not reimplement them.
    `degradation_gate` (probes dependencies, applies the fail-open/closed policy, returns 503
    or stamps `X-AgentFox-Degraded`) and `admission_gate` (load shedding, 429).
 2. The route `guard_tool_call` in `apps/gateway/routes/inline.py` takes a `GuardToolCallRequest`
-   body (`agent`, `tool`, `arguments`, `provenance`, `intent`, …). Its dependencies are
+   body (`agent`, `tool`, `arguments`, `provenance`, `messages`, `intent`, …). Its dependencies are
    `apps/gateway/deps.py:db` (a session from `core/db.py:get_session`, committed when the
    response is produced) and `agent_credential`, which resolves the bearer key (one that does
    not verify is a 401) and binds the session to that agent's tenant (`core/tenancy.py:bind_session`) and judgment posture.
 3. The handler builds `Enforcer(session)`, resolves the agent, opens a trace
    (`platform/ledger/trace.py:start_trace`) and calls `Enforcer.guard_tool_call` with the
-   caller's declared `provenance`. From here it is steps 7–9 above, unchanged.
+   caller's declared `provenance` and, when the body carries `messages`, a `TaintTracker`
+   built from them (`TaintTracker.mark_messages`), so an undeclared argument's provenance is
+   inferred as on the SDK path. With neither, nothing is known about an argument's origin and
+   it counts as untainted. From here it is steps 7–9 above, unchanged.
 4. The result is serialised with `apps/gateway/verdicts.py:with_verdict_aliases` (which adds the
    applied/would-be verdict names) and returned: `verdict`, `effective_verdict`,
    `rules_fired`, `decision_id`, and `approval_id` when escalated.
@@ -155,7 +162,10 @@ recorded. New surfaces must call these methods, not reimplement them.
 The drop-in proxy routes (`/v1/chat/completions`, `/v1/messages`, same file) follow
 `Enforcer.run_completion` / `run_completion_stream`, which wrap the same `preflight`, a
 provider call through `platform/providers/` with the circuit breaker in `runtime/reliability.py`,
-and the same post-flight.
+and the same post-flight. Post-flight (`completion.py:_finish_completion`) authorises every
+tool call in the model's response through `guard_tool_call` with the preflight's tracker
+(`_guard_response_tool_calls`), as autoguard's step 6 does; a refused call is a 403, a held
+one a 428, and a stream holds tool-call fragments until they are authorised.
 
 ## Code map
 

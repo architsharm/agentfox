@@ -73,27 +73,17 @@ class TaintTracker:
 
     def mark_messages(
         self, messages: list[dict[str, Any]], declared: dict[str, str] | None = None
-    ) -> None:
-        """Tag a chat message array.
+    ) -> list[str]:
+        """Tag a chat message array, in OpenAI's shape or Anthropic's. Returns the
+        names of the tools already called in it, in order.
 
-        ``declared`` is the caller's ``X-AgentFox-Trust`` map (index -> source).
-        Anything not declared is inferred from role: ``system`` is trusted, ``user``
-        is user-tainted, ``tool`` output is tool_result-tainted.
+        ``declared`` is the caller's ``X-AgentFox-Trust`` map (index -> source), and
+        covers everything in that message. Anything not declared is inferred: see
+        `message_segments`.
         """
-        declared = declared or {}
-        for i, message in enumerate(messages):
-            role = str(message.get("role", "user"))
-            source = declared.get(str(i)) or {
-                "system": "none",
-                "developer": "none",
-                "assistant": "none",
-                "user": "user",
-                "tool": "tool_result",
-                "function": "tool_result",
-            }.get(role, "user")
-            content = message.get("content")
-            text = content if isinstance(content, str) else _flatten(content)
-            self.mark(f"$.messages[{i}].content", source, text)
+        for segment in message_segments(messages, declared):
+            self.mark(segment.path, segment.source, segment.text)
+        return tools_called(messages)
 
     # -- querying --------------------------------------------------------
     def max_source(self) -> str:
@@ -194,11 +184,137 @@ def _flatten(content: Any) -> str:
         parts = []
         for block in content:
             if isinstance(block, dict):
-                parts.append(str(block.get("text") or block.get("content") or ""))
+                inner = block.get("text") or block.get("content") or ""
+                # An Anthropic `tool_result` carries its own list of blocks.
+                parts.append(_flatten(inner) if isinstance(inner, list) else str(inner))
             elif isinstance(block, str):
                 parts.append(block)
         return "\n".join(p for p in parts if p)
     return "" if content is None else str(content)
+
+
+#: The provenance a message's role implies when nobody declared one.
+ROLE_SOURCE = {
+    "system": "none",
+    "developer": "none",
+    "assistant": "none",
+    "user": "user",
+    "tool": "tool_result",
+    "function": "tool_result",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class Segment:
+    """One piece of a conversation with a single provenance.
+
+    Usually a whole message. An Anthropic ``user`` message that carries
+    ``tool_result`` blocks is split: each result is its own segment, and whatever
+    else the message says is one more. ``blocks`` are the indices into the
+    message's content list this segment covers, or None for the whole content.
+    """
+
+    index: int
+    path: str
+    source: str
+    text: str
+    blocks: tuple[int, ...] | None = None
+
+
+def tools_called(messages: list[Any]) -> list[str]:
+    """The tools the conversation has already called, in order."""
+    return [name for message in messages for _id, name in _calls_in(message)]
+
+
+def message_segments(messages: list[Any], declared: dict[str, str] | None = None) -> list[Segment]:
+    """Split a chat message array into segments of one provenance each.
+
+    Undeclared provenance follows the role (`ROLE_SOURCE`), with one exception that
+    matters: an Anthropic ``tool_result`` block arrives inside a ``role="user"``
+    message, but it is a tool's output, and is ``tool_result`` exactly like OpenAI's
+    ``role="tool"``. Marked by role, a payee copied out of a tool result read as
+    something the person typed. A tool's output is marked ``tool:<tool>#<index>``
+    when the call that produced it is in the conversation, so composition checks
+    and `Tool.output_trust` can name the producing tool; ``$.messages[i].content``
+    (or ``…content[j]`` for one of several blocks) otherwise.
+    """
+    declared = declared or {}
+    produced_by: dict[str, str] = {}
+    out: list[Segment] = []
+
+    def tool_path(i: int, name: Any, fallback: str) -> str:
+        return f"tool:{name}#{i}" if name else fallback
+
+    for i, message in enumerate(messages):
+        if not isinstance(message, dict):
+            continue
+        for call_id, name in _calls_in(message):
+            if call_id:
+                produced_by[call_id] = name
+        role = str(message.get("role") or "user")
+        content = message.get("content")
+        path = f"$.messages[{i}].content"
+        source = declared.get(str(i))
+        if role in ("tool", "function"):
+            name = produced_by.get(str(message.get("tool_call_id"))) or message.get("name")
+            out.append(
+                Segment(i, tool_path(i, name, path), source or "tool_result", _flatten(content))
+            )
+            continue
+        results = (
+            [j for j, b in enumerate(content) if _is_tool_result(b)]
+            if isinstance(content, list)
+            else []
+        )
+        if not results:
+            text = content if isinstance(content, str) else _flatten(content)
+            out.append(Segment(i, path, source or ROLE_SOURCE.get(role, "user"), text))
+            continue
+        for j in results:
+            block = content[j]
+            name = produced_by.get(str(block.get("tool_use_id")))
+            out.append(
+                Segment(
+                    i,
+                    tool_path(i, name, f"{path}[{j}]"),
+                    source or "tool_result",
+                    _flatten([block]),
+                    (j,),
+                )
+            )
+        rest = tuple(j for j in range(len(content)) if j not in results)
+        if rest:
+            text = _flatten([content[j] for j in rest])
+            out.append(Segment(i, path, source or ROLE_SOURCE.get(role, "user"), text, rest))
+    return out
+
+
+def _is_tool_result(block: Any) -> bool:
+    return isinstance(block, dict) and block.get("type") == "tool_result"
+
+
+def _calls_in(message: Any) -> list[tuple[str | None, str]]:
+    """``(call id, tool name)`` for each tool call one message carries: OpenAI
+    ``tool_calls`` (and the legacy ``function_call``), LangChain's
+    ``{"name", "args", "id"}`` and Anthropic ``tool_use`` blocks."""
+    if not isinstance(message, dict):
+        return []
+    calls: list[tuple[str | None, str]] = []
+    for call in message.get("tool_calls") or []:
+        if not isinstance(call, dict):
+            continue
+        function = call.get("function") if isinstance(call.get("function"), dict) else call
+        if function.get("name"):
+            calls.append((str(call["id"]) if call.get("id") else None, str(function["name"])))
+    legacy = message.get("function_call")
+    if isinstance(legacy, dict) and legacy.get("name"):
+        calls.append((None, str(legacy["name"])))
+    content = message.get("content")
+    if isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name"):
+                calls.append((str(block["id"]) if block.get("id") else None, str(block["name"])))
+    return calls
 
 
 def exceeds(actual: str, allowed: str) -> bool:
@@ -206,4 +322,13 @@ def exceeds(actual: str, allowed: str) -> bool:
     return taint_rank(actual) > taint_rank(allowed)
 
 
-__all__ = ["TaintTracker", "TaintMark", "exceeds", "_flatten"]
+__all__ = [
+    "ROLE_SOURCE",
+    "Segment",
+    "TaintMark",
+    "TaintTracker",
+    "_flatten",
+    "exceeds",
+    "message_segments",
+    "tools_called",
+]

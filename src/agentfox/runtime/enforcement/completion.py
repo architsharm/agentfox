@@ -4,13 +4,19 @@ fallback ladder, post-flight, answerability, and trace correlation.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from collections.abc import Callable
 from typing import Any
 
 from agentfox.capabilities.detection import TaintTracker
-from agentfox.capabilities.detection.taint import _flatten
+from agentfox.capabilities.detection.taint import (
+    Segment,
+    _flatten,
+    message_segments,
+    tools_called,
+)
 from agentfox.capabilities.grounding.answerability import (
     classify_answerability,
     detect_over_refusal,
@@ -24,6 +30,9 @@ from agentfox.platform.ledger.trace import (
     ATTR_AGENT,
     ATTR_REQUEST_MODEL,
     ATTR_SYSTEM,
+    ATTR_TOOL_IMPACT,
+    ATTR_TOOL_NAME,
+    ATTR_VERDICT,
     add_span,
     end_trace,
     start_trace,
@@ -62,6 +71,64 @@ def release_before_provider_call(session: Any) -> None:
         return
     if transaction.origin is SessionTransactionOrigin.AUTOBEGIN:
         session.commit()
+
+
+def _tool_call_of(raw: Any) -> tuple[str, dict[str, Any]]:
+    """``(tool name, arguments)`` of one OpenAI-shaped tool call in a response.
+
+    Unparseable arguments are kept as ``{"_raw": ...}`` rather than dropped, as the
+    SDK path keeps them: a model can be talked into emitting malformed JSON, and a
+    call whose arguments could not be read must not be one nothing looked at.
+    """
+    raw = raw if isinstance(raw, dict) else {}
+    function = raw.get("function") if isinstance(raw.get("function"), dict) else raw
+    arguments = function.get("arguments", function.get("input"))
+    if isinstance(arguments, str):
+        try:
+            arguments = json.loads(arguments) if arguments.strip() else {}
+        except ValueError:
+            arguments = {"_raw": arguments}
+    if arguments is None:
+        arguments = {}
+    if not isinstance(arguments, dict):
+        arguments = {"_value": arguments}
+    return str(function.get("name") or "unnamed_tool"), arguments
+
+
+def _declared_tools(tools: list[Any] | None) -> dict[str, dict[str, Any]]:
+    """Tool name -> descriptor from a request's ``tools``, in OpenAI's
+    ``{"type": "function", "function": {...}}`` shape or Anthropic's flat one. The
+    description is what impact inference reads for a tool not yet registered."""
+    out: dict[str, dict[str, Any]] = {}
+    for tool in tools or []:
+        if not isinstance(tool, dict):
+            continue
+        function = tool.get("function") if isinstance(tool.get("function"), dict) else tool
+        if function.get("name"):
+            out[str(function["name"])] = {
+                "description": str(function.get("description") or ""),
+                "inputSchema": function.get("parameters") or function.get("input_schema") or {},
+            }
+    return out
+
+
+def _redacted(message: dict[str, Any], segment: Segment, text: str) -> dict[str, Any]:
+    """``message`` with one segment's text replaced by its redaction.
+
+    A segment that is part of a message (a `tool_result` block, or the text beside
+    one) is rewritten in place, so the blocks around it still reach the provider.
+    """
+    if segment.blocks is None:
+        return {**message, "content": text}
+    content = list(message.get("content") or [])
+    first, *rest = segment.blocks
+    if isinstance(content[first], dict) and content[first].get("type") == "tool_result":
+        content[first] = {**content[first], "content": text}
+    else:
+        content[first] = {"type": "text", "text": text}
+    for j in sorted(rest, reverse=True):
+        del content[j]
+    return {**message, "content": content}
 
 
 def wants_structured_output(passthrough: dict[str, Any] | None) -> bool:
@@ -282,7 +349,12 @@ class _CompletionMixin:
             )
 
         tracker = TaintTracker(trace_id=trace.id)
-        tracker.mark_messages(messages, trust_map)
+        # Separated by provenance, not by role: an Anthropic `tool_result` block sits
+        # in a `user` message and is a tool's output all the same.
+        segments = message_segments(messages, trust_map)
+        for segment in segments:
+            tracker.mark(segment.path, segment.source, segment.text)
+        prior_tools = tools_called(messages)
         for mark in tracker.marks:
             self.session.add(
                 TaintTag(
@@ -297,19 +369,10 @@ class _CompletionMixin:
         worst = EnforcementResult()
         redacted_messages = list(messages)
 
-        for i, message in enumerate(messages):
-            text = _flatten(message.get("content"))
+        for segment in segments:
+            text, source = segment.text, segment.source
             if not text.strip():
                 continue
-            role = str(message.get("role", "user"))
-            source = (trust_map or {}).get(str(i)) or {
-                "system": "none",
-                "developer": "none",
-                "assistant": "none",
-                "user": "user",
-                "tool": "tool_result",
-                "function": "tool_result",
-            }.get(role, "user")
             if source == "none":
                 # The application's own text — its system and developer prompts, and
                 # replies it already got (checked as output when they were made). They
@@ -339,7 +402,8 @@ class _CompletionMixin:
                 approval_id=approval_id,
             )
             if outcome.content is not None:
-                redacted_messages[i] = {**message, "content": outcome.content}
+                i = segment.index
+                redacted_messages[i] = _redacted(redacted_messages[i], segment, outcome.content)
             if self._severity(outcome) >= self._severity(worst):
                 worst = outcome
 
@@ -386,6 +450,7 @@ class _CompletionMixin:
             tracker=tracker,
             messages=redacted_messages,
             result=worst,
+            prior_tools=prior_tools,
         )
 
     def call_provider(
@@ -487,12 +552,20 @@ class _CompletionMixin:
         schema,
         severity=None,
         reask: Callable[[str, str], Any] | None = None,
+        credential: str | None = None,
+        prior_tools: list[str] | None = None,
+        tools: list[Any] | None = None,
+        approval_id: str | None = None,
     ) -> tuple[EnforcementResult, Any]:
         """Post-flight, span, budget and trace close — shared by both paths.
 
         ``reask(previous_text, instruction)`` returns a second completion, or None.
         Given only on the buffered path: a streamed answer has already reached the
         caller, so there is nothing left to replace.
+
+        The tool calls in the response are authorised here too (`_guard_response_tool_calls`),
+        with ``prior_tools`` the calls the conversation already made and ``tools`` the
+        request's tool declarations.
         """
         rank = severity or self._severity
         add_span(
@@ -538,6 +611,20 @@ class _CompletionMixin:
         if outbound.content is not None:
             response.text = outbound.content
         final = outbound if rank(outbound) >= rank(worst) else worst
+        for called in self._guard_response_tool_calls(
+            response,
+            agent=agent,
+            agent_slug=agent_slug,
+            trace=trace,
+            tracker=tracker,
+            intent=intent,
+            credential=credential,
+            prior_tools=prior_tools,
+            tools=tools,
+            approval_id=approval_id,
+        ):
+            if rank(called) > rank(final):
+                final = called
         final.trace_id = trace.id
 
         # Post-flight boundary verification and the counter-metric. Both
@@ -556,6 +643,70 @@ class _CompletionMixin:
         )
         self._push_correlation(trace, final, agent.slug if agent else agent_slug)
         return final, (None if final.blocked else response)
+
+    def _guard_response_tool_calls(
+        self,
+        response: Any,
+        *,
+        agent,
+        agent_slug,
+        trace,
+        tracker,
+        intent,
+        credential,
+        prior_tools,
+        tools,
+        approval_id,
+    ) -> list[EnforcementResult]:
+        """Authorise every tool call the model's response asks for.
+
+        A model that calls tools does not act: it returns a request to act, and the
+        caller runs it. Through the proxy, that request is the one moment the gateway
+        stands between an injected instruction and its effect, so each call goes
+        through `guard_tool_call` with the conversation's tracker — the SDK's
+        autoguard does the same in-process. Checking only the reply's text let
+        ``send_money(recipient=<a payee read from a tool result>)`` go back to the
+        client unexamined. Each call is recorded as its own decision.
+        """
+        calls = [_tool_call_of(raw) for raw in response.tool_calls or []]
+        if not calls:
+            return []
+        from agentfox.platform.registry.service import register_called_tool
+
+        declared = _declared_tools(tools)
+        slug = agent.slug if agent else agent_slug
+        prior = list(prior_tools or [])
+        results = []
+        for name, arguments in calls:
+            register_called_tool(self.session, name, declared.get(name))
+            result = self.guard_tool_call(
+                agent_slug=slug,
+                tool_key=name,
+                arguments=arguments,
+                intent=intent,
+                trace=trace,
+                tracker=tracker,
+                credential=credential,
+                prior_tools=list(prior),
+                approval_id=approval_id,
+            )
+            add_span(
+                self.session,
+                trace,
+                kind="tool",
+                name=name,
+                attributes={
+                    ATTR_AGENT: slug,
+                    ATTR_TOOL_NAME: name,
+                    ATTR_TOOL_IMPACT: (result.taint or {}).get("tool_impact"),
+                    ATTR_VERDICT: result.verdict,
+                    "agentfox.decision_id": result.decision_id,
+                    "agentfox.tool_call.returned": not (result.blocked or result.escalated),
+                },
+            )
+            prior.append(name)
+            results.append(result)
+        return results
 
     def _reask_once(
         self,
@@ -703,6 +854,10 @@ class _CompletionMixin:
             intent=intent,
             schema=schema,
             severity=severity,
+            credential=credential,
+            prior_tools=pre.prior_tools,
+            tools=(passthrough or {}).get("tools"),
+            approval_id=approval_id,
             reask=lambda previous, instruction: model_provider.complete(
                 CompletionRequest(
                     messages=[

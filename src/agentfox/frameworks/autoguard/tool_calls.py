@@ -17,7 +17,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from agentfox.capabilities.detection.taint import TaintTracker, _flatten
+from agentfox.capabilities.detection.taint import TaintTracker
 from agentfox.frameworks.autoguard.shapes import _get, _plain
 
 log = logging.getLogger("agentfox.runtime.autoguard")
@@ -119,40 +119,25 @@ def _provenance_of(kwargs: dict[str, Any]) -> tuple[TaintTracker, list[str]]:
 
     The request carries the whole conversation — that is how a tool-calling client
     works — so the tracker is rebuilt from it on every call rather than kept between
-    calls. A tool's result is marked ``tool:<tool>#<index>`` when the call that
-    produced it can be found (so composed-escalation checks can name the producing
-    tool), ``$.messages[i].content`` otherwise; both are ``tool_result`` taint. Roles
-    otherwise follow `TaintTracker.mark_messages`.
+    calls. The marking is `TaintTracker.mark_messages`, the one the gateway uses, so
+    the SDK and the HTTP proxy cannot disagree about where a value came from: a
+    tool's result is ``tool_result`` taint (``tool:<tool>#<index>`` when the call
+    that produced it can be found), Anthropic ``tool_result`` blocks included.
     """
     tracker = TaintTracker()
-    prior: list[str] = []
-    produced_by: dict[str, str] = {}
-
-    def mark_result(i: int, name: str | None, content: Any) -> None:
-        path = f"tool:{name}#{i}" if name else f"$.messages[{i}].content"
-        tracker.mark(path, "tool_result", _flatten(_plain(content)))
-
-    for i, raw in enumerate(kwargs.get("messages") or []):
-        message = _plain(raw)
-        for call in _calls_in_message(message):
-            prior.append(call.name)
-            if call.call_id:
-                produced_by[str(call.call_id)] = call.name
-        role = str(_get(message, "role") or "user")
-        content = _get(message, "content")
-        if role in ("tool", "function"):
-            call_id = _get(message, "tool_call_id")
-            mark_result(i, produced_by.get(str(call_id)) or _get(message, "name"), content)
-            continue
-        if isinstance(content, list):
-            rest = []
-            for block in (_plain(b) for b in content):
-                if _get(block, "type") == "tool_result":
-                    call_id = _get(block, "tool_use_id")
-                    mark_result(i, produced_by.get(str(call_id)), _get(block, "content"))
-                else:
-                    rest.append(block)
-            content = rest
-        source = {"system": "none", "developer": "none", "assistant": "none"}.get(role, "user")
-        tracker.mark(f"$.messages[{i}].content", source, _flatten(content))
+    prior = tracker.mark_messages([_plain_message(m) for m in kwargs.get("messages") or []])
     return tracker, prior
+
+
+def _plain_message(raw: Any) -> Any:
+    """A message, its content blocks and its tool calls as plain dicts: a loop mixes
+    the SDK's own objects into the dicts it builds."""
+    message = _plain(raw)
+    if not isinstance(message, dict):
+        return message
+    out = dict(message)
+    if isinstance(out.get("content"), list):
+        out["content"] = [_plain(b) for b in out["content"]]
+    if isinstance(out.get("tool_calls"), list):
+        out["tool_calls"] = [_plain(c) for c in out["tool_calls"]]
+    return out
