@@ -261,9 +261,15 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         for r in session.scalars(select(CustomRule))
         if r.agents_json and not any(fnmatch.fnmatch(slug, a) for a in r.agents_json)
     }
+    tier = (agent.risk_tier if agent else None) or "limited"
     for resolved in effective.rules:
         rule, layer = resolved.rule, resolved.layer
         if layer is None or rule.id in scoped_away:
+            continue
+        # A rule written for other risk levels ("prohibited systems", "high-risk agent
+        # with degraded checks") can never fire for this agent; listing it on every
+        # limited-risk map was noise a reader had to rule out each time.
+        if rule.when.risk_tier and tier not in rule.when.risk_tier:
             continue
         own = layer.document.key == own_key
         if not rule.enabled and not own:

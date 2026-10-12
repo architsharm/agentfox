@@ -71,6 +71,13 @@ _TABLE_HINTS: dict[str, str] = {
 }
 
 
+def _names(items: object) -> str:
+    """Table or detector names as a reader says them: "retention policies, decisions",
+    not Python's "['retention_policies', 'decisions']"."""
+    names = [str(x) for x in (items if isinstance(items, (list, tuple, set)) else [items])]
+    return ", ".join(n.replace("_", " ") if "." not in n else n for n in names)
+
+
 def _hint(tables: list[str]) -> str:
     hints = sorted({_TABLE_HINTS[t] for t in tables if t in _TABLE_HINTS})
     return (" " + " ".join(hints)) if hints else ""
@@ -165,10 +172,10 @@ def _rule_presence(session, control, rule, since) -> tuple[str, str, dict]:
     if missing:
         return (
             "not_implemented" if len(missing) == len(counts) else "degraded",
-            f"No records in {missing}; the control cannot be evidenced.{_hint(missing)}",
+            f"No {_names(missing)} yet; the control cannot be evidenced.{_hint(missing)}",
             {"counts": counts, "missing": missing},
         )
-    return "effective", f"Evidence present in {sorted(counts)}.", {"counts": counts}
+    return "effective", f"Evidence present: {_names(sorted(counts))}.", {"counts": counts}
 
 
 #: How a ratio reads to a person: "1 of 10 agents have an owner".
@@ -268,7 +275,7 @@ def _rule_detector_coverage(session, control, rule, since) -> tuple[str, str, di
     healthy = sum(1 for r in runs if r.status == "ok")
     return (
         status,
-        f"{detectors} ran on {coverage:.1%} of traced invocations "
+        f"{_names(detectors)} ran on {coverage:.1%} of traced invocations "
         f"({len(covered_traces & decision_traces)}/{len(decision_traces)}); "
         f"{healthy}/{len(runs)} runs completed without timeout or error.",
         {
@@ -408,7 +415,7 @@ def _rule_capability_active(session, control, rule, since) -> tuple[str, str, di
     if all(n == 0 for n in counts.values()):
         return (
             "not_applicable" if optional else "not_implemented",
-            f"No records in {sorted(counts)}; the capability has not been exercised."
+            f"No {_names(sorted(counts))} yet; the capability has not been exercised."
             + (" Marked not applicable — this capability is optional." if optional else ""),
             {"counts": counts},
         )

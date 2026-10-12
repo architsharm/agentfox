@@ -325,4 +325,6 @@ def sync_policy(
             if m.key not in {r.key for r in rows}
         ],
     )
-    return publish_in_current_mode(session, doc, actor=actor, notes="custom rules changed")
+    return publish_in_current_mode(
+        session, doc, actor=actor, notes="words, topics or patterns updated"
+    )
