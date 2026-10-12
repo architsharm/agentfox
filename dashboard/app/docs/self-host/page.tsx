@@ -136,7 +136,7 @@ export AGENTFOX_SERVICE_AUTH_SECRET="…another generated value…"`}</Code>
             app. Check it:
           </p>
           <Code>{`curl -s http://localhost:8080/api/health`}</Code>
-          <Output>{`{"status":"ok","version":"0.3.1","governance_healthy":true,"degradation":{"healthy":true,"degraded_controls":{},"note":"healthy means every control ran, not that requests succeeded — a fail-open system reports success while checking nothing","fail_mode":"open",…}}`}</Output>
+          <Output>{`{"status":"ok","version":"0.4.0","governance_healthy":true,"degradation":{"healthy":true,"degraded_controls":{},"note":"healthy means every control ran, not that requests succeeded — a fail-open system reports success while checking nothing","fail_mode":"open",…}}`}</Output>
           <p>
             <code>/health</code> answers the same. <code>governance_healthy</code> is about the
             controls, not the HTTP server: a degraded detector shows up there while requests

@@ -11,7 +11,25 @@ the file it came from.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-12
+
 ### Added
+
+- **New tool-call paths.** Every agent's tool-call sequences in production, the ones
+  never seen before, and one click to add a path to the regression tests; a daily scan
+  raises a `new_tool_path` issue whose fix adds the path (Test → Tool paths).
+- **Agent circuit breaker.** An agent whose calls start getting blocked in a burst is
+  flagged (default) or paused for a cool-down, then probed and closed after clean
+  calls; Resume now from the agent's settings or the issue.
+- **Your own access control.** A workspace registers its RBAC service (or an OPA or
+  Cedar server); matching tool calls are posted to it with the end user before they
+  run (`principal` on `/v1/guard/tool_call`, `fox.session(principal=...)`).
+- **`govern(fox, *agents)`** for the OpenAI Agents SDK: one call guards every agent,
+  hand-off and tool.
+- Playground sandboxes come from a spare pool (about 2.5 s to start), and due jobs run
+  off ordinary traffic as well as the daily cron.
+- Policy import from agent-governance YAML, Codex CLI hooks, industry and regional
+  packs, Rego and Cedar libraries, a coding-agent blocklist.
 
 - **Key rotation** for the two keys that protect stored data.
   `AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS` and `AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS`
@@ -53,6 +71,77 @@ the file it came from.
 - `agentfox doctor` has a `legacy names` line listing every pre-rename `NOMETRIA_*`
   variable still set (in use, or set but not read) and any `nometria.toml` / `[nometria]`
   config in use.
+
+### Changed
+
+- **Get started's last step enforces everything that protects the agent** (baseline,
+  its own protections, blocked words and topics), with a preview of what it would have
+  stopped. Previews now count calls that went through and would be stopped.
+- **Fewer, plainer issues.** One medium issue per tool an agent has not been given
+  (granting it closes the issue); calls held for the approval their grant asks for
+  are not issues; titles and refusal reasons are plain words.
+- Loop detection counts within a turn, so a conversation that repeats itself across
+  turns is not refused; a stopped loop is a recorded, blocked run.
+- Runs are grouped by conversation; the SDK reads `AGENTFOX_API_TOKEN`.
+- Reports show controls working out of every control that applies, not out of those
+  measured; rates over nothing show a dash.
+
+- **A cascade that only sends a message escalates instead of blocking.** A tool can be
+  declared `effect: communication` (`agentfox declare tool --effect communication`, or
+  `effect:` in a pack's `world.yaml`): its irreversible effect is a message leaving, not
+  data destroyed, money moved or state changed. When every destructive tool a call's
+  declared triggers reach is such a tool, `cascade_risk` reports
+  `cascade-reaches-notification` (high) and the new `cascade.reaches_notification` rule
+  in `tool-containment` holds the call for approval; one reached tool outside that class
+  and it is `cascade.reaches_destructive` (block), as before. Never guessed from a tool's
+  name: an undeclared tool counts as destructive. The demo world declares `email.send`
+  this way, so an ordinary `tickets.update` is held for approval rather than refused.
+
+- **Nometria to AgentFox, environment and headers (stage A).** Everything the product
+  writes and documents is now `AGENTFOX_*`, `agentfox.toml` / `[agentfox]` and
+  `X-AgentFox-*`: the gateway's response headers (`X-AgentFox-Trace`, `-Verdict`,
+  `-Effective-Verdict`, `-Applied-Verdict`, `-Would-Be-Verdict`, `-Decision`, `-Mode`,
+  `-Latency-Ms`, `-Explain`, `-Streaming`, `-Degraded`), the finding webhook's
+  (`X-AgentFox-Event`, `-Delivery`, `-Timestamp`, `-Signature`: **update a webhook
+  receiver that verifies `X-Nometria-Signature`**), the FastAPI middleware's, and what the
+  SDK, the CLI and the dashboard send. The pre-rename names still work as input:
+  `NOMETRIA_*` variables, `NOMETRIA_CONFIG`, `nometria.toml` and a `[nometria]` table are
+  read below the new names, and `x-nometria-*` request headers are accepted, with
+  `x-agentfox-*` winning when a request carries both. The process logs one startup
+  warning naming each legacy setting in use; the dashboard warns once per legacy
+  variable. `render.yaml`, `deploy/`, the docs and the plugins use only the new names.
+  The self-host blueprint now prompts for `AGENTFOX_AUDIT_SIGNING_KEY` instead of
+  generating it, so a blueprint sync can never rotate an existing deployment's key.
+  Renaming the hosted deployment: `docs/deployment/vercel-env-rename.md` (since removed).
+- The shipped policies and the control catalog moved from `policies_data/` and
+  `compliance_data/` into the capability packs (`packs/<id>/policies/`,
+  `packs/compliance/catalog/controls/`). `compliance_dir` and `policies_dir` still
+  override them, and are now unset by default. `agentfox policy packs` and
+  `agentfox admin catalog validate` print the new paths.
+- The dashboard's finding labels come from the registry. `budget_breach` now reads
+  "Detector over budget" (it is a detector's latency budget); it read "Budget
+  exceeded", which describes `budget_exhausted`.
+
+- The Claude Code operator plugin moved from `harness/` to `plugins/claude-code/`, and its
+  runtime-neutral parts (`AGENTS.md`, `skills/`, `reference/`) to `plugins/shared/`. The
+  marketplace entry now points at `./plugins/claude-code`; the install command
+  (`claude plugin install agentfox@agentfox`) is unchanged. A local clone uses
+  `claude --plugin-dir ./plugins/claude-code`. The maintainer command
+  `/agentfox:harness-check` is now `/agentfox:plugin-check`, the drift checker is
+  `scripts/check_plugins.py`, and the docs page is `/docs/plugin` (`/docs/harness`
+  redirects).
+- Coding-agent harnesses are adapters behind one interface, `agentfox.harnesses`
+  (registered through the `agentfox.harnesses` entry-point group). Claude Code is the only
+  one; installed hooks (`agentfox hooks run --harness claude`) behave exactly as before.
+- Accepting a changed MCP tool listing is now a two-person change. A changed definition is
+  held and filed as an `mcp.tool.accept` change proposal; `McpGovernor.register_tools(...,
+  accept_changes=True)` now requires `actor=` (the reviewer) and raises `ValueError`
+  without one, and the change applies only when a second, different person approves.
+  `POST /api/mcp-servers/{name}/tools` with `accept_changes` counts as the signed-in
+  person's approval and needs the role that approves policy proposals. The result carries
+  `held`, `accepted`, `awaiting_second_approver` and `proposals`.
+- `McpCallBlocked`, raised by the MCP governor, is now an `agentfox.AgentFoxError` like
+  every other refusal. It is still a `RuntimeError`.
 
 ### Removed
 
@@ -111,64 +200,15 @@ the file it came from.
   | `auth …` · `db …` · `users …` · `hooks …` | `admin auth …` · `admin db …` · `admin users …` · `admin hooks …` |
   | `mcp tools` | `admin mcp tools` |
 
-### Changed
+### Fixed
 
-- **A cascade that only sends a message escalates instead of blocking.** A tool can be
-  declared `effect: communication` (`agentfox declare tool --effect communication`, or
-  `effect:` in a pack's `world.yaml`): its irreversible effect is a message leaving, not
-  data destroyed, money moved or state changed. When every destructive tool a call's
-  declared triggers reach is such a tool, `cascade_risk` reports
-  `cascade-reaches-notification` (high) and the new `cascade.reaches_notification` rule
-  in `tool-containment` holds the call for approval; one reached tool outside that class
-  and it is `cascade.reaches_destructive` (block), as before. Never guessed from a tool's
-  name: an undeclared tool counts as destructive. The demo world declares `email.send`
-  this way, so an ordinary `tickets.update` is held for approval rather than refused.
-
-- **Nometria to AgentFox, environment and headers (stage A).** Everything the product
-  writes and documents is now `AGENTFOX_*`, `agentfox.toml` / `[agentfox]` and
-  `X-AgentFox-*`: the gateway's response headers (`X-AgentFox-Trace`, `-Verdict`,
-  `-Effective-Verdict`, `-Applied-Verdict`, `-Would-Be-Verdict`, `-Decision`, `-Mode`,
-  `-Latency-Ms`, `-Explain`, `-Streaming`, `-Degraded`), the finding webhook's
-  (`X-AgentFox-Event`, `-Delivery`, `-Timestamp`, `-Signature`: **update a webhook
-  receiver that verifies `X-Nometria-Signature`**), the FastAPI middleware's, and what the
-  SDK, the CLI and the dashboard send. The pre-rename names still work as input:
-  `NOMETRIA_*` variables, `NOMETRIA_CONFIG`, `nometria.toml` and a `[nometria]` table are
-  read below the new names, and `x-nometria-*` request headers are accepted, with
-  `x-agentfox-*` winning when a request carries both. The process logs one startup
-  warning naming each legacy setting in use; the dashboard warns once per legacy
-  variable. `render.yaml`, `deploy/`, the docs and the plugins use only the new names.
-  The self-host blueprint now prompts for `AGENTFOX_AUDIT_SIGNING_KEY` instead of
-  generating it, so a blueprint sync can never rotate an existing deployment's key.
-  Renaming the hosted deployment: `docs/deployment/vercel-env-rename.md` (since removed).
-- The shipped policies and the control catalog moved from `policies_data/` and
-  `compliance_data/` into the capability packs (`packs/<id>/policies/`,
-  `packs/compliance/catalog/controls/`). `compliance_dir` and `policies_dir` still
-  override them, and are now unset by default. `agentfox policy packs` and
-  `agentfox admin catalog validate` print the new paths.
-- The dashboard's finding labels come from the registry. `budget_breach` now reads
-  "Detector over budget" (it is a detector's latency budget); it read "Budget
-  exceeded", which describes `budget_exhausted`.
-
-- The Claude Code operator plugin moved from `harness/` to `plugins/claude-code/`, and its
-  runtime-neutral parts (`AGENTS.md`, `skills/`, `reference/`) to `plugins/shared/`. The
-  marketplace entry now points at `./plugins/claude-code`; the install command
-  (`claude plugin install agentfox@agentfox`) is unchanged. A local clone uses
-  `claude --plugin-dir ./plugins/claude-code`. The maintainer command
-  `/agentfox:harness-check` is now `/agentfox:plugin-check`, the drift checker is
-  `scripts/check_plugins.py`, and the docs page is `/docs/plugin` (`/docs/harness`
-  redirects).
-- Coding-agent harnesses are adapters behind one interface, `agentfox.harnesses`
-  (registered through the `agentfox.harnesses` entry-point group). Claude Code is the only
-  one; installed hooks (`agentfox hooks run --harness claude`) behave exactly as before.
-- Accepting a changed MCP tool listing is now a two-person change. A changed definition is
-  held and filed as an `mcp.tool.accept` change proposal; `McpGovernor.register_tools(...,
-  accept_changes=True)` now requires `actor=` (the reviewer) and raises `ValueError`
-  without one, and the change applies only when a second, different person approves.
-  `POST /api/mcp-servers/{name}/tools` with `accept_changes` counts as the signed-in
-  person's approval and needs the role that approves policy proposals. The result carries
-  `held`, `accepted`, `awaiting_second_approver` and `proposals`.
-- `McpCallBlocked`, raised by the MCP governor, is now an `agentfox.AgentFoxError` like
-  every other refusal. It is still a `RuntimeError`.
+- **Benchmark honesty.** Detector patterns and similarity-corpus entries that had been
+  written from the misses of the datasets they are scored on, and the AgentDojo
+  grader's tool list in the repository scanner, are removed; every published number
+  was re-measured. Default held-out injection recall is 16.7% (had been reported as
+  26.7%). The adaptive benchmark's "unmapped" operators now test characters the
+  product does not map, and show the open gap that had been hidden.
+- A due-jobs pass now runs on a freshly booted instance.
 
 ## [0.3.1] - 2026-09-26
 
