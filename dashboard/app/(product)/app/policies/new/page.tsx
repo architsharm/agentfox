@@ -176,6 +176,7 @@ const GOALS: { title: string; text: string; to: Record<string, string> | string 
   { title: "A value crosses a line", text: "A refund over 500, a reply longer than 2,000 characters.", to: { from: "custom", kind: "condition" } },
   { title: "Only allow certain values", text: "Ship only to US or EU, pay only in USD.", to: { from: "custom", kind: "condition", op: "not_in" } },
   { title: "Stop a risky sequence", text: "After reading customer data, never email outside.", to: { from: "custom", kind: "sequence" } },
+  { title: "Use a built-in check", text: "System prompt leaks, risky SQL, unsafe HTML, fuzzy word lists, LLM judges…", to: { from: "custom", kind: "validator" } },
   { title: "Turn on a ready-made pack", text: "Prompt attacks, personal data, EU AI Act…", to: { from: "packs" } },
   { title: "Bring rules you already have", text: "From Guardrails AI, or a workspace file.", to: { from: "import" } },
 ];

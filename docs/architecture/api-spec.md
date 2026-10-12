@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-273 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+274 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -452,6 +452,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/rules/{rule_id}/examples` | Post Example |
 | `POST` | `/api/rules/{rule_id}/examples/check` | Check Examples |
 | `DELETE` | `/api/rules/{rule_id}/examples/{example_id}` | Remove Example |
+| `GET` | `/api/validators` | Every registered validator: what it checks, its settings, and whether it runs here. |
 | `POST` | `/api/waitlist` | Record an address. Unauthenticated, idempotent, and it sends nothing anywhere. |
 | `POST` | `/api/workspace/apply` | Apply Workspace |
 | `GET` | `/api/workspace/export` | Export Workspace |

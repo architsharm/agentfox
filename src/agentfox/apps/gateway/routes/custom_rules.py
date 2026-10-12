@@ -20,6 +20,7 @@ from agentfox.capabilities.detection.base import DetectionContext
 from agentfox.capabilities.detection.custom import (
     CustomListDetector,
     CustomRuleSpec,
+    CustomValidatorDetector,
     compile_rule,
     rule_id_for,
 )
@@ -117,7 +118,14 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
         if spec.condition and spec.condition.tool and "*" not in spec.condition.tool
         else None
     )
-    result = CustomListDetector().detect(
+    detector = CustomValidatorDetector() if compiled.validator is not None else CustomListDetector()
+    if compiled.validator is not None and not compiled.validator.available():
+        raise HTTPException(
+            400,
+            f"'{compiled.validator.name}' cannot run here: "
+            f"{compiled.validator.unavailable_reason()}",
+        )
+    result = detector.detect(
         payload.text,
         DetectionContext(
             surface=payload.surface
@@ -144,9 +152,22 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
                 "score": d.score,
                 "sample": d.sample,
                 "kind": d.detail.get("kind"),
+                "reason": d.detail.get("reason"),
             }
             for d in result.detections
         ],
+    }
+
+
+@router.get("/validators")
+def get_validators(_user: User = Depends(current_user)) -> dict[str, Any]:
+    """Every registered validator: what it checks, its settings, and whether it runs here."""
+    from agentfox.capabilities.detection.validators import all_validators
+
+    return {
+        "validators": sorted(
+            (v.describe() for v in all_validators().values()), key=lambda d: d["label"].lower()
+        )
     }
 
 

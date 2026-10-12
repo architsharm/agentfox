@@ -43,9 +43,9 @@ from agentfox.capabilities.detection.custom_conditions import ConditionSpec
 from agentfox.capabilities.detection.custom_conditions import evaluate as evaluate_condition
 from agentfox.core.text import content_tokens
 
-KINDS = ("terms", "patterns", "topic", "sequence", "condition")
-#: Kinds matched against content by the detector; a sequence is a check.
-CONTENT_KINDS = ("terms", "patterns", "topic", "condition")
+KINDS = ("terms", "patterns", "topic", "sequence", "condition", "validator")
+#: Kinds matched against content by a detector; a sequence is a check.
+CONTENT_KINDS = ("terms", "patterns", "topic", "condition", "validator")
 #: Surfaces a content rule checks when its author did not choose.
 DEFAULT_SURFACES = ("input", "output")
 CONTENT_SURFACES = (
@@ -86,12 +86,30 @@ class SequenceSpec(BaseModel):
         return validate_pattern(v) if v else v
 
 
+class ValidatorRef(BaseModel):
+    """A registered validator (`detection/validators`) and the settings to run it with."""
+
+    name: str = Field(min_length=1, max_length=80)
+    params: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _known(self) -> ValidatorRef:
+        from agentfox.capabilities.detection.validators import get_validator
+
+        validator = get_validator(self.name)
+        if validator is None:
+            raise ValueError(f"no validator named {self.name!r}")
+        # Stored as validated, so defaults are visible in what was saved.
+        self.params = validator.params(self.params).model_dump()
+        return self
+
+
 class CustomRuleSpec(BaseModel):
     """What a customer authors. Validated here so a bad rule never reaches enforcement."""
 
     key: str
     name: str = Field(min_length=1, max_length=200)
-    kind: Literal["terms", "patterns", "topic", "sequence", "condition"] = "terms"
+    kind: Literal["terms", "patterns", "topic", "sequence", "condition", "validator"] = "terms"
     polarity: Literal["deny", "allow"] = "deny"
     entries: list[str] = Field(default_factory=list)
     examples: list[str] = Field(default_factory=list)
@@ -101,6 +119,7 @@ class CustomRuleSpec(BaseModel):
     case_sensitive: bool = False
     sequence: SequenceSpec | None = None
     condition: ConditionSpec | None = None
+    validator: ValidatorRef | None = None
     enabled: bool = True
 
     @field_validator("key")
@@ -132,6 +151,20 @@ class CustomRuleSpec(BaseModel):
         if self.kind == "sequence":
             if self.sequence is None:
                 raise ValueError("a sequence rule needs `sequence`")
+            return self
+        if self.kind != "validator":
+            self.validator = None
+        else:
+            if self.validator is None:
+                raise ValueError("a validator rule needs `validator`")
+            if self.polarity != "deny":
+                raise ValueError("a validator fires when its check fails; it has no allowed form")
+            from agentfox.capabilities.detection.validators import get_validator
+
+            own = get_validator(self.validator.name)
+            supported = [s for s in (own.surfaces if own else ()) if s in CONTENT_SURFACES]
+            if not self.surfaces:
+                self.surfaces = supported or list(DEFAULT_SURFACES)
             return self
         if self.kind != "condition":
             self.condition = None
@@ -268,6 +301,9 @@ class CompiledRule:
     regex: re.Pattern[str] | None = None
     topic: TopicProfile | None = None
     condition: ConditionSpec | None = None
+    #: For a validator rule: the validator, and its validated settings.
+    validator: Any = None
+    params: Any = None
 
     def applies(self, surface: str, agent_slug: str | None) -> bool:
         if surface not in self.surfaces:
@@ -293,6 +329,14 @@ def compile_rule(spec: CustomRuleSpec) -> CompiledRule | None:
         regex = re.compile("|".join(parts), flags)
     elif spec.kind == "patterns":
         regex = re.compile("|".join(f"(?:{p})" for p in spec.entries), flags)
+    validator = params = None
+    if spec.kind == "validator" and spec.validator is not None:
+        from agentfox.capabilities.detection.validators import get_validator
+
+        validator = get_validator(spec.validator.name)
+        if validator is None:  # a plug-in that is no longer installed
+            return None
+        params = validator.params(spec.validator.params)
     topic = (
         topic_profile(spec.description, spec.entries, spec.examples)
         if spec.kind == "topic"
@@ -308,6 +352,8 @@ def compile_rule(spec: CustomRuleSpec) -> CompiledRule | None:
         regex=regex,
         topic=topic,
         condition=spec.condition if spec.kind == "condition" else None,
+        validator=validator,
+        params=params,
     )
 
 
@@ -506,3 +552,51 @@ class CustomTopicDetector(BaseDetector):
         if not content or not any(r.kind == "topic" for r in rules):
             return []
         return _topic_detections(content, rules, context, self._scorer())
+
+
+class CustomValidatorDetector(BaseDetector):
+    """The workspace's validator rules (`kind="validator"`), each with its settings.
+
+    Separate from `custom.lists` because a validator may run a local model or ask
+    the judgment tier, and those need more than a word list's time budget: this
+    declares its own timeout (so it runs in the pipeline's heavy pool), and asks
+    for a larger request budget only when a rule that needs one applies.
+    """
+
+    key = "custom.validators"
+    version = "1.0"
+    surfaces = CONTENT_SURFACES
+    timeout_ms = 2500
+    handles_views = True
+
+    @staticmethod
+    def _rules(context: DetectionContext) -> list[CompiledRule]:
+        rules: list[CompiledRule] = (context.extra or {}).get("custom_rules") or []
+        return [
+            r
+            for r in rules
+            if r.validator is not None and r.applies(context.surface, context.agent_slug)
+        ]
+
+    def budget_for(self, context: DetectionContext) -> int:
+        """The request budget the applicable rules need; 0 when the default will do."""
+        return max((r.validator.requires_budget_ms or 0 for r in self._rules(context)), default=0)
+
+    def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
+        from agentfox.capabilities.detection.validators.detector import detections
+
+        out: list[Detection] = []
+        for rule in self._rules(context):
+            if not rule.validator.available():
+                continue
+            out.extend(
+                detections(
+                    rule.validator,
+                    rule.params,
+                    content,
+                    context,
+                    entity_type=rule.entity,
+                    detail={"custom_rule": rule.key, "kind": "validator"},
+                )
+            )
+        return out

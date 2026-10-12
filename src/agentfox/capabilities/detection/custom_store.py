@@ -32,6 +32,7 @@ from agentfox.capabilities.detection.custom import (
     ConditionSpec,
     CustomRuleSpec,
     SequenceSpec,
+    ValidatorRef,
     compile_rule,
     entity_for,
     rule_id_for,
@@ -75,6 +76,9 @@ def spec_of(row: CustomRule) -> CustomRuleSpec:
         else None,
         condition=ConditionSpec(**row.config_json["condition"])
         if (row.config_json or {}).get("condition")
+        else None,
+        validator=ValidatorRef(**row.config_json["validator"])
+        if (row.config_json or {}).get("validator")
         else None,
         enabled=row.enabled,
     )
@@ -182,6 +186,8 @@ def save_rules(
             if spec.sequence
             else {"condition": spec.condition.model_dump()}
             if spec.condition
+            else {"validator": spec.validator.model_dump()}
+            if spec.validator
             else {}
         )
         row.enabled = spec.enabled

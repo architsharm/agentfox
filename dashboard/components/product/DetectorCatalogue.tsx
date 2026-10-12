@@ -4,12 +4,11 @@ import Link from "next/link";
  * Every check this product can run, installed or not.
  *
  * The Detectors strip counts three states — on, available but off, not
- * installed — and "not installed" used to be a number with nowhere to go. Most
- * of that number is now the Guardrails AI Hub, wrapped one validator per
- * detector, which means it is not a deficiency to explain away. It is a
- * catalogue, and the single best idea in Guardrails AI's own product is that
- * their catalogue is browsable: you can see the sixty-five things it can check
- * before you install any of them.
+ * installed — and "not installed" used to be a number with nowhere to go. It is
+ * a catalogue, and the single best idea in Guardrails AI's own product is that
+ * their catalogue is browsable: you can see everything it can check before you
+ * turn any of it on. Most of their validators are now ported in
+ * (`detection/validators/`), so they appear here as `validator.*` checks.
  *
  * So this is the same idea, with the part they do not have. Theirs lists what
  * exists. This one shows, for each check, whether it is running in your
@@ -45,6 +44,10 @@ const FAMILY_LABEL: Record<string, string> = {
   safety: "Content safety",
   schema: "Structure and format",
   rails: "Wrapped from other projects",
+  validator: "Validators",
+  custom: "Your own",
+  code: "Code",
+  grounding: "Grounding",
 };
 
 export function DetectorCatalogue({ detectors }: { detectors: Detector[] }) {
@@ -132,12 +135,12 @@ export function DetectorCatalogue({ detectors }: { detectors: Detector[] }) {
       </div></div>
 
       <p className="k-muted adv-foot">
-        Checks from the{" "}
-        <a href="https://guardrailsai.com/hub" target="_blank" rel="noreferrer">
-          Guardrails AI Hub
+        Validators are built in, most of them adapted from the{" "}
+        <a href="https://github.com/guardrails-ai" target="_blank" rel="noreferrer">
+          Guardrails AI
         </a>{" "}
-        carry their own licences, so none ships enabled. They report into the same rules as ours, with
-        telemetry off.
+        validators (Apache-2.0); none needs a separate install. The ones that take settings, like a
+        word list or your system prompt, are added as a rule: Policies, Your rules, Built-in check.
       </p>
     </div>
   );

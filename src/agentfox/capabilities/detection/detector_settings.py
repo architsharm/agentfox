@@ -20,7 +20,9 @@ from agentfox.platform.ledger import operator_log
 
 #: Never switchable off per workspace: the always-on safety net, and the detector
 #: that carries the workspace's own rules (its rules switch on and off instead).
-ALWAYS_ON = frozenset({"injection.heuristic", "secrets.native", "custom.lists"})
+ALWAYS_ON = frozenset(
+    {"injection.heuristic", "secrets.native", "custom.lists", "custom.validators"}
+)
 
 
 def overrides(session: Session) -> dict[str, bool]:
@@ -30,6 +32,8 @@ def overrides(session: Session) -> dict[str, bool]:
 #: Runs wherever any detector runs, even if a deployment's list predates it: it only
 #: matches rules the workspace wrote, so writing one is the opt-in.
 WORKSPACE_RULES = "custom.lists"
+#: The same for rules that run a validator with the workspace's settings.
+WORKSPACE_VALIDATORS = "custom.validators"
 
 
 def enabled_for(session: Session) -> frozenset[str]:
@@ -42,7 +46,7 @@ def enabled_for(session: Session) -> frozenset[str]:
     deployment = get_settings().enabled_detectors
     if not deployment:
         return frozenset()
-    enabled = set(deployment) | {WORKSPACE_RULES}
+    enabled = set(deployment) | {WORKSPACE_RULES, WORKSPACE_VALIDATORS}
     # Registering a model is the opt-in, like writing a rule; with none, the detector
     # is not selected, so its network budget is never granted for nothing.
     from agentfox.capabilities.detection.custom_models import DETECTOR_KEY, any_enabled

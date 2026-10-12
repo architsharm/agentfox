@@ -197,6 +197,21 @@ forbidden_modules = [
     "agentfox.capabilities.business.checks",
 ]
 
+# Validators are reached through their registry (`detection/validators`), never by
+# importing a built-in module, so a validator from an `agentfox.validators` entry
+# point is a peer of the built-in ones and a built-in one can be replaced.
+[[tool.importlinter.contracts]]
+name = "Built-in validators are reached through the registry"
+type = "forbidden"
+source_modules = [
+    "agentfox.apps",
+    "agentfox.frameworks",
+    "agentfox.runtime",
+    "agentfox.platform",
+    "agentfox.core",
+]
+forbidden_modules = ["agentfox.capabilities.detection.validators.builtin"]
+
 # A capability pack is data read by the loader (`platform/packs`), and its optional
 # checks are imported by file path. Nothing imports `agentfox.packs` as a module, so a
 # pack can be added, replaced or disabled without an edit anywhere else.
