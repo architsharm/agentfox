@@ -31,6 +31,7 @@ indirect injection is contained even when no detector fires.
 | `safety.granite` | IBM Granite Guardian | `[classifiers]` + weights |
 | `safety.restricted` | Llama Guard (non-OSI licence) | `[restricted-classifiers]` + explicit licence env var |
 | `rails.nemo`, `rails.guardrails_ai` | NeMo Guardrails / Guardrails AI validators | `[rails]` / `[validators]` |
+| `validator.*` | Built-in validators ported from Guardrails AI (XSS, jailbreak, toxicity, NSFW, bias, secrets); ones that take settings run as a Built-in check rule | nothing for rule checks; `[classifiers]` + weights for model checks |
 
 `agentfox doctor` lists which detectors are actually available. Enable extras with
 `AGENTFOX_ENABLED_DETECTORS` (JSON list).

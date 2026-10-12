@@ -19,7 +19,7 @@ guard = Guard().use_many(
 def test_plan_saves_nothing(client, session):
     r = client.post("/api/import/guardrails-ai/plan", json={"source": SOURCE}, headers=ADMIN)
     assert r.status_code == 200
-    assert r.json()["summary"] == {"custom_rule": 2, "detector": 0, "pack": 1, "skipped": 1}
+    assert r.json()["summary"] == {"custom_rule": 3, "detector": 0, "pack": 1, "skipped": 0}
     assert session.query(CustomRule).count() == 0
 
 
@@ -27,7 +27,8 @@ def test_apply_imports_rules_and_packs(client, session):
     r = client.post("/api/import/guardrails-ai", json={"source": SOURCE}, headers=ADMIN)
     assert r.status_code == 200, r.text
     body = r.json()
-    assert sorted(body["rules"]) == ["gr-ban-list", "gr-competitor-check"]
+    # ValidLength has a native port now, so it is imported too rather than skipped.
+    assert sorted(body["rules"]) == ["gr-ban-list", "gr-competitor-check", "gr-valid-length"]
     assert body["custom_policy"]["mode"] == "observe"
     assert "baseline" in body["packs"]
     custom = client.get("/api/policies/custom", headers=ADMIN).json()

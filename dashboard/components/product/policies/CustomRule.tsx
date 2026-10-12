@@ -6,8 +6,10 @@ import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
 import { ConditionFields, blankCondition, canMask, conditionFrom, conditionReady, conditionSpec, describeCondition } from "@/components/product/policies/ConditionFields";
 import type { Condition, ConditionSpec } from "@/components/product/policies/ConditionFields";
+import { ValidatorFields, paramsFor, rawFrom, useValidators, validatorReady } from "@/components/product/policies/ValidatorFields";
+import type { ValidatorValue } from "@/components/product/policies/ValidatorFields";
 
-type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition";
+type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition" | "validator";
 
 const KINDS: { key: Kind; label: string; placeholder: string }[] = [
   { key: "terms", label: "Words", placeholder: "Globex\nInitech" },
@@ -16,6 +18,7 @@ const KINDS: { key: Kind; label: string; placeholder: string }[] = [
   { key: "allow", label: "Allowed topics", placeholder: "Orders, shipping, returns, billing" },
   { key: "sequence", label: "Sequence", placeholder: "" },
   { key: "condition", label: "Value check", placeholder: "" },
+  { key: "validator", label: "Built-in check", placeholder: "" },
 ];
 
 const CHECKS: { key: string; label: string }[] = [
@@ -52,7 +55,7 @@ const slug = (s: string) =>
 export type CustomRuleSpec = {
   key: string;
   name: string;
-  kind: "terms" | "patterns" | "topic" | "sequence" | "condition";
+  kind: "terms" | "patterns" | "topic" | "sequence" | "condition" | "validator";
   polarity?: "deny" | "allow";
   entries?: string[];
   examples?: string[];
@@ -61,6 +64,7 @@ export type CustomRuleSpec = {
   agents?: string[];
   sequence?: { after?: string; then?: string; unless_path?: string | null; unless_matches?: string | null } | null;
   condition?: ConditionSpec | null;
+  validator?: { name: string; params?: Record<string, unknown> } | null;
 };
 
 function kindOf(spec?: CustomRuleSpec): Kind {
@@ -96,6 +100,9 @@ export function CustomRule({
   const [unlessPath, setUnlessPath] = useState(initial?.sequence?.unless_path || "");
   const [unlessMatches, setUnlessMatches] = useState(initial?.sequence?.unless_matches || "");
   const [cond, setCond] = useState<Condition>(initial?.condition ? conditionFrom(initial.condition) : blankCondition(startOperator));
+  const validators = useValidators();
+  const [check, setCheck] = useState<ValidatorValue>({ name: initial?.validator?.name || "", params: rawFrom(initial?.validator?.params) });
+  const checkInfo = validators?.find((v) => v.name === check.name);
   const [effect, setEffect] = useState(startKind === "condition" && startOperator !== "not_in" ? "escalate" : "block");
   const [message, setMessage] = useState("");
   const [reask, setReask] = useState(false);
@@ -119,6 +126,13 @@ export function CustomRule({
         sequence: { after: after.trim(), then: then.trim(), ...(unlessPath ? { unless_path: unlessPath.trim(), unless_matches: unlessMatches.trim() } : {}) },
       };
     if (kind === "condition") return { ...base, kind: "condition", condition: conditionSpec(cond) };
+    if (kind === "validator")
+      return {
+        ...base,
+        kind: "validator",
+        validator: { name: check.name, params: paramsFor(checkInfo, check.params) },
+        surfaces: checks.filter((c) => !checkInfo || checkInfo.surfaces.includes(c)),
+      };
     if (isTopic)
       return { ...base, kind: "topic", polarity: kind === "allow" ? "allow" : "deny", description: entries.trim(), examples: lines(examples), surfaces: checks };
     return { ...base, kind, entries: lines(entries), surfaces: checks };
@@ -201,8 +215,17 @@ export function CustomRule({
     );
 
   const first = tried?.matches.find((m) => m.end > m.start);
-  const hit = first ? sample.slice(first.start, first.end) : "";
-  const ready = name.trim() && (kind === "sequence" ? after.trim() && then.trim() : kind === "condition" ? conditionReady(cond) : entries.trim());
+  const matched = first ? sample.slice(first.start, first.end) : "";
+  const hit = matched.length > 48 ? `${matched.slice(0, 45)}…` : matched;
+  const ready =
+    name.trim() &&
+    (kind === "sequence"
+      ? after.trim() && then.trim()
+      : kind === "condition"
+        ? conditionReady(cond)
+        : kind === "validator"
+          ? validatorReady(checkInfo, check.params)
+          : entries.trim());
   const surfaces = kind === "condition" ? [cond.surface] : checks;
   const toolSample = kind === "condition" && (cond.surface === "tool_args" || cond.surface === "tool_result");
   const read = (tried?.observed || []).map((v) => (typeof v === "string" ? v : JSON.stringify(v))).join(", ");
@@ -233,6 +256,36 @@ export function CustomRule({
             }}
           />
           <p className="muted">{describeCondition(cond, editing ? undefined : effect)}</p>
+        </>
+      ) : kind === "validator" ? (
+        <>
+          <ValidatorFields
+            validators={validators}
+            value={check}
+            onChange={(v) => {
+              setCheck(v);
+              setTried(null);
+              const info = validators?.find((x) => x.name === v.name);
+              if (info && v.name !== check.name) {
+                const where = CHECKS.map((c) => c.key).filter((c) => info.surfaces.includes(c));
+                setChecks(where.length ? where : checks);
+                if (!name.trim()) setName(info.label);
+              }
+            }}
+          />
+          <div className="k-field">
+            <label>Check</label>
+            <div className="k-seg" role="group" aria-label="Where to check">
+              {CHECKS.filter((c) => !checkInfo || checkInfo.surfaces.includes(c.key)).map((c) => {
+                const on = checks.includes(c.key);
+                return (
+                  <button key={c.key} className={on ? "active" : ""} aria-pressed={on} onClick={() => setChecks(on ? checks.filter((x) => x !== c.key) : [...checks, c.key])}>
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </>
       ) : kind === "sequence" ? (
         <>
@@ -342,6 +395,7 @@ export function CustomRule({
                 {tried.matched ? (hit && kind !== "condition" ? `Matches “${hit}”` : "Matches") : "No match"}
               </span>
             )}
+            {tried?.matched && kind === "validator" && tried.matches[0]?.reason && <span className="muted">{tried.matches[0].reason}</span>}
             {tried && kind === "condition" && <span className="muted">{read ? `Read ${read}` : "Field not found"}</span>}
           </div>
         </div>

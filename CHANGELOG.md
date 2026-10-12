@@ -11,6 +11,31 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+
+- **Built-in validators.** About seventy checks ported from the Guardrails AI validators
+  (Apache-2.0) as native code, so none needs a separate install: system-prompt leaks,
+  forbidden SQL and unknown columns, unsafe HTML, internal domains, fuzzy word lists,
+  drug names, price quotes, format checks, local-model classifiers (jailbreak,
+  toxicity, NSFW, bias, gibberish) and LLM judges routed through the judgment tier.
+  Pick one under Policies → Add rule → **Use a built-in check**, give it its settings,
+  and try it on a sample; it is watched and enforced like any other rule. Ones that
+  need no settings can also be switched on as `validator.*` checks.
+- Your own validators register through the `agentfox.validators` entry point.
+- Importing a Guardrails AI guard maps each validator onto its port with the same
+  settings, so `ValidLength`, `RegexMatch` and the rest import instead of being skipped.
+
+### Changed
+
+- The `rails.hub.*` detectors, which needed a `pip install` per validator, are replaced
+  by the ports. `rails.guardrails_ai` stays for running your own Guard.
+
+### Fixed
+
+- Value checks could not be saved from the dashboard ("a condition rule needs
+  `condition`"), and trying one on a tool call ignored the tool: the dashboard's proxy
+  dropped both fields. Suggested argument names for a value check now load too.
+
 ## [0.4.0] - 2026-10-12
 
 ### Added

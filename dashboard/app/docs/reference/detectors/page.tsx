@@ -57,8 +57,8 @@ const OPTIN: Row[] = [
   ["safety.granite", "IBM Granite Guardian safety classifier.", "agentfox[classifiers] and weights", "Apache-2.0"],
   ["safety.restricted", "Llama Guard 3 (8B), generated safe/unsafe verdict, reported as SAFETY.HARM.", "agentfox[restricted-classifiers], weights, and AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1", "Llama licence: non-OSI, acceptable-use policy and a user-count clause. Legal review before commercial use."],
   ["rails.nemo", "NVIDIA NeMo Guardrails, running the config you point it at.", "agentfox[rails] and nemo_rails_config_path", "Apache-2.0"],
-  ["rails.guardrails_ai", "Several Guardrails AI validators as one guard.", "agentfox[validators] and guardrails_ai_validators", "Each Hub validator has its own licence"],
-  ["rails.hub.*", "One detector per Guardrails AI Hub validator (detect_jailbreak, detect_prompt_injection, detect_pii, secrets_present, toxic_language, valid_sql, valid_json, llama_guard, shield_gemma and others), one entity type each.", "the validator installed from the Hub", "Per validator; llama_guard and shield_gemma carry restricted licences"],
+  ["rails.guardrails_ai", "Your own Guardrails AI guard, run as one check. Most Hub validators are built in (validator.*) and need no install.", "agentfox[validators] and guardrails_ai_validators", "Each Hub validator has its own licence"],
+  ["validator.*", "Built-in validators, most adapted from the Guardrails AI validators: web_sanitization, detect_jailbreak, toxic_language, nsfw_text, bias_check, gibberish_text, secrets_present and others, one entity type each. Validators that take settings (ban_list, system_prompt_leak, exclude_sql_predicates, internal_domains, regex_match and about forty more) run as a Built-in check rule instead.", "Nothing for rule checks; model checks need agentfox[classifiers] and weights; LLM checks need a judgment tier", "Apache-2.0 code; model weights carry their own licences"],
   ["injection.judgment, pii.judgment", "Ask a judgment model when patterns are not enough.", "a judgment tier in judgment_tiers; hosted tiers also need allow_egress", "Depends on the tier"],
 ];
 

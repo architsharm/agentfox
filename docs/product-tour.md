@@ -410,14 +410,15 @@ Roughly 20% of the engineering integrates OSS primitives — OPA/Rego, Presidio,
 NeMo/Guardrails AI, promptfoo, Garak, PyRIT, OpenTelemetry — and 80% is the logic above them. Every
 wrapped project sits behind a swappable adapter. The [high-level design](architecture/high-level-design.md) has the full design.
 
-Twenty [Guardrails AI Hub](https://guardrailsai.com/hub) validators are wrapped one-per-detector, so
-each has its own key, its own measured precision and latency on your traffic, and its own
-suppressions — and reports into this project's entity taxonomy, so a jailbreak one of them finds
-fires the same policy rule as one ours finds, with no new rule to write. Hub validators carry
-licences independent of that project's Apache-2.0 core, so none ships enabled; the dashboard lists
-each with the one `pip install` that turns it on. Their telemetry is switched off before any of them
-runs — enabling a check must not start exporting spans to a third party from a tool whose first
-promise is that it does not phone home.
+About seventy [Guardrails AI](https://github.com/guardrails-ai) validators are ported in as native
+code (`detection/validators/`, Apache-2.0, credited in `THIRD_PARTY_NOTICES.md`), so none needs a
+separate install or talks to anyone. Each reports into this project's entity taxonomy, so a
+jailbreak one of them finds fires the same policy rule as one ours finds. Validators that need no
+settings can be switched on as `validator.*` checks. Those that take settings (a word list, your
+system prompt, the SQL predicates to refuse) are added as a **Built-in check** rule under Your
+rules, and are watched, enforced and tuned like any other rule. Model-backed ones run locally;
+LLM-backed ones ask the judgment tier, which owns egress and redaction. New validators register
+through the `agentfox.validators` entry point, so a package of your own sits beside ours.
 
 ## Self-hosting
 

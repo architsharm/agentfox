@@ -19,7 +19,7 @@ const EXTRAS: { name: string; installs: string; enables: string }[] = [
   { name: "postgres", installs: "psycopg[binary]", enables: "A Postgres database_url (postgresql+psycopg://…)." },
   { name: "otel", installs: "opentelemetry-api, -sdk, -exporter-otlp-proto-http", enables: "OpenTelemetry trace export." },
   { name: "rails", installs: "nemoguardrails", enables: "The rails.nemo detector, once nemo_rails_config_path points at a NeMo Guardrails config." },
-  { name: "validators", installs: "guardrails-ai", enables: "rails.guardrails_ai and the rails.hub.* detectors, once guardrails_ai_validators names installed Hub validators." },
+  { name: "validators", installs: "guardrails-ai", enables: "rails.guardrails_ai, to run your own Guard. The Guardrails AI validators themselves are built in and need no extra." },
   { name: "redteam", installs: "garak, pyrit", enables: "The wrapped Garak and PyRIT runners alongside the built-in probes (agentfox test probes lists them)." },
   { name: "bedrock", installs: "boto3", enables: "The Amazon Bedrock model provider." },
   { name: "vertex", installs: "google-auth", enables: "The Google Vertex model provider." },

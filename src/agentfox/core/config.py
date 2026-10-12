@@ -533,12 +533,10 @@ class Settings(BaseSettings):
     # because Hub validators carry licences independent of the Apache-2.0 core,
     # so none is ever enabled by inheritance.
     #
-    # Prefer the per-validator `rails.hub.*` detectors: they report one entity
-    # type per check, so existing policy rules match them and precision is
-    # measured per validator. This composite reports everything as
-    # SCHEMA.VIOLATION. It exists for the case those do not cover — several
-    # validators evaluated as one Guard, which is what Guardrails AI's own
-    # `use_many` composition is for.
+    # Most Hub validators are ported natively (`detection/validators/`) and need
+    # no install; they report one entity type per check. This composite reports
+    # everything as SCHEMA.VIOLATION and exists for running your own Guard, or a
+    # validator that is not ported.
     guardrails_ai_validators: list[str] = []
 
     # --- Entitlement -----------------------------------------------

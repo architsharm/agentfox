@@ -113,6 +113,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Incorporated material (Apache-2.0)
+
+### Guardrails AI validators
+
+Source: the per-validator repositories of https://github.com/guardrails-ai (for
+example `guardrails-ai/ban_list`, `guardrails-ai/detect_jailbreak`), each Apache-2.0,
+© Guardrails AI. Read in October 2026.
+
+Ported into `src/agentfox/capabilities/detection/validators/builtin/`. The checks
+are rewritten against AgentFox's validator interface, without the `guardrails`
+package, so none needs a separate install or reaches the network unless egress is
+allowed. Each ported class names its source repository in `upstream`; changes from
+upstream (span fixes, stdlib replacements for `bleach`, `fuzzysearch`, `rapidfuzz`,
+`nltk`; LLM calls routed through the judgment tier) are noted in the code. The
+licence text is in `validators/LICENSE-guardrails-ai`. The drug-name list in
+`validators/data/drug_names.txt` is copied from `guardrails-ai/mentions_drugs`.
+
+Model weights the model-backed validators download are not part of this repository
+and carry their own licences, shown on the Checks screen.
+
+The shared `guardrails-ai/guardrails-hub-monorepo` carries no licence; nothing is
+taken from it.
+
 ## Standards and taxonomies (adopted as language, not code)
 
 | Source | Terms | Use |
@@ -167,8 +190,8 @@ listed under "Incorporated material (MIT)".
 Apache-2.0 projects above are distributed under the Apache License, Version 2.0
 (<http://www.apache.org/licenses/LICENSE-2.0>). MIT and BSD projects retain their
 original copyright and permission notices in their distributed packages. Apart from the
-material listed under "Incorporated material (MIT)" above, no third-party source is
+material listed under "Incorporated material" above, no third-party source is
 vendored into this repository; all other integrations are adapters against published
 interfaces.
 
-_Last reviewed: 2026-10-09._
+_Last reviewed: 2026-10-12._

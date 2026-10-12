@@ -52,6 +52,8 @@ _GROUP_BY_ENTITY = {
     "SAFETY": "content",
     "BRAND": "content",
     "TOPIC": "content",
+    "QUALITY": "grounding",
+    "FORMAT": "grounding",
     "SCHEMA": "grounding",
     "GROUNDING": "grounding",
 }
@@ -109,6 +111,9 @@ def source_of(detector: Any) -> str:
         return "yours"
     if key in JUDGE_DETECTORS:
         return "llm_judge"
+    validator = getattr(detector, "validator", None)
+    if validator is not None:
+        return {"judge": "llm_judge", "model": "open_source"}.get(validator.kind, "builtin")
     if models_for(detector) or key in _PACKAGE_LICENSES or key.startswith("rails."):
         return "open_source"
     return "builtin"
@@ -123,14 +128,23 @@ def where(surfaces: tuple[str, ...] | list[str]) -> list[str]:
 def describe(detector: Any) -> dict[str, Any]:
     """The Checks-screen facts for one detector."""
     key = str(getattr(detector, "key", ""))
-    models = [{"id": m, "license": MODEL_LICENSES.get(m)} for m in models_for(detector)]
-    license_ = (
-        models[0]["license"]
-        if models
-        else _PACKAGE_LICENSES.get(key)
-        or ("Per validator" if key.startswith("rails.hub.") else None)
-    )
+    validator = getattr(detector, "validator", None)
+    # A ported validator states its weights' licence itself (checked against each
+    # model card when it was ported); our own table covers the rest.
+    weights = getattr(validator, "model_license", "") or None
+    models = [{"id": m, "license": MODEL_LICENSES.get(m) or weights} for m in models_for(detector)]
+    if models and models[0]["license"]:
+        license_ = models[0]["license"]
+    elif validator is not None:
+        license_ = validator.license
+    else:
+        license_ = _PACKAGE_LICENSES.get(key)
     return {
+        **(
+            {"upstream": validator.upstream, "label": validator.label}
+            if validator is not None
+            else {}
+        ),
         "group": group_of(detector),
         "source": source_of(detector),
         "where": where(tuple(getattr(detector, "surfaces", ()) or ())),

@@ -1,0 +1,792 @@
+{
+  "task": "injection",
+  "threshold": 0.5,
+  "latency_ms_median": {
+    "injection.heuristic": 0.15,
+    "injection.classifier": 71.68,
+    "validator.detect_jailbreak": 59.52
+  },
+  "arms": {
+    "injection.heuristic": {
+      "members": [
+        "injection.heuristic"
+      ],
+      "side": "ours",
+      "all": {
+        "tp": 96,
+        "fp": 28,
+        "fn": 964,
+        "tn": 867,
+        "precision": 77.4,
+        "recall": 9.1,
+        "recall_ci": [
+          7.5,
+          10.9
+        ],
+        "f1": 16.2,
+        "fpr": 3.1,
+        "fpr_ci": [
+          2.2,
+          4.5
+        ]
+      },
+      "by_dataset": {
+        "deepset_test": {
+          "tp": 10,
+          "fp": 0,
+          "fn": 50,
+          "tn": 56,
+          "precision": 100.0,
+          "recall": 16.7,
+          "recall_ci": [
+            9.3,
+            28.0
+          ],
+          "f1": 28.6,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            6.4
+          ]
+        },
+        "notinject": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "tn": 339,
+          "precision": null,
+          "recall": null,
+          "recall_ci": null,
+          "f1": null,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            1.1
+          ]
+        },
+        "spml": {
+          "tp": 24,
+          "fp": 0,
+          "fn": 226,
+          "tn": 250,
+          "precision": 100.0,
+          "recall": 9.6,
+          "recall_ci": [
+            6.5,
+            13.9
+          ],
+          "f1": 17.5,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            1.5
+          ]
+        },
+        "trustairlab": {
+          "tp": 58,
+          "fp": 28,
+          "fn": 192,
+          "tn": 222,
+          "precision": 67.4,
+          "recall": 23.2,
+          "recall_ci": [
+            18.4,
+            28.8
+          ],
+          "f1": 34.5,
+          "fpr": 11.2,
+          "fpr_ci": [
+            7.9,
+            15.7
+          ]
+        },
+        "yanismiraoui": {
+          "tp": 4,
+          "fp": 0,
+          "fn": 496,
+          "tn": 0,
+          "precision": 100.0,
+          "recall": 0.8,
+          "recall_ci": [
+            0.3,
+            2.0
+          ],
+          "f1": 1.6,
+          "fpr": null,
+          "fpr_ci": null
+        }
+      }
+    },
+    "injection.classifier": {
+      "members": [
+        "injection.classifier"
+      ],
+      "side": "ours",
+      "all": {
+        "tp": 1010,
+        "fp": 208,
+        "fn": 50,
+        "tn": 687,
+        "precision": 82.9,
+        "recall": 95.3,
+        "recall_ci": [
+          93.8,
+          96.4
+        ],
+        "f1": 88.7,
+        "fpr": 23.2,
+        "fpr_ci": [
+          20.6,
+          26.1
+        ]
+      },
+      "by_dataset": {
+        "deepset_test": {
+          "tp": 41,
+          "fp": 0,
+          "fn": 19,
+          "tn": 56,
+          "precision": 100.0,
+          "recall": 68.3,
+          "recall_ci": [
+            55.8,
+            78.7
+          ],
+          "f1": 81.2,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            6.4
+          ]
+        },
+        "notinject": {
+          "tp": 0,
+          "fp": 140,
+          "fn": 0,
+          "tn": 199,
+          "precision": 0.0,
+          "recall": null,
+          "recall_ci": null,
+          "f1": null,
+          "fpr": 41.3,
+          "fpr_ci": [
+            36.2,
+            46.6
+          ]
+        },
+        "spml": {
+          "tp": 245,
+          "fp": 17,
+          "fn": 5,
+          "tn": 233,
+          "precision": 93.5,
+          "recall": 98.0,
+          "recall_ci": [
+            95.4,
+            99.1
+          ],
+          "f1": 95.7,
+          "fpr": 6.8,
+          "fpr_ci": [
+            4.3,
+            10.6
+          ]
+        },
+        "trustairlab": {
+          "tp": 232,
+          "fp": 51,
+          "fn": 18,
+          "tn": 199,
+          "precision": 82.0,
+          "recall": 92.8,
+          "recall_ci": [
+            88.9,
+            95.4
+          ],
+          "f1": 87.1,
+          "fpr": 20.4,
+          "fpr_ci": [
+            15.9,
+            25.8
+          ]
+        },
+        "yanismiraoui": {
+          "tp": 492,
+          "fp": 0,
+          "fn": 8,
+          "tn": 0,
+          "precision": 100.0,
+          "recall": 98.4,
+          "recall_ci": [
+            96.9,
+            99.2
+          ],
+          "f1": 99.2,
+          "fpr": null,
+          "fpr_ci": null
+        }
+      }
+    },
+    "validator.detect_jailbreak": {
+      "members": [
+        "validator.detect_jailbreak"
+      ],
+      "side": "theirs",
+      "all": {
+        "tp": 169,
+        "fp": 43,
+        "fn": 891,
+        "tn": 852,
+        "precision": 79.7,
+        "recall": 15.9,
+        "recall_ci": [
+          13.9,
+          18.3
+        ],
+        "f1": 26.6,
+        "fpr": 4.8,
+        "fpr_ci": [
+          3.6,
+          6.4
+        ]
+      },
+      "by_dataset": {
+        "deepset_test": {
+          "tp": 4,
+          "fp": 0,
+          "fn": 56,
+          "tn": 56,
+          "precision": 100.0,
+          "recall": 6.7,
+          "recall_ci": [
+            2.6,
+            15.9
+          ],
+          "f1": 12.5,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            6.4
+          ]
+        },
+        "notinject": {
+          "tp": 0,
+          "fp": 3,
+          "fn": 0,
+          "tn": 336,
+          "precision": 0.0,
+          "recall": null,
+          "recall_ci": null,
+          "f1": null,
+          "fpr": 0.9,
+          "fpr_ci": [
+            0.3,
+            2.6
+          ]
+        },
+        "spml": {
+          "tp": 28,
+          "fp": 0,
+          "fn": 222,
+          "tn": 250,
+          "precision": 100.0,
+          "recall": 11.2,
+          "recall_ci": [
+            7.9,
+            15.7
+          ],
+          "f1": 20.1,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            1.5
+          ]
+        },
+        "trustairlab": {
+          "tp": 124,
+          "fp": 40,
+          "fn": 126,
+          "tn": 210,
+          "precision": 75.6,
+          "recall": 49.6,
+          "recall_ci": [
+            43.5,
+            55.8
+          ],
+          "f1": 59.9,
+          "fpr": 16.0,
+          "fpr_ci": [
+            12.0,
+            21.1
+          ]
+        },
+        "yanismiraoui": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 487,
+          "tn": 0,
+          "precision": 100.0,
+          "recall": 2.6,
+          "recall_ci": [
+            1.5,
+            4.4
+          ],
+          "f1": 5.1,
+          "fpr": null,
+          "fpr_ci": null
+        }
+      }
+    },
+    "injection.heuristic + validator.detect_jailbreak": {
+      "members": [
+        "injection.heuristic",
+        "validator.detect_jailbreak"
+      ],
+      "side": "both",
+      "all": {
+        "tp": 218,
+        "fp": 60,
+        "fn": 842,
+        "tn": 835,
+        "precision": 78.4,
+        "recall": 20.6,
+        "recall_ci": [
+          18.2,
+          23.1
+        ],
+        "f1": 32.6,
+        "fpr": 6.7,
+        "fpr_ci": [
+          5.2,
+          8.5
+        ]
+      },
+      "by_dataset": {
+        "deepset_test": {
+          "tp": 14,
+          "fp": 0,
+          "fn": 46,
+          "tn": 56,
+          "precision": 100.0,
+          "recall": 23.3,
+          "recall_ci": [
+            14.4,
+            35.4
+          ],
+          "f1": 37.8,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            6.4
+          ]
+        },
+        "notinject": {
+          "tp": 0,
+          "fp": 3,
+          "fn": 0,
+          "tn": 336,
+          "precision": 0.0,
+          "recall": null,
+          "recall_ci": null,
+          "f1": null,
+          "fpr": 0.9,
+          "fpr_ci": [
+            0.3,
+            2.6
+          ]
+        },
+        "spml": {
+          "tp": 51,
+          "fp": 0,
+          "fn": 199,
+          "tn": 250,
+          "precision": 100.0,
+          "recall": 20.4,
+          "recall_ci": [
+            15.9,
+            25.8
+          ],
+          "f1": 33.9,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            1.5
+          ]
+        },
+        "trustairlab": {
+          "tp": 137,
+          "fp": 57,
+          "fn": 113,
+          "tn": 193,
+          "precision": 70.6,
+          "recall": 54.8,
+          "recall_ci": [
+            48.6,
+            60.9
+          ],
+          "f1": 61.7,
+          "fpr": 22.8,
+          "fpr_ci": [
+            18.0,
+            28.4
+          ]
+        },
+        "yanismiraoui": {
+          "tp": 16,
+          "fp": 0,
+          "fn": 484,
+          "tn": 0,
+          "precision": 100.0,
+          "recall": 3.2,
+          "recall_ci": [
+            2.0,
+            5.1
+          ],
+          "f1": 6.2,
+          "fpr": null,
+          "fpr_ci": null
+        }
+      }
+    },
+    "injection.classifier + validator.detect_jailbreak": {
+      "members": [
+        "injection.classifier",
+        "validator.detect_jailbreak"
+      ],
+      "side": "both",
+      "all": {
+        "tp": 1015,
+        "fp": 235,
+        "fn": 45,
+        "tn": 660,
+        "precision": 81.2,
+        "recall": 95.8,
+        "recall_ci": [
+          94.4,
+          96.8
+        ],
+        "f1": 87.9,
+        "fpr": 26.3,
+        "fpr_ci": [
+          23.5,
+          29.2
+        ]
+      },
+      "by_dataset": {
+        "deepset_test": {
+          "tp": 45,
+          "fp": 0,
+          "fn": 15,
+          "tn": 56,
+          "precision": 100.0,
+          "recall": 75.0,
+          "recall_ci": [
+            62.8,
+            84.2
+          ],
+          "f1": 85.7,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            6.4
+          ]
+        },
+        "notinject": {
+          "tp": 0,
+          "fp": 143,
+          "fn": 0,
+          "tn": 196,
+          "precision": 0.0,
+          "recall": null,
+          "recall_ci": null,
+          "f1": null,
+          "fpr": 42.2,
+          "fpr_ci": [
+            37.0,
+            47.5
+          ]
+        },
+        "spml": {
+          "tp": 245,
+          "fp": 17,
+          "fn": 5,
+          "tn": 233,
+          "precision": 93.5,
+          "recall": 98.0,
+          "recall_ci": [
+            95.4,
+            99.1
+          ],
+          "f1": 95.7,
+          "fpr": 6.8,
+          "fpr_ci": [
+            4.3,
+            10.6
+          ]
+        },
+        "trustairlab": {
+          "tp": 233,
+          "fp": 75,
+          "fn": 17,
+          "tn": 175,
+          "precision": 75.6,
+          "recall": 93.2,
+          "recall_ci": [
+            89.4,
+            95.7
+          ],
+          "f1": 83.5,
+          "fpr": 30.0,
+          "fpr_ci": [
+            24.7,
+            35.9
+          ]
+        },
+        "yanismiraoui": {
+          "tp": 492,
+          "fp": 0,
+          "fn": 8,
+          "tn": 0,
+          "precision": 100.0,
+          "recall": 98.4,
+          "recall_ci": [
+            96.9,
+            99.2
+          ],
+          "f1": 99.2,
+          "fpr": null,
+          "fpr_ci": null
+        }
+      }
+    },
+    "injection.heuristic + injection.classifier": {
+      "members": [
+        "injection.heuristic",
+        "injection.classifier"
+      ],
+      "side": "ours",
+      "all": {
+        "tp": 1010,
+        "fp": 228,
+        "fn": 50,
+        "tn": 667,
+        "precision": 81.6,
+        "recall": 95.3,
+        "recall_ci": [
+          93.8,
+          96.4
+        ],
+        "f1": 87.9,
+        "fpr": 25.5,
+        "fpr_ci": [
+          22.7,
+          28.4
+        ]
+      },
+      "by_dataset": {
+        "deepset_test": {
+          "tp": 41,
+          "fp": 0,
+          "fn": 19,
+          "tn": 56,
+          "precision": 100.0,
+          "recall": 68.3,
+          "recall_ci": [
+            55.8,
+            78.7
+          ],
+          "f1": 81.2,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            6.4
+          ]
+        },
+        "notinject": {
+          "tp": 0,
+          "fp": 140,
+          "fn": 0,
+          "tn": 199,
+          "precision": 0.0,
+          "recall": null,
+          "recall_ci": null,
+          "f1": null,
+          "fpr": 41.3,
+          "fpr_ci": [
+            36.2,
+            46.6
+          ]
+        },
+        "spml": {
+          "tp": 245,
+          "fp": 17,
+          "fn": 5,
+          "tn": 233,
+          "precision": 93.5,
+          "recall": 98.0,
+          "recall_ci": [
+            95.4,
+            99.1
+          ],
+          "f1": 95.7,
+          "fpr": 6.8,
+          "fpr_ci": [
+            4.3,
+            10.6
+          ]
+        },
+        "trustairlab": {
+          "tp": 232,
+          "fp": 71,
+          "fn": 18,
+          "tn": 179,
+          "precision": 76.6,
+          "recall": 92.8,
+          "recall_ci": [
+            88.9,
+            95.4
+          ],
+          "f1": 83.9,
+          "fpr": 28.4,
+          "fpr_ci": [
+            23.2,
+            34.3
+          ]
+        },
+        "yanismiraoui": {
+          "tp": 492,
+          "fp": 0,
+          "fn": 8,
+          "tn": 0,
+          "precision": 100.0,
+          "recall": 98.4,
+          "recall_ci": [
+            96.9,
+            99.2
+          ],
+          "f1": 99.2,
+          "fpr": null,
+          "fpr_ci": null
+        }
+      }
+    },
+    "all ours + all theirs": {
+      "members": [
+        "injection.heuristic",
+        "injection.classifier",
+        "validator.detect_jailbreak"
+      ],
+      "side": "both",
+      "all": {
+        "tp": 1015,
+        "fp": 249,
+        "fn": 45,
+        "tn": 646,
+        "precision": 80.3,
+        "recall": 95.8,
+        "recall_ci": [
+          94.4,
+          96.8
+        ],
+        "f1": 87.3,
+        "fpr": 27.8,
+        "fpr_ci": [
+          25.0,
+          30.8
+        ]
+      },
+      "by_dataset": {
+        "deepset_test": {
+          "tp": 45,
+          "fp": 0,
+          "fn": 15,
+          "tn": 56,
+          "precision": 100.0,
+          "recall": 75.0,
+          "recall_ci": [
+            62.8,
+            84.2
+          ],
+          "f1": 85.7,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            6.4
+          ]
+        },
+        "notinject": {
+          "tp": 0,
+          "fp": 143,
+          "fn": 0,
+          "tn": 196,
+          "precision": 0.0,
+          "recall": null,
+          "recall_ci": null,
+          "f1": null,
+          "fpr": 42.2,
+          "fpr_ci": [
+            37.0,
+            47.5
+          ]
+        },
+        "spml": {
+          "tp": 245,
+          "fp": 17,
+          "fn": 5,
+          "tn": 233,
+          "precision": 93.5,
+          "recall": 98.0,
+          "recall_ci": [
+            95.4,
+            99.1
+          ],
+          "f1": 95.7,
+          "fpr": 6.8,
+          "fpr_ci": [
+            4.3,
+            10.6
+          ]
+        },
+        "trustairlab": {
+          "tp": 233,
+          "fp": 89,
+          "fn": 17,
+          "tn": 161,
+          "precision": 72.4,
+          "recall": 93.2,
+          "recall_ci": [
+            89.4,
+            95.7
+          ],
+          "f1": 81.5,
+          "fpr": 35.6,
+          "fpr_ci": [
+            29.9,
+            41.7
+          ]
+        },
+        "yanismiraoui": {
+          "tp": 492,
+          "fp": 0,
+          "fn": 8,
+          "tn": 0,
+          "precision": 100.0,
+          "recall": 98.4,
+          "recall_ci": [
+            96.9,
+            99.2
+          ],
+          "f1": 99.2,
+          "fpr": null,
+          "fpr_ci": null
+        }
+      }
+    }
+  },
+  "rows": 1955,
+  "limit_per_dataset": 500,
+  "skipped": {
+    "validator.detect_prompt_injection": "not registered or not available here",
+    "validator.jailbreak": "not registered or not available here"
+  }
+}

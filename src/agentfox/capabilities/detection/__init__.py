@@ -15,8 +15,6 @@ from agentfox.capabilities.detection.adapters.classifiers import (
 )
 from agentfox.capabilities.detection.adapters.embeddings import EmbeddingSimilarityDetector
 from agentfox.capabilities.detection.adapters.grounding import GroundingNliDetector
-from agentfox.capabilities.detection.adapters.hub import CATALOGUE as HUB_CATALOGUE
-from agentfox.capabilities.detection.adapters.hub import HubValidatorDetector, hub_detectors
 from agentfox.capabilities.detection.adapters.presidio import PresidioPiiDetector
 from agentfox.capabilities.detection.adapters.rails import GuardrailsAiDetector, NemoRailsDetector
 from agentfox.capabilities.detection.base import (
@@ -32,7 +30,11 @@ from agentfox.capabilities.detection.base import (
     register_detector,
     warm_all,
 )
-from agentfox.capabilities.detection.custom import CustomListDetector, CustomTopicDetector
+from agentfox.capabilities.detection.custom import (
+    CustomListDetector,
+    CustomTopicDetector,
+    CustomValidatorDetector,
+)
 from agentfox.capabilities.detection.custom_models import CustomModelDetector
 from agentfox.capabilities.detection.detectors.code import InsecureCodeDetector
 from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
@@ -55,6 +57,8 @@ register_detector(SafetyLexiconDetector())
 register_detector(JsonSchemaDetector())
 # A workspace's own words, patterns and topics (custom.py); free with none defined.
 register_detector(CustomListDetector())
+# The workspace's validator rules: a registered validator run with its settings.
+register_detector(CustomValidatorDetector())
 # The workspace's own classifier endpoints (custom_models.py); runs only for a
 # workspace that registered one.
 register_detector(CustomModelDetector())
@@ -79,12 +83,16 @@ register_detector(GuardrailsAiDetector())
 register_detector(InjectionJudgmentDetector())
 register_detector(PiiJudgmentDetector())
 
-# --- Guardrails AI Hub, one detector per validator (adapters/hub.py) ---
-# Registered even when not installed: the Detectors strip counts "not installed"
-# separately from "off", so an operator can see a jailbreak classifier is one
-# `pip install` away rather than having to know the catalogue exists.
-for _hub_detector in hub_detectors():
-    register_detector(_hub_detector)
+# --- Validators (validators/), one detector each for those that need no settings ---
+# Native code, most of it ported from the Guardrails AI validator repositories, so
+# none needs a separate install. Off until switched on, like every opt-in detector.
+from agentfox.capabilities.detection.validators.detector import (  # noqa: E402
+    ValidatorDetector,
+    validator_detectors,
+)
+
+for _validator_detector in validator_detectors():
+    register_detector(_validator_detector)
 
 # --- Licence-restricted, opt-in only ---
 register_detector(RestrictedClassifierDetector())
@@ -111,6 +119,7 @@ __all__ = [
     "SafetyLexiconDetector",
     "SecretsDetector",
     "TaintMark",
+    "ValidatorDetector",
     "TaintTracker",
     "all_detectors",
     "available_detectors",
@@ -119,9 +128,6 @@ __all__ = [
     "get_detector",
     "redact_content",
     "redact_sample",
-    "HUB_CATALOGUE",
-    "HubValidatorDetector",
-    "hub_detectors",
     "register_detector",
     "warm_all",
 ]

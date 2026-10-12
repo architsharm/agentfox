@@ -187,3 +187,46 @@ def test_detectors_switch_per_workspace_but_the_safety_net_stays(client):
     assert (
         client.post("/api/detectors/nope", json={"enabled": True}, headers=ADMIN).status_code == 404
     )
+
+
+def test_a_validator_rule_is_listed_tried_saved_and_enforced(client):
+    listed = client.get("/api/validators", headers=ADMIN).json()["validators"]
+    ban = next(v for v in listed if v["name"] == "ban_list")
+    assert ban["available"] and "banned_words" in ban["params_schema"]["required"]
+
+    rule = {
+        "key": "fuzzy-competitors",
+        "name": "Competitors, however spelled",
+        "kind": "validator",
+        "validator": {"name": "ban_list", "params": {"banned_words": ["Globex"]}},
+        "surfaces": ["input"],
+    }
+    tried = client.post(
+        "/api/custom-rules/try",
+        json={"rule": rule, "text": "is G l o b e x cheaper?", "surface": "input"},
+        headers=ADMIN,
+    ).json()
+    assert tried["matched"] and tried["matches"][0]["reason"]
+
+    bad = client.post(
+        "/api/custom-rules",
+        json={**rule, "validator": {"name": "ban_list", "params": {}}},
+        headers=ADMIN,
+    )
+    assert bad.status_code == 422
+
+    r = client.post(
+        "/api/custom-rules", json={**rule, "message": "Let's talk about us."}, headers=ADMIN
+    )
+    assert r.status_code == 201, r.text
+    saved = r.json()["rule"]
+    assert saved["validator"] == {
+        "name": "ban_list",
+        "params": {"banned_words": ["Globex"], "max_l_dist": 1},
+    }
+
+    _enforce_custom(client)
+    blocked = _guard(client, "Is Gl0bex cheaper than you?")
+    assert blocked["verdict"] == "block", blocked
+    assert blocked["user_message"] == "Let's talk about us."
+    assert _guard(client, "What are your opening hours?")["verdict"] == "allow"

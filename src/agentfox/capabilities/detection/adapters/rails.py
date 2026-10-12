@@ -220,10 +220,9 @@ class GuardrailsAiDetector(BaseDetector):
         for the same reason as `NemoRailsDetector.config_path`: the detector is
         registered at import time, before an operator's config exists.
 
-        Slugs go through the Hub loader, so a slug that is not installed, or
-        whose package is installed and broken, resolves to nothing here exactly
-        as it does for the per-validator `rails.hub.*` detectors — one loader,
-        one set of failure modes.
+        Slugs go through the Hub loader (`adapters/hub.py`), so a slug that is
+        not installed, or whose package is installed and broken, resolves to
+        nothing here rather than to somebody else's validator.
         """
         if self._explicit_validators:
             return list(self._explicit_validators)
@@ -266,10 +265,10 @@ class GuardrailsAiDetector(BaseDetector):
                 "them in `guardrails_ai_validators` (AGENTFOX_GUARDRAILS_AI_"
                 'VALIDATORS), e.g. ["valid_json", "detect_pii"], and install '
                 "each one — Hub validators carry licences independent of the "
-                "Apache-2.0 core, so none is enabled by inheritance. Prefer the "
-                "per-validator `rails.hub.*` detectors unless you specifically "
-                "want several evaluated as one Guard: this one reports every "
-                "failure as SCHEMA.VIOLATION, which no policy rule matches."
+                "Apache-2.0 core, so none is enabled by inheritance. Most Hub "
+                "validators are already built in (Policies → Your rules → Built-in "
+                "check) and need no install; use this only to run your own Guard. "
+                "It reports every failure as SCHEMA.VIOLATION."
             )
         missing = [slug for slug in asked if self._resolve(slug) is None]
         return (

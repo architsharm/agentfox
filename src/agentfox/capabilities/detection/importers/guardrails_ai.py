@@ -382,22 +382,97 @@ def _covered(pack: str, title: str, detector: str = "", detector_title: str = ""
     return build
 
 
+#: Guardrails names whose native port is called something else.
+NATIVE_ALIASES = {
+    "lower_case": "lowercase",
+    "upper_case": "uppercase",
+    "valid_choices": "valid_choice",
+    "valid_openapi_spec": "valid_open_api_spec",
+    "readability": "reading_level",
+    "is_high_quality_translation": "high_quality_translation",
+    "high_quality_translation_validator": "high_quality_translation",
+    "detect_system_prompt_leakage": "system_prompt_leak",
+    "sql_column_presence_validator": "sql_column_presence",
+    "valid_python_validator": "valid_python",
+    "similar_to_list": "similar_to_previous_values",
+    "detect_many_shot_jailbreak": "many_shot_jailbreak",
+    "sainatha_prompt_injection_detector": "prompt_injection_llm",
+}
+
+
+#: Ports that report the span they object to, so `on_fail="fix"` can mask it.
+MASKABLE = frozenset(
+    {"ban_list", "competitor_check", "mentions_drugs", "internal_domains", "quotes_price"}
+)
+
+
+def _native(v: Validator, keys: _Keys) -> list[PlanItem]:
+    """The validator's own port (`detection/validators/`), with the same settings.
+
+    Positional arguments are read in the order the port declares its settings, which
+    follows upstream's constructor. A port that runs with no settings and is offered
+    as a detector is switched on; anything else becomes a validator rule, so its
+    settings and its `on_fail` carry over.
+    """
+    from agentfox.capabilities.detection.validators import get_validator
+
+    name = NATIVE_ALIASES.get(v.slug, v.slug)
+    validator = get_validator(name)
+    if validator is None:
+        return [PlanItem(v.name, "skipped", note="No match in AgentFox yet", line=v.line)]
+    fields = list(validator.Params.model_fields)
+    raw = {k: a for k, a in zip(fields, v.args, strict=False) if a is not None}
+    raw.update({k: a for k, a in v.kwargs.items() if k in validator.Params.model_fields})
+    if not raw and validator.detector and validator.standalone():
+        return [
+            PlanItem(
+                v.name,
+                "detector",
+                f"validator.{name}",
+                validator.label or name,
+                "Switched on",
+                effect="",
+                line=v.line,
+            )
+        ]
+    surface = v.surface if v.surface in validator.surfaces else validator.surfaces[0]
+    effect, on_block, note = _action(v, maskable=name in MASKABLE)
+    try:
+        rule = CustomRuleSpec(
+            key=keys(v.slug),
+            name=validator.label or name,
+            kind="validator",
+            validator={"name": name, "params": raw},
+            surfaces=[surface],
+        )
+    except ValidationError as exc:
+        msg = exc.errors()[0]["msg"].removeprefix("Value error, ")
+        return [
+            PlanItem(v.name, "skipped", note=f"Could not read its settings: {msg}", line=v.line)
+        ]
+    if not validator.available():
+        note = (
+            f"{note + '. ' if note else ''}Not runnable here yet: {validator.unavailable_reason()}"
+        )
+    return [
+        PlanItem(v.name, "custom_rule", rule.key, rule.name, note, effect, on_block, rule, v.line)
+    ]
+
+
 def _skip(reason: str) -> Mapper:
     return lambda v, _keys: [PlanItem(v.name, "skipped", note=reason, line=v.line)]
 
 
-FORMAT = _skip("Output formatting: not something AgentFox checks")
-
 MAPPING: dict[str, Mapper] = {
     # Word lists and topics → custom rules.
-    "competitor_check": _terms("competitors", "Competitor mentions"),
-    "ban_list": _terms("banned_words", "Banned words"),
+    # Ported natively with the same matching (fuzzy, word-boundary), so they keep
+    # their exact behaviour rather than becoming a plain word list.
+    "competitor_check": _native,
+    "ban_list": _native,
     "restrict_to_topic": _topics,
     "sensitive_topic": _denied_topic("sensitive_topics", "Sensitive topics"),
     "sensitive_topics": _denied_topic("sensitive_topics", "Sensitive topics"),
-    "mentions_drugs": _denied_topic(
-        None, "Drug mentions", "drugs, narcotics, illegal substances, medication dosage"
-    ),
+    "mentions_drugs": _native,
     # Detection our detectors already do → the detector plus the pack that acts on it.
     "detect_pii": _covered("baseline", "Personal data (PII)"),
     "guardrails_pii": _covered("baseline", "Personal data (PII)"),
@@ -409,7 +484,7 @@ MAPPING: dict[str, Mapper] = {
         "baseline", "Prompt injection", "injection.classifier", "Injection model"
     ),
     "unusual_prompt": _covered("baseline", "Prompt injection"),
-    "detect_system_prompt_leakage": _covered("baseline", "System prompt leaks"),
+    "detect_system_prompt_leakage": _native,
     "toxic_language": _covered("baseline", "Harmful content", "safety.lexicon", "Harmful content"),
     "profanity_free": _covered("baseline", "Harmful content", "safety.lexicon", "Harmful content"),
     "nsfw_text": _covered("baseline", "Harmful content", "safety.lexicon", "Harmful content"),
@@ -426,48 +501,9 @@ MAPPING: dict[str, Mapper] = {
     "bespoke_minicheck": _covered(
         "agent-integrity", "Unsupported answers", "grounding.nli", "Grounding model"
     ),
-    "exclude_sql_predicates": _covered("tool-containment", "Risky SQL"),
-    # Formatting.
-    **{
-        slug: FORMAT
-        for slug in (
-            "valid_length",
-            "two_words",
-            "lower_case",
-            "upper_case",
-            "reading_time",
-            "valid_choices",
-            "valid_range",
-            "one_line",
-            "ends_with",
-            "readability",
-            "regex_match",
-            "valid_url",
-            "valid_python",
-            "valid_sql",
-            "valid_address",
-            "valid_openapi_spec",
-            "csv_validator",
-            "is_profanity_free_json",
-            "saliency_check",
-            "similar_to_document",
-            "similar_to_list",
-            "extracted_summary_sentences_match",
-            "extractive_summary",
-            "gibberish_text",
-            "correct_language",
-            "politeness_check",
-            "responsiveness_check",
-            "qa_relevance_llm_eval",
-            "response_evaluator",
-            "endpoint_is_reachable",
-            "is_high_quality_translation",
-            "llm_critic",
-            "relevancy_evaluator",
-            "wiki_provenance",
-            "logic_check",
-        )
-    },
+    "exclude_sql_predicates": _native,
+    # Everything else with a native port (formatting, structure, LLM judges) is read
+    # by `_native` in `plan`, so no list here can fall behind the ports.
 }
 
 
@@ -477,13 +513,7 @@ def plan(source: str, *, existing_keys: set[str] | None = None) -> ImportPlan:
     result = ImportPlan(tool=TOOL, errors=errors)
     keys = _Keys(existing_keys or set())
     for v in validators:
-        mapper = MAPPING.get(v.slug)
-        if mapper is None:
-            result.items.append(
-                PlanItem(v.name, "skipped", note="No match in AgentFox yet", line=v.line)
-            )
-            continue
-        result.items.extend(mapper(v, keys))
+        result.items.extend(MAPPING.get(v.slug, _native)(v, keys))
     if not validators and not errors:
         result.errors.append(
             "No validators found. Paste the code that builds your Guard, "

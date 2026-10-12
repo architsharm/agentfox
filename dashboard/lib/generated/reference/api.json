@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 273,
+ "count": 274,
  "routes": [
   {
    "method": "GET",
@@ -3623,6 +3623,12 @@
      {
       "name": "condition",
       "type": "ConditionSpec",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "validator",
+      "type": "ValidatorRef",
       "required": false,
       "description": ""
      },
@@ -10638,6 +10644,29 @@
      "required": true,
      "type": "string"
     },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/validators",
+   "section": "validators",
+   "audience": "operator",
+   "summary": "Every registered validator: what it checks, its settings, and whether it runs here.",
+   "description": "Every registered validator: what it checks, its settings, and whether it runs here.",
+   "params": [
     {
      "name": "authorization",
      "in": "header",

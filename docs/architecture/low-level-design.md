@@ -137,8 +137,13 @@ per surface (`input`, `output`, `retrieved`, `tool_result`, `tool_args`, `memory
   `schema.py`, and `judgment.py` (the optional judgment tiers as a detector).
 - **`adapters/`** — wrappers of optional OSS, each with an `available()` that is false when
   its extra is missing: `classifiers.py` (PIGuard ensemble, Granite Guardian), `embeddings.py`,
-  `presidio.py`, `rails.py` (NeMo Guardrails / Guardrails AI), `hub.py` (Guardrails AI Hub
-  validators, one detector each).
+  `presidio.py`, `rails.py` (NeMo Guardrails / Guardrails AI), `hub.py` (loading a Guardrails AI
+  validator for `rails.guardrails_ai`, telemetry off).
+- **`validators/`** — small checks with a settings schema, registered by name and through the
+  `agentfox.validators` entry point. `builtin/` holds ports of the Guardrails AI validators by
+  family (text, structure, sql, web, lists, disclosure, models, judges). One with no settings can
+  run as a `validator.<name>` detector; one with settings runs as a custom rule of kind
+  `validator` (`custom.validators`).
 - **`normalize.py`** — normalisation that defeats evasion before matching: homoglyphs,
   zero-width characters, encodings, letter-spaced words (`despaced`) and text inside markup a
   reader would not see (`hidden_markup`), each scanned as its own view.

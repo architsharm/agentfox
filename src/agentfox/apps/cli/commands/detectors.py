@@ -42,6 +42,14 @@ def detectors_pull(key: str) -> None:
     from agentfox.capabilities.detection.models import models_for, pull
 
     detector = all_detectors().get(key)
+    if detector is None and key.startswith("validator."):
+        # A validator that only runs as a rule has no detector of its own, and still
+        # needs its weights before a rule can use it.
+        from agentfox.capabilities.detection.validators import get_validator
+        from agentfox.capabilities.detection.validators.detector import ValidatorDetector
+
+        validator = get_validator(key.removeprefix("validator."))
+        detector = ValidatorDetector(validator) if validator is not None else None
     if detector is None:
         console.print(f"[red]unknown detector '{key}'[/]")
         raise typer.Exit(1)

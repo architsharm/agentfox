@@ -129,6 +129,16 @@ class PipelineResult:
         }
 
 
+def _required_budget(detector: Detector, context: DetectionContext) -> int:
+    """What a detector needs this request: its own `budget_for(context)` when its
+    need depends on the request (a workspace rule that asks a model), else its
+    fixed `requires_budget_ms`."""
+    budget_for = getattr(detector, "budget_for", None)
+    if callable(budget_for):
+        return int(budget_for(context) or 0)
+    return int(getattr(detector, "requires_budget_ms", 0) or 0)
+
+
 class DetectorPipeline:
     def __init__(
         self,
@@ -193,7 +203,7 @@ class DetectorPipeline:
         # and `PipelineResult.budget_ms` reports what was actually granted.
         # Detectors nobody opted into cannot trigger this, so the default install
         # keeps the default budget.
-        required = max((getattr(d, "requires_budget_ms", 0) or 0 for d in detectors), default=0)
+        required = max((_required_budget(d, context) for d in detectors), default=0)
         if required and required > effective_budget:
             effective_budget = float(required)
         result = PipelineResult(budget_ms=effective_budget)
