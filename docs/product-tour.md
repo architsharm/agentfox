@@ -137,13 +137,18 @@ agentfox admin hooks daemon                             # the warm process, once
 agentfox admin hooks install --agent my-agent --write   # writes .claude/settings.json
 ```
 
-Three events, because one event is one surface:
+Four events, because one event is one surface:
 
 | Event | What it sees | What a refusal does |
 | --- | --- | --- |
 | `UserPromptSubmit` | the turn you submitted | stops it reaching the model |
 | `PreToolUse` | the call about to run | stops the call, or rewrites its arguments |
 | `PostToolUse` | what the tool returned | **cannot** withdraw the call; tells the model the result is untrusted |
+| `Stop` | the agent ending its turn | keeps it working, with the reason as its next instruction |
+
+`Stop` is where the delivery policies (`capabilities/delivery`) act: a service the task needs
+left attached to the session, a measured bar never measured, a replacement never diffed. Each
+sends the agent back once with one specific instruction; `AGENTFOX_DELIVERY=off` turns them off.
 
 That third row is the one worth reading twice. By the time `PostToolUse` fires the side effect has
 happened, and we say so rather than reporting the event as a gate — `agentfox admin hooks status` prints

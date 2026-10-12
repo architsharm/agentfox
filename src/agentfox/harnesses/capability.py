@@ -34,6 +34,7 @@ _STOPS = {
     "tool.pre": "stops the call before it runs",
     "tool.post": "does not stop anything; the call has already run",
     "prompt.submit": "stops the turn reaching the model",
+    "stop": "keeps the agent working, with the reason as its next instruction",
 }
 
 

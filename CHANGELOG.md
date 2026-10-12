@@ -13,6 +13,18 @@ the file it came from.
 
 ### Added
 
+- **Delivery policies for coding agents** (`capabilities/delivery`). The hook now
+  also catches an agent that is about to lose work it already got right: a service
+  the task needs left attached to the session (including a harness background task),
+  a damaged database opened before it was copied with its sidecars, deployed state
+  torn down after a successful check, a closed replacement map with no diff check
+  after the last write, one answer where every answer was asked for, and a stated
+  numeric bar never measured. Each policy reads the task text once and intervenes at
+  most once or twice per session. On by default; `AGENTFOX_DELIVERY=off` disables
+  them, and `AGENTFOX_DELIVERY=only` runs them without the daemon.
+- The Claude Code adapter binds **Stop**, probed live at 2.1.292: a refusal keeps
+  the agent working with the reason as its next instruction. Existing installs get
+  it by rerunning `agentfox admin hooks install --write`.
 - **`messages` (and `trust`) on `/v1/guard/tool_call`.** The conversation that led to the
   call; an undeclared argument's provenance is inferred from it. Without it, or a
   declared `provenance`, nothing is inferred (now documented). The TypeScript SDK's

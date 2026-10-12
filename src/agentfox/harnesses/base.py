@@ -162,6 +162,11 @@ class AgentEvent:
     #: Free text this event carries, where it carries any: a tool's result, or the
     #: operator's own turn. Empty on a tool call, whose payload is the arguments.
     content: str = ""
+    #: ``stop`` only: the harness is already continuing because a stop hook sent the
+    #: agent back, so another refusal here is what makes a loop.
+    reentered: bool = False
+    #: ``stop`` only: harness background tasks still running, which end with the session.
+    background_tasks: tuple[str, ...] = ()
 
     @property
     def surface(self) -> str:
