@@ -75,6 +75,13 @@ export interface GuardToolCallRequest {
   tool: string;
   arguments: Record<string, unknown>;
   provenance: Record<string, string>;
+  /**
+   * The conversation that led to the call (OpenAI or Anthropic shape). Undeclared
+   * arguments' provenance is inferred from it; without it or `provenance`, nothing is.
+   */
+  messages?: Record<string, unknown>[];
+  /** Messages the caller vouches for: index -> source, as `X-AgentFox-Trust`. */
+  trust?: Record<string, string>;
   intent?: string;
   prior_tools?: string[];
   prior_steps?: Record<string, unknown>[];
@@ -155,6 +162,13 @@ export interface ToolCallOptions {
   priorSteps?: Record<string, unknown>[];
   /** Retry of a call a person approved: it runs once. */
   approvalId?: string;
+  /**
+   * The conversation that led to the call (OpenAI or Anthropic shape). Without it,
+   * or a declared `provenance`, the gateway cannot tell where an argument came from.
+   */
+  messages?: Record<string, unknown>[];
+  /** Messages the caller vouches for: index -> source. */
+  trust?: Record<string, string>;
 }
 
 export interface WrapToolOptions<A, R> {

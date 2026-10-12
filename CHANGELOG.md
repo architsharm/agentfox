@@ -11,6 +11,28 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The gateway proxy now governs the tool calls a model asks for.** `/v1/chat/completions`
+  and `/v1/messages` authorise every tool call in the response through
+  `guard_tool_call` before returning it, as `agentfox.auto()` does in-process: a
+  refused call is a 403, a held one a 428, and a stream holds tool-call fragments until
+  they are authorised. Before, only the reply's text was checked.
+- **Anthropic `tool_result` blocks are tool output, not user input.** They arrive inside a
+  `role: "user"` message, and the gateway tainted them `user`, so a payee copied out of a
+  tool result passed a grant that allows user content. They are now `tool_result`, named
+  after the tool that produced them (`tool:<tool>#<i>`) on both shapes, so composition
+  checks and `output_trust` declarations apply on the gateway as on the SDK.
+- **`/v1/messages` returns tool calls.** A non-streamed reply now carries `tool_use`
+  blocks and `stop_reason: "tool_use"`; it used to drop them.
+
+### Added
+
+- **`messages` (and `trust`) on `/v1/guard/tool_call`.** The conversation that led to the
+  call; an undeclared argument's provenance is inferred from it. Without it, or a
+  declared `provenance`, nothing is inferred (now documented). The TypeScript SDK's
+  `guardToolCall` options take `messages` and `trust`.
+
 ## [0.4.0] - 2026-10-12
 
 ### Added

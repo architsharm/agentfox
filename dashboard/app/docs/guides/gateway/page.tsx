@@ -39,10 +39,10 @@ export default function GatewayGuide() {
       </ul>
       <p>
         If the agent is Python and runs in-process, <Link href="/docs/guides/python-auto">one
-        line of <code>agentfox.auto()</code></Link> governs more for less: it sees every tool
-        call in a response and reads argument provenance from the conversation. The gateway
-        only sees what crosses the wire, so for tool calls you call{" "}
-        <code>/v1/guard/tool_call</code> yourself (below).
+        line of <code>agentfox.auto()</code></Link> governs the same calls with no gateway to
+        run. The proxy authorises every tool call in a response the same way, reading argument
+        provenance from the conversation it is sent. If you call the provider yourself, call{" "}
+        <code>/v1/guard/tool_call</code> before each tool runs (below).
       </p>
 
       <h2>Two ways in</h2>
@@ -62,8 +62,9 @@ export default function GatewayGuide() {
             </td>
             <td>The client&apos;s <code>base_url</code>, plus a header naming the agent.</td>
             <td>
-              The request messages, the model&apos;s answer, and a runaway tool loop across
-              the conversation. Streaming works.
+              The request messages, the model&apos;s answer, each tool call the model asks
+              for (with provenance read from the conversation), and a runaway tool loop
+              across the conversation. Streaming works.
             </td>
           </tr>
           <tr>
@@ -78,12 +79,17 @@ export default function GatewayGuide() {
             </td>
             <td>
               Exactly what you send: a piece of text, a tool call with where each argument
-              came from, a memory write, a message between agents.
+              came from (or the conversation to work it out from), a memory write, a message
+              between agents.
             </td>
           </tr>
         </tbody>
       </table>
-      <p>Most teams use both: the proxy for model calls, <code>/v1/guard/tool_call</code> before each tool runs.</p>
+      <p>
+        Through the proxy, a tool call the model asks for is checked before the response
+        reaches you: a refused one is a 403, one that needs a person a 428. Call{" "}
+        <code>/v1/guard/tool_call</code> yourself when you call the provider directly.
+      </p>
 
       <h2>Worked example</h2>
       <p>
@@ -619,8 +625,14 @@ email.send     (no grant)               {"verdict": "block", "reason": "no capab
         is in <code>taint.capability.reasons</code>:{" "}
         <code>{`arguments ['ticket_id'] carry provenance above the capability's max_taint 'user' (ticket_id from retrieved), so a person must approve this call before it runs`}</code>,
         and it is the escalation&apos;s <code>reason</code> too.
-        Optional fields: <code>prior_tools</code> or <code>prior_steps</code> (your own step
-        history, for loop detection), <code>session_id</code>.
+        Optional fields: <code>messages</code> (the conversation that led to the call, in
+        OpenAI or Anthropic shape: an argument you did not declare is traced to where it
+        appears in it, so a payee copied out of a tool result is <code>tool_result</code>),{" "}
+        <code>trust</code> (message index to source, for messages you vouch for),{" "}
+        <code>prior_tools</code> or <code>prior_steps</code> (your own step history, for
+        loop detection), <code>session_id</code>. With neither <code>provenance</code> nor{" "}
+        <code>messages</code>, the gateway has nothing to tell it where an argument came
+        from, and treats it as untainted.
       </p>
       <p>
         An <code>escalate</code> here means: do not run the tool yet. The{" "}
@@ -827,14 +839,12 @@ curl -s -X POST "http://localhost:8080/api/identities/idn_01m469q1nh59wj649k/cre
       <h2>Limits</h2>
       <ul>
         <li>
-          The proxy checks tool calls only as loop shapes inside the conversation it is sent.
-          It does not authorise each tool call in a response the way{" "}
-          <code>agentfox.auto()</code> does; call <code>/v1/guard/tool_call</code> before you
-          run one.
+          A streamed Anthropic reply carries text only; for tool use through{" "}
+          <code>/v1/messages</code>, do not stream.
         </li>
         <li>
-          Provenance is what you declare. A <code>provenance</code> of <code>user</code> on an
-          argument that came from a web page is believed.
+          A declared provenance is believed. A <code>provenance</code> of <code>user</code> on
+          an argument that came from a web page wins over what the conversation shows.
         </li>
         <li>
           The guard endpoints return a verdict, not rewritten text, and do not refuse a

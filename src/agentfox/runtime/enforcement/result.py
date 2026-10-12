@@ -100,6 +100,8 @@ class PreflightOutcome:
     messages: list[dict[str, Any]] = field(default_factory=list)
     result: EnforcementResult = field(default_factory=EnforcementResult)
     stopped: bool = False
+    #: The tools the conversation had already called, in order.
+    prior_tools: list[str] = field(default_factory=list)
 
 
 @dataclass

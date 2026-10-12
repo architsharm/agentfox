@@ -13,6 +13,7 @@ demonstrable with no account anywhere.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -102,13 +103,34 @@ class CompletionResponse:
         }
 
     def to_anthropic(self, request_model: str = "") -> dict[str, Any]:
+        """Render as an Anthropic messages body. Tool calls (held in OpenAI's shape)
+        become ``tool_use`` blocks; without them a tool-calling client got a reply
+        with nothing to run and an ``end_turn`` it took as the agent finishing."""
+        content: list[dict[str, Any]] = []
+        if self.text or not self.tool_calls:
+            content.append({"type": "text", "text": self.text})
+        for call in self.tool_calls:
+            function = call.get("function") or {}
+            raw = function.get("arguments")
+            try:
+                arguments = json.loads(raw) if isinstance(raw, str) and raw.strip() else {}
+            except ValueError:
+                arguments = {"_raw": raw}
+            content.append(
+                {
+                    "type": "tool_use",
+                    "id": call.get("id") or "",
+                    "name": function.get("name") or "",
+                    "input": arguments if isinstance(arguments, dict) else {"_value": arguments},
+                }
+            )
         return {
             "id": f"msg_{abs(hash(self.text)) % (10**12):012d}",
             "type": "message",
             "role": "assistant",
             "model": self.model or request_model,
-            "content": [{"type": "text", "text": self.text}],
-            "stop_reason": "end_turn",
+            "content": content,
+            "stop_reason": "tool_use" if self.tool_calls else "end_turn",
             "usage": {
                 "input_tokens": self.usage.get("input_tokens", 0),
                 "output_tokens": self.usage.get("output_tokens", 0),

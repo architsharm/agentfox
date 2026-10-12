@@ -73,6 +73,14 @@ it still doesn't do:
   are governed only through the clients they call. `agentfox.state().framework_routes()` shows
   which are covered.
 
+## Gateway proxy limits
+
+- **Streamed Anthropic replies carry text only.** `/v1/messages` with `"stream": true` does
+  not relay `tool_use` blocks (the provider adapter reads text deltas only), so a
+  tool-using Anthropic client must not stream through the gateway. Non-streamed replies
+  carry them, authorised. The fix belongs in `platform/providers/remote.py`
+  (`AnthropicProvider.stream`) and `apps/gateway/routes/inline.py::_stream_anthropic`.
+
 ## Docs that disagree with the code (code wins)
 
 - Coverage numbers differ across `README.md`, `docs/design/failure-modes.md`, `docs/status.md` and
