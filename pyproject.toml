@@ -120,7 +120,9 @@ exclude = ["**/__pycache__", "**/*.pyc"]
 # it. `lint-imports` checks it in CI's lint job and in `just lint`. An exception is
 # listed here by name, with the reason and what removes it, never added silently.
 [tool.importlinter]
-root_package = "agentfox"
+# `agentfox_ee` (ee/src, AgentFox Enterprise) is analysed too, so the contract below can
+# say the open core never imports it.
+root_packages = ["agentfox", "agentfox_ee"]
 # A type-only import has no runtime edge; `if TYPE_CHECKING:` blocks are excluded.
 exclude_type_checking_imports = true
 
@@ -197,6 +199,14 @@ forbidden_modules = [
     "agentfox.capabilities.business.checks",
 ]
 
+# The open core never imports AgentFox Enterprise. It finds the package through the
+# `agentfox.extensions` entry point (`core/extensions.py`) and runs without it.
+[[tool.importlinter.contracts]]
+name = "The open core does not import the enterprise package"
+type = "forbidden"
+source_modules = ["agentfox"]
+forbidden_modules = ["agentfox_ee"]
+
 # Validators are reached through their registry (`detection/validators`), never by
 # importing a built-in module, so a validator from an `agentfox.validators` entry
 # point is a peer of the built-in ones and a built-in one can be replaced.
@@ -239,6 +249,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "conformance.py"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "enterprise: needs AgentFox Enterprise (ee/); skipped when it is not installed",
+]
 
 [tool.ruff]
 line-length = 100

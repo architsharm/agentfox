@@ -9,13 +9,11 @@ anything.
 from __future__ import annotations
 
 import re
-import zipfile
 
 import pytest
 from typer.testing import CliRunner
 
 from agentfox.apps.cli.main import app
-from agentfox.apps.report import evidence
 from agentfox.apps.report.summary import (
     DRAFT_LABEL,
     build_summary,
@@ -25,7 +23,7 @@ from agentfox.apps.report.summary import (
     render_markdown,
 )
 from agentfox.capabilities.detection.taint import TaintTracker
-from agentfox.core.models import ControlStatus, GuardrailFeedback
+from agentfox.core.models import GuardrailFeedback
 
 runner = CliRunner()
 
@@ -127,16 +125,6 @@ def test_no_internal_codes_reach_the_reader(summary, render):
     assert "rule_id" not in page
 
 
-def test_compliance_is_computed_without_a_manual_step(seeded):
-    seeded.query(ControlStatus).delete()
-    seeded.flush()
-    data = build_summary(seeded)
-    assert data["coverage"]["computed_now"] is True
-    assert seeded.query(ControlStatus).count() > 0
-    # And fresh statuses are not recomputed on every read.
-    assert build_summary(seeded)["coverage"]["computed_now"] is False
-
-
 def test_agent_filter(seeded, enforcer):
     _traffic(seeded, enforcer)
     data = build_summary(seeded, agents=["payments-ops"])
@@ -162,37 +150,3 @@ def test_cli_report_md_and_html(tmp_path):
 
     bad = runner.invoke(app, ["report", "--format", "pdf"])
     assert bad.exit_code == 2
-
-
-def test_evidence_package_opens_on_the_summary(seeded, enforcer):
-    _traffic(seeded, enforcer)
-    package = evidence.build(seeded, agents=["*"])
-    with zipfile.ZipFile(package.path) as zf:
-        names = zf.namelist()
-        summary_md = zf.read("SUMMARY.md").decode()
-        readme = zf.read("README.txt").decode()
-    assert names[:2] == ["SUMMARY.md", "SUMMARY.html"]
-    assert summary_md.startswith("# AgentFox summary")
-    assert "SUMMARY.md" in package.manifest_json["files"]
-    assert readme.startswith("AGENTFOX EVIDENCE PACKAGE")
-
-
-def test_board_computes_control_status_itself(seeded):
-    from agentfox.capabilities.compliance import board_view
-
-    seeded.query(ControlStatus).delete()
-    seeded.flush()
-    view = board_view(seeded)
-    assert view["overall_posture"]["counts"]["not_computed"] < view["overall_posture"]["controls"]
-
-
-def test_board_cli_reports_counts_not_a_bare_ratio():
-    from agentfox.core.db import session_scope
-    from agentfox.fixtures.seed import seed
-
-    with session_scope() as session:
-        seed(session)
-    result = runner.invoke(app, ["report", "board"])
-    assert result.exit_code == 0, result.output
-    assert "controls with evidence" in result.output
-    assert "0% of" not in result.output

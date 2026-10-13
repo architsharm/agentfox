@@ -18,11 +18,10 @@ from rich.panel import Panel
 from rich.table import Table
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
-from agentfox.apps.report import evidence
-from agentfox.capabilities.compliance import compute_all, posture
 from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.capabilities.evaluation import gate, run_campaign, set_baseline
 from agentfox.capabilities.evaluation.runner import NativeEvalRunner
+from agentfox.core import extensions
 from agentfox.core.db import session_scope
 from agentfox.core.models import AuditEntry, EvalSuite, Finding
 from agentfox.fixtures.seed import POISONED_DOCUMENT
@@ -550,87 +549,106 @@ def _walkthrough() -> dict[str, Any]:
             session.flush()
 
     # ---------------------------------------------------------------
+    # Sections 11 and 12 are AgentFox Enterprise (compliance status, evidence packages);
+    # the open core's walkthrough says where they are rather than leaving a gap.
+    compute_all = extensions.service("compliance.compute")
+    posture = extensions.service("compliance.posture")
+    build_evidence = extensions.service("evidence.build")
     _rule("Continuous compliance — status computed, not attested", "11")
-    with session_scope() as session:
-        compute_all(session, window_days=30)
-        overall = posture(session)
-        table = Table(box=None, pad_edge=False)
-        table.add_column("framework", style="bold")
-        table.add_column("controls", justify="right")
-        table.add_column("effective", justify="right", style="green")
-        table.add_column("degraded", justify="right", style="yellow")
-        table.add_column("failing", justify="right", style="red")
-        table.add_column("not impl.", justify="right", style="dim")
-        frameworks = ("eu-ai-act", "nist-ai-rmf", "iso-42001", "soc2")
-        for framework in frameworks:
-            p = posture(session, framework)
-            counts = p["counts"]
-            table.add_row(
-                framework,
-                str(p["controls"]),
-                str(counts["effective"]),
-                str(counts["degraded"]),
-                str(counts["failing"]),
-                str(counts["not_implemented"]),
-            )
-        console.print(table)
-        # The rows look copy-pasted and are not. Saying why costs one line and is
-        # cheaper than a reader deciding the table is filler — and the reason is
-        # checked against the mappings rather than asserted.
-        shared = _shared_control_count(session, frameworks)
-        if shared:
+    if compute_all is None or posture is None:
+        console.print(
+            "  [dim]Control status against EU AI Act, ISO 42001, SOC 2 and NIST AI RMF is "
+            "part of AgentFox Enterprise (ee/). The control catalog and every rule's "
+            "control ids are in the open core.[/]"
+        )
+    else:
+        with session_scope() as session:
+            compute_all(session, window_days=30)
+            overall = posture(session)
+            table = Table(box=None, pad_edge=False)
+            table.add_column("framework", style="bold")
+            table.add_column("controls", justify="right")
+            table.add_column("effective", justify="right", style="green")
+            table.add_column("degraded", justify="right", style="yellow")
+            table.add_column("failing", justify="right", style="red")
+            table.add_column("not impl.", justify="right", style="dim")
+            frameworks = ("eu-ai-act", "nist-ai-rmf", "iso-42001", "soc2")
+            for framework in frameworks:
+                p = posture(session, framework)
+                counts = p["counts"]
+                table.add_row(
+                    framework,
+                    str(p["controls"]),
+                    str(counts["effective"]),
+                    str(counts["degraded"]),
+                    str(counts["failing"]),
+                    str(counts["not_implemented"]),
+                )
+            console.print(table)
+            # The rows look copy-pasted and are not. Saying why costs one line and is
+            # cheaper than a reader deciding the table is filler — and the reason is
+            # checked against the mappings rather than asserted.
+            shared = _shared_control_count(session, frameworks)
+            if shared:
+                console.print(
+                    f"  [dim]The rows match because all {shared} controls map into every "
+                    "one of these frameworks: one control answers a clause in each, so the "
+                    "same telemetry decides its status four times.[/]"
+                )
             console.print(
-                f"  [dim]The rows match because all {shared} controls map into every "
-                "one of these frameworks: one control answers a clause in each, so the "
-                "same telemetry decides its status four times.[/]"
+                f"  overall control effectiveness: [bold]{(overall['effectiveness'] or 0):.0%}[/]"
             )
-        console.print(
-            f"  overall control effectiveness: [bold]{(overall['effectiveness'] or 0):.0%}[/]"
-        )
-        console.print(
-            "  [dim]Every status is derived from telemetry — detector coverage, "
-            "decision coverage, chain verification — not from an attestation form. "
-            "Framework mappings are DRAFT and ship in evidence packages chip-labeled "
-            "DRAFT — UNVERIFIED / NOT LEGAL ADVICE.[/]"
-        )
-        summary["posture"] = overall
+            console.print(
+                "  [dim]Every status is derived from telemetry — detector coverage, "
+                "decision coverage, chain verification — not from an attestation form. "
+                "Framework mappings are DRAFT and ship in evidence packages chip-labeled "
+                "DRAFT — UNVERIFIED / NOT LEGAL ADVICE.[/]"
+            )
+            summary["posture"] = overall
 
     # ---------------------------------------------------------------
     _rule("Evidence package — verifiable without us", "12")
-    with session_scope() as session:
-        # Anchor the chain before exporting, so the package carries a signed
-        # checkpoint an auditor can validate independently.
-        anchor = chain.checkpoint_now(session)
-        if anchor is not None:
-            console.print(
-                f"  [dim]signed checkpoint at seq {anchor.seq} ({anchor.digest[:16]}…)[/]"
+    if build_evidence is None:
+        console.print(
+            "  [dim]Auditor evidence packages are part of AgentFox Enterprise (ee/). "
+            "The tamper-evident chain they carry is in the open core: "
+            "`agentfox report verify`.[/]"
+        )
+    else:
+        with session_scope() as session:
+            # Anchor the chain before exporting, so the package carries a signed
+            # checkpoint an auditor can validate independently.
+            anchor = chain.checkpoint_now(session)
+            if anchor is not None:
+                console.print(
+                    f"  [dim]signed checkpoint at seq {anchor.seq} ({anchor.digest[:16]}…)[/]"
+                )
+            package = build_evidence(
+                session,
+                agents=["*"],
+                period_from=dt.datetime.now(dt.UTC) - dt.timedelta(days=1),
+                requested_by="aisha@example.com",
             )
-        package = evidence.build(
-            session,
-            agents=["*"],
-            period_from=dt.datetime.now(dt.UTC) - dt.timedelta(days=1),
-            requested_by="aisha@example.com",
-        )
-        counts = package.manifest_json["counts"]
-        console.print(f"  [bold]{package.path}[/]")
-        table = Table(box=None, pad_edge=False)
-        table.add_column("contents", style="dim")
-        table.add_column("", justify="right")
-        for key, value in counts.items():
-            table.add_row(key.replace("_", " "), str(value))
-        console.print(table)
-        verification = package.chain_verification_json
-        console.print(
-            f"  chain verification embedded: "
-            f"[{'green' if verification.get('valid') else 'red'}]"
-            f"{'valid' if verification.get('valid') else 'INVALID'}[/]"
-        )
-        console.print(
-            "  [dim]Includes verify_chain.py — stdlib only, re-derives every digest "
-            "from the exported rows. An auditor does not have to trust us.[/]"
-        )
-        summary["evidence_path"] = package.path
-        summary["evidence_counts"] = counts
+            counts = package.manifest_json["counts"]
+            console.print(f"  [bold]{package.path}[/]")
+            table = Table(box=None, pad_edge=False)
+            table.add_column("contents", style="dim")
+            table.add_column("", justify="right")
+            for key, value in counts.items():
+                table.add_row(key.replace("_", " "), str(value))
+            console.print(table)
+            verification = package.chain_verification_json
+            console.print(
+                f"  chain verification embedded: "
+                f"[{'green' if verification.get('valid') else 'red'}]"
+                f"{'valid' if verification.get('valid') else 'INVALID'}[/]"
+            )
+            console.print(
+                "  [dim]Includes verify_chain.py — stdlib only, re-derives every digest "
+                "from the exported rows. An auditor does not have to trust us.[/]"
+            )
+            summary["evidence_path"] = package.path
+            summary["evidence_counts"] = counts
 
     # ---------------------------------------------------------------
     _rule("Open findings", "13")

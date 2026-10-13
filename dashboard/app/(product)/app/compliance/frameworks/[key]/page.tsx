@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
+import { hasFeature } from "@/lib/product/edition";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { Card, Empty, Header, Pill } from "@/components/kit";
 import { ApiDown, DraftCaveat, NotFound } from "@/components/ui";
-import { ReviewBy, ReviewPill, StatusPill } from "@/components/product/compliance";
+import { ReviewBy, ReviewPill, StatusPill } from "@/ee/compliance";
 
 export const metadata: Metadata = appPageMetadata("Framework");
 
@@ -19,6 +21,14 @@ export const dynamic = "force-dynamic";
  */
 export default async function FrameworkPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
+  if (!(await hasFeature("compliance"))) {
+    return (
+      <>
+        <Header back={{ href: "/app/reports", label: "Reports" }} title="Compliance" />
+        <EnterpriseOnly feature="compliance" />
+      </>
+    );
+  }
 
   let f: any;
   try {

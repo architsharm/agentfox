@@ -628,12 +628,9 @@ def test_control_plane_reads(client):
         "/api/findings",
         "/api/traces",
         "/api/policies",
-        "/api/controls",
         "/api/agent-controls",
-        "/api/frameworks",
-        "/api/obligations",
-        "/api/board",
-        "/api/risk/register",
+        "/api/overview",
+        "/api/catalog/controls",
         "/api/eval/suites",
         "/api/detectors",
         "/api/providers",
@@ -643,6 +640,7 @@ def test_control_plane_reads(client):
         assert client.get(path, headers=as_user("admin@example.com")).status_code == 200, path
 
 
+@pytest.mark.enterprise
 def test_controls_endpoint_is_the_compliance_one_not_the_kill_switch_one(client):
     """Regression test for a route collision: registry.py and governance.py once both
     registered a handler on GET /api/controls — same path, unrelated response shapes
@@ -676,6 +674,7 @@ def test_siem_export_formats(client):
         assert marker in response.text, fmt
 
 
+@pytest.mark.enterprise
 def test_evidence_build_and_verify_via_api(client):
     response = client.post(
         "/api/evidence", json={"agents": ["*"]}, headers=as_user("aisha@example.com")
@@ -687,6 +686,7 @@ def test_evidence_build_and_verify_via_api(client):
     assert verify.json()["valid"] is True
 
 
+@pytest.mark.enterprise
 def test_evidence_build_job_is_recorded_done_in_the_job_queue(client):
     """PL-5 wiring, from the API side: the job jobs_db created for this build
     is itself a real, queryable row — not just an implementation detail
@@ -735,6 +735,7 @@ def test_redteam_campaign_via_api_goes_through_the_job_queue(client):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.enterprise
 def test_jobs_are_scoped_to_the_caller_and_unknown_ids_404(client):
     build = client.post(
         "/api/evidence", json={"agents": ["*"]}, headers=as_user("aisha@example.com")
@@ -748,6 +749,7 @@ def test_jobs_are_scoped_to_the_caller_and_unknown_ids_404(client):
     assert missing.status_code == 404
 
 
+@pytest.mark.enterprise
 def test_retrying_a_job_that_is_not_dead_is_rejected(client):
     build = client.post(
         "/api/evidence", json={"agents": ["*"]}, headers=as_user("aisha@example.com")
@@ -893,7 +895,7 @@ def test_only_production_roles_can_start_a_canary(client):
 
 
 def test_auditor_can_read_everything(client):
-    for path in ("/api/agents", "/api/controls", "/api/traces", "/api/board"):
+    for path in ("/api/agents", "/api/catalog/controls", "/api/traces", "/api/overview"):
         assert client.get(path, headers=as_user("aisha@example.com")).status_code == 200
 
 
@@ -1056,6 +1058,7 @@ def test_assigning_an_owner_updates_the_agent_and_is_role_gated(client):
     )
 
 
+@pytest.mark.enterprise
 def test_control_catalog_sync_populates_controls_and_is_idempotent(client):
     # A freshly seeded environment already syncs the catalog (see seed.py), so this
     # asserts idempotency — the real-world case is a deployment that seeded users and

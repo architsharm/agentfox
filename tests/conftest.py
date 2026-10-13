@@ -136,3 +136,16 @@ def promote(client, key: str, email: str = "admin@example.com"):
     response = client.post(f"/api/policies/{key}/mode", json={"mode": "enforce"}, headers=headers)
     assert response.status_code == 200, response.text
     return response
+
+
+def pytest_collection_modifyitems(config, items):
+    """`@pytest.mark.enterprise` tests run only where AgentFox Enterprise is installed
+    (CI's enterprise job); the open core's own suite skips them."""
+    from agentfox.core import extensions
+
+    if extensions.loaded():
+        return
+    skip = pytest.mark.skip(reason="needs AgentFox Enterprise (ee/)")
+    for item in items:
+        if "enterprise" in item.keywords:
+            item.add_marker(skip)

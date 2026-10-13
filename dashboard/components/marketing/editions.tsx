@@ -13,13 +13,13 @@ import { WaitlistForm } from "@/components/marketing/waitlist";
  * Every commercial claim below was checked against the repository before it was
  * written. The sources, so a later editor can re-check them rather than guess:
  *
- *   - Apache-2.0, whole repo .......... LICENSE (Apache License 2.0, full text),
+ *   - open core Apache-2.0 ............ LICENSE (Apache License 2.0, full text),
  *                                       README.md "Licence" section
- *   - nothing gated behind a paid tier  no billing, plan, price or licence-key
- *                                       code exists under src/agentfox/. The
- *                                       `entitlement.py` module is data-access
- *                                       entitlement (who may see which resource),
- *                                       not payment entitlement.
+ *   - Enterprise source-available ..... ee/LICENSE (BSL 1.1: production use free
+ *                                       for one workspace up to four agents;
+ *                                       each version Apache-2.0 after three years)
+ *   - no licence key .................. no billing, plan, price or licence-key
+ *                                       code exists under src/agentfox/ or ee/.
  *   - runs offline, no API key ........ README.md lines 34-35, and
  *                                       src/agentfox/platform/providers/echo.py
  *   - no telemetry phoning home ....... no AgentFox-owned endpoint appears
@@ -29,11 +29,11 @@ import { WaitlistForm } from "@/components/marketing/waitlist";
  *                                       configures themselves.
  *   - benchmarks reproducible ......... README.md "Benchmarks, reproducible by
  *                                       anyone", nine scripts under benchmarks/
- *   - stdlib-only verifier ............ src/agentfox/apps/report/evidence.py
+ *   - stdlib-only verifier ............ ee/src/agentfox_ee/evidence/package.py
  *                                       VERIFIER_SCRIPT, written into every
  *                                       package as verify_chain.py
- *   - mappings ship labelled DRAFT .... src/agentfox/capabilities/compliance/catalog.py:214,
- *                                       src/agentfox/capabilities/compliance/risk.py:369
+ *   - mappings ship labelled DRAFT .... ee/src/agentfox_ee/compliance/frameworks.py,
+ *                                       ee/src/agentfox_ee/compliance/risk.py
  *   - cloud does not exist yet ........ README.md line 183: single-org
  *                                       multi-tenancy at the session, "not yet a
  *                                       managed multi-region offering", no live
@@ -121,8 +121,11 @@ export function Editions({
               <span className="mk-chip mk-chip-go">Free forever</span>
             </div>
             <p className="mk-body">
-              The whole control plane, Apache-2.0, nothing gated and no licence key.
-              Runs offline: no API key, no downloaded weights, no network egress.{" "}
+              The open core is Apache-2.0, with no licence key and no limit on agents: enforcement,
+              containment, every detector and the dashboard. Runs offline: no API key, no
+              downloaded weights, no network egress. Compliance, evidence packages, monitoring and
+              access checks are AgentFox Enterprise: source-available, free in production for up to
+              four agents, and each release becomes Apache-2.0 after three years.{" "}
               <Link href="/docs">Install and the demo are in the docs.</Link>
             </p>
             <a
@@ -141,8 +144,8 @@ export function Editions({
               <span className="mk-chip mk-chip-accent">Free while in preview</span>
             </div>
             <p className="mk-body">
-              The same control plane, operated by us, with upgrades and backups
-              handled. Sign in with GitHub and you have a workspace of your own in
+              The same control plane with AgentFox Enterprise included, operated by us, with
+              upgrades and backups handled. Sign in with GitHub and you have a workspace of your own in
               about ten seconds.
             </p>
             <ul className="ed-terms">

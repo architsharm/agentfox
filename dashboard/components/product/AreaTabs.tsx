@@ -1,6 +1,8 @@
-import Link from "next/link";
+import { Tabs } from "@/components/kit";
+import { getEdition } from "@/lib/product/edition";
 
-export type AreaTab = { key: string; label: string; href: string };
+/** `feature`: shown only where this deployment has it (AgentFox Enterprise). */
+export type AreaTab = { key: string; label: string; href: string; feature?: string };
 
 /**
  * Reports and Settings are one sidebar row each, but each is several existing
@@ -14,33 +16,24 @@ export type AreaTab = { key: string; label: string; href: string };
  */
 export const REPORTS_TABS: AreaTab[] = [
   { key: "summary", label: "Summary", href: "/app/reports" },
-  { key: "compliance", label: "Compliance", href: "/app/compliance" },
+  { key: "compliance", label: "Compliance", href: "/app/compliance", feature: "compliance" },
   { key: "coverage", label: "Threat coverage", href: "/app/coverage" },
-  { key: "evidence", label: "Evidence", href: "/app/reports?tab=evidence" },
+  { key: "evidence", label: "Evidence", href: "/app/reports?tab=evidence", feature: "evidence" },
   { key: "audit", label: "Audit log", href: "/app/reports?tab=audit" },
 ];
 
 export const SETTINGS_TABS: AreaTab[] = [
   { key: "connect", label: "Connections", href: "/app/start?tab=connect" },
   { key: "tokens", label: "API keys", href: "/app/start?tab=tokens" },
-  { key: "alerts", label: "Alerts", href: "/app/settings?tab=alerts" },
+  { key: "alerts", label: "Alerts", href: "/app/settings?tab=alerts", feature: "monitoring" },
+  { key: "retention", label: "Retention", href: "/app/settings?tab=retention" },
   { key: "sources", label: "Verified sources", href: "/app/sources" },
   { key: "entitlement", label: "Data access", href: "/app/entitlement" },
 ];
 
-export function AreaTabs({ tabs, active }: { tabs: AreaTab[]; active: string }) {
-  return (
-    <nav className="tabbar" aria-label="Sections">
-      {tabs.map((t) => (
-        <Link
-          key={t.key}
-          href={t.href}
-          className={t.key === active ? "active" : ""}
-          aria-current={t.key === active ? "page" : undefined}
-        >
-          {t.label}
-        </Link>
-      ))}
-    </nav>
-  );
+export async function AreaTabs({ tabs, active }: { tabs: AreaTab[]; active: string }) {
+  const { features } = await getEdition();
+  // The tab you are on always shows, so a link straight to it still reads as a place.
+  const shown = tabs.filter((t) => !t.feature || features.has(t.feature) || t.key === active);
+  return <Tabs items={shown} active={active} />;
 }

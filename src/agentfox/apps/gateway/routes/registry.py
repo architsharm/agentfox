@@ -464,9 +464,13 @@ def create_mcp(
 
 
 def _monitor_mcp(session: Session, server: McpServer, user: User | None):
-    from agentfox.capabilities.monitoring.service import safe_ensure_monitor
+    from agentfox.core import extensions
 
-    return safe_ensure_monitor(
+    # Watching a registered server is AgentFox Enterprise; the open core registers it.
+    ensure_monitor = extensions.service("monitors.ensure")
+    if ensure_monitor is None:
+        return None
+    return ensure_monitor(
         session,
         kind="mcp_server",
         target=server.name,

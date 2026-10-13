@@ -162,7 +162,25 @@ def _find(app: typer.Typer, *path: str) -> CommandInfo:
     return _command(parent, path[-1])
 
 
-def _alias(target: typer.Typer, info: CommandInfo, name: str, *, hidden: bool = False) -> None:
+#: Groups an extension contributes (the enterprise package): absent from the open core,
+#: so the tree places their commands only when they are registered.
+EXTENSION_GROUPS = frozenset({"compliance", "evidence", "monitors"})
+
+
+def _find_optional(app: typer.Typer, *path: str) -> CommandInfo | None:
+    try:
+        return _find(app, *path)
+    except LookupError:
+        if path and path[0] in EXTENSION_GROUPS:
+            return None
+        raise
+
+
+def _alias(
+    target: typer.Typer, info: CommandInfo | None, name: str, *, hidden: bool = False
+) -> None:
+    if info is None:  # an extension command that is not installed
+        return
     clone = copy.copy(info)
     clone.name = name
     clone.hidden = hidden
@@ -188,7 +206,7 @@ def apply_layout(app: typer.Typer) -> None:
         return
     app._agentfox_layout_applied = True  # type: ignore[attr-defined]
 
-    find = lambda *path: _find(app, *path)  # noqa: E731
+    find = lambda *path: _find_optional(app, *path)  # noqa: E731
     panels: dict[str, str] = dict(VISIBLE)
     sub = {info.name: info for info in app.registered_groups}
 
@@ -323,7 +341,8 @@ def apply_layout(app: typer.Typer) -> None:
     catalog_app = _new_group("Keep the control catalog and its computed status current.")
     for name in ("sync", "compute", "validate"):
         _alias(catalog_app, find("compliance", name), name)
-    admin_app.add_typer(catalog_app, name="catalog")
+    if catalog_app.registered_commands:
+        admin_app.add_typer(catalog_app, name="catalog")
     _alias(admin_app, find("audit", "checkpoint"), "checkpoint")
     _alias(admin_app, find("seed"), "seed")
     _alias(admin_app, find("version"), "version")

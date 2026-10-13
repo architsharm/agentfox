@@ -201,7 +201,9 @@ def test_state_reflects_activity_and_a_verified_chain(client):
     assert len(body["traces"]) >= 1
     assert body["chain"]["verified"] is True
     assert body["chain"]["entries"] > 0
-    assert body["compliance"]["effectiveness"] is not None
+    # Control status is AgentFox Enterprise; the open core's sandbox reports none.
+    if body["compliance"] is not None:
+        assert body["compliance"]["effectiveness"] is not None
 
 
 def test_state_carries_the_full_trace_for_each_turn(client):

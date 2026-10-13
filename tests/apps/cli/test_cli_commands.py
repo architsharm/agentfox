@@ -279,32 +279,6 @@ def test_entitlement_report_hint_names_a_real_command():
 # ---------------------------------------------------------------------------
 
 
-def test_compliance_status_verbose_honours_the_framework():
-    from agentfox.capabilities.compliance import controls_for_framework, latest_statuses
-    from agentfox.capabilities.compliance.catalog import load_catalog
-    from agentfox.core.db import session_scope
-
-    _seed()
-    assert runner.invoke(app, ["admin", "catalog", "compute"]).exit_code == 0
-
-    with session_scope() as session:
-        computed = set(latest_statuses(session))
-        for framework in load_catalog()["frameworks"]:
-            mapped = {c["key"] for c in controls_for_framework(session, framework)}
-            inside, outside = computed & mapped, computed - mapped
-            if inside and outside:
-                break
-        else:  # pragma: no cover - catalog shape guard
-            pytest.skip("no framework maps a strict subset of controls")
-
-    result = runner.invoke(app, ["report", "status", "--framework", framework, "--verbose"])
-    assert result.exit_code == 0, result.output
-    for key in inside:
-        assert key in result.output
-    for key in outside:
-        assert key not in result.output
-
-
 # ---------------------------------------------------------------------------
 # 10. policy effective resolves for the configured environment
 # ---------------------------------------------------------------------------
@@ -357,6 +331,7 @@ def test_main_maps_keyboard_interrupt_to_130(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.enterprise
 def test_compliance_validate_passes_on_the_shipped_catalog():
     result = runner.invoke(app, ["admin", "catalog", "validate"])
     assert result.exit_code == 0, result.output
@@ -404,6 +379,7 @@ def compliance_dir(tmp_path, monkeypatch):
     return tmp_path
 
 
+@pytest.mark.enterprise
 def test_compliance_validate_reports_every_problem(compliance_dir):
     (compliance_dir / "controls.yaml").write_text(BROKEN_CATALOG)
     (compliance_dir / "obligations.yaml").write_text(BROKEN_OBLIGATIONS)
@@ -418,6 +394,7 @@ def test_compliance_validate_reports_every_problem(compliance_dir):
     assert "catalog valid" not in output
 
 
+@pytest.mark.enterprise
 def test_compliance_validate_reports_unparseable_yaml(compliance_dir):
     (compliance_dir / "controls.yaml").write_text("controls: [unclosed\n")
     (compliance_dir / "obligations.yaml").write_text("obligations: []\n")
@@ -472,6 +449,7 @@ def test_declare_boundary_mode_only_keeps_the_rest_of_the_boundary():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.enterprise
 def test_report_signoff_appends_to_the_audit_chain():
     from sqlalchemy import select
 

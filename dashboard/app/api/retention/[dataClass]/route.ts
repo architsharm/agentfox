@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ dat
     req,
     "PUT",
     `/api/retention/${encodeURIComponent(dataClass)}`,
-    "/app/compliance?tab=retention",
+    "/app/settings?tab=retention",
     { retain_days, reason },
     { successNotice: "Retention updated." },
   );

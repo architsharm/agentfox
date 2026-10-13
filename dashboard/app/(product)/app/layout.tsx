@@ -9,6 +9,7 @@ import { NotificationsBell } from "@/components/product/NotificationsBell";
 import { CommandSearch } from "@/components/product/CommandSearch";
 import { SideNav, type NavItem } from "@/components/product/SideNav";
 import { TopbarStats } from "@/components/product/TopbarStats";
+import { getEdition } from "@/lib/product/edition";
 
 /**
  * The app chrome — sidebar, topbar — for everything under `/app`.
@@ -73,7 +74,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
  * sidebar itself only shows the parent page. Losing a sidebar item is not
  * the same as losing the ability to find the thing by typing its name.
  */
-const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
+const NAV_SEARCH_ONLY: { label: string; href: string; group: string; feature?: string }[] = [
   { label: "Runs", href: "/app/traces", group: "Observe" },
   { label: "What breaks", href: "/app/observe?tab=breaks", group: "Observe" },
   { label: "Security", href: "/app/observe?tab=security", group: "Observe" },
@@ -84,20 +85,20 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
   { label: "Detectors", href: "/app/policies?tab=advanced", group: "Policies" },
   { label: "Attack tests", href: "/app/test?tab=attacks", group: "Test" },
   { label: "Test suites", href: "/app/test?tab=suites", group: "Test" },
-  { label: "Compliance", href: "/app/compliance", group: "Reports" },
+  { label: "Compliance", href: "/app/compliance", group: "Reports", feature: "compliance" },
   { label: "Threat coverage", href: "/app/coverage", group: "Reports" },
-  { label: "Evidence", href: "/app/reports?tab=evidence", group: "Reports" },
+  { label: "Evidence", href: "/app/reports?tab=evidence", group: "Reports", feature: "evidence" },
   { label: "Audit log", href: "/app/reports?tab=audit", group: "Reports" },
   { label: "Connections", href: "/app/start?tab=connect", group: "Settings" },
   { label: "API keys", href: "/app/start?tab=tokens", group: "Settings" },
-  { label: "Alerts", href: "/app/settings?tab=alerts", group: "Settings" },
+  { label: "Alerts", href: "/app/settings?tab=alerts", group: "Settings", feature: "monitoring" },
   { label: "Verified sources", href: "/app/sources", group: "Settings" },
   { label: "Data access", href: "/app/entitlement", group: "Settings" },
   { label: "Glossary", href: "/app/glossary", group: "Reference" },
 ];
 
-const NAV_FLAT = NAV.flatMap(({ group, items }) =>
-  items.map(([label, href]) => ({ label, href, group: group || "Home" })),
+const NAV_FLAT: { label: string; href: string; group: string; feature?: string }[] = NAV.flatMap(
+  ({ group, items }) => items.map(([label, href]) => ({ label, href, group: group || "Home" })),
 ).concat(NAV_SEARCH_ONLY);
 /**
  * The topbar's data: who is signed in and what needs attention. Its own Suspense
@@ -105,14 +106,16 @@ const NAV_FLAT = NAV.flatMap(({ group, items }) =>
  * its loading state, until both calls had answered.
  */
 async function TopbarData() {
-  const [me, attention] = await Promise.all([
+  const [me, attention, { features }] = await Promise.all([
     safeApi<any>("/api/me", null),
     safeApi<any>("/api/attention", { items: [], total: 0 }),
+    getEdition(),
   ]);
+  const nav = NAV_FLAT.filter((n) => !n.feature || features.has(n.feature));
   return (
     <>
       {attention?.counts && <TopbarStats counts={attention.counts} />}
-      <CommandSearch nav={NAV_FLAT} />
+      <CommandSearch nav={nav} />
       <NotificationsBell items={attention?.items?.slice(0, 6) || []} total={attention?.total || 0} />
       {me && <AccountMenu email={me.email} workspace={me.workspace} role={me.role} />}
     </>

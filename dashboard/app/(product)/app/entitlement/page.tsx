@@ -3,7 +3,7 @@ import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, Empty, InfoTip, Panel, Stat } from "@/components/ui";
-import { SETTINGS_TABS } from "@/components/product/AreaTabs";
+import { AreaTabs, SETTINGS_TABS } from "@/components/product/AreaTabs";
 import { Header, Tabs } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
 
@@ -56,7 +56,7 @@ export default async function Entitlement() {
     return (
       <>
         <Header title="Settings" />
-        <Tabs items={SETTINGS_TABS} active="entitlement" />
+        <AreaTabs tabs={SETTINGS_TABS} active="entitlement" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -67,7 +67,7 @@ export default async function Entitlement() {
   return (
     <>
       <Header title="Settings" />
-      <Tabs items={SETTINGS_TABS} active="entitlement" />
+      <AreaTabs tabs={SETTINGS_TABS} active="entitlement" />
 
       {report.requests === 0 ? (
         <div className="hero empty">

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, safeApi, ApiError, apiErrorProps } from "@/lib/product/api";
 import { ApiDown } from "@/components/ui";
-import { SETTINGS_TABS } from "@/components/product/AreaTabs";
+import { AreaTabs, SETTINGS_TABS } from "@/components/product/AreaTabs";
 import { Card, Empty, Header, Pill, Tabs } from "@/components/kit";
 import { RepoTable } from "@/components/product/RepoTable";
 import { EnforceAgent } from "@/components/product/start/EnforceAgent";
@@ -69,7 +69,7 @@ export default async function Start({
     return (
       <>
         <Header title="Settings" />
-        <Tabs items={SETTINGS_TABS} active={tab} />
+        <AreaTabs tabs={SETTINGS_TABS} active={tab} />
         {tab === "connect" ? (
           <ConnectTab scanRunId={scan_run_id} hostedScanRunId={hosted_scan_run_id} scanError={scan_error} />
         ) : (

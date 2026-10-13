@@ -23,7 +23,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.capabilities.compliance.status import ensure_compliance_computed
 from agentfox.capabilities.containment.findings import (
     CAUSES,
     cause_of,
@@ -31,6 +30,7 @@ from agentfox.capabilities.containment.findings import (
     is_detector_rule,
     rule_applied,
 )
+from agentfox.core import extensions
 from agentfox.core.models import (
     Agent,
     Capability,
@@ -146,7 +146,9 @@ def build_summary(
         {k for keys in tools_by_agent.values() for k in keys} if wanted else set(tool_rows)
     )
 
-    computed = ensure_compliance_computed(session)
+    # Control status is AgentFox Enterprise; without it the summary reports threats only.
+    ensure = extensions.service("compliance.ensure")
+    computed = bool(ensure(session)) if ensure else False
 
     return {
         "generated_at": utcnow().isoformat(timespec="seconds"),
@@ -428,7 +430,6 @@ def _feedback(
 
 
 def _coverage(session: Session) -> dict[str, Any]:
-    from agentfox.capabilities.compliance import posture
     from agentfox.capabilities.discovery.threats import coverage
 
     data = coverage(session)
@@ -443,6 +444,17 @@ def _coverage(session: Session) -> dict[str, Any]:
         if t["catalogue"] == "owasp-agentic"
     ]
     counts = Counter(r["status"] for r in rows)
+    posture = extensions.service("compliance.posture")
+    if posture is None:
+        return {
+            "catalogue": title or "OWASP Agentic AI threats",
+            "threats": rows,
+            "counts": dict(counts),
+            "controls": None,
+            "controls_effective": None,
+            "controls_assessed": None,
+            "controls_without_evidence": None,
+        }
     overall = posture(session)
     return {
         "catalogue": title or "OWASP Agentic AI threats",
@@ -568,13 +580,14 @@ def render_markdown(data: dict[str, Any]) -> str:
         "| --- | --- |",
     ]
     lines += [f"| {t['title']} | {t['words']} |" for t in cov["threats"]]
-    lines += [
-        "",
-        f"Controls with working evidence: {cov['controls_effective']} of {cov['controls']}; "
-        f"{cov['controls_without_evidence']} have no evidence yet"
-        + (" (computed just now from recorded activity)." if cov["computed_now"] else "."),
-        "",
-    ]
+    if cov["controls"] is not None:
+        lines += [
+            "",
+            f"Controls with working evidence: {cov['controls_effective']} of "
+            f"{cov['controls']}; {cov['controls_without_evidence']} have no evidence yet"
+            + (" (computed just now from recorded activity)." if cov["computed_now"] else "."),
+        ]
+    lines.append("")
     return plain_document("\n".join(lines))
 
 
@@ -706,10 +719,14 @@ def render_html(data: dict[str, Any]) -> str:
             f"<tr><td>{e(t['title'])}</td><td>{e(t['words'])}</td></tr>" for t in cov["threats"]
         )
         + "</table>"
-        f"<p class='note'>Controls with working evidence: {cov['controls_effective']} of "
-        f"{cov['controls']}; {cov['controls_without_evidence']} have no evidence yet"
-        + (" (computed just now from recorded activity)." if cov["computed_now"] else ".")
-        + "</p>"
+        + (
+            f"<p class='note'>Controls with working evidence: {cov['controls_effective']} of "
+            f"{cov['controls']}; {cov['controls_without_evidence']} have no evidence yet"
+            + (" (computed just now from recorded activity)." if cov["computed_now"] else ".")
+            + "</p>"
+            if cov["controls"] is not None
+            else ""
+        )
     )
     parts.append("</body></html>")
     return plain_document("\n".join(parts))
@@ -718,7 +735,6 @@ def render_html(data: dict[str, Any]) -> str:
 __all__ = [
     "DRAFT_LABEL",
     "build_summary",
-    "ensure_compliance_computed",
     "parse_since",
     "plain",
     "render_html",

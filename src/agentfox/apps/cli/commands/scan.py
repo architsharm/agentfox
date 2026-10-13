@@ -130,7 +130,9 @@ def scan_mcp(
         server_hygiene,
         trifecta_sentence,
     )
-    from agentfox.capabilities.monitoring.service import safe_ensure_monitor
+    from agentfox.core import extensions
+
+    ensure_monitor = extensions.service("monitors.ensure")
     from agentfox.core.models import McpServer
     from agentfox.fixtures.seed import MCP_TOOLS
     from agentfox.platform.registry.service import (
@@ -180,14 +182,16 @@ def scan_mcp(
                 trust_level=existing.trust_level if existing else "untrusted",
                 pinned_version=decl.pinned_version,
             )
-            # Registered means watched: `agentfox scan monitors list` shows it.
-            safe_ensure_monitor(
-                session,
-                kind="mcp_server",
-                target=record.name,
-                config={"mcp_server_id": record.id},
-                created_by="cli",
-            )
+            # Registered means watched (with AgentFox Enterprise): `agentfox scan
+            # monitors list` shows it.
+            if ensure_monitor is not None:
+                ensure_monitor(
+                    session,
+                    kind="mcp_server",
+                    target=record.name,
+                    config={"mcp_server_id": record.id},
+                    created_by="cli",
+                )
         names = [server] if server else sorted(declared)
         if not names:
             where = str(config) if config else "this directory"
@@ -358,6 +362,3 @@ _MCP_ISSUE_TEXT = {
 
 
 # `agentfox scan monitors …` — the scheduled counterpart of every scan above.
-from agentfox.apps.cli.commands.monitors import monitors_app  # noqa: E402
-
-scan_app.add_typer(monitors_app, name="monitors")

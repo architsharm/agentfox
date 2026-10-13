@@ -10,7 +10,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 ruff := "uvx ruff@0.15.7"
 
 # The import contracts in pyproject's [tool.importlinter], at ci.yml's pinned version.
-imports := "PYTHONPATH=src uvx --from import-linter==2.15 lint-imports"
+imports := "PYTHONPATH=src:ee/src uvx --from import-linter==2.15 lint-imports"
 
 # Exactly CI's extras. Not --all-extras: it pulls transitive versions that break tests.
 extras := "--extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev"

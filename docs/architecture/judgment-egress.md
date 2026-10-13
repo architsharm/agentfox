@@ -27,7 +27,7 @@ and the rule in [`benchmarks/README.md`](../../benchmarks/README.md#sending-benc
 
 `JevClient` (`capabilities/judgment/jev.py`) never checked `allow_egress`. Every other
 outbound caller in this codebase does — `platform/providers/remote.py`,
-`platform/providers/enterprise.py`, `core/webhooks.py`, `capabilities/monitoring/alerts.py` — and
+`platform/providers/enterprise.py`, `core/webhooks.py`, `ee/src/agentfox_ee/monitoring/alerts.py` — and
 `capabilities/detection/adapters/presidio.py` already carries a docstring about
 this exact failure, from the time a dependency downloaded a 400MB model from
 inside a guarded request:

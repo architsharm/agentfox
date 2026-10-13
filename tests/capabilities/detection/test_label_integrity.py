@@ -343,6 +343,7 @@ def _assess(client, user, **body):
     return client.post("/api/risk/assessments/support-triage", json=body, headers=as_user(user))
 
 
+@pytest.mark.enterprise
 def test_sign_off_is_the_authenticated_caller(client):
     response = _assess(client, "dana@example.com", sign_off=True)
     assert response.status_code == 201, response.text
@@ -352,6 +353,7 @@ def test_sign_off_is_the_authenticated_caller(client):
     assert entry.payload_json["signed_off_by"] == "dana@example.com"
 
 
+@pytest.mark.enterprise
 def test_signing_off_in_someone_elses_name_is_refused(client):
     from agentfox.core.db import session_scope
 
@@ -365,6 +367,7 @@ def test_signing_off_in_someone_elses_name_is_refused(client):
     assert count() == before, "a refused sign-off must not leave an assessment behind"
 
 
+@pytest.mark.enterprise
 def test_an_assessment_without_sign_off_is_unsigned(client):
     response = _assess(client, "dana@example.com")
     assert response.status_code == 201, response.text

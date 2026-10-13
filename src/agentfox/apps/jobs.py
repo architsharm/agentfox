@@ -126,27 +126,6 @@ def run_eval(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# compliance.recompute
-# ---------------------------------------------------------------------------
-
-
-def recompute_compliance(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    from agentfox.capabilities.compliance import compute_all, posture
-
-    window_days = int(payload.get("window_days") or 30)
-    statuses = compute_all(session, window_days)
-    actor_type, actor_id = _actor(payload)
-    chain.append(
-        session,
-        "compliance.computed",
-        actor_type=actor_type,
-        actor_id=actor_id,
-        payload={"controls": len(statuses), "window_days": window_days},
-    )
-    return {"computed": len(statuses), "window_days": window_days, "posture": posture(session)}
-
-
-# ---------------------------------------------------------------------------
 # canary.advance
 # ---------------------------------------------------------------------------
 
@@ -335,18 +314,6 @@ def scan_escalations(session: Session, payload: dict[str, Any]) -> dict[str, Any
 
 
 # ---------------------------------------------------------------------------
-# monitors.run
-# ---------------------------------------------------------------------------
-
-
-def run_monitors(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    """Re-check connected sources: every due monitor, or the one ``monitor_id`` names."""
-    from agentfox.capabilities.monitoring.service import handle_job
-
-    return handle_job(session, payload)
-
-
-# ---------------------------------------------------------------------------
 # keys.rotate
 # ---------------------------------------------------------------------------
 
@@ -411,12 +378,10 @@ HANDLERS = {
     "tuning.propose": propose_threshold_changes,
     "grants.propose": propose_from_traffic,
     "eval.run": run_eval,
-    "compliance.recompute": recompute_compliance,
     "canary.advance": advance_canaries,
     "drift.check": check_drift,
     "paths.scan": scan_tool_paths,
     "redteam.posture": redteam_posture,
-    "monitors.run": run_monitors,
     "probes.run": run_live_probes,
     "retention.purge": purge_retention,
     "keys.rotate": rotate_keys,
@@ -425,7 +390,9 @@ HANDLERS = {
 
 
 def register_all() -> None:
-    for kind, handler in HANDLERS.items():
+    from agentfox.core import extensions
+
+    for kind, handler in {**HANDLERS, **extensions.merged("jobs")}.items():
         jobs_db.register(kind, handler)
 
 
