@@ -3,6 +3,25 @@
   "version": "0.1.0",
   "description": "AgentFox client: guard inputs, outputs and tool calls against an AgentFox gateway.",
   "license": "Apache-2.0",
+  "keywords": [
+    "ai-agents",
+    "agent-security",
+    "llm-security",
+    "guardrails",
+    "prompt-injection",
+    "tool-calling",
+    "mcp",
+    "mcp-security",
+    "ai-firewall",
+    "llm-firewall",
+    "openai",
+    "anthropic",
+    "agentfox"
+  ],
+  "homepage": "https://useagentfox.com/docs/guides/gateway",
+  "bugs": {
+    "url": "https://github.com/architsharm/agentfox/issues"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

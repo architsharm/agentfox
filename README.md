@@ -4,10 +4,12 @@
 
 # AgentFox
 
-**Know when your AI agent should stop.**
+**Open-source guardrails and a tool-call firewall for AI agents.**
 
-An open-source control plane that checks what your agent may read, may claim and may do —
-and refuses the rest. It holds after the model has already been convinced.
+AgentFox checks what your agent may read, may claim and may do, and refuses the rest. It
+contains prompt injection at the tool call, so it holds after the model has already been
+convinced. Works with OpenAI, Anthropic, LiteLLM, LangChain, LangGraph, MCP servers,
+Claude Code and Codex.
 
 [![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](pyproject.toml) [![PyPI](https://img.shields.io/pypi/v/agentfox.svg?color=2f6feb)](https://pypi.org/project/agentfox/) [![Status](https://img.shields.io/badge/status-early%20release-8a5a00.svg)](docs/status.md) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
 
