@@ -42,9 +42,8 @@ from agentfox.capabilities.discovery.openapi import SpecFetchError, fetch_spec, 
 from agentfox.capabilities.discovery.repo import ScanReport
 from agentfox.capabilities.discovery.repo import scan as discovery_scan
 from agentfox.capabilities.monitoring import github as gh
-from agentfox.capabilities.monitoring.service import request_run, safe_ensure_monitor
 from agentfox.capabilities.monitoring.snapshots import api_snapshot, repo_snapshot
-from agentfox.core import ids
+from agentfox.core import extensions, ids
 from agentfox.core.config import (
     PUBLISHED_SECRET_VALUES,
     get_settings,
@@ -502,8 +501,9 @@ def trigger_scan(
     # From now on this repository is re-scanned on a schedule (and on push, once the
     # webhook is registered), diffed against what this scan saw.
     monitor = None
-    if not report.inconclusive:
-        monitor = safe_ensure_monitor(
+    ensure_monitor = extensions.service("monitors.ensure")
+    if not report.inconclusive and ensure_monitor is not None:
+        monitor = ensure_monitor(
             session,
             kind="github_repo",
             target=payload.repo_full_name,
@@ -700,6 +700,10 @@ def github_webhook(
                 }
             )
             continue
+        request_run = extensions.service("monitors.request_run")
+        if request_run is None:  # rescans on push are AgentFox Enterprise
+            skipped.append({"monitor_id": monitor.id, "reason": "monitoring is not installed"})
+            continue
         job = request_run(session, monitor, trigger="push", ref=commit, requested_by="github:push")
         queued.append({"monitor_id": monitor.id, "job_id": job.id, "org_id": monitor.org_id})
     session.commit()
@@ -837,8 +841,9 @@ def scan_hosted_api(
         created_policies.append(policy.key)
 
     monitor = None
-    if payload.openapi_spec_url and isinstance(spec, dict):
-        monitor = safe_ensure_monitor(
+    ensure_monitor = extensions.service("monitors.ensure")
+    if payload.openapi_spec_url and isinstance(spec, dict) and ensure_monitor is not None:
+        monitor = ensure_monitor(
             session,
             kind="hosted_api",
             target=payload.openapi_spec_url,

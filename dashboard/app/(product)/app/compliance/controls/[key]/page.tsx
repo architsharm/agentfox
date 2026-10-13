@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
+import { hasFeature } from "@/lib/product/edition";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { Card, Empty, Header, Meta, ModePill, Pill, SeverityPill, ago } from "@/components/kit";
 import { ApiDown, NotFound } from "@/components/ui";
-import { OUTCOMES, ReviewBy, ReviewPill, StatusPill, type Review } from "@/components/product/compliance";
+import { OUTCOMES, ReviewBy, ReviewPill, StatusPill, type Review } from "@/ee/compliance";
 import { ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Control");
@@ -34,6 +36,14 @@ export default async function ControlPage({
 }) {
   const { key } = await params;
   const { framework: preselect, review_error, review_notice } = await searchParams;
+  if (!(await hasFeature("compliance"))) {
+    return (
+      <>
+        <Header back={{ href: "/app/reports", label: "Reports" }} title="Compliance" />
+        <EnterpriseOnly feature="compliance" />
+      </>
+    );
+  }
 
   let c: any;
   try {

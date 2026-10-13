@@ -139,7 +139,17 @@ def test_only_the_protocol_endpoints_survive_under_their_old_groups(path):
     assert _resolve(path) is None
 
 
-@pytest.mark.parametrize("path", NEW_PATHS)
+#: Paths AgentFox Enterprise adds; resolved only where it is installed.
+ENTERPRISE_PATHS = {"report evidence", "report status", "report signoff", "admin catalog sync"}
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        pytest.param(p, marks=pytest.mark.enterprise) if p in ENTERPRISE_PATHS else p
+        for p in NEW_PATHS
+    ],
+)
 def test_every_new_path_resolves(path):
     assert _resolve(path) is not None, f"`agentfox {path}` does not resolve"
 
@@ -234,7 +244,6 @@ def test_bare_report_is_the_one_page_summary(isolated_db):
     bare = runner.invoke(app, ["report"])
     assert bare.exit_code == summary.exit_code == 0
     assert bare.output.startswith("# AgentFox summary")
-    assert runner.invoke(app, ["report", "status"]).exit_code == 0
 
 
 # ---------------------------------------------------------------------------

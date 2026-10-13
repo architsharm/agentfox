@@ -10,7 +10,8 @@ import { safeApi } from "@/lib/product/api";
  */
 export async function controlTitleMap(): Promise<Record<string, string>> {
   const controls = await safeApi<{ controls?: { key: string; title: string }[] }>(
-    "/api/controls",
+    // The catalog's names (open core); control status is `/api/controls` (Enterprise).
+    "/api/catalog/controls",
     { controls: [] },
   );
   const map: Record<string, string> = {};

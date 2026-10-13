@@ -20,8 +20,7 @@ from agentfox.apps.cli.capability_cli import register as _register_capability
 from agentfox.apps.cli.commands import root
 from agentfox.apps.cli.commands.access import access_app
 from agentfox.apps.cli.commands.agents import agents_app
-from agentfox.apps.cli.commands.audit import audit_app, evidence_app
-from agentfox.apps.cli.commands.compliance import compliance_app
+from agentfox.apps.cli.commands.audit import audit_app
 from agentfox.apps.cli.commands.db import db_app
 from agentfox.apps.cli.commands.detectors import detectors_app
 from agentfox.apps.cli.commands.evals import eval_app
@@ -50,8 +49,6 @@ app.add_typer(agents_app, name="agents")
 app.add_typer(policy_app, name="policy")
 app.add_typer(eval_app, name="eval")
 app.add_typer(audit_app, name="audit")
-app.add_typer(evidence_app, name="evidence")
-app.add_typer(compliance_app, name="compliance")
 app.add_typer(redteam_app, name="redteam")
 app.add_typer(scan_app, name="scan")
 app.add_typer(tools_app, name="tools")
@@ -75,6 +72,12 @@ _register_report(app)
 root.register(app)
 
 app.add_typer(proposals_app, name="proposals")
+
+# Commands an installed extension adds (the enterprise package, `core/extensions.py`),
+# before the layout so they take their place in the visible tree.
+from agentfox.core import extensions as _extensions  # noqa: E402
+
+_extensions.collect("cli", app)
 
 # The visible tree (Start · See · Watch · Contain · Prove · Operate) is a layer over
 # everything registered above: new names for the same callbacks, old names hidden but

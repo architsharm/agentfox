@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-274 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+276 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -425,6 +425,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/business/rules/{key}` | Get Business Rule |
 | `PUT` | `/api/business/rules/{key}` | Change a rule's thresholds in place. It keeps its mode; changing an enforcing |
 | `POST` | `/api/business/rules/{key}/mode` | Business Rule Mode |
+| `GET` | `/api/catalog/controls` | Every control's id and title, from the catalog this build ships. |
 | `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
 | `GET` | `/api/custom-models` | Get Custom Models |
 | `POST` | `/api/custom-models` | Register (or update) a classifier endpoint as a detector. |
@@ -442,6 +443,7 @@ from the code. Regenerate after changing any route:
 | `PUT` | `/api/judgment/posture` | Replace the posture, refusing anything the deployment does not permit. |
 | `GET` | `/api/library/packs` | List Packs |
 | `POST` | `/api/library/packs/{pack_id}/install` | Install Pack |
+| `GET` | `/api/overview` | Agents, their risk tiers and open issues: the Reports summary. |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |
 | `GET` | `/api/proposals/{proposal_id}` | One proposal with its diff, evidence, proof and decisions. |
 | `POST` | `/api/proposals/{proposal_id}/apply` | Apply an approved proposal, or settle one whose canary has finished. |

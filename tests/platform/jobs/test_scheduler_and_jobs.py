@@ -90,7 +90,7 @@ def test_cron_schedules_recurring_work_and_is_idempotent(client, monkeypatch):
 
     listing = client.get("/api/jobs", headers=as_user("aisha@example.com")).json()["jobs"]
     kinds = {j["kind"] for j in listing if j["schedule_id"]}
-    assert {"canary.advance", "compliance.recompute", "drift.check"} <= kinds
+    assert {"canary.advance", "drift.check"} <= kinds
     assert "redteam.posture" not in kinds, "disabled by default"
     assert all(j["status"] == "done" for j in listing if j["schedule_id"]), listing
 
@@ -188,6 +188,7 @@ def test_backoff_delays_retries_exponentially(session, monkeypatch):
     assert job.available_at is None
 
 
+@pytest.mark.enterprise
 def test_a_failed_evidence_build_is_queued_for_retry_not_an_empty_success(client, monkeypatch):
     def explode(s, p):
         raise RuntimeError("storage unavailable")
@@ -235,7 +236,6 @@ def test_every_deferrable_kind_but_retrieval_has_a_handler():
         assert kind in DEFERRABLE
     for kind in (
         "eval.run",
-        "compliance.recompute",
         "canary.advance",
         "drift.check",
         "redteam.posture",
@@ -278,6 +278,7 @@ def test_eval_run_with_an_unknown_suite_fails_the_job_not_the_process(session):
     assert "unknown eval suite" in job.last_error
 
 
+@pytest.mark.enterprise
 def test_compliance_recompute_enqueues_and_runs(seeded):
     from agentfox.capabilities.compliance.catalog import sync_catalog
 
@@ -297,7 +298,7 @@ def test_compliance_recompute_enqueues_and_runs(seeded):
 
 def test_default_schedules_are_created_once_and_respect_operator_changes(session):
     created = scheduler.ensure_default_schedules(session)
-    assert {s.kind for s in created} == {d.kind for d in scheduler.DEFAULT_SCHEDULES}
+    assert {s.kind for s in created} == {d.kind for d in scheduler.default_schedules()}
     by_kind = {s.kind: s for s in created}
     assert by_kind["redteam.posture"].enabled is False
     assert by_kind["canary.advance"].enabled is True

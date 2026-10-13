@@ -174,4 +174,13 @@ start with a [good first issue](https://github.com/architsharm/agentfox/labels/g
 
 ## Licence
 
-[Apache-2.0](LICENSE). All of it, and it stays that way: no licence key, no gated features.
+The open core is [Apache-2.0](LICENSE): the SDKs, the gateway and CLI, enforcement and
+containment, every detector and validator, custom rules, policy packs, the benchmarks and the
+dashboard. It runs on its own, with no licence key and no limit on agents.
+
+[AgentFox Enterprise](ee/README.md) (`ee/`) adds what an organisation needs to govern many
+agents and prove it: compliance status against EU AI Act, ISO 42001, SOC 2 and NIST AI RMF,
+auditor evidence packages, fleet monitoring with alerts, and checks against your own access
+control. It is source-available under the [Business Source License 1.1](ee/LICENSE): free in
+production for one workspace with up to four agents, and **each release becomes Apache-2.0
+three years after it ships**. It is included on AgentFox Cloud.

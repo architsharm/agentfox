@@ -22,7 +22,6 @@ from agentfox.apps.gateway.deps import current_user, db
 from agentfox.apps.gateway.routes import access as access_routes
 from agentfox.apps.gateway.routes import (
     answerability,
-    authorizers,
     coverage,
     discovery,
     entitlement,
@@ -34,7 +33,6 @@ from agentfox.apps.gateway.routes import (
     jobs,
     memory,
     messaging,
-    monitors,
     onboarding,
     playground,
     policy,
@@ -387,7 +385,6 @@ def create_app() -> FastAPI:
 
     app.include_router(inline.router)
     app.include_router(registry.router)
-    app.include_router(authorizers.router)
     app.include_router(policy.router)
     app.include_router(evaluation.router)
     app.include_router(governance.router)
@@ -399,7 +396,6 @@ def create_app() -> FastAPI:
     app.include_router(entitlement.router)
     app.include_router(integrations.router)
     app.include_router(jobs.router)
-    app.include_router(monitors.router)
     app.include_router(discovery.router)
     app.include_router(memory.router)
     app.include_router(messaging.router)
@@ -430,6 +426,12 @@ def create_app() -> FastAPI:
     # showcase tenant, returns counts rather than content, and is cached and rate
     # limited — see probes.py and apps/showcase.py.
     app.include_router(probes.public_router)
+    # Routers an installed extension adds (the enterprise package, `core/extensions.py`).
+    # Mounted after every core router, so an extension can add paths but not shadow ours.
+    from agentfox.core import extensions
+
+    for extension_router in extensions.collect("routers"):
+        app.include_router(extension_router)
 
     def _health_payload() -> dict[str, Any]:
         degradation = service_health()
@@ -498,8 +500,15 @@ def create_app() -> FastAPI:
         """Every version that participates in a decision, so a verdict can be reproduced."""
         settings = get_settings()
         catalog = load_catalog()
+        from agentfox.core import extensions
+
         return {
             "code_version": __version__,
+            # "enterprise" when the enterprise package is installed; `features` is what
+            # it adds, and what the dashboard shows navigation for.
+            "edition": "enterprise" if extensions.loaded() else "open-source",
+            "extensions": extensions.names(),
+            "features": sorted(extensions.features()),
             "catalog_version": catalog.get("version"),
             "catalog_review_status": catalog.get("review_status"),
             "policy_engine": settings.policy_engine,

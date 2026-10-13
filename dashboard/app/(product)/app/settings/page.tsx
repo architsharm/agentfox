@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { appPageMetadata } from "@/lib/site";
-import { safeApi } from "@/lib/product/api";
+import { api, apiErrorProps, safeApi } from "@/lib/product/api";
+import { hasFeature } from "@/lib/product/edition";
+import { ApiDown } from "@/components/ui";
+import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
+import { Retention } from "@/components/product/Retention";
 import { Card, Empty, Header, Pill, Tabs, ago } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
-import { SETTINGS_TABS } from "@/components/product/AreaTabs";
-import { SlackForm } from "@/components/product/settings/SlackForm";
+import { AreaTabs, SETTINGS_TABS } from "@/components/product/AreaTabs";
+import { SlackForm } from "@/ee/SlackForm";
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { publicApiBase } from "@/lib/env";
 
@@ -20,7 +24,17 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const { tab } = await searchParams;
   // Checks was a Settings tab that only linked to Policies; it lives there now.
   if (tab === "checks") redirect("/app/policies?tab=checks");
+  if (tab === "retention") return <RetentionTab />;
   if (tab !== "alerts") redirect("/app/start?tab=connect");
+  if (!(await hasFeature("monitoring"))) {
+    return (
+      <>
+        <Header title="Settings" />
+        <AreaTabs tabs={SETTINGS_TABS} active="alerts" />
+        <EnterpriseOnly feature="monitoring" />
+      </>
+    );
+  }
 
   const [slack, monitors] = await Promise.all([
     safeApi<any>("/api/alerts/slack", { configured: false }),
@@ -31,7 +45,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   return (
     <>
       <Header title="Settings" />
-      <Tabs items={SETTINGS_TABS} active="alerts" />
+      <AreaTabs tabs={SETTINGS_TABS} active="alerts" />
       <Card
         title="Slack"
         hint="New issues at or above the chosen severity are posted to this channel."
@@ -70,6 +84,29 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       <Card title="SIEM export" hint="Decisions and findings in a format your SIEM can ingest.">
         <CodeSnippet code={`curl -s ${gateway}/api/export/siem \\\n  -H "Authorization: Bearer $AGENTFOX_API_TOKEN"`} />
       </Card>
+    </>
+  );
+}
+
+/** How long each class of recorded data is kept, and legal holds (open core). */
+async function RetentionTab() {
+  let retention: any;
+  try {
+    retention = await api("/api/retention");
+  } catch (e: any) {
+    return (
+      <>
+        <Header title="Settings" />
+        <AreaTabs tabs={SETTINGS_TABS} active="retention" />
+        <ApiDown {...apiErrorProps(e)} />
+      </>
+    );
+  }
+  return (
+    <>
+      <Header title="Settings" />
+      <AreaTabs tabs={SETTINGS_TABS} active="retention" />
+      <Retention retention={retention} />
     </>
   );
 }

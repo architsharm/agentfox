@@ -3,7 +3,7 @@ import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, InfoTip } from "@/components/ui";
-import { REPORTS_TABS } from "@/components/product/AreaTabs";
+import { AreaTabs, REPORTS_TABS } from "@/components/product/AreaTabs";
 import { Header, Tabs } from "@/components/kit";
 
 export const metadata: Metadata = appPageMetadata(
@@ -56,7 +56,7 @@ export default async function Coverage({
     return (
       <>
         <Header title="Reports" />
-        <Tabs items={REPORTS_TABS} active="coverage" />
+        <AreaTabs tabs={REPORTS_TABS} active="coverage" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -68,7 +68,7 @@ export default async function Coverage({
   return (
     <>
       <Header title="Reports" />
-      <Tabs items={REPORTS_TABS} active="coverage" />
+      <AreaTabs tabs={REPORTS_TABS} active="coverage" />
 
       <div className="cards">
         <Stat n={`${pct}%`} label={`of ${data.scored} in-scope threats enforced`} tone={pct >= 80 ? "ok" : pct >= 50 ? "warn" : "bad"} />

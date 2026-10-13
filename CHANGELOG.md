@@ -43,11 +43,28 @@ the file it came from.
 
 ### Changed
 
+- **Open core and AgentFox Enterprise.** The repository is now an Apache-2.0 open core
+  plus a source-available enterprise package in `ee/` (Business Source License 1.1: free
+  in production for one workspace with up to four agents; each release becomes
+  Apache-2.0 three years after it ships). Enterprise holds compliance status, reviews
+  and sign-off, the risk register and board view, auditor evidence packages, fleet
+  monitoring with Slack alerts, and external access checks. Everything else, including
+  enforcement, containment, every detector and validator, custom rules, packs, data
+  retention and legal holds, stays in the open core, which runs on its own.
+- The open core finds the enterprise package through the `agentfox.extensions` entry
+  point and never imports it; an import contract enforces that. CI runs the open core's
+  suite without `ee/` and both suites with it.
+- The dashboard shows enterprise areas only where the deployment has them
+  (`/api/version` now reports `edition` and `features`). Retention moved to
+  Settings → Retention; the Reports summary reads the new open-core `/api/overview`.
 - The `rails.hub.*` detectors, which needed a `pip install` per validator, are replaced
   by the ports. `rails.guardrails_ai` stays for running your own Guard.
 
 ### Fixed
 
+- Opening Compliance on a new workspace could fail: its parallel requests each loaded the
+  control catalog and collided on the same control.
+- An extension's CLI commands could be dropped depending on import order.
 - **The gateway proxy now governs the tool calls a model asks for.** `/v1/chat/completions`
   and `/v1/messages` authorise every tool call in the response through
   `guard_tool_call` before returning it, as `agentfox.auto()` does in-process: a

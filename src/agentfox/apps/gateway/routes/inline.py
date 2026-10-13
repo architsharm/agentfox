@@ -1108,8 +1108,8 @@ class GuardToolCallRequest(BaseModel):
     approval_id: str | None = None
     # The person the agent acts for: a subject (an OIDC `sub`, an employee id) or
     # {"subject", "groups", "attributes"}. Sent to the workspace's access checks
-    # (`platform.identity.authorizer`); a bare subject picks up the groups of a
-    # registered principal.
+    # (`agentfox_ee.access_checks`, when installed); a bare subject picks up the
+    # groups of a registered principal.
     principal: str | dict[str, Any] | None = None
 
 

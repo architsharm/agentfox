@@ -74,7 +74,7 @@ These are load-bearing design commitments found consistently enforced in code, n
    either source saying `closed` closes it: this governs a degraded detector pipeline and a
    bound policy version that no longer loads alike (§6.2).
 5. **Computed, not attested.** Compliance-control status (Pillar 6) and failure-mode coverage
-   are computed from telemetry (`capabilities/compliance/status.py`'s `status_rule` predicates,
+   are computed from telemetry (`ee/src/agentfox_ee/compliance/status.py`'s `status_rule` predicates,
    `scripts/gen/coverage.py --write`), not hand-maintained claims. `docs/status.md` is
    machine-regenerated for exactly this reason.
 6. **Declared gaps over hidden gaps.** Framework-coverage tables list what a mapping does

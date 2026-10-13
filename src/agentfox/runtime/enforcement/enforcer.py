@@ -782,17 +782,25 @@ class Enforcer(
         """
         if call.surface != "tool_args" or not call.tool_key or call.effective == "block":
             return
-        from agentfox.platform.identity import authorizer
+        # The checks themselves live in an extension (the enterprise package's access
+        # checks); with none installed there is nothing to ask. A hook that raises is
+        # not swallowed: it is the authorizer's own job to fail closed or open.
+        from agentfox.core import extensions
 
-        decisions = authorizer.authorize(
-            self.session,
-            agent_slug=call.agent_slug,
-            tool_key=call.tool_key,
-            impact=call.tool_impact,
-            arguments=call.arguments,
-            principal=authorizer.Principal.parse(call.principal),
-            environment=call.environment,
-        )
+        decisions = [
+            d
+            for hook in extensions.hooks("tool_call")
+            for d in hook(
+                self.session,
+                agent_slug=call.agent_slug,
+                tool_key=call.tool_key,
+                impact=call.tool_impact,
+                arguments=call.arguments,
+                principal=call.principal,
+                environment=call.environment,
+            )
+            or []
+        ]
         if not decisions:
             return
         call.taint_summary["authorization"] = [d.to_json() for d in decisions]
