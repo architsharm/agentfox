@@ -44,6 +44,20 @@ can verify without trusting us.
 
 ```bash
 pip install agentfox
+agentfox up
+```
+
+`up` scans the repository, then asks a few questions, each with a recommended answer:
+where AgentFox runs (this machine, your own server, or AgentFox Cloud), what to cover
+(Claude Code and Codex hooks, your Python agent, the gateway for any language, the tools
+and MCP servers it found, monitoring, compliance, the dashboard) and how strict to start.
+Then it does all of it in one pass, starting in observe so nothing is blocked until you
+say so. `agentfox up --yes` takes every recommended answer; run it again any time and it
+picks up where you left off.
+
+To look around first instead:
+
+```bash
 agentfox init && agentfox demo
 ```
 

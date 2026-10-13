@@ -214,7 +214,7 @@ connection. The hosted runner is triggered by
 
 ## Commands, grouped by what you are trying to do
 
-`agentfox --help` lists eleven top-level commands in six groups: Start (`init`, `demo`), See (`scan`,
+`agentfox --help` lists thirteen top-level commands in six groups: Start (`up`, `init`), See (`scan`,
 `agents`), Watch (`serve`, `findings`), Contain (`permit`, `declare`, `policy`), Prove (`test`,
 `report`) and Operate (`doctor`, `admin`). Below, the same commands by task.
 
