@@ -59,10 +59,20 @@ EVENTS = {
 
 
 def _instance(obj: Any) -> Any:
-    """An extension object from whatever the entry point or module exposes."""
+    """An extension object from whatever the entry point or module exposes: a module
+    with an ``extension()`` factory, the factory itself, a class, or an instance.
+
+    The factory case is what an installed package's entry point resolves to
+    (``agentfox_ee:extension``); returned uncalled, it loaded as an "extension" that
+    contributed nothing, which a source checkout (module path) never showed.
+    """
+    import inspect
+
     if hasattr(obj, "extension") and callable(obj.extension):
         return obj.extension()
-    return obj() if isinstance(obj, type) else obj
+    if isinstance(obj, type) or inspect.isfunction(obj):
+        return obj()
+    return obj
 
 
 @functools.cache
