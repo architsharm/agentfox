@@ -41,6 +41,7 @@ export const DOC_NAV: DocSection[] = [
       { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", description: "Probe the deployment; fail the build on regression." },
       { href: "/docs/guides/live-probes", label: "Probe deployed agents", description: "Scheduled, opt-in attacks on a running agent." },
       { href: "/docs/guides/tuning", label: "Tune detectors", description: "Feedback, suppressions, simulate, canary." },
+      { href: "/docs/guides/owasp-agentic-top-10", label: "OWASP Agentic Top 10", description: "ASI01–ASI10: what is enforced, partial or not covered." },
       { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", description: "The report, evidence packages, compliance." },
       { href: "/docs/guides/observability", label: "Traces and integrations", description: "OpenTelemetry, Langfuse, LangSmith, SIEM, webhooks." },
     ],
