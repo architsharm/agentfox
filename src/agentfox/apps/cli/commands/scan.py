@@ -88,6 +88,90 @@ def scan_skills(
         raise typer.Exit(1)
 
 
+@scan_app.command("machine")
+def scan_machine_cmd(
+    skills: bool = typer.Option(
+        True, "--skills/--no-skills", help="Also scan user-level skill directories."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Machine-readable output for scripts."),
+) -> None:
+    """Check the MCP servers and skills your AI tools load on this machine.
+
+    Reads the user-level configs of Claude Code, Claude Desktop, Cursor, Windsurf,
+    VS Code, Cline, Gemini CLI and Codex, and the skills under ~/.claude, ~/.codex and
+    ~/.agents. Nothing is started, nothing is written and nothing leaves this machine;
+    no `agentfox init` is needed. Exits 1 on a lethal trifecta or a critical issue.
+    """
+    from agentfox.capabilities.discovery.machine import scan_machine
+
+    report = scan_machine(skills=skills)
+    if as_json:
+        console.print_json(json.dumps(report.to_json(), default=str))
+        if report.critical:
+            raise typer.Exit(1)
+        return
+
+    for sentence in report.trifectas:
+        console.print(
+            Panel(
+                sentence,
+                title="[bold red]CRITICAL · lethal trifecta[/]",
+                title_align="left",
+                border_style="red",
+            )
+        )
+    if not report.configs:
+        console.print("[dim]No user-level MCP configs found for a supported AI tool.[/]")
+    for config in report.configs:
+        console.print(f"\n[bold]{config['client']}[/]  [dim]{config['path']}[/]")
+        for entry in report.servers:
+            if entry["config"] != config["path"]:
+                continue
+            console.print(f"  [bold]{entry['server']}[/]  [dim]{entry['launch']}[/]")
+            if not entry["known"]:
+                console.print(
+                    "    [yellow]can reach: unknown[/] — not a server AgentFox recognises"
+                )
+            elif entry["reaches"]:
+                console.print(f"    [dim]can reach:[/] {'; '.join(entry['reaches'])}")
+            for issue in entry["issues"]:
+                colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
+                console.print(f"    [{colour}]{issue['severity']}[/] {issue['detail']}")
+
+    if skills:
+        console.print(
+            f"\n[bold]Skills[/]  [dim]{', '.join(report.skill_dirs) or 'no skill directories'}[/]"
+        )
+        flagged = [s for s in report.skills if s["issues"]]
+        for result in flagged:
+            console.print(f"  [bold]{result['skill']}[/]  [dim]{result['path']}[/]")
+            for issue in result["issues"]:
+                colour = SEVERITY_COLOUR.get(issue["severity"], "dim")
+                extra = issue.get("risk") or issue.get("location") or ""
+                console.print(
+                    f"    [{colour}]{issue['severity']}[/] {issue['type']}"
+                    + (f" — {extra}" if extra else "")
+                )
+        console.print(
+            f"  {len(report.skills)} skill(s), {len(flagged)} with issues"
+            if report.skills
+            else "  [dim]no SKILL.md files found[/]"
+        )
+
+    servers = len(report.servers)
+    issues = sum(len(e["issues"]) for e in report.servers) + report.skill_issues
+    console.print(
+        f"\n  {len(report.configs)} config(s) · {servers} MCP server(s) · "
+        f"{len(report.trifectas)} lethal trifecta(s) · {issues} issue(s)"
+    )
+    console.print(
+        "  [dim]Static: servers were not started, so tool descriptions were not read. "
+        "For one server's tools:[/] [cyan]agentfox scan mcp NAME --file tools.json[/]"
+    )
+    if report.critical:
+        raise typer.Exit(1)
+
+
 @scan_app.command("mcp")
 def scan_mcp(
     server: str | None = typer.Argument(

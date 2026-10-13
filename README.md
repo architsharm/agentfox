@@ -57,6 +57,23 @@ downloaded weights, no network egress. Or scan the directory you are in without 
 curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash
 ```
 
+To check the MCP servers and skills that Claude Code, Cursor, Claude Desktop, VS Code,
+Windsurf, Gemini CLI and Codex load on your machine, with no setup:
+
+```bash
+agentfox scan machine
+```
+
+On every pull request, the GitHub Action annotates lethal trifectas, ungoverned model calls
+and poisoned skills, and fails the check on the kinds you list in `fail-on`:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: architsharm/agentfox@main
+  with:
+    fail-on: trifecta,skills
+```
+
 Then govern your own agent with one line:
 
 ```python
