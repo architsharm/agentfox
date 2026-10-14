@@ -81,8 +81,9 @@ def scan_skills(
     )
     # Said plainly rather than left to be discovered: this is a static read.
     console.print(
-        "  [dim]Static: nothing here runs a skill or reads its bundled scripts, and a "
-        "skill that describes dangerous behaviour in plain prose is not caught.[/]"
+        "  [dim]Static: nothing here runs a skill or reads its bundled scripts. In plain "
+        "prose only a sentence that sends credentials out is caught; other dangerous "
+        "behaviour described in ordinary English is not.[/]"
     )
     if total:
         raise typer.Exit(1)
@@ -183,9 +184,10 @@ def scan_mcp(
     config: Path | None = typer.Option(
         None,
         "--config",
-        help="MCP client config to read servers from. Default: the first of .mcp.json, "
-        ".cursor/mcp.json, .claude/settings.json, .claude.json and "
-        "claude_desktop_config.json found in this directory.",
+        help="MCP client config to read servers from. Default: every one of .mcp.json, "
+        "mcp.json, .cursor/mcp.json, .claude/settings.json, .claude/settings.local.json, "
+        ".claude.json, claude_desktop_config.json and mcp_settings.json found in this "
+        "directory. For the configs in your home directory, use `agentfox scan machine`.",
     ),
     seed_fixture: bool = typer.Option(
         False,
@@ -206,6 +208,7 @@ def scan_mcp(
 
     from agentfox.capabilities.discovery.exposure import (
         FLAG_LABEL,
+        KNOWN_MCP_CONFIGS,
         Member,
         classify_mcp_server,
         classify_tool,
@@ -224,6 +227,10 @@ def scan_mcp(
         scan_mcp_server,
         upsert_mcp_server,
     )
+
+    # Where it looked, for the message when it finds nothing: the scanner's own list,
+    # so the message cannot name fewer files than were actually read.
+    config_hint = [row.path for row in KNOWN_MCP_CONFIGS]
 
     if file is not None and seed_fixture:
         console.print("[red]pass either --file or --seed-fixture, not both[/]")
@@ -281,8 +288,9 @@ def scan_mcp(
             where = str(config) if config else "this directory"
             console.print(
                 f"[yellow]No MCP servers declared in {where}.[/] Looked for: "
-                + ", ".join(f"[dim]{c}[/]" for c in _MCP_CONFIG_HINT)
-                + ". Pass [cyan]--config PATH[/] to point at another one."
+                + ", ".join(f"[dim]{c}[/]" for c in config_hint)
+                + ". Pass [cyan]--config PATH[/] to point at another one, or run "
+                "[cyan]agentfox scan machine[/] for the ones in your home directory."
             )
             raise typer.Exit(2)
 
@@ -295,7 +303,7 @@ def scan_mcp(
                 # this command's job, not a separate step the user has to find.
                 record = upsert_mcp_server(session, name)
             if record is None:
-                searched = str(config) if config else ", ".join(_MCP_CONFIG_HINT)
+                searched = str(config) if config else ", ".join(config_hint)
                 console.print(
                     f"[red]no MCP server named '{name}'[/] in {searched}. "
                     "Pass [cyan]--config PATH[/] to the config that declares it, or "
@@ -425,16 +433,6 @@ def scan_mcp(
     if critical:
         console.print("\n[bold red]critical issue(s) found[/] — exit 1")
         raise typer.Exit(1)
-
-
-#: Where `scan mcp` looked, for the message when it found nothing.
-_MCP_CONFIG_HINT = (
-    ".mcp.json",
-    ".cursor/mcp.json",
-    ".claude/settings.json",
-    ".claude.json",
-    "claude_desktop_config.json",
-)
 
 
 #: Hygiene issue types as a sentence, so the output does not read like an enum.
