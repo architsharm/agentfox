@@ -309,6 +309,13 @@
    "owner": "discovery"
   },
   {
+   "type": "repo_lethal_trifecta",
+   "title": "Lethal trifecta",
+   "severity": "high",
+   "description": "A scanned repository gives one agent private data, untrusted content and a way to send data out.",
+   "owner": "discovery"
+  },
+  {
    "type": "skill_secret_exfiltration",
    "title": "Skill sends credentials out",
    "severity": "critical",

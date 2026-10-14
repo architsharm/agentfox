@@ -202,8 +202,8 @@ async function Checklist({ agentParam, gateway }: { agentParam?: string; gateway
       </ol>
 
       <p className="small muted">
-        Not ready to change code? <Link href="/app/start?tab=connect">Scan a repository or an API</Link> to find
-        your agents first.
+        Not ready to change code? <Link href="/app/welcome?again=1">Scan a repository</Link> to see what is in it
+        and set it up in one click, or <Link href="/app/start?tab=connect">scan an API</Link>.
       </p>
     </StartKeyProvider>
   );

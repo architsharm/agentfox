@@ -140,6 +140,7 @@ def _onboarding_counts(session: Session) -> dict[str, int]:
             _count(Finding, Finding.status == "open").label("open_findings"),
             _count(GithubConnection).label("github_connections"),
             _count(ScanRun, ScanRun.source_kind == "hosted_api").label("hosted_api_scans"),
+            _count(ScanRun, ScanRun.status == "completed").label("scans"),
             _count(
                 ApiToken,
                 ApiToken.revoked_at.is_(None),
@@ -259,6 +260,9 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
             "open_findings": c["open_findings"],
             "github_connections": c["github_connections"],
             "hosted_api_scans": c["hosted_api_scans"],
+            # Any completed scan (repository, API or CLI submit): the welcome page's
+            # "has this workspace seen anything yet" alongside traces.
+            "scans": c["scans"],
             "api_keys": c["api_keys"],
             "grants": c["grants"],
             "protected_agents": c["protected"],

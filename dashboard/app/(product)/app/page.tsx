@@ -112,7 +112,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
 
       {noTraffic ? (
         <Card>
-          <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No requests yet.</Empty>
+          <Empty
+            action={
+              <>
+                <Link href="/app/welcome?again=1" className="k-btn-primary">Scan a repository</Link>{" "}
+                <Link href="/app/start" className="k-btn">Connect an agent</Link>
+              </>
+            }
+          >
+            No requests yet.
+          </Empty>
         </Card>
       ) : (
         <>

@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-276 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+277 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -380,6 +380,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/integrations/github/repos` | List Repos |
 | `POST` | `/api/integrations/github/scan` | Trigger Scan |
 | `GET` | `/api/integrations/github/scans/{scan_id}` | Get Scan |
+| `POST` | `/api/integrations/github/scans/{scan_id}/accept` | Approve every draft one scan proposed, in one step. |
 | `POST` | `/api/integrations/github/webhook` | GitHub push webhook: a signed push to a monitored repository queues a rescan. |
 | `POST` | `/api/integrations/github/webhook-secret` | Create or replace the GitHub connection's push-webhook secret (shown once). |
 | `POST` | `/api/integrations/hosted-api/scan` | Scan Hosted Api |
