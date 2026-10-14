@@ -11,6 +11,28 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`agentfox up`, found by running it end to end** on a sample project, locally, against
+  a production-mode team server, through the Cloud path and as a Docker Compose stack:
+  - A set-up agent works on its first call. The tools `up` declares are granted to the
+    agent (locally and over the API), and a coding agent is offered a grant for the MCP
+    servers it loads (the repository's and its user-level config's), so neither is
+    refused by default-deny. Containment still applies: a refund whose recipient came
+    from a tool result is still held.
+  - A self-hosted stack started by `up` gets the control catalog and the shipped policy
+    packs; the gateway image only serves, so before this it ran with no tool containment.
+  - Before starting Docker, `up` names a port already in use and says the gateway image
+    is a large download (its size read from the registry), asking first; a failed start says how to clean up.
+  - `up` only reports a local API it started; another AgentFox on :8080 (a self-hosted
+    stack, another project) is named, not claimed.
+  - Running `up` again no longer records the same scan, and its draft agents and proposed
+    policies, a second time.
+  - A connected self-hosted server is asked for its dashboard address; the API URL is no
+    longer shown as the dashboard.
+  - "Watch first" says what still stops a call (destructive commands, protected paths,
+    tampering); logs and pid files are git-ignored; plurals and long paths read properly.
+
 ### Added
 
 - **`agentfox up`, the guided setup.** One command from a fresh install to a governed

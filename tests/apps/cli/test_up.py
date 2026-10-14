@@ -208,6 +208,7 @@ class FakeControlPlane:
         self.tools: dict[str, str] = {"lookup_order": "write"}
         self.modes = {"baseline": "observe", "tool-containment": "enforce"}
         self.calls: list[tuple[str, str]] = []
+        self.grants: dict[str, set[str]] = {}
         self.enterprise = enterprise
 
     def handle(self, request: httpx.Request) -> httpx.Response:
@@ -244,6 +245,15 @@ class FakeControlPlane:
             key = path.split("/")[3]
             self.modes[key] = json.loads(request.content)["mode"]
             return httpx.Response(200, json={})
+        if path.startswith("/api/agents/") and path.endswith("/access"):
+            slug = path.split("/")[3]
+            held = self.grants.setdefault(slug, set())
+            if method == "GET":
+                return httpx.Response(
+                    200, json={"capabilities": [{"tool_key": k} for k in sorted(held)]}
+                )
+            held.add(json.loads(request.content)["tool_key"])
+            return httpx.Response(201, json={})
         if path in ("/api/agents", "/api/mcp-servers", "/api/monitors"):
             return httpx.Response(201, json={"id": "x"})
         if path == "/api/discovery/submit":
@@ -289,6 +299,9 @@ def test_up_connects_to_cloud_and_keeps_the_key_out_of_git(project, cloud):
     assert "OPENAI_BASE_URL=https://gw.acme.test/v1" in env.read_text()
     assert cloud.tools == {"lookup_order": "write", "refund_payment": "irreversible"}
     assert cloud.modes["tool-containment"] == "observe"
+    # Declared and granted to the agent the gateway calls as, so its own tools are not
+    # refused by default-deny on its first call.
+    assert cloud.grants["support-bot"] == {"lookup_order", "refund_payment"}
     assert ("POST", "/api/discovery/submit") in cloud.calls
 
 
@@ -475,3 +488,123 @@ def test_up_adds_the_github_action_once(project):
     result = _up(str(project), "--yes", "--with", "ci")
     assert "already exists" in result.output
     assert (project / WORKFLOW_PATH).read_text() == "# mine\n"
+
+
+# ---------------------------------------------------------------------------
+# Found by running `up` end to end: a set-up agent must work on its first call
+# ---------------------------------------------------------------------------
+
+
+def _grants_of(slug: str) -> set[str]:
+    from sqlalchemy import select
+
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+    from agentfox.platform.identity import ensure_identity
+
+    with session_scope() as session:
+        agent = session.scalar(select(Agent).where(Agent.slug == slug))
+        return {c.tool_key for c in ensure_identity(session, agent).capabilities}
+
+
+def test_the_agents_own_tools_are_granted_not_left_to_default_deny(project):
+    assert _up(str(project), "--yes").exit_code == 0
+    assert {"lookup_order", "refund_payment"} <= _grants_of("support-bot")
+
+
+def test_the_coding_agent_may_use_the_mcp_servers_it_loads(project, home):
+    (home / ".claude.json").write_text('{"mcpServers": {"linear": {"command": "npx"}}}')
+    result = _up(str(project), "--yes")
+    assert result.exit_code == 0, result.output
+    held = _grants_of("support-bot-claude")
+    # The repository's server and the one Claude Code loads from the user config.
+    assert {"mcp__github__*", "mcp__linear__*"} <= held
+
+
+def test_the_files_up_runs_from_are_kept_out_of_git(project, monkeypatch):
+    import subprocess
+
+    real = subprocess.Popen
+
+    class Started:
+        pid = 4242
+
+    def popen(args, *a, **k):
+        # Only the background processes `up` starts; git and the rest run for real.
+        return Started() if "agentfox.apps.cli.main" in args else real(args, *a, **k)
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    monkeypatch.setattr("agentfox.hooks.ping", lambda: False)
+    result = runner.invoke(app, ["up", str(project), "--yes", "--with", "coding-agents"])
+    assert result.exit_code == 0, result.output
+    ignored = (project / ".gitignore").read_text().split()
+    assert ".agentfox/logs/" in ignored and ".agentfox/*.pid" in ignored
+
+
+def test_a_busy_port_is_named_before_docker_starts(project, monkeypatch):
+    monkeypatch.setattr("agentfox.apps.cli.wizard.detect._on_path", lambda binary: True)
+    monkeypatch.setattr(targets, "_stack_running", lambda base: False)
+    monkeypatch.setattr(targets, "_port_taken", lambda port: port == 8080)
+    # Without --no-start, the ports are checked before Docker is asked for anything.
+    result = runner.invoke(app, ["up", str(project), "--yes", "--target", "self-hosted"])
+    assert result.exit_code == 1
+    assert "port 8080" in result.output and "already in use" in result.output
+
+
+def test_a_team_server_without_a_dashboard_is_not_given_the_api_as_one(project, cloud):
+    result = _up(
+        str(project),
+        "--yes",
+        "--target",
+        "self-hosted",
+        "--api-url",
+        "http://agentfox.internal:8080",
+        "--api-token",
+        "nom_api_good",
+        "--with",
+        "view,compliance",
+    )
+    assert result.exit_code == 0, result.output
+    assert "/app/compliance" not in result.output
+    assert "no dashboard address given" in result.output
+
+
+def test_running_up_again_does_not_record_the_same_scan_twice(project, cloud):
+    from sqlalchemy import func, select
+
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import ScanRun
+
+    for _ in range(2):
+        assert _up(str(project), "--yes", "--with", "scan-report").exit_code == 0
+    with session_scope() as session:
+        assert session.scalar(select(func.count()).select_from(ScanRun)) == 1
+    # A different destination has not seen it yet.
+    remote = ["--target", "cloud", "--api-url", "https://gw.acme.test"]
+    remote += ["--api-token", "nom_api_good", "--with", "scan-report"]
+    assert _up(str(project), "--yes", *remote).exit_code == 0
+    assert _up(str(project), "--yes", *remote).exit_code == 0
+    assert cloud.calls.count(("POST", "/api/discovery/submit")) == 1
+
+
+def test_the_download_size_is_read_from_the_registry_not_written_down(monkeypatch):
+    import subprocess
+    import types
+
+    manifest = [
+        {
+            "Descriptor": {"platform": {"architecture": arch, "os": "linux"}},
+            "OCIManifest": {"layers": [{"size": size}, {"size": size}]},
+        }
+        for arch, size in (("amd64", 2_500_000_000), ("arm64", 1_000_000))
+    ]
+    monkeypatch.setattr("platform.machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: types.SimpleNamespace(stdout=json.dumps(manifest))
+    )
+    assert targets.image_download_size("img") == "about 5.0 GB"
+    monkeypatch.setattr("platform.machine", lambda: "aarch64")
+    assert targets.image_download_size("img") == "about 2 MB"
+    # No registry, no Docker: a phrase that is never wrong.
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: types.SimpleNamespace(stdout=""))
+    assert targets.image_download_size("img") == "several GB"

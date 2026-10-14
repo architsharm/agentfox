@@ -23,13 +23,13 @@ default:
 setup:
     uv sync {{extras}}
 
-# The whole Python suite, as CI runs it.
+# The whole Python suite, as CI runs it: in parallel, one worker per core.
 test *args:
-    uv run pytest -q {{args}}
+    uv run pytest -q -n auto {{args}}
 
-# Stop at the first failure, skipping tests/e2e and tests/repo. The full suite is
-# ~3,200 tests and takes most of 20 minutes serially (each test builds its own
-# database), so pass the directory you changed: `just test-fast tests/platform/policy`.
+# Stop at the first failure, skipping tests/e2e and tests/repo, serially so the first
+# failure is the one reported. Pass the directory you changed:
+# `just test-fast tests/platform/policy`.
 test-fast *args:
     uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo {{args}}
 

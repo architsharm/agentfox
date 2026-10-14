@@ -6,7 +6,6 @@
 # permissive-licence models — Granite Guardian, PIGuard, the protectai ensemble
 # backstop and the MiniLM embedding model — so the detectors enabled below never fetch
 # anything on first use, and a regulated customer can run the image air-gapped.
-# Granite Guardian is carried but not enabled: see AGENTFOX_ENABLED_DETECTORS.
 #
 # The licence-gated Llama Guard tier (`safety.restricted`) is NOT in the image you
 # pull: the published image never carries gated weights. It is off by default here
@@ -100,16 +99,15 @@ services:
       AGENTFOX_DETECTOR_TIMEOUT_MS: "40"
       AGENTFOX_POLICY_ENGINE: native
       AGENTFOX_OPA_URL: http://opa:8181
-      # The 5 zero-dependency defaults plus the model detectors that fit the budget
-      # above on CPU. Two the image can run are left out on purpose:
-      # - `safety.granite` (Granite Guardian): its weights are in the image, but it is
-      #   a 2B-parameter generative model. On CPU one check takes from tens of seconds
-      #   to minutes, depending on bfloat16 support (see GraniteGuardianDetector). It
-      #   cannot finish inside a 100ms budget, and every timed-out call keeps a worker
-      #   busy for that long. It needs a GPU, and a CUDA build of torch, which this
-      #   image does not carry.
-      # - `safety.restricted` (Llama Guard 3-8B): see the opt-in steps at the top of
-      #   this file.
+      # The 5 zero-dependency defaults, plus the model detectors whose weights the
+      # published image carries (deploy/Dockerfile). Two are left out on purpose:
+      #   * `safety.restricted` (Llama Guard 3-8B): see the opt-in steps at the top.
+      #   * `safety.granite` (Granite Guardian, 2B): its weights are in the image, but
+      #     on CPU one check takes about 9 s and the gateway needs about 10 GB of
+      #     memory, against a 300 ms request budget; enabled there it times out on
+      #     every call instead of checking. Add it here on a GPU host, or with
+      #     AGENTFOX_DETECTOR_TIMEOUT_MS and AGENTFOX_ENFORCEMENT_BUDGET_MS raised to
+      #     match, for a deployment that can wait for it.
       AGENTFOX_ENABLED_DETECTORS: >-
         ["injection.heuristic","pii.native","secrets.native","safety.lexicon",
         "schema.json","injection.classifier","injection.similarity"]

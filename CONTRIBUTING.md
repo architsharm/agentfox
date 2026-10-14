@@ -34,7 +34,7 @@ rule. If it passes locally, the pull request will pass, except for the Docker bu
 | Recipe | What it runs |
 |---|---|
 | `just setup` | `uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev` |
-| `just test` | `uv run pytest -q` |
+| `just test` | `uv run pytest -q -n auto` |
 | `just test-fast` | `uv run pytest -q -x --ignore=tests/e2e --ignore=tests/repo` |
 | `just lint` | `uvx ruff@0.15.7 check .`, `uvx ruff@0.15.7 format --check .` (`just fmt` applies them) and the import contracts, `PYTHONPATH=src uvx --from import-linter==2.15 lint-imports` |
 | `just check` | `scripts/check/plugins.py`, `scripts/check/demo_kit.py`, `scripts/gen/api_routes.py --check`, `scripts/gen/docs_reference.py --check`, `scripts/check/claims.py --check` |

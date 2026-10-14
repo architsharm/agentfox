@@ -52,6 +52,11 @@ class Backend(Protocol):
 
     def add_monitor(self, kind: str, target: str, *, name: str) -> bool: ...
 
+    def grant(self, agent: str, tool_key: str) -> bool:
+        """Grant ``tool_key`` (a key or a glob such as ``mcp__github__*``) to a registered
+        agent. False when the agent already holds that grant, which is left as it is."""
+        ...
+
     def register_mcp_server(self, name: str, *, url: str, transport: str) -> None: ...
 
     def submit_scan(self, payload: dict[str, Any]) -> dict[str, Any]: ...
@@ -137,6 +142,33 @@ class Local:
             monitor = ensure(session, kind=kind, target=target, name=name, created_by="agentfox up")
         if monitor is None:
             raise BackendError(f"could not create a monitor for {target}")
+        return True
+
+    def grant(self, agent: str, tool_key: str) -> bool:
+        from sqlalchemy import select
+
+        from agentfox.core.models import Agent
+        from agentfox.platform.identity import ensure_identity
+        from agentfox.platform.identity.service import grant_capability
+        from agentfox.platform.ledger import chain
+
+        with self._session() as session:
+            record = session.scalar(select(Agent).where(Agent.slug == agent))
+            if record is None:
+                raise BackendError(f"no agent {agent} to grant {tool_key} to")
+            identity = ensure_identity(session, record)
+            if any(c.tool_key == tool_key for c in identity.capabilities):
+                return False
+            capability = grant_capability(session, identity, tool_key, granted_by="agentfox up")
+            chain.append(
+                session,
+                "capability.granted",
+                actor_type="user",
+                actor_id="agentfox up",
+                subject_type="capability",
+                subject_id=capability.id,
+                payload={"agent": agent, "tool_key": tool_key},
+            )
         return True
 
     def register_mcp_server(self, name: str, *, url: str, transport: str) -> None:
@@ -327,6 +359,20 @@ class Remote:
             )
         return True
 
+    def grant(self, agent: str, tool_key: str) -> bool:
+        held = self._call("GET", f"/api/agents/{agent}/access")
+        if held.status_code == 200 and any(
+            g.get("tool_key") == tool_key for g in _grants(held.json())
+        ):
+            return False
+        response = self._call("POST", f"/api/agents/{agent}/access", json={"tool_key": tool_key})
+        if response.status_code >= 400:
+            raise BackendError(
+                f"granting {tool_key} to {agent} failed: {response.status_code} "
+                f"{response.text[:200]}"
+            )
+        return True
+
     def register_mcp_server(self, name: str, *, url: str, transport: str) -> None:
         response = self._call(
             "POST", "/api/mcp-servers", json={"name": name, "url": url, "transport": transport}
@@ -357,3 +403,9 @@ class Remote:
                 else response.text[:200]
             )
             raise BackendError(f"{key} → {mode}: {detail or response.status_code}")
+
+
+def _grants(body: Any) -> list[dict[str, Any]]:
+    """The grants in a `GET /api/agents/{slug}/access` response."""
+    grants = body.get("capabilities") if isinstance(body, dict) else None
+    return [g for g in grants or [] if isinstance(g, dict)]
