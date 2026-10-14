@@ -13,7 +13,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Install (matches the documented dev venv, not --all-extras)
         run: uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev
-      - run: uv run pytest -q
+      # Spread across the runner's cores (pytest-xdist). Every test already gets its own
+      # temporary directory and database, so nothing is shared between workers.
+      - run: uv run pytest -q -n auto
       # The operator plugins (plugins/) and Appendix C are checked against the live code, so
       # neither can silently drift. Both also run inside pytest (tests/repo/test_plugins.py);
       # these steps just make the failure obvious in the job log.
@@ -40,7 +42,7 @@ jobs:
         run: |
           uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev
           uv pip install --no-deps ./ee
-      - run: uv run pytest -q tests ee/ee_tests
+      - run: uv run pytest -q -n auto tests ee/ee_tests
 
   dashboard-tests:
     runs-on: ubuntu-latest
