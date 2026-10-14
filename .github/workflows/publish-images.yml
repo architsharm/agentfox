@@ -75,6 +75,31 @@ jobs:
             org.opencontainers.image.description=AgentFox ${{ matrix.name }} — runtime firewall for AI agents
             org.opencontainers.image.licenses=Apache-2.0
 
+      # The gateway image carries ~6GB of model weights; the runner's preinstalled
+      # toolchains leave too little disk to load it into the local daemon.
+      - name: Free disk for the gateway image
+        if: matrix.name == 'gateway'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      # Start the finished image before publishing it. ci.yml's docker-smoke stops at
+      # the `deps` stage, so nothing ran the image until somebody pulled it — which is
+      # how a gateway whose detector warm-up crashed its own startup got this far.
+      - name: Build the gateway image locally
+        if: matrix.name == 'gateway'
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          load: true
+          tags: agentfox-gateway:boot-check
+          cache-from: type=gha
+
+      - name: The gateway image boots
+        if: matrix.name == 'gateway'
+        run: scripts/check/boot_gateway_image.sh agentfox-gateway:boot-check
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:

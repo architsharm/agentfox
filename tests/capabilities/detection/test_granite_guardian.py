@@ -101,3 +101,32 @@ def test_warm_runs_a_real_token_not_an_empty_string(monkeypatch):
     monkeypatch.setattr(GraniteGuardianDetector, "available", lambda self: True)
     detector.warm()
     assert tokenizer.calls[0]["chat"] == [{"role": "user", "content": "hello"}]
+
+
+def test_llama_guard_reads_input_ids_from_the_dict_newer_transformers_returns():
+    """`apply_chat_template(..., return_tensors="pt")` returns a BatchEncoding on
+    transformers 5; Llama Guard's adapter used to call `.shape` on it."""
+    from agentfox.capabilities.detection.adapters.classifiers import (
+        RestrictedClassifierDetector,
+    )
+
+    torch = _torch()
+
+    class Tokenizer:
+        def apply_chat_template(self, chat, **kwargs):
+            return {"input_ids": torch.tensor([[1, 2, 5]])}
+
+        def decode(self, ids, skip_special_tokens=False):
+            return "unsafe\nS1"
+
+    class Model:
+        def generate(self, input_ids, **kwargs):
+            return torch.cat([input_ids, torch.tensor([[9]])], dim=1)
+
+    detector = RestrictedClassifierDetector(model_id="fake/llama-guard")
+    detector.__dict__["_generator"] = (Tokenizer(), Model())
+
+    found = detector.detect("something", DetectionContext(surface="input")).detections
+
+    assert [d.entity_type for d in found] == ["SAFETY.HARM"]
+    assert found[0].detail["category"] == "S1"

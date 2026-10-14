@@ -437,6 +437,8 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         role = "assistant" if context.surface == "output" else "user"
         chat = [{"role": role, "content": content[:4000]}]
         input_ids = tokenizer.apply_chat_template(chat, return_tensors="pt")
+        if not isinstance(input_ids, torch.Tensor):  # a BatchEncoding in newer transformers
+            input_ids = input_ids["input_ids"]
         with torch.no_grad():
             generated = model.generate(
                 input_ids=input_ids, max_new_tokens=self.max_new_tokens, pad_token_id=0
