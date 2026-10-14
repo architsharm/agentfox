@@ -43,10 +43,11 @@ export default function Page() {
       <h2>1. Scan the config</h2>
       <Code>{`agentfox scan mcp`}</Code>
       <p>
-        With no setup it reads the first of <code>.mcp.json</code>,{" "}
+        With no setup it reads every one of <code>.mcp.json</code>, <code>mcp.json</code>,{" "}
         <code>.cursor/mcp.json</code>, <code>.claude/settings.json</code>,{" "}
-        <code>.claude.json</code> and <code>claude_desktop_config.json</code> in this
-        directory (or the file <code>--config</code> names), registers every server it
+        <code>.claude/settings.local.json</code>, <code>.claude.json</code>,{" "}
+        <code>claude_desktop_config.json</code> and <code>mcp_settings.json</code> found in
+        this directory (or only the file <code>--config</code> names), registers every server it
         declares, and starts none of them. For each server it reports the launch command,
         what the server can reach, version pinning, auth on a remote server (plain{" "}
         <code>http://</code> to a non-local host, no auth header), literal credentials in{" "}

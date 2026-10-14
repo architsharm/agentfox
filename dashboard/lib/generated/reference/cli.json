@@ -214,7 +214,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": "MCP client config to read servers from. Default: the first of .mcp.json, .cursor/mcp.json, .claude/settings.json, .claude.json and claude_desktop_config.json found in this directory."
+        "help": "MCP client config to read servers from. Default: every one of .mcp.json, mcp.json, .cursor/mcp.json, .claude/settings.json, .claude/settings.local.json, .claude.json, claude_desktop_config.json and mcp_settings.json found in this directory. For the configs in your home directory, use `agentfox scan machine`."
        },
        {
         "kind": "option",

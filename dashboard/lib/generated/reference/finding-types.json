@@ -309,6 +309,13 @@
    "owner": "discovery"
   },
   {
+   "type": "skill_secret_exfiltration",
+   "title": "Skill sends credentials out",
+   "severity": "critical",
+   "description": "A skill tells the agent to read where credentials live and send them somewhere.",
+   "owner": "discovery"
+  },
+  {
    "type": "skill_dangerous_command",
    "title": "Dangerous command in a skill",
    "severity": "high",
