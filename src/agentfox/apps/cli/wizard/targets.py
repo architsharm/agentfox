@@ -356,9 +356,40 @@ def write_compose(root: Path) -> Path:
 
 
 GATEWAY_IMAGE = "ghcr.io/architsharm/agentfox/gateway:latest"
-#: The published gateway image carries the detector models' weights, so the first start
-#: downloads this much. Said before it starts, not discovered halfway through.
-GATEWAY_IMAGE_SIZE = "about 14 GB"
+
+#: Docker's architecture names for `platform.machine()`.
+_ARCH = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}
+
+
+def image_download_size(image: str) -> str:
+    """How much `docker pull image` downloads on this machine, read from the registry.
+
+    The published gateway image carries the detector models' weights, so the first
+    start is a large download; the number is said before it starts, not discovered
+    halfway through. Read rather than written down, because it changes with every
+    image. "several GB" when the registry cannot be asked.
+    """
+    import platform
+
+    arch = _ARCH.get(platform.machine().lower(), "amd64")
+    try:
+        out = subprocess.run(
+            ["docker", "manifest", "inspect", "-v", image],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        entries = json.loads(out.stdout)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return "several GB"
+    for entry in entries if isinstance(entries, list) else [entries]:
+        if entry.get("Descriptor", {}).get("platform", {}).get("architecture") != arch:
+            continue
+        manifest = entry.get("OCIManifest") or entry.get("SchemaV2Manifest") or {}
+        total = sum(layer.get("size", 0) for layer in manifest.get("layers", []))
+        if total:
+            return f"about {total / 1e9:.1f} GB" if total >= 1e9 else f"about {total // 10**6} MB"
+    return "several GB"
 
 
 def _port_taken(port: int) -> bool:
@@ -395,7 +426,8 @@ def _compose_up(compose: Path, email: str, console: Console, prompter: Prompter)
         )
         if not pulled:
             console.print(
-                f"  [yellow]The first start downloads the gateway image, {GATEWAY_IMAGE_SIZE}[/] "
+                "  [yellow]The first start downloads the gateway image, "
+                f"{image_download_size(GATEWAY_IMAGE)}[/] "
                 "[dim](it carries the detector models, so nothing is fetched at runtime).[/]"
             )
             if not prompter.confirm("Download it now?", default=True):

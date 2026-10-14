@@ -585,3 +585,26 @@ def test_running_up_again_does_not_record_the_same_scan_twice(project, cloud):
     assert _up(str(project), "--yes", *remote).exit_code == 0
     assert _up(str(project), "--yes", *remote).exit_code == 0
     assert cloud.calls.count(("POST", "/api/discovery/submit")) == 1
+
+
+def test_the_download_size_is_read_from_the_registry_not_written_down(monkeypatch):
+    import subprocess
+    import types
+
+    manifest = [
+        {
+            "Descriptor": {"platform": {"architecture": arch, "os": "linux"}},
+            "OCIManifest": {"layers": [{"size": size}, {"size": size}]},
+        }
+        for arch, size in (("amd64", 2_500_000_000), ("arm64", 1_000_000))
+    ]
+    monkeypatch.setattr("platform.machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: types.SimpleNamespace(stdout=json.dumps(manifest))
+    )
+    assert targets.image_download_size("img") == "about 5.0 GB"
+    monkeypatch.setattr("platform.machine", lambda: "aarch64")
+    assert targets.image_download_size("img") == "about 2 MB"
+    # No registry, no Docker: a phrase that is never wrong.
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: types.SimpleNamespace(stdout=""))
+    assert targets.image_download_size("img") == "several GB"

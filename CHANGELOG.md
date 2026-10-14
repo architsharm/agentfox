@@ -23,7 +23,7 @@ the file it came from.
   - A self-hosted stack started by `up` gets the control catalog and the shipped policy
     packs; the gateway image only serves, so before this it ran with no tool containment.
   - Before starting Docker, `up` names a port already in use and says the gateway image
-    is about 14 GB, asking first; a failed start says how to clean up.
+    is a large download (its size read from the registry), asking first; a failed start says how to clean up.
   - `up` only reports a local API it started; another AgentFox on :8080 (a self-hosted
     stack, another project) is named, not claimed.
   - Running `up` again no longer records the same scan, and its draft agents and proposed
