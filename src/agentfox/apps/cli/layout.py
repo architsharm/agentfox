@@ -241,13 +241,19 @@ def apply_layout(app: typer.Typer) -> None:
     serve_info = find("serve")
     app.registered_commands.remove(serve_info)
     serve_app = _new_group(
-        "Run the gateway and control-plane API, or the MCP server for AI clients.\n\n"
+        "Run the gateway and control-plane API, the MCP server for AI clients, or the "
+        "model server.\n\n"
         "`agentfox serve [--host] [--port] [--reload]` starts the API (the default); "
-        "`agentfox serve mcp` speaks MCP over stdio.",
+        "`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the "
+        "model-backed detectors for gateways that should not hold weights.",
         cls=default_group("api"),
     )
     _alias(serve_app, serve_info, "api")
     _alias(serve_app, find("mcp", "serve"), "mcp")
+    models_info = find("serve-models")
+    if models_info is not None:
+        app.registered_commands.remove(models_info)
+        _alias(serve_app, models_info, "models")
     app.add_typer(serve_app, name="serve")
 
     # -- Contain: permit -----------------------------------------------------------

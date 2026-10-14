@@ -30,7 +30,7 @@ from agentfox.capabilities.detection.base import (
     DetectionContext,
     redact_sample,
 )
-from agentfox.capabilities.detection.loading import inference_lock, load_once
+from agentfox.capabilities.detection.loading import inference_lock, load_once, model_device
 from agentfox.core.config import get_settings
 
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
@@ -72,7 +72,11 @@ class GroundingNliDetector(BaseDetector):
         from transformers import pipeline
 
         return pipeline(
-            "text-classification", model=self.model_id, top_k=None, local_files_only=True
+            "text-classification",
+            model=self.model_id,
+            top_k=None,
+            local_files_only=True,
+            device=model_device(),
         )
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency

@@ -26,7 +26,12 @@ from agentfox.capabilities.detection.base import (
     DetectionContext,
     redact_sample,
 )
-from agentfox.capabilities.detection.loading import inference_lock, load_once
+from agentfox.capabilities.detection.loading import (
+    inference_lock,
+    load_once,
+    model_device,
+    to_model_device,
+)
 from agentfox.capabilities.detection.validators.base import module_present
 from agentfox.core.config import get_settings
 
@@ -111,6 +116,7 @@ class _TransformersClassifier(BaseDetector):
             top_k=None,
             trust_remote_code=self.trust_remote_code,
             local_files_only=True,
+            device=model_device(),
         )
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
@@ -241,6 +247,7 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
             model=self.secondary_model_id,
             top_k=None,
             local_files_only=True,
+            device=model_device(),
         )
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
@@ -334,7 +341,7 @@ class GraniteGuardianDetector(_TransformersClassifier):
         model = AutoModelForCausalLM.from_pretrained(
             self.model_id, torch_dtype=torch.float32, local_files_only=True
         )
-        model.eval()
+        model.to(model_device()).eval()
         yes = tokenizer.encode("Yes", add_special_tokens=False)[0]
         no = tokenizer.encode("No", add_special_tokens=False)[0]
         return tokenizer, model, yes, no
@@ -362,6 +369,7 @@ class GraniteGuardianDetector(_TransformersClassifier):
         )
         if not isinstance(ids, torch.Tensor):  # a BatchEncoding in newer transformers
             ids = ids["input_ids"]
+        ids = to_model_device(ids, model)
         with inference_lock(model), torch.no_grad():
             logits = model(input_ids=ids).logits[0, -1].float()
         return float(torch.softmax(logits[[yes, no]], dim=0)[0])
@@ -441,7 +449,7 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         model = AutoModelForCausalLM.from_pretrained(
             self.model_id, torch_dtype=torch.bfloat16, local_files_only=True
         )
-        model.eval()
+        model.to(model_device()).eval()
         return tokenizer, model
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
@@ -464,6 +472,7 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         input_ids = tokenizer.apply_chat_template(chat, return_tensors="pt")
         if not isinstance(input_ids, torch.Tensor):  # a BatchEncoding in newer transformers
             input_ids = input_ids["input_ids"]
+        input_ids = to_model_device(input_ids, model)
         with inference_lock(model), torch.no_grad():
             generated = model.generate(
                 input_ids=input_ids, max_new_tokens=self.max_new_tokens, pad_token_id=0
