@@ -1,0 +1,15 @@
+# GPU override: `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d`.
+# Needs the NVIDIA driver and nvidia-container-toolkit on the host, and an image built
+# with a CUDA torch (README.md); the published image's torch is CPU-only.
+services:
+  models:
+    image: ${AGENTFOX_IMAGE:-agentfox-models:cuda}
+    environment:
+      AGENTFOX_MODEL_DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

@@ -14,8 +14,8 @@ there. Probes are shallow by design: they prove a capability is *wired*, not tha
 | **Partial** | 15 ◐ |
 | **Absent** | 2 ✗ |
 | **Weighted coverage** | **78%** *(partial counts half)* |
-| **Tests** | 4572 |
-| **Lines** | 177,930 (src + tests) |
+| **Tests** | 4584 |
+| **Lines** | 178,606 (src + tests) |
 | **Failure modes covered** | **96%** — 54 of 57 outright, 2 partial |
 | **Injection recall, regression corpus** | **100%** — 33/33 adversarial, 0 false positive(s) on 18 benign. Our own test strings, so a regression check, not a recall estimate; held-out and external numbers are in benchmarks/REPORT.md |
 
@@ -31,7 +31,7 @@ in [design/traceability.md](design/traceability.md).
 | `P3` | 3 Guardrails | Runtime detectors across nine surfaces + taint | ✅ built | 108 | the injection classifier is on by default but needs `agentfox[classifiers]` and its weights; long prompts still time out |
 | `P9` | 9 Action Assurance | Action semantics, blast radius, verified-state preconditions | ◐ partial | 92 | cascade analysis is exactly as good as the trigger declarations it is given — an undeclared webhook stays invisible, and shell analysis remains a deny-list rather than a parser |
 | `P10` | 10 Entitlement | End-user principal, retrieval entitlement filtering | ◐ partial | 26 | OpenFGA adapter is a declared seam, not an implementation |
-| `P7` | 7 Answerability | Knowledge boundary, forced abstention | ✅ built | 190 |  |
+| `P7` | 7 Answerability | Knowledge boundary, forced abstention | ✅ built | 192 |  |
 | `P8` | 8 Provenance | Source tiers, freshness, citation binding | ◐ partial | 110 | catalog ingestion (P8-9: DataHub/OpenMetadata/Unity) absent |
 | `P14` | 14 Context Integrity | Ingestion and retrieval quality gates | ◐ partial | 27 | gates the ingestion and assembly path. Semantic chunk-boundary repair and automatic re-extraction of a corrupt document are not built — a finding is reported and the decision to drop the document belongs to the operator |
 | `P4` | 4 Evaluation | Eval runner, CI gating, drift, silent failure, red team | ◐ partial | 83 | Ragas scorers (I-8) and model-based groundedness (via ModelProvider.judge()) run from the runner alongside the lexical scorer, and a gate fails on an errored case rather than skipping it. Red-team probe calls leave no decisions or findings in the production tables. An annotation queue for human review of borderline eval results is not built |
@@ -48,14 +48,14 @@ in [design/traceability.md](design/traceability.md).
 | `PL-5` | Platform | Async workers | ◐ partial | 25 | a database-backed queue with retries, backoff, stuck-job recovery and a dead letter that is public state rather than a log line, filled by per-tenant schedules and drained by a cron call (Vercel cron, a 30-minute GitHub Actions runner, or `agentfox admin jobs run-due`). Each drain runs in the calling process; a Redis or SQS worker belongs behind the same interface and is not built |
 | `PL-6` | Platform | HA-ready persistence | ◐ partial | — | pooling and pre-ping ship, and SQLite is refused at startup for a multi-worker deployment rather than surfacing as intermittent latency. Actual scale-out under load is still untested |
 | `PL-7` | Platform | Service-level fail-open | ◐ partial | 25 | fail-open is legitimate and must be visible, bounded and impossible for some controls. Admission control sheds work rather than governance. What is not built: distributed state, so the fail-open budget and the rate limit are per-process and a multi-worker deployment gets N times the declared budget |
-| `PL-9` | Platform | Authentication and operator tokens | ◐ partial | 89 | API tokens, the dev-mode gate, a refusal to start outside development on published secrets, sign-out that revokes the token and a first operator created from the CLI ship. OIDC/SCIM absent |
+| `PL-9` | Platform | Authentication and operator tokens | ◐ partial | 91 | API tokens, the dev-mode gate, a refusal to start outside development on published secrets, sign-out that revokes the token and a first operator created from the CLI ship. OIDC/SCIM absent |
 | `P18` | 18 Tool Contract | Semantic contract: data access, result fidelity, register, source arbitration | ◐ partial | 62 | governs the gap between the request, the rows a tool touched and the answer. Data-access scoping is exactly as good as the ScopeRule declarations it is given — an undeclared table is reported, never assumed safe. Register checks are lexical and licensed per domain; they judge standing, not content, and a licensed operator turns them off deliberately |
 | `PL-10` | Platform | Operator actions recorded in the decision chain | ✅ built | 22 | the registry of privileged operations is declared and the check is structural, so a new operator surface without an audit call fails the suite. system_scope's cross-tenant operations now land somewhere real: resolving a token's own org before recording (system_log.py, chain.append's org_id) fixed a live misattribution — issuing/revoking a token used to record into whichever tenant the session defaulted to, with its seq computed from a query system_scope had left unfiltered — and the one operation with no tenant to attribute to at all (listing tokens across every org) now writes to a dedicated system-level chain. The registry that makes operator actions structural has no equivalent yet for which system_scope call sites must write to that chain — this one is wired by hand, not enforced by an import-time check |
 | `PL-8` | Platform | Tenant isolation enforced at the session | ✅ built | 31 |  |
 | `X-1` | Adoption | One-line auto-instrumentation | ✅ built | 39 |  |
 | `X-2` | Adoption | Static repo discovery and zero-effort CLI | ✅ built | 75 |  |
 | `P16` | 16 Business rules | Business-process guardrails and the guardrail catalogue | ◐ partial | 46 | policy compilation is deterministic: 86% of a tuned document and 64% of a held-out one compile with no question. Prose with no parseable structure ("be courteous") is reported as inexpressible rather than guessed at; a model-assisted path for those sentences is not built |
-| `X-4` | Adoption | Protective controls reachable without writing code | ✅ built | 16 |  |
+| `X-4` | Adoption | Protective controls reachable without writing code | ✅ built | 17 |  |
 | `X-3` | Adoption | Control-plane onboarding and attention-first home | ✅ built | 10 |  |
 | `I-1` | Integration | LangGraph-native SDK | ✅ built | 25 |  |
 | `I-2` | Integration | MCP inline governance | ✅ built | 50 |  |

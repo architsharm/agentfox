@@ -236,16 +236,25 @@ def register_detector(detector: Detector) -> Detector:
     return detector
 
 
+def _resolve(detector: Detector | None) -> Detector | None:
+    """The detector, or its model-server stand-in when `model_server_url` routes it
+    there (`detection.remote`). Every way of getting a detector goes through this, so
+    the pipeline, `doctor` and the catalogue all see the same one."""
+    from agentfox.capabilities.detection.remote import resolve
+
+    return resolve(detector)
+
+
 def get_detector(key: str) -> Detector | None:
-    return _REGISTRY.get(key)
+    return _resolve(_REGISTRY.get(key))
 
 
 def all_detectors() -> dict[str, Detector]:
-    return dict(_REGISTRY)
+    return {k: _resolve(d) for k, d in _REGISTRY.items()}
 
 
 def available_detectors() -> dict[str, Detector]:
-    return {k: d for k, d in _REGISTRY.items() if d.available()}
+    return {k: d for k, d in all_detectors().items() if d.available()}
 
 
 def _keys_to_warm() -> frozenset[str]:
@@ -282,7 +291,7 @@ def warm_all() -> None:
     detector's `error`, which is where it belongs."""
     warn_unrunnable(enabled_only=True)
     for key in sorted(_keys_to_warm()):
-        detector = _REGISTRY.get(key)
+        detector = get_detector(key)
         if detector is None:
             continue
         try:
