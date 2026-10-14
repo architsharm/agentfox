@@ -4,14 +4,15 @@ Two tiers, and the split is a **licence** decision, not a quality one:
 
 * :class:`GraniteGuardianDetector` — IBM Granite Guardian, **Apache-2.0 weights**.
   The default. It is the cleanest licence in the classifier group, which is what a
-  commercial product needs.
+  commercial product needs. Like Llama Guard it is a causal LM, so it generates a
+  verdict rather than going through `_TransformersClassifier`'s classification pipeline.
 * :class:`RestrictedClassifierDetector` — Meta Llama Guard 3-8B (Prompt Guard and
   ShieldGemma share the same licence gate but have no registered adapter). The
   Llama Community licence is **not OSI-approved**: it adds an acceptable-use policy
   and a >700M-MAU clause, so it has to be opt-in, and the adapter refuses to load unless
-  ``AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1`` — and, unlike every classifier
-  above, it is not actually a classification model (see that class's docstring
-  for why it cannot share `_TransformersClassifier`'s inference path).
+  ``AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1``. It is not a classification
+  model either (see that class's docstring for why it cannot share
+  `_TransformersClassifier`'s inference path).
 
 Neither is installed by default. A customer must not inherit a licence obligation
 by running ``docker compose up``.
@@ -262,42 +263,213 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         return []
 
 
+def _chat_inputs(
+    tokenizer, chat: list[dict[str, str]], add_generation_prompt: bool = False, **template_kwargs
+):
+    """`input_ids` and `attention_mask` for a chat, on any supported transformers.
+
+    `apply_chat_template(..., return_tensors="pt")` returns a bare tensor on 4.x and a
+    `BatchEncoding` on 5.x, where `return_dict` became the default. Asking for the dict
+    explicitly gives the same shape on both, rather than code that calls `.shape` on
+    whichever one it was written against."""
+    encoded = tokenizer.apply_chat_template(
+        chat,
+        add_generation_prompt=add_generation_prompt,
+        return_tensors="pt",
+        return_dict=True,
+        **template_kwargs,
+    )
+    return encoded["input_ids"], encoded["attention_mask"]
+
+
 class GraniteGuardianDetector(_TransformersClassifier):
-    """IBM Granite Guardian — Apache-2.0. The default classifier."""
+    """IBM Granite Guardian — Apache-2.0. The default classifier.
+
+    Granite Guardian is a causal LM (`GraniteForCausalLM`), not a classification
+    model, so it cannot use `_TransformersClassifier`'s text-classification pipeline:
+    current transformers refuses the architecture and the inference call crashes, and
+    older releases bolt on an untrained classification head (see
+    `RestrictedClassifierDetector`). `_detect` follows IBM's model card instead: the
+    tokenizer's chat template takes a `guardian_config` naming one risk from the
+    model's built-in risk bank, and the model answers "Yes" (risky) or "No". The
+    score is the card's probability of risk, P(Yes) / (P(Yes) + P(No)), read from
+    the logits of that one generated token.
+
+    Each risk is a separate forward pass over the whole prompt, and the model has
+    roughly 2.5B parameters, so on CPU a call takes seconds or minutes, not
+    milliseconds (see `timeout_ms`). The model goes on a CUDA device when torch
+    has one.
+    """
 
     key = "safety.granite"
-    version = "1.0"
+    version = "2.0"
     surfaces = ("input", "output", "retrieved", "tool_result")
+    #: Granite Guardian risk name (a key in the chat template's risk bank) -> entity.
     label_map = {
-        "yes": "SAFETY.HARM",
-        "harmful": "SAFETY.HARM",
-        "risky": "SAFETY.HARM",
+        "harm": "SAFETY.HARM",
         "jailbreak": "INJECTION.JAILBREAK",
-        "unsafe": "SAFETY.HARM",
     }
+    #: Jailbreak is about content trying to steer the model, so it is checked on what
+    #: arrives at the model. A completion is checked for harm only, which also keeps
+    #: the output surface to one forward pass.
+    risks_by_surface = {
+        "input": ("harm", "jailbreak"),
+        "retrieved": ("harm", "jailbreak"),
+        "tool_result": ("harm", "jailbreak"),
+        "output": ("harm",),
+    }
+    safe_token = "No"
+    unsafe_token = "Yes"
+    #: The verdict is the first generated token; nothing after it is read.
+    max_new_tokens = 1
+    # Measured with one torch thread (see `_TransformersClassifier._pipeline`) and
+    # bfloat16 weights, per risk on a one-line input: about 24s on an Apple Silicon
+    # Mac, and more than 15 minutes in a Linux container on the same machine, whose
+    # CPU has no bfloat16 instructions, so torch falls back to a generic matmul
+    # (float32 would be the fast CPU path, but needs about 10GB of memory). An
+    # input surface asks about two risks. None of that is near the 40ms pipeline
+    # default or the enforcement budget, and the pipeline caps every detector at
+    # what is left of that budget, so no value here makes it fit on CPU. There this
+    # detector reports `timeout` on live traffic, which the pipeline records as
+    # degraded rather than as "nothing found", and the abandoned call keeps a
+    # heavy-pool worker busy until it finishes. That is why deploy/docker-compose.yml
+    # ships the weights but leaves it disabled. It earns its place on a GPU, or in
+    # offline evaluation. The ceiling is here so a run that does fit is not cut off
+    # at the 40ms default.
+    timeout_ms = 5000
+    # Decoded views (base64, zero-width-stripped, ...) would each cost another full
+    # pass per risk; the cheap detectors scan them instead.
+    handles_views = True
 
     def __init__(self, model_id: str | None = None) -> None:
         self.model_id = model_id or get_settings().granite_guardian_model
+
+    @functools.cached_property
+    def _generator(self):  # pragma: no cover - requires optional dependency + weights
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        torch.set_num_threads(1)  # see _TransformersClassifier._pipeline for why
+        # local_files_only: see `_TransformersClassifier._pipeline`.
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id, local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, torch_dtype=torch.bfloat16, local_files_only=True
+        )
+        if torch.cuda.is_available():
+            model.to("cuda")
+        model.eval()
+        return tokenizer, model
+
+    @functools.cached_property
+    def _verdict_token_ids(self) -> tuple[list[int], list[int]]:
+        """Every vocabulary id that reads as the safe or the unsafe answer, matched
+        the way IBM's card matches them (stripped, case-insensitive)."""
+        tokenizer, _ = self._generator
+        safe: list[int] = []
+        unsafe: list[int] = []
+        for token, index in tokenizer.get_vocab().items():
+            text = token.strip().lower()
+            if text == self.safe_token.lower():
+                safe.append(index)
+            elif text == self.unsafe_token.lower():
+                unsafe.append(index)
+        return safe, unsafe
+
+    def warm(self) -> None:  # pragma: no cover - requires optional dependency
+        # Loads the weights and the verdict tokens, and stops there. Running a prompt
+        # as well (the old warm-up ran "", a zero-length tensor the model cannot take)
+        # costs a full pass, and this runs inside the gateway's startup: on a CPU
+        # without bfloat16 support one pass kept /api/health down for over 15 minutes.
+        # A pass has no one-time cost beyond what loading already paid.
+        if self.available():
+            self._verdict_token_ids  # noqa: B018 - loads `_generator` too
+
+    def _assess(self, content: str, surface: str, risk: str) -> tuple[str, float]:
+        """Ask the model about one risk. Returns its answer and the probability of risk."""
+        import torch
+
+        tokenizer, model = self._generator
+        # The template judges the last turn. A completion is an assistant turn, and an
+        # assistant turn needs the user turn before it; the detector is not given the
+        # prompt, so that turn is empty.
+        if surface == "output":
+            chat = [{"role": "user", "content": ""}, {"role": "assistant", "content": content}]
+        else:
+            chat = [{"role": "user", "content": content}]
+        input_ids, attention_mask = _chat_inputs(
+            tokenizer, chat, add_generation_prompt=True, guardian_config={"risk_name": risk}
+        )
+        device = getattr(model, "device", "cpu")
+        input_ids, attention_mask = input_ids.to(device), attention_mask.to(device)
+        with torch.no_grad():
+            output = model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                do_sample=False,
+                max_new_tokens=self.max_new_tokens,
+                return_dict_in_generate=True,
+                output_scores=True,
+                pad_token_id=tokenizer.pad_token_id,
+            )
+        answer = tokenizer.decode(
+            output.sequences[0][input_ids.shape[-1] :], skip_special_tokens=True
+        ).strip()
+        log_probs = torch.log_softmax(output.scores[0][0].float(), dim=-1)
+        safe_ids, unsafe_ids = self._verdict_token_ids
+        p_safe = float(log_probs[safe_ids].exp().sum()) + 1e-50
+        p_unsafe = float(log_probs[unsafe_ids].exp().sum()) + 1e-50
+        return answer, p_unsafe / (p_safe + p_unsafe)
+
+    def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
+        if not content:
+            return []
+        text = content[:4000]
+        out: list[Detection] = []
+        for risk in self.risks_by_surface.get(context.surface, ("harm",)):
+            answer, prob_of_risk = self._assess(text, context.surface, risk)
+            # An answer that is neither "Yes" nor "No" is the card's "Failed": not a
+            # verdict, so not a detection.
+            if answer.lower() != self.unsafe_token.lower():
+                continue
+            out.append(
+                Detection(
+                    entity_type=self.label_map[risk],
+                    score=prob_of_risk,
+                    end=len(content),
+                    sample=redact_sample(content, keep=12),
+                    owasp_id="LLM09",
+                    detail={
+                        "engine": self.key,
+                        "model": self.model_id,
+                        "risk": risk,
+                        "label": answer,
+                    },
+                )
+            )
+        return out
 
 
 class RestrictedClassifierDetector(_TransformersClassifier):
     """Llama Guard 3-8B. Opt-in, licence-gated.
 
-    Unlike every other detector in this module, Llama Guard is not a
-    classification model — it is a causal LM fine-tuned to *generate* the word
-    "safe" or "unsafe\\nS<n>" in response to a chat-formatted prompt built from
-    its own tokenizer's chat template (the taxonomy the template embeds is baked
-    into the tokenizer config, not passed by the caller). Running it through
-    `_TransformersClassifier`'s `pipeline("text-classification", ...)` — right
-    for Granite Guardian and the two prompt-injection models, which really are
-    fine-tuned classification heads — does not error for this model, but it
-    silently attaches a freshly, randomly-initialized classification head on top
-    of the pretrained base model (`config.json` declares `LlamaForCausalLM`, no
-    classification head) and scores everything against untrained noise. That
-    failure mode produces no error and no obviously-wrong output, so it would
-    ship undetected. `_detect` below instead follows Meta's own documented usage
-    (`apply_chat_template` + `generate`, checking whether the completion starts
-    with "unsafe"), overriding the classification-pipeline machinery entirely
+    Like Granite Guardian, and unlike the prompt-injection classifiers, Llama
+    Guard is not a classification model — it is a causal LM fine-tuned to
+    *generate* the word "safe" or "unsafe\\nS<n>" in response to a chat-formatted
+    prompt built from its own tokenizer's chat template (the taxonomy the
+    template embeds is baked into the tokenizer config, not passed by the
+    caller). Running it through `_TransformersClassifier`'s
+    `pipeline("text-classification", ...)` — right for the two prompt-injection
+    models, which really are fine-tuned classification heads, but not for Granite
+    Guardian, a causal LM too (see `GraniteGuardianDetector`) — does not error on
+    older transformers, but it silently attaches a freshly, randomly-initialized
+    classification head on top of the pretrained base model (`config.json`
+    declares `LlamaForCausalLM`, no classification head) and scores everything
+    against untrained noise. That failure mode produces no error and no
+    obviously-wrong output, so it would ship undetected. Current transformers
+    refuses the architecture for the text-classification pipeline instead.
+    `_detect` below follows Meta's own documented usage (`apply_chat_template` +
+    `generate`, checking whether the completion starts with "unsafe"),
+    overriding the classification-pipeline machinery entirely
     while still reusing `available()`/`_weights_present()` from the base class.
     """
 
@@ -347,10 +519,13 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         # the model, which maps onto Llama Guard's "user" role.
         role = "assistant" if context.surface == "output" else "user"
         chat = [{"role": role, "content": content[:4000]}]
-        input_ids = tokenizer.apply_chat_template(chat, return_tensors="pt")
+        input_ids, attention_mask = _chat_inputs(tokenizer, chat)
         with torch.no_grad():
             generated = model.generate(
-                input_ids=input_ids, max_new_tokens=self.max_new_tokens, pad_token_id=0
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=self.max_new_tokens,
+                pad_token_id=0,
             )
         completion = tokenizer.decode(
             generated[0][input_ids.shape[-1] :], skip_special_tokens=True

@@ -8,11 +8,14 @@ dropping a project that gets archived, touches one adapter file.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from agentfox.core.vocab import SURFACES
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -247,6 +250,15 @@ def available_detectors() -> dict[str, Detector]:
 
 def warm_all() -> None:
     """Call once at process startup (see `gateway.app.lifespan`). Only detectors
-    with real first-call cost do anything here; everything else is a no-op."""
+    with real first-call cost do anything here; everything else is a no-op.
+
+    A detector that fails to warm is logged and left cold rather than raised: this
+    runs inside the gateway's startup, and one broken model (an incomplete weights
+    download, an architecture the installed transformers rejects) used to take the
+    whole process down with it. The same failure on a request is recorded as that
+    detector's `error`, which is where it belongs."""
     for detector in available_detectors().values():
-        detector.warm()
+        try:
+            detector.warm()
+        except Exception:
+            log.exception("detector %s failed to warm; it stays cold", detector.key)
