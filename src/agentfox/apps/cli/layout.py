@@ -221,10 +221,11 @@ def apply_layout(app: typer.Typer) -> None:
     scan.cls = default_group("repo", routes={"--sessions": "sessions"})
     scan.no_args_is_help = False
     scan.help = (
-        "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.\n\n"
+        "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n"
         "`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). "
         "`agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs "
-        "the live detector check. `mcp`, `skills` and `runtime` scan the rest; "
+        "the live detector check. `machine` checks the MCP servers and skills your AI "
+        "tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; "
         "`monitors` re-checks connected sources on a schedule."
     )
     scan_app = scan.typer_instance

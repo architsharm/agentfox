@@ -32,6 +32,7 @@ export default function Page() {
       <TaskTable
         rows={[
           { task: "Check every server in this directory's MCP config", run: "agentfox scan mcp" },
+          { task: "Check the servers and skills your AI tools load on this machine", run: "agentfox scan machine" },
           { task: "Check one server's tools and record a snapshot", run: "agentfox scan mcp github --file tools.json" },
           { task: "Read a config elsewhere", run: "agentfox scan mcp --config claude_desktop_config.json" },
           { task: "Let an agent call one MCP tool", run: "agentfox permit grant research-bot mcp:github/search_issues" },
@@ -42,10 +43,11 @@ export default function Page() {
       <h2>1. Scan the config</h2>
       <Code>{`agentfox scan mcp`}</Code>
       <p>
-        With no setup it reads the first of <code>.mcp.json</code>,{" "}
+        With no setup it reads every one of <code>.mcp.json</code>, <code>mcp.json</code>,{" "}
         <code>.cursor/mcp.json</code>, <code>.claude/settings.json</code>,{" "}
-        <code>.claude.json</code> and <code>claude_desktop_config.json</code> in this
-        directory (or the file <code>--config</code> names), registers every server it
+        <code>.claude/settings.local.json</code>, <code>.claude.json</code>,{" "}
+        <code>claude_desktop_config.json</code> and <code>mcp_settings.json</code> found in
+        this directory (or only the file <code>--config</code> names), registers every server it
         declares, and starts none of them. For each server it reports the launch command,
         what the server can reach, version pinning, auth on a remote server (plain{" "}
         <code>http://</code> to a non-local host, no auth header), literal credentials in{" "}
@@ -53,6 +55,26 @@ export default function Page() {
         read private data, read content outsiders write, and send data out are reported as
         a lethal trifecta. The full walkthrough is in{" "}
         <Link href="/docs/guides/scan-a-repo">Audit a repository</Link>.
+      </p>
+
+      <h3 id="machine">Servers configured at user level</h3>
+      <p>
+        Most MCP servers are not committed to a repository. They are added once to an AI
+        tool and then load in every session, so a scan of the repository never sees them.
+      </p>
+      <Code>{`agentfox scan machine`}</Code>
+      <p>
+        This reads the user-level configs of Claude Code (<code>~/.claude.json</code>,
+        including each project&apos;s servers), Claude Desktop, Cursor, Windsurf, VS Code,
+        Cline, Gemini CLI and Codex (<code>~/.codex/config.toml</code>), and the skills
+        under <code>~/.claude/skills</code>, <code>~/.claude/plugins</code>,{" "}
+        <code>~/.codex/skills</code> and <code>~/.agents/skills</code>. It needs no{" "}
+        <code>agentfox init</code>, writes nothing, starts nothing, and never prints an{" "}
+        <code>env</code> value. A lethal trifecta is reported per set of servers that one
+        client loads together: a Claude Code project&apos;s servers plus the user-level
+        ones, or one Cursor config. Two servers in different tools never share a model and
+        are not reported together. It exits <code>1</code> on a trifecta or a critical
+        issue; <code>--json</code> prints the full result.
       </p>
 
       <h2>2. Pin versions</h2>

@@ -99,6 +99,28 @@ jobs:
           target: deps
           push: false
 
+  # Runs action.yml the way a user's workflow would (`uses: ./` is this checkout), on a
+  # repository that has a lethal trifecta, so a broken action fails here and not in
+  # someone else's pull request.
+  github-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: A repository with a trifecta
+        run: |
+          mkdir -p "$RUNNER_TEMP/sample"
+          echo '{"mcpServers":{"github":{"command":"npx","args":["@modelcontextprotocol/server-github"]}}}' \
+            > "$RUNNER_TEMP/sample/.mcp.json"
+      - uses: ./
+        id: scan
+        with:
+          path: ${{ runner.temp }}/sample
+          fail-on: none
+      - name: The action found it
+        env:
+          TRIFECTAS: ${{ steps.scan.outputs.trifectas }}
+        run: test "$TRIFECTAS" = "1"
+
   # Belt-and-suspenders for the local pre-commit hook (.pre-commit-config.yaml):
   # catches the case where src/agentfox/ changed and the vendored wheel(s) didn't,
   # e.g. a commit made with --no-verify. This is what let guardrails-api and the

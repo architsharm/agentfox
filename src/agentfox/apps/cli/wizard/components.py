@@ -497,13 +497,9 @@ def _tools_apply(run: Run) -> None:
 
 
 def _mcp_decls(run: Run) -> list[Any]:
-    from agentfox.capabilities.discovery.exposure import find_mcp_configs, parse_mcp_config
+    from agentfox.capabilities.discovery.exposure import declared_mcp_servers
 
-    declared: dict[str, Any] = {}
-    for path in find_mcp_configs(run.ctx.root):
-        for decl in parse_mcp_config(path, root=run.ctx.root):
-            declared.setdefault(decl.name, decl)
-    return list(declared.values())
+    return declared_mcp_servers(run.ctx.root)
 
 
 def _mcp_unavailable(run: Run) -> str:
@@ -563,6 +559,52 @@ def _client_apply(run: Run) -> None:
     run.done(
         "ai-client", "added AgentFox to .mcp.json — ask your AI client about findings and approvals"
     )
+
+
+# ---------------------------------------------------------------------------
+# Every pull request: the GitHub Action
+# ---------------------------------------------------------------------------
+
+WORKFLOW_PATH = Path(".github") / "workflows" / "agentfox.yml"
+
+#: The workflow `up` writes: the repository's own GitHub Action (action.yml), the same
+#: scan as `agentfox scan`, failing a pull request that adds a trifecta or a bad skill.
+WORKFLOW = """\
+# Written by `agentfox up`. Annotates lethal trifectas, ungoverned model calls and
+# poisoned skills on every pull request; `fail-on` decides what fails the check.
+name: AgentFox
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: architsharm/agentfox@main
+        with:
+          fail-on: trifecta,skills
+"""
+
+
+def _ci_unavailable(run: Run) -> str:
+    if run.ctx.github_repo or (run.ctx.root / ".github").is_dir():
+        return ""
+    return "not a GitHub repository (no origin on github.com, no .github/)"
+
+
+def _ci_apply(run: Run) -> None:
+    path = run.ctx.root / WORKFLOW_PATH
+    if path.exists():
+        run.done("ci", f"{WORKFLOW_PATH} already exists, left alone")
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(WORKFLOW)
+    run.done("ci", f"wrote {WORKFLOW_PATH} — every pull request is scanned; commit it to start")
 
 
 # ---------------------------------------------------------------------------
@@ -725,6 +767,14 @@ CATALOGUE: tuple[Component, ...] = (
         _never,
         lambda r: True,
         _apply_scan,
+    ),
+    Component(
+        "ci",
+        "Every pull request — the AgentFox GitHub Action",
+        lambda r: "fails a PR that adds a lethal trifecta or a poisoned skill",
+        _ci_unavailable,
+        lambda r: bool(r.ctx.github_repo),
+        _ci_apply,
     ),
     Component(
         "monitoring",

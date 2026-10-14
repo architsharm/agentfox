@@ -481,23 +481,118 @@ class McpServerDecl:
         }
 
 
-def parse_mcp_config(path: Path, *, root: Path | None = None) -> list[McpServerDecl]:
-    """Every server one config file declares. Unreadable or non-MCP JSON -> []."""
-    try:
-        data = json.loads(path.read_text(errors="ignore"))
-    except (OSError, ValueError):
-        return []
-    if not isinstance(data, dict):
-        return []
-    try:
-        label = str(path.resolve().relative_to(root.resolve())) if root else str(path)
-    except ValueError:
-        label = str(path)
+def _strip_jsonc(text: str) -> str:
+    """JSON with comments and trailing commas (VS Code's settings and mcp.json) as JSON.
 
-    blocks: list[dict[str, Any]] = []
-    for key in ("mcpServers", "servers"):
-        if isinstance(data.get(key), dict):
-            blocks.append(data[key])
+    Comments are removed only outside strings, so a URL's ``//`` survives.
+    """
+    out: list[str] = []
+    i, n, in_string = 0, len(text), False
+    while i < n:
+        ch = text[i]
+        if in_string:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                in_string = False
+            i += 1
+            continue
+        if ch == '"':
+            in_string = True
+            out.append(ch)
+            i += 1
+        elif text.startswith("//", i):
+            end = text.find("\n", i)
+            i = n if end == -1 else end
+        elif text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            i = n if end == -1 else end + 2
+        else:
+            out.append(ch)
+            i += 1
+    return re.sub(r",(\s*[}\]])", r"\1", "".join(out))
+
+
+def _load_config(path: Path) -> dict[str, Any] | None:
+    """A client config file as a dict: JSON, JSON with comments, or Codex's TOML."""
+    try:
+        text = path.read_text(errors="ignore")
+    except OSError:
+        return None
+    if path.suffix == ".toml":
+        import tomllib
+
+        try:
+            data: Any = tomllib.loads(text)
+        except ValueError:
+            return None
+    else:
+        try:
+            data = json.loads(text)
+        except ValueError:
+            try:
+                data = json.loads(_strip_jsonc(text))
+            except ValueError:
+                return None
+    return data if isinstance(data, dict) else None
+
+
+def _server_block(data: dict[str, Any]) -> dict[str, Any]:
+    """The servers a config declares at its top level, by name.
+
+    ``mcpServers`` (Claude, Cursor, Windsurf, Gemini CLI, Cline), ``servers`` (VS Code's
+    mcp.json), ``mcp.servers`` (VS Code's settings.json) and ``mcp_servers`` (Codex's
+    config.toml).
+    """
+    block: dict[str, Any] = {}
+    candidates = [data.get("mcpServers"), data.get("servers"), data.get("mcp_servers")]
+    if isinstance(data.get("mcp"), dict):
+        candidates.append(data["mcp"].get("servers"))
+    for candidate in candidates:
+        if isinstance(candidate, dict):
+            for name, entry in candidate.items():
+                block.setdefault(str(name), entry)
+    return block
+
+
+def _decl(name: str, entry: Any, label: str) -> McpServerDecl:
+    entry = entry if isinstance(entry, dict) else {}
+    url = str(entry.get("url") or entry.get("serverUrl") or entry.get("httpUrl") or "")
+    transport = str(entry.get("type") or entry.get("transport") or "")
+    if not transport:
+        transport = "http" if url else "stdio"
+    args = entry.get("args") or []
+    headers = entry.get("headers") or entry.get("http_headers")
+    return McpServerDecl(
+        name=name,
+        config=label,
+        command=str(entry.get("command") or ""),
+        args=[str(a) for a in args] if isinstance(args, list) else [],
+        url=url,
+        transport=transport,
+        headers=headers if isinstance(headers, dict) else {},
+        env=entry.get("env") if isinstance(entry.get("env"), dict) else {},
+    )
+
+
+def _label(path: Path, root: Path | None) -> str:
+    try:
+        return str(path.resolve().relative_to(root.resolve())) if root else str(path)
+    except ValueError:
+        return str(path)
+
+
+def parse_mcp_config(path: Path, *, root: Path | None = None) -> list[McpServerDecl]:
+    """Every server one config file declares. Unreadable or non-MCP config -> []."""
+    data = _load_config(path)
+    if data is None:
+        return []
+    label = _label(path, root)
+
+    blocks: list[dict[str, Any]] = [_server_block(data)]
     # A user-level config may keep per-project servers under projects.<path>.mcpServers.
     projects = data.get("projects")
     if isinstance(projects, dict):
@@ -512,31 +607,56 @@ def parse_mcp_config(path: Path, *, root: Path | None = None) -> list[McpServerD
             if name in seen:
                 continue
             seen.add(name)
-            entry = entry if isinstance(entry, dict) else {}
-            url = str(entry.get("url") or entry.get("serverUrl") or "")
-            transport = str(entry.get("type") or entry.get("transport") or "")
-            if not transport:
-                transport = "http" if url else "stdio"
-            args = entry.get("args") or []
-            servers.append(
-                McpServerDecl(
-                    name=str(name),
-                    config=label,
-                    command=str(entry.get("command") or ""),
-                    args=[str(a) for a in args] if isinstance(args, list) else [],
-                    url=url,
-                    transport=transport,
-                    headers=entry.get("headers") if isinstance(entry.get("headers"), dict) else {},
-                    env=entry.get("env") if isinstance(entry.get("env"), dict) else {},
-                )
-            )
+            servers.append(_decl(str(name), entry, label))
     return servers
+
+
+def mcp_loadouts(path: Path, *, label: str) -> list[tuple[str, list[McpServerDecl]]]:
+    """The sets of servers from one config that a single client session loads together.
+
+    Servers in one loadout share a model, so together they can make a lethal trifecta
+    that none of them is alone. Most configs are one loadout. Claude Code's
+    ``~/.claude.json`` is several: its top-level servers load in every project, and
+    each ``projects.<path>.mcpServers`` block loads only in that project, alongside the
+    top-level ones. Treating the whole file as one set would report a trifecta between
+    two projects' servers that are never loaded at the same time.
+    """
+    data = _load_config(path)
+    if data is None:
+        return []
+    everywhere = [_decl(str(n), e, label) for n, e in _server_block(data).items()]
+    loadouts: list[tuple[str, list[McpServerDecl]]] = []
+    if everywhere:
+        loadouts.append((label, everywhere))
+    projects = data.get("projects")
+    if isinstance(projects, dict):
+        for project_path, project in projects.items():
+            if not isinstance(project, dict) or not isinstance(project.get("mcpServers"), dict):
+                continue
+            local = [_decl(str(n), e, label) for n, e in project["mcpServers"].items()]
+            if not local:
+                continue
+            names = {d.name for d in local}
+            merged = local + [d for d in everywhere if d.name not in names]
+            loadouts.append((f"{label} (project {project_path})", merged))
+    return loadouts
 
 
 def find_mcp_configs(root: Path) -> list[Path]:
     """The MCP client configs at a repository's root, in :data:`KNOWN_MCP_CONFIGS`
     order. Only files that exist; nothing is walked below these fixed locations."""
     return [root / row.path for row in KNOWN_MCP_CONFIGS if (root / row.path).is_file()]
+
+
+def declared_mcp_servers(root: Path, config: Path | None = None) -> list[McpServerDecl]:
+    """Every server the repository's MCP configs declare (or ``config`` alone), once
+    each by name: the first config to declare a name, in :func:`find_mcp_configs`
+    order, wins."""
+    declared: dict[str, McpServerDecl] = {}
+    for path in [config] if config is not None else find_mcp_configs(root):
+        for decl in parse_mcp_config(path, root=root):
+            declared.setdefault(decl.name, decl)
+    return list(declared.values())
 
 
 def _haystack(decl: McpServerDecl) -> set[str]:

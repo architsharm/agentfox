@@ -371,6 +371,13 @@ BUILTIN: tuple[FindingType, ...] = (
         "A skill file's description or body reads like instructions to the model.",
     ),
     _t(
+        "skill_secret_exfiltration",
+        "Skill sends credentials out",
+        "critical",
+        "discovery",
+        "A skill tells the agent to read where credentials live and send them somewhere.",
+    ),
+    _t(
         "skill_dangerous_command",
         "Dangerous command in a skill",
         "high",

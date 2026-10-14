@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from agentfox.capabilities.discovery.machine import MachineReport
     from agentfox.capabilities.discovery.repo import ScanReport
 
 #: Where `up` keeps what it needs between runs. `.agentfox/` already holds a project's
@@ -51,6 +52,10 @@ class Context:
     github_repo: str | None
     docker: bool
     saved: dict[str, Any]
+    #: The AI tools set up on this machine (`agentfox scan machine`), or None when skipped.
+    machine: MachineReport | None = None
+    #: The repository's own SKILL.md files, as `agentfox scan skills` reports them.
+    skills: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def project(self) -> str:
@@ -78,22 +83,31 @@ def _on_path(binary: str) -> bool:
     return shutil.which(binary) is not None
 
 
-def _harnesses(root: Path) -> list[Harness]:
+#: `agentfox scan machine`'s client names, for the harnesses that have an adapter.
+_MACHINE_CLIENTS = {"Claude Code": "claude", "Codex": "codex"}
+
+
+def _harnesses(root: Path, machine: MachineReport | None) -> list[Harness]:
     from agentfox import harnesses
 
     # Signs a project uses a coding agent: its config directory or instructions file
-    # in the repo, or the binary on this machine.
+    # in the repo, the binary on this machine, or its user-level config, as the
+    # machine scan found it.
     signs = {
-        "claude": (root / ".claude", root / "CLAUDE.md", "claude"),
-        "codex": (root / ".codex", root / "AGENTS.md", "codex"),
+        "claude": (root / ".claude", root / "CLAUDE.md"),
+        "codex": (root / ".codex", root / "AGENTS.md"),
+    }
+    configured = {
+        _MACHINE_CLIENTS[c["client"]]
+        for c in (machine.configs if machine else [])
+        if c["client"] in _MACHINE_CLIENTS
     }
     found = []
     for adapter in harnesses.all():
-        directory, notes, binary = signs.get(adapter.name, (None, None, adapter.name))
-        present = bool(
-            (directory is not None and directory.exists())
-            or (notes is not None and notes.exists())
-            or _on_path(binary)
+        present = (
+            any(p.exists() for p in signs.get(adapter.name, ()))
+            or _on_path(adapter.name)
+            or adapter.name in configured
         )
         try:
             hooked = sorted(adapter.hooked_agents(root))
@@ -215,16 +229,23 @@ def git_ignore(root: Path, entry: str) -> None:
     gitignore.write_text(f"{existing}{prefix}{entry}\n")
 
 
-def detect(root: Path) -> Context:
+def detect(root: Path, *, machine: bool = True) -> Context:
+    """Everything `up` knows before it asks: the repository scan, the repository's
+    skills and, unless ``machine`` is off, the AI tools set up on this machine."""
+    from agentfox.capabilities.discovery.machine import scan_machine
     from agentfox.capabilities.discovery.repo import scan
+    from agentfox.capabilities.discovery.skills import scan_skills_dir
 
     report = scan(root)
+    machine_report = scan_machine() if machine else None
     return Context(
         root=root,
         report=report,
-        harnesses=_harnesses(root),
+        harnesses=_harnesses(root, machine_report),
         entry_points=_entry_points(root, report),
         github_repo=github_repo(root),
         docker=_on_path("docker"),
         saved=load_answers(root),
+        machine=machine_report,
+        skills=scan_skills_dir(root),
     )

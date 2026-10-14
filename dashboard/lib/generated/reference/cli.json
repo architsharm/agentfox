@@ -81,7 +81,7 @@
       "required": false,
       "multiple": false,
       "default": null,
-      "help": "Components to include, comma-separated: coding-agents, python-app, gateway, tools, mcp, scan-report, monitoring, compliance, ai-client, view."
+      "help": "Components to include, comma-separated: coding-agents, python-app, gateway, tools, mcp, scan-report, ci, monitoring, compliance, ai-client, view."
      },
      {
       "kind": "option",
@@ -187,6 +187,19 @@
       "multiple": false,
       "default": true,
       "help": "Start the hook daemon and local API in the background."
+     },
+     {
+      "kind": "option",
+      "name": "skip_machine",
+      "opts": [
+       "--skip-machine"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Skip the user-level MCP configs and skills of the AI tools on this machine."
      }
     ],
     "default_subcommand": null,
@@ -247,8 +260,8 @@
    {
     "path": "scan",
     "name": "scan",
-    "summary": "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.",
-    "help": "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
+    "summary": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.",
+    "help": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `machine` checks the MCP servers and skills your AI tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
     "panel": "See",
     "params": [],
     "default_subcommand": "repo",
@@ -286,6 +299,44 @@
         "multiple": false,
         "default": true,
         "help": "Raise findings, or just print."
+       }
+      ],
+      "default_subcommand": null,
+      "commands": []
+     },
+     {
+      "path": "scan machine",
+      "name": "machine",
+      "summary": "Check the MCP servers and skills your AI tools load on this machine.",
+      "help": "Check the MCP servers and skills your AI tools load on this machine.\n\nReads the user-level configs of Claude Code, Claude Desktop, Cursor, Windsurf,\nVS Code, Cline, Gemini CLI and Codex, and the skills under ~/.claude, ~/.codex and\n~/.agents. Nothing is started, nothing is written and nothing leaves this machine;\nno `agentfox init` is needed. Exits 1 on a lethal trifecta or a critical issue.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "skills",
+        "opts": [
+         "--skills",
+         "--no-skills"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": true,
+        "help": "Also scan user-level skill directories."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Machine-readable output for scripts."
        }
       ],
       "default_subcommand": null,
@@ -335,7 +386,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": "MCP client config to read servers from. Default: the first of .mcp.json, .cursor/mcp.json, .claude/settings.json, .claude.json and claude_desktop_config.json found in this directory."
+        "help": "MCP client config to read servers from. Default: every one of .mcp.json, mcp.json, .cursor/mcp.json, .claude/settings.json, .claude/settings.local.json, .claude.json, claude_desktop_config.json and mcp_settings.json found in this directory. For the configs in your home directory, use `agentfox scan machine`."
        },
        {
         "kind": "option",

@@ -4,10 +4,12 @@
 
 # AgentFox
 
-**Know when your AI agent should stop.**
+**Open-source guardrails and a tool-call firewall for AI agents.**
 
-An open-source control plane that checks what your agent may read, may claim and may do —
-and refuses the rest. It holds after the model has already been convinced.
+AgentFox checks what your agent may read, may claim and may do, and refuses the rest. It
+contains prompt injection at the tool call, so it holds after the model has already been
+convinced. Works with OpenAI, Anthropic, LiteLLM, LangChain, LangGraph, MCP servers,
+Claude Code and Codex.
 
 [![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](pyproject.toml) [![PyPI](https://img.shields.io/pypi/v/agentfox.svg?color=2f6feb)](https://pypi.org/project/agentfox/) [![Status](https://img.shields.io/badge/status-early%20release-8a5a00.svg)](docs/status.md) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
 
@@ -50,7 +52,7 @@ agentfox up
 `up` scans the repository, then asks a few questions, each with a recommended answer:
 where AgentFox runs (this machine, your own server, or AgentFox Cloud), what to cover
 (Claude Code and Codex hooks, your Python agent, the gateway for any language, the tools
-and MCP servers it found, monitoring, compliance, the dashboard) and how strict to start.
+and MCP servers it found, the GitHub Action, monitoring, compliance, the dashboard) and how strict to start.
 Then it does all of it in one pass, starting in observe so nothing is blocked until you
 say so. `agentfox up --yes` takes every recommended answer; run it again any time and it
 picks up where you left off.
@@ -67,6 +69,23 @@ downloaded weights, no network egress. Or scan the directory you are in without 
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash
+```
+
+To check the MCP servers and skills that Claude Code, Cursor, Claude Desktop, VS Code,
+Windsurf, Gemini CLI and Codex load on your machine, with no setup:
+
+```bash
+agentfox scan machine
+```
+
+On every pull request, the GitHub Action annotates lethal trifectas, ungoverned model calls
+and poisoned skills, and fails the check on the kinds you list in `fail-on`:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: architsharm/agentfox@main
+  with:
+    fail-on: trifecta,skills
 ```
 
 Then govern your own agent with one line:

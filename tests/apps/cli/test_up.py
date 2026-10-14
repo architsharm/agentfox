@@ -46,6 +46,16 @@ if __name__ == "__main__":
 '''
 
 
+@pytest.fixture(autouse=True)
+def home(tmp_path: Path, monkeypatch) -> Path:
+    """A home directory of our own: `up` reads the AI tools set up on this machine."""
+    path = tmp_path / "home"
+    path.mkdir()
+    monkeypatch.setenv("HOME", str(path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(path / ".config"))
+    return path
+
+
 @pytest.fixture
 def project(tmp_path: Path) -> Path:
     root = tmp_path / "support-bot"
@@ -389,8 +399,14 @@ def test_confirm_and_text():
 
 def test_up_connects_to_a_running_self_hosted_server(project, cloud):
     result = _up(
-        str(project), "--yes", "--target", "self-hosted",
-        "--api-url", "http://agentfox.internal:8080", "--api-token", "nom_api_good",
+        str(project),
+        "--yes",
+        "--target",
+        "self-hosted",
+        "--api-url",
+        "http://agentfox.internal:8080",
+        "--api-token",
+        "nom_api_good",
     )
     assert result.exit_code == 0, result.output
     saved = json.loads((project / ".agentfox" / "up.json").read_text())
@@ -417,3 +433,45 @@ def test_starting_a_stack_without_docker_says_what_to_do(project, monkeypatch):
     assert result.exit_code == 1
     assert "--api-url and --api-token" in result.output
     assert not (project / ".agentfox" / "selfhost").exists()
+
+
+# ---------------------------------------------------------------------------
+# What landed with `agentfox scan machine` and the GitHub Action
+# ---------------------------------------------------------------------------
+
+
+def test_the_scan_step_includes_this_machine_and_the_repos_skills(project, home):
+    (home / ".codex").mkdir()
+    (home / ".codex" / "config.toml").write_text(
+        '[mcp_servers.fs]\ncommand = "npx"\nargs = ["@modelcontextprotocol/server-filesystem"]\n'
+    )
+    skill = project / "skills" / "deploy"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text("---\nname: deploy\ndescription: Deploys.\n---\nDeploy it.\n")
+
+    result = _up(str(project), "--yes", "--dry-run")
+    assert result.exit_code == 0, result.output
+    assert "this machine" in result.output and "Codex" in result.output
+    assert "skills" in result.output
+    # Codex is configured on this machine, so its hooks are offered too.
+    assert "Codex CLI" in result.output.split("coding agents", 1)[1].splitlines()[0]
+
+
+def test_skip_machine_leaves_the_home_directory_alone(project, home):
+    (home / ".claude.json").write_text('{"mcpServers": {"x": {"command": "x"}}}')
+    result = _up(str(project), "--yes", "--dry-run", "--skip-machine")
+    assert result.exit_code == 0, result.output
+    assert "this machine" not in result.output
+
+
+def test_up_adds_the_github_action_once(project):
+    from agentfox.apps.cli.wizard.components import WORKFLOW_PATH
+
+    (project / ".github").mkdir()
+    assert _up(str(project), "--yes", "--with", "ci").exit_code == 0
+    workflow = (project / WORKFLOW_PATH).read_text()
+    assert "uses: architsharm/agentfox@main" in workflow
+    (project / WORKFLOW_PATH).write_text("# mine\n")
+    result = _up(str(project), "--yes", "--with", "ci")
+    assert "already exists" in result.output
+    assert (project / WORKFLOW_PATH).read_text() == "# mine\n"

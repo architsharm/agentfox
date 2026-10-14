@@ -378,11 +378,12 @@ support-triage — blast radius 4
         prompts.
       </p>
 
-      <h2>A CI gate</h2>
+      <h2 id="ci">A CI gate</h2>
       <p>
-        <code>--fail</code> exits <code>1</code> when any model call is ungoverned and{" "}
-        <code>0</code> otherwise. On the example above it exits <code>1</code>; after adding{" "}
-        <code>agentfox.auto()</code> to the file it exits <code>0</code>.
+        The AgentFox GitHub Action runs this scan and <code>scan skills</code> on every pull
+        request. It annotates the lines that raised a finding, writes a summary table to the
+        job page, and fails the check on a lethal trifecta or a poisoned skill. Nothing in
+        the repository is imported or run, and nothing is sent anywhere.
       </p>
       <Code lang="yaml" title=".github/workflows/agentfox.yml">{`name: agentfox
 on: [pull_request]
@@ -392,7 +393,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: architsharm/agentfox@main
+        with:
+          # What fails the check: trifecta, skills, ungoverned, or none.
+          fail-on: trifecta,skills`}</Code>
+      <p>
+        Pin <code>@main</code> to a release tag or a commit SHA once you have one you trust.
+        The action installs AgentFox from its own ref, so the scanner and the action always
+        match. Its outputs, <code>trifectas</code>, <code>ungoverned</code> and{" "}
+        <code>skill-issues</code>, are counts later steps can branch on, and{" "}
+        <code>json-out: scan.json</code> writes the full result.
+      </p>
+      <p>
+        Without the action, the same checks are two commands. <code>--fail</code> exits{" "}
+        <code>1</code> when any model call is ungoverned and <code>0</code> otherwise. On the
+        example above it exits <code>1</code>; after adding <code>agentfox.auto()</code> to
+        the file it exits <code>0</code>.
+      </p>
+      <Code lang="yaml" title=".github/workflows/agentfox.yml">{`      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install agentfox
@@ -405,10 +423,10 @@ jobs:
           <code>--fail</code> looks only at ungoverned model calls. A lethal trifecta, an
           unpinned MCP server or a hard-coded secret does not change the exit code, and an
           agent wrapped in <code>agentfox.auto()</code> still reports its trifecta. To gate on
-          those, read <code>scan.json</code>: for example, fail when{" "}
-          <code>lethal_trifectas</code> is non-empty. <code>agentfox scan mcp</code>, by
-          contrast, exits <code>1</code> on a critical issue, including a trifecta across
-          the servers in one MCP config.
+          those, use the action with <code>fail-on: trifecta</code>, or read{" "}
+          <code>scan.json</code>: for example, fail when <code>lethal_trifectas</code> is
+          non-empty. <code>agentfox scan mcp</code>, by contrast, exits <code>1</code> on a
+          critical issue, including a trifecta across the servers in one MCP config.
         </p>
       </Callout>
 

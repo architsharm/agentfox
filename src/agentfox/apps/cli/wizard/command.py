@@ -85,6 +85,27 @@ def _print_scan(ctx: Context) -> None:
         rows.append(("also", ", ".join(f"{v} {k.replace('_', ' ')}" for k, v in other.items())))
     harnesses = [h.display for h in ctx.harnesses if h.present]
     rows.append(("coding agents", ", ".join(harnesses) or "none found"))
+    flagged = [s for s in ctx.skills if s["issues"]]
+    if ctx.skills:
+        named = ", ".join(s["skill"] for s in flagged[:3])
+        issues = f" [red]({len(flagged)} with issues: {named})[/]" if flagged else ""
+        rows.append(("skills", f"{len(ctx.skills)}{issues}"))
+    machine = ctx.machine
+    if machine is not None and machine.configs:
+        issues = sum(len(e["issues"]) for e in machine.servers) + machine.skill_issues
+        clients = sorted({c["client"] for c in machine.configs})
+        rows.append(
+            (
+                "this machine",
+                f"{len(machine.servers)} MCP servers across {', '.join(clients)}"
+                + (f", [yellow]{issues} issues[/]" if issues else "")
+                + (
+                    f", [red]{len(machine.trifectas)} lethal trifecta(s)[/]"
+                    if machine.trifectas
+                    else ""
+                ),
+            )
+        )
     if report.frameworks:
         rows.append(("built on", ", ".join(report.frameworks)))
     if ctx.github_repo:
@@ -92,6 +113,10 @@ def _print_scan(ctx: Context) -> None:
     console.print(f"  [dim]{report.files_scanned} files in {escape(ctx.root.resolve().name)}/[/]")
     for label, value in rows:
         console.print(f"  {label:<16}{value}")
+    if machine is not None and (machine.trifectas or flagged or machine.critical):
+        console.print(
+            "  [dim]details:[/] [cyan]agentfox scan machine[/], [cyan]agentfox scan skills[/]"
+        )
 
 
 def _choices(run: Run) -> list[Choice]:
@@ -138,6 +163,11 @@ def up(
     start: bool = typer.Option(
         True, "--start/--no-start", help="Start the hook daemon and local API in the background."
     ),
+    skip_machine: bool = typer.Option(
+        False,
+        "--skip-machine",
+        help="Skip the user-level MCP configs and skills of the AI tools on this machine.",
+    ),
 ) -> None:
     """Set up AgentFox for this project: scan, choose, and it does the rest.
 
@@ -172,7 +202,7 @@ def up(
     # 1. Scan ---------------------------------------------------------------------
     _step(1, "Scan")
     with console.status("reading the repository (nothing is imported or run)…"):
-        ctx = detect(root)
+        ctx = detect(root, machine=not skip_machine)
     _print_scan(ctx)
     saved = ctx.saved
 
