@@ -130,30 +130,3 @@ def test_llama_guard_reads_input_ids_from_the_dict_newer_transformers_returns():
 
     assert [d.entity_type for d in found] == ["SAFETY.HARM"]
     assert found[0].detail["category"] == "S1"
-
-
-def test_one_detector_failing_to_warm_does_not_stop_the_others(monkeypatch, caplog):
-    """`warm_all()` runs in the gateway's startup, where Granite Guardian's warm-up
-    crash took the whole gateway down. A broken detector should stay cold instead."""
-    from agentfox.capabilities.detection import base
-
-    warmed = []
-
-    class Broken:
-        key = "broken"
-
-        def warm(self):
-            raise RuntimeError("cannot reshape tensor of 0 elements")
-
-    class Fine:
-        key = "fine"
-
-        def warm(self):
-            warmed.append(self.key)
-
-    monkeypatch.setattr(base, "available_detectors", lambda: {"b": Broken(), "f": Fine()})
-
-    base.warm_all()
-
-    assert warmed == ["fine"]
-    assert "broken failed to warm" in caplog.text

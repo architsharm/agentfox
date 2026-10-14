@@ -9,9 +9,10 @@
 # boot. This runs the finished image and checks:
 #   1. /api/health answers;
 #   2. no detector failed to warm. `warm_all()` logs and carries on rather than taking
-#      the process down, so the log is where that failure now shows. Every detector
-#      whose weights are in the image warms, enabled or not, so for safety.granite
-#      this means its weights loaded and it answered one prompt.
+#      the process down, so the log is where that failure now shows. The container
+#      enables every model detector the image carries, safety.granite included (one
+#      float32 copy, about 10GB of memory), so each of them loads and, where its
+#      warm-up runs a prompt, answers one.
 #   3. With GRANITE_VERDICTS=1, safety.granite also says "No" to a benign input and
 #      "Yes" to a harmful one. Off by default: it runs in a second process, which
 #      loads a second float32 copy of the 2B model (about 10GB).
@@ -24,6 +25,7 @@ NAME="agentfox-boot-check-$$"
 
 docker run -d --name "$NAME" -p "127.0.0.1:${PORT}:8080" \
   -e AGENTFOX_ENVIRONMENT=production \
+  -e AGENTFOX_ENABLED_DETECTORS='["injection.heuristic","pii.native","secrets.native","safety.lexicon","schema.json","injection.classifier","injection.similarity","safety.granite"]' \
   -e AGENTFOX_SERVICE_AUTH_SECRET="$(openssl rand -hex 32)" \
   -e AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)" \
   "$IMAGE" >/dev/null

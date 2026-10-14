@@ -61,6 +61,25 @@ def enabled_for(session: Session) -> frozenset[str]:
     return frozenset(enabled)
 
 
+def enabled_anywhere(session: Session) -> frozenset[str]:
+    """Every detector some workspace in this deployment may run: the deployment's
+    list, plus any detector a workspace switched on. Startup warm-up reads this, so
+    it loads a model only when something can actually call it.
+
+    A deployment that runs no detectors at all gets none, as in `enabled_for`.
+    """
+    from agentfox.core.tenancy import system_scope
+
+    deployment = get_settings().enabled_detectors
+    if not deployment:
+        return frozenset()
+    with system_scope("warming the detectors any workspace switched on", routine=True):
+        switched_on = set(
+            session.scalars(select(DetectorSetting.key).where(DetectorSetting.enabled.is_(True)))
+        )
+    return frozenset(deployment) | switched_on
+
+
 def set_enabled(
     session: Session, key: str, enabled: bool, *, actor: str, reason: str
 ) -> DetectorSetting:
