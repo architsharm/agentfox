@@ -48,7 +48,7 @@ from sqlalchemy.orm import Session
 
 
 @pytest.fixture(scope="session")
-def _schema_template(tmp_path_factory) -> Path:
+def schema_template(tmp_path_factory) -> Path:
     """An empty database with the whole schema, built once per run.
 
     Creating some eighty tables took about a third of a second, and every test did it
@@ -77,8 +77,8 @@ def _schema_template(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def isolated_db(tmp_path, monkeypatch, _schema_template) -> Iterator[None]:
-    shutil.copyfile(_schema_template, tmp_path / "test.db")
+def isolated_db(tmp_path, monkeypatch, schema_template) -> Iterator[None]:
+    shutil.copyfile(schema_template, tmp_path / "test.db")
     monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("AGENTFOX_EVIDENCE_DIR", str(tmp_path / "evidence"))
     monkeypatch.setenv("AGENTFOX_AUDIT_SIGNING_KEY", "test-key")
