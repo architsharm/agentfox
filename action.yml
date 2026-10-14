@@ -1,0 +1,59 @@
+name: AgentFox scan
+description: >-
+  Find lethal trifectas across MCP servers and tools, ungoverned LLM calls and poisoned
+  agent skills in a pull request. Static and offline: nothing is run or sent anywhere.
+author: AgentFox
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  path:
+    description: Directory to scan, relative to the workspace.
+    default: "."
+  fail-on:
+    description: >-
+      What fails the step, comma-separated: trifecta, skills, ungoverned, or none.
+    default: "trifecta,skills"
+  python-version:
+    description: Python used to run the scan (3.11 or newer).
+    default: "3.12"
+  json-out:
+    description: Write the full scan result as JSON to this path, for later steps.
+    default: ""
+
+outputs:
+  trifectas:
+    description: Number of lethal trifectas found.
+    value: ${{ steps.scan.outputs.trifectas }}
+  ungoverned:
+    description: Number of ungoverned model call sites.
+    value: ${{ steps.scan.outputs.ungoverned }}
+  skill-issues:
+    description: Number of issues found in SKILL.md files.
+    value: ${{ steps.scan.outputs.skill-issues }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    # The action installs AgentFox from its own checkout, so `uses: ...@<ref>` always
+    # runs the scanner at that same ref and the report script never meets a different
+    # version of the code it calls.
+    - name: Install AgentFox
+      shell: bash
+      run: python -m pip install --quiet --disable-pip-version-check "${GITHUB_ACTION_PATH}"
+    - name: Scan
+      id: scan
+      shell: bash
+      env:
+        AGENTFOX_SCAN_PATH: ${{ inputs.path }}
+        AGENTFOX_FAIL_ON: ${{ inputs.fail-on }}
+        AGENTFOX_JSON_OUT: ${{ inputs.json-out }}
+      run: >-
+        python "${GITHUB_ACTION_PATH}/scripts/ci/github_action.py"
+        --path "$AGENTFOX_SCAN_PATH"
+        --fail-on "$AGENTFOX_FAIL_ON"
+        --json-out "$AGENTFOX_JSON_OUT"

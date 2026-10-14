@@ -5,6 +5,24 @@ description = "Agent-native, vendor-neutral governance, security and compliance 
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+authors = [{ name = "Archit Sharma" }]
+keywords = [
+    "ai-agents", "agent-security", "ai-security", "llm-security", "guardrails",
+    "llm-guardrails", "prompt-injection", "indirect-prompt-injection", "tool-calling",
+    "mcp", "mcp-security", "ai-firewall", "llm-firewall", "claude-code", "langgraph",
+    "langchain", "openai", "anthropic", "owasp", "ai-governance", "audit-trail",
+    "eu-ai-act", "red-teaming",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 # Core runtime deps only. Everything that wraps a third-party OSS primitive is an
 # optional extra so that `pip install agentfox` stays offline-capable (X-3 / NFR-9).
@@ -34,6 +52,7 @@ dependencies = [
 # argument is "read the code that decides" is the wrong omission to ship.
 [project.urls]
 Homepage = "https://useagentfox.com"
+Documentation = "https://useagentfox.com/docs"
 Source = "https://github.com/architsharm/agentfox"
 Issues = "https://github.com/architsharm/agentfox/issues"
 Changelog = "https://github.com/architsharm/agentfox/releases"
