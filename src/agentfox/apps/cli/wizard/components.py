@@ -16,6 +16,7 @@ reason for it.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -30,8 +31,8 @@ import httpx
 from rich.console import Console
 from rich.markup import escape
 
-from agentfox.apps.cli.wizard.backend import BackendError, Edition
-from agentfox.apps.cli.wizard.detect import STATE_DIR, Context
+from agentfox.apps.cli.wizard.backend import BackendError, Edition, Local
+from agentfox.apps.cli.wizard.detect import STATE_DIR, Context, git_ignore
 from agentfox.apps.cli.wizard.prompt import Choice, Prompter
 from agentfox.apps.cli.wizard.targets import Target
 
@@ -42,7 +43,8 @@ MODES = (
     Choice(
         "observe",
         "Watch first",
-        "Record every decision, block nothing. Promote to enforce once it looks right.",
+        "Policies record what they would block and block nothing. Destructive commands, "
+        "protected paths and tampering are still stopped.",
     ),
     Choice(
         "defaults",
@@ -75,6 +77,8 @@ class Run:
     #: Start background processes (hook daemon, local API). Off for --no-start and tests.
     start: bool = True
     interactive: bool = False
+    #: The components chosen, so one can tell whether another will run.
+    picked: list[str] = field(default_factory=list)
     #: Per-component answers from `ask`, keyed by component key.
     answers: dict[str, Any] = field(default_factory=dict)
     env: dict[str, str] = field(default_factory=dict)
@@ -124,7 +128,7 @@ def _never(_run: Run) -> str:
     return ""
 
 
-def _plural(n: int, word: str) -> str:
+def plural(n: int, word: str) -> str:
     if n == 1:
         return f"{n} {word}"
     return f"{n} {word[:-1]}ies" if word.endswith("y") else f"{n} {word}s"
@@ -155,6 +159,8 @@ def _spawn(run: Run, name: str, args: list[str]) -> bool:
         run.say(f"[red]could not start {name}:[/] {exc}")
         return False
     (run.ctx.root / STATE_DIR / f"{name}.pid").write_text(str(process.pid))
+    for entry in (f"{STATE_DIR}/logs/", f"{STATE_DIR}/*.pid"):
+        git_ignore(run.ctx.root, entry)
     run.running.append(f"{name} (pid {process.pid}, log .agentfox/logs/{name}.log)")
     return True
 
@@ -166,9 +172,30 @@ def _api_up(url: str) -> bool:
         return False
 
 
+def _started_here(run: Run, name: str) -> bool:
+    """A background process `up` started for this project, still alive."""
+    try:
+        pid = int((run.ctx.root / STATE_DIR / f"{name}.pid").read_text())
+        os.kill(pid, 0)
+    except (OSError, ValueError):
+        return False
+    return True
+
+
 def _ensure_local_api(run: Run) -> bool:
+    """This project's local API is up: one `up` started, or a new one. Something else
+    answering on the port (a self-hosted stack, another project's `agentfox serve`)
+    is not claimed, because its database is not this one."""
     if _api_up(run.target.api_url):
-        return True
+        if _started_here(run, "serve"):
+            return True
+        run.say(
+            f"[yellow]{run.target.api_url} already answers, but not with an API `up` "
+            "started for this project[/] — another `agentfox serve` or a self-hosted stack, "
+            "with its own database. Stop it, or connect to it: `agentfox up --target "
+            "self-hosted`."
+        )
+        return False
     if not run.start:
         run.next_steps.append(("agentfox serve", "the gateway and API, for the integrations above"))
         return False
@@ -195,16 +222,29 @@ def _scan_note(run: Run) -> str:
 def _apply_scan(run: Run) -> None:
     payload = run.ctx.report.to_submission_payload(source="check")
     payload["label"] = run.ctx.github_repo or run.ctx.project
+    # Each recorded scan proposes its own draft agents and policies, so the same scan
+    # sent again would pile up duplicates for someone to review. Per destination: a
+    # scan recorded locally has not reached a team server or Cloud.
+    # What was found, not how many files were read: `up`'s own files change that count.
+    found = {k: v for k, v in payload.items() if k != "files_scanned"}
+    fingerprint = hashlib.sha256(json.dumps(found, sort_keys=True).encode()).hexdigest()[:16]
+    recorded = dict(run.ctx.saved.get("scans") or {})
+    where = run.target.backend.where
+    run.answers["scans"] = recorded
+    if recorded.get(where) == fingerprint:
+        run.done("scan-report", "scan unchanged since it was last recorded here; not sent again")
+        return
     try:
         result = run.target.backend.submit_scan(payload)
     except BackendError as exc:
         run.failed("scan-report", str(exc))
         return
+    recorded[where] = fingerprint
     summary = result.get("summary", {})
     run.done(
         "scan-report",
-        f"scan recorded: {_plural(len(summary.get('agents_proposed') or []), 'draft agent')}, "
-        f"{_plural(len(summary.get('policies_proposed') or []), 'proposed policy')} to review",
+        f"scan recorded: {plural(len(summary.get('agents_proposed') or []), 'draft agent')}, "
+        f"{plural(len(summary.get('policies_proposed') or []), 'proposed policy')} to review",
     )
 
 
@@ -232,6 +272,28 @@ def _coding_ask(run: Run) -> None:
     else:
         picked = present
     run.answers["coding-agents"] = picked
+    servers = _coding_mcp_servers(run, picked)
+    if servers:
+        shown = ", ".join(servers[:5]) + ("…" if len(servers) > 5 else "")
+        run.answers["coding-mcp"] = run.prompter.confirm(
+            f"Let the coding agent use the MCP servers it loads ({shown})? Without a grant "
+            "every MCP tool call is refused; with one, each call is still checked",
+            default=True,
+        )
+
+
+#: `agentfox scan machine`'s client name for each harness.
+_HARNESS_CLIENT = {"claude": "Claude Code", "codex": "Codex"}
+
+
+def _coding_mcp_servers(run: Run, harnesses: list[str]) -> list[str]:
+    """The MCP servers these coding agents load: the repository's, and the ones their
+    user-level configs add on this machine."""
+    names = {decl.name for decl in _mcp_decls(run)}
+    clients = {_HARNESS_CLIENT.get(h) for h in harnesses}
+    if run.ctx.machine is not None:
+        names |= {s["server"] for s in run.ctx.machine.servers if s["client"] in clients}
+    return sorted(names)
 
 
 def _coding_apply(run: Run) -> None:
@@ -270,9 +332,24 @@ def _coding_apply(run: Run) -> None:
         run.done(
             "coding-agents",
             f"{adapter.display_name} hooks → agent [bold]{slug}[/], "
-            f"{_plural(len(baseline.tools_granted), 'built-in tool')} granted"
+            + (
+                f"{plural(len(baseline.tools_granted), 'built-in tool')} granted"
+                if baseline.tools_granted
+                else "built-in tools already granted"
+            )
             + (f" [dim]({', '.join(written)})[/]" if written else " [dim](already installed)[/]"),
         )
+        if run.answers.get("coding-mcp"):
+            # Into this machine's database whatever the target: the hooks decide here.
+            servers = _coding_mcp_servers(run, [name])
+            local = Local()
+            added = [n for n in servers if local.grant(slug, f"mcp__{n}__*")]
+            if servers:
+                run.say(
+                    f"[green]granted[/] the tools of {plural(len(servers), 'MCP server')} "
+                    f"to {slug}: {', '.join(servers)}"
+                    + ("" if added else " [dim](already granted)[/]")
+                )
     if not run.answers.get("coding-agents"):
         return
     from agentfox.hooks import ping
@@ -310,7 +387,7 @@ def _python_unavailable(run: Run) -> str:
 
 def _python_note(run: Run) -> str:
     n = run.ctx.python_calls
-    return f"{_plural(n, 'model call')} in Python" if n else "no Python model calls found"
+    return f"{plural(n, 'model call')} in Python" if n else "no Python model calls found"
 
 
 def _python_ask(run: Run) -> None:
@@ -441,7 +518,7 @@ def _tools_unavailable(run: Run) -> str:
 
 
 def _tools_note(run: Run) -> str:
-    return f"{_plural(len(run.ctx.tool_names), 'tool')} found; impact inferred from the name"
+    return f"{plural(len(run.ctx.tool_names), 'tool')} found; impact inferred from the name"
 
 
 def _inferred(run: Run) -> dict[str, str]:
@@ -479,11 +556,23 @@ def _tools_apply(run: Run) -> None:
         except BackendError as exc:
             run.failed("tools", str(exc))
             return
+    granted = ""
+    if {"python-app", "gateway"} & set(run.picked):
+        # Declared and granted: the agent may call its own tools, and what still stops a
+        # call is containment (a tainted argument to an irreversible tool), not a
+        # missing grant on day one.
+        try:
+            for name in impacts:
+                run.target.backend.grant(run.agent, name)
+            granted = f", granted to {run.agent}"
+        except BackendError as exc:
+            run.failed("tools", str(exc))
     risky = sorted(n for n, i in impacts.items() if i in ("high_impact", "irreversible"))
     run.done(
         "tools",
-        f"declared {_plural(added, 'tool')}"
+        f"declared {plural(added, 'tool')}"
         + (f", kept {kept} already declared" if kept else "")
+        + granted
         + (f" — {len(risky)} irreversible/high-impact: {', '.join(risky[:5])}" if risky else ""),
     )
     run.next_steps.append(
@@ -526,7 +615,7 @@ def _mcp_apply(run: Run) -> None:
         except BackendError as exc:
             run.failed("mcp", str(exc))
     if count:
-        run.done("mcp", f"registered {_plural(count, 'MCP server')}")
+        run.done("mcp", f"registered {plural(count, 'MCP server')}")
         run.next_steps.append(
             ("agentfox scan mcp", "what each server can reach, and how it is pinned")
         )
@@ -643,11 +732,12 @@ def _monitor_apply(run: Run) -> None:
 
 def _compliance_apply(run: Run) -> None:
     if run.target.remote:
-        run.done(
-            "compliance",
-            f"posture and evidence: {run.target.dashboard_url or run.target.api_url}"
-            "/app/compliance",
+        where = (
+            f"{run.target.dashboard_url}/app/compliance"
+            if run.target.dashboard_url
+            else "the Compliance page of your dashboard"
         )
+        run.done("compliance", f"included on this control plane — posture and evidence: {where}")
         return
     from agentfox.core import extensions
     from agentfox.core.db import init_db, session_scope
@@ -666,7 +756,7 @@ def _compliance_apply(run: Run) -> None:
     )
     run.done(
         "compliance",
-        f"{_plural(result.get('controls', 0), 'control')} loaded"
+        f"{plural(result.get('controls', 0), 'control')} loaded"
         + (f": {scored}" if scored else "")
         + (f" [dim]({pending} not scored yet)[/]" if pending else ""),
     )
@@ -698,9 +788,17 @@ def _view_note(run: Run) -> str:
 
 def _view_apply(run: Run) -> None:
     url = run.target.dashboard_url
+    if not url and run.target.remote:
+        run.skipped(
+            "view",
+            f"control plane at {run.target.api_url}; no dashboard address given "
+            "(`agentfox up` again to add one)",
+        )
+        return
     if not url:
         if not _ensure_local_api(run):
-            run.skipped("view", "local API not started (--no-start)")
+            reason = "--no-start" if not run.start else "the port is taken"
+            run.skipped("view", f"local API not started ({reason})")
             return
         url = f"{run.target.api_url}/docs"
         run.done("view", f"API running at {run.target.api_url} — browse it at {url}")
@@ -833,10 +931,10 @@ def apply_mode(run: Run) -> None:
             changed.append(key)
         except BackendError as exc:
             refused.append(f"{key} ({exc})")
-    verb = "nothing is blocked yet" if want == "observe" else "every policy blocks"
+    verb = "recorded, not blocked yet" if want == "observe" else "every policy blocks"
     run.done(
         "mode",
-        f"{_plural(len(modes), 'policy')} in {want} — {verb}"
+        f"{plural(len(modes), 'policy')} in {want} — {verb}"
         + (f" [dim](changed {', '.join(changed)})[/]" if changed else ""),
     )
     for item in refused:
