@@ -8,11 +8,14 @@ dropping a project that gets archived, touches one adapter file.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from agentfox.core.vocab import SURFACES
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -248,5 +251,39 @@ def available_detectors() -> dict[str, Detector]:
 def warm_all() -> None:
     """Call once at process startup (see `gateway.app.lifespan`). Only detectors
     with real first-call cost do anything here; everything else is a no-op."""
+    warn_unrunnable(enabled_only=True)
     for detector in available_detectors().values():
         detector.warm()
+
+
+def warn_unrunnable(*, enabled_only: bool = True) -> list[str]:
+    """Log each enabled detector that cannot run here, with the fix. Returns their keys.
+
+    The pipeline skips such a detector without a word, which is right per request
+    and wrong at startup: `injection.classifier` is on by default, and a deployment
+    without its model would otherwise run regex only while believing otherwise.
+    """
+    from agentfox.capabilities.detection.models import models_for
+    from agentfox.core.config import get_settings
+
+    enabled = set(get_settings().enabled_detectors)
+    missing = []
+    for key, detector in all_detectors().items():
+        # Model-backed only: a detector like `custom.lists` is unavailable simply
+        # because nothing is configured for it yet, which is not worth a warning.
+        if (enabled_only and key not in enabled) or not models_for(detector):
+            continue
+        try:
+            if detector.available():
+                continue
+            reason = getattr(detector, "unavailable_reason", None)
+            reason = reason() if callable(reason) else reason
+        except Exception as exc:  # noqa: BLE001 - a startup warning must never raise
+            reason = str(exc)
+        missing.append(key)
+        _log.warning(
+            "agentfox: detector %s is enabled but cannot run here (%s); it is skipped.",
+            key,
+            reason or "its dependency is not installed",
+        )
+    return missing

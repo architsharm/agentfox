@@ -38,6 +38,16 @@ os.environ["AGENTFOX_STRICT_FINDING_TYPES"] = "1"
 # No background job passes after test requests; tests that exercise the traffic
 # trigger turn it on themselves.
 os.environ["AGENTFOX_JOBS_ON_TRAFFIC"] = "0"
+# `injection.classifier` is enabled by default and runs wherever its weights are in
+# the Hugging Face cache. CI has no weights, a developer machine often does, so the
+# same test saw a different detector set in each place (and a cold model load on the
+# pipeline's threads). Point the suite at an empty cache so both match CI; set
+# AGENTFOX_TEST_REAL_MODELS=1 to run against the real cache.
+if os.environ.get("AGENTFOX_TEST_REAL_MODELS") != "1":
+    import tempfile
+
+    os.environ["HF_HUB_CACHE"] = tempfile.mkdtemp(prefix="agentfox-test-hf-")
+    os.environ["HF_HUB_OFFLINE"] = "1"
 
 from collections.abc import Iterator
 

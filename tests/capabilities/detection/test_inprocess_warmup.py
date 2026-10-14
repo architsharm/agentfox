@@ -63,7 +63,17 @@ def test_an_enabled_model_detector_is_warmed(slow, entry):
     assert slow.warmed.wait(5), f"{entry} did not warm the enabled detector"
 
 
-def test_nothing_is_started_for_the_default_detectors():
+def test_the_default_detectors_warm_the_injection_classifier():
+    """`injection.classifier` is a default, so an in-process app warms it."""
+    warmup._reset()
+    assert "injection.classifier" in {d.key for d in warmup._needs_warming()}
+
+
+def test_nothing_is_started_for_regex_only_detectors(monkeypatch):
+    from agentfox.core.config import reset_settings_cache
+
+    monkeypatch.setenv("AGENTFOX_ENABLED_DETECTORS", '["injection.heuristic", "pii.native"]')
+    reset_settings_cache()
     warmup._reset()
     assert warmup.warm_in_background() is None
 

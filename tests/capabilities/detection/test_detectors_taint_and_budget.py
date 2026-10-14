@@ -401,16 +401,56 @@ def test_pipeline_selects_by_surface():
     assert "schema.json" in {d.key for d in pipeline.select("output")}
 
 
-def test_injection_classifier_registered_but_not_enabled_by_default():
-    """Registered (so it's usable when the classifiers extra is installed and the
-    weights are present) but not in the default `enabled_detectors` — a real CPU
-    forward pass shouldn't be a default cost every deployment pays without
-    choosing to (config.py's `prompt_injection_classifier_model` docstring)."""
+def test_injection_classifier_is_enabled_by_default():
+    """On by default: the heuristic alone catches 16.7% of held-out injections and
+    published rule sets catch less, so a default without a model protects almost
+    nothing. Where the model cannot run, the pipeline skips it and `doctor` and the
+    startup log say why (tests below)."""
     from agentfox.capabilities.detection import all_detectors
     from agentfox.core.config import get_settings
 
     assert "injection.classifier" in all_detectors()
-    assert "injection.classifier" not in get_settings().enabled_detectors
+    assert "injection.classifier" in get_settings().enabled_detectors
+    assert "injection.heuristic" in get_settings().enabled_detectors
+
+
+def test_a_classifier_without_its_weights_says_how_to_get_them(caplog):
+    """Enabled but unrunnable must never be silent: that is a deployment running
+    regex while believing it runs a model."""
+    from agentfox.capabilities.detection.adapters.classifiers import (
+        PromptInjectionClassifierDetector,
+    )
+    from agentfox.capabilities.detection.base import warn_unrunnable
+
+    detector = PromptInjectionClassifierDetector()
+    assert not detector.available()  # conftest points the suite at an empty cache
+    assert "agentfox" in detector.unavailable_reason
+
+    with caplog.at_level("WARNING"):
+        missing = warn_unrunnable()
+    assert "injection.classifier" in missing
+    assert any("injection.classifier" in r.getMessage() for r in caplog.records)
+
+
+def test_ensemble_backstop_detections_are_advisory():
+    """The backstop's hits are marked advisory, so an enforcing policy never blocks
+    on them alone; PIGuard's own hits are not."""
+    from agentfox.capabilities.detection.adapters.classifiers import (
+        PromptInjectionClassifierDetector,
+    )
+    from agentfox.capabilities.detection.base import DetectionContext
+
+    detector = PromptInjectionClassifierDetector(secondary_model_id="fake/secondary")
+    detector.__dict__["_pipeline"] = lambda text: [[{"label": "benign", "score": 0.99}]]
+    detector.__dict__["_secondary_pipeline"] = lambda text: [
+        [{"label": "INJECTION", "score": 0.97}]
+    ]
+    [hit] = detector.detect("anything", DetectionContext(surface="input")).detections
+    assert hit.detail["advisory"] is True
+
+    detector.__dict__["_pipeline"] = lambda text: [[{"label": "injection", "score": 0.99}]]
+    [hit] = detector.detect("anything", DetectionContext(surface="input")).detections
+    assert not hit.detail.get("advisory")
 
 
 def test_ensemble_secondary_is_not_consulted_when_the_primary_already_fired():

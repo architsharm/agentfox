@@ -224,10 +224,10 @@ export function Guardrails() {
             >
               <span className="mk-label">What this layer is worth</span>
               <p className="mk-body" style={{ ...BODY, marginTop: 8, fontSize: "var(--t-small)" }}>
-                16.7% recall on the held-out injection split with the default detector, 68.3%
-                with the opt-in classifier ensemble. An attacker who reads our verdict and retries
-                gets 73% of what the default stack catches through within 50 attempts. A speed
-                bump, never a defence.
+                68.3% recall on the held-out injection split with the default detectors, 16.7%
+                with the heuristic alone. Against the heuristic-only stack we shipped until
+                October 2026, an attacker who reads our verdict and retries gets 73% of what it
+                catches through within 50 attempts. A speed bump, never a defence.
               </p>
               <p style={{ marginTop: 10 }}>
                 <Link href="/benchmark" className="mk-btn mk-btn-outline" style={{ padding: "8px 14px" }}>

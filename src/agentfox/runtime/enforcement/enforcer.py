@@ -450,6 +450,7 @@ class Enforcer(
                 "score": d.score,
                 "owasp_id": d.owasp_id,
                 "atlas_id": d.atlas_id,
+                "advisory": bool(d.detail.get("advisory")),
             }
             for d in pipeline_result.detections
         ]

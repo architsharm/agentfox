@@ -396,7 +396,7 @@ const PIPELINE: DetectorRow[] = [
     // key/version src/agentfox/capabilities/detection/adapters/classifiers.py:135-136; timeout_ms :152
     key: "injection.classifier",
     version: "1.0",
-    tier: "opt-in",
+    tier: "default",
     status: "timeout",
     raised: [],
     note: "Declares its own 250ms ceiling and tripped it. Recorded as degraded, not quietly skipped.",

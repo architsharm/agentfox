@@ -475,6 +475,12 @@ class Settings(BaseSettings):
     # --- Detectors -------------------------------------------------------
     enabled_detectors: list[str] = [
         "injection.heuristic",
+        # The trained injection model. On by default because the heuristic alone
+        # catches 16.7% of held-out injections (benchmarks/REPORT.md) and published
+        # rule sets do worse; a model is the only thing that moves that number.
+        # Without `agentfox[classifiers]` or its downloaded weights it cannot run:
+        # the pipeline skips it, and `doctor` and the startup log say so and how to fix it.
+        "injection.classifier",
         "pii.native",
         "secrets.native",
         "safety.lexicon",
@@ -495,18 +501,20 @@ class Settings(BaseSettings):
     # MIT, ~86M params, no licence gate — but a real CPU forward pass still
     # costs tens of ms per call versus a regex scan's fractions of one, and every
     # concurrent request pays it independently (the latency budget is per-request,
-    # not a shared inference queue). Opt-in via `enabled_detectors`, same reasoning as
-    # Granite Guardian: a customer must choose the latency/recall trade-off, not
-    # inherit it from a default. leolee99/PIGuard, not the more commonly cited
-    # protectai/deberta model — see PromptInjectionClassifierDetector's docstring
-    # for the benchmarked reason (better recall AND far fewer false positives).
+    # not a shared inference queue). Enabled by default anyway (see
+    # `enabled_detectors`): a default that misses five injections in six is not a
+    # trade-off worth inheriting either. Remove it there to run regex only.
+    # leolee99/PIGuard, not the more commonly cited protectai/deberta model — see
+    # PromptInjectionClassifierDetector's docstring for the benchmarked reason
+    # (better recall AND far fewer false positives).
     prompt_injection_classifier_model: str = "leolee99/PIGuard"
     # MIT, ~86M params. High-bar ensemble backstop for the primary classifier
     # above — see PromptInjectionClassifierDetector's docstring for why a second
     # model, and why this specific one (it's the model this project moved away
     # from as primary, precisely because of its over-triggering; used here only
-    # above `secondary_threshold`, only when the primary found nothing). Set to
-    # "" / None to disable and run PIGuard alone.
+    # above `secondary_threshold`, only when the primary found nothing). Its hits
+    # are advisory: recorded and seen by observing policies, never by enforcing
+    # ones (`PolicyInput.for_mode`). Set to "" / None to run PIGuard alone.
     prompt_injection_classifier_secondary_model: str | None = (
         "protectai/deberta-v3-base-prompt-injection-v2"
     )

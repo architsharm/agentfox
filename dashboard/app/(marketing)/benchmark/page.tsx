@@ -136,10 +136,10 @@ const CLAIMS: {
   },
   {
     question: "How good is our detection on its own?",
-    figure: "16.7",
+    figure: "68.3",
     unit: "%",
-    detail: "held-out recall at 100% precision for the default heuristic detector, on the deepset split of 116. The opt-in classifier ensemble reaches 68.3%.",
-    limit: "The ensemble needs the classifiers extra and a weights download. An adaptive attacker gets 74.5% of what the default stack catches through within 50 attempts.",
+    detail: "held-out recall at 100% precision for the default stack, heuristic plus classifier, on the deepset split of 116. The heuristic alone, which is what runs without the model weights, reaches 16.7%.",
+    limit: "The classifier needs the classifiers extra and its weights; the Docker image ships both. An adaptive attacker got 74.5% of what the heuristic-only stack, the default until October 2026, catches through within 50 attempts.",
   },
 ];
 
@@ -223,11 +223,12 @@ export default function BenchmarkPage() {
           tool outputs, session-level taint contained 588 of 588 attack pairs,
           and only 24 of 97 benign tasks ran without escalating to a human.
           Per-argument taint ran 37 of 97 and contained 527 of 588. On
-          detection, the default heuristic catches 16.7% of held-out injections
-          and the opt-in classifier ensemble 68.3%; a real installed{" "}
-          <code className="mono">llm-guard</code> is more precise on the same 20
-          indirect-injection cases, 81.8% against 66.7%, and an adaptive
-          attacker gets 74.5% of what the default stack catches through within
+          detection, the default stack catches 68.3% of held-out injections and
+          the heuristic alone, which runs without the model weights, 16.7%; a
+          real installed <code className="mono">llm-guard</code> is more precise
+          on the same 20 indirect-injection cases, 81.8% against 66.7%, measured
+          before October 2026; and an adaptive attacker gets 74.5% of what the
+          heuristic-only stack, the default until then, catches through within
           50 attempts.
         </p>
       </div>
@@ -731,11 +732,13 @@ export default function BenchmarkPage() {
         On <code className="mono">deepset/prompt-injections</code> (662 labeled
         examples), heuristic plus classifier plus similarity reaches{" "}
         <strong>68.3% recall at 100.0% precision</strong> on the held-out split
-        of 116, up from an unmodified regex detector&apos;s 0%. That is the
-        opt-in configuration: it needs{" "}
-        <code className="mono">agentfox[classifiers]</code> and a one-time
-        weights download. <strong>The default install runs the heuristic alone,
-        which scores 16.7% recall</strong> at the same 100% precision. Held-out is the
+        of 116, up from an unmodified regex detector&apos;s 0%. Since October
+        2026 that is the default configuration. It needs{" "}
+        <code className="mono">agentfox[classifiers]</code> and the model
+        weights, which the published Docker image ships. <strong>A pip install
+        without them runs the heuristic alone, which scores 16.7% recall</strong>{" "}
+        at the same 100% precision, and the startup log and{" "}
+        <code className="mono">agentfox doctor</code> say so. Held-out is the
         number to trust: the heuristic&apos;s patterns were tuned by reading the
         train split&apos;s false negatives. An earlier round also read the
         held-out misses and added patterns for them, which had lifted this
@@ -748,8 +751,8 @@ export default function BenchmarkPage() {
         caption={
           <>
             <strong>About a third of held-out positives still get through.</strong>{" "}
-            With the opt-in classifier, recall is 68.3%. Without it, the
-            heuristic is at 16.7%: the 26.7% once shown here came from patterns
+            With the classifier, now the default, recall is 68.3%. Without
+            it, the heuristic is at 16.7%: the 26.7% once shown here came from patterns
             fitted to this held-out split, now removed. This is the number the
             rest of the page assumes is lost.
           </>
@@ -757,17 +760,20 @@ export default function BenchmarkPage() {
       >
         <Bars
           rows={[
-            { label: "Heuristic only (the default today)", value: 16.7, display: "16.7%", tone: "quiet" },
-            { label: "+ classifier ensemble (opt-in)", value: 68.3, display: "68.3%", tone: "accent" },
+            { label: "Heuristic only (no model weights)", value: 16.7, display: "16.7%", tone: "quiet" },
+            { label: "+ classifier ensemble (the default)", value: 68.3, display: "68.3%", tone: "accent" },
           ]}
         />
       </Figure>
       <p>
-        The opt-in classifier ensemble is a measured trade, not a free win. On{" "}
+        The classifier ensemble is a measured trade, not a free win. On{" "}
         <code className="mono">NotInject</code>, 339 prompts benign by
         construction and built to trigger keyword-reactive guardrails, the
-        opt-in ensemble raises <strong>140 false positives, 41.3%</strong>.
-        PIGuard alone raised 39, 11.5%. The secondary model can be switched off.
+        ensemble raises <strong>139 false positives, 41%</strong>. PIGuard
+        alone raises 39, 11.5%. The backstop model&apos;s hits are advisory:
+        they are recorded and observe-mode policies see them, but an enforcing
+        policy never does, so a block rests on PIGuard&apos;s verdict alone.
+        The secondary model can also be switched off.
       </p>
 
       <Figure
@@ -775,16 +781,18 @@ export default function BenchmarkPage() {
         caption={
           <>
             <strong>The worst number on this page.</strong> Two in five benign
-            prompts are flagged with the ensemble on. This is the cost of the
-            recall above, it is configurable, and it is the reason detection is
-            not the control this product asks you to rely on.
+            prompts are flagged with the ensemble on, which is what observe
+            mode records. An enforcing policy acts on PIGuard alone, about one
+            in nine. This is the cost of the recall above, it is configurable,
+            and it is the reason detection is not the control this product asks
+            you to rely on.
           </>
         }
       >
         <Bars
           rows={[
-            { label: "Opt-in ensemble", value: 41.3, display: "41.3%", tone: "stop" },
-            { label: "PIGuard alone", value: 11.5, display: "11.5%", tone: "hold" },
+            { label: "Ensemble, as observe mode records it", value: 41, display: "41%", tone: "stop" },
+            { label: "PIGuard alone, what enforcement acts on", value: 11.5, display: "11.5%", tone: "hold" },
           ]}
         />
       </Figure>
@@ -801,13 +809,13 @@ export default function BenchmarkPage() {
         positives on ordinary persona-based agents.
       </p>
       <p>
-        Generalization, re-measured at the shipped 40ms per-detector timeout, for
-        the heuristic-plus-classifier configuration: 85.6% recall at 92.6%
-        precision on SPML, 98.6% recall at 100% precision on the multilingual
-        phrase list, and 17.9% recall at 69.5% precision on in-the-wild jailbreak
-        prompts, where the classifier times out on 99.9% of calls because those
-        prompts average 2,156 characters. The shipped default stack, heuristic
-        only, scores in single digits on two of those datasets. None of that is
+        Generalization for the default stack, re-measured on 14 October 2026:
+        86.4% recall on SPML, with 17 false positives among its 250 benign
+        prompts, and 98.4% recall on the multilingual phrase list. The
+        heuristic alone scores in single digits on both. On in-the-wild
+        jailbreak prompts, which average 2,156 characters, the classifier
+        times out within its 250 ms budget on nearly every call and the
+        request falls back to the heuristic. None of that is
         hidden and none of it is a reason to trust detection as the control that
         stops an attack.
       </p>
@@ -841,7 +849,8 @@ export default function BenchmarkPage() {
         Seeds the stack already misses are thrown away before the search starts,
         because counting them would inflate the number for free. Of 81
         candidates, 48 and 47 seeds remain on the retrieved and direct surfaces:
-        attacks the shipped stack currently stops. That is the denominator, and
+        attacks the heuristic-only stack, the default until October 2026,
+        stopped. That is the denominator, and
         it is why attempt 1 is 0% by construction.
       </p>
 
@@ -1012,17 +1021,20 @@ export default function BenchmarkPage() {
             ),
           },
           {
-            lead: "It measures the default stack only.",
+            lead: "It measures the old default stack only.",
             body: (
               <>
-                Five detectors:{" "}
+                The heuristic-only stack that was the default until October
+                2026, five detectors:{" "}
                 <code className="mono">injection.heuristic</code>,{" "}
                 <code className="mono">pii.native</code>,{" "}
                 <code className="mono">secrets.native</code>,{" "}
                 <code className="mono">safety.lexicon</code> and{" "}
-                <code className="mono">schema.json</code>. The opt-in ensemble
-                behind section 4&apos;s 68.3% is not running, because it needs a
-                model download and this benchmark is offline by contract.
+                <code className="mono">schema.json</code>. The classifier
+                behind section 4&apos;s 68.3%, now in the default, was not
+                running: it needs a model download and this benchmark is offline
+                by contract. The figure has not been re-measured against the new
+                default.
               </>
             ),
           },
