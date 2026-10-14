@@ -23,7 +23,14 @@ from rich.console import Console
 from rich.markup import escape
 from rich.panel import Panel
 
-from agentfox.apps.cli.wizard.components import BY_KEY, CATALOGUE, MODES, Run, apply_mode
+from agentfox.apps.cli.wizard.components import (
+    BY_KEY,
+    CATALOGUE,
+    MODES,
+    Run,
+    apply_mode,
+    plural,
+)
 from agentfox.apps.cli.wizard.detect import (
     ANSWERS_FILE,
     ENV_FILE,
@@ -94,13 +101,14 @@ def _print_scan(ctx: Context) -> None:
     if machine is not None and machine.configs:
         issues = sum(len(e["issues"]) for e in machine.servers) + machine.skill_issues
         clients = sorted({c["client"] for c in machine.configs})
+        found = plural(len(machine.servers), "MCP server")
         rows.append(
             (
                 "this machine",
-                f"{len(machine.servers)} MCP servers across {', '.join(clients)}"
-                + (f", [yellow]{issues} issues[/]" if issues else "")
+                f"{found} across {', '.join(clients)}"
+                + (f", [yellow]{plural(issues, 'issue')}[/]" if issues else "")
                 + (
-                    f", [red]{len(machine.trifectas)} lethal trifecta(s)[/]"
+                    f", [red]{plural(len(machine.trifectas), 'lethal trifecta')}[/]"
                     if machine.trifectas
                     else ""
                 ),
@@ -117,6 +125,18 @@ def _print_scan(ctx: Context) -> None:
         console.print(
             "  [dim]details:[/] [cyan]agentfox scan machine[/], [cyan]agentfox scan skills[/]"
         )
+
+
+def _short(where: str) -> str:
+    """A database URL or address short enough for one line: SQLite as a path under ~."""
+    if not where.startswith("sqlite:///"):
+        return where
+    path = where.removeprefix("sqlite:///")
+    home = str(Path.home())
+    path = "~" + path[len(home) :] if path.startswith(home) else path
+    if len(path) > 60:
+        path = "…/" + "/".join(Path(path).parts[-2:])
+    return f"SQLite {path}"
 
 
 def _choices(run: Run) -> list[Choice]:
@@ -262,6 +282,7 @@ def up(
     picked = prompter.multiselect(
         "What should AgentFox cover?", choices, [c.key for c in CATALOGUE if c.key in defaults]
     )
+    run.picked = picked
 
     # 4. How strict ---------------------------------------------------------------
     run.mode = mode or prompter.select("How strict to start?", MODES, saved.get("mode", "observe"))
@@ -276,7 +297,7 @@ def up(
 
     # 6. Plan ---------------------------------------------------------------------
     _step(4, "Plan")
-    console.print(f"  [bold]{chosen.key}[/] · {escape(chosen.backend.where)}")
+    console.print(f"  [bold]{chosen.key}[/] · {escape(_short(chosen.backend.where))}")
     for key in picked:
         console.print(f"  [cyan]•[/] {BY_KEY[key].label}")
     console.print(
@@ -314,6 +335,7 @@ def up(
             "entry_point": run.answers.get("python-app"),
             "environment": saved.get("environment", "development"),
             "email": email or saved.get("email"),
+            "scans": run.answers.get("scans", saved.get("scans")),
         },
     )
 
