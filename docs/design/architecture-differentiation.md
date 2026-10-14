@@ -438,9 +438,10 @@ This is not a point product. It is the risk that the platform owner gives the ca
   - Per-argument taint: 37/97 benign tasks, 527/588 attack pairs contained (`agentdojo.argument_taint`).
   - Inferred provenance cannot tell a legitimate copy from an attack.
 - **Grants alone do nothing against injection.** None (grants and impact tiers only): 97/97 benign, 0/588 attack pairs contained (`agentdojo.capability_only`). The win is provenance, and provenance depends on declarations an operator can get wrong.
-- **Detection is weak by default.**
-  - The shipped lexical heuristic's held-out injection recall is 16.7% at 100% precision (`injection.heuristic_held_out`).
-  - The opt-in ensemble reaches 86.4% recall on SPML (`generalization.classifier_spml_recall`), but it times out on long prompts (`benchmarks/REPORT.md`, round 7).
+- **Detection is still the weakest layer.**
+  - The default stack (heuristic plus the PIGuard classifier, with a protectai/deberta backstop whose hits are advisory) reaches 68.3% held-out injection recall at 100% precision on the deepset split of 116 (`injection.default_held_out`), and 86.4% recall on SPML (`generalization.classifier_spml_recall`). On NotInject an enforcing policy acts on 11.5% (39/339) false positives; counting the advisory backstop hits that observe mode records, 41% (139/339).
+  - It needs `agentfox[classifiers]` and the model weights. Without them the lexical heuristic runs alone: its held-out injection recall is 16.7% at 100% precision (`injection.heuristic_held_out`); a startup warning and `agentfox doctor` name the fix.
+  - On long prompts (around 2,000 characters and up) the classifier mostly times out within its 250 ms budget and the request falls back to the heuristic (`benchmarks/REPORT.md`).
 - **The heuristic over-fires on text that quotes an attack.** On the third-party smoke corpus in `benchmarks/toolkit_corpus/`, it flags benign security notes, fixtures and changelogs that quote "ignore all previous instructions" at twice the rate of that project's own detector. It also misses prompt-leakage, markdown-image exfiltration and every leetspeak and rot13 spelling (see §4, Microsoft agent-governance-toolkit).
 - **The answerability gate is real, but its default recall is low.** It abstains on 57/676 contested questions; with a judgment tier that becomes 572/676 (`judgment.contested_recall_*`), at 6.8% over-refusal (`benchmarks/judgment/results/judgment_results.json`).
 - **Judgment costs latency.** The hosted tier adds 341.3 ms median and 1209.8 ms p95 per injection check (`judgment.injection_latency`), against 0.263 ms per example for the heuristic (`injection.heuristic_held_out`).

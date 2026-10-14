@@ -20,14 +20,14 @@ by running ``docker compose up``.
 
 from __future__ import annotations
 
-import functools
-
 from agentfox.capabilities.detection.base import (
     BaseDetector,
     Detection,
     DetectionContext,
     redact_sample,
 )
+from agentfox.capabilities.detection.loading import inference_lock, load_once
+from agentfox.capabilities.detection.validators.base import module_present
 from agentfox.core.config import get_settings
 
 #: Distinguishes "caller didn't pass this" (use the configured default) from an
@@ -49,11 +49,26 @@ class _TransformersClassifier(BaseDetector):
     def available(self) -> bool:
         if self.restricted and not get_settings().restricted_models_allowed:
             return False
-        try:
-            import transformers  # noqa: F401
-        except Exception:
+        # Decided once per process: `available()` runs on every request, and an
+        # import attempt for a library that is not installed walks the whole import
+        # path each time (see `module_present`). The weights check stays live, so a
+        # `detectors pull` takes effect without a restart.
+        if not module_present("transformers"):
             return False
         return self._weights_present()
+
+    @property
+    def unavailable_reason(self) -> str:
+        """What is missing and the command that fixes it, for `doctor`, the
+        dashboard's detector catalogue and the startup log. A property, as on the
+        other adapters (`/api/detectors` reads it as a value)."""
+        if self.restricted and not get_settings().restricted_models_allowed:
+            return "restricted licence not accepted (AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1)"
+        if not module_present("transformers"):
+            return "needs `pip install 'agentfox[classifiers]'`"
+        if not self._weights_present():
+            return f"model not downloaded: run `agentfox admin detectors pull {self.key}`"
+        return ""
 
     def _weights_present(self) -> bool:  # pragma: no cover - requires optional dep
         try:
@@ -65,7 +80,7 @@ class _TransformersClassifier(BaseDetector):
             # mean "unavailable", not "fetch it now".
             return False
 
-    @functools.cached_property
+    @load_once
     def _pipeline(self):  # pragma: no cover - requires optional dependency
         import torch
         from transformers import pipeline
@@ -100,12 +115,16 @@ class _TransformersClassifier(BaseDetector):
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
         if self.available():
-            self._pipeline("")
+            pipe = self._pipeline
+            with inference_lock(pipe):
+                pipe("")
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         if not content:
             return []
-        scores = self._pipeline(content[:4000])
+        pipe = self._pipeline
+        with inference_lock(pipe):
+            scores = pipe(content[:4000])
         rows = scores[0] if scores and isinstance(scores[0], list) else scores
         out: list[Detection] = []
         for row in rows or []:
@@ -208,7 +227,7 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         )
         self.secondary_threshold = settings.prompt_injection_classifier_secondary_threshold
 
-    @functools.cached_property
+    @load_once
     def _secondary_pipeline(self):  # pragma: no cover - requires optional dependency
         if not self.secondary_model_id:
             return None
@@ -229,7 +248,8 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         if self.available() and self.secondary_model_id:
             pipe = self._secondary_pipeline
             if pipe is not None:
-                pipe("")
+                with inference_lock(pipe):
+                    pipe("")
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         primary = super()._detect(content, context)
@@ -238,7 +258,8 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         pipe = self._secondary_pipeline
         if pipe is None or not content:
             return primary
-        scores = pipe(content[:4000])
+        with inference_lock(pipe):
+            scores = pipe(content[:4000])
         rows = scores[0] if scores and isinstance(scores[0], list) else scores
         for row in rows or []:
             label = str(row.get("label", ""))
@@ -257,6 +278,10 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
                         "model": self.secondary_model_id,
                         "label": label,
                         "role": "ensemble_secondary_backstop",
+                        # Recorded, never blocked on: an enforcing policy does not see
+                        # it (`PolicyInput.for_mode`). PIGuard alone false-positives
+                        # 11.5% of NotInject; with this backstop it is 41%.
+                        "advisory": True,
                     },
                 )
             ]
@@ -297,7 +322,7 @@ class GraniteGuardianDetector(_TransformersClassifier):
     def __init__(self, model_id: str | None = None) -> None:
         self.model_id = model_id or get_settings().granite_guardian_model
 
-    @functools.cached_property
+    @load_once
     def _guardian(self):  # pragma: no cover - requires optional dependency + weights
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -337,7 +362,7 @@ class GraniteGuardianDetector(_TransformersClassifier):
         )
         if not isinstance(ids, torch.Tensor):  # a BatchEncoding in newer transformers
             ids = ids["input_ids"]
-        with torch.no_grad():
+        with inference_lock(model), torch.no_grad():
             logits = model(input_ids=ids).logits[0, -1].float()
         return float(torch.softmax(logits[[yes, no]], dim=0)[0])
 
@@ -405,7 +430,7 @@ class RestrictedClassifierDetector(_TransformersClassifier):
     def __init__(self, model_id: str = "meta-llama/Llama-Guard-3-8B") -> None:
         self.model_id = model_id
 
-    @functools.cached_property
+    @load_once
     def _generator(self):  # pragma: no cover - requires optional dependency + gated weights
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -439,7 +464,7 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         input_ids = tokenizer.apply_chat_template(chat, return_tensors="pt")
         if not isinstance(input_ids, torch.Tensor):  # a BatchEncoding in newer transformers
             input_ids = input_ids["input_ids"]
-        with torch.no_grad():
+        with inference_lock(model), torch.no_grad():
             generated = model.generate(
                 input_ids=input_ids, max_new_tokens=self.max_new_tokens, pad_token_id=0
             )

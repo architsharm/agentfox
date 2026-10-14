@@ -162,19 +162,29 @@ set. [What each tier is worth, and what it costs](benchmarks/judgment/README.md)
 
 Detection is the layer we trust least, so we publish its numbers.
 
-- The default heuristic detector's held-out injection recall is **16.7%**, at 100% precision
-  ([REPORT.md](benchmarks/REPORT.md)). An [adaptive attacker](benchmarks/adaptive/README.md)
-  that reads our verdict and retries gets **74% of the attacks we catch through within 50 attempts** against the default stack.
+- The default injection stack (heuristic plus the PIGuard classifier) has a held-out recall of
+  **68.3%**, at 100% precision ([REPORT.md](benchmarks/REPORT.md)). It needs
+  `agentfox[classifiers]` and the model weights, which the Docker image ships; without them the
+  heuristic runs alone, and its held-out injection recall is **16.7%**; the startup warning and
+  `agentfox doctor` say so.
+- On NotInject, 339 benign prompts built to trip keyword guardrails, the classifier flags
+  11.5% (39/339) at the level an enforcing policy acts on (PIGuard alone), and 41% (139/339)
+  counting the advisory backstop hits that observe mode records.
+- An [adaptive attacker](benchmarks/adaptive/README.md) that reads our verdict and retries gets
+  **74% of the attacks we catch through within 50 attempts**, measured against the
+  heuristic-only stack that was the default until October 2026.
 - The deterministic answerability classifier abstains on 57/676 contested questions; with a
   judgment tier that becomes 572/676, at the cost of over-refusal rising from 0.75% to 6.8%.
 - Against a real, independently installed `llm-guard` on indirect injection via tool output, it
   is more precise than us: **81.8% against our 66.7%** on the same 20 cases, though of the 10
-  attacks among them we catch all 10 and it catches 9
+  attacks among them we catch all 10 and it catches 9. That run predates October 2026, while the
+  backstop model's hits still counted toward a block
   ([agent_security](benchmarks/agent_security/README.md)).
 - On AgentDojo, per-argument taint misses 61 of 702 attacker write calls; session-level taint
   misses none of them and escalates three in four benign tasks.
-- The opt-in classifier ensemble reaches 86.4% and 98.6% recall on two independent datasets, but
-  it is **not the shipped default**: on long prompts it mostly times out.
+- The default stack reaches 86.4% and 98.4% recall on two independent datasets (SPML and
+  yanismiraoui), but on long prompts (around 2,000 characters and up) the classifier mostly
+  times out within its 250 ms budget and the request falls back to the heuristic.
 
 Treat every detection number as a speed bump that raises attacker cost, never as a defence.
 

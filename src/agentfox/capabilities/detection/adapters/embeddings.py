@@ -31,6 +31,7 @@ from agentfox.capabilities.detection.base import (
     DetectionContext,
     redact_sample,
 )
+from agentfox.capabilities.detection.loading import inference_lock, load_once
 from agentfox.core.config import get_settings
 
 _CORPUS_PATH = Path(__file__).resolve().parent.parent / "data" / "injection_corpus.json"
@@ -68,7 +69,7 @@ class LocalEmbedder:
             # Never trigger a download at request time.
             return False
 
-    @functools.cached_property
+    @load_once
     def _model(self):  # pragma: no cover - requires optional dependency
         import torch
         from transformers import AutoModel, AutoTokenizer
@@ -87,7 +88,7 @@ class LocalEmbedder:
         encoded = tokenizer(
             texts, padding=True, truncation=True, max_length=256, return_tensors="pt"
         )
-        with torch.no_grad():
+        with inference_lock(model), torch.no_grad():
             out = model(**encoded)
         mask = encoded["attention_mask"].unsqueeze(-1).float()
         summed = (out.last_hidden_state * mask).sum(1)
@@ -142,7 +143,7 @@ class EmbeddingSimilarityDetector(BaseDetector):
     def _embed(self, texts: list[str]):  # pragma: no cover - requires optional dependency
         return local_embedder(self.model_id).embed(texts)
 
-    @functools.cached_property
+    @load_once
     def _corpus_embeddings(self):  # pragma: no cover - requires optional dependency
         attack_texts, benign_texts = _load_corpus()
         return attack_texts, self._embed(attack_texts), benign_texts, self._embed(benign_texts)

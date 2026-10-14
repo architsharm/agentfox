@@ -15,7 +15,6 @@ must be licence-checked before it ships, so none is enabled by default.
 
 from __future__ import annotations
 
-import functools
 import logging
 from pathlib import Path
 from typing import Any
@@ -26,6 +25,7 @@ from agentfox.capabilities.detection.base import (
     DetectionContext,
     redact_sample,
 )
+from agentfox.capabilities.detection.loading import load_once
 
 log = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class NemoRailsDetector(BaseDetector):
             "holding `config.yml`, not at the file itself."
         )
 
-    @functools.cached_property
+    @load_once
     def _rails(self):  # pragma: no cover - requires optional dependency
         from nemoguardrails import LLMRails, RailsConfig
 
@@ -278,7 +278,7 @@ class GuardrailsAiDetector(BaseDetector):
             "failed to construct and the log line above says why."
         )
 
-    @functools.cached_property
+    @load_once
     def _guard(self):  # pragma: no cover - requires optional dependency
         from agentfox.capabilities.detection.adapters.hub import _silence_guardrails_telemetry
 

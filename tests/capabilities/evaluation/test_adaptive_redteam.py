@@ -211,9 +211,11 @@ def no_timing_flake(monkeypatch):
     reset_settings_cache()
 
 
-def test_the_mutation_program_is_deterministic_under_a_fixed_seed(enforcing):
+def test_the_mutation_program_is_deterministic_under_a_fixed_seed(enforcing, no_timing_flake):
     """The part the seed actually controls: which probe is tried, mutated how, in
-    what order. This holds regardless of what the enforcement pipeline's clock does."""
+    what order. The program follows the verdicts (a blocked probe is mutated), so a
+    detector timeout under a loaded test run flips it like any other verdict; the
+    clock is moved out of the way here as it is for the results test below."""
     from agentfox.core.models import RedTeamFinding
 
     def program(campaign):

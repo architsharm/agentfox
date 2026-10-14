@@ -280,6 +280,7 @@ def warm_all() -> None:
     download, an architecture the installed transformers rejects) used to take the
     whole process down with it. The same failure on a request is recorded as that
     detector's `error`, which is where it belongs."""
+    warn_unrunnable(enabled_only=True)
     for key in sorted(_keys_to_warm()):
         detector = _REGISTRY.get(key)
         if detector is None:
@@ -289,3 +290,36 @@ def warm_all() -> None:
                 detector.warm()
         except Exception:
             log.exception("detector %s failed to warm; it stays cold", key)
+
+
+def warn_unrunnable(*, enabled_only: bool = True) -> list[str]:
+    """Log each enabled detector that cannot run here, with the fix. Returns their keys.
+
+    The pipeline skips such a detector without a word, which is right per request
+    and wrong at startup: `injection.classifier` is on by default, and a deployment
+    without its model would otherwise run regex only while believing otherwise.
+    """
+    from agentfox.capabilities.detection.models import models_for
+    from agentfox.core.config import get_settings
+
+    enabled = set(get_settings().enabled_detectors)
+    missing = []
+    for key, detector in all_detectors().items():
+        # Model-backed only: a detector like `custom.lists` is unavailable simply
+        # because nothing is configured for it yet, which is not worth a warning.
+        if (enabled_only and key not in enabled) or not models_for(detector):
+            continue
+        try:
+            if detector.available():
+                continue
+            reason = getattr(detector, "unavailable_reason", None)
+            reason = reason() if callable(reason) else reason
+        except Exception as exc:  # noqa: BLE001 - a startup warning must never raise
+            reason = str(exc)
+        missing.append(key)
+        log.warning(
+            "agentfox: detector %s is enabled but cannot run here (%s); it is skipped.",
+            key,
+            reason or "its dependency is not installed",
+        )
+    return missing

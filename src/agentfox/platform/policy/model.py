@@ -13,7 +13,7 @@ force, which is what stops "that rule was always on" retro-fitting.
 from __future__ import annotations
 
 import fnmatch
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 import yaml
@@ -239,6 +239,18 @@ class PolicyInput:
     #: the only one who can see them; which of them are *required* is the
     #: policy's business, not the caller's.
     completion: dict[str, Any] = field(default_factory=dict)
+
+    def for_mode(self, mode: str) -> PolicyInput:
+        """The input a policy in ``mode`` reasons over.
+
+        An enforcing policy does not see advisory detections: ones a detector marks
+        as good enough to record but not to block on (`injection.classifier`'s
+        ensemble backstop, which raised NotInject false positives from 11.5% to 41%).
+        An observing policy sees everything, so its counterfactual stays complete.
+        """
+        if mode != "enforce" or not any(d.get("advisory") for d in self.detections):
+            return self
+        return replace(self, detections=[d for d in self.detections if not d.get("advisory")])
 
     def to_json(self) -> dict[str, Any]:
         return {

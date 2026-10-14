@@ -16,14 +16,17 @@ Everything here is checkable from this repository.
 
 **1. Adversarial robustness is unsolved, and adaptive attacks defeat published defences.** The paper reports
 over 90% attack success against twelve defences once the attacker adapts. We do not claim to be the
-exception. Our own held-out injection recall is **16.7%** with the default heuristic detector and
-**68.3%** with the opt-in classifier ensemble, both published in
+exception. Our own held-out injection recall is **68.3%** with the default stack (heuristic plus classifier)
+and **16.7%** with the heuristic alone, which is what runs when the classifier weights are not
+installed, both published in
 [`benchmarks/REPORT.md`](../../benchmarks/REPORT.md) alongside the rounds where it was 0%.
 
 **2. Static guardrail benchmarks are misleading.** They are, and we have first-hand evidence. Swapping our
 classifier roughly doubled recall *and* cut the false-alarm rate on a benign trigger-word stress set from
 42.2% to 11.5%; adding an ensemble backstop to recover generalization recall pushed it back up to 41.3%. We
-shipped that as a disclosed, switchable trade-off rather than quoting whichever number flattered us. We also
+shipped that as a disclosed, switchable trade-off rather than quoting whichever number flattered us. The
+backstop's hits are now advisory: observe-mode policies record them, and an enforcing policy acts on
+PIGuard's verdict alone, which flags 11.5% of that set. We also
 decline to quote a [PINT](https://github.com/lakeraai/pint-benchmark) score, because that dataset was never
 public and the repository is archived.
 
