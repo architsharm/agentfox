@@ -174,6 +174,26 @@ def init(
     agentfox.toml carrying the real runtime defaults so they are visible rather than
     implicit. AGENTFOX_* environment variables override that file.
     """
+    setup_workspace(path, environment, demo=demo)
+    _print_next_steps(
+        [
+            ("agentfox scan", "scan this repo and see what is ungoverned"),
+            ("import agentfox; agentfox.auto()", "one line in your entry point"),
+            (
+                "agentfox declare tool <key> --impact irreversible",
+                "declare what each tool can do — this is what still holds when a detector misses",
+            ),
+            ("agentfox doctor", "check containment readiness, not just detectors"),
+        ]
+    )
+
+
+def setup_workspace(
+    path: Path, environment: str, *, demo: bool = False, brief: bool = False
+) -> None:
+    """What `init` does, without its closing advice: `agentfox up` runs this as its
+    first step and gives its own. ``brief`` prints one line instead of the pack list,
+    for a caller that sets the modes and hooks itself and reports them after."""
     from rich.markup import escape
 
     from agentfox.capabilities.compliance import load_catalog, sync_catalog
@@ -193,7 +213,8 @@ def init(
         raise typer.Exit(2)
 
     settings = get_settings()
-    console.print("[bold]Setting up AgentFox[/]")
+    say = (lambda *_args, **_kwargs: None) if brief else console.print
+    say("[bold]Setting up AgentFox[/]")
 
     try:
         init_db()
@@ -203,12 +224,12 @@ def init(
             + escape(database_error_hint(exc, settings.database_url))
         )
         raise typer.Exit(1) from None
-    console.print(f"  [green]✓[/] database ready  [dim]{settings.database_url}[/]")
+    say(f"  [green]✓[/] database ready  [dim]{settings.database_url}[/]")
 
     with session_scope() as session:
         summary = sync_catalog(session)
         catalog = load_catalog()
-        console.print(
+        say(
             f"  [green]✓[/] {summary['controls_created'] + summary['controls_updated']} controls "
             f"across {len(catalog.get('frameworks', []))} frameworks  "
             f"[dim]v{catalog.get('version')} ({catalog.get('review_status')})[/]"
@@ -227,57 +248,48 @@ def init(
             save_policy(session, document, author="init", notes="loaded by agentfox init")
         # Say the truth per pack: a blanket "observe mode" was wrong the moment one
         # shipped pack (tool-containment) declared enforce.
-        console.print(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
+        say(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
         for document in sorted(documents, key=lambda d: d.key):
             colour = "red" if document.mode == "enforce" else "yellow"
             meaning = _MODE_MEANING.get(document.mode, "")
-            console.print(
-                f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]"
-            )
+            say(f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]")
         if coding_agents:
-            console.print(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
+            say(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
         elif coding_agents == []:
-            console.print(
+            say(
                 "      [dim]coding-agent not enabled — no coding-agent hooks in this repo. "
                 "`agentfox admin hooks install --agent <slug> --write` turns it on for that "
                 "agent.[/]"
             )
         enforcing = [d.key for d in documents if d.mode == "enforce"]
         if enforcing:
-            console.print(
+            say(
                 f"      [dim]{', '.join(enforcing)} blocks from the start — "
                 "demote with `agentfox policy observe <key>`.[/]"
             )
 
     config_path = Path(path) / "agentfox.toml"
     if config_path.exists():
-        console.print(f"  [dim]·[/] {config_path.name} already exists, left alone")
+        say(f"  [dim]·[/] {config_path.name} already exists, left alone")
     else:
         config_path.write_text(_config_text(environment))
-        console.print(f"  [green]✓[/] wrote {config_path.name}")
+        say(f"  [green]✓[/] wrote {config_path.name}")
 
     if demo:
         from agentfox.fixtures.seed import seed
 
         with session_scope() as session:
             seed(session)
-        console.print("  [green]✓[/] demo fixtures loaded")
-        console.print(
+        say("  [green]✓[/] demo fixtures loaded")
+        say(
             "    [dim]agents, policies and an eval suite; no traffic yet. "
             "`agentfox demo` sends sample requests through them.[/]"
         )
-
-    _print_next_steps(
-        [
-            ("agentfox scan", "scan this repo and see what is ungoverned"),
-            ("import agentfox; agentfox.auto()", "one line in your entry point"),
-            (
-                "agentfox declare tool <key> --impact irreversible",
-                "declare what each tool can do — this is what still holds when a detector misses",
-            ),
-            ("agentfox doctor", "check containment readiness, not just detectors"),
-        ]
-    )
+    if brief:
+        console.print(
+            f"  [green]✓[/] workspace ready  [dim]{len(documents)} policy packs, "
+            f"{len(catalog.get('frameworks', []))} control frameworks[/]"
+        )
 
 
 def check(

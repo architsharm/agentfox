@@ -103,7 +103,9 @@ export async function GET(req: NextRequest) {
     body: JSON.stringify({ access_token: githubToken }),
   });
 
-  const res = NextResponse.redirect(new URL("/app/start?tab=connect", origin));
+  // The welcome page scans a repository and sets it up in one flow; a workspace
+  // that is already past that is sent on to Home from there.
+  const res = NextResponse.redirect(new URL("/app/welcome", origin));
   res.cookies.delete(STATE_COOKIE);
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

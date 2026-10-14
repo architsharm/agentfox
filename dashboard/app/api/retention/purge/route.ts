@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /** Run the retention purge now and say what it removed. */
 export async function POST(req: NextRequest) {
-  return proxyRedirectWithHandler(req, "POST", "/api/retention/purge", "/app/compliance?tab=retention", undefined, (res, body) => {
+  return proxyRedirectWithHandler(req, "POST", "/api/retention/purge", "/app/settings?tab=retention", undefined, (res, body) => {
     if (!res.ok) return { error: body.detail || res.statusText };
     let deleted = 0;
     let redacted = 0;

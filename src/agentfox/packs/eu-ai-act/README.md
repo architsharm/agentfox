@@ -10,7 +10,7 @@ advice; it supports specific articles and does not make a system compliant.
 - `vocabulary.condition_values.risk_tier`: the risk classes (prohibited, high, limited,
   minimal) the classifier emits and policy lint checks `risk_tier` conditions against.
 - `vocabulary.annex_iii_cues` and `prohibited_cues`: the words the classifier
-  (`capabilities/compliance/risk.py`) proposes a class from, for a person to confirm.
+  (`agentfox_ee.compliance.risk`, AgentFox Enterprise) proposes a class from, for a person to confirm.
 - `fallback`: on a deployment that has bound nothing, an agent declared `high` or
   `prohibited` gets this pack's policies beside baseline, in observe.
 

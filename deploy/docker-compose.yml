@@ -99,12 +99,18 @@ services:
       AGENTFOX_DETECTOR_TIMEOUT_MS: "40"
       AGENTFOX_POLICY_ENGINE: native
       AGENTFOX_OPA_URL: http://opa:8181
-      # Every detector the published image has weights for (deploy/Dockerfile), on
-      # top of the 5 zero-dependency defaults. `safety.restricted` (Llama Guard 3-8B)
-      # is left out on purpose: see the opt-in steps at the top of this file.
+      # The 5 zero-dependency defaults, plus the model detectors whose weights the
+      # published image carries (deploy/Dockerfile). Two are left out on purpose:
+      #   * `safety.restricted` (Llama Guard 3-8B): see the opt-in steps at the top.
+      #   * `safety.granite` (Granite Guardian, 2B): its weights are in the image, but
+      #     on CPU one check takes about 9 s and the gateway needs about 10 GB of
+      #     memory, against a 300 ms request budget; enabled there it times out on
+      #     every call instead of checking. Add it here on a GPU host, or with
+      #     AGENTFOX_DETECTOR_TIMEOUT_MS and AGENTFOX_ENFORCEMENT_BUDGET_MS raised to
+      #     match, for a deployment that can wait for it.
       AGENTFOX_ENABLED_DETECTORS: >-
         ["injection.heuristic","pii.native","secrets.native","safety.lexicon",
-        "schema.json","injection.classifier","safety.granite","injection.similarity"]
+        "schema.json","injection.classifier","injection.similarity"]
       # Appendix A.4: Llama Guard's licence is non-OSI (acceptable-use policy, a
       # >700M-MAU clause) and the code refuses to load it unless this is "1". Turning
       # it on is a legal decision, not a technical one, so it ships off.

@@ -1184,6 +1184,40 @@ def _external_mcp_scan(server: McpServer) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def overview(session: Session) -> dict[str, Any]:
+    """The workspace at a glance: its agents, their risk tiers, and the open issues.
+
+    The open core's Reports summary; AgentFox Enterprise's board view adds control
+    status and obligations on top of it.
+    """
+    agents = list(session.scalars(select(Agent).where(Agent.status != "retired")))
+    findings = list(session.scalars(select(Finding).where(Finding.status == "open")))
+    by_severity: dict[str, int] = {}
+    by_type: dict[str, int] = {}
+    for finding in findings:
+        by_severity[finding.severity] = by_severity.get(finding.severity, 0) + 1
+        by_type[finding.type] = by_type.get(finding.type, 0) + 1
+    by_class: dict[str, int] = {}
+    for agent in agents:
+        by_class[agent.risk_tier] = by_class.get(agent.risk_tier, 0) + 1
+    return {
+        "inventory": inventory(session),
+        "seed_agents": sum(1 for a in agents if a.is_seed),
+        "agents_by_risk_class": by_class,
+        "high_risk_agents": [a.slug for a in agents if a.risk_tier in ("high", "prohibited")],
+        "open_findings": {
+            "total": len(findings),
+            "by_severity": by_severity,
+            "by_type": by_type,
+            "critical": [
+                {"id": f.id, "title": f.title, "subject": f.subject_id}
+                for f in findings
+                if f.severity == "critical"
+            ][:10],
+        },
+    }
+
+
 def inventory(session: Session) -> dict[str, Any]:
     agents = list(session.scalars(select(Agent)))
     by_tier: dict[str, int] = {}

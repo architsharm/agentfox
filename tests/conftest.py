@@ -49,14 +49,46 @@ if os.environ.get("AGENTFOX_TEST_REAL_MODELS") != "1":
     os.environ["HF_HUB_CACHE"] = tempfile.mkdtemp(prefix="agentfox-test-hf-")
     os.environ["HF_HUB_OFFLINE"] = "1"
 
+import shutil
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from sqlalchemy.orm import Session
 
 
+@pytest.fixture(scope="session")
+def schema_template(tmp_path_factory) -> Path:
+    """An empty database with the whole schema, built once per run.
+
+    Creating some eighty tables took about a third of a second, and every test did it
+    through `isolated_db`: with four and a half thousand tests that was most of the
+    suite's wall time. Each test now starts from a copy of this file instead, which
+    is the same empty, stamped schema `init_db` would have created.
+    """
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
+
+    path = tmp_path_factory.mktemp("schema") / "template.db"
+    previous = os.environ.get("AGENTFOX_DATABASE_URL")
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{path}"
+    try:
+        reset_settings_cache()
+        db.reset_engine()
+        db.init_db()
+    finally:
+        db.reset_engine()
+        if previous is None:
+            os.environ.pop("AGENTFOX_DATABASE_URL", None)
+        else:
+            os.environ["AGENTFOX_DATABASE_URL"] = previous
+        reset_settings_cache()
+    return path
+
+
 @pytest.fixture(autouse=True)
-def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
+def isolated_db(tmp_path, monkeypatch, schema_template) -> Iterator[None]:
+    shutil.copyfile(schema_template, tmp_path / "test.db")
     monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("AGENTFOX_EVIDENCE_DIR", str(tmp_path / "evidence"))
     monkeypatch.setenv("AGENTFOX_AUDIT_SIGNING_KEY", "test-key")
@@ -146,3 +178,16 @@ def promote(client, key: str, email: str = "admin@example.com"):
     response = client.post(f"/api/policies/{key}/mode", json={"mode": "enforce"}, headers=headers)
     assert response.status_code == 200, response.text
     return response
+
+
+def pytest_collection_modifyitems(config, items):
+    """`@pytest.mark.enterprise` tests run only where AgentFox Enterprise is installed
+    (CI's enterprise job); the open core's own suite skips them."""
+    from agentfox.core import extensions
+
+    if extensions.loaded():
+        return
+    skip = pytest.mark.skip(reason="needs AgentFox Enterprise (ee/)")
+    for item in items:
+        if "enterprise" in item.keywords:
+            item.add_marker(skip)

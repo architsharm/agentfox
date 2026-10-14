@@ -357,7 +357,7 @@ def test_findings_lists_what_the_platform_found(isolated_db):
 def test_the_onboarding_verbs_are_top_level(isolated_db):
     """Buried under a sub-app they would not be found in the first ten minutes."""
     result = runner.invoke(app, ["--help"])
-    for verb in ("init", "demo", "scan", "doctor", "findings"):
+    for verb in ("up", "init", "scan", "doctor", "findings"):
         assert verb in flat(result.output)
 
 

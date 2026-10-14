@@ -4,9 +4,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, ControlStatus, DraftCaveat, InfoTip, StatusBar, pct, ts } from "@/components/ui";
-import { REPORTS_TABS } from "@/components/product/AreaTabs";
+import { AreaTabs, REPORTS_TABS } from "@/components/product/AreaTabs";
 import { Card, Empty, Header, Pill, Tabs, ago } from "@/components/kit";
-import { days } from "@/components/product/compliance";
+import { days } from "@/ee/compliance";
+import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
+import { hasFeature } from "@/lib/product/edition";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -35,7 +37,6 @@ const TABS: { key: string; label: string }[] = [
   { key: "controls", label: "Controls" },
   { key: "regulations", label: "Regulations" },
   { key: "risk", label: "Risk register" },
-  { key: "retention", label: "Retention & legal hold" },
 ];
 
 /** Older links to the two tabs Regulations replaced. */
@@ -50,25 +51,35 @@ export default async function Compliance({
   // Evidence and the board summary moved to their own Reports tabs.
   if (rawTab === "evidence") redirect("/app/reports?tab=evidence");
   if (rawTab === "board") redirect("/app/reports");
+  // Retention is open core and lives under Settings.
+  if (rawTab === "retention") redirect("/app/settings?tab=retention");
+  if (!(await hasFeature("compliance"))) {
+    return (
+      <>
+        <Header title="Reports" />
+        <AreaTabs tabs={REPORTS_TABS} active="compliance" />
+        <EnterpriseOnly feature="compliance" />
+      </>
+    );
+  }
   const wanted = TAB_ALIASES[rawTab || ""] || rawTab;
   // Controls is the default because /findings and /policies deep-link to
   // /compliance#<control-key> — a control anchor that lands on the wrong tab
   // never scrolls into view, so the tab that owns those anchors has to be first.
   const tab = TABS.some((t) => t.key === wanted) ? wanted! : "controls";
 
-  let controls: any, frameworks: any, register: any, retention: any;
+  let controls: any, frameworks: any, register: any;
   try {
-    [controls, frameworks, register, retention] = await Promise.all([
+    [controls, frameworks, register] = await Promise.all([
       api("/api/controls"),
       api("/api/frameworks"),
       api("/api/risk/register"),
-      api("/api/retention"),
     ]);
   } catch (e: any) {
     return (
       <>
         <Header title="Reports" />
-        <Tabs items={REPORTS_TABS} active="compliance" />
+        <AreaTabs tabs={REPORTS_TABS} active="compliance" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -81,7 +92,7 @@ export default async function Compliance({
   return (
     <>
       <Header title="Reports" />
-      <Tabs items={REPORTS_TABS} active="compliance" />
+      <AreaTabs tabs={REPORTS_TABS} active="compliance" />
 
       {review_error && <div className="error">{review_error}</div>}
       {review_notice && <div className="note-panel">{review_notice}</div>}
@@ -124,7 +135,6 @@ export default async function Compliance({
             controls: controls.controls.length,
             regulations: frameworks.frameworks.length,
             risk: register.register.length,
-            retention: retention.legal_holds.filter((h: any) => !h.released_at).length,
           };
           return (
             <Link
@@ -283,7 +293,6 @@ export default async function Compliance({
         </>
       )}
 
-      {tab === "retention" && <Retention retention={retention} />}
     </>
   );
 }
@@ -368,177 +377,6 @@ function Regulations({ frameworks }: { frameworks: any[] }) {
   );
 }
 
-const ACTION_LABEL: Record<string, string> = {
-  delete: "Deleted",
-  redact: "Content redacted",
-  locked: "Never purged",
-  unenforced: "Not enforced",
-};
-
-function purgeSummary(result: any): string {
-  if (!result) return "—";
-  if (result.skipped) {
-    return result.skipped === "no policy" ? "Kept" : result.skipped === "legal hold" ? "Held" : "—";
-  }
-  let deleted = 0;
-  let redacted = 0;
-  for (const [k, v] of Object.entries(result)) {
-    if (typeof v !== "number") continue;
-    if (k.endsWith("_deleted")) deleted += v;
-    if (k.endsWith("_redacted")) redacted += v;
-  }
-  if (!deleted && !redacted) return "Nothing due";
-  return [deleted ? `${deleted} deleted` : "", redacted ? `${redacted} redacted` : ""].filter(Boolean).join(", ");
-}
-
-/**
- * How long each class of recorded data is kept, changed here and enforced by a
- * daily purge. The audit log is shown, locked: it is never purged.
- */
-function Retention({ retention }: { retention: any }) {
-  const last = retention.last_run;
-  const activeHolds = retention.legal_holds.filter((h: any) => !h.released_at);
-  return (
-    <>
-      <h2>Retention</h2>
-      <p className="sub">
-        How long each kind of data is kept. A daily purge deletes or redacts what is
-        older. Active legal holds stop it.
-      </p>
-
-      <Card
-        flush
-        title="Data classes"
-        action={
-          <form action="/api/retention/purge" method="POST" className="row" style={{ gap: 10 }}>
-            <span className="small muted">
-              Last purge {last ? `${ago(last.started_at)} by ${last.requested_by || "schedule"}` : "never"}
-              {" · "}
-              Next {retention.next_run ? (retention.next_run === "due" ? "on the next cron run" : ts(retention.next_run)) : "not scheduled"}
-            </span>
-            <button type="submit" className="k-btn">Run purge now</button>
-          </form>
-        }
-      >
-        <table className="k-table">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th className="tight">Kept for</th>
-              <th className="tight">After that</th>
-              <th className="tight">Last purge</th>
-              <th className="tight"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {retention.classes.map((c: any) => (
-              <tr key={c.data_class}>
-                <td>
-                  <span className="k-name">{c.label}</span>
-                  <span className="sub">{c.covers}</span>
-                </td>
-                <td className="tight">
-                  {c.action === "locked" ? "Life of the workspace" : days(c.retain_days)}
-                </td>
-                <td className="tight">
-                  <Pill tone={c.action === "locked" ? "ok" : c.retain_days ? "info" : "outline"}>
-                    {c.action === "locked" || c.retain_days ? ACTION_LABEL[c.action] : "Nothing"}
-                  </Pill>
-                </td>
-                <td className="tight muted">{purgeSummary(c.last_result)}</td>
-                <td className="tight">
-                  {c.action === "delete" || c.action === "redact" ? (
-                    <details>
-                      <summary className="small">Change</summary>
-                      <form
-                        action={`/api/retention/${encodeURIComponent(c.data_class)}`}
-                        method="POST"
-                        className="k-limits-form"
-                        style={{ marginTop: 8 }}
-                      >
-                        <div className="k-limits-row">
-                          <input
-                            className="k-input"
-                            type="number"
-                            name="retain_days"
-                            min={1}
-                            max={3650}
-                            required
-                            defaultValue={c.retain_days ?? c.default_days ?? 365}
-                            aria-label="Days to keep"
-                          />
-                          <span className="small muted">days</span>
-                        </div>
-                        <input
-                          className="k-input"
-                          name="reason"
-                          required
-                          placeholder="Reason, kept on the audit log"
-                          aria-label="Reason"
-                        />
-                        <button type="submit" className="k-btn-primary">Save</button>
-                      </form>
-                    </details>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-
-      <h2>Legal holds</h2>
-      <p className="sub">
-        A hold preserves data the purge would otherwise remove. A hold with no agents
-        stops the purge entirely.
-      </p>
-
-      <Card title="Place a hold">
-        <form action="/api/legal-holds" method="POST" className="k-form">
-          <div className="k-field">
-            <label htmlFor="lh-agents">Agents</label>
-            <input id="lh-agents" className="k-input" type="text" name="agents" placeholder="All agents, or: support-triage, refund-bot" />
-          </div>
-          <div className="k-field">
-            <label htmlFor="lh-reason">Reason</label>
-            <input id="lh-reason" className="k-input" type="text" name="reason" required placeholder="Litigation hold, case 4471" />
-          </div>
-          <div className="k-field">
-            <span />
-            <div><button type="submit" className="k-btn-primary">Place hold</button></div>
-          </div>
-        </form>
-      </Card>
-
-      <Card flush title={`Holds${activeHolds.length ? ` (${activeHolds.length} active)` : ""}`}>
-        {retention.legal_holds.length === 0 ? (
-          <Empty>No legal holds placed.</Empty>
-        ) : (
-          <table className="k-table">
-            <thead>
-              <tr><th className="tight">Placed</th><th>By</th><th>Agents</th><th>Reason</th><th className="tight">Status</th></tr>
-            </thead>
-            <tbody>
-              {retention.legal_holds.map((h: any) => (
-                <tr key={h.id}>
-                  <td className="tight muted">{ts(h.placed_at)}</td>
-                  <td className="muted">{h.placed_by}</td>
-                  <td className="muted">{(h.scope?.agents || ["All"]).join(", ")}</td>
-                  <td>{h.reason}</td>
-                  <td className="tight">
-                    <Pill tone={h.released_at ? "outline" : "warn"}>
-                      {h.released_at ? `Released ${ts(h.released_at)}` : "Active"}
-                    </Pill>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-    </>
-  );
-}
 
 /**
  * The controls whose telemetry says something is wrong, lifted out of the

@@ -23,7 +23,7 @@ fallback:
   risk_tiers: [high, prohibited]
   order: 10
 vocabulary:
-  # The classes the classifier emits (`compliance/risk.py:classify`), and so the values
+  # The classes the classifier emits (`agentfox_ee/compliance/risk.py:classify`), and so the values
   # a policy's `risk_tier` condition can match; policy lint flags anything else.
   condition_values:
     risk_tier: [prohibited, high, limited, minimal]

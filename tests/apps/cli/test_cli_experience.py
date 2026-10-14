@@ -518,6 +518,7 @@ def test_demo_carries_no_number_it_did_not_derive(walkthrough_output):
     assert "78%" not in walkthrough_output
 
 
+@pytest.mark.enterprise
 def test_demo_explains_why_the_framework_rows_match(walkthrough_output):
     output = flat(walkthrough_output)
     assert "map into every one of these frameworks" in output

@@ -25,7 +25,6 @@ from agentfox.core.models import Base
 #: the order they are installed in.
 SESSION_EXTENSIONS: tuple[tuple[str, str], ...] = (
     ("agentfox.core.webhooks:install", "finding webhooks"),
-    ("agentfox.capabilities.monitoring.alerts:install", "monitor alerts"),
 )
 
 _engine: Engine | None = None
@@ -146,7 +145,9 @@ def get_sessionmaker() -> sessionmaker[Session]:
 
         _SessionLocal = sessionmaker(bind=get_engine(), expire_on_commit=False, future=True)
         install_tenancy(_SessionLocal)
-        for target, label in SESSION_EXTENSIONS:
+        from agentfox.core import extensions
+
+        for target, label in (*SESSION_EXTENSIONS, *extensions.collect("session_extensions")):
             try:
                 module, attribute = target.split(":")
                 getattr(importlib.import_module(module), attribute)(_SessionLocal)

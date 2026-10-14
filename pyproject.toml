@@ -5,6 +5,24 @@ description = "Agent-native, vendor-neutral governance, security and compliance 
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+authors = [{ name = "Archit Sharma" }]
+keywords = [
+    "ai-agents", "agent-security", "ai-security", "llm-security", "guardrails",
+    "llm-guardrails", "prompt-injection", "indirect-prompt-injection", "tool-calling",
+    "mcp", "mcp-security", "ai-firewall", "llm-firewall", "claude-code", "langgraph",
+    "langchain", "openai", "anthropic", "owasp", "ai-governance", "audit-trail",
+    "eu-ai-act", "red-teaming",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 # Core runtime deps only. Everything that wraps a third-party OSS primitive is an
 # optional extra so that `pip install agentfox` stays offline-capable (X-3 / NFR-9).
@@ -34,6 +52,7 @@ dependencies = [
 # argument is "read the code that decides" is the wrong omission to ship.
 [project.urls]
 Homepage = "https://useagentfox.com"
+Documentation = "https://useagentfox.com/docs"
 Source = "https://github.com/architsharm/agentfox"
 Issues = "https://github.com/architsharm/agentfox/issues"
 Changelog = "https://github.com/architsharm/agentfox/releases"
@@ -71,7 +90,7 @@ otel = [
     "opentelemetry-exporter-otlp-proto-http>=1.27",
 ]
 postgres = ["psycopg[binary]>=3.2"]
-dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.7", "mypy>=1.13", "import-linter>=2.1"]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "pytest-xdist>=3.6", "ruff>=0.7", "mypy>=1.13", "import-linter>=2.1"]
 
 # Everything permissive, in one shot.
 all = ["agentfox[pii,classifiers,rails,validators,redteam,otel,postgres,langgraph,sql]"]
@@ -120,7 +139,9 @@ exclude = ["**/__pycache__", "**/*.pyc"]
 # it. `lint-imports` checks it in CI's lint job and in `just lint`. An exception is
 # listed here by name, with the reason and what removes it, never added silently.
 [tool.importlinter]
-root_package = "agentfox"
+# `agentfox_ee` (ee/src, AgentFox Enterprise) is analysed too, so the contract below can
+# say the open core never imports it.
+root_packages = ["agentfox", "agentfox_ee"]
 # A type-only import has no runtime edge; `if TYPE_CHECKING:` blocks are excluded.
 exclude_type_checking_imports = true
 
@@ -197,6 +218,14 @@ forbidden_modules = [
     "agentfox.capabilities.business.checks",
 ]
 
+# The open core never imports AgentFox Enterprise. It finds the package through the
+# `agentfox.extensions` entry point (`core/extensions.py`) and runs without it.
+[[tool.importlinter.contracts]]
+name = "The open core does not import the enterprise package"
+type = "forbidden"
+source_modules = ["agentfox"]
+forbidden_modules = ["agentfox_ee"]
+
 # Validators are reached through their registry (`detection/validators`), never by
 # importing a built-in module, so a validator from an `agentfox.validators` entry
 # point is a peer of the built-in ones and a built-in one can be replaced.
@@ -239,6 +268,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "conformance.py"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "enterprise: needs AgentFox Enterprise (ee/); skipped when it is not installed",
+]
 
 [tool.ruff]
 line-length = 100

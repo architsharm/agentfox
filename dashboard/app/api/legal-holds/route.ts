@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const scope: Record<string, unknown> = {};
   if (agents.length) scope.agents = agents;
 
-  return proxyCustomBody(req, "POST", "/api/legal-holds", "/app/compliance?tab=retention", {
+  return proxyCustomBody(req, "POST", "/api/legal-holds", "/app/settings?tab=retention", {
     scope,
     reason,
   });

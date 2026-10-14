@@ -3,7 +3,7 @@ import { appPageMetadata } from "@/lib/site";
 import Link from "next/link";
 import { api, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, InfoTip, Panel, StatusBar } from "@/components/ui";
-import { SETTINGS_TABS } from "@/components/product/AreaTabs";
+import { AreaTabs, SETTINGS_TABS } from "@/components/product/AreaTabs";
 import { Header, Tabs } from "@/components/kit";
 import { ContextCheck } from "@/components/product/ContextCheck";
 import { Modal } from "@/components/product/Modal";
@@ -82,7 +82,7 @@ export default async function Sources({
     return (
       <>
         <Header title="Settings" />
-        <Tabs items={SETTINGS_TABS} active="sources" />
+        <AreaTabs tabs={SETTINGS_TABS} active="sources" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -99,7 +99,7 @@ export default async function Sources({
   return (
     <>
       <Header title="Settings" actions={sources.sources.length > 0 ? addSourceModal : undefined} />
-      <Tabs items={SETTINGS_TABS} active="sources" />
+      <AreaTabs tabs={SETTINGS_TABS} active="sources" />
 
       {review_error && <div className="error">{review_error}</div>}
       {review_notice && <div className="note-panel">{review_notice}</div>}

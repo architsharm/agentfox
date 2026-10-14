@@ -445,7 +445,7 @@ declares them), including evidence downloads.
 **Monitors.** A `Monitor` row watches one source: `github_repo` (`owner/repo`), `hosted_api`
 (an OpenAPI URL), `mcp_server` (a registered server's name) or `deployed_agent` (a
 `ProbeTarget` id). Monitors are created when a source is connected and scanned, or by hand
-(`POST /api/monitors`, `agentfox scan monitors add`). `capabilities/monitoring/service.py:run_monitor` runs
+(`POST /api/monitors`, `agentfox scan monitors add`). `ee/src/agentfox_ee/monitoring/service.py:run_monitor` runs
 one in three steps, the same for every kind:
 
 1. **Observe** — the kind's runner (`register_kind`) re-reads the source: downloads and rescans
@@ -472,7 +472,7 @@ or `agentfox admin jobs run-due` on a self-hosted scheduler. A signed GitHub pus
 branch queues an immediate rescan of that commit.
 
 **Alerts.** Findings a run opens, reopens or closes go to the deployment's finding webhook
-(`core/webhooks.py`) and, when configured, to Slack (`capabilities/monitoring/alerts.py`): the deployment's
+(`core/webhooks.py`) and, when configured, to Slack (`ee/src/agentfox_ee/monitoring/alerts.py`): the deployment's
 `AGENTFOX_SLACK_WEBHOOK_URL` and a tenant's own `AlertChannel` (encrypted, `https://hooks.slack.com/`
 only). Messages are queued on the session and sent after commit by one daemon worker with a
 bounded queue; with `allow_egress` off nothing is sent.

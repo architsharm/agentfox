@@ -7,5 +7,5 @@ repos:
         name: rebuild vendored wheels if src/agentfox changed
         entry: python3 scripts/check/rebuild_vendored_wheels.py
         language: system
-        files: ^src/agentfox/.*\.py$
+        files: ^(src/agentfox/.*\.py|ee/src/.*\.py|ee/pyproject\.toml)$
         pass_filenames: false

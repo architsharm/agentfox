@@ -275,20 +275,24 @@ def state(
     + findings), the tamper-evident audit chain's own self-check, and compliance
     posture — all real, already-existing functions, just called and serialized.
     """
-    from agentfox.capabilities.compliance.status import compute_all, posture
     from agentfox.capabilities.detection.tuning import explain_recorded
+    from agentfox.core import extensions
     from agentfox.platform.ledger import chain
     from agentfox.platform.ledger.trace import full_trace
 
     with record.session_scope() as session:
-        compute_all(session)
+        # Control status is AgentFox Enterprise; the open core's sandbox shows none.
+        compute_all = extensions.service("compliance.compute")
+        posture = extensions.service("compliance.posture")
+        if compute_all is not None:
+            compute_all(session)
         traces = [
             full_trace(session, tid, explain=explain_recorded)
             for tid in reversed(record.trace_ids(session))
         ]
         chain_info = chain.chain_stats(session)
         verification = chain.verify_range(session)
-        posture_info = posture(session)
+        posture_info = posture(session) if posture is not None else None
 
     return {
         "traces": [t for t in traces if t is not None],

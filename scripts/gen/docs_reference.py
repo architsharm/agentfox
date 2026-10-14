@@ -31,6 +31,9 @@ from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
+# The reference covers both editions: AgentFox Enterprise (ee/) routes and commands
+# are documented too, whether or not this environment has the package installed.
+sys.path.insert(0, str(REPO / "ee" / "src"))
 
 OUT = REPO / "dashboard" / "lib" / "generated" / "reference"
 DOCS = REPO / "dashboard" / "app" / "docs"

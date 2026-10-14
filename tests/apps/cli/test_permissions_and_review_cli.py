@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from typer.testing import CliRunner
 
 from agentfox.apps.cli.main import app
@@ -62,6 +63,7 @@ def test_doctor_reports_containment_readiness_not_just_detectors(isolated_db):
     assert "can act" in containment["detail"] or "no capability grants" in containment["detail"]
 
 
+@pytest.mark.enterprise
 def test_a_reviewer_packet_lists_every_mapping_awaiting_review(isolated_db, tmp_path):
     runner.invoke(app, ["init", "--path", str(tmp_path)])
     out = tmp_path / "packet.md"
@@ -75,6 +77,7 @@ def test_a_reviewer_packet_lists_every_mapping_awaiting_review(isolated_db, tmp_
     assert "Clause claimed" in document
 
 
+@pytest.mark.enterprise
 def test_an_unknown_framework_is_refused(isolated_db, tmp_path):
     runner.invoke(app, ["init", "--path", str(tmp_path)])
     result = runner.invoke(app, ["report", "review-packet", "--framework", "not-a-framework"])
@@ -82,6 +85,7 @@ def test_an_unknown_framework_is_refused(isolated_db, tmp_path):
     assert "unknown framework" in result.output
 
 
+@pytest.mark.enterprise
 def test_sign_off_moves_a_mapping_out_of_draft_and_names_the_reviewer(isolated_db, tmp_path):
     runner.invoke(app, ["init", "--path", str(tmp_path)])
     result = runner.invoke(
@@ -117,6 +121,7 @@ def test_sign_off_moves_a_mapping_out_of_draft_and_names_the_reviewer(isolated_d
     assert all(m.reviewed_by == "A. Counsel" for m in mappings)
 
 
+@pytest.mark.enterprise
 def test_signing_off_something_that_does_not_exist_fails_loudly(isolated_db, tmp_path):
     runner.invoke(app, ["init", "--path", str(tmp_path)])
     result = runner.invoke(

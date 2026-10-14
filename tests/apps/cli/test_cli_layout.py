@@ -2,7 +2,8 @@
 
 `agentfox --help` lists thirteen verbs (see `src/agentfox/apps/cli/layout.py`). The
 pre-consolidation top-level names were removed; only the two protocol endpoints that
-installed configs call, `hooks run` and `mcp serve`, still resolve at their old paths.
+installed configs call, `hooks run` and `mcp serve`, still resolve at their old paths,
+and `demo`, which gave its place in Start to `up`, still runs unlisted.
 """
 
 from __future__ import annotations
@@ -139,14 +140,30 @@ def test_only_the_protocol_endpoints_survive_under_their_old_groups(path):
     assert _resolve(path) is None
 
 
-@pytest.mark.parametrize("path", NEW_PATHS)
+#: Paths AgentFox Enterprise adds; resolved only where it is installed.
+ENTERPRISE_PATHS = {"report evidence", "report status", "report signoff", "admin catalog sync"}
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        pytest.param(p, marks=pytest.mark.enterprise) if p in ENTERPRISE_PATHS else p
+        for p in NEW_PATHS
+    ],
+)
 def test_every_new_path_resolves(path):
     assert _resolve(path) is not None, f"`agentfox {path}` does not resolve"
 
 
-def test_the_only_hidden_top_level_entries_are_the_protocol_endpoints():
+def test_the_only_hidden_top_level_entries_are_the_protocol_endpoints_and_demo():
     hidden = sorted(name for name, cmd in ROOT.commands.items() if cmd.hidden)
-    assert hidden == sorted({path.split()[0] for path in KEPT_PROTOCOL_ENDPOINTS})
+    expected = {path.split()[0] for path in KEPT_PROTOCOL_ENDPOINTS} | layout.HIDDEN_TOP_LEVEL
+    assert hidden == sorted(expected)
+
+
+def test_demo_still_runs_unlisted():
+    result = runner.invoke(app, ["demo", "--help"])
+    assert result.exit_code == 0, result.output
 
 
 def test_visible_top_level_is_thirteen_or_fewer():
@@ -234,7 +251,6 @@ def test_bare_report_is_the_one_page_summary(isolated_db):
     bare = runner.invoke(app, ["report"])
     assert bare.exit_code == summary.exit_code == 0
     assert bare.output.startswith("# AgentFox summary")
-    assert runner.invoke(app, ["report", "status"]).exit_code == 0
 
 
 # ---------------------------------------------------------------------------

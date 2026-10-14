@@ -84,9 +84,7 @@ def test_production_refuses_header_only_identity(ready, production):
 
 def test_production_refuses_header_only_writes(ready, production):
     client = TestClient(create_app())
-    response = client.post(
-        "/api/controls/compute", headers={"X-AgentFox-User": "admin@example.com"}
-    )
+    response = client.post("/api/retention/purge", headers={"X-AgentFox-User": "admin@example.com"})
     assert response.status_code == 401
 
 

@@ -33,7 +33,6 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from agentfox import __version__
-from agentfox.capabilities.compliance.catalog import FRAMEWORK_TITLES
 from agentfox.capabilities.improvement.contract import SCOPE_LEVELS, STATUSES
 
 log = logging.getLogger("agentfox.mcp")
@@ -523,27 +522,6 @@ TOOLS: dict[str, Tool] = {
             exit_meanings={1: "audit chain verification FAILED; the chain is broken"},
         ),
         Tool(
-            "agentfox_compliance_status",
-            "Compliance posture",
-            "Shows control posture (effective, degraded, failing, not implemented), optionally "
-            "for one framework. Mappings are engineering drafts, not legal advice.",
-            {
-                "framework": _string("Framework id.", enum=sorted(FRAMEWORK_TITLES)),
-                "verbose": {"type": "boolean", "description": "List every control."},
-            },
-            argv=lambda a, s: [
-                "report",
-                "status",
-                *_opts(a, framework="--framework", verbose="--verbose"),
-            ],
-        ),
-        Tool(
-            "agentfox_compliance_frameworks",
-            "Compliance frameworks",
-            "Lists supported frameworks with mapped-control coverage and review status.",
-            argv=lambda a, s: ["report", "frameworks"],
-        ),
-        Tool(
             "agentfox_redteam_probes",
             "Red-team probe suite",
             "Lists the built-in adversarial probes (category, surface, severity, OWASP/ATLAS ids) "
@@ -670,6 +648,17 @@ class CliOutcome:
     exit_code: int
     stdout: str
     stderr: str
+
+
+def _extension_tools() -> None:
+    """Tools an installed extension adds (`core/extensions.py`), as `(name, Tool)` pairs."""
+    from agentfox.core import extensions
+
+    for name, tool in extensions.collect("mcp_tools", Tool):
+        TOOLS.setdefault(name, tool)
+
+
+_extension_tools()
 
 
 def _child_env() -> dict[str, str]:

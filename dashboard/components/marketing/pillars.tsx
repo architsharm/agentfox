@@ -44,7 +44,7 @@ import {
  *   - scorer keys ............................ src/agentfox/capabilities/evaluation/scorers.py
  *   - adaptive campaign scope ................ src/agentfox/capabilities/evaluation/adaptive.py
  *   - chain digests and verify() ............. src/agentfox/platform/ledger/chain.py
- *   - computed compliance status ............. src/agentfox/capabilities/compliance/status.py
+ *   - computed compliance status ............. ee/src/agentfox_ee/compliance/status.py
  *   - control count and framework keys ....... src/agentfox/packs/compliance/catalog/controls/controls.yaml
  *   - every CLI command shown ................ README.md "Commands"
  *

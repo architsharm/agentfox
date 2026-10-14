@@ -11,7 +11,47 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`agentfox up`, found by running it end to end** on a sample project, locally, against
+  a production-mode team server, through the Cloud path and as a Docker Compose stack:
+  - A set-up agent works on its first call. The tools `up` declares are granted to the
+    agent (locally and over the API), and a coding agent is offered a grant for the MCP
+    servers it loads (the repository's and its user-level config's), so neither is
+    refused by default-deny. Containment still applies: a refund whose recipient came
+    from a tool result is still held.
+  - A self-hosted stack started by `up` gets the control catalog and the shipped policy
+    packs; the gateway image only serves, so before this it ran with no tool containment.
+  - Before starting Docker, `up` names a port already in use and says the gateway image
+    is a large download (its size read from the registry), asking first; a failed start says how to clean up.
+  - `up` only reports a local API it started; another AgentFox on :8080 (a self-hosted
+    stack, another project) is named, not claimed.
+  - Running `up` again no longer records the same scan, and its draft agents and proposed
+    policies, a second time.
+  - A connected self-hosted server is asked for its dashboard address; the API URL is no
+    longer shown as the dashboard.
+  - "Watch first" says what still stops a call (destructive commands, protected paths,
+    tampering); logs and pid files are git-ignored; plurals and long paths read properly.
+
 ### Added
+
+- **`agentfox up`, the guided setup.** One command from a fresh install to a governed
+  project: it scans the repository, asks where AgentFox runs (this machine; self-hosted,
+  either started here with Docker Compose and a first operator, or an existing server;
+  or AgentFox Cloud with an API key), what to cover and how strict to start, then sets up
+  the Claude Code and Codex hooks, `agentfox.auto()` in your entry point, the gateway
+  environment for any language, the tools it found (impact inferred, never overwriting
+  a declaration), your MCP servers, the scan in the dashboard, Enterprise monitoring and
+  compliance where available, and the dashboard. It starts in observe by default. Each
+  question has a recommended answer (`--yes` takes them all); answers are saved in
+  `.agentfox/up.json` and credentials in `.agentfox/agentfox.env` (0600, git-ignored).
+  `up` takes `demo`'s place in the Start panel; `agentfox demo` still works.
+  Its scan step also reads the AI tools set up on this machine (`agentfox scan
+  machine`, skipped with `--skip-machine`) and the repository's own skills, and a
+  coding agent configured only at user level is offered too. It can add the AgentFox
+  GitHub Action as `.github/workflows/agentfox.yml`, never over an existing one.
+- `exposure.declared_mcp_servers()`: the servers a repository's MCP configs declare,
+  once each by name, shared by `agentfox scan mcp` and `agentfox up`.
 
 - **Delivery policies for coding agents** (`capabilities/delivery`). The hook now
   also catches an agent that is about to lose work it already got right: a service
@@ -43,11 +83,28 @@ the file it came from.
 
 ### Changed
 
+- **Open core and AgentFox Enterprise.** The repository is now an Apache-2.0 open core
+  plus a source-available enterprise package in `ee/` (Business Source License 1.1: free
+  in production for one workspace with up to four agents; each release becomes
+  Apache-2.0 three years after it ships). Enterprise holds compliance status, reviews
+  and sign-off, the risk register and board view, auditor evidence packages, fleet
+  monitoring with Slack alerts, and external access checks. Everything else, including
+  enforcement, containment, every detector and validator, custom rules, packs, data
+  retention and legal holds, stays in the open core, which runs on its own.
+- The open core finds the enterprise package through the `agentfox.extensions` entry
+  point and never imports it; an import contract enforces that. CI runs the open core's
+  suite without `ee/` and both suites with it.
+- The dashboard shows enterprise areas only where the deployment has them
+  (`/api/version` now reports `edition` and `features`). Retention moved to
+  Settings → Retention; the Reports summary reads the new open-core `/api/overview`.
 - The `rails.hub.*` detectors, which needed a `pip install` per validator, are replaced
   by the ports. `rails.guardrails_ai` stays for running your own Guard.
 
 ### Fixed
 
+- Opening Compliance on a new workspace could fail: its parallel requests each loaded the
+  control catalog and collided on the same control.
+- An extension's CLI commands could be dropped depending on import order.
 - **The gateway proxy now governs the tool calls a model asks for.** `/v1/chat/completions`
   and `/v1/messages` authorise every tool call in the response through
   `guard_tool_call` before returning it, as `agentfox.auto()` does in-process: a

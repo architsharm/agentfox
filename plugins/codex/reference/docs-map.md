@@ -17,6 +17,7 @@ commit; `scripts/check/plugins.py` fails if a repo `.md` file is unclassified.
 | File | Read it when you need | Notes |
 |---|---|---|
 | `README.md` | the pitch, quickstart, one contained tool call, headline numbers, honest limits | Entry point for humans; numbers bound in `benchmarks/claims.yaml` |
+| `ee/README.md` | what AgentFox Enterprise adds (compliance, evidence, monitoring, access checks), its licence, how it plugs into the open core | Source-available, BSL 1.1 (`ee/LICENSE`); the open core never imports it |
 | `ARCHITECTURE.md` | the domain model, one tool call traced through `auto()` and the gateway, the code map, invariants, where to start for a change | Start here before changing code; names functions, not line numbers |
 | `docs/product-tour.md` | every integration surface (auto, gateway, LangGraph, OpenAI Agents SDK, TypeScript, MCP, Claude Code hooks), commands grouped by task, demo output, self-hosting | Moved out of the README; the website guides cover the same ground |
 | `docs/design/PRD.md` | *why* a feature exists, requirement IDs, roadmap, non-goals | 1,200 lines — jump to §5 pillars, §6 integrations, §9 roadmap, §10.3 non-goals, §12 shipped since |

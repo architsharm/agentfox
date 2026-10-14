@@ -111,13 +111,6 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         "advance, hold or roll back every rolling canary through the two-way gate",
     ),
     DefaultSchedule(
-        "compliance.recompute",
-        DAY,
-        True,
-        {"window_days": 30},
-        "keep control status current",
-    ),
-    DefaultSchedule(
         "drift.check",
         DAY,
         True,
@@ -160,13 +153,6 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         "delete or redact data past each class's retention period; legal holds win",
     ),
     DefaultSchedule(
-        "monitors.run",
-        10 * 60,
-        True,
-        {},
-        "re-check connected sources whose own interval has passed",
-    ),
-    DefaultSchedule(
         "redteam.posture",
         7 * DAY,
         False,
@@ -181,6 +167,23 @@ DEFAULT_SCHEDULES: tuple[DefaultSchedule, ...] = (
         "probe opted-in deployed agents that are due; sends nothing without an opt-in",
     ),
 )
+
+
+def default_schedules() -> tuple[DefaultSchedule, ...]:
+    """The core defaults plus any an installed extension adds (`core/extensions.py`)."""
+    from agentfox.core import extensions
+
+    extra = tuple(
+        DefaultSchedule(
+            item["kind"],
+            int(item["interval_seconds"]),
+            bool(item.get("enabled", True)),
+            dict(item.get("payload") or {}),
+            str(item.get("why") or ""),
+        )
+        for item in extensions.collect("schedules")
+    )
+    return (*DEFAULT_SCHEDULES, *extra)
 
 
 def _aware(value: dt.datetime | None) -> dt.datetime | None:
@@ -198,7 +201,7 @@ def ensure_default_schedules(session: Session, *, created_by: str = "") -> list[
     """
     existing = set(session.scalars(select(JobSchedule.kind)))
     created: list[JobSchedule] = []
-    for default in DEFAULT_SCHEDULES:
+    for default in default_schedules():
         if default.kind in existing:
             continue
         row = JobSchedule(

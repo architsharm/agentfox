@@ -37,6 +37,8 @@ SHARED_PARTS = ("AGENTS.md", "skills", "reference", "scripts")
 #: The runtime plugins that carry a copy of the shared parts.
 RUNTIMES = ("claude-code", "codex")
 sys.path.insert(0, str(REPO / "src"))
+# The plugins document both editions, so AgentFox Enterprise (ee/) commands count as live.
+sys.path.insert(0, str(REPO / "ee" / "src"))
 
 try:
     import click

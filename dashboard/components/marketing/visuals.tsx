@@ -1185,7 +1185,7 @@ type ControlRow = {
  *
  * Real: the catalogue version and review status (src/agentfox/packs/compliance/catalog/controls/controls.yaml:14-15),
  * the framework keys (controls.yaml:16-24), the control count (43 entries in that file),
- * every control key and title, the status vocabulary (compliance/status.py:43), the
+ * every control key and title, the status vocabulary (agentfox_ee/compliance/status.py:43), the
  * rationale sentence each rule handler emits (status.py:155-390) and the posture line
  * (apps/cli/main.py:1011-1014).
  */
@@ -1337,12 +1337,12 @@ export function CompliancePanel({ className }: { className?: string }) {
 
       <Verdict tone="hold" verdict="silence is not success">
         <p style={STRONG}>
-          {/* compliance/status.py:17-19 */}
+          {/* agentfox_ee/compliance/status.py:17-19 */}
           A control whose evidence source is producing nothing is not_implemented, not
           effective.
         </p>
         <p style={STRONG}>
-          {/* compliance/status.py:14-16 */}
+          {/* agentfox_ee/compliance/status.py:14-16 */}
           A single audit-chain verification failure is failing, never degraded. A chain that
           &quot;mostly&quot; verifies has no evidentiary value at all.
         </p>

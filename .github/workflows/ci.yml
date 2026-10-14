@@ -13,7 +13,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Install (matches the documented dev venv, not --all-extras)
         run: uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev
-      - run: uv run pytest -q
+      # Spread across the runner's cores (pytest-xdist). Every test already gets its own
+      # temporary directory and database, so nothing is shared between workers.
+      - run: uv run pytest -q -n auto
       # The operator plugins (plugins/) and Appendix C are checked against the live code, so
       # neither can silently drift. Both also run inside pytest (tests/repo/test_plugins.py);
       # these steps just make the failure obvious in the job log.
@@ -27,6 +29,20 @@ jobs:
         run: uv run python scripts/gen/docs_reference.py --check
       - name: Every published number still matches the result it came from
         run: uv run python scripts/check/claims.py --check
+
+  # The open core's suite above runs without AgentFox Enterprise installed, which is what
+  # proves it stands on its own. This one installs `ee/` and runs both suites, which is
+  # what the hosted service runs.
+  enterprise-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install the open core, then the enterprise package beside it
+        run: |
+          uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev
+          uv pip install --no-deps ./ee
+      - run: uv run pytest -q -n auto tests ee/ee_tests
 
   dashboard-tests:
     runs-on: ubuntu-latest
@@ -71,7 +87,7 @@ jobs:
       # [tool.importlinter] contracts in pyproject. Static analysis only: the package
       # is found on PYTHONPATH and nothing is installed or imported.
       - name: Import contracts — layers hold
-        run: PYTHONPATH=src uvx --from import-linter==2.15 lint-imports
+        run: PYTHONPATH=src:ee/src uvx --from import-linter==2.15 lint-imports
 
   docker-smoke:
     runs-on: ubuntu-latest
@@ -84,6 +100,28 @@ jobs:
           file: deploy/Dockerfile
           target: deps
           push: false
+
+  # Runs action.yml the way a user's workflow would (`uses: ./` is this checkout), on a
+  # repository that has a lethal trifecta, so a broken action fails here and not in
+  # someone else's pull request.
+  github-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: A repository with a trifecta
+        run: |
+          mkdir -p "$RUNNER_TEMP/sample"
+          echo '{"mcpServers":{"github":{"command":"npx","args":["@modelcontextprotocol/server-github"]}}}' \
+            > "$RUNNER_TEMP/sample/.mcp.json"
+      - uses: ./
+        id: scan
+        with:
+          path: ${{ runner.temp }}/sample
+          fail-on: none
+      - name: The action found it
+        env:
+          TRIFECTAS: ${{ steps.scan.outputs.trifectas }}
+        run: test "$TRIFECTAS" = "1"
 
   # Belt-and-suspenders for the local pre-commit hook (.pre-commit-config.yaml):
   # catches the case where src/agentfox/ changed and the vendored wheel(s) didn't,
@@ -103,8 +141,14 @@ jobs:
             exit 0
           fi
           CHANGED="$(git diff --name-only "$BASE" "${{ github.sha }}")"
+          if echo "$CHANGED" | grep -q '^ee/src/' \
+             && ! echo "$CHANGED" | grep -qE '^api/vendor/agentfox_enterprise-.*\.whl$'; then
+            echo "ee/ changed but api/vendor's enterprise wheel wasn't rebuilt alongside it."
+            echo "Run: uv build --wheel --out-dir api/vendor ee"
+            exit 1
+          fi
           if echo "$CHANGED" | grep -q '^src/agentfox/' \
-             && ! echo "$CHANGED" | grep -qE '^(api|demo/redteam-live-lang)/vendor/.*\.whl$'; then
+             && ! echo "$CHANGED" | grep -qE '^(api|demo/redteam-live-lang)/vendor/agentfox-.*\.whl$'; then
             echo "src/agentfox/ changed but the vendored wheel(s) weren't rebuilt alongside it."
             echo "Run: uv build --wheel --out-dir api/vendor && uv build --wheel --out-dir demo/redteam-live-lang/vendor"
             echo "(the local pre-commit hook does this automatically — see .pre-commit-config.yaml)"

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { safeApi } from "@/lib/product/api";
 import { BarList, Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num, pctOf } from "@/components/kit";
-import { REPORTS_TABS } from "@/components/product/AreaTabs";
+import { AreaTabs, REPORTS_TABS } from "@/components/product/AreaTabs";
+import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
+import { hasFeature } from "@/lib/product/edition";
 import { PrintButton } from "@/components/product/PrintButton";
 
 export const metadata: Metadata = appPageMetadata("Reports", "Evidence that your agents are under control.");
@@ -27,25 +29,28 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
   return (
     <>
       <Header title="Reports" actions={tab === "summary" ? <PrintButton /> : undefined} />
-      <Tabs items={REPORTS_TABS} active={tab} />
+      <AreaTabs tabs={REPORTS_TABS} active={tab} />
       {sp.review_error && <div className="error">{sp.review_error}</div>}
       {sp.review_notice && <div className="note-panel">{sp.review_notice}</div>}
       {tab === "summary" && <Summary />}
-      {tab === "evidence" && <Evidence />}
+      {tab === "evidence" && ((await hasFeature("evidence")) ? <Evidence /> : <EnterpriseOnly feature="evidence" />)}
       {tab === "audit" && <Audit />}
     </>
   );
 }
 
 async function Summary() {
-  const [board, usage] = await Promise.all([
-    safeApi<any>("/api/board", null),
+  const compliance = await hasFeature("compliance");
+  const [overview, board, usage] = await Promise.all([
+    safeApi<any>("/api/overview", null),
+    // Control status by framework is AgentFox Enterprise.
+    compliance ? safeApi<any>("/api/board", null) : Promise.resolve(null),
     safeApi<any>("/api/metrics/summary?range=30d", null),
   ]);
-  if (!board) return <Card><Empty>Summary unavailable.</Empty></Card>;
-  const inv = board.inventory || {};
-  const findings = board.open_findings || {};
-  const posture = Object.values(board.control_posture || {}) as any[];
+  if (!overview) return <Card><Empty>Summary unavailable.</Empty></Card>;
+  const inv = overview.inventory || {};
+  const findings = overview.open_findings || {};
+  const posture = Object.values(board?.control_posture || {}) as any[];
   const t = usage?.totals || { requests: 0, held: 0, blocked: 0 };
   // Working out of every control that applies, not out of the ones measured: "8 of 8
   // measured" read as 100% with 29 controls not set up at all.
@@ -59,52 +64,54 @@ async function Summary() {
     <>
       <Grid cols={4}>
         <Kpi label="Agents" value={num(inv.agents || 0)} href="/app/agents" hint="Registered and unregistered." />
-        <Kpi label="High-risk agents" value={num((board.high_risk_agents || []).length)} href="/app/agents" />
+        <Kpi label="High-risk agents" value={num((overview.high_risk_agents || []).length)} href="/app/agents" />
         <Kpi label="Open issues" value={num(findings.total || 0)} tone={findings.by_severity?.critical ? "bad" : undefined} href="/app/findings" />
         <Kpi label="Requests stopped (30d)" value={pctOf(t.held + t.blocked, t.requests)} hint={`${num(t.held + t.blocked)} of ${num(t.requests)} requests held or blocked.`} />
       </Grid>
-      <Card
-        title="Frameworks"
-        hint="Controls working, out of every control that applies, computed from live traffic. Mappings are drafts pending review."
-        action={
-          <span>
-            {best}% average{computedAt ? <span className="k-muted"> · updated {ago(computedAt)} · </span> : " · "}
-            <Link href="/app/compliance">Recompute</Link>
-          </span>
-        }
-        flush
-      >
-        <table className="k-table">
-          <tbody>
-            {posture.map((p) => (
-              <tr key={p.framework}>
-                <td>
-                  <Link className="k-name" href={`/app/compliance/frameworks/${encodeURIComponent(p.framework)}`}>
-                    {FRAMEWORK_NAMES[p.framework] || p.framework}
-                  </Link>
-                </td>
-                <td style={{ width: "40%" }}>
-                  <span className="k-stack">
-                    <span className="k-seg-solid" style={{ width: `${Math.round(share(p) * 100)}%`, opacity: 0.7 }} />
-                  </span>
-                </td>
-                <td className="num tight">
-                  {working(p)} of {inScope(p)}
-                </td>
-                <td className="tight">
-                  {p.failing_controls?.length ? (
-                    <Pill tone="bad">{p.failing_controls.length} failing</Pill>
-                  ) : p.counts?.not_implemented ? (
-                    <Pill tone="outline">{p.counts.not_implemented} not set up</Pill>
-                  ) : (
-                    <Pill tone="ok">All working</Pill>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      {compliance && (
+        <Card
+          title="Frameworks"
+          hint="Controls working, out of every control that applies, computed from live traffic. Mappings are drafts pending review."
+          action={
+            <span>
+              {best}% average{computedAt ? <span className="k-muted"> · updated {ago(computedAt)} · </span> : " · "}
+              <Link href="/app/compliance">Recompute</Link>
+            </span>
+          }
+          flush
+        >
+          <table className="k-table">
+            <tbody>
+              {posture.map((p) => (
+                <tr key={p.framework}>
+                  <td>
+                    <Link className="k-name" href={`/app/compliance/frameworks/${encodeURIComponent(p.framework)}`}>
+                      {FRAMEWORK_NAMES[p.framework] || p.framework}
+                    </Link>
+                  </td>
+                  <td style={{ width: "40%" }}>
+                    <span className="k-stack">
+                      <span className="k-seg-solid" style={{ width: `${Math.round(share(p) * 100)}%`, opacity: 0.7 }} />
+                    </span>
+                  </td>
+                  <td className="num tight">
+                    {working(p)} of {inScope(p)}
+                  </td>
+                  <td className="tight">
+                    {p.failing_controls?.length ? (
+                      <Pill tone="bad">{p.failing_controls.length} failing</Pill>
+                    ) : p.counts?.not_implemented ? (
+                      <Pill tone="outline">{p.counts.not_implemented} not set up</Pill>
+                    ) : (
+                      <Pill tone="ok">All working</Pill>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
       <Grid cols={2}>
         <Card title="Open issues by severity">
           <BarList
@@ -116,7 +123,7 @@ async function Summary() {
         </Card>
         <Card title="Agents by risk">
           <BarList
-            rows={Object.entries(board.agents_by_risk_class || {}).map(([k, v]) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), value: v as number }))}
+            rows={Object.entries(overview.agents_by_risk_class || {}).map(([k, v]) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), value: v as number }))}
             empty="No agents"
           />
         </Card>

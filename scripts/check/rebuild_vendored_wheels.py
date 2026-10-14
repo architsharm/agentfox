@@ -25,6 +25,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VENDOR_DIRS = ["api/vendor", "demo/redteam-live-lang/vendor"]
+#: The hosted gateway also runs AgentFox Enterprise (`ee/`), from its own wheel. The
+#: demo runs the open core alone.
+EE_VENDOR_DIRS = ["api/vendor"]
 
 
 def staged_files() -> list[str]:
@@ -38,8 +41,30 @@ def staged_files() -> list[str]:
     return out.stdout.splitlines()
 
 
+def _rebuild_ee(staged: list[str]) -> int:
+    if not any(f.startswith("ee/src/") or f == "ee/pyproject.toml" for f in staged):
+        return 0
+    print("ee/ changed — rebuilding the vendored enterprise wheel...")
+    for vendor_dir in EE_VENDOR_DIRS:
+        out_dir = REPO_ROOT / vendor_dir
+        if not out_dir.is_dir():
+            continue
+        result = subprocess.run(
+            ["uv", "build", "--wheel", "--out-dir", str(out_dir), "ee"], cwd=REPO_ROOT
+        )
+        if result.returncode != 0:
+            print(f"enterprise wheel build for {vendor_dir} failed — blocked.", file=sys.stderr)
+            return 1
+        subprocess.run(["git", "add", vendor_dir], cwd=REPO_ROOT, check=True)
+        print(f"  {vendor_dir}: enterprise wheel rebuilt and staged")
+    return 0
+
+
 def main() -> int:
-    if not any(f.startswith("src/agentfox/") for f in staged_files()):
+    staged = staged_files()
+    if _rebuild_ee(staged):
+        return 1
+    if not any(f.startswith("src/agentfox/") for f in staged):
         return 0
 
     print("src/agentfox/ changed — rebuilding vendored wheels so they can't drift...")

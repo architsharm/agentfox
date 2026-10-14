@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 274,
+ "count": 277,
  "routes": [
   {
    "method": "GET",
@@ -2729,7 +2729,7 @@
     }
    ],
    "body": {
-    "model": "agentfox__apps__gateway__routes__authorizers__TestIn",
+    "model": "agentfox_ee__access_checks__routes__TestIn",
     "fields": [
      {
       "name": "subject",
@@ -3017,6 +3017,29 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/catalog/controls",
+   "section": "catalog",
+   "audience": "operator",
+   "summary": "Every control's id and title, from the catalog this build ships.",
+   "description": "Every control's id and title, from the catalog this build ships.\n\nRules, findings and traces cite control ids everywhere; this is how a reader gets\nthe name beside the code. Their status against a framework is AgentFox Enterprise\n(`/api/controls`).",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "GET",
@@ -6459,6 +6482,35 @@
   },
   {
    "method": "POST",
+   "path": "/api/integrations/github/scans/{scan_id}/accept",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Approve every draft one scan proposed, in one step.",
+   "description": "Approve every draft one scan proposed, in one step.\n\nThe same state change as approving each draft agent and proposed policy on its own\n(`approve_agent`, `approve_policy`), with the same ledger entries, so the audit\ntrail cannot tell the two paths apart. The policies stay in observe: approving a\nproposal makes it live, it does not make it block. Policy permission is checked as\nwell as registry permission, because this approves both.",
+   "params": [
+    {
+     "name": "scan_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
    "path": "/api/integrations/github/webhook",
    "section": "integrations",
    "audience": "operator",
@@ -7738,6 +7790,29 @@
    "audience": "operator",
    "summary": "Install state as a checklist, computed live.",
    "description": "Install state as a checklist, computed live.\n\nEvery step is derived from data, never from a stored \"completed\" flag — a\nchecklist that can disagree with the system is worse than none.\n\nThe steps are the order a developer does it in on the Get started page, and\neach one can be finished there in the browser; ``command`` is the same step\nfrom the command line, for whoever prefers it.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/overview",
+   "section": "overview",
+   "audience": "operator",
+   "summary": "Agents, their risk tiers and open issues: the Reports summary.",
+   "description": "Agents, their risk tiers and open issues: the Reports summary.",
    "params": [
     {
      "name": "authorization",
@@ -9726,7 +9801,7 @@
     }
    ],
    "body": {
-    "model": "agentfox__apps__gateway__routes__governance__AssessIn",
+    "model": "agentfox_ee__compliance__routes__AssessIn",
     "fields": [
      {
       "name": "eu_ai_act_class",

@@ -42,8 +42,8 @@ START, SEE, WATCH, CONTAIN, PROVE, OPERATE = (
 # The visible top level, in the order `--help` lists it. Keep this at thirteen or
 # fewer: tests/apps/cli/test_cli_layout.py enforces the ceiling.
 VISIBLE: list[tuple[str, str]] = [
+    ("up", START),
     ("init", START),
-    ("demo", START),
     ("scan", SEE),
     ("agents", SEE),
     ("serve", WATCH),
@@ -56,6 +56,10 @@ VISIBLE: list[tuple[str, str]] = [
     ("doctor", OPERATE),
     ("admin", OPERATE),
 ]
+
+# Top-level commands that still work but are not listed: `demo` gave its place in
+# Start to `up`, and the README and every blog post still say `agentfox demo`.
+HIDDEN_TOP_LEVEL: frozenset[str] = frozenset({"demo"})
 
 # Protocol endpoints written into users' configs, kept at their original paths
 # (hidden): `agentfox hooks run` in coding-agent hook configs, `agentfox mcp serve` in
@@ -162,7 +166,25 @@ def _find(app: typer.Typer, *path: str) -> CommandInfo:
     return _command(parent, path[-1])
 
 
-def _alias(target: typer.Typer, info: CommandInfo, name: str, *, hidden: bool = False) -> None:
+#: Groups an extension contributes (the enterprise package): absent from the open core,
+#: so the tree places their commands only when they are registered.
+EXTENSION_GROUPS = frozenset({"compliance", "evidence", "monitors"})
+
+
+def _find_optional(app: typer.Typer, *path: str) -> CommandInfo | None:
+    try:
+        return _find(app, *path)
+    except LookupError:
+        if path and path[0] in EXTENSION_GROUPS:
+            return None
+        raise
+
+
+def _alias(
+    target: typer.Typer, info: CommandInfo | None, name: str, *, hidden: bool = False
+) -> None:
+    if info is None:  # an extension command that is not installed
+        return
     clone = copy.copy(info)
     clone.name = name
     clone.hidden = hidden
@@ -188,7 +210,7 @@ def apply_layout(app: typer.Typer) -> None:
         return
     app._agentfox_layout_applied = True  # type: ignore[attr-defined]
 
-    find = lambda *path: _find(app, *path)  # noqa: E731
+    find = lambda *path: _find_optional(app, *path)  # noqa: E731
     panels: dict[str, str] = dict(VISIBLE)
     sub = {info.name: info for info in app.registered_groups}
 
@@ -199,10 +221,11 @@ def apply_layout(app: typer.Typer) -> None:
     scan.cls = default_group("repo", routes={"--sessions": "sessions"})
     scan.no_args_is_help = False
     scan.help = (
-        "Find what is worth governing: a repo, local sessions, an MCP server, the runtime.\n\n"
+        "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n"
         "`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). "
         "`agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs "
-        "the live detector check. `mcp`, `skills` and `runtime` scan the rest; "
+        "the live detector check. `machine` checks the MCP servers and skills your AI "
+        "tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; "
         "`monitors` re-checks connected sources on a schedule."
     )
     scan_app = scan.typer_instance
@@ -323,7 +346,8 @@ def apply_layout(app: typer.Typer) -> None:
     catalog_app = _new_group("Keep the control catalog and its computed status current.")
     for name in ("sync", "compute", "validate"):
         _alias(catalog_app, find("compliance", name), name)
-    admin_app.add_typer(catalog_app, name="catalog")
+    if catalog_app.registered_commands:
+        admin_app.add_typer(catalog_app, name="catalog")
     _alias(admin_app, find("audit", "checkpoint"), "checkpoint")
     _alias(admin_app, find("seed"), "seed")
     _alias(admin_app, find("version"), "version")
@@ -351,12 +375,15 @@ def apply_layout(app: typer.Typer) -> None:
     # Only the visible verbs survive at the top level; every working name the command
     # modules registered has been re-homed above.
     app.registered_commands[:] = [
-        info for info in app.registered_commands if _command_name(info) in panels
+        info
+        for info in app.registered_commands
+        if _command_name(info) in panels or _command_name(info) in HIDDEN_TOP_LEVEL
     ]
     app.registered_groups[:] = [info for info in app.registered_groups if info.name in panels]
     for info in app.registered_commands:
-        info.hidden = False
-        info.rich_help_panel = panels[_command_name(info)]
+        name = _command_name(info)
+        info.hidden = name not in panels
+        info.rich_help_panel = panels.get(name)
     for info in app.registered_groups:
         info.hidden = False
         info.rich_help_panel = panels[info.name]
