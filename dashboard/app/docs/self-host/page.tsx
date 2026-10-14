@@ -221,7 +221,7 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
           <tr><td><code>AGENTFOX_DATABASE_URL</code></td><td><code>postgresql+psycopg://agentfox:agentfox@db:5432/agentfox</code></td><td>Change the password here and on <code>db</code>.</td></tr>
           <tr><td><code>AGENTFOX_ENVIRONMENT</code></td><td><code>production</code></td><td>Tokens required (see below).</td></tr>
           <tr><td><code>AGENTFOX_ALLOW_EGRESS</code></td><td><code>&quot;false&quot;</code></td><td>Set true, plus a key, to use a hosted model.</td></tr>
-          <tr><td><code>AGENTFOX_ENABLED_DETECTORS</code></td><td>the five defaults plus <code>injection.classifier</code>, <code>safety.granite</code>, <code>injection.similarity</code></td><td>The image carries their weights.</td></tr>
+          <tr><td><code>AGENTFOX_ENABLED_DETECTORS</code></td><td>the five defaults plus <code>injection.classifier</code> and <code>injection.similarity</code></td><td>The image carries their weights. It also carries <code>safety.granite</code>'s, off by default: on CPU one check takes about 9 s, so add it on a GPU host or with the detector timeout and enforcement budget raised to match.</td></tr>
           <tr><td><code>AGENTFOX_ENFORCEMENT_BUDGET_MS</code></td><td><code>&quot;100&quot;</code></td><td>Lower than the 300 default; with the classifiers on, long inputs can exceed it and fail open.</td></tr>
           <tr><td><code>AGENTFOX_AUDIT_SIGNING_KEY</code></td><td>from your shell (required)</td><td>Keep a copy outside the database.</td></tr>
           <tr><td><code>AGENTFOX_SERVICE_AUTH_SECRET</code></td><td>from your shell (required)</td><td>Also given to the dashboard.</td></tr>
