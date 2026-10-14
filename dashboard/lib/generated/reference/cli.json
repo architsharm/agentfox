@@ -24,6 +24,188 @@
   "default_subcommand": null,
   "commands": [
    {
+    "path": "up",
+    "name": "up",
+    "summary": "Set up AgentFox for this project: scan, choose, and it does the rest.",
+    "help": "Set up AgentFox for this project: scan, choose, and it does the rest.\n\nAsks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what\nto cover (coding agents, your Python agent, the gateway, tools, MCP servers,\nmonitoring, compliance, the dashboard) and how strict to start, then does all of\nit. Every question has a recommended answer; `--yes` takes them all. Run it again\nany time: it remembers the answers and only changes what is new.",
+    "panel": "Start",
+    "params": [
+     {
+      "kind": "argument",
+      "name": "path",
+      "opts": [
+       "path"
+      ],
+      "type": "path",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": ".",
+      "help": "The project to set up. Default: here."
+     },
+     {
+      "kind": "option",
+      "name": "yes",
+      "opts": [
+       "--yes",
+       "-y"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Take the recommended (or last saved) answer to every question."
+     },
+     {
+      "kind": "option",
+      "name": "target",
+      "opts": [
+       "--target"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "local, self-hosted or cloud. Asked when omitted."
+     },
+     {
+      "kind": "option",
+      "name": "include",
+      "opts": [
+       "--with"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Components to include, comma-separated: coding-agents, python-app, gateway, tools, mcp, scan-report, ci, monitoring, compliance, ai-client, view."
+     },
+     {
+      "kind": "option",
+      "name": "exclude",
+      "opts": [
+       "--without"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Components to leave out."
+     },
+     {
+      "kind": "option",
+      "name": "mode",
+      "opts": [
+       "--mode"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "observe (block nothing yet), defaults, or enforce."
+     },
+     {
+      "kind": "option",
+      "name": "agent",
+      "opts": [
+       "--agent"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Name for your agent. Default: the project's."
+     },
+     {
+      "kind": "option",
+      "name": "api_url",
+      "opts": [
+       "--api-url"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Gateway address, for self-hosted or cloud."
+     },
+     {
+      "kind": "option",
+      "name": "api_token",
+      "opts": [
+       "--api-token"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "API key, for self-hosted or cloud."
+     },
+     {
+      "kind": "option",
+      "name": "email",
+      "opts": [
+       "--email"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "First operator's email, when `up` starts a self-hosted stack."
+     },
+     {
+      "kind": "option",
+      "name": "dry_run",
+      "opts": [
+       "--dry-run"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Ask, show the plan, change nothing."
+     },
+     {
+      "kind": "option",
+      "name": "start",
+      "opts": [
+       "--start",
+       "--no-start"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": true,
+      "help": "Start the hook daemon and local API in the background."
+     },
+     {
+      "kind": "option",
+      "name": "skip_machine",
+      "opts": [
+       "--skip-machine"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Skip the user-level MCP configs and skills of the AI tools on this machine."
+     }
+    ],
+    "default_subcommand": null,
+    "commands": []
+   },
+   {
     "path": "init",
     "name": "init",
     "summary": "Set everything up.",
@@ -72,16 +254,6 @@
       "help": "Also load the demo fixtures: three agents and an eval suite. No traffic is recorded; run `agentfox demo` afterwards for sample traces and findings."
      }
     ],
-    "default_subcommand": null,
-    "commands": []
-   },
-   {
-    "path": "demo",
-    "name": "demo",
-    "summary": "Run the end-to-end walkthrough (offline).",
-    "help": "Run the end-to-end walkthrough (offline).",
-    "panel": "Start",
-    "params": [],
     "default_subcommand": null,
     "commands": []
    },

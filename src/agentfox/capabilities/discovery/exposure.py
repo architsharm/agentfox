@@ -648,6 +648,17 @@ def find_mcp_configs(root: Path) -> list[Path]:
     return [root / row.path for row in KNOWN_MCP_CONFIGS if (root / row.path).is_file()]
 
 
+def declared_mcp_servers(root: Path, config: Path | None = None) -> list[McpServerDecl]:
+    """Every server the repository's MCP configs declare (or ``config`` alone), once
+    each by name: the first config to declare a name, in :func:`find_mcp_configs`
+    order, wins."""
+    declared: dict[str, McpServerDecl] = {}
+    for path in [config] if config is not None else find_mcp_configs(root):
+        for decl in parse_mcp_config(path, root=root):
+            declared.setdefault(decl.name, decl)
+    return list(declared.values())
+
+
 def _haystack(decl: McpServerDecl) -> set[str]:
     words = set(tokens(decl.name)) | {decl.name.lower()}
     for part in (decl.package, decl.url, decl.command):

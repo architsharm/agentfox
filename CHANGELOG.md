@@ -13,6 +13,24 @@ the file it came from.
 
 ### Added
 
+- **`agentfox up`, the guided setup.** One command from a fresh install to a governed
+  project: it scans the repository, asks where AgentFox runs (this machine; self-hosted,
+  either started here with Docker Compose and a first operator, or an existing server;
+  or AgentFox Cloud with an API key), what to cover and how strict to start, then sets up
+  the Claude Code and Codex hooks, `agentfox.auto()` in your entry point, the gateway
+  environment for any language, the tools it found (impact inferred, never overwriting
+  a declaration), your MCP servers, the scan in the dashboard, Enterprise monitoring and
+  compliance where available, and the dashboard. It starts in observe by default. Each
+  question has a recommended answer (`--yes` takes them all); answers are saved in
+  `.agentfox/up.json` and credentials in `.agentfox/agentfox.env` (0600, git-ignored).
+  `up` takes `demo`'s place in the Start panel; `agentfox demo` still works.
+  Its scan step also reads the AI tools set up on this machine (`agentfox scan
+  machine`, skipped with `--skip-machine`) and the repository's own skills, and a
+  coding agent configured only at user level is offered too. It can add the AgentFox
+  GitHub Action as `.github/workflows/agentfox.yml`, never over an existing one.
+- `exposure.declared_mcp_servers()`: the servers a repository's MCP configs declare,
+  once each by name, shared by `agentfox scan mcp` and `agentfox up`.
+
 - **Delivery policies for coding agents** (`capabilities/delivery`). The hook now
   also catches an agent that is about to lose work it already got right: a service
   the task needs left attached to the session (including a harness background task),
