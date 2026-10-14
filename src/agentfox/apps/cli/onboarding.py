@@ -288,7 +288,7 @@ def setup_workspace(
     if brief:
         console.print(
             f"  [green]✓[/] workspace ready  [dim]{len(documents)} policy packs, "
-            f"{len(catalog.get('frameworks', []))} control frameworks, {settings.database_url}[/]"
+            f"{len(catalog.get('frameworks', []))} control frameworks[/]"
         )
 
 

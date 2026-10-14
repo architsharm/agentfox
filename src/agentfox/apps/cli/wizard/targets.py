@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import socket
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -189,11 +190,15 @@ def _self_hosted(
             secret=True,
         )
         backend = _connect(url, token, console)
+        dashboard = prompter.text(
+            "Dashboard address, if your team runs one (Enter to skip)",
+            ctx.saved.get("dashboard_url") or "",
+        )
         return Target(
             "self-hosted",
             backend,
             backend.where,
-            dashboard_url=ctx.saved.get("dashboard_url", ""),
+            dashboard_url=dashboard.rstrip("/"),
             env={"AGENTFOX_API_URL": backend.where, "AGENTFOX_API_TOKEN": token},
         )
 
@@ -215,7 +220,7 @@ def _self_hosted(
             f"--no-start: run `docker compose -f {compose} up -d` and then `agentfox up` "
             "again to connect"
         )
-    token = _compose_up(compose, operator, console)
+    token = _compose_up(compose, operator, console, prompter)
     backend = _connect(SELFHOST_API_URL, token, console)
     return Target(
         "self-hosted",
@@ -350,14 +355,93 @@ def write_compose(root: Path) -> Path:
     return compose
 
 
-def _compose_up(compose: Path, email: str, console: Console) -> str:
-    base = ["docker", "compose", "-f", str(compose)]
-    console.print(
-        "  [dim]starting Postgres, the gateway and the dashboard (first pull takes a while)…[/]"
+GATEWAY_IMAGE = "ghcr.io/architsharm/agentfox/gateway:latest"
+
+#: Docker's architecture names for `platform.machine()`.
+_ARCH = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}
+
+
+def image_download_size(image: str) -> str:
+    """How much `docker pull image` downloads on this machine, read from the registry.
+
+    The published gateway image carries the detector models' weights, so the first
+    start is a large download; the number is said before it starts, not discovered
+    halfway through. Read rather than written down, because it changes with every
+    image. "several GB" when the registry cannot be asked.
+    """
+    import platform
+
+    arch = _ARCH.get(platform.machine().lower(), "amd64")
+    try:
+        out = subprocess.run(
+            ["docker", "manifest", "inspect", "-v", image],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        entries = json.loads(out.stdout)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return "several GB"
+    for entry in entries if isinstance(entries, list) else [entries]:
+        if entry.get("Descriptor", {}).get("platform", {}).get("architecture") != arch:
+            continue
+        manifest = entry.get("OCIManifest") or entry.get("SchemaV2Manifest") or {}
+        total = sum(layer.get("size", 0) for layer in manifest.get("layers", []))
+        if total:
+            return f"about {total / 1e9:.1f} GB" if total >= 1e9 else f"about {total // 10**6} MB"
+    return "several GB"
+
+
+def _port_taken(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(0.5)
+        return probe.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _stack_running(base: list[str]) -> bool:
+    """This compose project's gateway is already up (a second `agentfox up`)."""
+    out = subprocess.run(
+        [*base, "ps", "--status", "running", "--services"], capture_output=True, text=True
     )
+    return "gateway" in out.stdout.split()
+
+
+def _compose_up(compose: Path, email: str, console: Console, prompter: Prompter) -> str:
+    base = ["docker", "compose", "-f", str(compose)]
+    down = f"docker compose -f {compose} down"
+    if not _stack_running(base):
+        for port, what in ((8080, "gateway"), (3000, "dashboard")):
+            if _port_taken(port):
+                raise TargetError(
+                    f"port {port} (the {what}) is already in use on this machine. A local "
+                    "`agentfox serve` from an earlier `agentfox up` (its pid is in "
+                    ".agentfox/serve.pid) is the usual one: stop it, or choose “Connect to "
+                    "one that is running” to use what is listening there."
+                )
+        pulled = (
+            subprocess.run(
+                ["docker", "image", "inspect", GATEWAY_IMAGE], capture_output=True
+            ).returncode
+            == 0
+        )
+        if not pulled:
+            console.print(
+                "  [yellow]The first start downloads the gateway image, "
+                f"{image_download_size(GATEWAY_IMAGE)}[/] "
+                "[dim](it carries the detector models, so nothing is fetched at runtime).[/]"
+            )
+            if not prompter.confirm("Download it now?", default=True):
+                raise TargetError(
+                    f"not started. `docker compose -f {compose} pull` downloads it whenever "
+                    "you like; then run `agentfox up` again."
+                )
+    console.print("  [dim]starting Postgres, the gateway and the dashboard…[/]")
     result = subprocess.run([*base, "up", "-d"], capture_output=True, text=True)
     if result.returncode != 0:
-        raise TargetError(f"docker compose up failed:\n{result.stderr.strip()[-800:]}")
+        raise TargetError(
+            f"docker compose up failed:\n{result.stderr.strip()[-800:]}\n"
+            f"Clean up what started with `{down}`."
+        )
     deadline = time.monotonic() + 300
     while time.monotonic() < deadline:
         try:
@@ -372,6 +456,30 @@ def _compose_up(compose: Path, email: str, console: Console) -> str:
             f"`docker compose -f {compose} logs gateway`"
         )
     console.print(f"  [green]✓[/] gateway healthy at {SELFHOST_API_URL}")
+    # The image only serves: the control catalog and the shipped policy packs are loaded
+    # by `init`, which is idempotent, so a restarted or re-run stack is left as it is.
+    loaded = subprocess.run(
+        [
+            *base,
+            "exec",
+            "-T",
+            "gateway",
+            "agentfox",
+            "init",
+            "--env",
+            "production",
+            "--path",
+            "/tmp",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if loaded.returncode != 0:
+        raise TargetError(
+            "could not load the policy packs into the gateway:\n"
+            + (loaded.stderr or loaded.stdout).strip()[-800:]
+        )
+    console.print("  [green]✓[/] control catalog and policy packs loaded")
     minted = subprocess.run(
         [*base, "exec", "-T", "gateway", "python", "-", email],
         input=_FIRST_OPERATOR,
