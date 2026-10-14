@@ -285,7 +285,8 @@ PROBES: list[Probe] = [
         ],
         ["class GraniteGuardianDetector"],
         "injection|pii|secret|taint|explain|ledger|suppress|precision|latency",
-        "the injection classifier is on by default but needs `agentfox[classifiers]` and its weights; long prompts still time out",
+        "the injection classifier is on by default but needs `agentfox[classifiers]` and "
+        "its weights; long prompts still time out",
     ),
     Probe(
         "P9",
