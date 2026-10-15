@@ -22,8 +22,10 @@ with its URL. The detectors that need it are then skipped, never silently passed
 The classifier and backstop take about 1.5–2 GB of RAM and 25–50 ms per short prompt
 on CPU.
 
-- **Instance:** c7i.large or c6i.large (2 vCPU, 4 GB). Avoid burstable `t3`/`t4g`:
-  once CPU credits run out, inference slows and requests start timing out.
+- **Instance:** c7g.large (Graviton, arm64) or c7i.large / c6i.large (x86), each
+  2 vCPU and 4 GB. The image is published for both architectures. Avoid burstable
+  `t3`/`t4g`: once CPU credits run out, inference slows and requests start timing out.
+- **Disk:** at least 30 GB. The image is about 6 GB with its weights.
 - **Region:** the same region as the gateway. Vercel's default `iad1` is AWS
   `us-east-1`. Each hop across regions adds tens of milliseconds to a 300 ms budget.
 - **Security group:** inbound 443 and 80 (Let's Encrypt), and SSH from your address
@@ -32,13 +34,18 @@ on CPU.
 Then, on the instance:
 
 ```bash
-sudo dnf install -y docker && sudo systemctl enable --now docker   # Amazon Linux 2023
-# docker compose plugin: https://docs.docker.com/compose/install/linux/
+# Docker and the compose plugin: https://docs.docker.com/engine/install/
+# (Amazon Linux 2023: sudo dnf install -y docker && sudo systemctl enable --now docker)
+sudo usermod -aG docker $USER && newgrp docker   # run docker without sudo
 git clone https://github.com/architsharm/agentfox && cd agentfox/deploy/model-server
 cp .env.example .env    # set MODEL_SERVER_DOMAIN and AGENTFOX_MODEL_SERVER_TOKEN
-docker compose up -d
+docker compose pull && docker compose up -d
+docker compose logs -f models   # ready once each model logs "warm in …"
 curl -H "Authorization: Bearer $TOKEN" https://$MODEL_SERVER_DOMAIN/health
 ```
+
+Generate the token on the machine and paste it only into `.env` and the gateway's
+settings. Not into chat, tickets or shell history you share.
 
 `/health` lists each detector, whether it can run, and the device it runs on.
 
@@ -61,8 +68,9 @@ every gateway deploy:
 docker compose pull && docker compose up -d
 ```
 
-Pin `AGENTFOX_IMAGE` to a release tag (`ghcr.io/architsharm/agentfox/gateway:0.4.0`)
-so a pull is always a decision. Mismatched versions are tolerated: the gateway sends
+`.env` starts on `:edge`, which is main. Once it works, pin what you tested so a pull
+is always a decision: a commit (`:sha-1a2b3c4`, one is published for every push to
+main) or a release (`:0.5.0`). Avoid `:latest`: it moves only on releases. Mismatched versions are tolerated: the gateway sends
 a detector name and text, and reads back detections.
 
 ## GPU

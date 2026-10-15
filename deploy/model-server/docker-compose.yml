@@ -13,9 +13,9 @@
 services:
   models:
     # The published gateway image already carries every permissive-licence model's
-    # weights. Pin a release tag rather than :edge, so this machine changes only
-    # when you decide it should.
-    image: ${AGENTFOX_IMAGE:-ghcr.io/architsharm/agentfox/gateway:latest}
+    # weights, for amd64 and arm64. Pin a `sha-` or version tag in .env once it works,
+    # so this machine changes only when you decide it should.
+    image: ${AGENTFOX_IMAGE:-ghcr.io/architsharm/agentfox/gateway:edge}
     command: ["agentfox", "serve", "models", "--host", "0.0.0.0", "--port", "8090"]
     restart: unless-stopped
     environment:
