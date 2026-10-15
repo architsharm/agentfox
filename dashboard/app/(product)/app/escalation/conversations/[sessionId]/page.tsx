@@ -61,7 +61,7 @@ export default async function EscalationConversation({
         fire, rather than trusting a summary of it.
         {data.agent_slug && (
           <>
-            {" "}Agent: <Link href={`/app/agents/${data.agent_slug}`}>{data.agent_name || data.agent_slug}</Link>.
+            {" "}Agent: <Link href={`/app/projects/${data.agent_slug}`}>{data.agent_name || data.agent_slug}</Link>.
           </>
         )}
       </p>

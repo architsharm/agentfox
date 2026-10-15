@@ -109,7 +109,7 @@ async function Checklist({ agentParam, gateway }: { agentParam?: string; gateway
   };
   const agents: string[] = onboarding.agents || [];
   const agent = agentParam && agents.includes(agentParam) ? agentParam : agents[0] || null;
-  const agentHref = (suffix = "") => (agent ? `/app/agents/${encodeURIComponent(agent)}${suffix}` : "/app/agents");
+  const agentHref = (suffix = "") => (agent ? `/app/projects/${encodeURIComponent(agent)}${suffix}` : "/app/projects");
 
   const body: Record<string, ReactNode> = {
     agent: <RegisterAgent agents={agents} current={agent} />,
@@ -385,7 +385,7 @@ function ScanResult({ title, scan }: { title: string; scan: any }) {
           {scan.summary?.policies_proposed?.length === 1 ? "policy" : "policies"}
         </div>
         <div className="gs-row" style={{ marginTop: 8 }}>
-          <Link href="/app/agents" className="k-btn-primary">
+          <Link href="/app/projects" className="k-btn-primary">
             Review agents
           </Link>
           <Link href="/app/policies" className="k-btn">

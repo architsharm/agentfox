@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
  * The top of every signed-in page.
  *
  * There was no such component. Ten pages hand-rolled `<h1>` + `<p className="sub">`,
- * and two of them (`/app/agents`, `/app/sources`) wrapped the heading in a `.row` with an
+ * and two of them (`/app/projects`, `/app/sources`) wrapped the heading in a `.row` with an
  * action button and set `marginBottom: 0` on the `<h1>` to cancel a margin the
  * other eight kept — so the gap between a title and its subtitle was one value on
  * eight pages and another on two, and the action button existed in two shapes.

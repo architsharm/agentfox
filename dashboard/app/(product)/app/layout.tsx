@@ -7,7 +7,9 @@ import { Wordmark } from "@/components/product/Logo";
 import { AccountMenu } from "@/components/product/AccountMenu";
 import { NotificationsBell } from "@/components/product/NotificationsBell";
 import { CommandSearch } from "@/components/product/CommandSearch";
-import { SideNav, type NavItem } from "@/components/product/SideNav";
+import { SideNav } from "@/components/product/SideNav";
+import { WORKSPACE_NAV } from "@/lib/product/nav";
+import { PROJECT_COOKIE } from "@/lib/product/project";
 import { TopbarStats } from "@/components/product/TopbarStats";
 import { getEdition } from "@/lib/product/edition";
 
@@ -32,42 +34,6 @@ import { getEdition } from "@/lib/product/edition";
  * redirects a signed-out request for a private path to /login, so this is the
  * belt to that braces, not the gate.
  */
-/**
- * The sidebar is the customer's jobs, in the order they reach for them: is
- * anything wrong (Home), what is happening (Observe), what is broken (Issues),
- * which agent (Agents), what is allowed (Policies), what needs me (Approvals),
- * does it hold up (Test), show others (Reports). Setup sits at the bottom.
- *
- * A row lists the other pages it stands for, so it stays lit on all of them.
- */
-const NAV: { group: string; items: NavItem[] }[] = [
-  {
-    group: "",
-    items: [
-      ["Home", "/app"],
-      ["Observe", "/app/observe", ["/app/traces"]],
-      ["Issues", "/app/findings"],
-      ["Agents", "/app/agents"],
-      ["Policies", "/app/policies"],
-      ["Map", "/app/map"],
-      ["Approvals", "/app/approvals"],
-      ["Test", "/app/test", ["/app/evals"]],
-      ["Reports", "/app/reports", ["/app/compliance", "/app/coverage"]],
-    ],
-  },
-  {
-    group: "Setup",
-    items: [
-      ["Get started", "/app/start"],
-      [
-        "Settings",
-        "/app/settings",
-        ["/app/start?tab=connect", "/app/start?tab=tokens", "/app/sources", "/app/entitlement"],
-      ],
-    ],
-  },
-];
-
 /**
  * Destinations that used to be their own sidebar item before the nav was
  * consolidated into tabs — findable by name in search even though the
@@ -97,7 +63,7 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string; feature?: s
   { label: "Glossary", href: "/app/glossary", group: "Reference" },
 ];
 
-const NAV_FLAT: { label: string; href: string; group: string; feature?: string }[] = NAV.flatMap(
+const NAV_FLAT: { label: string; href: string; group: string; feature?: string }[] = WORKSPACE_NAV.flatMap(
   ({ group, items }) => items.map(([label, href]) => ({ label, href, group: group || "Home" })),
 ).concat(NAV_SEARCH_ONLY);
 /**
@@ -122,8 +88,21 @@ async function TopbarData() {
   );
 }
 
+/**
+ * The sidebar, with the projects its switcher offers. In its own Suspense
+ * boundary for the same reason as the topbar; until the list answers, the
+ * sidebar is already there in the scope the cookie names.
+ */
+async function SideNavData({ initial }: { initial: string | null }) {
+  const { agents } = await safeApi<any>("/api/agents", { agents: [] });
+  const projects = (agents || []).map((a: any) => ({ slug: a.slug, name: a.name || a.slug, status: a.status }));
+  return <SideNav projects={projects} initial={initial} />;
+}
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const signedIn = Boolean((await cookies()).get(SESSION_COOKIE)?.value);
+  const jar = await cookies();
+  const signedIn = Boolean(jar.get(SESSION_COOKIE)?.value);
+  const project = jar.get(PROJECT_COOKIE)?.value || null;
 
   return (
     <div className="shell">
@@ -136,7 +115,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <Link href="/app" className="brand" aria-label="Overview">
           <Wordmark />
         </Link>
-        <SideNav nav={NAV} />
+        <Suspense fallback={<SideNav projects={[]} initial={project} />}>
+          {signedIn ? <SideNavData initial={project} /> : <SideNav projects={[]} initial={null} />}
+        </Suspense>
         <ThemeToggle />
       </nav>
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>

@@ -75,7 +75,7 @@ export function FirstRequestWatcher({
         </div>
         <div className="watcher-actions">
           <Link href="/app/traces">See activity →</Link>
-          <Link href="/app/agents">Review agents →</Link>
+          <Link href="/app/projects">Review agents →</Link>
         </div>
       </div>
     );

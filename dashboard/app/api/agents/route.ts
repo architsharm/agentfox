@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
  * no way onto this page at all otherwise.
  */
 export async function POST(req: NextRequest) {
-  return proxyFormPost(req, "/api/agents", "/app/agents");
+  return proxyFormPost(req, "/api/agents", "/app/projects");
 }

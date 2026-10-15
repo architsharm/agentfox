@@ -79,7 +79,7 @@ export default function Page() {
           <tr>
             <td>Declare what your agent can answer</td>
             <td>At least one knowledge boundary exists.</td>
-            <td>A link to the boundary form on the agent&apos;s Access tab (<Link href="/docs/app/agents#boundary">Knowledge boundary</Link>).</td>
+            <td>A link to the boundary form on the agent&apos;s Access tab (<Link href="/docs/app/projects#boundary">Knowledge boundary</Link>).</td>
           </tr>
           <tr>
             <td>Turn enforcement on</td>
@@ -291,7 +291,7 @@ agentfox admin auth revoke tok_01m469mm9pt4qcfghd`}</Code>
 
       <NextSteps
         items={[
-          { href: "/docs/app/agents", label: "Agents", why: "approve what a scan proposed" },
+          { href: "/docs/app/projects", label: "Agents", why: "approve what a scan proposed" },
           { href: "/docs/guides/python-auto", label: "One line in Python", why: "record your first trace" },
           { href: "/docs/guides/scan-a-repo", label: "Audit a repository", why: "the scan in depth" },
           { href: "/docs/reference/api", label: "HTTP API", why: "everything a token can call" },

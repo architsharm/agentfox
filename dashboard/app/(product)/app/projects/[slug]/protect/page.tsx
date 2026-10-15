@@ -18,7 +18,7 @@ export default async function Protect({ params }: { params: Promise<{ slug: stri
   const name = posture?.agent?.name || slug;
   return (
     <>
-      <Header back={{ href: `/app/agents/${encodeURIComponent(slug)}`, label: name }} title={`Protect ${name}`} />
+      <Header back={{ href: `/app/projects/${encodeURIComponent(slug)}`, label: name }} title={`Protect ${name}`} />
       <Card>
         {state ? (
           <ProtectWizard

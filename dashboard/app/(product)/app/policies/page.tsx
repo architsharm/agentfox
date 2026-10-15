@@ -318,7 +318,7 @@ async function PerformanceTab({ sp }: { sp: SP }) {
           <tbody>
             {live.map((a: any, i: number) => (
               <tr key={a.slug}>
-                <td><Link className="k-name" href={`/app/agents/${encodeURIComponent(a.slug)}?tab=rules`}>{a.name || a.slug}</Link></td>
+                <td><Link className="k-name" href={`/app/projects/${encodeURIComponent(a.slug)}?view=activity&tab=rules`}>{a.name || a.slug}</Link></td>
                 {cats.map((c) => (
                   <td key={c.key}>{cell(effective[i].rules || [], c.key)}</td>
                 ))}

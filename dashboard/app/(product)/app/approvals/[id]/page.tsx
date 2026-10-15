@@ -81,7 +81,7 @@ export default async function ApprovalDetail({
       <Card>
         <Meta
           items={[
-            ["Agent", agent ? <Link href={`/app/agents/${agent.slug}`}>{agent.name || agent.slug}</Link> : "—"],
+            ["Agent", agent ? <Link href={`/app/projects/${agent.slug}`}>{agent.name || agent.slug}</Link> : "—"],
             ["Requested", when(a.requested_at)],
             pending
               ? ["Expires", <Countdown key="exp" at={a.expires_at} />]

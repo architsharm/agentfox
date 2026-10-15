@@ -52,7 +52,7 @@ export const DOC_NAV: DocSection[] = [
     items: [
       { href: "/docs/app", label: "Tour of the web app", description: "Sign in, workspaces, and where everything is." },
       { href: "/docs/app/start", label: "Start here and connect", description: "The checklist, GitHub repos, API tokens." },
-      { href: "/docs/app/agents", label: "Agents", description: "Registry, risk, knowledge boundary, kill switch." },
+      { href: "/docs/app/projects", label: "Agents", description: "Registry, risk, knowledge boundary, kill switch." },
       { href: "/docs/app/findings", label: "Findings", description: "What needs a person, and why." },
       { href: "/docs/app/traces", label: "Traces", description: "One request, every check, and why it was blocked." },
       { href: "/docs/app/policies", label: "Policies and tuning", description: "Rules, modes, simulation, canary, detector tuning." },

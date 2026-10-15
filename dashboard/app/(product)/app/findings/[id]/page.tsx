@@ -69,7 +69,7 @@ export default async function IssueDetail({
       />
       <Meta
         items={[
-          ["Agent", f.agent_slug ? <Link href={`/app/agents/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : f.subject_id || "—"],
+          ["Agent", f.agent_slug ? <Link href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : f.subject_id || "—"],
           ["Kind", type.label],
           ["Times", num(f.occurrences || 1)],
           ["First", ago(f.created_at)],

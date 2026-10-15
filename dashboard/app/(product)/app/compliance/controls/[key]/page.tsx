@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
  */
 /** Where the thing a control measures is set, for the controls a new workspace fails first. */
 const FIX: Record<string, { label: string; href: string }> = {
-  "NOM-DSC-03": { label: "Assign owners on Agents", href: "/app/agents" },
+  "NOM-DSC-03": { label: "Assign owners on Agents", href: "/app/projects" },
   "NOM-GOV-03": { label: "Assess risk in the risk register", href: "/app/compliance?tab=risk" },
   "NOM-AUD-05": { label: "Set retention periods", href: "/app/compliance?tab=retention" },
   "NOM-RTG-05": { label: "Turn on content checks", href: "/app/policies?tab=checks" },

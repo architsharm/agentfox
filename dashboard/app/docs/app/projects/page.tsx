@@ -8,7 +8,7 @@ export const metadata: Metadata = publicPageMetadata({
   title: "Agents",
   description:
     "The agent register and the agent page: owners, risk classification, knowledge boundary, kill switch, effective policy and lineage.",
-  path: "/docs/app/agents",
+  path: "/docs/app/projects",
 });
 
 export default function Page() {
@@ -20,7 +20,7 @@ export default function Page() {
         The register of every agent in the workspace, and one page per agent for deciding
         whether it is safe to leave running as it is.
       </p>
-      <InTheApp path="/app/agents">Agents</InTheApp>
+      <InTheApp path="/app/projects">Agents</InTheApp>
 
       <h2>When to use this</h2>
       <ul>
@@ -31,7 +31,7 @@ export default function Page() {
 
       <h2>The agents list</h2>
       <p>
-        <code>/app/agents</code>, built from <code>GET /api/agents</code> and{" "}
+        <code>/app/projects</code>, built from <code>GET /api/agents</code> and{" "}
         <code>GET /api/discovery/shadow</code>. Top to bottom:
       </p>
       <ul>
@@ -97,9 +97,9 @@ support-triage   production  limited  yes         priya@exampl…  langgraph
       </p>
 
       <h2>The agent page</h2>
-      <InTheApp path="/app/agents/support-triage">Agents → an agent</InTheApp>
+      <InTheApp path="/app/projects/support-triage">Agents → an agent</InTheApp>
       <p>
-        <code>/app/agents/&lt;slug&gt;</code>. Above the tabs, always visible: the name, a{" "}
+        <code>/app/projects/&lt;slug&gt;</code>. Above the tabs, always visible: the name, a{" "}
         <code>sample data</code> tag for seeded agents, a red banner if the agent is
         quarantined or killed (with who did it, when and why), and a strip of counts: traces,
         decisions, blocked, escalated, hand-offs and blast radius. Each count links to the

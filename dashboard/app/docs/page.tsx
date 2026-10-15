@@ -25,7 +25,7 @@ const AREAS: {
       { what: "First look at this machine, including local AI-tool sessions", run: "agentfox scan --sessions", href: "/docs/guides/scan-a-repo" },
       { what: "MCP servers: reach, version pinning, auth, tool descriptions", run: "agentfox scan mcp", href: "/docs/guides/mcp" },
       { what: "Agent skills: planted instructions and declared danger", run: "agentfox scan skills", href: "/docs/guides/scan-a-repo" },
-      { what: "Shadow and unowned agents seen in traffic", run: "agentfox agents list", href: "/docs/app/agents" },
+      { what: "Shadow and unowned agents seen in traffic", run: "agentfox agents list", href: "/docs/app/projects" },
     ],
   },
   {

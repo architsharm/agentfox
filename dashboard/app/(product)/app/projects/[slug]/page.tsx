@@ -5,7 +5,6 @@ import { ApiError, api, apiErrorProps, safeApi } from "@/lib/product/api";
 import { ApiDown, NotFound } from "@/components/ui";
 import {
   ActionPill,
-  BarList,
   Card,
   Empty,
   Grid,
@@ -17,7 +16,6 @@ import {
   SeverityPill,
   Sparkline,
   Tabs,
-  TimeChart,
   ago,
   href,
   num,
@@ -25,42 +23,41 @@ import {
 import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
-import { AgentMap } from "@/components/product/AgentMap";
 import { AccessEditor } from "@/components/product/agent/AccessEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
 import { ensureRange } from "@/lib/product/range";
 import { GuardrailMapLazy as GuardrailMap } from "@/components/product/agent/GuardrailMapLazy";
 import { RangeProvider } from "@/components/kit/RangeContext";
+import { PROJECT_VIEWS, projectHref, projectView } from "@/lib/product/project";
 
-export const metadata: Metadata = appPageMetadata("Agent");
+export const metadata: Metadata = appPageMetadata("Project");
 export const dynamic = "force-dynamic";
 
-const TABS = [
-  { key: "overview", label: "Overview" },
-  { key: "map", label: "Map" },
-  { key: "access", label: "Access" },
-  { key: "rules", label: "Rules" },
-  { key: "activity", label: "Activity" },
+/** Activity's parts, under `?view=activity&tab=`. The old agent tabs of the same names land here. */
+const ACTIVITY_TABS = [
+  { key: "runs", label: "Runs" },
+  { key: "rules", label: "Guardrails fired" },
   { key: "quality", label: "Quality" },
-  { key: "settings", label: "Settings" },
 ];
-
-/** Old tab names, so bookmarked links still land somewhere sensible. */
-const LEGACY: Record<string, string> = { permissions: "rules", registration: "settings" };
 
 type SP = Record<string, string | undefined>;
 
-export default async function AgentDetail({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<SP> }) {
+/**
+ * One project. Four views, chosen in the sidebar: the canvas (its guardrails drawn
+ * where they act, with the project's state in the inspector when nothing on the
+ * canvas is selected), its activity, its access, its settings.
+ */
+export default async function ProjectDetail({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<SP> }) {
   const { slug } = await params;
   const sp = await searchParams;
-  const requested = LEGACY[sp.tab || ""] || sp.tab;
-  const tab = TABS.some((t) => t.key === requested) ? requested! : "overview";
+  const view = projectView(sp);
+  const sub = view === "activity" ? (ACTIVITY_TABS.some((t) => t.key === sp.tab) ? sp.tab! : sp.tab === "permissions" ? "rules" : "runs") : null;
   // One round of requests, in parallel: the range (when the URL names none), the
-  // agent, and its kill-switch state.
-  const needsRange = ["overview", "rules", "activity", "quality"].includes(tab);
+  // project, and its kill-switch state.
+  const needsRange = view === "canvas" || view === "activity";
   const [, outcome, controls] = await Promise.all([
-    needsRange ? ensureRange(`/app/agents/${encodeURIComponent(slug)}`, sp, slug) : Promise.resolve(),
+    needsRange ? ensureRange(`/app/projects/${encodeURIComponent(slug)}`, sp, slug) : Promise.resolve(),
     api(`/api/agents/${encodeURIComponent(slug)}/posture`).then(
       (posture: any) => ({ posture, error: null as any }),
       (error: any) => ({ posture: null, error }),
@@ -73,9 +70,9 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
     const e = outcome.error;
     return (
       <>
-        <Header title={slug} back={{ href: "/app/agents", label: "Agents" }} />
+        <Header title={slug} back={{ href: "/app/projects", label: "Projects" }} />
         {e instanceof ApiError && e.status === 404 ? (
-          <NotFound what="agent" detail={slug} back={{ href: "/app/agents", label: "Agents" }} />
+          <NotFound what="project" detail={slug} back={{ href: "/app/projects", label: "Projects" }} />
         ) : (
           <ApiDown {...apiErrorProps(e)} />
         )}
@@ -87,14 +84,18 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
   const control = (controls.controls || []).find((c: any) => c.agent === a.slug);
   const state = control?.state || "active";
   const breakerOpen = state === "active" && control?.breaker?.state === "open";
-  const tabHref = (k: string) => href(`/app/agents/${encodeURIComponent(slug)}`, { tab: k === "overview" ? undefined : k, range: sp.range });
+  const label = PROJECT_VIEWS.find((v) => v.key === view)!.label;
 
   return (
     <RangeProvider range={sp.range}>
     <>
       <Header
-        back={{ href: "/app/agents", label: "Agents" }}
-        title={a.name || a.slug}
+        title={
+          <>
+            {a.name || a.slug}
+            {view !== "canvas" && <span className="k-muted"> / {label}</span>}
+          </>
+        }
         meta={
           <>
             {breakerOpen ? (
@@ -111,103 +112,133 @@ export default async function AgentDetail({ params, searchParams }: { params: Pr
         }
         actions={
           <>
-          <Link className="k-btn-primary" href={`/app/agents/${encodeURIComponent(a.slug)}/protect`}>
+          <Link className="k-btn-primary" href={`/app/projects/${encodeURIComponent(a.slug)}/protect`}>
             Protect
           </Link>
           <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
             <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
             <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>
-              {state === "active" ? "Pause agent" : "Resume agent"}
+              {state === "active" ? "Pause" : "Resume"}
             </button>
           </form>
           </>
         }
       />
-      <Meta
-        items={[
-          ["Owner", a.owner_email || <Link href={tabHref("settings")}>Assign</Link>],
-          ["Team", a.owner_team || "—"],
-          ["Environment", a.environment],
-          ["Framework", a.framework || "—"],
-          ["Last active", ago(a.last_seen_at)],
-        ]}
-      />
-      <div style={{ height: 14 }} />
       {sp.review_error && <div className="error">{sp.review_error}</div>}
       {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
-      <Tabs items={TABS.map((t) => ({ ...t, href: tabHref(t.key) }))} active={tab} />
 
-      {tab === "overview" && <Overview f={f} posture={posture} />}
-      {tab === "map" && <MapTab slug={slug} />}
-      {tab === "access" && <Access slug={slug} prefill={sp.grant} />}
-      {tab === "rules" && <Rules f={f} slug={slug} />}
-      {tab === "activity" && <Activity f={f} outcome={sp.outcome} />}
-      {tab === "quality" && <Quality f={f} />}
-      {tab === "settings" && <Settings a={a} state={state} />}
+      {view === "canvas" && <Canvas f={f} posture={posture} />}
+      {view === "activity" && (
+        <>
+          <Tabs
+            items={ACTIVITY_TABS.map((t) => ({ ...t, href: projectHref(slug, "activity", { tab: t.key === "runs" ? undefined : t.key, range: sp.range }) }))}
+            active={sub!}
+          />
+          {sub === "runs" && <Activity f={f} outcome={sp.outcome} />}
+          {sub === "rules" && <Rules f={f} slug={slug} />}
+          {sub === "quality" && <Quality f={f} />}
+        </>
+      )}
+      {view === "access" && <Access slug={slug} prefill={sp.grant} />}
+      {view === "settings" && (
+        <>
+          <Meta
+            items={[
+              ["Owner", a.owner_email || "Not assigned"],
+              ["Team", a.owner_team || "—"],
+              ["Environment", a.environment],
+              ["Framework", a.framework || "—"],
+              ["Last active", ago(a.last_seen_at)],
+            ]}
+          />
+          <div style={{ height: 14 }} />
+          <Settings a={a} state={state} />
+        </>
+      )}
     </>
     </RangeProvider>
   );
 }
 
-async function Overview({ f, posture }: { f: Filters; posture: any }) {
-  const [s, rules, lineage] = await Promise.all([
+/**
+ * The canvas: the guardrail map, and in its inspector, when nothing is selected,
+ * the project at a glance: its traffic, its open issues, the guardrails that fired
+ * most, who owns it. The rest is a click away in the sidebar.
+ */
+async function Canvas({ f, posture }: { f: Filters; posture: any }) {
+  const slug = f.agent!;
+  const [map, s, rules] = await Promise.all([
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null),
     safeApi<any>(`/api/metrics/summary?${metricsQs(f)}`, null),
     safeApi<any>(`/api/metrics/rules?${metricsQs(f)}`, { rules: [] }),
-    safeApi<any>(`/api/agents/${encodeURIComponent(f.agent!)}/lineage?depth=2`, { nodes: [], links: [], blast_radius: 0 }),
   ]);
+  const a = posture.agent;
   const t = s?.totals || {};
-  const p = s?.previous || {};
-  const b = s?.buckets || [];
   const findings: any[] = posture.open_findings || [];
-  return (
-    <>
-      <FilterBar />
-      <Grid cols={4}>
-        <Kpi label="Requests" value={num(t.requests || 0)} current={t.requests} prev={p.requests} better="none" href={runsHref(f)} spark={b.map((x: any) => x.allowed + x.masked + x.held + x.blocked)} />
-        <Kpi label="Blocked" value={num(t.blocked || 0)} current={t.blocked} prev={p.blocked} href={runsHref(f, { outcome: "blocked" })} spark={b.map((x: any) => x.blocked)} />
-        <Kpi label="Held for a person" value={num(t.held || 0)} current={t.held} prev={p.held} href={runsHref(f, { outcome: "held" })} spark={b.map((x: any) => x.held)} />
-        <Kpi label="Errors" value={num(t.errors || 0)} current={t.errors} prev={p.errors} tone={t.errors ? "bad" : undefined} href={runsHref(f, { errors: true })} />
-      </Grid>
-      {s && (
-        <Card title="Requests">
-          <TimeChart buckets={b} bucketSeconds={s.bucket_seconds} height={110} linkFor={(start, end) => runsHref(f, { start, end })} />
-        </Card>
-      )}
-      <Grid cols={2}>
-        <Card title="Rules triggered">
-          <BarList
-            empty="No rules triggered"
-            rows={rules.rules.map((r: any) => ({
-              key: r.rule_id,
-              label: ruleTitle(r.rule_id),
-              href: `/app/policies/rules/${encodeURIComponent(r.rule_id)}`,
-              value: r.fires,
-              note: r.watched && !r.enforced ? "watching" : undefined,
-            }))}
-          />
-        </Card>
-        <Card title="Open issues" action={<Link href={`/app/findings?agent=${encodeURIComponent(f.agent!)}`}>All</Link>} flush>
-          {findings.length ? (
-            <ul className="k-list">
-              {findings.slice(0, 6).map((x) => (
-                <li key={x.id}>
-                  <div className="k-list-main">
-                    <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
-                  </div>
-                  <SeverityPill value={x.severity} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Empty>No open issues.</Empty>
-          )}
-        </Card>
-      </Grid>
-      {lineage.links?.length > 0 && (
-        <AgentMap root={lineage.root || f.agent!} nodes={lineage.nodes || []} links={lineage.links} blastRadius={lineage.blast_radius ?? 0} />
-      )}
-    </>
+  const fired: any[] = (rules.rules || []).slice(0, 4);
+  const stat = (label: string, value: number, to: string, bad = false) => (
+    <Link className={`gm-stat${bad && value ? " bad" : ""}`} href={to}>
+      <b>{num(value || 0)}</b>
+      <span>{label}</span>
+    </Link>
   );
+  const summary = (
+    <div className="gm-summary">
+      <div className="gm-summary-head">
+        <strong>{a.name || a.slug}</strong>
+        <span className="gm-sub">Last {RANGE_DAYS[f.range]} days · nothing selected</span>
+      </div>
+      <div className="gm-stats">
+        {stat("Requests", t.requests, runsHref(f))}
+        {stat("Blocked", t.blocked, runsHref(f, { outcome: "blocked" }))}
+        {stat("Held for a person", t.held, runsHref(f, { outcome: "held" }))}
+        {stat("Errors", t.errors, runsHref(f, { errors: true }), true)}
+      </div>
+      <h4>Open issues</h4>
+      {findings.length ? (
+        <ul className="gm-issues">
+          {findings.slice(0, 3).map((x) => (
+            <li key={x.id}>
+              <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
+              <SeverityPill value={x.severity} />
+            </li>
+          ))}
+          {findings.length > 3 && (
+            <li>
+              <Link href={`/app/findings?agent=${encodeURIComponent(slug)}`}>All {findings.length} issues →</Link>
+            </li>
+          )}
+        </ul>
+      ) : (
+        <p className="k-muted">None open.</p>
+      )}
+      {fired.length > 0 && (
+        <>
+          <h4>Fired most</h4>
+          <ul className="gm-issues">
+            {fired.map((r) => (
+              <li key={r.rule_id}>
+                <Link href={`/app/policies/rules/${encodeURIComponent(r.rule_id)}`}>{ruleTitle(r.rule_id)}</Link>
+                <span className="k-muted">{num(r.fires)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <h4>About</h4>
+      <dl className="gm-facts">
+        <dt>Owner</dt>
+        <dd>{a.owner_email || <Link href={projectHref(slug, "settings")}>Assign</Link>}</dd>
+        <dt>Environment</dt>
+        <dd>{a.environment || "—"}</dd>
+        <dt>Framework</dt>
+        <dd>{a.framework || "—"}</dd>
+        <dt>Last active</dt>
+        <dd>{ago(a.last_seen_at)}</dd>
+      </dl>
+    </div>
+  );
+  return map ? <GuardrailMap map={map} summary={summary} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
 }
 
 async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
@@ -304,12 +335,12 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
         </span>
         <div className="k-toolbar-end">
           <Link href={href("/app/policies/new", { agent: slug })} className="k-btn-primary">
-            Add rule for this agent
+            Add a guardrail
           </Link>
         </div>
       </div>
       {changes.length > 0 && (
-        <Card title="Changed for this agent" flush>
+        <Card title="Changed for this project" flush>
           <table className="k-table">
             <tbody>
               {changes.map((c) => {
@@ -321,7 +352,7 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
                         {ruleTitle(c.rule_id)}
                       </Link>
                       <span className="sub">
-                        {c.kind === "added" ? "Only on this agent" : c.has_effect ? "Workspace default replaced for this agent" : "Looser than the workspace rule, which still applies"}
+                        {c.kind === "added" ? "Only on this project" : c.has_effect ? "Workspace default replaced for this project" : "Looser than the workspace rule, which still applies"}
                       </span>
                     </td>
                     <td className="tight">{c.default ? <span className="k-pills" style={{ gap: 6 }}><span className="k-muted">Workspace</span>{what(c.default)}</span> : null}</td>
@@ -331,7 +362,7 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
                         url={`/api/agents/${encodeURIComponent(slug)}/rules/${encodeURIComponent(c.rule_id)}`}
                         method="DELETE"
                         className="k-btn-ghost"
-                        confirm={c.kind === "added" ? "Remove this rule from this agent?" : "Reset this rule to the workspace default for this agent?"}
+                        confirm={c.kind === "added" ? "Remove this rule from this project?" : "Reset this rule to the workspace default for this project?"}
                         done="Done"
                       >
                         {c.kind === "added" ? "Remove" : "Reset to workspace default"}
@@ -357,9 +388,9 @@ async function Rules({ f, slug }: { f: Filters; slug: string }) {
                         {ruleTitle(r.rule_id)}
                       </Link>
                       {r.changed_for_agent ? (
-                        <span className="sub">Changed for this agent</span>
+                        <span className="sub">Changed for this project</span>
                       ) : r.added_for_agent || (r.source && !String(r.source).startsWith("org:")) ? (
-                        <span className="sub">Custom for this agent</span>
+                        <span className="sub">Custom for this project</span>
                       ) : null}
                     </td>
                     <td className="tight"><ActionPill effect={r.effect} /></td>
@@ -387,7 +418,7 @@ async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
     <Link
       key={key}
       className={(outcome || "") === key ? "active" : ""}
-      href={href(`/app/agents/${encodeURIComponent(f.agent!)}`, { tab: "activity", outcome: key || undefined, range: f.range === "7d" ? undefined : f.range })}
+      href={projectHref(f.agent!, "activity", { outcome: key || undefined, range: f.range === "7d" ? undefined : f.range })}
       scroll={false}
     >
       {label}
@@ -424,7 +455,7 @@ async function Quality({ f }: { f: Filters }) {
       </Card>
     );
   }
-  const agentHref = (tab: string) => href(`/app/agents/${encodeURIComponent(slug)}`, { tab, range: f.range === "7d" ? undefined : f.range });
+  const agentHref = (tab: string) => projectHref(slug, "activity", { tab, range: f.range === "7d" ? undefined : f.range });
   const wrong = q.wrong_answers;
   const failed = q.failed_steps;
   const runs: any[] = q.evals.runs || [];
@@ -451,7 +482,7 @@ async function Quality({ f }: { f: Filters }) {
           value={q.checked ? pct(wrong.rate) : "Not checked"}
           tone={wrong.requests ? "bad" : undefined}
           spark={q.trend.wrong_answers}
-          hint={q.checked ? rateHint(wrong.requests) : "No rule checks answers for this agent."}
+          hint={q.checked ? rateHint(wrong.requests) : "No rule checks answers for this project."}
           href="#wrong"
         />
         <Kpi label="Failed steps" value={pct(failed.rate)} tone={failed.requests ? "bad" : undefined} spark={q.trend.failed_steps} hint={rateHint(failed.requests)} href={runsHref(f, { errors: true })} />
@@ -502,9 +533,9 @@ async function Quality({ f }: { f: Filters }) {
             </tbody>
           </table>
         ) : q.checked ? (
-          <Empty action={<Link className="k-btn" href={agentHref("access")}>Set what it may answer</Link>}>No wrong answers caught in this period.</Empty>
+          <Empty action={<Link className="k-btn" href={projectHref(slug, "access")}>Set what it may answer</Link>}>No wrong answers caught in this period.</Empty>
         ) : (
-          <Empty action={<Link className="k-btn-primary" href={agentHref("access")}>Set what it may answer</Link>}>Nothing checks this agent&apos;s answers yet.</Empty>
+          <Empty action={<Link className="k-btn-primary" href={projectHref(slug, "access")}>Set what it may answer</Link>}>Nothing checks this project&apos;s answers yet.</Empty>
         )}
       </Card>
 
@@ -534,7 +565,7 @@ async function Quality({ f }: { f: Filters }) {
         ) : q.requests ? (
           <Empty>No failed tool or model calls in this period.</Empty>
         ) : (
-          <Empty action={<Link className="k-btn" href={agentHref("activity")}>Activity</Link>}>No requests in this period.</Empty>
+          <Empty action={<Link className="k-btn" href={projectHref(slug, "activity")}>Activity</Link>}>No requests in this period.</Empty>
         )}
       </Card>
 
@@ -588,7 +619,7 @@ async function Quality({ f }: { f: Filters }) {
                 ))}
               </ul>
             ) : (
-              <Empty action={<Link className="k-btn" href={agentHref("activity")}>Open a run</Link>}>No feedback yet. Label a run from its detail page.</Empty>
+              <Empty action={<Link className="k-btn" href={projectHref(slug, "activity")}>Open a run</Link>}>No feedback yet. Label a run from its detail page.</Empty>
             )}
           </Card>
         </div>
@@ -686,7 +717,7 @@ async function Settings({ a, state }: { a: any; state: string }) {
           </tbody>
         </table>
       </Card>
-      <Card title="Emergency stop" hint="Pause refuses every call from this agent until resumed. Stop is the stronger incident action.">
+      <Card title="Emergency stop" hint="Pause refuses every call from this project until resumed. Stop is the stronger incident action.">
         <div className="k-pills" style={{ gap: 8 }}>
           {state === "active" ? <Pill tone="ok">Active</Pill> : <Pill tone="bad">{state}</Pill>}
           <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST" className="k-pills" style={{ gap: 8 }}>
@@ -714,7 +745,7 @@ const BREAKER_STATE: Record<string, [string, "ok" | "bad" | "held"]> = {
 };
 
 /**
- * The circuit breaker: when a burst of this agent's calls is blocked, pause it (or
+ * The circuit breaker: when a burst of this project's calls is blocked, pause it (or
  * only raise an issue) without anyone watching, then let calls through again once a
  * few pass after the cool-down.
  */
@@ -725,7 +756,7 @@ function Breaker({ slug, b }: { slug: string; b: any }) {
   return (
     <Card
       title="Circuit breaker"
-      hint="Trips when too many of this agent's calls are blocked in a short window. Attack tests do not count."
+      hint="Trips when too many of this project's calls are blocked in a short window. Attack tests do not count."
     >
       <div className="k-pills" style={{ gap: 8, marginBottom: 12 }}>
         <Pill tone={tone}>{label}</Pill>
@@ -799,8 +830,3 @@ const QUESTION_HINT: Record<string, string> = {
   opinion: "Recommendations: \"Which plan is best for me?\"",
   procedure: "Steps to follow: \"How do I update my address?\"",
 };
-
-async function MapTab({ slug }: { slug: string }) {
-  const map = await safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null);
-  return map ? <GuardrailMap map={map} /> : <Card><Empty>The map could not be loaded.</Empty></Card>;
-}

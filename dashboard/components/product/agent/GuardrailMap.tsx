@@ -5,7 +5,7 @@ import "@xyflow/react/dist/style.css";
 import { Background, Controls, Handle, MarkerType, Position, ReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ActionPill, ModePill, Pill } from "@/components/kit";
 import {
   DRAW_EACH,
@@ -17,6 +17,7 @@ import {
   TONE_LABEL,
   TOOL_FILTERS,
   counts,
+  drawTools,
   filterTools,
   groupSummary,
   groupTools,
@@ -26,6 +27,7 @@ import {
   stageTone,
   toolTone,
   type AgentMap,
+  type Drawn,
   type GroupBy,
   type MapRule,
   type MapTool,
@@ -41,7 +43,8 @@ import { IMPACT, detectorName, ruleTitle } from "@/lib/product/vocab";
 
 export type { AgentMap, MapRule } from "@/lib/product/guardrailMap";
 
-type Selected = { kind: "stage" | "tool" | "group"; key: string } | null;
+/** What the inspector shows: a step, a tool, a group of tools, or every tool. Nothing: the project. */
+type Selected = { kind: "stage" | "tool" | "group" | "tools"; key: string } | null;
 
 const SOURCE: Record<string, string> = { code: "In code", granted: "Granted", seen: "Called" };
 
@@ -93,15 +96,8 @@ function StageNode({ data }: NodeProps<Node<{ stage: Stage; selected: boolean }>
       <Handle type="source" position={Position.Right} />
       <Handle type="source" position={Position.Top} id="topout" />
       <span className="gm-kicker">{s.title}</span>
-      <strong>
-        {c.enforcing} enforcing{c.watching ? ` · ${c.watching} watching` : ""}
-      </strong>
-      <span className="gm-sub">{plural(s.detectors.length, "check")} run here</span>
-      {s.stats.total ? (
-        <span className="gm-sub">
-          {s.stats.total} seen · {stopped(s.stats)} stopped
-        </span>
-      ) : null}
+      <strong>{c.enforcing ? plural(c.enforcing, "guardrail") : c.watching || s.detectors.length ? "Watching" : "Nothing set"}</strong>
+      {stopped(s.stats) ? <span className="gm-sub">{stopped(s.stats)} stopped</span> : null}
     </div>
   );
 }
@@ -116,16 +112,11 @@ function ToolNode({ data }: NodeProps<Node<{ tool: MapTool; selected: boolean }>
       <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Bottom} />
       <span className="gm-kicker k-mono gm-ellipsis" title={tl.key}>{shortKey(tl.key)}</span>
-      <span className={`k-pill k-pill-${p.tone}`}>{p.label}</span>
-      <span className="gm-sub">
-        {IMPACT[tl.impact || ""] || "Risk not set"}
-        {rules ? ` · ${plural(rules, "rule")}` : ""}
+      <span className="gm-perms">
+        <span className={`gm-perm gm-perm-${p.tone}`}>{p.label}</span>
+        {rules ? <span className="gm-sub">{plural(rules, "rule")}</span> : null}
       </span>
-      {tl.stats.total ? (
-        <span className="gm-sub">
-          {tl.stats.total} calls · {stopped(tl.stats)} stopped
-        </span>
-      ) : null}
+      {tl.stats.total ? <span className="gm-sub">{plural(tl.stats.total, "call")}</span> : null}
     </div>
   );
 }
@@ -144,38 +135,51 @@ function GroupNode({ data }: NodeProps<Node<{ group: ToolGroup; total: number; o
         {s.ask ? <span className="gm-perm gm-perm-held">{s.ask} ask</span> : null}
         {s.denied ? <span className="gm-perm gm-perm-bad">{s.denied} not allowed</span> : null}
       </span>
-      {s.calls ? (
-        <span className="gm-sub">
-          {s.calls} calls · {s.stopped} stopped
-        </span>
-      ) : null}
-      <span className="gm-sub gm-hint">{data.open ? "Open" : "Click to open"}</span>
     </div>
   );
 }
 
 function MoreNode({ data }: NodeProps<Node<{ label: string }>>) {
   return (
-    <div className="gm-node gm-more">
+    <div className="gm-node gm-more" title="Open the list in the inspector">
       <Handle type="target" position={Position.Top} />
       {data.label}
     </div>
   );
 }
 
+/** Every tool as one node, until the canvas is asked to show them. */
+function ToolsNode({ data }: NodeProps<Node<{ tools: MapTool[]; selected: boolean }>>) {
+  const s = groupSummary(data.tools);
+  return (
+    <div className={`gm-node gm-group gm-tools gm-${s.tone}${data.selected ? " gm-selected" : ""}`} title="Show the tools on the canvas">
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+      <span className="gm-kicker">Tools</span>
+      <strong>{plural(data.tools.length, "tool")}</strong>
+      <span className="gm-perms">
+        {s.allowed ? <span className="gm-perm gm-perm-ok">{s.allowed} allowed</span> : null}
+        {s.ask ? <span className="gm-perm gm-perm-held">{s.ask} ask</span> : null}
+        {s.denied ? <span className="gm-perm gm-perm-bad">{s.denied} not allowed</span> : null}
+      </span>
+      <span className="gm-expand">Expand ▾</span>
+    </div>
+  );
+}
+
 function SubagentNode({ data }: NodeProps<Node<{ slug: string; calls: number }>>) {
   return (
-    <Link href={`/app/agents/${encodeURIComponent(data.slug)}?tab=map`} className="gm-node gm-sub-agent">
+    <Link href={`/app/projects/${encodeURIComponent(data.slug)}`} className="gm-node gm-sub-agent">
       <Handle type="target" position={Position.Left} />
       <span className="gm-kicker">Hands off to</span>
       <strong>{data.slug}</strong>
-      <span className="gm-sub">{data.calls} times · open its map</span>
+      <span className="gm-sub">{plural(data.calls, "time")} · open project</span>
     </Link>
   );
 }
 
 // "group" is a built-in React Flow type with its own styling, so ours is "toolgroup".
-const NODE_TYPES = { end: EndNode, agent: AgentNode, stage: StageNode, tool: ToolNode, toolgroup: GroupNode, more: MoreNode, subagent: SubagentNode };
+const NODE_TYPES = { end: EndNode, agent: AgentNode, stage: StageNode, tool: ToolNode, toolgroup: GroupNode, tools: ToolsNode, more: MoreNode, subagent: SubagentNode };
 
 // --- layout ----------------------------------------------------------------------
 
@@ -185,20 +189,7 @@ const PER_ROW = 4;
 const GROUPS_PER_ROW = 5;
 const GROUP_ROW = 180;
 
-type Drawn = { tools: MapTool[]; groups: ToolGroup[] | null; open: ToolGroup | null };
-
-/**
- * What the canvas draws for the tools: each one when there are few; otherwise one
- * node per group, with the opened group's tools under it. Everything else is in the
- * list beside the canvas.
- */
-function drawn(visible: MapTool[], by: GroupBy, openKey: string | null): Drawn {
-  if (visible.length <= DRAW_EACH) return { tools: visible, groups: null, open: null };
-  const groups = groupTools(visible, by);
-  return { tools: [], groups, open: groups.find((g) => g.key === openKey) || null };
-}
-
-function layout(map: AgentMap, d: Drawn, hidden: number, selected: Selected): { nodes: Node[]; edges: Edge[] } {
+function layout(map: AgentMap, d: Drawn, visible: MapTool[], hidden: number, selected: Selected): { nodes: Node[]; edges: Edge[] } {
   const stage = (key: string) => map.stages.find((s) => s.key === key);
   const isSel = (kind: string, key: string) => selected?.kind === kind && selected.key === key;
   const nodes: Node[] = [];
@@ -237,7 +228,7 @@ function layout(map: AgentMap, d: Drawn, hidden: number, selected: Selected): { 
   let bottom = 380;
   const lastIds: string[] = [];
 
-  if (call && (d.tools.length || d.groups?.length || hidden)) {
+  if (call && (d.collapsed || d.tools.length || d.groups?.length || hidden)) {
     nodes.push({ id: "stage:tool_call", type: "stage", position: { x: agentX - 20, y: 200 }, data: { stage: call, selected: isSel("stage", "tool_call") } });
     edge("et", "agent", "stage:tool_call", { sourceHandle: "down", targetHandle: "top" });
 
@@ -256,7 +247,12 @@ function layout(map: AgentMap, d: Drawn, hidden: number, selected: Selected): { 
       return id;
     };
 
-    if (!d.groups) {
+    if (d.collapsed) {
+      nodes.push({ id: "tools:all", type: "tools", position: grid(1, 380, 0), data: { tools: visible, selected: selected?.kind === "tools" } });
+      edge("etc-all", "stage:tool_call", "tools:all", { animated: visible.some((t) => t.stats.total) });
+      lastIds.push("tools:all");
+      bottom = 380 + GROUP_ROW;
+    } else if (!d.groups) {
       d.tools.forEach((tl, i) => lastIds.push(toolNode(tl, grid(d.tools.length, 380, i), "stage:tool_call", String(i))));
       bottom = 380 + rows(d.tools.length) * ROW;
     } else {
@@ -271,7 +267,7 @@ function layout(map: AgentMap, d: Drawn, hidden: number, selected: Selected): { 
         lastIds.push(id);
       });
       if (extra) {
-        nodes.push({ id: "more:groups", type: "more", position: grid(cells, 380, shown.length, GROUPS_PER_ROW, GROUP_ROW), data: { label: `${plural(extra, "more group")} in the list` } });
+        nodes.push({ id: "more:groups", type: "more", position: grid(cells, 380, shown.length, GROUPS_PER_ROW, GROUP_ROW), data: { label: `+${plural(extra, "more group")}` } });
         edge("eg-more", "stage:tool_call", "more:groups", { style: { strokeDasharray: "4 4" } });
       }
       bottom = 380 + rows(cells, GROUPS_PER_ROW) * GROUP_ROW;
@@ -284,7 +280,7 @@ function layout(map: AgentMap, d: Drawn, hidden: number, selected: Selected): { 
         // The opened group's tools hang off it; its own node carries the edge onward.
         ts.forEach((tl, i) => toolNode(tl, grid(n, top, i), from, `o${i}`));
         if (rest) {
-          nodes.push({ id: "more:tools", type: "more", position: grid(n, top, ts.length), data: { label: `${rest} more in the list` } });
+          nodes.push({ id: "more:tools", type: "more", position: grid(n, top, ts.length), data: { label: `+${rest} more in ${d.open.label.toLowerCase()}` } });
           edge("eo-more", from, "more:tools", { style: { strokeDasharray: "4 4" } });
         }
         bottom = top + rows(n) * ROW;
@@ -464,15 +460,45 @@ function StatLine({ days, s, noun }: { days: number; s: Stats; noun: string }) {
   );
 }
 
-function Panel({ map, selected, groups, onSelect }: { map: AgentMap; selected: Selected; groups: ToolGroup[]; onSelect: (s: Selected) => void }) {
+function Panel({
+  map,
+  selected,
+  groups,
+  onSelect,
+  summary,
+  toolList,
+}: {
+  map: AgentMap;
+  selected: Selected;
+  groups: ToolGroup[];
+  onSelect: (s: Selected) => void;
+  summary?: ReactNode;
+  toolList: ReactNode;
+}) {
   const slug = map.agent.slug;
+  // Figma's rule: with nothing selected, the inspector is about the whole file.
+  const back = (
+    <button type="button" className="gm-back" onClick={() => onSelect(null)}>
+      ← {map.agent.name || slug}
+    </button>
+  );
+  if (selected?.kind === "tools")
+    return (
+      <div className="gm-panel gm-panel-list">
+        {back}
+        {toolList}
+      </div>
+    );
   if (selected?.kind === "stage") {
     const s = map.stages.find((x) => x.key === selected.key);
     if (s)
       return (
         <div className="gm-panel">
+          {back}
           <strong>{s.title}</strong>
           <StatLine days={map.window_days} s={s.stats} noun="checked" />
+          <h4>Guardrails here</h4>
+          <RuleList rules={s.rules} slug={slug} />
           <h4>Checks that run here</h4>
           {s.detectors.length ? (
             <div className="k-pills" style={{ gap: 6, flexWrap: "wrap" }}>
@@ -488,8 +514,6 @@ function Panel({ map, selected, groups, onSelect }: { map: AgentMap; selected: S
           <p>
             <Link href="/app/policies?tab=checks">Choose checks</Link>
           </p>
-          <h4>Rules for this agent</h4>
-          <RuleList rules={s.rules} slug={slug} />
         </div>
       );
   }
@@ -499,6 +523,7 @@ function Panel({ map, selected, groups, onSelect }: { map: AgentMap; selected: S
       const s = groupSummary(g.tools);
       return (
         <div className="gm-panel">
+          {back}
           <strong>{g.label}</strong>
           <p className="k-muted">
             {plural(g.tools.length, "tool")} · {s.allowed} allowed · {s.ask} ask · {s.denied} not allowed
@@ -515,22 +540,39 @@ function Panel({ map, selected, groups, onSelect }: { map: AgentMap; selected: S
     }
   }
   const tl = selected?.kind === "tool" ? map.tools.find((t) => t.key === selected.key) : null;
-  if (!tl)
+  if (!tl) {
+    const t = groupSummary(map.tools);
     return (
       <div className="gm-panel">
-        <strong>Click a step or a tool</strong>
-        <p className="k-muted">See and change what applies there.</p>
+        {summary}
+        {map.tools.length > 0 && (
+          <>
+            <h4>Tools</h4>
+            <button type="button" className="gm-tools-card" onClick={() => onSelect({ kind: "tools", key: "" })}>
+              <strong>{plural(map.tools.length, "tool")}</strong>
+              <span className="gm-perms">
+                {t.allowed ? <span className="gm-perm gm-perm-ok">{t.allowed} allowed</span> : null}
+                {t.ask ? <span className="gm-perm gm-perm-held">{t.ask} ask</span> : null}
+                {t.denied ? <span className="gm-perm gm-perm-bad">{t.denied} not allowed</span> : null}
+              </span>
+              <span className="gm-sub">Browse and change access →</span>
+            </button>
+          </>
+        )}
         {map.everywhere.length > 0 && (
           <>
             <h4>At every step</h4>
             <RuleList rules={map.everywhere} slug={slug} />
           </>
         )}
+        <p className="gm-sub">Click a step or a tool on the canvas to see and change its guardrails.</p>
       </div>
     );
+  }
   const limits = Object.entries(tl.limits || {});
   return (
     <div className="gm-panel">
+      {back}
       <strong className="k-mono gm-break">{tl.key}</strong>
       <div className="k-pills" style={{ gap: 6 }}>
         <Pill tone="outline">{IMPACT[tl.impact || ""] || "Risk not set"}</Pill>
@@ -566,7 +608,7 @@ function Panel({ map, selected, groups, onSelect }: { map: AgentMap; selected: S
         </>
       )}
       <p className="k-muted">Every call also passes the Tool calls step.</p>
-      <Link className="k-btn" href={`/app/agents/${encodeURIComponent(slug)}?tab=access`}>
+      <Link className="k-btn" href={`/app/projects/${encodeURIComponent(slug)}?view=access`}>
         Limits and access
       </Link>
     </div>
@@ -691,13 +733,15 @@ function Legend() {
 }
 
 /**
- * One agent's guardrails, drawn where they act: on the user's message, on each tool
- * call, on what tools return, and on the reply. Many tools are drawn as groups, with
- * every tool in the searchable list beside the canvas. Click a step or tool to see
- * its rules and change them, or the tool's access, for this agent.
+ * One project's guardrails, drawn where they act: on the user's message, on each
+ * tool call, on what tools return, and on the reply. The canvas shows the shape
+ * first: many tools are one node until expanded, then groups, then a group's
+ * tools, each with "+N more" into the inspector's list. The inspector beside it
+ * shows what is selected, and the project itself (`summary`) when nothing is.
  */
-export function GuardrailMap({ map }: { map: AgentMap }) {
+export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactNode }) {
   const [selected, setSelected] = useState<Selected>(null);
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [by, setBy] = useState<GroupBy>("impact");
   const [filter, setFilter] = useState<ToolFilter>("all");
@@ -711,31 +755,68 @@ export function GuardrailMap({ map }: { map: AgentMap }) {
       : selected?.kind === "tool"
         ? groups.find((g) => g.tools.some((t) => t.key === selected.key))?.key || null
         : null;
-  const d = useMemo(() => drawn(visible, by, openKey), [visible, by, openKey]);
-  const { nodes, edges } = useMemo(() => layout(map, d, map.tools.length - visible.length, selected), [map, d, visible.length, selected]);
+  // Choosing a tool from the list draws it, which needs the tools expanded.
+  const showAll = expanded || selected?.kind === "tool" || selected?.kind === "group";
+  const d = useMemo(() => drawTools(visible, by, showAll, openKey), [visible, by, showAll, openKey]);
+  const { nodes, edges } = useMemo(() => layout(map, d, visible, map.tools.length - visible.length, selected), [map, d, visible, selected]);
   const many = map.tools.length > DRAW_EACH;
-  // With many tools the side column holds the tool list and the details, one at a time,
-  // so the canvas keeps its width.
-  const [tab, setTab] = useState<"tools" | "details">(many ? "tools" : "details");
 
-  const choose = (next: Selected) => {
-    setSelected(next);
-    if (next) setTab("details");
-  };
+  const toolList = (
+    <ToolList
+      total={map.tools.length}
+      groups={groups}
+      query={query}
+      setQuery={setQuery}
+      by={by}
+      setBy={setBy}
+      filter={filter}
+      setFilter={setFilter}
+      selected={selected}
+      onSelect={setSelected}
+    />
+  );
 
   return (
     <div className="gm">
       <div className="gm-canvas">
-        <Legend />
+        <div className="gm-bar">
+          <Legend />
+          {many && (
+            <div className="gm-bar-end">
+              {showAll && !d.collapsed && (
+                <select className="k-select k-select-sm" value={by} onChange={(e) => setBy(e.target.value as GroupBy)} aria-label="Group tools by">
+                  {GROUP_BY.map((g) => (
+                    <option key={g.key} value={g.key}>
+                      Group by {g.label.toLowerCase()}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                className="k-btn k-btn-sm"
+                aria-pressed={showAll}
+                onClick={() => {
+                  if (showAll) {
+                    setExpanded(false);
+                    if (selected?.kind === "tool" || selected?.kind === "group") setSelected(null);
+                  } else setExpanded(true);
+                }}
+              >
+                {showAll ? "Collapse tools" : `Expand ${map.tools.length} tools`}
+              </button>
+            </div>
+          )}
+        </div>
         <div className="gm-flow">
           <ReactFlow
             // Re-fit when what is drawn changes shape, not on every selection.
-            key={`${by}|${openKey || ""}|${visible.length}|${d.groups ? "g" : "t"}`}
+            key={`${by}|${openKey || ""}|${visible.length}|${d.collapsed ? "c" : d.groups ? "g" : "t"}`}
             nodes={nodes}
             edges={edges}
             nodeTypes={NODE_TYPES}
             fitView
-            fitViewOptions={{ padding: 0.12 }}
+            fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
             minZoom={0.2}
             maxZoom={1.5}
             nodesDraggable={false}
@@ -744,9 +825,14 @@ export function GuardrailMap({ map }: { map: AgentMap }) {
             onNodeClick={(_, node) => {
               const [kind, ...rest] = node.id.split(":");
               const key = rest.join(":");
-              if (kind === "stage" || kind === "tool") choose({ kind, key });
-              else if (kind === "group") choose(openKey === key && selected?.kind === "group" ? null : { kind: "group", key });
-              else if (kind !== "more") setSelected(null);
+              if (kind === "stage" || kind === "tool") setSelected({ kind, key });
+              else if (kind === "tools") {
+                setExpanded(true);
+                setSelected(null);
+              } else if (kind === "group") setSelected(openKey === key && selected?.kind === "group" ? null : { kind: "group", key });
+              else if (node.id === "more:groups") setSelected({ kind: "tools", key: "" });
+              else if (node.id === "more:tools" && d.open) setSelected({ kind: "group", key: d.open.key });
+              else setSelected(null);
             }}
             onPaneClick={() => setSelected(null)}
           >
@@ -756,32 +842,7 @@ export function GuardrailMap({ map }: { map: AgentMap }) {
         </div>
       </div>
       <div className="gm-side">
-        {many && (
-          <div className="k-seg gm-side-tabs" role="tablist" aria-label="Side panel">
-            <button type="button" role="tab" aria-selected={tab === "tools"} className={tab === "tools" ? "active" : ""} onClick={() => setTab("tools")}>
-              Tools {map.tools.length}
-            </button>
-            <button type="button" role="tab" aria-selected={tab === "details"} className={tab === "details" ? "active" : ""} onClick={() => setTab("details")}>
-              Details
-            </button>
-          </div>
-        )}
-        {many && tab === "tools" ? (
-          <ToolList
-            total={map.tools.length}
-            groups={groups}
-            query={query}
-            setQuery={setQuery}
-            by={by}
-            setBy={setBy}
-            filter={filter}
-            setFilter={setFilter}
-            selected={selected}
-            onSelect={choose}
-          />
-        ) : (
-          <Panel map={map} selected={selected} groups={groups} onSelect={choose} />
-        )}
+        <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} summary={summary} toolList={toolList} />
       </div>
     </div>
   );
