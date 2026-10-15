@@ -1,0 +1,48 @@
+# The model server on one machine (an EC2 instance, say), behind automatic HTTPS.
+#
+#   cp .env.example .env    # set the domain and the token
+#   docker compose up -d
+#
+# Updating is a pull, and only when a model-side change ships: the gateway keeps
+# deploying from main as often as it likes without touching this machine.
+#
+#   docker compose pull && docker compose up -d
+#
+# GPU machine: build the CUDA image and use the override file (README.md).
+
+services:
+  models:
+    # The published gateway image already carries every permissive-licence model's
+    # weights. Pin a release tag rather than :edge, so this machine changes only
+    # when you decide it should.
+    image: ${AGENTFOX_IMAGE:-ghcr.io/architsharm/agentfox/gateway:latest}
+    command: ["agentfox", "serve", "models", "--host", "0.0.0.0", "--port", "8090"]
+    restart: unless-stopped
+    environment:
+      AGENTFOX_MODEL_SERVER_TOKEN: ${AGENTFOX_MODEL_SERVER_TOKEN:?set AGENTFOX_MODEL_SERVER_TOKEN in .env}
+      AGENTFOX_MODEL_DEVICE: ${AGENTFOX_MODEL_DEVICE:-auto}
+      # Weights are read from the image only, never fetched while serving.
+      HF_HUB_OFFLINE: "1"
+    # Not published to the host: only Caddy reaches it.
+    expose: ["8090"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8090/health', headers={'Authorization': 'Bearer ' + os.environ['AGENTFOX_MODEL_SERVER_TOKEN']}), timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # Every model loads before the server answers.
+      start_period: 120s
+
+  caddy:
+    # TLS from Let's Encrypt for MODEL_SERVER_DOMAIN, renewed automatically. The
+    # gateway sends the text it screens here, so it travels encrypted.
+    image: caddy:2.8
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    command: ["caddy", "reverse-proxy", "--from", "${MODEL_SERVER_DOMAIN:?set MODEL_SERVER_DOMAIN in .env}", "--to", "models:8090"]
+    volumes:
+      - caddy-data:/data
+    depends_on: [models]
+
+volumes:
+  caddy-data:

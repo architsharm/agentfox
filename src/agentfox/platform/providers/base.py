@@ -216,9 +216,10 @@ _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.d
 
 
 def is_local_endpoint(url: str | None) -> bool:
-    """True when `url` points inside this deployment.
+    """True when `url` points inside this deployment: loopback, or a host listed in
+    `trusted_model_hosts`.
 
-    Fails safe: anything not provably loopback is treated as remote, so a
+    Fails safe: anything not provably loopback or listed is treated as remote, so a
     malformed or unexpected URL is gated rather than quietly exempted.
     """
     if not url:
@@ -229,7 +230,14 @@ def is_local_endpoint(url: str | None) -> bool:
         host = (urlparse(url).hostname or "").lower()
     except ValueError:
         return False
-    return host in _LOOPBACK_HOSTS or host.endswith(".localhost")
+    if host in _LOOPBACK_HOSTS or host.endswith(".localhost"):
+        return True
+    # A machine the operator runs and listed by name, such as a GPU box serving
+    # vLLM. Exact match only: a suffix or pattern could take in a host nobody listed.
+    from agentfox.core.config import get_settings
+
+    trusted = {h.strip().lower() for h in get_settings().trusted_model_hosts if h.strip()}
+    return host in trusted
 
 
 def get_provider(key: str | None = None) -> ModelProvider:

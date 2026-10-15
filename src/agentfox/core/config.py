@@ -524,6 +524,30 @@ class Settings(BaseSettings):
     # corpus file, no retraining required.
     embedding_similarity_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
+    # --- Model server ----------------------------------------------------
+    # Where model-backed detectors run when this process should not hold weights:
+    # a serverless gateway (read-only file system, cold instances) or one without a
+    # GPU. `agentfox serve-models` on another machine runs them; set this to its URL
+    # and every detector in `model_server_detectors` is answered there, under the
+    # same per-detector budget, with a timeout reported as degraded like any other.
+    # Unset, everything runs in this process as before.
+    model_server_url: str | None = None
+    # Bearer token both sides share. `serve-models` refuses to listen beyond
+    # loopback without one.
+    model_server_token: str | None = None
+    # Which detectors go to the model server. Empty means every model-backed one
+    # (the detectors `detection.models.models_for` names a model for).
+    model_server_detectors: list[str] = []
+    # Where a model runs in *this* process: "cpu", "cuda", "mps", or "auto" (cuda,
+    # then mps, then cpu). Matters on the model server; a gateway that sends its
+    # models away never loads one.
+    model_device: str = "auto"
+    # Hosts you run that count as inside this deployment, like loopback: a model
+    # server, or a vLLM / LiteLLM endpoint on your own GPU box. A judgment call to one
+    # is `local_llm`, not egress, so it is not redacted or refused. Exact host names
+    # or IPs; list only machines you control.
+    trusted_model_hosts: list[str] = []
+
     # --- Wrapped rail orchestrators -------------------------------
     # Both adapters were registered with their configuration hard-coded empty —
     # `NemoRailsDetector()` with no config path, `GuardrailsAiDetector()` with no

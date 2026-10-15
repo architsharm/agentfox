@@ -31,7 +31,12 @@ from agentfox.capabilities.detection.base import (
     DetectionContext,
     redact_sample,
 )
-from agentfox.capabilities.detection.loading import inference_lock, load_once
+from agentfox.capabilities.detection.loading import (
+    inference_lock,
+    load_once,
+    model_device,
+    to_model_device,
+)
 from agentfox.core.config import get_settings
 
 _CORPUS_PATH = Path(__file__).resolve().parent.parent / "data" / "injection_corpus.json"
@@ -78,7 +83,7 @@ class LocalEmbedder:
         # local_files_only: see `injection.classifier`'s `_pipeline`.
         tokenizer = AutoTokenizer.from_pretrained(self.model_id, local_files_only=True)
         model = AutoModel.from_pretrained(self.model_id, local_files_only=True)
-        model.eval()
+        model.to(model_device()).eval()
         return tokenizer, model
 
     def embed(self, texts: list[str]):  # pragma: no cover - requires optional dependency
@@ -88,6 +93,7 @@ class LocalEmbedder:
         encoded = tokenizer(
             texts, padding=True, truncation=True, max_length=256, return_tensors="pt"
         )
+        encoded = to_model_device(encoded, model)
         with inference_lock(model), torch.no_grad():
             out = model(**encoded)
         mask = encoded["attention_mask"].unsqueeze(-1).float()

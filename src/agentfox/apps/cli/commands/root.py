@@ -1,4 +1,4 @@
-"""Top-level verbs: `version`, `seed`, `demo`, `serve` and `analyse-action`."""
+"""Top-level verbs: `version`, `seed`, `demo`, `serve`, `serve-models` and `analyse-action`."""
 
 from __future__ import annotations
 
@@ -139,6 +139,41 @@ def serve(
     uvicorn.run("agentfox.apps.gateway.app:app", host=host, port=port, reload=reload)
 
 
+def serve_models(
+    host: str = "127.0.0.1",
+    port: int = 8090,
+    workers: int = typer.Option(1, help="Processes; each loads every model once."),
+) -> None:
+    """Run the model server: model-backed detectors for gateways that should not
+    hold weights. Point a gateway at it with AGENTFOX_MODEL_SERVER_URL."""
+    import uvicorn
+
+    from agentfox.capabilities.detection.loading import model_device
+    from agentfox.core.config import get_settings
+
+    settings = get_settings()
+    loopback = host in {"127.0.0.1", "localhost", "::1"}
+    if not loopback and not settings.model_server_token:
+        # Anyone who can reach the port could otherwise run our models on our GPU
+        # and read nothing less than the content we screen.
+        console.print(
+            "[red]refusing to listen on a non-loopback address without "
+            "AGENTFOX_MODEL_SERVER_TOKEN[/]"
+        )
+        raise typer.Exit(2)
+    if settings.model_server_url:
+        console.print(
+            "[yellow]AGENTFOX_MODEL_SERVER_URL is ignored here: this is the model server[/]"
+        )
+    console.print(f"[cyan]AgentFox model server[/] {__version__} → http://{host}:{port}")
+    console.print(f"  [dim]device:  {model_device()}[/]")
+    console.print(f"  [dim]health:  GET http://{host}:{port}/health[/]")
+    console.print(
+        f"  [dim]auth:    {'bearer token' if settings.model_server_token else 'none (loopback)'}[/]"
+    )
+    uvicorn.run("agentfox.apps.model_server:app", host=host, port=port, workers=workers)
+
+
 def analyse_action(
     statement: str = typer.Argument(..., help="SQL, shell command or URL to analyse"),
     kind: str = typer.Option("sql", help="sql | shell | http"),
@@ -202,4 +237,5 @@ def register(app: typer.Typer) -> None:
     app.command()(seed)
     app.command()(demo)
     app.command()(serve)
+    app.command(name="serve-models")(serve_models)
     app.command()(analyse_action)

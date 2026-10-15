@@ -62,3 +62,33 @@ def inference_lock(model: Any) -> threading.Lock:
                 lock = threading.Lock()
                 model._agentfox_inference_lock = lock
     return lock
+
+
+def model_device() -> str:
+    """Where this process runs its models: "cpu", "cuda" or "mps".
+
+    `model_device = "auto"` picks the fastest one present. Only a model server with a
+    GPU usually has a choice; everything else runs on CPU as it always has.
+    """
+    from agentfox.core.config import get_settings
+
+    wanted = (get_settings().model_device or "auto").lower()
+    if wanted != "auto":
+        return wanted
+    try:
+        import torch
+    except Exception:  # noqa: BLE001 - no torch means no model runs here anyway
+        return "cpu"
+    if torch.cuda.is_available():
+        return "cuda"
+    mps = getattr(torch.backends, "mps", None)
+    if mps is not None and mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def to_model_device(tensors: Any, model: Any) -> Any:
+    """Move inputs to the device a model's weights are on. A no-op for a stand-in
+    model with no device, which is what the unit tests pass."""
+    device = getattr(model, "device", None)
+    return tensors.to(device) if device is not None else tensors

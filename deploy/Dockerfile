@@ -48,11 +48,17 @@ COPY src ./src
 # every model-based detector below.
 #
 # torch from the CPU-only index, first, so the extras install finds it satisfied. The
-# default Linux wheel bundles the CUDA and cuDNN libraries, gigabytes this image never
-# loads: every detector runs on CPU (no code here asks for a GPU device), and neither
-# deploy/docker-compose.yml nor render.yaml gives the container one.
+# default Linux wheel bundles the CUDA and cuDNN libraries, gigabytes the published
+# image never loads: the gateway runs its detectors on CPU, and neither
+# deploy/docker-compose.yml nor render.yaml gives the container a GPU.
+#
+# A model server on a GPU machine builds with a CUDA index instead
+# (deploy/model-server/README.md):
+#   docker build -f deploy/Dockerfile --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu124 .
+# and `model_device = "auto"` then finds the GPU on its own.
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
 RUN pip install --upgrade pip \
- && pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.4" \
+ && pip install --index-url "${TORCH_INDEX}" "torch>=2.4" \
  && pip install ".[postgres,otel,classifiers]"
 
 # CI builds and stops here (`docker build --target deps`, no secret, no GPU-scale
