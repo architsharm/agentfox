@@ -41,6 +41,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agentfox.capabilities.discovery.agents import AgentCollector, AgentEdge, AgentSpec
+
 log = logging.getLogger(__name__)
 
 #: Directories never worth walking. Skipping them is the difference between a scan
@@ -104,6 +106,13 @@ _FRAMEWORK_IMPORTS = {
     "llama_index": "LlamaIndex",
     "crewai": "CrewAI",
     "autogen": "AutoGen",
+    # AutoGen 0.4+ ships as separate packages; AG2 is the community fork's name.
+    "autogen_agentchat": "AutoGen",
+    "autogen_core": "AutoGen",
+    "autogen_ext": "AutoGen",
+    "ag2": "AutoGen",
+    "langgraph_supervisor": "LangGraph",
+    "langgraph_swarm": "LangGraph",
     "openai": "OpenAI SDK",
     "anthropic": "Anthropic SDK",
     "litellm": "LiteLLM",
@@ -228,6 +237,40 @@ class ScanReport:
     sites: list[Site] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     governed_files: list[str] = field(default_factory=list)
+    #: Each agent the code defines, with its own tools, and which hands work to which
+    #: (:mod:`agentfox.capabilities.discovery.agents`). Empty for a repository whose
+    #: framework is not one that module reads, which is not a claim there are none.
+    agents: list[AgentSpec] = field(default_factory=list)
+    agent_edges: list[AgentEdge] = field(default_factory=list)
+
+    @property
+    def multi_agent(self) -> bool:
+        """Two or more agents were found, so the scan proposes one per agent instead
+        of one per directory (``registry.service.propose_from_scan``)."""
+        return len(self.agents) >= 2
+
+    def agent_summary(self, limit: int = 8) -> list[str]:
+        """The multi-agent structure as short lines for a terminal: a count, then each
+        agent that hands work on and to whom. Empty for a single-agent repository."""
+        if not self.multi_agent:
+            return []
+        lines = [
+            f"{len(self.agents)} agents, {len(self.agent_edges)} handoff(s) between them"
+        ]
+        words = {
+            "handoff": "hands off to",
+            "as_tool": "uses as a tool",
+            "delegates": "delegates to",
+            "member": "runs",
+        }
+        children: dict[tuple[str, str], list[str]] = {}
+        for edge in self.agent_edges:
+            children.setdefault((edge.parent, edge.relation), []).append(edge.child)
+        for (parent, relation), kids in list(children.items())[:limit]:
+            lines.append(f"{parent} {words.get(relation, 'delegates to')} {', '.join(kids)}")
+        if len(children) > limit:
+            lines.append(f"... and {len(children) - limit} more; `--json` lists them all")
+        return lines
 
     @property
     def inconclusive(self) -> bool:
@@ -342,6 +385,10 @@ class ScanReport:
             "counts": self.by_kind(),
             "sites": [s.to_json() for s in self.sites],
             "errors": self.errors,
+            # The multi-agent structure: one entry per agent (with its own tools) and
+            # one per "parent hands work to child" relation between them.
+            "agents": [a.to_json() for a in self.agents],
+            "agent_edges": [e.to_json() for e in self.agent_edges],
         }
 
     def to_submission_payload(self, *, source: str) -> dict[str, Any]:
@@ -357,6 +404,14 @@ class ScanReport:
         connected-repo scan (``routes/integrations.py``) already groups proposals by.
         No file path deeper than its first component, no line numbers, no detail
         text, no error messages.
+
+        For a multi-agent system it also carries each agent's name, framework, kind and
+        top-level directory, and which agent hands work to which: the structure a
+        reviewer needs to approve the system as the separate agents it is. An agent's
+        name is the one it gives itself in code (``Agent(name="Billing")``), the same
+        kind of identifier as a directory name. Its tools' names are not sent, for the
+        same reason a ``tool`` site's are not: they stay on this machine, and only the
+        connected-repo scan, which reads the code server-side, records them.
         """
 
         def top_dir(rel_path: str) -> str:
@@ -378,6 +433,19 @@ class ScanReport:
                 # about which tools or what they read.
                 if s.kind in ("agent_definition", "tool", "model_call", "lethal_trifecta")
             ],
+            "agents": [
+                {
+                    "key": a.key,
+                    "name": a.name,
+                    "framework": a.framework,
+                    "kind": a.kind,
+                    "top_dir": a.top_dir,
+                }
+                for a in self.agents
+            ]
+            if self.multi_agent
+            else [],
+            "agent_edges": [e.to_json() for e in self.agent_edges] if self.multi_agent else [],
         }
 
     def next_step(self) -> str:
@@ -485,6 +553,9 @@ class _Visitor(ast.NodeVisitor):
     def _note_import(self, module: str) -> None:
         root = module.split(".")[0]
         label = _FRAMEWORK_IMPORTS.get(root)
+        if module == "google.adk" or module.startswith("google.adk."):
+            # `google` alone names a dozen unrelated SDKs, so ADK is matched by prefix.
+            label = "Google ADK"
         if label:
             self.frameworks.add(label)
         if root == "agentfox":
@@ -676,6 +747,7 @@ _JS_FRAMEWORK_IMPORTS = {
     "llamaindex": "LlamaIndex",
     "@llamaindex": "LlamaIndex",
     "crewai-ts": "CrewAI",
+    "@openai/agents": "OpenAI Agents SDK",
     "@modelcontextprotocol/sdk": "MCP",
     "@google/generative-ai": "Google GenAI SDK",
     "@google/genai": "Google GenAI SDK",
@@ -1034,6 +1106,7 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
     root_path = Path(root).resolve()
     report = ScanReport(root=str(root_path))
     frameworks: set[str] = set()
+    agents = AgentCollector()
 
     suffixes = set(CODE_SUFFIXES)
     if include_config:
@@ -1060,6 +1133,10 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
                 report.errors.append(str(exc))
                 continue
             frameworks |= found
+            if path.suffix in CODE_SUFFIXES:
+                agents.add(
+                    path.read_text(errors="ignore"), str(path.relative_to(root_path)), path.suffix
+                )
             if governed:
                 report.governed_files.append(str(path.relative_to(root_path)))
             for site in sites:
@@ -1068,6 +1145,10 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
                     site.severity = "info"
                 report.sites.append(site)
 
+    report.agents, report.agent_edges = agents.finish()
+    # The OpenAI Agents SDK imports as `agents`, a name too common among a repository's
+    # own packages to detect from the import alone; an agent built with it is proof.
+    frameworks |= {a.framework for a in report.agents}
     report.frameworks = sorted(frameworks)
     _detect_mcp(root_path, report)
     _detect_trifectas(report)

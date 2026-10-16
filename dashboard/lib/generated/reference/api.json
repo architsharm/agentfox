@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 277,
+ "count": 278,
  "routes": [
   {
    "method": "GET",
@@ -866,6 +866,35 @@
    "audience": "operator",
    "summary": "Approve Agent",
    "description": "",
+   "params": [
+    {
+     "name": "agent_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{agent_id}/approve-system",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Approve a proposed agent and every proposed agent it hands work to, in one step.",
+   "description": "Approve a proposed agent and every proposed agent it hands work to, in one step.\n\nA scan proposes a multi-agent system as one draft per agent, joined by the\ndelegations its code declares. Adding the orchestrator without its sub-agents\nleaves a live agent handing work to drafts nothing governs, so the Proposed list\noffers this beside each system. Each agent gets the same state change and ledger\nentry as approving it on its own (`approve_agent`); one already added is skipped.",
    "params": [
     {
      "name": "agent_id",
@@ -4020,6 +4049,18 @@
      },
      {
       "name": "sites",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agent_edges",
       "type": "array",
       "required": false,
       "description": ""

@@ -335,6 +335,12 @@ def check(
     console.print(f"[bold]Scanned[/] {report.files_scanned} files in [dim]{report.root}[/]")
     if report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(report.frameworks)}")
+    # A multi-agent system is proposed as one agent per agent; say so here, with who
+    # hands work to whom, so the proposals it produces are not a surprise.
+    from rich.markup import escape
+
+    for i, line in enumerate(report.agent_summary()):
+        console.print(f"  [dim]{'agents:' if i == 0 else '       '}[/] {escape(line)}")
 
     calls = len(report.model_calls)
     ungoverned = len(report.ungoverned)

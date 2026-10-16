@@ -43,7 +43,12 @@ export default function Page() {
           <strong>Pending review</strong>: draft agents proposed by a repository or hosted-API
           scan, with <strong>Approve</strong> and <strong>Reject</strong>. A draft is inert:
           approving makes it active (<code>POST /api/agents/&#123;id&#125;/approve</code>),
-          rejecting discards it. Both are written to the audit chain.
+          rejecting discards it. Both are written to the audit chain. A multi-agent system
+          (OpenAI Agents SDK, LangGraph, CrewAI, AutoGen, Google ADK) is proposed as one
+          draft per agent, each with its own tools, listed under the agent that hands it work;{" "}
+          <strong>Add all</strong> approves the whole system
+          (<code>POST /api/agents/&#123;id&#125;/approve-system</code>). The handoffs its code
+          declares show on each agent&apos;s map as sub-agents before any traffic.
         </li>
         <li>
           <strong>Unregistered agents</strong>: slugs seen in traffic that were never

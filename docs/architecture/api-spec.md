@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-277 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+278 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -156,6 +156,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agent-controls` | Kill-switch/quarantine state per agent. |
 | `GET` | `/api/agents` | List Agents |
 | `POST` | `/api/agents` | Create Agent |
+| `POST` | `/api/agents/{agent_id}/approve-system` | Approve a proposed agent and every proposed agent it hands work to, in one step. |
 | `GET` | `/api/agents/{slug}` | Get Agent |
 | `PATCH` | `/api/agents/{slug}` | Update Agent |
 | `GET` | `/api/agents/{slug}/access` | Get Access |

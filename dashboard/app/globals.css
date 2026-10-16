@@ -3248,6 +3248,8 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .gm-perm-bad { background: var(--bad-bg); color: var(--bad); }
 .gm-more { width: 190px; border-style: dashed; color: var(--muted); font-size: var(--t-micro); cursor: default; align-items: center; }
 .gm-sub-agent { width: 190px; text-decoration: none; border-style: dashed; }
+/* Known from the code only: no traffic has taken this delegation yet. */
+.gm-sub-agent.gm-unseen { background: var(--gm-off-bg); }
 .gm-selected { outline: 2px solid var(--text); outline-offset: 2px; }
 .gm-flow { position: relative; flex: 1; min-height: 0; }
 .gm-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: var(--t-micro); color: var(--text); }
