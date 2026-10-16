@@ -8,6 +8,7 @@ import { AccountMenu } from "@/components/product/AccountMenu";
 import { NotificationsBell } from "@/components/product/NotificationsBell";
 import { CommandSearch } from "@/components/product/CommandSearch";
 import { SideNav } from "@/components/product/SideNav";
+import { SetupBanner } from "@/components/product/SetupBanner";
 import { WORKSPACE_NAV } from "@/lib/product/nav";
 import { PROJECT_COOKIE } from "@/lib/product/project";
 import { TopbarStats } from "@/components/product/TopbarStats";
@@ -99,6 +100,12 @@ async function SideNavData({ initial }: { initial: string | null }) {
   return <SideNav projects={projects} initial={initial} />;
 }
 
+/** The setup banner, with the workspace checklist it starts from. */
+async function SetupBannerData({ project }: { project: string | null }) {
+  const onboarding = await safeApi<any>("/api/onboarding", null);
+  return <SetupBanner onboarding={onboarding} initialProject={project} />;
+}
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
   const signedIn = Boolean(jar.get(SESSION_COOKIE)?.value);
@@ -128,7 +135,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Suspense>
           </div>
         )}
-        <main>{children}</main>
+        <main>
+          {signedIn && (
+            <Suspense fallback={null}>
+              <SetupBannerData project={project} />
+            </Suspense>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

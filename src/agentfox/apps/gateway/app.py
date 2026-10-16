@@ -46,6 +46,7 @@ from agentfox.apps.gateway.routes import (
 )
 from agentfox.apps.gateway.routes import checks as check_routes
 from agentfox.apps.gateway.routes import custom_rules as custom_rule_routes
+from agentfox.apps.gateway.routes import features as feature_routes
 from agentfox.apps.gateway.routes import imports as import_routes
 from agentfox.apps.gateway.routes import library as library_routes
 from agentfox.apps.gateway.routes import metrics as metrics_routes
@@ -406,6 +407,7 @@ def create_app() -> FastAPI:
     app.include_router(access_routes.router)
     app.include_router(library_routes.router)
     app.include_router(custom_rule_routes.router)
+    app.include_router(feature_routes.router)
     app.include_router(check_routes.router)
     app.include_router(import_routes.router)
     app.include_router(protection_routes.router)

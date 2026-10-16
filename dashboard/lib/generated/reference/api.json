@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 277,
+ "count": 284,
  "routes": [
   {
    "method": "GET",
@@ -1338,6 +1338,105 @@
    "body": null
   },
   {
+   "method": "GET",
+   "path": "/api/agents/{slug}/features",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Get Agent Features",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}/features/checks/{key}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Inherit Check",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}/features/protections/{key}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Inherit Protection",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "POST",
    "path": "/api/agents/{slug}/kill",
    "section": "agents",
@@ -1701,6 +1800,35 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/setup",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "What this project still needs, for the banner a project's pages show.",
+   "description": "What this project still needs, for the banner a project's pages show.\n\nComputed live, like the workspace checklist (`/api/onboarding`). The steps are in\nthe order they unblock each other: a proposed project is added first, nothing can\nbe judged before traffic arrives, tools decide what it may do, and blocking comes\nlast because it is only safe once watching looks right. ``next`` is the first\none not done; None when the project is fully set up.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "GET",
@@ -5465,6 +5593,137 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/features",
+   "section": "features",
+   "audience": "operator",
+   "summary": "Get Features",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/features/checks/{key}",
+   "section": "features",
+   "audience": "operator",
+   "summary": "Switch a check on or off for every project, or for one. Switching on one that is not installed is refused: it would look on and check nothing.",
+   "description": "Switch a check on or off for every project, or for one. Switching on one that\nis not installed is refused: it would look on and check nothing.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__features__CheckIn",
+    "fields": [
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/features/protections/{key}",
+   "section": "features",
+   "audience": "operator",
+   "summary": "Set Protection",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ProtectionIn",
+    "fields": [
+     {
+      "name": "level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "open_to_projects",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "GET",

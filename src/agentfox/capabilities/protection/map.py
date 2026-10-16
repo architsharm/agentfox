@@ -298,7 +298,7 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
 
     # --- detectors -----------------------------------------------------------
     detectors = all_detectors()
-    running = enabled_for(session)
+    running = enabled_for(session, slug)
     detectors_by_stage: dict[str, list[str]] = defaultdict(list)
     for key in sorted(running):
         detector = detectors.get(key)

@@ -24,6 +24,7 @@ import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
 import { AccessEditor } from "@/components/product/agent/AccessEditor";
+import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
 import { ensureRange } from "@/lib/product/range";
@@ -44,9 +45,10 @@ const ACTIVITY_TABS = [
 type SP = Record<string, string | undefined>;
 
 /**
- * One project. Four views, chosen in the sidebar: the canvas (its guardrails drawn
+ * One project. Five views, chosen in the sidebar: the canvas (its guardrails drawn
  * where they act, with the project's state in the inspector when nothing on the
- * canvas is selected), its activity, its access, its settings.
+ * canvas is selected), its activity, its access, the features it changed from the
+ * workspace's, its settings.
  */
 export default async function ProjectDetail({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<SP> }) {
   const { slug } = await params;
@@ -140,6 +142,7 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
         </>
       )}
       {view === "access" && <Access slug={slug} prefill={sp.grant} />}
+      {view === "features" && <ProjectFeatures slug={slug} />}
       {view === "settings" && (
         <>
           <Meta
@@ -158,6 +161,12 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
     </>
     </RangeProvider>
   );
+}
+
+/** The workspace's switches as this project has them, with its own changes. */
+async function ProjectFeatures({ slug }: { slug: string }) {
+  const features = await safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/features`, null);
+  return features ? <FeaturesEditor initial={features} /> : <Card><Empty>Features could not be loaded.</Empty></Card>;
 }
 
 /**

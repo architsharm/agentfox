@@ -3,10 +3,10 @@
  *
  * All projects is the workspace: is anything wrong (Home), what is happening
  * (Observe), what is broken (Issues), which projects (Projects), what is allowed
- * (Policies), what needs me (Approvals), does it hold up (Test), show others
+ * (Policies), which switches are on (Features), what needs me (Approvals), does it hold up (Test), show others
  * (Reports). One project is that project's pages only: its canvas (the map of
  * its guardrails, and everything about it when nothing is selected), its traffic,
- * what it may do, its issues and approvals, its settings. The workspace pages
+ * what it may do, which features it changed, its issues and approvals, its settings. The workspace pages
  * stay one click away, under All projects in the switcher.
  *
  * A row lists the other pages it stands for, so it stays lit on all of them, and
@@ -42,6 +42,7 @@ export const WORKSPACE_NAV: NavGroup[] = [
       ["Observe", "/app/observe", ["/app/traces"]],
       ["Issues", "/app/findings"],
       ["Policies", "/app/policies"],
+      ["Features", "/app/features"],
       ["Approvals", "/app/approvals"],
       ["Test", "/app/test", ["/app/evals"]],
       ["Reports", "/app/reports", ["/app/compliance", "/app/coverage"]],
@@ -59,6 +60,7 @@ export function projectNav(slug: string): NavGroup[] {
         ["Canvas", projectHref(slug), [`/app/projects/${encodeURIComponent(slug)}?view=canvas`], "canvas"],
         ["Activity", projectHref(slug, "activity"), [`/app/observe?${q}`, `/app/traces?${q}`], "/app/observe"],
         ["Access", projectHref(slug, "access"), [], "/app/entitlement"],
+        ["Features", projectHref(slug, "features"), [], "/app/features"],
         ["Issues", `/app/findings?${q}`],
         ["Approvals", `/app/approvals?${q}`],
         ["Settings", projectHref(slug, "settings"), [], "/app/settings"],

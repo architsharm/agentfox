@@ -3481,3 +3481,49 @@ ol.gs-steps li.done .gs-title { color: var(--muted); }
 .wf-row dd { margin: 0; }
 .wf-row.wf-bad dd { color: var(--bad); font-weight: 600; }
 .wf-row.wf-warn dd { color: var(--warn); }
+
+/* --- Features (components/product/features/FeaturesEditor.tsx) ----------------- */
+.ft { display: flex; flex-direction: column; gap: 16px; }
+.ft-intro { margin: 0; font-size: var(--t-small); color: var(--text-2); }
+.ft-card { padding: 0; }
+.ft-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+.ft-head h3 { margin: 0; font-size: var(--t-body); font-weight: 650; }
+.ft-head .k-muted { font-size: var(--t-small); }
+.ft-group h4 { margin: 0; padding: 12px 16px 2px; font-size: var(--t-micro); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.ft-list { list-style: none; margin: 0; padding: 0; }
+.ft-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 16px; padding: 10px 16px; border-top: 1px solid var(--border); }
+.ft-list > .ft-row:first-child { border-top: 0; }
+.ft-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ft-name strong { font-size: var(--t-small); font-weight: 600; }
+.ft-sub { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--t-micro); color: var(--muted); }
+.ft-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; }
+.ft-control .k-seg button:disabled { opacity: .45; cursor: not-allowed; }
+.ft-inherited .ft-control .k-seg { opacity: .72; }
+.ft-inherited .ft-control .k-seg:hover { opacity: 1; }
+.ft-reset { border: 0; padding: 0; background: none; color: var(--muted); font: inherit; font-size: var(--t-micro); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.ft-reset:hover { color: var(--text); }
+.ft-open { font-size: var(--t-micro); color: var(--text-2); }
+.ft-mode { padding: 0 6px; border-radius: var(--r-pill); line-height: 1.6; }
+.ft-mode-blocking { background: var(--ok-bg); color: var(--ok); }
+.ft-mode-watching { background: var(--escalate-bg); color: var(--escalate); }
+.ft-error { grid-column: 1 / -1; margin: 0; }
+.ft-missing { padding: 4px 16px 12px; font-size: var(--t-small); }
+.ft-missing > summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+.ft-missing .ft-row { padding-left: 0; padding-right: 0; opacity: .7; }
+@media (max-width: 720px) { .ft-row { grid-template-columns: 1fr; } .ft-control { justify-content: flex-start; } }
+
+/* --- Setup banner (components/product/SetupBanner.tsx) ------------------------- */
+.setup-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin: 0 0 18px; padding: 12px 14px 12px 16px; border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--r-2); background: var(--panel); box-shadow: var(--e-1); }
+.setup-wait { border-left-color: var(--escalate); }
+.setup-act { border-left-color: var(--text-2); }
+.setup-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 380px; font-size: var(--t-small); }
+.setup-main > span { color: var(--text-2); }
+.setup-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.setup-close { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 4px; cursor: pointer; }
+.setup-close:hover { color: var(--text); }
+.setup-snippet { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; }
+.setup-snippet pre { flex: 1; min-width: 0; margin: 0; padding: 8px 10px; overflow-x: auto; border-radius: var(--r-1); background: var(--panel-2); font-size: var(--t-micro); line-height: 1.5; }
+.setup-waiting i { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: var(--escalate); animation: k-skel 1.4s ease-in-out infinite; }
+.setup-waiting { display: inline-flex; align-items: center; color: var(--muted); font-size: var(--t-micro); }
+.setup-preview { font-size: var(--t-small); color: var(--text-2); }
+.ft-lock { color: var(--faint); }
