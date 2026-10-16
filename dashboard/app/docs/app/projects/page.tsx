@@ -86,13 +86,15 @@ export default function Page() {
           <strong>The inspector</strong> on the right shows what is selected: a step&apos;s rules
           and checks, or a tool&apos;s access, rules and limits, each changeable for this project
           there. With nothing selected it shows the project: its requests, blocked, held and
-          errors, its open issues, the guardrails that fired most, who owns it, its tools and
-          the rules that apply at every step.
+          errors, its open issues, the guardrails that fired most, its lineage (the blast radius,
+          and <strong>Open lineage map</strong> for everything within two hops), who owns it,
+          its tools and the rules that apply at every step.
         </li>
       </ul>
       <p>
-        <strong>Activity</strong> has the project&apos;s runs, the guardrails that fired, and
-        answer quality. <strong>Access</strong> is its tool permissions and limits and the
+        <strong>Activity</strong> has the project&apos;s requests over the chosen range against
+        the range before it (a window in the chart opens its runs), its runs, the guardrails
+        that fired, and answer quality. <strong>Access</strong> is its tool permissions and limits and the
         knowledge boundary below. <strong>Settings</strong> has its owner and registration,
         the circuit breaker and the kill switch.
       </p>

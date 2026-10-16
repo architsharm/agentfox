@@ -16,6 +16,7 @@ import {
   SeverityPill,
   Sparkline,
   Tabs,
+  TimeChart,
   ago,
   href,
   num,
@@ -23,6 +24,8 @@ import {
 import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
+import { AgentMap } from "@/components/product/AgentMap";
+import { Modal } from "@/components/product/Modal";
 import { AccessEditor } from "@/components/product/agent/AccessEditor";
 import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
@@ -178,11 +181,13 @@ async function ProjectFeatures({ slug }: { slug: string }) {
  */
 async function Canvas({ f, posture }: { f: Filters; posture: any }) {
   const slug = f.agent!;
-  const [map, s, rules] = await Promise.all([
+  const [map, s, rules, lineage] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null),
     safeApi<any>(`/api/metrics/summary?${metricsQs(f)}`, null),
     safeApi<any>(`/api/metrics/rules?${metricsQs(f)}`, { rules: [] }),
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/lineage?depth=2`, { nodes: [], links: [], blast_radius: 0 }),
   ]);
+  const reach: number = lineage.blast_radius ?? 0;
   const a = posture.agent;
   const t = s?.totals || {};
   const findings: any[] = posture.open_findings || [];
@@ -234,6 +239,17 @@ async function Canvas({ f, posture }: { f: Filters; posture: any }) {
               </li>
             ))}
           </ul>
+        </>
+      )}
+      {lineage.links?.length > 0 && (
+        <>
+          <h4>Lineage</h4>
+          <p className="gm-sub">
+            Blast radius {reach}: reachable within two hops, how far a bad decision here could travel.
+          </p>
+          <Modal trigger="Open lineage map" triggerClassName="k-btn-ghost" title={`What ${a.name || a.slug} reaches`}>
+            <AgentMap root={lineage.root || slug} nodes={lineage.nodes || []} links={lineage.links} blastRadius={reach} />
+          </Modal>
         </>
       )}
       <h4>About</h4>
@@ -424,7 +440,13 @@ async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
   const v = verdictsFor(outcome);
   if (v) qs.set("verdict", v);
   if (outcome === "errors") qs.set("errors", "true");
-  const runs = await safeApi<any>(`/api/traces?${qs}`, { traces: [] });
+  const [runs, s] = await Promise.all([
+    safeApi<any>(`/api/traces?${qs}`, { traces: [] }),
+    safeApi<any>(`/api/metrics/summary?${metricsQs(f)}`, null),
+  ]);
+  const t = s?.totals || {};
+  const p = s?.previous || {};
+  const b: any[] = s?.buckets || [];
   const chip = (key: string, label: string) => (
     <Link
       key={key}
@@ -445,6 +467,18 @@ async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
           {chip("errors", "Errors")}
         </div>
       </FilterBar>
+      {/* The trend over the range, against the one before it; a window opens its runs. */}
+      <Grid cols={4}>
+        <Kpi label="Requests" value={num(t.requests || 0)} current={t.requests} prev={p.requests} better="none" href={runsHref(f)} spark={b.map((x) => x.allowed + x.masked + x.held + x.blocked)} />
+        <Kpi label="Blocked" value={num(t.blocked || 0)} current={t.blocked} prev={p.blocked} href={runsHref(f, { outcome: "blocked" })} spark={b.map((x) => x.blocked)} />
+        <Kpi label="Held for a person" value={num(t.held || 0)} current={t.held} prev={p.held} href={runsHref(f, { outcome: "held" })} spark={b.map((x) => x.held)} />
+        <Kpi label="Errors" value={num(t.errors || 0)} current={t.errors} prev={p.errors} tone={t.errors ? "bad" : undefined} href={runsHref(f, { errors: true })} />
+      </Grid>
+      {s && (
+        <Card title="Requests">
+          <TimeChart buckets={b} bucketSeconds={s.bucket_seconds} height={110} linkFor={(start, end) => runsHref(f, { start, end })} />
+        </Card>
+      )}
       <Card flush>
         <RunsTable runs={runs.traces} showAgent={false} />
       </Card>
