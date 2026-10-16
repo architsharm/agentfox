@@ -7,13 +7,14 @@ import { RANGE_WORDS } from "@/lib/product/vocab";
 import { ApiDown } from "@/components/ui";
 import { Card, Dot, Empty, Header, Pill, StackBar, Tabs, ago, href, num, pctOf } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
+import { groupProposed, memberRelation } from "@/lib/product/proposedSystems";
 
-export const metadata: Metadata = appPageMetadata("Agents", "Every AI agent in this workspace.");
+export const metadata: Metadata = appPageMetadata("Projects", "Every project in this workspace: one per AI agent.");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
 
-export default async function Agents({ searchParams }: { searchParams: Promise<SP> }) {
+export default async function Projects({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   let agents: any;
   try {
@@ -21,7 +22,7 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
   } catch (e: any) {
     return (
       <>
-        <Header title="Agents" />
+        <Header title="Projects" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -34,6 +35,9 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
 
   const all: any[] = agents.agents || [];
   const proposed = all.filter((a) => a.status === "draft");
+  // A scanned multi-agent system is proposed as one agent per agent; shown together,
+  // with the agents each one hands work to indented under it.
+  const proposedGroups = groupProposed(proposed);
   const live = all.filter((a) => a.status !== "draft");
   const attention = live.filter((a) => !a.registered || !a.owner_email);
   const tab = sp.tab === "attention" ? "attention" : sp.tab === "proposed" ? "proposed" : "all";
@@ -46,13 +50,13 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
 
   return (
     <>
-      <Header title="Agents" actions={<RegisterAgent />} />
+      <Header title="Projects" actions={<NewProject />} />
       <Tabs
         active={tab}
         items={[
-          { key: "all", label: "All", href: "/app/agents", count: live.length },
-          { key: "attention", label: "Needs attention", href: "/app/agents?tab=attention", count: attention.length },
-          { key: "proposed", label: "Proposed", href: "/app/agents?tab=proposed", count: proposed.length },
+          { key: "all", label: "All", href: "/app/projects", count: live.length },
+          { key: "attention", label: "Needs attention", href: "/app/projects?tab=attention", count: attention.length },
+          { key: "proposed", label: "Proposed", href: "/app/projects?tab=proposed", count: proposed.length },
         ]}
       />
       {sp.review_error && <div className="error">{sp.review_error}</div>}
@@ -61,22 +65,44 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
         <Card flush>
           {proposed.length ? (
             <ul className="k-list">
-              {proposed.map((a) => (
-                <li key={a.id}>
-                  <div className="k-list-main">
-                    <span className="k-name">{a.name || a.slug}</span>
-                    <span className="muted">Found by a repo scan{a.framework ? ` · ${a.framework}` : ""}</span>
-                  </div>
-                  <div className="k-list-end">
-                    <form action={`/api/agents/${a.id}/reject`} method="POST">
-                      <button type="submit" className="k-btn-ghost">Dismiss</button>
-                    </form>
-                    <form action={`/api/agents/${a.id}/approve`} method="POST">
-                      <button type="submit" className="k-btn-primary">Add agent</button>
-                    </form>
-                  </div>
-                </li>
-              ))}
+              {proposedGroups.flatMap((g) => {
+                const system = g.members.length > 1;
+                const rows = g.members.map(({ agent: a, depth, relation }) => (
+                  <li key={a.id} style={depth ? { paddingLeft: `${16 + depth * 24}px` } : undefined}>
+                    <div className="k-list-main">
+                      <span className="k-name">{a.name || a.slug}</span>
+                      <span className="muted">
+                        {depth ? memberRelation(relation) : "Found by a repo scan"}
+                        {a.framework ? ` · ${a.framework}` : ""}
+                        {(a.declared_tools || []).length ? ` · ${(a.declared_tools || []).length} tool${(a.declared_tools || []).length === 1 ? "" : "s"}` : ""}
+                      </span>
+                    </div>
+                    <div className="k-list-end">
+                      <form action={`/api/agents/${a.id}/reject`} method="POST">
+                        <button type="submit" className="k-btn-ghost">Dismiss</button>
+                      </form>
+                      <form action={`/api/agents/${a.id}/approve`} method="POST">
+                        <button type="submit" className={system ? "k-btn" : "k-btn-primary"}>Add project</button>
+                      </form>
+                    </div>
+                  </li>
+                ));
+                if (!system) return rows;
+                return [
+                  <li key={`system:${g.root.id}`}>
+                    <div className="k-list-main">
+                      <span className="k-name">Multi-agent system · {g.members.length} projects</span>
+                      <span className="muted">The agents its code hands work to are listed under it</span>
+                    </div>
+                    <div className="k-list-end">
+                      <form action={`/api/agents/${g.root.id}/approve-system`} method="POST">
+                        <button type="submit" className="k-btn-primary">Add all {g.members.length}</button>
+                      </form>
+                    </div>
+                  </li>,
+                  ...rows,
+                ];
+              })}
             </ul>
           ) : (
             <Empty action={<Link href="/app/start?tab=connect" className="k-btn">Scan a repo</Link>}>Nothing proposed.</Empty>
@@ -88,7 +114,7 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
             <table className="k-table">
               <thead>
                 <tr>
-                  <th>Agent</th>
+                  <th>Project</th>
                   <th>Owner</th>
                   <th className="tight">Risk</th>
                   <th style={{ width: "18%" }}>Last {RANGE_WORDS[range]}</th>
@@ -106,7 +132,7 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
                       <td>
                         <span className="k-pills">
                           <Dot tone={a.control_state && a.control_state !== "active" ? "bad" : a.last_seen_at ? "ok" : "idle"} />
-                          <Link className="k-name" href={`/app/agents/${encodeURIComponent(a.slug)}`}>
+                          <Link className="k-name" href={`/app/projects/${encodeURIComponent(a.slug)}`}>
                             {a.name || a.slug}
                           </Link>
                           {!a.registered && <Pill tone="bad">Unregistered</Pill>}
@@ -117,7 +143,7 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
                         {a.owner_email ? (
                           <span className="k-muted">{a.owner_email}</span>
                         ) : (
-                          <Link href={href(`/app/agents/${encodeURIComponent(a.slug)}`, { tab: "settings" })}>Assign</Link>
+                          <Link href={href(`/app/projects/${encodeURIComponent(a.slug)}`, { view: "settings" })}>Assign</Link>
                         )}
                       </td>
                       <td className="tight">
@@ -139,7 +165,7 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
             </table>
           ) : (
             <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>
-              {tab === "attention" ? "Every agent is registered and owned." : "No agents yet."}
+              {tab === "attention" ? "Every project is registered and owned." : "No projects yet."}
             </Empty>
           )}
         </Card>
@@ -148,9 +174,9 @@ export default async function Agents({ searchParams }: { searchParams: Promise<S
   );
 }
 
-function RegisterAgent() {
+function NewProject() {
   return (
-    <Modal trigger="Register agent" triggerClassName="k-btn-primary" title="Register agent">
+    <Modal trigger="New project" triggerClassName="k-btn-primary" title="New project">
       <form action="/api/agents" method="POST" className="k-form">
         <div className="k-field">
           <label htmlFor="r-slug">ID</label>
@@ -158,7 +184,7 @@ function RegisterAgent() {
         </div>
         <div className="k-field">
           <label htmlFor="r-name">Name</label>
-          <input id="r-name" className="k-input" name="name" placeholder="Billing Support Agent" />
+          <input id="r-name" className="k-input" name="name" placeholder="Billing support" />
         </div>
         <div className="k-field">
           <label htmlFor="r-purpose">Purpose</label>

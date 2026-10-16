@@ -112,7 +112,7 @@ export default async function RunDetail({
         actions={
           <>
             {(outcome === "blocked" || outcome === "held") && denied && t.agent && (
-              <Link className="k-btn" href={href(`/app/agents/${encodeURIComponent(t.agent)}`, { tab: "access", grant: denied.decision.tool })}>
+              <Link className="k-btn" href={href(`/app/projects/${encodeURIComponent(t.agent)}`, { view: "access", grant: denied.decision.tool })}>
                 Allow this tool
               </Link>
             )}
@@ -129,7 +129,7 @@ export default async function RunDetail({
       />
       <Meta
         items={[
-          ["Agent", t.agent ? <Link href={`/app/agents/${encodeURIComponent(t.agent)}`}>{t.agent_name || t.agent}</Link> : "—"],
+          ["Agent", t.agent ? <Link href={`/app/projects/${encodeURIComponent(t.agent)}`}>{t.agent_name || t.agent}</Link> : "—"],
           ["When", when(t.started_at)],
           ["Environment", t.environment],
           ["Checks", `${Math.round(duration)} ms`],

@@ -16,7 +16,7 @@ const AREAS: {
   },
   {
     name: "Agents",
-    href: "/app/agents",
+    href: "/app/projects",
     answers:
       "Which agents exist, who is accountable for each one, and which models and tools each one actually calls.",
     doThere:
@@ -130,7 +130,7 @@ const OFF_SCREEN: { name: string; where: string; body: React.ReactNode }[] = [
       <>
         What an agent is allowed to do, decided from the action, not the prompt.{" "}
         <InfoTip text="Least privilege here is default deny: an agent with no grant for a tool cannot call it." />{" "}
-        <Link href="/app/agents">Agents</Link>.
+        <Link href="/app/projects">Projects</Link>.
       </>
     ),
   },

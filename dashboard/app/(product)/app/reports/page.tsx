@@ -63,8 +63,8 @@ async function Summary() {
   return (
     <>
       <Grid cols={4}>
-        <Kpi label="Agents" value={num(inv.agents || 0)} href="/app/agents" hint="Registered and unregistered." />
-        <Kpi label="High-risk agents" value={num((overview.high_risk_agents || []).length)} href="/app/agents" />
+        <Kpi label="Projects" value={num(inv.agents || 0)} href="/app/projects" hint="Registered and unregistered." />
+        <Kpi label="High-risk agents" value={num((overview.high_risk_agents || []).length)} href="/app/projects" />
         <Kpi label="Open issues" value={num(findings.total || 0)} tone={findings.by_severity?.critical ? "bad" : undefined} href="/app/findings" />
         <Kpi label="Requests stopped (30d)" value={pctOf(t.held + t.blocked, t.requests)} hint={`${num(t.held + t.blocked)} of ${num(t.requests)} requests held or blocked.`} />
       </Grid>

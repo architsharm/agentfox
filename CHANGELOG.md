@@ -35,6 +35,17 @@ the file it came from.
 
 ### Added
 
+- **A scanned multi-agent system comes out as its agents.** The repository scan reads
+  each agent the code defines, the tools it is handed and which agent hands work to
+  which (OpenAI Agents SDK handoffs and `as_tool`, LangGraph supervisors, swarms and
+  `StateGraph` agent nodes, CrewAI crews and delegation, AutoGen teams and group chats,
+  Google ADK `sub_agents`), statically. `scan --json` gains `agents` and `agent_edges`.
+  A repository with two or more agents is proposed as one draft per agent with its own
+  tools, joined by declared delegation edges, so the guardrail map shows sub-agents
+  ("From code, no calls yet") and the agent that calls each one, and "apply to
+  sub-agents" reaches them, before any traffic. The Proposed list groups a system under
+  its orchestrator with an "Add all" action. A re-scan updates the drafts in place and
+  never turns an agent someone added back into a proposal.
 - **`agentfox up`, the guided setup.** One command from a fresh install to a governed
   project: it scans the repository, asks where AgentFox runs (this machine; self-hosted,
   either started here with Docker Compose and a first operator, or an existing server;
