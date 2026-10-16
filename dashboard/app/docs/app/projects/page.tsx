@@ -5,9 +5,9 @@ import { Callout, Code, InTheApp, NextSteps, Output, TaskTable } from "@/compone
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Agents",
+  title: "Projects",
   description:
-    "The agent register and the agent page: owners, risk classification, knowledge boundary, kill switch, effective policy and lineage.",
+    "One project per agent: the project switcher, the canvas and its inspector, features a project inherits from the workspace, the setup banner, access, the knowledge boundary and the kill switch.",
   path: "/docs/app/projects",
 });
 
@@ -15,146 +15,150 @@ export default function Page() {
   return (
     <article className="docs-doc">
       <p className="docs-kicker">Web app</p>
-      <h1>Agents</h1>
+      <h1>Projects</h1>
       <p className="docs-lede">
-        The register of every agent in the workspace, and one page per agent for deciding
-        whether it is safe to leave running as it is.
+        Each agent is a project: its guardrails, its traffic, what it may do and what it
+        changed from the workspace&apos;s settings, on one set of pages. The API still calls
+        a project an agent (<code>/api/agents</code>).
       </p>
-      <InTheApp path="/app/projects">Agents</InTheApp>
+      <InTheApp path="/app/projects">Projects</InTheApp>
 
       <h2>When to use this</h2>
       <ul>
-        <li>To approve or reject agents a scan proposed.</li>
-        <li>To find agents sending traffic that nobody registered, or that nobody owns.</li>
-        <li>To stop an agent now, and to see what policy actually applies to it.</li>
+        <li>To see and change what protects one agent, where it acts.</li>
+        <li>To add projects a scan proposed, and find agents nobody registered or owns.</li>
+        <li>To switch a feature on or off for one project without changing the others.</li>
+        <li>To stop an agent now.</li>
       </ul>
 
-      <h2>The agents list</h2>
+      <h2 id="scope">All projects, or one</h2>
       <p>
-        <code>/app/projects</code>, built from <code>GET /api/agents</code> and{" "}
-        <code>GET /api/discovery/shadow</code>. Top to bottom:
+        The switcher at the top of the sidebar picks the scope. <strong>All projects</strong>{" "}
+        is the workspace: Home, Projects, Observe, Issues, Policies, Features, Approvals,
+        Test and Reports. A project shows only its own pages: <strong>Canvas</strong>,{" "}
+        <strong>Activity</strong>, <strong>Access</strong>, <strong>Features</strong>,{" "}
+        <strong>Issues</strong>, <strong>Approvals</strong> and <strong>Settings</strong>.
+        Issues and Approvals are the workspace pages filtered to the project
+        (<code>?agent=&lt;slug&gt;</code>). Opening a project&apos;s link switches to it; the
+        choice is remembered.
       </p>
-      <ul>
-        <li>
-          <strong>A strip of counts</strong>: agents, registered, unregistered, without an
-          owner, tools, lineage edges.
-        </li>
-        <li>
-          <strong>Pending review</strong>: draft agents proposed by a repository or hosted-API
-          scan, with <strong>Approve</strong> and <strong>Reject</strong>. A draft is inert:
-          approving makes it active (<code>POST /api/agents/&#123;id&#125;/approve</code>),
-          rejecting discards it. Both are written to the audit chain.
-        </li>
-        <li>
-          <strong>Unregistered agents</strong>: slugs seen in traffic that were never
-          registered, with environment, call count, models, framework and first seen. These
-          are shadow agents; each also appears in the attention queue as high severity.
-        </li>
-        <li>
-          <strong>All agents</strong>: name and slug, purpose, owner (or an{" "}
-          <strong>unowned — assign</strong> link), environment, risk tier, framework, and last
-          seen (&quot;—&quot; means no traffic yet, not a fault). Tags mark{" "}
-          <code>unregistered</code>, <code>draft</code> and <code>sample data</code>.
-        </li>
-        <li>
-          Agents whose slug looks like a test, spec, script, example, demo or fixture are
-          folded into a collapsed &quot;look like tests, scripts or examples&quot; list, so a
-          scan of a repository&apos;s test directory does not bury production agents.
-        </li>
-        <li>
-          <strong>What an agent is allowed to do</strong>: a reminder that what an agent was{" "}
-          <em>seen</em> calling and what it is <em>permitted</em> to call are separate.
-          Capability grants are default deny and have no screen; make them with{" "}
-          <Link href="/docs/reference/cli#cmd-permit-grant">agentfox permit grant</Link> (the
-          explainer in the app shows the older command name).
-        </li>
-      </ul>
 
-      <h3>Registering an agent by hand</h3>
+      <h2>The projects list</h2>
       <p>
-        <strong>+ Register an agent manually</strong> is for an agent that does not live in a
-        repository you can connect. Fields: <strong>Slug</strong> (unique, lowercase),{" "}
-        <strong>Name</strong>, <strong>Purpose</strong>, <strong>Owner email</strong>,{" "}
-        <strong>Risk tier</strong> (minimal, limited, high, prohibited; default limited).
-        It posts to <code>POST /api/agents</code> and the agent is registered at once. An
-        agent that calls the gateway before anyone registers it shows up as unregistered
-        instead; registering the same slug claims it.
+        <code>/app/projects</code>, built from <code>GET /api/agents</code>: every project with
+        its owner, risk, requests and how many were stopped, open issues and last activity.{" "}
+        <strong>Needs attention</strong> lists unregistered and unowned ones;{" "}
+        <strong>Proposed</strong> lists the drafts a repository scan found, with{" "}
+        <strong>Add project</strong> (<code>POST /api/agents/&#123;id&#125;/approve</code>) and{" "}
+        <strong>Dismiss</strong>. A draft is inert until it is added.
       </p>
-      <p>The CLI reads the same register:</p>
+      <h3>Creating a project by hand</h3>
+      <p>
+        <strong>New project</strong> is for an agent that does not live in a repository you can
+        connect: an ID (unique, lowercase), name, purpose, owner and risk level, posted to{" "}
+        <code>POST /api/agents</code>. An agent that calls the gateway before anyone registers
+        it shows up as unregistered; creating the same ID claims it.
+      </p>
       <Code>{`agentfox agents list`}</Code>
-      <Output>{`agent            env         risk     registered  owner          framework
-127-0-0-1        production  limited  SHADOW      unowned        hosted_api
-hr-screening     production  limited  yes         unowned        crewai
-marketing-copy…  production  limited  SHADOW      unowned        —
-payments-ops     production  high     yes         marcus@examp…  claude-agent-s…
-research-bot     production  limited  yes         dana@example…  —
-support-triage   production  limited  yes         priya@exampl…  langgraph
-  6 agents · 1 shadow · 3 unowned · 11 lineage edges`}</Output>
-      <p>
-        <code>research-bot</code> was registered from the web app a moment earlier.{" "}
-        <code>127-0-0-1</code> is a draft from a hosted-API scan; the CLI and the attention
-        queue both count a draft as unregistered until it is approved.
-      </p>
 
-      <h2>The agent page</h2>
-      <InTheApp path="/app/projects/support-triage">Agents → an agent</InTheApp>
+      <h2 id="canvas">The canvas</h2>
+      <InTheApp path="/app/projects/support-triage">Projects → a project</InTheApp>
       <p>
-        <code>/app/projects/&lt;slug&gt;</code>. Above the tabs, always visible: the name, a{" "}
-        <code>sample data</code> tag for seeded agents, a red banner if the agent is
-        quarantined or killed (with who did it, when and why), and a strip of counts: traces,
-        decisions, blocked, escalated, hand-offs and blast radius. Each count links to the
-        filtered list behind it. The page is built from{" "}
-        <code>GET /api/agents/&#123;slug&#125;/posture</code>, <code>/lineage</code>,{" "}
-        <code>/api/traces?agent=</code>, <code>/api/risk/classify/&#123;slug&#125;</code>,{" "}
-        <code>/api/answerability/boundaries</code>, <code>/api/agent-controls</code> and{" "}
-        <code>/api/policies/effective?agent=</code>.
+        A project opens on its canvas: its guardrails drawn where they act. The user&apos;s
+        message, the agent, its reply, documents and memory, tool calls, the tools, and what
+        tools return. Each step is coloured by what applies there: enforcing, watching only,
+        or nothing set. Agents it hands work to are drawn beside it and open their own
+        project. Built from <code>GET /api/agents/&#123;slug&#125;/map</code>.
       </p>
-
-      <h3>Activity tab</h3>
       <ul>
-        <li><strong>Open findings</strong> for this agent: severity, type, title, each linking to the finding.</li>
         <li>
-          <strong>Recent traces</strong>: the last 15, with verdict, model, intent and time. If
-          there are none but the agent has hand-offs, it says so: hand-offs are logged apart
-          from traced calls.
+          <strong>Many tools</strong> are one <em>Tools</em> node until you choose{" "}
+          <strong>Expand</strong>. Then they are drawn as groups (by risk, access, source or
+          server), at most six, and an opened group shows at most six of its tools. A{" "}
+          <em>+N more</em> node opens the full, searchable list in the inspector.
         </li>
         <li>
-          <strong>Reliability objectives</strong>: any SLOs declared for this agent on{" "}
-          <Link href="/docs/app/evals#slos">Evaluation</Link>, with attainment and error budget.
+          <strong>The inspector</strong> on the right shows what is selected: a step&apos;s rules
+          and checks, or a tool&apos;s access, rules and limits, each changeable for this project
+          there. With nothing selected it shows the project: its requests, blocked, held and
+          errors, its open issues, the guardrails that fired most, who owns it, its tools and
+          the rules that apply at every step.
         </li>
       </ul>
-
-      <h3>What it may do tab</h3>
       <p>
-        <strong>Effective policy</strong> is the policy actually in force for this agent,
-        composed from every level that reaches it, with where each rule came from. The header
-        line gives the mode, the default effect and the layers applied. Each row is a rule:
-        what it checks, its effect, its source (for example <code>org:*</code>), and the
-        layer&apos;s compose setting (in the column headed &quot;mode&quot;: <code>extend</code>,{" "}
-        <code>restrict</code> or <code>override</code>). A <code>custom</code> tag marks a rule
-        from a narrower level than the org default, and <code>loosened</code> marks a rule a
-        narrower level relaxed. Rules rejected during composition are listed underneath.
+        <strong>Activity</strong> has the project&apos;s runs, the guardrails that fired, and
+        answer quality. <strong>Access</strong> is its tool permissions and limits and the
+        knowledge boundary below. <strong>Settings</strong> has its owner and registration,
+        the circuit breaker and the kill switch.
       </p>
-      <p>
-        <strong>+ Customize for this agent</strong> opens a new policy called{" "}
-        <code>&lt;slug&gt;-overrides</code>, pre-scoped to the agent level. See{" "}
-        <Link href="/docs/app/policies#editor">the policy editor</Link>.
-      </p>
-      <Code>{`agentfox policy effective --agent payments-ops`}</Code>
-      <Output>{`effective policy in development — default allow
-  layers:
-    org:*(extend)  baseline  observe
-    org:*(extend)  eu-ai-act-high-risk  observe
-    org:*(extend)  tool-containment  enforce
 
-rule                                 effect    mode     from   overrides
-access.undeclared_table              escalate  enforce  org:*  —
-access.unscoped_table                block     enforce  org:*  —
-…`}</Output>
+      <h2 id="features">Features</h2>
+      <InTheApp path="/app/features">Features</InTheApp>
+      <p>
+        The switches a developer reaches for, set once for every project on{" "}
+        <code>/app/features</code> and changed per project on its own Features view.
+      </p>
+      <ul>
+        <li>
+          <strong>Protections</strong>: prompt attacks, personal data, secrets, harmful
+          content, off-task actions, unsupported answers and insecure code, each off or at a
+          sensitivity (low, medium, high), or off and on. Each shows whether it is blocking or
+          only watching.
+        </li>
+        <li>
+          <strong>Checks</strong>: the detectors that run on traffic, on or off. A check that
+          is not installed in this deployment cannot be switched on.
+        </li>
+      </ul>
+      <p>
+        A project starts with the workspace&apos;s value for every switch and says so
+        (&quot;Inherited from the workspace&quot;). Changing one marks it{" "}
+        <em>changed here</em>; <strong>Reset</strong> goes back, and so does setting it to the
+        workspace&apos;s value. A later change for every project reaches every project that
+        inherits it.
+      </p>
+      <ul>
+        <li>
+          A project can always be <strong>stricter</strong> than the workspace.
+        </li>
+        <li>
+          It can be <strong>lower</strong> (less sensitive, or off) only where the workspace
+          ticked <strong>Projects may lower</strong> for that protection, which needs a role
+          that may enforce policies. Until then the lower levels are shown locked, with the
+          reason. Protections that keep the others from being switched off are never lowered
+          per project.
+        </li>
+        <li>
+          A check can be switched either way per project, except the always-on safety net.
+          The gateway applies the project&apos;s choice on every call, not only on the screen.
+        </li>
+      </ul>
+      <Code>{`GET  /api/features
+GET  /api/agents/{slug}/features
+POST /api/features/protections/{key}   {"level": "high", "agent": "support-triage"}
+POST /api/features/checks/{key}        {"enabled": false, "agent": "support-triage"}`}</Code>
+      <p>
+        Every change is an operator action in the audit log. Under the hood a protection is a
+        set of rules in a shipped pack; a project&apos;s change is a copy in its own layer (see{" "}
+        <Link href="/docs/app/policies">Policies</Link>).
+      </p>
+
+      <h2 id="setup">The setup banner</h2>
+      <p>
+        Until setup is done, a line at the top of each page says what to do next, sized to the
+        one missing step. In a project, in order: add it (it was proposed by a scan); send its
+        first request (with a test request that names it, and the banner clears itself when
+        that request arrives); allow the tools it should use; and turn blocking on, after
+        seeing how many of last week&apos;s requests it would have stopped. With all projects
+        in view it is about the workspace: connect the first agent, then the first request,
+        then the next step on Get started. Built from <code>GET /api/onboarding</code> and{" "}
+        <code>GET /api/agents/&#123;slug&#125;/setup</code>. Hiding it keeps it hidden for a
+        week.
+      </p>
 
       <h3 id="boundary">Knowledge boundary</h3>
       <p>
-        On the same tab. A knowledge boundary is what the agent may answer from; without one,
+        On the Access view. A knowledge boundary is what the agent may answer from; without one,
         nothing stops it inventing an answer to a question it has no data for. Fields:
       </p>
       <ul>
@@ -181,44 +185,6 @@ look right.
 │ That topic is outside what this agent is set up to cover (legal advice).      │
 ╰───────────────────────────────────────────────────────────────────────────────╯
   recorded only (observe mode)`}</Output>
-
-      <h3>Registration tab</h3>
-      <ul>
-        <li>
-          <strong>Purpose</strong>, editable inline (tagged <code>not set</code> when empty).
-          Saves with <code>PATCH /api/agents/&#123;slug&#125;</code>.
-        </li>
-        <li>
-          <strong>Agent map</strong>: everything this agent reached in observed traffic within
-          two hops, drawn as a circle, with the blast radius on it. An edge that was observed
-          but never declared is drawn as such; that gap is registry drift.
-        </li>
-        <li>
-          <strong>Registration</strong>: owner (with an email and optional team field and{" "}
-          <strong>Assign owner</strong> / <strong>Update</strong>), team, environment, risk
-          tier, framework, registered, declared models, declared tools, data classes, last
-          seen.
-        </li>
-        <li>
-          <strong>Observed lineage</strong>: the same edges as a table (from, relation, to,
-          times seen), with each tool&apos;s impact tier (read, write, high_impact,
-          irreversible) and, for MCP tools, the server&apos;s trust level. Declared models and
-          tools are what someone typed in; observed lineage is what happened. A mismatch is
-          worth reading.
-        </li>
-        <li>
-          <strong>Proposed risk classification</strong>: an EU AI Act class proposed from the
-          purpose text and observed behaviour, with the signals behind it (for example
-          &quot;can invoke high-impact or irreversible tools&quot;). It is advisory and says it
-          requires human confirmation. When it differs from the recorded tier,{" "}
-          <strong>Accept — set risk tier to …</strong> writes it; leaving it is rejecting it.
-          The formal record (class, residual risk, signer) is on{" "}
-          <Link href="/docs/app/compliance#risk">Compliance → Risk register</Link>.
-        </li>
-        <li>
-          <strong>Kill switch</strong>, below.
-        </li>
-      </ul>
 
       <h3 id="kill-switch">Kill switch, quarantine and resume</h3>
       <p>
@@ -258,7 +224,7 @@ agentfox agents resume research-bot --reason "incident closed"`}</Code>
       <h2>Owners and shadow agents</h2>
       <p>
         An agent with no owner shows <strong>unowned — assign</strong> on the list and an{" "}
-        <code>unowned</code> tag on its Registration tab; assign one there. An unregistered
+        <code>unowned</code> tag; assign one on its Settings view. An unregistered
         agent is one the gateway saw in traffic under a slug nobody registered. It raises a
         high-severity attention item (&quot;&apos;slug&apos; is running and was never
         registered&quot;) and a finding. Register it with the same slug, give it an owner,
@@ -268,7 +234,7 @@ agentfox agents resume research-bot --reason "incident closed"`}</Code>
       <h2>Common tasks</h2>
       <TaskTable
         rows={[
-          { task: "List agents, owners and shadow agents", run: "agentfox agents list" },
+          { task: "List projects, owners and shadow agents", run: "agentfox agents list" },
           { task: "See what one agent reached", run: "agentfox agents lineage payments-ops" },
           { task: "Stop an agent while you investigate", run: "agentfox agents quarantine research-bot --reason \"…\"", href: "#kill-switch" },
           { task: "Stop an agent now", run: "agentfox agents kill research-bot --reason \"…\"" },
@@ -291,18 +257,18 @@ agentfox agents resume research-bot --reason "incident closed"`}</Code>
         </li>
         <li>
           <strong>Tools count is high but nothing is allowed.</strong> Tools are declared;
-          grants are separate and default deny. See{" "}
+          grants are separate and default deny. Allow them on Access, or see{" "}
           <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>.
         </li>
         <li>
-          <strong>Blast radius reads 0.</strong> Lineage is built from observed traffic only;
-          an agent with no traces has none.
+          <strong>A lower level is locked on a project&apos;s Features.</strong> The workspace
+          has not let projects lower that protection. Tick <strong>Projects may lower</strong>{" "}
+          for it on the workspace&apos;s Features, or change it for every project.
         </li>
       </ul>
 
       <h2>Limits</h2>
       <ul>
-        <li>No screen for capability grants or tool declarations.</li>
         <li>Boundaries saved from the web app are always observe mode.</li>
         <li>The risk classification is a heuristic over purpose text and behaviour, not a legal determination.</li>
       </ul>
