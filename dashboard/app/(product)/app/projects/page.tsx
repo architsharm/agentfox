@@ -74,7 +74,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
                       <span className="muted">
                         {depth ? memberRelation(relation) : "Found by a repo scan"}
                         {a.framework ? ` · ${a.framework}` : ""}
-                        {(a.declared_tools || []).length ? ` · ${(a.declared_tools || []).length} tools` : ""}
+                        {(a.declared_tools || []).length ? ` · ${(a.declared_tools || []).length} tool${(a.declared_tools || []).length === 1 ? "" : "s"}` : ""}
                       </span>
                     </div>
                     <div className="k-list-end">
