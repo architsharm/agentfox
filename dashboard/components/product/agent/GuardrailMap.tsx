@@ -11,6 +11,7 @@ import {
   DRAW_EACH,
   DRAW_GROUPS,
   DRAW_OPEN,
+  DRAW_SUBAGENTS,
   GROUP_BY,
   PERMISSION,
   RULE_SETTINGS,
@@ -18,10 +19,14 @@ import {
   TOOL_FILTERS,
   counts,
   drawTools,
+  drawnSubagents,
   filterTools,
   groupSummary,
   groupTools,
+  linkActivity,
+  parentLabel,
   permissionCall,
+  relationLabel,
   ruleChange,
   ruleSetting,
   stageTone,
@@ -29,6 +34,7 @@ import {
   type AgentMap,
   type Drawn,
   type GroupBy,
+  type MapLink,
   type MapRule,
   type MapTool,
   type Permission,
@@ -139,10 +145,10 @@ function GroupNode({ data }: NodeProps<Node<{ group: ToolGroup; total: number; o
   );
 }
 
-function MoreNode({ data }: NodeProps<Node<{ label: string }>>) {
+function MoreNode({ data }: NodeProps<Node<{ label: string; from?: "top" | "left" }>>) {
   return (
     <div className="gm-node gm-more" title="Open the list in the inspector">
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={data.from === "left" ? Position.Left : Position.Top} />
       {data.label}
     </div>
   );
@@ -167,19 +173,48 @@ function ToolsNode({ data }: NodeProps<Node<{ tools: MapTool[]; selected: boolea
   );
 }
 
-function SubagentNode({ data }: NodeProps<Node<{ slug: string; calls: number }>>) {
+function linkHref(slug: string) {
+  return `/app/projects/${encodeURIComponent(slug)}`;
+}
+
+/** A sub-agent this agent hands work to: from its code, from traffic, or both. */
+function SubagentNode({ data }: NodeProps<Node<{ link: MapLink; framework?: string | null }>>) {
+  const s = data.link;
   return (
-    <Link href={`/app/projects/${encodeURIComponent(data.slug)}`} className="gm-node gm-sub-agent">
+    <Link href={linkHref(s.slug)} className={`gm-node gm-sub-agent${s.seen ? "" : " gm-unseen"}`} title={s.slug}>
       <Handle type="target" position={Position.Left} />
-      <span className="gm-kicker">Hands off to</span>
-      <strong>{data.slug}</strong>
-      <span className="gm-sub">{plural(data.calls, "time")} · open project</span>
+      <span className="gm-kicker">{relationLabel(s.relation, data.framework)}</span>
+      <strong className="gm-ellipsis">{s.name || s.slug}</strong>
+      <span className="gm-sub">{linkActivity(s)} · open project</span>
+    </Link>
+  );
+}
+
+/** An agent that hands this one work, so a sub-agent's map links back up. */
+function ParentNode({ data }: NodeProps<Node<{ link: MapLink }>>) {
+  const s = data.link;
+  return (
+    <Link href={linkHref(s.slug)} className={`gm-node gm-sub-agent${s.seen ? "" : " gm-unseen"}`} title={s.slug}>
+      <span className="gm-kicker">{parentLabel(s.relation)}</span>
+      <strong className="gm-ellipsis">{s.name || s.slug}</strong>
+      <span className="gm-sub">{linkActivity(s)} · open project</span>
+      <Handle type="source" position={Position.Right} />
     </Link>
   );
 }
 
 // "group" is a built-in React Flow type with its own styling, so ours is "toolgroup".
-const NODE_TYPES = { end: EndNode, agent: AgentNode, stage: StageNode, tool: ToolNode, toolgroup: GroupNode, tools: ToolsNode, more: MoreNode, subagent: SubagentNode };
+const NODE_TYPES = {
+  end: EndNode,
+  agent: AgentNode,
+  stage: StageNode,
+  tool: ToolNode,
+  toolgroup: GroupNode,
+  tools: ToolsNode,
+  more: MoreNode,
+  subagent: SubagentNode,
+  parent: ParentNode,
+};
 
 // --- layout ----------------------------------------------------------------------
 
@@ -293,10 +328,25 @@ function layout(map: AgentMap, d: Drawn, visible: MapTool[], hidden: number, sel
     }
   }
 
-  map.subagents.forEach((s, i) => {
+  // Sub-agents to the right, below the reply. One the code hands work to but traffic
+  // has not used yet is drawn fainter, with a still wire.
+  const subs = drawnSubagents(map.subagents, DRAW_SUBAGENTS);
+  subs.shown.forEach((s, i) => {
     const id = `sub:${s.slug}`;
-    nodes.push({ id, type: "subagent", position: { x: agentX + 2 * COL + 40, y: 200 + i * 120 }, data: s });
-    edge(`es-${i}`, "agent", id, { sourceHandle: "down", style: { strokeDasharray: "6 4" } });
+    nodes.push({ id, type: "subagent", position: { x: agentX + 2 * COL + 40, y: 200 + i * 120 }, data: { link: s, framework: map.agent.framework } });
+    edge(`es-${i}`, "agent", id, { sourceHandle: "down", animated: Boolean(s.seen), style: { strokeDasharray: "6 4", opacity: s.seen ? 1 : 0.6 } });
+  });
+  if (subs.rest) {
+    const id = "more:subagents";
+    nodes.push({ id, type: "more", position: { x: agentX + 2 * COL + 40, y: 200 + subs.shown.length * 120 }, data: { label: `${plural(subs.rest, "more sub-agent")}`, from: "left" } });
+    edge("es-more", "agent", id, { sourceHandle: "down", style: { strokeDasharray: "4 4" } });
+  }
+
+  // Whoever hands this agent work, to the left of the user, so the map links back up.
+  (map.parents || []).slice(0, 3).forEach((p, i) => {
+    const id = `parent:${p.slug}`;
+    nodes.push({ id, type: "parent", position: { x: -COL - 10, y: 25 + i * 120 }, data: { link: p } });
+    edge(`ep-${i}`, id, "agent", { targetHandle: "in", animated: Boolean(p.seen), style: { strokeDasharray: "6 4", opacity: p.seen ? 1 : 0.6 } });
   });
   return { nodes, edges };
 }

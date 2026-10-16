@@ -100,7 +100,9 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
         }
         meta={
           <>
-            {breakerOpen ? (
+            {a.status === "draft" ? (
+              <Pill tone="outline">Proposed</Pill>
+            ) : breakerOpen ? (
               <Pill tone="bad">Paused by breaker</Pill>
             ) : state === "active" ? (
               <Pill tone="ok">Active</Pill>
@@ -108,7 +110,7 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
               <Pill tone="bad">{state === "killed" ? "Stopped" : "Paused"}</Pill>
             )}
             {a.risk_tier === "high" && <Pill tone="held">High risk</Pill>}
-            {!a.registered && <Pill tone="bad">Unregistered</Pill>}
+            {!a.registered && a.status !== "draft" && <Pill tone="bad">Unregistered</Pill>}
             {a.is_seed && <Pill tone="outline">Sample</Pill>}
           </>
         }

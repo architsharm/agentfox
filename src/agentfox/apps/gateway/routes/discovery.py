@@ -40,6 +40,22 @@ class SubmittedSite(BaseModel):
     provider: str | None = None
 
 
+class SubmittedAgent(BaseModel):
+    """One agent of a multi-agent system. No tools, file or line: those stay local."""
+
+    key: str
+    name: str
+    framework: str | None = None
+    kind: str = "agent"
+    top_dir: str = "root"
+
+
+class SubmittedAgentEdge(BaseModel):
+    parent: str
+    child: str
+    relation: str = "delegates"
+
+
 class ScanSubmission(BaseModel):
     source: str  # "quickscan" | "check"
     label: str = "repo"
@@ -48,6 +64,8 @@ class ScanSubmission(BaseModel):
     coverage: float | None = None
     counts: dict[str, int] = {}
     sites: list[SubmittedSite] = []
+    agents: list[SubmittedAgent] = []
+    agent_edges: list[SubmittedAgentEdge] = []
 
 
 @router.post("/api/discovery/submit", summary="Submit a redacted local scan for review")
@@ -73,6 +91,8 @@ def submit_scan(
         frameworks=payload.frameworks,
         sites=[s.model_dump() for s in payload.sites],
         author=user.email or user.id,
+        agents=[a.model_dump() for a in payload.agents],
+        agent_edges=[e.model_dump() for e in payload.agent_edges],
     )
 
     run.summary_json = {

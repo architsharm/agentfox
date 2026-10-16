@@ -50,7 +50,12 @@ export default function Page() {
         <strong>Needs attention</strong> lists unregistered and unowned ones;{" "}
         <strong>Proposed</strong> lists the drafts a repository scan found, with{" "}
         <strong>Add project</strong> (<code>POST /api/agents/&#123;id&#125;/approve</code>) and{" "}
-        <strong>Dismiss</strong>. A draft is inert until it is added.
+        <strong>Dismiss</strong>. A draft is inert until it is added. A multi-agent system
+        (OpenAI Agents SDK, LangGraph, CrewAI, AutoGen, Google ADK) is proposed as one
+        project per agent, each with its own tools, listed under the agent that hands it
+        work; <strong>Add all</strong> adds the whole system
+        (<code>POST /api/agents/&#123;id&#125;/approve-system</code>). The hand-offs its code
+        declares show on each project&apos;s canvas before any traffic.
       </p>
       <h3>Creating a project by hand</h3>
       <p>

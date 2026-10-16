@@ -359,17 +359,8 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
             }
         )
 
-    # --- sub-agents ----------------------------------------------------------
-    subagents = []
-    if agent:
-        for edge in session.scalars(
-            select(LineageEdge).where(
-                LineageEdge.src_id == slug,
-                LineageEdge.dst_type == "agent",
-                LineageEdge.relation == "delegates_to",
-            )
-        ):
-            subagents.append({"slug": edge.dst_id, "calls": edge.observed_count})
+    # --- sub-agents and parents ------------------------------------------------
+    subagents, parents = _hierarchy(session, slug) if agent else ([], [])
 
     stages = [
         {
@@ -388,10 +379,59 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
             "slug": slug,
             "name": (agent.name if agent else "") or slug,
             "known": agent is not None,
+            "framework": agent.framework if agent else None,
         },
         "window_days": WINDOW_DAYS,
         "stages": stages,
         "everywhere": by_stage.get("everywhere", []),
         "tools": tools,
         "subagents": subagents,
+        "parents": parents,
     }
+
+
+def _edge_json(edge: LineageEdge, other: str, names: dict[str, str]) -> dict[str, Any]:
+    return {
+        "slug": other,
+        "name": names.get(other) or other,
+        "calls": edge.observed_count,
+        # Read from the code by a repo scan, and/or actually seen in traffic: a
+        # sub-agent the code hands work to shows before it has ever been called.
+        "declared": bool(edge.declared),
+        "seen": edge.observed_count > 0,
+        # How the work is handed over, when the code says (``discovery.agents``);
+        # None for a delegation only ever seen in a span.
+        "relation": edge.kind,
+    }
+
+
+def _hierarchy(session: Session, slug: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """``(subagents, parents)``: who this agent hands work to, and who hands it work.
+
+    A proposal someone dismissed is left off both: it is not part of the system they
+    chose to govern, even though the code still names it.
+    """
+    edges = list(
+        session.scalars(
+            select(LineageEdge).where(
+                LineageEdge.relation == "delegates_to",
+                LineageEdge.dst_type == "agent",
+                (LineageEdge.src_id == slug) | (LineageEdge.dst_id == slug),
+            )
+        )
+    )
+    others = {e.dst_id if e.src_id == slug else e.src_id for e in edges}
+    rows = list(session.scalars(select(Agent).where(Agent.slug.in_(others)))) if others else []
+    dismissed = {a.slug for a in rows if a.status == "rejected"}
+    names = {a.slug: a.name for a in rows}
+    subagents = [
+        _edge_json(e, e.dst_id, names)
+        for e in sorted(edges, key=lambda e: (-e.observed_count, e.dst_id))
+        if e.src_id == slug and e.dst_id != slug and e.dst_id not in dismissed
+    ]
+    parents = [
+        _edge_json(e, e.src_id, names)
+        for e in sorted(edges, key=lambda e: e.src_id)
+        if e.dst_id == slug and e.src_id != slug and e.src_id not in dismissed
+    ]
+    return subagents, parents
