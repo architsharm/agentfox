@@ -218,6 +218,7 @@ const DETECTORS: Record<string, string> = {
   "safety.lexicon": "Harmful content",
   "safety.classifier": "Harmful content (model)",
   "schema.json": "Output format",
+  "unicode.tags": "Hidden text",
   "custom.lists": "Your words & patterns",
   "custom.topics": "Topics (model)",
   "custom.models": "Your models",

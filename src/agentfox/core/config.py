@@ -485,6 +485,9 @@ class Settings(BaseSettings):
         "secrets.native",
         "safety.lexicon",
         "schema.json",
+        # Text hidden in invisible Unicode tag characters. One scan for a character
+        # that ordinary text never contains, so it costs nothing on the common case.
+        "unicode.tags",
         # A workspace's own rules (capabilities/detection/custom.py). Costs nothing
         # until a workspace defines one, so it is on wherever the others are.
         "custom.lists",
