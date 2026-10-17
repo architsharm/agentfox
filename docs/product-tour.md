@@ -514,5 +514,5 @@ For a reboot-persistent gateway service, see the [systemd deployment guide](depl
 
 **After any of them:** create a GitHub OAuth app and set its callback to
 `https://<your-host>/api/auth/github/callback`. The dashboard runbook is
-[`deploy/README-dashboard.md`](../deploy/README-dashboard.md); a Fly.io config, with its commands in
-its own header, is [`deploy/fly.dashboard.toml`](../deploy/fly.dashboard.toml).
+[`deploy/README-dashboard.md`](../deploy/README-dashboard.md); on Fly.io, follow
+[`deploy/FLY.md`](../deploy/FLY.md), which uses [`deploy/fly.dashboard.toml`](../deploy/fly.dashboard.toml).
