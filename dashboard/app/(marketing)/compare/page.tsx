@@ -217,7 +217,7 @@ const ROWS: [string, string, string, string][] = [
   ["Estate-scale discovery connectors", "Yes, breadth varies", "Yes, breadth varies", "Repository and config only"],
   ["Low-code and Copilot agent surface", "Partly", "Covered", "Not covered, a stated non-goal"],
   ["Self-host with zero egress", "Several are SaaS only", "Several are SaaS only", "The default"],
-  ["Licence", "Commercial", "Commercial", "Apache-2.0, nothing gated"],
+  ["Licence", "Commercial", "Commercial", "Apache-2.0 open core; Enterprise source-available"],
   ["Marketplace listing and SOC 2 Type II", "Almost all have one", "Almost all have one", "Neither; 6 of 14 procurement bars met"],
 ];
 

@@ -338,9 +338,11 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "What does it cost, and under what licence?",
     a: (
       <>
-        Apache-2.0, with the full text in <Out href={LICENSE}>LICENSE</Out>. It is free and
-        there is nothing to buy: all of the source is in the repository, there is no licence
-        key, and nothing is gated behind a paid tier.
+        The open core is Apache-2.0, with the full text in <Out href={LICENSE}>LICENSE</Out>:
+        enforcement, containment, every detector and the dashboard, with no licence key and no
+        limit on agents. Compliance, evidence packages and fleet monitoring are AgentFox
+        Enterprise, source-available and free in production for up to four agents. All of the
+        source for both is in the repository, and nothing on this site is priced.
       </>
     ),
   },

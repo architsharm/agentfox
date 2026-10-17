@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = publicPageMetadata({
   title: "Pricing and editions",
   description:
-    "Everything is Apache-2.0 and free to self-host forever, with nothing gated. The hosted version is open and free while in preview: sign in with GitHub, no card.",
+    "The open core is Apache-2.0 and free to self-host forever, with no agent limit. Enterprise is free for up to four agents. The hosted preview is free: no card.",
   path: "/pricing",
 });
 

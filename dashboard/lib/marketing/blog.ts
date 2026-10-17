@@ -19,6 +19,8 @@
  */
 
 export const SLUGS = [
+  "agentfox-0-5-release",
+  "ascii-smuggling-unicode-tag-prompt-injection",
   "mcp-rug-pull-tool-poisoning",
   "prompt-injection-containment-not-detection",
   "claude-code-hooks-security",
@@ -37,7 +39,13 @@ export type BlogPost = {
   seoTitle?: string;
   description: string;
   /** The topic chip on the card and the kicker on the post. */
-  tag: "MCP security" | "Prompt injection" | "Coding agents" | "Red teaming" | "Audit and compliance";
+  tag:
+    | "MCP security"
+    | "Prompt injection"
+    | "Coding agents"
+    | "Red teaming"
+    | "Audit and compliance"
+    | "Release notes";
   /** What a searcher types. The first is the phrase the post is built around. */
   keywords: string[];
   /** ISO dates. `updated` only when a post changed in substance. */
@@ -53,6 +61,61 @@ export type BlogPost = {
 export const AUTHOR = { name: "The AgentFox team", url: "https://github.com/architsharm/agentfox" };
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    slug: "agentfox-0-5-release",
+    title: "AgentFox 0.5: one-command setup and multi-agent systems scanned as their agents",
+    seoTitle: "AgentFox 0.5: agentfox up and multi-agent scans",
+    description:
+      "agentfox up takes a project to governed in one command, multi-agent repositories scan as separate agents, about seventy validators ship built in.",
+    tag: "Release notes",
+    keywords: [
+      "AgentFox 0.5",
+      "AI agent guardrails release",
+      "multi-agent security",
+      "AI agent setup",
+      "Guardrails AI validators",
+    ],
+    published: "2026-10-17",
+    readMinutes: 6,
+    image: {
+      src: "/product/refusal.png",
+      alt: "A payments.transfer call refused with capability.denied: no capability grants this agent the requested tool and action.",
+      width: 1600,
+      height: 670,
+    },
+    pillars: [
+      { href: "/docs/quickstart", label: "Quickstart", why: "From pip install to a governed agent." },
+      { href: "/docs/guides/scan-a-repo", label: "Scan a repo", why: "See every agent, tool and MCP server your code defines." },
+      { href: "/pricing", label: "Editions", why: "What is open core and what is Enterprise." },
+    ],
+  },
+  {
+    slug: "ascii-smuggling-unicode-tag-prompt-injection",
+    title: "ASCII smuggling: prompt injection you cannot see",
+    description:
+      "Unicode tag characters hide an instruction from every reviewer while a model still reads it. How ASCII smuggling works, and how to detect it precisely.",
+    tag: "Prompt injection",
+    keywords: [
+      "ASCII smuggling",
+      "Unicode tag characters prompt injection",
+      "invisible prompt injection",
+      "hidden prompt injection",
+      "prompt injection detection",
+    ],
+    published: "2026-10-17",
+    readMinutes: 7,
+    image: {
+      src: "/product/injection-observed.png",
+      alt: "A retrieved document carrying an override instruction, recorded in observe mode as would block in enforce.",
+      width: 1600,
+      height: 707,
+    },
+    pillars: [
+      { href: "/docs/reference/detectors", label: "Detector reference", why: "unicode.tags and every other detector, with surfaces." },
+      { href: "/blog/prompt-injection-containment-not-detection", label: "Containment", why: "Why the guarantee comes from grants, not detection." },
+      { href: "/playground", label: "Playground", why: "Try an injection against three agents, no account." },
+    ],
+  },
   {
     slug: "mcp-rug-pull-tool-poisoning",
     title: "MCP rug pulls: why approving an MCP server once is not enough",
