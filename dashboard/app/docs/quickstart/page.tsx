@@ -196,6 +196,14 @@ export default function Page() {
         You need Python 3.11 or newer. If you would rather see the product work before writing
         any code, skip to <a href="#demo">the zero-setup demo</a>.
       </p>
+      <Callout kind="note" title="The fast way, on your own repository">
+        <code>agentfox up</code> does the setup half of this page in one command. It scans the
+        repository, asks where AgentFox runs and what to cover, then installs the coding-agent
+        hooks, adds <code>agentfox.auto()</code>, declares the tools it found, registers your
+        MCP servers and starts everything in observe mode. <code>agentfox up --yes</code> takes
+        the recommended answers; <code>agentfox up --dry-run</code> shows the plan and changes
+        nothing. Read on for what each of those steps is and how to check it worked.
+      </Callout>
       <Callout kind="note" title="What was run to write this page">
         Every command and every output below was run in an empty directory with a fresh state
         directory. Output is trimmed with <code>…</code> where it is long; nothing in it is

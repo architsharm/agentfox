@@ -1,6 +1,6 @@
 {
   "name": "@agentfox/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AgentFox client: guard inputs, outputs and tool calls against an AgentFox gateway.",
   "license": "Apache-2.0",
   "keywords": [

@@ -290,6 +290,37 @@ dangerous behaviour in plain prose is not caught.`}</Output>
 Live proof  same detectors, run against known attacks, right now
   3/3 adversarial probes caught in 5ms  (no data left this machine)`}</Output>
 
+      <h2 id="multi-agent">Multi-agent systems</h2>
+      <p>
+        When a repository defines more than one agent, the scan reads each one, the tools it is
+        handed and which agent hands work to which, from the code and before any traffic. It
+        recognises OpenAI Agents SDK handoffs and <code>as_tool</code>, LangGraph supervisors,
+        swarms and <code>StateGraph</code> agent nodes, CrewAI crews and delegation, AutoGen
+        teams and group chats, and Google ADK <code>sub_agents</code>. A triage agent that
+        hands off to a billing agent and a research agent:
+      </p>
+      <Code lang="python" title="agents_app.py">{`billing = Agent(name="billing", instructions="Handle refunds.", tools=[lookup_order, issue_refund])
+research = Agent(name="research", instructions="Answer from the docs.", tools=[search_docs])
+triage = Agent(name="triage", instructions="Route the request.", handoffs=[billing, research])`}</Code>
+      <Code>{`agentfox scan .`}</Code>
+      <Output>{`  built on: OpenAI Agents SDK
+  agents: 3 agents, 2 handoff(s) between them
+          triage hands off to billing, research
+  can reach: 3 tools · 0 MCP servers
+     lookup_order  agents_app.py  private data
+     issue_refund  agents_app.py  sends out / irreversible
+     search_docs   agents_app.py  private data`}</Output>
+      <p>
+        <code>scan --json</code> carries the same structure as <code>agents</code> (each with
+        its framework, file, line and its own <code>tools</code>) and <code>agent_edges</code>{" "}
+        (<code>parent</code>, <code>child</code> and the <code>relation</code>, here{" "}
+        <code>handoff</code>). In the dashboard, a scanned repository with two or more agents is
+        proposed as one draft per agent, so <code>research</code> is never granted{" "}
+        <code>issue_refund</code> because <code>billing</code> needs it. The guardrail map shows
+        each sub-agent under the agent that calls it, and <strong>Add all</strong> adds the
+        whole system at once. A re-scan updates the drafts in place.
+      </p>
+
       <h2>Agents that are already running</h2>
       <p>
         Once agents send traffic through AgentFox (any of <code>agentfox.auto()</code>, the
