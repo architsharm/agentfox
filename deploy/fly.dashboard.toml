@@ -1,13 +1,14 @@
 # Fly.io alternative to deploy/render.yaml — same single web service, same image.
 #
-#   fly launch --no-deploy --copy-config --config deploy/fly.dashboard.toml
-#   fly secrets set GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... \
-#                   AGENTFOX_SERVICE_AUTH_SECRET=...
-#   fly deploy --config deploy/fly.dashboard.toml --dockerfile deploy/Dockerfile.dashboard
+# From the repository root:
 #
-# The Dockerfile expects the build context to be ./dashboard, so run the deploy
-# from the repo root with `--build-context` support, or from ./dashboard with the
-# Dockerfile path adjusted. Runbook: deploy/README-dashboard.md
+#   fly launch --no-deploy --copy-config --config deploy/fly.dashboard.toml --name <app>
+#   fly secrets set --stage --config deploy/fly.dashboard.toml \
+#     GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... AGENTFOX_SERVICE_AUTH_SECRET=...
+#   fly deploy ./dashboard --config "$PWD/deploy/fly.dashboard.toml" \
+#     --dockerfile "$PWD/deploy/Dockerfile.dashboard"
+#
+# `./dashboard` is the build context the Dockerfile expects. Guide: deploy/FLY.md
 #
 # Settings are AGENTFOX_*.
 app = "nometria-dashboard"
@@ -19,6 +20,10 @@ primary_region = "iad"
 [env]
   NODE_ENV = "production"
   PORT = "3000"
+  # Next's standalone server binds to $HOSTNAME. Where a platform sets that to the
+  # machine's name, the server listens on an address its proxy may not reach (every
+  # request 502s on Render without this). Bind to all interfaces.
+  HOSTNAME = "0.0.0.0"
   AGENTFOX_API_URL = "https://guardrails-api.vercel.app"
 
 [http_service]

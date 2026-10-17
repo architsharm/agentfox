@@ -46,6 +46,7 @@ from agentfox.capabilities.detection.detectors.pii import NativePiiDetector, red
 from agentfox.capabilities.detection.detectors.safety import SafetyLexiconDetector
 from agentfox.capabilities.detection.detectors.schema import JsonSchemaDetector
 from agentfox.capabilities.detection.detectors.secrets import SecretsDetector
+from agentfox.capabilities.detection.detectors.unicode_tags import UnicodeTagsDetector
 from agentfox.capabilities.detection.pipeline import DetectorPipeline, PipelineResult, fail_verdict
 from agentfox.capabilities.detection.taint import TaintMark, TaintTracker, exceeds
 
@@ -55,6 +56,7 @@ register_detector(NativePiiDetector())
 register_detector(SecretsDetector())
 register_detector(SafetyLexiconDetector())
 register_detector(JsonSchemaDetector())
+register_detector(UnicodeTagsDetector())
 # A workspace's own words, patterns and topics (custom.py); free with none defined.
 register_detector(CustomListDetector())
 # The workspace's validator rules: a registered validator run with its settings.

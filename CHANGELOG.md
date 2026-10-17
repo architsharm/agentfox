@@ -13,6 +13,11 @@ the file it came from.
 
 ### Fixed
 
+- **Dashboard actions no longer land on `localhost`.** Add project, Add all and every
+  other form action, and the sign-in and `/app/agents` redirects, came back on the
+  server's own hostname. Opened at `127.0.0.1` or behind a proxy, that is another origin
+  without the session cookie, so the action looked like a sign-out. They now return to
+  the host the browser used.
 - **`agentfox up`, found by running it end to end** on a sample project, locally, against
   a production-mode team server, through the Cloud path and as a Docker Compose stack:
   - A set-up agent works on its first call. The tools `up` declares are granted to the
@@ -35,6 +40,12 @@ the file it came from.
 
 ### Added
 
+- **`unicode.tags`, a default detector for text hidden in Unicode tag characters**
+  (U+E0000 to U+E007F, "ASCII smuggling"): invisible to a person, read by a model. It
+  reports `INJECTION.HIDDEN_TAG_TEXT`, so the baseline injection rules act on it, and
+  skips the England, Scotland and Wales flag emoji, the block's one legitimate use (#15).
+- **A Fly.io guide for the control-plane UI**, `deploy/FLY.md` (#11).
+  `fly.dashboard.toml` now sets `HOSTNAME=0.0.0.0`, as `render.yaml` does.
 - **A scanned multi-agent system comes out as its agents.** The repository scan reads
   each agent the code defines, the tools it is handed and which agent hands work to
   which (OpenAI Agents SDK handoffs and `as_tool`, LangGraph supervisors, swarms and

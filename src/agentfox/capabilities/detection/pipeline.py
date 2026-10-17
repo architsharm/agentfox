@@ -79,6 +79,7 @@ _COST_ORDER = {
     "pii.native": 2,
     "safety.lexicon": 3,
     "schema.json": 4,
+    "unicode.tags": 0,
     "pii.presidio": 10,
     "rails.guardrails_ai": 15,
     "safety.granite": 20,

@@ -1,7 +1,7 @@
 # Deploying the control-plane UI so strangers can sign up
 
 The API is already live on Vercel against Neon. This deploys the UI that people
-actually sign in to, on Render (or Fly). Nothing here needs its own database: the UI
+actually sign in to, on Render (or Fly: [`FLY.md`](FLY.md)). Nothing here needs its own database: the UI
 is a pure client of the API, and the API owns the only Postgres connection.
 
 What a visitor gets once this is up: sign in with GitHub, which creates their own
@@ -84,6 +84,9 @@ AGENTFOX_DATABASE_URL='<neon url>' uv run alembic current
 ```
 
 ## 2. Deploy the UI on Render
+
+On Fly instead: follow [`FLY.md`](FLY.md), then continue from step 3 here with the Fly
+hostname.
 
 1. Render → New → Blueprint → pick this repository. It reads `deploy/render.yaml`.
 2. Render prompts for the three secret values marked `sync: false`. Paste them there,
