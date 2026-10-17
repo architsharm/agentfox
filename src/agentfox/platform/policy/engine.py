@@ -70,6 +70,7 @@ class NativePolicyEngine:
     name = "native"
 
     def evaluate(self, policy: PolicyDocument, pinput: PolicyInput) -> PolicyDecision:
+        pinput = pinput.for_mode(policy.mode)
         fired: list[FiredRule] = []
         for rule in policy.rules:
             if not rule.enabled:

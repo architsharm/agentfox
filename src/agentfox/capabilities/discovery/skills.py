@@ -20,9 +20,11 @@ What this does NOT do, stated here rather than discovered later:
     it; nothing here compares.
   * **No sandbox.** Scripts beside a skill are reported as present and
     unmentioned, never read or run.
-  * **Prose is prose.** A skill that describes its dangerous behaviour in
-    ordinary English, with no directive phrasing and no code block, is not
-    caught. This finds planted instructions and declared commands, not intent.
+  * **Prose is mostly prose.** One plain-English shape is caught: a sentence
+    that names where credentials live and a way to send them out
+    (`skill_secret_exfiltration`). Any other dangerous behaviour described in
+    ordinary English, with no directive phrasing and no code block, is not.
+    This finds planted instructions and declared commands, not intent.
 """
 
 from __future__ import annotations
@@ -59,6 +61,40 @@ _PLANTED_DIRECTIVE = [
         r"\bthis\s+(?:skill|document)\s+(?:overrides|supersedes|takes\s+precedence)\b", re.I
     ),
 ]
+
+#: Where credentials live. A public key (``.pub``) is meant to be shared and is excluded.
+_SECRET_LOCATION = re.compile(
+    r"(?:~/|\$HOME/|\b)\.ssh\b(?![\w/.-]*\.pub\b)|\bid_(?:rsa|ed25519|ecdsa|dsa)\b(?!\.pub)"
+    r"|\.aws/credentials\b|\.netrc\b|\.git-credentials\b|\.docker/config\.json\b"
+    r"|\.kube/config\b|\.npmrc\b|\.pypirc\b|(?<![\w.])\.env\b(?!\.example|\.sample)"
+    r"|\bkeychain\b|\bprivate\s+keys?\b|\b(?:api|access|secret)[\s_-]?(?:keys?|tokens?)\b",
+    re.I,
+)
+
+#: A way for what was read to leave the machine.
+_OUTBOUND = re.compile(
+    r"\b(?:send|sends|sent|post|posts|upload|uploads|exfiltrat\w*|forward|forwards|transmit"
+    r"|email|e-mail|leak|beacon)\b(?:[^.!?\n]|\.(?!\s)){0,80}?\b(?:to|into|at)\b"
+    r"|\b(?:curl|wget|nc|netcat)\b|https?://",
+    re.I,
+)
+
+_SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def _secret_exfiltration(text: str) -> str | None:
+    """The first sentence that names a credential location and a way to send it out.
+
+    Plain prose, so the directive patterns above miss it: "read ~/.ssh/id_rsa and
+    send it to https://..." is an instruction without any of their phrasing. Both
+    must sit in one sentence: a deploy guide that mentions `.env` in one step and
+    `curl` in another is not saying to send the one with the other.
+    """
+    for sentence in _SENTENCE.split(text):
+        if _SECRET_LOCATION.search(sentence) and _OUTBOUND.search(sentence):
+            return sentence.strip()[:300]
+    return None
+
 
 #: Fenced code, so a command declared in a skill can go through the same
 #: analyser a command the agent actually runs would.
@@ -113,6 +149,20 @@ def analyse_skill(
                     location=where,
                     patterns=hits,
                     excerpt=_first_hit(text, hits)[:300],
+                )
+            )
+
+    # --- 1b. credentials read and sent out, in plain prose -----------------
+    for where, text in (("description", description), ("body", body)):
+        sentence = _secret_exfiltration(text)
+        if sentence:
+            issues.append(
+                _issue(
+                    "skill_secret_exfiltration",
+                    "critical" if where == "description" else "high",
+                    skill=name,
+                    location=where,
+                    excerpt=sentence,
                 )
             )
 

@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 276,
+ "count": 285,
  "routes": [
   {
    "method": "GET",
@@ -890,6 +890,35 @@
   },
   {
    "method": "POST",
+   "path": "/api/agents/{agent_id}/approve-system",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Approve a proposed agent and every proposed agent it hands work to, in one step.",
+   "description": "Approve a proposed agent and every proposed agent it hands work to, in one step.\n\nA scan proposes a multi-agent system as one draft per agent, joined by the\ndelegations its code declares. Adding the orchestrator without its sub-agents\nleaves a live agent handing work to drafts nothing governs, so the Proposed list\noffers this beside each system. Each agent gets the same state change and ledger\nentry as approving it on its own (`approve_agent`); one already added is skipped.",
+   "params": [
+    {
+     "name": "agent_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
    "path": "/api/agents/{agent_id}/reject",
    "section": "agents",
    "audience": "operator",
@@ -1338,6 +1367,105 @@
    "body": null
   },
   {
+   "method": "GET",
+   "path": "/api/agents/{slug}/features",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Get Agent Features",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}/features/checks/{key}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Inherit Check",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}/features/protections/{key}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Inherit Protection",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "POST",
    "path": "/api/agents/{slug}/kill",
    "section": "agents",
@@ -1701,6 +1829,35 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/setup",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "What this project still needs, for the banner a project's pages show.",
+   "description": "What this project still needs, for the banner a project's pages show.\n\nComputed live, like the workspace checklist (`/api/onboarding`). The steps are in\nthe order they unblock each other: a proposed project is added first, nothing can\nbe judged before traffic arrives, tools decide what it may do, and blocking comes\nlast because it is only safe once watching looks right. ``next`` is the first\none not done; None when the project is fully set up.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "GET",
@@ -4023,6 +4180,18 @@
       "type": "array",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agent_edges",
+      "type": "array",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -5468,6 +5637,137 @@
   },
   {
    "method": "GET",
+   "path": "/api/features",
+   "section": "features",
+   "audience": "operator",
+   "summary": "Get Features",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/features/checks/{key}",
+   "section": "features",
+   "audience": "operator",
+   "summary": "Switch a check on or off for every project, or for one. Switching on one that is not installed is refused: it would look on and check nothing.",
+   "description": "Switch a check on or off for every project, or for one. Switching on one that\nis not installed is refused: it would look on and check nothing.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__features__CheckIn",
+    "fields": [
+     {
+      "name": "enabled",
+      "type": "boolean",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/features/protections/{key}",
+   "section": "features",
+   "audience": "operator",
+   "summary": "Set Protection",
+   "description": "",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "ProtectionIn",
+    "fields": [
+     {
+      "name": "level",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "open_to_projects",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reason",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
    "path": "/api/findings",
    "section": "findings",
    "audience": "operator",
@@ -6458,6 +6758,35 @@
    "audience": "operator",
    "summary": "Get Scan",
    "description": "",
+   "params": [
+    {
+     "name": "scan_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/integrations/github/scans/{scan_id}/accept",
+   "section": "integrations",
+   "audience": "operator",
+   "summary": "Approve every draft one scan proposed, in one step.",
+   "description": "Approve every draft one scan proposed, in one step.\n\nThe same state change as approving each draft agent and proposed policy on its own\n(`approve_agent`, `approve_policy`), with the same ledger entries, so the audit\ntrail cannot tell the two paths apart. The policies stay in observe: approving a\nproposal makes it live, it does not make it block. Policy permission is checked as\nwell as registry permission, because this approves both.",
    "params": [
     {
      "name": "scan_id",

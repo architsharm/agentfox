@@ -147,6 +147,26 @@ class DetectorSetting(Base, TimestampMixin):
     updated_by: Mapped[str] = mapped_column(String(200), default="")
 
 
+class AgentDetectorSetting(Base, TimestampMixin):
+    """One project's choice to switch a detector on or off, over the workspace's.
+
+    No row: the project runs what the workspace runs (`DetectorSetting`, then the
+    deployment). A row wins for that project only, in either direction, except that
+    `detector_settings.ALWAYS_ON` cannot be switched off anywhere.
+    """
+
+    __tablename__ = "agent_detector_settings"
+    __table_args__ = (
+        UniqueConstraint("org_id", "agent", "key", name="ux_agent_detector_settings_org_agent_key"),
+    )
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("ads"))
+    agent: Mapped[str] = mapped_column(String(200), index=True)
+    key: Mapped[str] = mapped_column(String(64), index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_by: Mapped[str] = mapped_column(String(200), default="")
+
+
 class CustomModel(Base, TimestampMixin):
     """A classifier the workspace runs itself, called over HTTP as a detector.
 

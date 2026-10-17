@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/product/api";
+import { PROJECT_COOKIE, PROJECT_COOKIE_AGE, projectInPath } from "@/lib/product/project";
 
 // /playground is the public, unauthenticated demo (dashboard/app/(marketing)/playground) — it
 // talks directly to the gateway's own unauthenticated `/api/playground/*` routes
@@ -132,6 +133,21 @@ export function middleware(req: NextRequest) {
 
   const underPrefix = (p: string) => pathname === p || pathname.startsWith(`${p}/`);
 
+  // Agents became projects. Every agent URL has a project URL one word away, so an
+  // old link or bookmark keeps working; `?tab=` is read by the project page itself.
+  for (const old of ["/app/agents", "/docs/app/agents"]) {
+    if (!underPrefix(old)) continue;
+    const url = new URL(`${old.replace(/agents$/, "projects")}${pathname.slice(old.length)}${req.nextUrl.search}${req.nextUrl.hash}`, req.url);
+    return NextResponse.redirect(url, 308);
+  }
+  // The workspace map was every project's canvas behind a picker; each project has
+  // its own canvas now. The one named, else the one last chosen, else the list.
+  if (pathname === "/app/map") {
+    const slug = req.nextUrl.searchParams.get("agent") || req.cookies.get(PROJECT_COOKIE)?.value;
+    const url = new URL(slug ? `/app/projects/${encodeURIComponent(slug)}` : "/app/projects", req.url);
+    return NextResponse.redirect(url, 307);
+  }
+
   const moved = MOVED_TO_APP.find(underPrefix);
   if (moved) {
     const url = new URL(`/app${pathname}${req.nextUrl.search}`, req.url);
@@ -146,7 +162,13 @@ export function middleware(req: NextRequest) {
     const url = new URL("/login", req.url);
     return NextResponse.redirect(url);
   }
-  return NextResponse.next({ request: { headers } });
+  const res = NextResponse.next({ request: { headers } });
+  // Opening a project is choosing it: the sidebar then shows that project's pages.
+  const project = projectInPath(pathname);
+  if (project && signedIn && req.cookies.get(PROJECT_COOKIE)?.value !== project) {
+    res.cookies.set(PROJECT_COOKIE, project, { path: "/", sameSite: "lax", maxAge: PROJECT_COOKIE_AGE });
+  }
+  return res;
 }
 
 // Static files under public/ are excluded by extension as well as by prefix. Without

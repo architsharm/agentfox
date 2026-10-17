@@ -36,6 +36,12 @@ def _needs_warming() -> list:
 
 
 def _warm(detectors: list) -> None:
+    from agentfox.capabilities.detection.base import warn_unrunnable
+
+    try:
+        warn_unrunnable()
+    except Exception as exc:  # noqa: BLE001 - warming must never break the caller
+        log.debug("agentfox: detector availability report skipped: %s", exc)
     for detector in detectors:
         try:
             # `available()` can itself be slow (it imports the model library), so it

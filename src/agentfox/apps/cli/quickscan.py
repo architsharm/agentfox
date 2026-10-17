@@ -66,6 +66,11 @@ def quickscan(
     skip_sessions: bool = typer.Option(
         False, "--skip-sessions", help="Skip the local AI-tool session scan."
     ),
+    skip_machine: bool = typer.Option(
+        False,
+        "--skip-machine",
+        help="Skip the user-level MCP configs and skills of the AI tools on this machine.",
+    ),
     submit: bool | None = typer.Option(
         None,
         "--submit/--no-submit",
@@ -78,11 +83,15 @@ def quickscan(
     work — no account, nothing leaves this machine unless you explicitly submit."""
     from agentfox.apps.cli._scan_view import print_trifectas, surface_line
     from agentfox.apps.cli.submit import maybe_submit_report
+    from agentfox.capabilities.discovery.machine import scan_machine
     from agentfox.capabilities.discovery.repo import scan as discovery_scan
+    from agentfox.capabilities.discovery.skills import scan_skills_dir
     from agentfox.harnesses import transcripts
 
     repo_report = discovery_scan(path)
+    repo_skills = scan_skills_dir(path)
     session_reports = [] if skip_sessions else transcripts()
+    machine = None if skip_machine else scan_machine()
     caught, total, demo_ms = _run_live_demo()
 
     if as_json:
@@ -90,7 +99,9 @@ def quickscan(
             json_module.dumps(
                 {
                     "repo": repo_report.to_json(),
+                    "skills": repo_skills,
                     "sessions": [r.to_json() for r in session_reports],
+                    "machine": machine.to_json() if machine else None,
                     "live_demo": {"caught": caught, "total": total, "duration_ms": demo_ms},
                 },
                 default=str,
@@ -115,12 +126,25 @@ def quickscan(
 
     # The trifecta, if there is one, before anything else: it is the finding.
     print_trifectas(console, repo_report)
+    for sentence in machine.trifectas if machine else []:
+        console.print(
+            Panel(
+                sentence,
+                title="[bold red]CRITICAL · lethal trifecta[/]",
+                title_align="left",
+                border_style="red",
+            )
+        )
 
     # -- 1. Committed --------------------------------------------------------
     console.print("\n[bold]Committed[/]  [dim]what's in this directory[/]")
     console.print(f"  Scanned {repo_report.files_scanned} files in [dim]{repo_report.root}[/]")
     if repo_report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(repo_report.frameworks)}")
+    from rich.markup import escape
+
+    for i, line in enumerate(repo_report.agent_summary()):
+        console.print(f"  [dim]{'agents:' if i == 0 else '       '}[/] {escape(line)}")
     calls = len(repo_report.model_calls)
     ungoverned = len(repo_report.ungoverned)
     if calls:
@@ -139,6 +163,43 @@ def quickscan(
     secrets = counts.get("secret", 0)
     if secrets:
         console.print(f"  [red]{secrets} likely hardcoded secret(s)[/] in agent-adjacent code")
+    flagged_skills = [r for r in repo_skills if r["issues"]]
+    if flagged_skills:
+        console.print(
+            f"  [red]{len(flagged_skills)} of {len(repo_skills)} skill(s) have issues[/] "
+            f"[dim]({', '.join(r['skill'] for r in flagged_skills[:5])})[/] — "
+            f"[cyan]agentfox scan skills {path}[/]"
+        )
+    elif repo_skills:
+        console.print(f"  [dim]{len(repo_skills)} skill(s), no issues[/]")
+
+    # -- On this machine ----------------------------------------------------
+    if machine is not None:
+        console.print(
+            "\n[bold]On this machine[/]  [dim]MCP servers and skills your AI tools load[/]"
+        )
+        if machine.configs:
+            clients = sorted({c["client"] for c in machine.configs})
+            issues = sum(len(e["issues"]) for e in machine.servers)
+            console.print(
+                f"  {len(machine.servers)} MCP server(s) across {', '.join(clients)}"
+                + (f" · [yellow]{issues} config issue(s)[/]" if issues else "")
+            )
+            if machine.trifectas:
+                console.print(
+                    f"  [red]{len(machine.trifectas)} lethal trifecta(s)[/] [dim](shown above)[/]"
+                )
+        else:
+            console.print("  [dim]no user-level MCP configs found[/]")
+        if machine.skills:
+            flagged = [r for r in machine.skills if r["issues"]]
+            tone = "red" if flagged else "dim"
+            console.print(
+                f"  [{tone}]{len(flagged)} of {len(machine.skills)} installed skill(s) "
+                "have issues[/]"
+            )
+        if machine.configs or machine.skills:
+            console.print("  [dim]details:[/] [cyan]agentfox scan machine[/]")
 
     # -- 2. Actually running ---------------------------------------------------
     if not skip_sessions:

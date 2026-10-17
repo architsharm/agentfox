@@ -188,7 +188,7 @@ export default function Glossary() {
                 optionally a required human approval, and an expiry. Default deny: an
                 agent with no grant for a tool cannot call it. Made with{" "}
                 <span className="mono">agentfox permit grant</span>, explained on
-                the <a href="/app/agents">Agents page</a>.
+                the <a href="/app/projects">Agents page</a>.
               </td>
             </tr>
             <tr id="obligation" data-term="obligation">
@@ -248,7 +248,7 @@ export default function Glossary() {
                 <strong>capability grant</strong> that decides whether this agent may
                 call this tool at all, and the <strong>impact tier</strong> declared on
                 the tool that says how much damage it could do. See{" "}
-                <a href="/app/policies">Policies</a> and <a href="/app/agents">Agents</a>.
+                <a href="/app/policies">Policies</a> and <a href="/app/projects">Projects</a>.
               </td>
             </tr>
             <tr id="impact-tier" data-term="impact tier">

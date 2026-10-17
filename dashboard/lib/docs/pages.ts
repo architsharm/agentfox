@@ -41,6 +41,8 @@ export const DOC_NAV: DocSection[] = [
       { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", description: "Probe the deployment; fail the build on regression." },
       { href: "/docs/guides/live-probes", label: "Probe deployed agents", description: "Scheduled, opt-in attacks on a running agent." },
       { href: "/docs/guides/tuning", label: "Tune detectors", description: "Feedback, suppressions, simulate, canary." },
+      { href: "/docs/guides/migrate-from-llm-guard", label: "Migrate from LLM Guard", description: "Every LLM Guard scanner mapped to its AgentFox equivalent, or none." },
+      { href: "/docs/guides/owasp-agentic-top-10", label: "OWASP Agentic Top 10", description: "ASI01–ASI10: what is enforced, partial or not covered." },
       { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", description: "The report, evidence packages, compliance." },
       { href: "/docs/guides/observability", label: "Traces and integrations", description: "OpenTelemetry, Langfuse, LangSmith, SIEM, webhooks." },
     ],
@@ -50,7 +52,7 @@ export const DOC_NAV: DocSection[] = [
     items: [
       { href: "/docs/app", label: "Tour of the web app", description: "Sign in, workspaces, and where everything is." },
       { href: "/docs/app/start", label: "Start here and connect", description: "The checklist, GitHub repos, API tokens." },
-      { href: "/docs/app/agents", label: "Agents", description: "Registry, risk, knowledge boundary, kill switch." },
+      { href: "/docs/app/projects", label: "Projects", description: "Canvas, features per project, setup banner, kill switch." },
       { href: "/docs/app/findings", label: "Findings", description: "What needs a person, and why." },
       { href: "/docs/app/traces", label: "Traces", description: "One request, every check, and why it was blocked." },
       { href: "/docs/app/policies", label: "Policies and tuning", description: "Rules, modes, simulation, canary, detector tuning." },

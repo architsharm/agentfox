@@ -86,7 +86,7 @@ def get_protection(
 ) -> dict[str, Any]:
     get_agent_or_404(session, slug)
     detectors = all_detectors()
-    on = enabled_for(session)
+    on = enabled_for(session, slug)
     body = protection.state(session, slug).to_json()
     for p in body["protections"]:
         for field in ("needs", "better"):
@@ -299,3 +299,47 @@ def enforce_agent(
         )
         switched.append({"key": pack["key"], "label": pack["label"]})
     return {"agent": slug, "enforcing": switched}
+
+
+@router.get("/{slug}/setup")
+def project_setup(
+    slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """What this project still needs, for the banner a project's pages show.
+
+    Computed live, like the workspace checklist (`/api/onboarding`). The steps are in
+    the order they unblock each other: a proposed project is added first, nothing can
+    be judged before traffic arrives, tools decide what it may do, and blocking comes
+    last because it is only safe once watching looks right. ``next`` is the first
+    one not done; None when the project is fully set up.
+    """
+    from sqlalchemy import func, select
+
+    from agentfox.capabilities.protection.map import agent_tools
+    from agentfox.core.models import Trace
+
+    agent = get_agent_or_404(session, slug)
+    traces = int(
+        session.scalar(select(func.count()).select_from(Trace).where(Trace.agent_slug == slug)) or 0
+    )
+    tools = agent_tools(session, slug).get("tools", [])
+    granted = sum(1 for t in tools if "granted" in (t.get("sources") or []))
+    watching = [{"key": p["key"], "label": p["label"]} for p in _watching_packs(session, slug)]
+    steps = [
+        {"id": "add", "done": agent.status != "draft"},
+        {"id": "traffic", "done": traces > 0},
+        {"id": "tools", "done": granted > 0 or not tools},
+        {"id": "enforce", "done": not watching},
+    ]
+    return {
+        "agent": slug,
+        "name": agent.name or slug,
+        "id": agent.id,
+        "status": agent.status,
+        "traces": traces,
+        "tools": len(tools),
+        "granted": granted,
+        "watching": watching,
+        "steps": steps,
+        "next": next((s["id"] for s in steps if not s["done"]), None),
+    }

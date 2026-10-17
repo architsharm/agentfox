@@ -112,7 +112,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
 
       {noTraffic ? (
         <Card>
-          <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No requests yet.</Empty>
+          <Empty
+            action={
+              <>
+                <Link href="/app/welcome?again=1" className="k-btn-primary">Scan a repository</Link>{" "}
+                <Link href="/app/start" className="k-btn">Connect an agent</Link>
+              </>
+            }
+          >
+            No requests yet.
+          </Empty>
         </Card>
       ) : (
         <>
@@ -126,7 +135,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
             <Card title="Requests" action={<Link href="/app/observe">Observe</Link>}>
               <TimeChart buckets={b} bucketSeconds={summary.bucket_seconds} height={120} linkFor={(start, end) => runsHref(f, { start, end })} />
             </Card>
-            <Card title="Agents" action={<Link href="/app/agents">All agents</Link>} flush>
+            <Card title="Projects" action={<Link href="/app/projects">All projects</Link>} flush>
               <table className="k-table">
                 <tbody>
                   {live.slice(0, 6).map((a: any) => {
@@ -136,7 +145,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<SP>
                         <td>
                           <span className="k-pills">
                             <Dot tone={a.control_state && a.control_state !== "active" ? "bad" : a.last_seen_at ? "ok" : "idle"} />
-                            <Link className="k-name" href={`/app/agents/${encodeURIComponent(a.slug)}`}>{a.name || a.slug}</Link>
+                            <Link className="k-name" href={`/app/projects/${encodeURIComponent(a.slug)}`}>{a.name || a.slug}</Link>
                             {!a.registered && <Pill tone="bad">Unregistered</Pill>}
                           </span>
                         </td>

@@ -94,11 +94,13 @@ def agent_tree(session: Session) -> list[dict[str, Any]]:
     An agent nobody delegates to is a root. One delegated to by several is shown
     under the first; a cycle is cut where it closes.
     """
-    agents = {
-        a.slug: a
-        for a in session.scalars(select(Agent).order_by(Agent.slug))
-        if a.status != "draft"
-    }
+    agents: dict[str, Agent] = {}
+    proposals: set[str] = set()
+    for a in session.scalars(select(Agent).order_by(Agent.slug)):
+        if a.status in ("draft", "rejected"):
+            proposals.add(a.slug)
+        else:
+            agents[a.slug] = a
     children: dict[str, list[str]] = {}
     has_parent: set[str] = set()
     for edge in session.scalars(
@@ -106,6 +108,10 @@ def agent_tree(session: Session) -> list[dict[str, Any]]:
         .where(LineageEdge.relation == "delegates_to", LineageEdge.dst_type == "agent")
         .order_by(LineageEdge.src_id, LineageEdge.dst_id)
     ):
+        # A scan's declared edges join proposals nobody has added yet; those are not
+        # agents to pick for a rule until someone does.
+        if edge.src_id in proposals or edge.dst_id in proposals:
+            continue
         children.setdefault(edge.src_id, []).append(edge.dst_id)
         if edge.src_id != edge.dst_id:
             has_parent.add(edge.dst_id)

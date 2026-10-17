@@ -37,10 +37,11 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.deps import current_user, db, require
+from agentfox.apps.gateway.deps import WRITE_ROLES, current_user, db, require
 from agentfox.capabilities.discovery.openapi import SpecFetchError, fetch_spec, scan_spec
 from agentfox.capabilities.discovery.repo import ScanReport
 from agentfox.capabilities.discovery.repo import scan as discovery_scan
+from agentfox.capabilities.discovery.skills import scan_skills_dir
 from agentfox.capabilities.monitoring import github as gh
 from agentfox.capabilities.monitoring.snapshots import api_snapshot, repo_snapshot
 from agentfox.core import extensions, ids
@@ -439,6 +440,95 @@ def _download_and_extract(repo_full_name: str, ref: str, token: str, dest: Path)
         raise HTTPException(502, str(exc)) from exc
 
 
+#: How many of each finding a scan summary keeps. The summary is a first look, not
+#: the record: the full list is in the scan itself and in the findings it raises.
+_HIGHLIGHT_LIMIT = 10
+
+
+def skill_issues(skills: list[dict[str, Any]], root: Path) -> list[dict[str, str]]:
+    """Every problem in a scan's skills, one row each, with repository-relative paths."""
+
+    def _rel(path: str) -> str:
+        try:
+            return str(Path(path).resolve().relative_to(root.resolve()))
+        except ValueError:
+            return path
+
+    return [
+        {
+            "skill": result["skill"],
+            "path": _rel(result["path"]),
+            "type": issue["type"],
+            "severity": issue["severity"],
+        }
+        for result in skills
+        for issue in result["issues"]
+    ]
+
+
+def scan_highlights(report: ScanReport, skills: list[dict[str, Any]], root: Path) -> dict[str, Any]:
+    """What a person should see first from one repository scan.
+
+    The counts in ``sites`` say how much was found; these say what it was, in the
+    scanner's own words: each lethal trifecta's sentence, the MCP servers by name and
+    the skills with planted instructions. The welcome page shows them as the first
+    result a new user sees, so they come from the real scan of the real repository,
+    never from sample data.
+    """
+
+    return {
+        "model_calls": len(report.model_calls),
+        "ungoverned_model_calls": len(report.ungoverned),
+        "tools": sum(1 for site in report.sites if site.kind == "tool"),
+        "mcp_servers": sorted(
+            {site.name for site in report.sites if site.kind == "mcp_server" and site.name}
+        )[:_HIGHLIGHT_LIMIT],
+        "trifectas": [
+            {"file": site.file, "detail": site.detail}
+            for site in report.trifectas[:_HIGHLIGHT_LIMIT]
+        ],
+        "skills": len(skills),
+        "skill_issues": skill_issues(skills, root)[:_HIGHLIGHT_LIMIT],
+    }
+
+
+def raise_scan_findings(
+    session: Session, repo_full_name: str, report: ScanReport, issues: list[dict[str, str]]
+) -> None:
+    """Open an issue for each lethal trifecta and each skill problem a scan found.
+
+    Without this a first scan showed a trifecta on the page and nothing under Issues:
+    findings came only from monitoring, which raises what changed since a baseline,
+    and the first scan is the baseline. Fingerprinted on the repository and the
+    condition, not the scan, so scanning again counts another occurrence of the same
+    issue instead of opening a second one.
+    """
+    from agentfox.platform.ledger.findings import raise_finding
+
+    for site in report.trifectas:
+        raise_finding(
+            session,
+            type="repo_lethal_trifecta",
+            severity="high",
+            title=f"Lethal trifecta in {repo_full_name}: {site.file}",
+            subject_type="repository",
+            evidence={"repo": repo_full_name, "file": site.file, "detail": site.detail},
+            fingerprint_parts=(repo_full_name, site.file, site.detail),
+        )
+    for issue in issues:
+        kind = issue["type"].replace("_", " ")
+        raise_finding(
+            session,
+            type=issue["type"],
+            severity=issue["severity"],
+            title=f"Skill '{issue['skill']}' in {repo_full_name}: {kind}",
+            subject_type="skill",
+            evidence={**issue, "repo": repo_full_name},
+            control_keys=["NOM-DSC-05"],
+            fingerprint_parts=(repo_full_name, issue["path"], issue["type"]),
+        )
+
+
 @router.post("/api/integrations/github/scan")
 def trigger_scan(
     payload: ScanIn, session: Session = Depends(db), user: User = Depends(require("registry"))
@@ -461,6 +551,9 @@ def trigger_scan(
         try:
             root = _download_and_extract(payload.repo_full_name, payload.ref, token, Path(tmp))
             report = discovery_scan(root)
+            skills = scan_skills_dir(root)
+            highlights = scan_highlights(report, skills, root)
+            all_skill_issues = skill_issues(skills, root)
         except HTTPException:
             run.status = "failed"
             run.completed_at = utcnow()
@@ -496,7 +589,13 @@ def trigger_scan(
             if s.kind in ("agent_definition", "tool", "model_call", "lethal_trifecta")
         ],
         author=user.email or user.id,
+        # Read server-side from the downloaded code, so each agent carries its own
+        # tools as well (a laptop's `--submit` does not send them).
+        agents=[{**a.to_json(), "top_dir": a.top_dir} for a in report.agents],
+        agent_edges=[e.to_json() for e in report.agent_edges],
     )
+
+    raise_scan_findings(session, payload.repo_full_name, report, all_skill_issues)
 
     # From now on this repository is re-scanned on a schedule (and on push, once the
     # webhook is registered), diffed against what this scan saw.
@@ -528,6 +627,7 @@ def trigger_scan(
         "sites": report.by_kind(),
         "agents_proposed": created_agents,
         "policies_proposed": created_policies,
+        "highlights": highlights,
     }
     session.flush()
     chain.append(
@@ -558,6 +658,67 @@ def get_scan(
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "completed_at": run.completed_at.isoformat() if run.completed_at else None,
         "summary": run.summary_json,
+    }
+
+
+@router.post("/api/integrations/github/scans/{scan_id}/accept")
+def accept_scan(
+    scan_id: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Approve every draft one scan proposed, in one step.
+
+    The same state change as approving each draft agent and proposed policy on its own
+    (`approve_agent`, `approve_policy`), with the same ledger entries, so the audit
+    trail cannot tell the two paths apart. The policies stay in observe: approving a
+    proposal makes it live, it does not make it block. Policy permission is checked as
+    well as registry permission, because this approves both.
+    """
+    from agentfox.core.models import Agent
+
+    if user.role not in WRITE_ROLES.get("policy", set()):
+        raise HTTPException(403, f"role '{user.role}' may not modify 'policy'")
+    run = session.get(ScanRun, scan_id)
+    if run is None:
+        raise HTTPException(404, "unknown scan")
+    actor = user.email or user.id
+    agents = list(
+        session.scalars(
+            select(Agent).where(Agent.source_scan_run_id == scan_id, Agent.status == "draft")
+        )
+    )
+    for agent in agents:
+        agent.status = "active"
+        agent.registered = True
+        session.flush()
+        chain.append(
+            session,
+            "agent.draft.approved",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="agent",
+            subject_id=agent.id,
+        )
+    policies = list(
+        session.scalars(
+            select(Policy).where(Policy.source_scan_run_id == scan_id, Policy.proposed.is_(True))
+        )
+    )
+    for policy in policies:
+        policy.proposed = False
+        session.flush()
+        chain.append(
+            session,
+            "policy.draft.approved",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="policy",
+            subject_id=policy.id,
+        )
+    session.commit()
+    return {
+        "scan_run_id": scan_id,
+        "agents": [a.slug for a in agents],
+        "policies": [p.key for p in policies],
     }
 
 
@@ -909,6 +1070,48 @@ def approve_agent(
     )
     session.commit()
     return {"id": agent.id, "status": agent.status}
+
+
+@router.post("/api/agents/{agent_id}/approve-system")
+def approve_agent_system(
+    agent_id: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Approve a proposed agent and every proposed agent it hands work to, in one step.
+
+    A scan proposes a multi-agent system as one draft per agent, joined by the
+    delegations its code declares. Adding the orchestrator without its sub-agents
+    leaves a live agent handing work to drafts nothing governs, so the Proposed list
+    offers this beside each system. Each agent gets the same state change and ledger
+    entry as approving it on its own (`approve_agent`); one already added is skipped.
+    """
+    from agentfox.capabilities.protection.scope import delegates
+    from agentfox.core.models import Agent
+
+    root = session.get(Agent, agent_id)
+    if root is None:
+        raise HTTPException(404, "no agent with that id")
+    slugs = [root.slug, *delegates(session, root.slug)]
+    drafts = list(
+        session.scalars(select(Agent).where(Agent.slug.in_(slugs), Agent.status == "draft"))
+    )
+    if not drafts:
+        raise HTTPException(404, "nothing in this system is waiting to be added")
+    actor = user.email or user.id
+    drafts.sort(key=lambda a: slugs.index(a.slug))
+    for agent in drafts:
+        agent.status = "active"
+        agent.registered = True
+        session.flush()
+        chain.append(
+            session,
+            "agent.draft.approved",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="agent",
+            subject_id=agent.id,
+        )
+    session.commit()
+    return {"id": root.id, "approved": [a.slug for a in drafts]}
 
 
 @router.post("/api/agents/{agent_id}/reject")

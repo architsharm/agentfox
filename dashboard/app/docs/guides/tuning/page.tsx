@@ -60,8 +60,10 @@ export default function Page() {
       <Output>{`Runtime check
   ✓    database            reachable — 5 agent(s), 8 trace(s)
 …
-  ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
-                           schema.json, secrets.native
+  ✓    detectors           8 running: code.insecure, custom.lists,
+                           injection.classifier, injection.heuristic,
+                           pii.native, safety.lexicon, schema.json,
+                           secrets.native
 …
   !    detector failure    fail-open: a detector that times out lets the request through and
                            records the gap`}</Output>
@@ -109,21 +111,26 @@ pii.presidio        enabled=False available=False  Microsoft Presidio is not ins
 safety.granite      enabled=False available=False  Wrapped IBM Granite Guardian, via transformers — needs the model weights downloaded ahead of time (never fetched at request time); not present in this deploymen…
 …`}</Output>
       <p>(Fields picked out of the JSON response and printed one per line.)</p>
-      <Callout kind="warning" title="doctor does not flag an enabled detector that cannot run">
-        With <code>injection.judgment</code> or <code>injection.classifier</code> added to{" "}
-        <code>AGENTFOX_ENABLED_DETECTORS</code> but unable to run, <code>agentfox doctor</code>{" "}
-        still prints <code>✓ detectors 5 available</code>. Compare that list with what you
-        enabled, or read <code>GET /api/detectors</code>.
+      <Callout kind="note" title="An enabled detector that cannot run is flagged">
+        Where a model is missing, <code>agentfox doctor</code> marks the line with{" "}
+        <code>!</code> and names the fix, for example{" "}
+        <code>enabled but unavailable: injection.classifier (model not downloaded: run
+        `agentfox admin detectors pull injection.classifier`)</code>. The gateway and{" "}
+        <code>agentfox.auto()</code> log the same warning at startup.
       </Callout>
       <InTheApp path="/app/policies">Policies → Detectors: turned on, available, not installed</InTheApp>
 
       <h3>How much the detectors catch</h3>
       <p>
         On the held-out split of <code>deepset/prompt-injections</code> (116 examples), the
-        default heuristic detector catches <strong>16.7%</strong> of injections at 100%
-        precision. Adding the opt-in classifier ensemble raises that to{" "}
-        <strong>68.3%</strong> at the same precision, but on NotInject, a set of benign
-        prompts written to look like injections, the ensemble flags 140 of 339 (41.3%).
+        default stack, the heuristic plus the classifier ensemble, catches{" "}
+        <strong>68.3%</strong> of injections at 100% precision. The classifier needs{" "}
+        <code>agentfox[classifiers]</code> and its weights (the Docker image ships both);
+        without them the heuristic runs alone and catches <strong>16.7%</strong>, and{" "}
+        <code>agentfox doctor</code> says so. On NotInject, a set of benign prompts written to
+        look like injections, the ensemble flags 139 of 339 (41%). The backstop model&apos;s
+        hits are advisory: observe-mode policies see them, but an enforcing policy acts only
+        on PIGuard&apos;s verdict, which flags 39 of 339 (11.5%).
         Containment does not depend on these numbers: grants and provenance stop a tool call
         whether or not a detector fires. Details and every dataset are on{" "}
         <Link href="/docs/benchmarks">Benchmarks</Link>.

@@ -420,6 +420,16 @@ claims:
       - {file: dashboard/components/marketing/blog/posts/prompt-injection-containment-not-detection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
       - {file: dashboard/components/marketing/blog/posts/hidden-indirect-prompt-injection.tsx, text: 'held-out injection recall is {pct}% at 100% precision'}
 
+  # The default stack since October 2026: heuristic + injection.classifier.
+  - id: injection.default_held_out
+    source: benchmarks/injection/results/prompt_injection_summary.json
+    render: fields
+    fields:
+      pct: {path: [configs, heuristic_classifier, held_out, recall], scale: 100, format: ".1f"}
+    quoted_in:
+      - {file: README.md, text: "has a held-out recall of {pct}%, at 100% precision"}
+      - {file: docs/design/architecture-differentiation.md, text: "reaches {pct}% held-out injection recall at 100% precision"}
+
   - id: crescendo.trajectory_latency
     source: benchmarks/crescendo/results/crescendo_results.json
     render: fields

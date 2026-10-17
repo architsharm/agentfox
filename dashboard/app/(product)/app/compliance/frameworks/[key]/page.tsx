@@ -167,7 +167,7 @@ export default async function FrameworkPage({ params }: { params: Promise<{ key:
                       o.agents_in_scope.slice(0, 6).map((slug: string, i: number) => (
                         <span key={slug}>
                           {i > 0 && ", "}
-                          <Link href={`/app/agents/${encodeURIComponent(slug)}`}>{slug}</Link>
+                          <Link href={`/app/projects/${encodeURIComponent(slug)}`}>{slug}</Link>
                         </span>
                       ))
                     )}

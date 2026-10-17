@@ -1,5 +1,12 @@
 # Prompt-injection detection: a reproducible benchmark
 
+> **October 2026: the classifier is now part of the default.** `injection.classifier`
+> ships enabled alongside the heuristic, so the shipped default's held-out recall is
+> **68.3%**, not 16.7%; the heuristic-alone figure still applies wherever the model is
+> not installed. Its ensemble backstop is advisory: enforcing policies ignore it. See
+> "Round 8" at the end for the numbers and what still does not work. Sections below
+> that say "shipped default" or "opt-in" describe the stack before this change.
+
 **Headline number: heuristic + classifier + similarity together get held-out recall
 to 66.7% (up from an unmodified regex detector's 0%), at 100% precision throughout.**
 Every number here, good and modest, comes from a script anyone can run themselves.
@@ -790,3 +797,53 @@ fixed detector, same datasets, same script, **at the shipped 40ms per-detector t
    similarity detector times out on 100% of everything. A **cold** process that never calls `warm_all()`
    times out on every call until the model loads — the gateway warms at startup, but an in-process
    `agentfox.auto()` user who enables the classifier does not get that for free.
+
+## Round 8 — the classifier becomes part of the default (2026-10-14)
+
+`injection.classifier` (PIGuard, with the protectai backstop at 0.92) is now in the default
+`enabled_detectors`. Two findings drove it. First, the heuristic alone catches 16.7% of the
+held-out split. Second, published open-source rule sets do not close that gap. Vigil's YARA
+rules, LlamaFirewall's regex scanner and Rebuff's keyword heuristic were each run on the same
+splits, and each caught **0.0%** of the held-out deepset positives. Combined, the three added
+at most 4 points of recall on top of our heuristic on any dataset. Recall on these datasets
+comes from a model, not from more patterns.
+
+**The default stack, measured through `DetectorPipeline()` with no overrides, warmed:**
+
+| Dataset | Heuristic alone (old default) | New default | What an enforcing policy acts on (PIGuard alone) |
+|---|---|---|---|
+| deepset held-out (116) | 16.7% | **68.3%**, 0 FP | 68.3%, 0 FP |
+| spml (500) | 9.6% | **86.4%**, 17 FP / 250 | 29.6%, 0 FP |
+| yanismiraoui (1,034) | 0.6% | **98.4%** | 76.0% |
+| notinject (339 benign) FP | 0 | **139 (41%)** | **39 (11.5%)** |
+
+**The mode split.** The backstop is where the recall on spml and yanismiraoui comes from. It is
+also where nearly all of NotInject's false positives come from. Its hits are therefore marked
+`advisory` (`PolicyInput.for_mode`):
+
+- Observe-mode policies see them, so findings and simulations show the full counterfactual.
+- Enforce-mode policies do not, so a block rests on PIGuard's own verdict, at the 11.5%
+  NotInject rate.
+
+**What making it a default found, and fixed.** The classifier had only ever run when someone
+opted in, so two concurrency bugs had never been hit in the test suite:
+
+- A burst of first requests to a cold detector raced `transformers`' lazy import. Most calls
+  failed with `ImportError: cannot import name 'pipeline'`, and fail-open let them through.
+- Concurrent forward passes on one model segfaulted the process (torch 2.13, macOS arm64).
+
+Model loaders now build once under a lock (`detection/loading.py`). Forward passes on a given
+model run one at a time. A request that waits past its budget is reported as degraded, like any
+other timeout.
+
+**Still true:**
+
+- **Without `agentfox[classifiers]` and the weights**, the heuristic alone runs (16.7%). The
+  published Docker image ships both. A pip install without them now logs a startup warning,
+  and `agentfox doctor` names the fix rather than skipping silently.
+- **Long prompts** (TrustAIRLab, mean 2,156 characters) still time out within the 250 ms
+  classifier budget on nearly every call. There the request falls back to the heuristic.
+  Chunked, quantized inference is the next fix.
+- **One forward pass at a time per model** means concurrent requests queue for the classifier.
+  Under load, some calls degrade rather than wait. Batching or model replicas would lift that
+  ceiling; neither is built yet.

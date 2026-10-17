@@ -82,7 +82,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
           </Grid>
           <Grid cols={2}>
             <Card title="By agent">
-              <BarList rows={Object.entries(s?.agents || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: `/app/agents/${encodeURIComponent(k)}` }))} empty="No hits" />
+              <BarList rows={Object.entries(s?.agents || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: `/app/projects/${encodeURIComponent(k)}` }))} empty="No hits" />
             </Card>
             <Card title="By tool">
               <BarList rows={Object.entries(s?.tools || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: runsHref({ range }, { rule: ruleId, tool: k }) }))} empty="Not tool-specific" />
