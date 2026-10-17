@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/product/api";
+import { requestOrigin } from "@/lib/product/origin";
 import { PROJECT_COOKIE, PROJECT_COOKIE_AGE, projectInPath } from "@/lib/product/project";
 
 // /playground is the public, unauthenticated demo (dashboard/app/(marketing)/playground) — it
@@ -124,7 +125,7 @@ export function middleware(req: NextRequest) {
   // a Server Component cannot set cookies. `expired=1` is what the login page
   // reads to explain what happened; the incoming value is never rendered.
   if (pathname === "/login" && req.nextUrl.searchParams.get("session") === "expired") {
-    const url = new URL("/login", req.url);
+    const url = new URL("/login", requestOrigin(req));
     url.searchParams.set("expired", "1");
     const res = NextResponse.redirect(url);
     res.cookies.delete(SESSION_COOKIE);
@@ -137,20 +138,20 @@ export function middleware(req: NextRequest) {
   // old link or bookmark keeps working; `?tab=` is read by the project page itself.
   for (const old of ["/app/agents", "/docs/app/agents"]) {
     if (!underPrefix(old)) continue;
-    const url = new URL(`${old.replace(/agents$/, "projects")}${pathname.slice(old.length)}${req.nextUrl.search}${req.nextUrl.hash}`, req.url);
+    const url = new URL(`${old.replace(/agents$/, "projects")}${pathname.slice(old.length)}${req.nextUrl.search}${req.nextUrl.hash}`, requestOrigin(req));
     return NextResponse.redirect(url, 308);
   }
   // The workspace map was every project's canvas behind a picker; each project has
   // its own canvas now. The one named, else the one last chosen, else the list.
   if (pathname === "/app/map") {
     const slug = req.nextUrl.searchParams.get("agent") || req.cookies.get(PROJECT_COOKIE)?.value;
-    const url = new URL(slug ? `/app/projects/${encodeURIComponent(slug)}` : "/app/projects", req.url);
+    const url = new URL(slug ? `/app/projects/${encodeURIComponent(slug)}` : "/app/projects", requestOrigin(req));
     return NextResponse.redirect(url, 307);
   }
 
   const moved = MOVED_TO_APP.find(underPrefix);
   if (moved) {
-    const url = new URL(`/app${pathname}${req.nextUrl.search}`, req.url);
+    const url = new URL(`/app${pathname}${req.nextUrl.search}`, requestOrigin(req));
     return NextResponse.redirect(url, 308);
   }
 
@@ -159,7 +160,7 @@ export function middleware(req: NextRequest) {
   const signedIn = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
 
   if (isPrivate && !signedIn) {
-    const url = new URL("/login", req.url);
+    const url = new URL("/login", requestOrigin(req));
     return NextResponse.redirect(url);
   }
   const res = NextResponse.next({ request: { headers } });

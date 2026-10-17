@@ -59,7 +59,7 @@ async function proxyForward(
   const errorParam = opts.errorParam || "review_error";
 
   if (opts.redirectTo) {
-    const target = new URL(opts.redirectTo, req!.nextUrl.origin);
+    const target = new URL(opts.redirectTo, requestOrigin(req!));
     if (!token) {
       target.searchParams.set(errorParam, "not signed in");
       return NextResponse.redirect(target);

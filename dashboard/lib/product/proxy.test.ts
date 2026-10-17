@@ -103,6 +103,17 @@ describe("proxy auth/mutation boundary", () => {
       expect(location.searchParams.get("scan_error")).toBe("not signed in");
       expect(location.searchParams.get("review_error")).toBeNull();
     });
+
+    it("redirects back to the host the browser used, not the server's own hostname", async () => {
+      withToken("real-session-token");
+      fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+      // Opened at 127.0.0.1: a redirect to localhost is another origin, without the session cookie.
+      const r = new NextRequest("http://localhost:3000/api/agents/x/approve", { headers: { host: "127.0.0.1:3000" } });
+      const res = await proxyReviewAction(r, "/api/agents/x/approve", "/app/projects");
+
+      expect(new URL(res.headers.get("location")!).origin).toBe("http://127.0.0.1:3000");
+    });
   });
 
   describe("JSON-shaped calls (proxyJson, used by interactive client components)", () => {
