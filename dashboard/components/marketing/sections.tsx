@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { FLAT, PRODUCT, RESOURCES, SECONDARY } from "@/lib/marketing/nav";
 import { BrandLockup } from "@/components/marketing/brand";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 /**
  * The lower half of the public landing page: what it does, what was measured, how you
@@ -465,24 +466,25 @@ export function CTA() {
       <div className="mk-wrap">
         <div
           className="mk-card mk-card-raised mk-up"
-          style={{ padding: "36px 32px" }}
+          style={{ padding: "40px 36px" }}
         >
           <div className="mk-narrow">
-            <h2 className="mk-h2">Red team a call in the browser</h2>
+            <h2 className="mk-h2">Put every agent behind a permission check</h2>
             <p className="mk-lede" style={{ marginTop: 12 }}>
-              No account. The playground uses the same enforcement code as the product.
+              Start on the free hosted preview, or run the open-source core in your own
+              infrastructure. Either way, it starts in observe mode, so nothing breaks on day one.
             </p>
-            <div className="mk-row" style={{ marginTop: 20, gap: 10 }}>
-              <Link href="/playground" className="mk-btn mk-btn-primary">
-                Open the playground
+            <div className="mk-row" style={{ marginTop: 22, gap: 10 }}>
+              <Link href="/login" className="mk-btn mk-btn-primary">
+                Get started free
               </Link>
-              <Out href={REPO} className="mk-btn mk-btn-outline">
-                Read the source
-              </Out>
+              <a href={`mailto:${SUPPORT_EMAIL}?subject=AgentFox`} className="mk-btn mk-btn-outline">
+                Talk to us
+              </a>
             </div>
             <p className="mk-fine" style={{ marginTop: 16 }}>
-              Offline: no API key, no downloaded weights, no network egress.{" "}
-              <Link href="/docs">Install from the docs.</Link>
+              Prefer to look first? <Link href="/playground">Try the playground</Link>, no
+              account needed.
             </p>
           </div>
         </div>
@@ -558,7 +560,7 @@ export function Footer() {
               asking the question they answer. A footer is not the place to argue
               against yourself. */}
           <p className="mk-fine" style={{ margin: "8px 0 0" }}>
-            An open-source control plane for AI agents.
+            The control plane for AI agents.
           </p>
         </div>
         <nav
@@ -577,8 +579,7 @@ export function Footer() {
       </div>
       <div className="mk-wrap">
         <p className="mk-fine" style={{ margin: "28px 0 0" }}>
-          Apache-2.0. Security reports go through GitHub&rsquo;s private advisories rather than
-          a public issue; the route is in SECURITY.md.
+          &copy; 2026 Nometria. The AgentFox core is open source under Apache-2.0.
         </p>
       </div>
     </footer>

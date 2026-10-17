@@ -9,7 +9,6 @@ import {
   Origins,
   Boundaries,
   Proof,
-  Limits,
 } from "@/components/marketing/home";
 
 export const dynamic = "force-dynamic";
@@ -172,7 +171,6 @@ function Landing() {
         <Platform />
         <Boundaries />
         <Proof />
-        <Limits />
         <CTA />
       </main>
       <Footer />
