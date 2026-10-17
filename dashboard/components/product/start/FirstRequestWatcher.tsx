@@ -18,7 +18,14 @@ type Counts = { traces: number; agents: number; decisions: number };
 const INTERVAL_MS = 4000;
 const GIVE_UP_MS = 10 * 60_000;
 
-export function FirstRequestWatcher({ initial }: { initial: Counts }) {
+export function FirstRequestWatcher({
+  initial,
+  waitingHint = "Run your agent with a snippet above, or send a test request. This updates by itself.",
+}: {
+  initial: Counts;
+  /** What to do while nothing has arrived, in the words of the page it sits on. */
+  waitingHint?: string;
+}) {
   const router = useRouter();
   const [counts, setCounts] = useState(initial);
   const [gaveUp, setGaveUp] = useState(false);
@@ -68,7 +75,7 @@ export function FirstRequestWatcher({ initial }: { initial: Counts }) {
         </div>
         <div className="watcher-actions">
           <Link href="/app/traces">See activity →</Link>
-          <Link href="/app/agents">Review agents →</Link>
+          <Link href="/app/projects">Review agents →</Link>
         </div>
       </div>
     );
@@ -81,7 +88,7 @@ export function FirstRequestWatcher({ initial }: { initial: Counts }) {
         <span className="muted">
           {gaveUp
             ? "Reload this page to keep waiting. Check the gateway URL and API key in your snippet."
-            : "Run your agent with a snippet above, or send a test request. This updates by itself."}
+            : waitingHint}
         </span>
       </div>
     </div>

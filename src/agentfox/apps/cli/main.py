@@ -36,6 +36,7 @@ from agentfox.apps.cli.mcp_cli import register as _register_mcp
 from agentfox.apps.cli.onboarding import register as _register_onboarding
 from agentfox.apps.cli.quickscan import register as _register_quickscan
 from agentfox.apps.cli.report_cli import register as _register_report
+from agentfox.apps.cli.wizard.command import register as _register_up
 
 app = typer.Typer(
     name="agentfox",
@@ -60,6 +61,7 @@ app.add_typer(hooks_app, name="hooks")
 # The three commands a new user runs, registered as top-level verbs. The rest of this
 # CLI is right for an operator running a governance programme and wrong for the first
 # ten minutes.
+_register_up(app)
 _register_onboarding(app)
 _register_quickscan(app)
 _register_auth(app)

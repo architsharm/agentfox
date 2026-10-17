@@ -561,7 +561,7 @@ say:     That asks for a projection rather than a recorded fact. I can only repo
         </Step>
       </Steps>
 
-      <InTheApp path="/app/agents">Agents → an agent → Knowledge boundary</InTheApp>
+      <InTheApp path="/app/projects">Agents → an agent → Knowledge boundary</InTheApp>
 
       <h2>Where these show up</h2>
       <p>

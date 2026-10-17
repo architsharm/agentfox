@@ -212,8 +212,8 @@ def scan_mcp(
         Member,
         classify_mcp_server,
         classify_tool,
+        declared_mcp_servers,
         find_mcp_configs,
-        parse_mcp_config,
         server_hygiene,
         trifecta_sentence,
     )
@@ -241,10 +241,7 @@ def scan_mcp(
 
     root = Path(".")
     configs = [config] if config is not None else find_mcp_configs(root)
-    declared = {}
-    for path in configs:
-        for decl in parse_mcp_config(path, root=root):
-            declared.setdefault(decl.name, decl)
+    declared = {decl.name: decl for decl in declared_mcp_servers(root, config)}
 
     tools = MCP_TOOLS if seed_fixture else None
     if file is not None:

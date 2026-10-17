@@ -184,6 +184,7 @@ class OpaPolicyEngine:
         ).raise_for_status()
 
     def evaluate(self, policy: PolicyDocument, pinput: PolicyInput) -> PolicyDecision:
+        pinput = pinput.for_mode(policy.mode)
         module = policy.key.replace("-", "_")
         payload = {"input": self._shape(pinput)}
         try:

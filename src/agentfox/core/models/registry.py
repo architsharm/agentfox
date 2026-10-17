@@ -194,6 +194,10 @@ class LineageEdge(Base, TimestampMixin):
     relation: Mapped[str] = mapped_column(String(32))
     observed_count: Mapped[int] = mapped_column(Integer, default=0)
     declared: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: For a ``delegates_to`` edge read from code: how the parent hands work over
+    #: (``discovery.agents.RELATIONS``: handoff | as_tool | delegates | member). None
+    #: for an edge only ever seen in traffic, where a span does not say.
+    kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
     first_observed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_observed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

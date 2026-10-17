@@ -420,7 +420,7 @@ export default async function Evals({
             threshold below is each scorer&rsquo;s built-in default, not a setting.
             The number you actually choose is a <strong>reliability objective</strong>,
             set per agent against a scorer, and visible on an agent&rsquo;s{" "}
-            <Link href="/app/agents">Activity tab</Link>.
+            <Link href="/app/projects">Activity tab</Link>.
           </p>
 
           <h4>Scorers that ship</h4>

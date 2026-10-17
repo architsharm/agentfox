@@ -11,6 +11,13 @@ account: <https://useagentfox.com/playground>.
 no API key, no model weights, no network egress. The built-in `echo` model provider makes the whole
 enforcement path demonstrable with nothing installed.
 
+**The fast way.** `agentfox up` in your own repository does the setup half of this page in
+one command: it scans, asks where AgentFox runs and what to cover, and then installs the
+coding-agent hooks, adds `agentfox.auto()`, declares the tools it found, registers your MCP
+servers and starts everything in observe. `agentfox up --yes` takes the recommended answers;
+`agentfox up --dry-run` shows the plan without changing anything. Read on for what each of
+those steps is and how to check it worked.
+
 **Vocabulary used throughout:**
 
 - **Agent**: a program that calls a model and can take actions. AgentFox identifies each one by a

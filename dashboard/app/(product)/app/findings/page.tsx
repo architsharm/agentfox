@@ -46,6 +46,13 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
     (a, b) => severityRank(a.severity) - severityRank(b.severity) || String(b.last_seen_at).localeCompare(String(a.last_seen_at)),
   );
   const keep = { agent: sp.agent, severity: sp.severity };
+  // "No open issues" in a workspace that has never been scanned or sent a request
+  // reads as good news when it means nothing has been looked at yet. Asked only
+  // when the list is empty, so a busy workspace pays nothing for it.
+  const untouched =
+    rows.length === 0 && status === "open"
+      ? await safeApi<any>("/api/onboarding", null).then((o) => Boolean(o && !o.counts?.scans && !o.counts?.traces))
+      : false;
 
   return (
     <>
@@ -92,7 +99,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
                     <span className="sub">{findingTypeInfo(f.type).label}</span>
                   </td>
                   <td>
-                    {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/agents/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : <span className="k-muted">—</span>}
+                    {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : <span className="k-muted">—</span>}
                   </td>
                   <td className="num">{num(f.occurrences || 1)}</td>
                   <td className="tight muted">{ago(f.last_seen_at || f.created_at)}</td>
@@ -101,7 +108,13 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
             </tbody>
           </table>
         ) : (
-          <Empty>{status === "open" ? "No open issues." : "Nothing here."}</Empty>
+          untouched ? (
+            <Empty action={<Link href="/app/welcome?again=1" className="k-btn-primary">Scan a repository</Link>}>
+              Nothing scanned yet. Issues appear once a repository is scanned or an agent sends a request.
+            </Empty>
+          ) : (
+            <Empty>{status === "open" ? "No open issues." : "Nothing here."}</Empty>
+          )
         )}
       </Card>
     </>

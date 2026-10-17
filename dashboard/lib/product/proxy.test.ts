@@ -22,7 +22,7 @@ function withToken(token: string | undefined) {
   cookiesGetMock.mockReturnValue(token === undefined ? undefined : { value: token });
 }
 
-function req(path = "/app/agents/support-triage") {
+function req(path = "/app/projects/support-triage") {
   return new NextRequest(`http://localhost:3000${path}`);
 }
 
@@ -43,12 +43,12 @@ describe("proxy auth/mutation boundary", () => {
     it("an unauthenticated caller is redirected with an error and the gateway is never called", async () => {
       withToken(undefined);
 
-      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/agents");
+      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/projects");
 
       expect(fetchMock).not.toHaveBeenCalled();
       expect(res.status).toBe(307); // NextResponse.redirect default
       const location = new URL(res.headers.get("location")!);
-      expect(location.pathname).toBe("/app/agents");
+      expect(location.pathname).toBe("/app/projects");
       expect(location.searchParams.get("review_error")).toBe("not signed in");
     });
 
@@ -56,7 +56,7 @@ describe("proxy auth/mutation boundary", () => {
       withToken("real-session-token");
       fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
-      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/agents", {
+      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/projects", {
         successNotice: "Agent approved.",
       });
 
@@ -76,7 +76,7 @@ describe("proxy auth/mutation boundary", () => {
         new Response(JSON.stringify({ detail: "agent already approved" }), { status: 409 }),
       );
 
-      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/agents");
+      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/projects");
 
       const location = new URL(res.headers.get("location")!);
       expect(location.searchParams.get("review_error")).toBe("agent already approved");
@@ -86,7 +86,7 @@ describe("proxy auth/mutation boundary", () => {
       withToken("real-session-token");
       fetchMock.mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
 
-      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/agents");
+      const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/projects");
 
       const location = new URL(res.headers.get("location")!);
       expect(location.searchParams.get("review_error")).toContain("ECONNREFUSED");

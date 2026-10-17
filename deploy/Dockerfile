@@ -11,7 +11,7 @@
 # and behind an explicit build secret here, never a plain ENV, so the token can't leak
 # into an image layer or `docker history`).
 #
-# This makes the image materially bigger (~1-2GB of model weights) and the build
+# This makes the image materially bigger (the weights are several GB) and the build
 # requires network egress. A Hugging Face token that has accepted Meta's Llama
 # licence is needed only for the optional Llama Guard tier; the opt-in steps are in
 # deploy/docker-compose.yml's header.
@@ -46,7 +46,20 @@ COPY src ./src
 
 # `postgres`/`otel` for the compose stack, `classifiers` (transformers + torch) for
 # every model-based detector below.
-RUN pip install --upgrade pip && pip install ".[postgres,otel,classifiers]"
+#
+# torch from the CPU-only index, first, so the extras install finds it satisfied. The
+# default Linux wheel bundles the CUDA and cuDNN libraries, gigabytes the published
+# image never loads: the gateway runs its detectors on CPU, and neither
+# deploy/docker-compose.yml nor render.yaml gives the container a GPU.
+#
+# A model server on a GPU machine builds with a CUDA index instead
+# (deploy/model-server/README.md):
+#   docker build -f deploy/Dockerfile --build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu124 .
+# and `model_device = "auto"` then finds the GPU on its own.
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cpu
+RUN pip install --upgrade pip \
+ && pip install --index-url "${TORCH_INDEX}" "torch>=2.4" \
+ && pip install ".[postgres,otel,classifiers]"
 
 # CI builds and stops here (`docker build --target deps`, no secret, no GPU-scale
 # download) — enough to catch what actually broke production once already (finding
@@ -58,7 +71,14 @@ FROM base AS deps
 RUN python -c "from agentfox.apps.gateway.app import create_app; create_app(); print('image smoke: OK')"
 
 FROM deps AS weights
-RUN mkdir -p /var/agentfox/hf-cache
+# The runtime user, before anything is written under /var/agentfox. The weights below
+# are downloaded as this user, so they are its files from the start. Creating the user
+# afterwards and `chown -R`-ing the cache rewrote every weight file into a new layer:
+# the published image carried the models twice, about 5 GB of its download.
+RUN useradd --create-home --uid 10001 agentfox \
+ && mkdir -p /var/agentfox/hf-cache /var/agentfox/evidence \
+ && chown -R agentfox:agentfox /var/agentfox /app
+USER agentfox
 
 # Permissive tier — Apache-2.0/MIT, no licence gate, no secret needed.
 #
@@ -96,7 +116,7 @@ print('permissive-tier weights cached')"
 # sends `Authorization: Bearer ` and httpx rejects it as an illegal header value,
 # so the build died on a confusing protocol error rather than a missing credential.
 # `safety.restricted` then loads its weights at runtime, or stays unavailable.
-RUN --mount=type=secret,id=hf_token \
+RUN --mount=type=secret,id=hf_token,uid=10001 \
     sh -eu -c 'HF_TOKEN="$(cat /run/secrets/hf_token 2>/dev/null || true)"; \
     if [ -z "$HF_TOKEN" ]; then \
       echo "no hf_token mounted - skipping the licence-gated restricted tier"; \
@@ -105,12 +125,8 @@ RUN --mount=type=secret,id=hf_token \
     export HF_TOKEN; \
     python -c "import os; from huggingface_hub import login; login(token=os.environ[\"HF_TOKEN\"]); from transformers import AutoModelForCausalLM, AutoTokenizer; AutoTokenizer.from_pretrained(\"meta-llama/Llama-Guard-3-8B\"); AutoModelForCausalLM.from_pretrained(\"meta-llama/Llama-Guard-3-8B\"); print(\"restricted-tier weights cached\")"'
 
-# /var/agentfox/evidence is where deploy/docker-compose.yml and render.yaml point
-# AGENTFOX_EVIDENCE_DIR, so it has to exist and belong to the runtime user.
-RUN useradd --create-home --uid 10001 agentfox \
- && mkdir -p /var/agentfox/evidence \
- && chown -R agentfox:agentfox /var/agentfox /app
-USER agentfox
+# /var/agentfox/evidence, where deploy/docker-compose.yml and render.yaml point
+# AGENTFOX_EVIDENCE_DIR, was created for the runtime user with the weights cache above.
 
 EXPOSE 8080
 

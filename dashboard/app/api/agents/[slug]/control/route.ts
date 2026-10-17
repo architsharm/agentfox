@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const form = await req.formData();
   const action = String(form.get("action") || "");
   if (!ACTIONS.has(action)) {
-    const target = new URL(`/app/agents/${slug}?tab=settings`, requestOrigin(req));
+    const target = new URL(`/app/projects/${slug}?view=settings`, requestOrigin(req));
     target.searchParams.set("review_error", "invalid control action");
     return NextResponse.redirect(target);
   }
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     req,
     "POST",
     `/api/agents/${encodeURIComponent(slug)}/${action}`,
-    `/app/agents/${slug}?tab=settings`,
+    `/app/projects/${slug}?view=settings`,
     { reason },
     { successNotice: `agent ${PAST[action]}` },
   );

@@ -42,8 +42,8 @@ START, SEE, WATCH, CONTAIN, PROVE, OPERATE = (
 # The visible top level, in the order `--help` lists it. Keep this at thirteen or
 # fewer: tests/apps/cli/test_cli_layout.py enforces the ceiling.
 VISIBLE: list[tuple[str, str]] = [
+    ("up", START),
     ("init", START),
-    ("demo", START),
     ("scan", SEE),
     ("agents", SEE),
     ("serve", WATCH),
@@ -56,6 +56,10 @@ VISIBLE: list[tuple[str, str]] = [
     ("doctor", OPERATE),
     ("admin", OPERATE),
 ]
+
+# Top-level commands that still work but are not listed: `demo` gave its place in
+# Start to `up`, and the README and every blog post still say `agentfox demo`.
+HIDDEN_TOP_LEVEL: frozenset[str] = frozenset({"demo"})
 
 # Protocol endpoints written into users' configs, kept at their original paths
 # (hidden): `agentfox hooks run` in coding-agent hook configs, `agentfox mcp serve` in
@@ -237,13 +241,19 @@ def apply_layout(app: typer.Typer) -> None:
     serve_info = find("serve")
     app.registered_commands.remove(serve_info)
     serve_app = _new_group(
-        "Run the gateway and control-plane API, or the MCP server for AI clients.\n\n"
+        "Run the gateway and control-plane API, the MCP server for AI clients, or the "
+        "model server.\n\n"
         "`agentfox serve [--host] [--port] [--reload]` starts the API (the default); "
-        "`agentfox serve mcp` speaks MCP over stdio.",
+        "`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the "
+        "model-backed detectors for gateways that should not hold weights.",
         cls=default_group("api"),
     )
     _alias(serve_app, serve_info, "api")
     _alias(serve_app, find("mcp", "serve"), "mcp")
+    models_info = find("serve-models")
+    if models_info is not None:
+        app.registered_commands.remove(models_info)
+        _alias(serve_app, models_info, "models")
     app.add_typer(serve_app, name="serve")
 
     # -- Contain: permit -----------------------------------------------------------
@@ -371,12 +381,15 @@ def apply_layout(app: typer.Typer) -> None:
     # Only the visible verbs survive at the top level; every working name the command
     # modules registered has been re-homed above.
     app.registered_commands[:] = [
-        info for info in app.registered_commands if _command_name(info) in panels
+        info
+        for info in app.registered_commands
+        if _command_name(info) in panels or _command_name(info) in HIDDEN_TOP_LEVEL
     ]
     app.registered_groups[:] = [info for info in app.registered_groups if info.name in panels]
     for info in app.registered_commands:
-        info.hidden = False
-        info.rich_help_panel = panels[_command_name(info)]
+        name = _command_name(info)
+        info.hidden = name not in panels
+        info.rich_help_panel = panels.get(name)
     for info in app.registered_groups:
         info.hidden = False
         info.rich_help_panel = panels[info.name]

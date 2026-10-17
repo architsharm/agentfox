@@ -288,7 +288,7 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
             <td colSpan={3}><strong>Discover</strong></td>
           </tr>
           <tr>
-            <td><Link href="/docs/app/agents">Agents</Link> <code>/app/agents</code></td>
+            <td><Link href="/docs/app/projects">Projects</Link> <code>/app/projects</code></td>
             <td>The register: owners, risk, boundary, kill switch.</td>
             <td><code>agentfox agents list</code></td>
           </tr>

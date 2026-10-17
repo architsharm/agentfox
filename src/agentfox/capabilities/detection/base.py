@@ -8,11 +8,14 @@ dropping a project that gets archived, touches one adapter file.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
 from agentfox.core.vocab import SURFACES
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -233,20 +236,99 @@ def register_detector(detector: Detector) -> Detector:
     return detector
 
 
+def _resolve(detector: Detector | None) -> Detector | None:
+    """The detector, or its model-server stand-in when `model_server_url` routes it
+    there (`detection.remote`). Every way of getting a detector goes through this, so
+    the pipeline, `doctor` and the catalogue all see the same one."""
+    from agentfox.capabilities.detection.remote import resolve
+
+    return resolve(detector)
+
+
 def get_detector(key: str) -> Detector | None:
-    return _REGISTRY.get(key)
+    return _resolve(_REGISTRY.get(key))
 
 
 def all_detectors() -> dict[str, Detector]:
-    return dict(_REGISTRY)
+    return {k: _resolve(d) for k, d in _REGISTRY.items()}
 
 
 def available_detectors() -> dict[str, Detector]:
-    return {k: d for k, d in _REGISTRY.items() if d.available()}
+    return {k: d for k, d in all_detectors().items() if d.available()}
+
+
+def _keys_to_warm() -> frozenset[str]:
+    """What `warm_all()` warms: the detectors some workspace may run. If the database
+    cannot say which ones workspaces switched on, the deployment's list. That is the
+    normal case for a script that calls `warm_all()` with no gateway database."""
+    from agentfox.core.config import get_settings
+
+    try:
+        from agentfox.capabilities.detection.detector_settings import enabled_anywhere
+        from agentfox.core.db import session_scope
+
+        with session_scope() as session:
+            return enabled_anywhere(session)
+    except Exception as exc:
+        log.info("warming the deployment's detectors; workspace settings unread: %s", exc)
+        return frozenset(get_settings().enabled_detectors)
 
 
 def warm_all() -> None:
     """Call once at process startup (see `gateway.app.lifespan`). Only detectors
-    with real first-call cost do anything here; everything else is a no-op."""
-    for detector in available_detectors().values():
-        detector.warm()
+    with real first-call cost do anything here; everything else is a no-op.
+
+    Only detectors something can call are warmed: the deployment's list, plus any a
+    workspace switched on. Weights being present is not enough. The gateway image
+    carries Granite Guardian's, and loading those at every boot cost about 10GB of
+    memory for a detector nobody had enabled. A workspace that turns one on later
+    pays its load on that detector's first call, which the pipeline already bounds.
+
+    A detector that fails to warm is logged and left cold rather than raised: this
+    runs inside the gateway's startup, and one broken model (an incomplete weights
+    download, an architecture the installed transformers rejects) used to take the
+    whole process down with it. The same failure on a request is recorded as that
+    detector's `error`, which is where it belongs."""
+    warn_unrunnable(enabled_only=True)
+    for key in sorted(_keys_to_warm()):
+        detector = get_detector(key)
+        if detector is None:
+            continue
+        try:
+            if detector.available():
+                detector.warm()
+        except Exception:
+            log.exception("detector %s failed to warm; it stays cold", key)
+
+
+def warn_unrunnable(*, enabled_only: bool = True) -> list[str]:
+    """Log each enabled detector that cannot run here, with the fix. Returns their keys.
+
+    The pipeline skips such a detector without a word, which is right per request
+    and wrong at startup: `injection.classifier` is on by default, and a deployment
+    without its model would otherwise run regex only while believing otherwise.
+    """
+    from agentfox.capabilities.detection.models import models_for
+    from agentfox.core.config import get_settings
+
+    enabled = set(get_settings().enabled_detectors)
+    missing = []
+    for key, detector in all_detectors().items():
+        # Model-backed only: a detector like `custom.lists` is unavailable simply
+        # because nothing is configured for it yet, which is not worth a warning.
+        if (enabled_only and key not in enabled) or not models_for(detector):
+            continue
+        try:
+            if detector.available():
+                continue
+            reason = getattr(detector, "unavailable_reason", None)
+            reason = reason() if callable(reason) else reason
+        except Exception as exc:  # noqa: BLE001 - a startup warning must never raise
+            reason = str(exc)
+        missing.append(key)
+        log.warning(
+            "agentfox: detector %s is enabled but cannot run here (%s); it is skipped.",
+            key,
+            reason or "its dependency is not installed",
+        )
+    return missing

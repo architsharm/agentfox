@@ -3,7 +3,8 @@
 Two tiers, and the split is a **licence** decision, not a quality one:
 
 * :class:`GraniteGuardianDetector` — IBM Granite Guardian, **Apache-2.0 weights**.
-  The default. It is the cleanest licence in the classifier group, which is what a
+  The default. A causal LM read for its "Yes"/"No" answer, not a classifier. It is
+  the cleanest licence in the classifier group, which is what a
   commercial product needs.
 * :class:`RestrictedClassifierDetector` — Meta Llama Guard 3-8B (Prompt Guard and
   ShieldGemma share the same licence gate but have no registered adapter). The
@@ -19,14 +20,19 @@ by running ``docker compose up``.
 
 from __future__ import annotations
 
-import functools
-
 from agentfox.capabilities.detection.base import (
     BaseDetector,
     Detection,
     DetectionContext,
     redact_sample,
 )
+from agentfox.capabilities.detection.loading import (
+    inference_lock,
+    load_once,
+    model_device,
+    to_model_device,
+)
+from agentfox.capabilities.detection.validators.base import module_present
 from agentfox.core.config import get_settings
 
 #: Distinguishes "caller didn't pass this" (use the configured default) from an
@@ -48,11 +54,26 @@ class _TransformersClassifier(BaseDetector):
     def available(self) -> bool:
         if self.restricted and not get_settings().restricted_models_allowed:
             return False
-        try:
-            import transformers  # noqa: F401
-        except Exception:
+        # Decided once per process: `available()` runs on every request, and an
+        # import attempt for a library that is not installed walks the whole import
+        # path each time (see `module_present`). The weights check stays live, so a
+        # `detectors pull` takes effect without a restart.
+        if not module_present("transformers"):
             return False
         return self._weights_present()
+
+    @property
+    def unavailable_reason(self) -> str:
+        """What is missing and the command that fixes it, for `doctor`, the
+        dashboard's detector catalogue and the startup log. A property, as on the
+        other adapters (`/api/detectors` reads it as a value)."""
+        if self.restricted and not get_settings().restricted_models_allowed:
+            return "restricted licence not accepted (AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1)"
+        if not module_present("transformers"):
+            return "needs `pip install 'agentfox[classifiers]'`"
+        if not self._weights_present():
+            return f"model not downloaded: run `agentfox admin detectors pull {self.key}`"
+        return ""
 
     def _weights_present(self) -> bool:  # pragma: no cover - requires optional dep
         try:
@@ -64,7 +85,7 @@ class _TransformersClassifier(BaseDetector):
             # mean "unavailable", not "fetch it now".
             return False
 
-    @functools.cached_property
+    @load_once
     def _pipeline(self):  # pragma: no cover - requires optional dependency
         import torch
         from transformers import pipeline
@@ -95,16 +116,21 @@ class _TransformersClassifier(BaseDetector):
             top_k=None,
             trust_remote_code=self.trust_remote_code,
             local_files_only=True,
+            device=model_device(),
         )
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
         if self.available():
-            self._pipeline("")
+            pipe = self._pipeline
+            with inference_lock(pipe):
+                pipe("")
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         if not content:
             return []
-        scores = self._pipeline(content[:4000])
+        pipe = self._pipeline
+        with inference_lock(pipe):
+            scores = pipe(content[:4000])
         rows = scores[0] if scores and isinstance(scores[0], list) else scores
         out: list[Detection] = []
         for row in rows or []:
@@ -207,7 +233,7 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         )
         self.secondary_threshold = settings.prompt_injection_classifier_secondary_threshold
 
-    @functools.cached_property
+    @load_once
     def _secondary_pipeline(self):  # pragma: no cover - requires optional dependency
         if not self.secondary_model_id:
             return None
@@ -221,6 +247,7 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
             model=self.secondary_model_id,
             top_k=None,
             local_files_only=True,
+            device=model_device(),
         )
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
@@ -228,7 +255,8 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         if self.available() and self.secondary_model_id:
             pipe = self._secondary_pipeline
             if pipe is not None:
-                pipe("")
+                with inference_lock(pipe):
+                    pipe("")
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         primary = super()._detect(content, context)
@@ -237,7 +265,8 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         pipe = self._secondary_pipeline
         if pipe is None or not content:
             return primary
-        scores = pipe(content[:4000])
+        with inference_lock(pipe):
+            scores = pipe(content[:4000])
         rows = scores[0] if scores and isinstance(scores[0], list) else scores
         for row in rows or []:
             label = str(row.get("label", ""))
@@ -256,6 +285,10 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
                         "model": self.secondary_model_id,
                         "label": label,
                         "role": "ensemble_secondary_backstop",
+                        # Recorded, never blocked on: an enforcing policy does not see
+                        # it (`PolicyInput.for_mode`). PIGuard alone false-positives
+                        # 11.5% of NotInject; with this backstop it is 41%.
+                        "advisory": True,
                     },
                 )
             ]
@@ -263,21 +296,109 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
 
 
 class GraniteGuardianDetector(_TransformersClassifier):
-    """IBM Granite Guardian — Apache-2.0. The default classifier."""
+    """IBM Granite Guardian — Apache-2.0. The default classifier.
+
+    Granite Guardian is a causal LM (``GraniteForCausalLM``), not a classification
+    model: given its chat template and a risk name, it answers "Yes" (the content
+    carries that risk) or "No" as its next token. It used to run through
+    `_TransformersClassifier`'s ``pipeline("text-classification")``, which, for a model
+    with no classification head, scores against a randomly initialised one (older
+    transformers) or fails outright (current transformers, which crashed the
+    gateway's startup in `warm()`). This reads the model's own answer instead: one
+    forward pass, and the probability of "Yes" against "No" for the next token,
+    which is IBM's documented scoring.
+
+    Only the "harm" risk is checked. Measured on this model, the "jailbreak" risk
+    scored "Summarise this article for me." at 0.95; prompt injection is
+    `injection.heuristic`'s and `injection.classifier`'s job.
+
+    It is slow on CPU: a forward pass of a 2B model measured about 8 s on one thread
+    and 3 s on four (float32), against a 40 ms default per-detector timeout and a
+    300 ms request budget. Enabled without a GPU, it reports as degraded on every
+    call rather than checking anything. That is a deployment decision, not one this
+    class can make.
+    """
 
     key = "safety.granite"
-    version = "1.0"
+    version = "2.0"
     surfaces = ("input", "output", "retrieved", "tool_result")
-    label_map = {
-        "yes": "SAFETY.HARM",
-        "harmful": "SAFETY.HARM",
-        "risky": "SAFETY.HARM",
-        "jailbreak": "INJECTION.JAILBREAK",
-        "unsafe": "SAFETY.HARM",
-    }
+    #: The risk name Granite Guardian's chat template takes, and what it reports.
+    risks = {"harm": "SAFETY.HARM"}
+    threshold = 0.5
 
     def __init__(self, model_id: str | None = None) -> None:
         self.model_id = model_id or get_settings().granite_guardian_model
+
+    @load_once
+    def _guardian(self):  # pragma: no cover - requires optional dependency + weights
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        torch.set_num_threads(1)  # see _TransformersClassifier._pipeline for why
+        # local_files_only: see `_TransformersClassifier._pipeline`. float32, because
+        # bfloat16 is emulated on most CPUs: measured 26 s per pass against 8 s.
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id, local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, torch_dtype=torch.float32, local_files_only=True
+        )
+        model.to(model_device()).eval()
+        yes = tokenizer.encode("Yes", add_special_tokens=False)[0]
+        no = tokenizer.encode("No", add_special_tokens=False)[0]
+        return tokenizer, model, yes, no
+
+    def chat(self, content: str, surface: str) -> list[dict[str, str]]:
+        """The conversation Granite Guardian judges. A model's output is judged as an
+        assistant turn; its template refuses an assistant turn with no user turn
+        before it, so that one is empty. Everything else arrives at the model, as a
+        user turn."""
+        if surface == "output":
+            return [{"role": "user", "content": ""}, {"role": "assistant", "content": content}]
+        return [{"role": "user", "content": content}]
+
+    def risk_probability(self, chat: list[dict[str, str]], risk: str) -> float:
+        """P("Yes") against P("No") for the model's next token: how sure it is the
+        last turn carries ``risk``."""
+        import torch
+
+        tokenizer, model, yes, no = self._guardian
+        ids = tokenizer.apply_chat_template(
+            chat,
+            guardian_config={"risk_name": risk},
+            add_generation_prompt=True,
+            return_tensors="pt",
+        )
+        if not isinstance(ids, torch.Tensor):  # a BatchEncoding in newer transformers
+            ids = ids["input_ids"]
+        ids = to_model_device(ids, model)
+        with inference_lock(model), torch.no_grad():
+            logits = model(input_ids=ids).logits[0, -1].float()
+        return float(torch.softmax(logits[[yes, no]], dim=0)[0])
+
+    def warm(self) -> None:  # pragma: no cover - requires optional dependency
+        # Not an empty string: that is zero tokens, which the model cannot run.
+        if self.available():
+            self._detect("hello", DetectionContext())
+
+    def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
+        if not content:
+            return []
+        chat = self.chat(content[:4000], context.surface)
+        out: list[Detection] = []
+        for risk, entity in self.risks.items():
+            score = self.risk_probability(chat, risk)
+            if score < self.threshold:
+                continue
+            out.append(
+                Detection(
+                    entity_type=entity,
+                    score=score,
+                    end=len(content),
+                    sample=redact_sample(content, keep=12),
+                    owasp_id="LLM09",
+                    detail={"engine": self.key, "model": self.model_id, "risk": risk},
+                )
+            )
+        return out
 
 
 class RestrictedClassifierDetector(_TransformersClassifier):
@@ -289,8 +410,9 @@ class RestrictedClassifierDetector(_TransformersClassifier):
     its own tokenizer's chat template (the taxonomy the template embeds is baked
     into the tokenizer config, not passed by the caller). Running it through
     `_TransformersClassifier`'s `pipeline("text-classification", ...)` — right
-    for Granite Guardian and the two prompt-injection models, which really are
-    fine-tuned classification heads — does not error for this model, but it
+    for the two prompt-injection models, which really are fine-tuned
+    classification heads, and wrong for Granite Guardian too (see
+    `GraniteGuardianDetector`) — does not error for this model, but it
     silently attaches a freshly, randomly-initialized classification head on top
     of the pretrained base model (`config.json` declares `LlamaForCausalLM`, no
     classification head) and scores everything against untrained noise. That
@@ -316,7 +438,7 @@ class RestrictedClassifierDetector(_TransformersClassifier):
     def __init__(self, model_id: str = "meta-llama/Llama-Guard-3-8B") -> None:
         self.model_id = model_id
 
-    @functools.cached_property
+    @load_once
     def _generator(self):  # pragma: no cover - requires optional dependency + gated weights
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -327,7 +449,7 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         model = AutoModelForCausalLM.from_pretrained(
             self.model_id, torch_dtype=torch.bfloat16, local_files_only=True
         )
-        model.eval()
+        model.to(model_device()).eval()
         return tokenizer, model
 
     def warm(self) -> None:  # pragma: no cover - requires optional dependency
@@ -348,7 +470,10 @@ class RestrictedClassifierDetector(_TransformersClassifier):
         role = "assistant" if context.surface == "output" else "user"
         chat = [{"role": role, "content": content[:4000]}]
         input_ids = tokenizer.apply_chat_template(chat, return_tensors="pt")
-        with torch.no_grad():
+        if not isinstance(input_ids, torch.Tensor):  # a BatchEncoding in newer transformers
+            input_ids = input_ids["input_ids"]
+        input_ids = to_model_device(input_ids, model)
+        with inference_lock(model), torch.no_grad():
             generated = model.generate(
                 input_ids=input_ids, max_new_tokens=self.max_new_tokens, pad_token_id=0
             )

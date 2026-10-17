@@ -203,8 +203,8 @@ class Enforcer(
         # enforcer: an enforcer serves one request, and both change only by an
         # operator action.
         self._custom_rule_cache: dict[str | None, list[Any]] = {}
-        self._custom_model_cache: list[Any] | None = None
-        self._enabled_detector_cache: frozenset[str] | None = None
+        self._custom_model_cache: dict[str | None, list[Any]] = {}
+        self._enabled_detector_cache: dict[str | None, frozenset[str]] = {}
 
     #: Context assembly is the caller's step, not ours: it needs the ranked
     #: chunks and the real token budget, and it repairs as well as reports. Exposed
@@ -419,7 +419,7 @@ class Enforcer(
                 "tool": call.tool_key or self.evidence.get("tool"),
                 # The workspace's own model endpoints, credentials decrypted
                 # (custom_models.py); only read when its detector is selected.
-                "custom_models": self._custom_models(),
+                "custom_models": self._custom_models(call.agent_slug),
                 # What the answer was built from, for detectors that check an
                 # answer against it (grounding.nli). Supplied by the caller.
                 "context": [
@@ -427,7 +427,7 @@ class Enforcer(
                     for c in (self.evidence.get("chunks") or [])
                 ],
             },
-            enabled_detectors=self._enabled_detectors(),
+            enabled_detectors=self._enabled_detectors(call.agent_slug),
         )
         ledger = self.ledger()
         pipeline_result = self.pipeline.run(
@@ -450,6 +450,7 @@ class Enforcer(
                 "score": d.score,
                 "owasp_id": d.owasp_id,
                 "atlas_id": d.atlas_id,
+                "advisory": bool(d.detail.get("advisory")),
             }
             for d in pipeline_result.detections
         ]
@@ -465,20 +466,23 @@ class Enforcer(
             self._custom_rule_cache[agent_slug] = compiled_custom_rules(self.session, agent_slug)
         return self._custom_rule_cache[agent_slug]
 
-    def _custom_models(self) -> list[Any]:
-        """Compiled model endpoints for this workspace, once per enforcer."""
-        if self._custom_model_cache is None:
-            if DETECTOR_KEY in self._enabled_detectors():
-                self._custom_model_cache = compiled_custom_models(self.session)
-            else:
-                self._custom_model_cache = []
-        return self._custom_model_cache
+    def _custom_models(self, agent_slug: str | None) -> list[Any]:
+        """Compiled model endpoints for this workspace, when this call's project runs them."""
+        if agent_slug not in self._custom_model_cache:
+            self._custom_model_cache[agent_slug] = (
+                compiled_custom_models(self.session)
+                if DETECTOR_KEY in self._enabled_detectors(agent_slug)
+                else []
+            )
+        return self._custom_model_cache[agent_slug]
 
-    def _enabled_detectors(self) -> frozenset[str]:
-        """This workspace's detector choice."""
-        if self._enabled_detector_cache is None:
-            self._enabled_detector_cache = detectors_enabled_for(self.session)
-        return self._enabled_detector_cache
+    def _enabled_detectors(self, agent_slug: str | None) -> frozenset[str]:
+        """The detectors this call's project runs: the workspace's choice, then its own."""
+        if agent_slug not in self._enabled_detector_cache:
+            self._enabled_detector_cache[agent_slug] = detectors_enabled_for(
+                self.session, agent_slug
+            )
+        return self._enabled_detector_cache[agent_slug]
 
     def _check_capability(self, call: _Evaluation) -> None:
         """Does the identity hold a grant for this tool, within its limits?"""
