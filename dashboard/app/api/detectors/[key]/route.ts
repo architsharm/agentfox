@@ -1,0 +1,11 @@
+import { NextRequest } from "next/server";
+import { proxyJson } from "@/lib/product/proxy";
+
+export const dynamic = "force-dynamic";
+
+/** Switch a detector on or off for the workspace. */
+export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
+  const { key } = await params;
+  const { enabled, reason } = await req.json();
+  return proxyJson(`/api/detectors/${encodeURIComponent(key)}`, "POST", { enabled: Boolean(enabled), reason: String(reason || "") });
+}

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 /**
  * Custom body rather than the generic Form* helpers: the backend's LegalHoldIn.scope
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const scope: Record<string, unknown> = {};
   if (agents.length) scope.agents = agents;
 
-  return proxyCustomBody(req, "POST", "/api/legal-holds", "/compliance?tab=retention", {
+  return proxyCustomBody(req, "POST", "/api/legal-holds", "/app/settings?tab=retention", {
     scope,
     reason,
   });

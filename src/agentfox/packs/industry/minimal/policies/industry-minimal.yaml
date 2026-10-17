@@ -1,0 +1,51 @@
+# Translated from examples/policies/production/rego/minimal.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: industry-minimal
+name: Minimal
+description: 'Minimal: rules translated from the minimal policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: industry-minimal.file-deletion-requires-manual-intervention
+  description: File deletion requires manual intervention
+  when:
+    surface:
+    - tool_args
+    tool: delete_file
+  effect: block
+  severity: high
+  reason: File deletion requires manual intervention
+- id: industry-minimal.database-schema-changes-not-permitted
+  description: Database schema changes are not permitted
+  when:
+    surface:
+    - tool_args
+    tool: drop_table
+  effect: block
+  severity: high
+  reason: Database schema changes are not permitted
+- id: industry-minimal.arbitrary-code-execution-blocked
+  description: Arbitrary code execution is blocked
+  when:
+    surface:
+    - tool_args
+    tool: execute_code
+  effect: block
+  severity: high
+  reason: Arbitrary code execution is blocked
+- id: industry-minimal.direct-ssh-access-not-permitted
+  description: Direct SSH access is not permitted
+  when:
+    surface:
+    - tool_args
+    tool: ssh_connect
+  effect: block
+  severity: high
+  reason: Direct SSH access is not permitted

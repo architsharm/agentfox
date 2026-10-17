@@ -1,0 +1,29 @@
+# Golden events for the EU AI Act pack, run by `agentfox policy packs test eu-ai-act`.
+cases:
+  - name: an irreversible action by a high-risk agent needs human oversight (Art. 14)
+    event: {surface: tool_args, risk_tier: high, tool_key: payments.transfer, tool_impact: irreversible}
+    expect: {verdict: escalate, rules: [eu.art14.human_oversight]}
+
+  - name: the same action by a limited-risk agent is not this pack's concern
+    event: {surface: tool_args, risk_tier: limited, tool_key: payments.transfer, tool_impact: irreversible}
+    expect: {verdict: allow, not_rules: [eu.art14.human_oversight]}
+
+  - name: an answer claiming to be human is held (Art. 50)
+    event:
+      surface: output
+      action: {risks: [{code: disclosure.claims_human, severity: high}]}
+    expect: {verdict: escalate, rules: [eu.art50.impersonation]}
+
+  - name: a prohibited-practice agent is blocked on every surface (Art. 5)
+    event: {surface: input, risk_tier: prohibited}
+    expect: {verdict: block, rules: [eu.art5.prohibited_tier]}
+
+  - name: a high-risk agent of an unconfigured deployment gets baseline and this pack
+    kind: fallback
+    risk_tier: high
+    expect: {policies: [baseline, eu-ai-act-high-risk]}
+
+  - name: so does a prohibited-practice agent
+    kind: fallback
+    risk_tier: prohibited
+    expect: {policies: [baseline, eu-ai-act-high-risk]}

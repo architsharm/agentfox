@@ -1,7 +1,7 @@
 """Scores AgentFox's PII detectors against gretelai/synthetic_pii_finance_multilingual
 (`data/gretel_multilingual_pii.json`, 5,594 rows, 7 languages, Apache-2.0).
 
-    uv run python benchmarks/pii/run_gretel_multilingual_benchmark.py
+    uv run python -m benchmarks.pii.run_gretel_multilingual_benchmark
 
 Same three detector configurations, same direct-call/span-overlap methodology as
 `run_presidio_research_benchmark.py` (see that script's docstring for the full
@@ -39,9 +39,10 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from agentfox.guardrails.adapters.presidio import DEFAULT_EXCLUDED, PresidioPiiDetector
-from agentfox.guardrails.base import DetectionContext
-from agentfox.guardrails.detectors.pii import NativePiiDetector
+from agentfox.capabilities.detection.adapters.presidio import DEFAULT_EXCLUDED, PresidioPiiDetector
+from agentfox.capabilities.detection.base import DetectionContext
+from agentfox.capabilities.detection.detectors.pii import NativePiiDetector
+from benchmarks._common import merge_counts, pred_spans, score_row_with_exclusions, summarize
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -94,74 +95,7 @@ def street_address_spans_for_row(row: dict) -> list[tuple[int, int]]:
     LOCATION false positives were confirmed-correct hits inside one of
     these) — see README "Fixes applied".
     """
-    return [
-        (s["start"], s["end"]) for s in row["spans"] if s["label"] == "street_address"
-    ]
-
-
-def pred_spans(detections, canonical_types: set[str]) -> list[tuple[int, int, str]]:
-    return [
-        (d.start, d.end, d.entity_type)
-        for d in detections
-        if d.entity_type in canonical_types
-    ]
-
-
-def score_row(gt, pred, containment_exclude: list[tuple[int, int]] = ()) -> tuple[int, int, int, int, dict[str, list[int]]]:
-    """See run_presidio_research_benchmark.py's score_row for the containment-
-    exclusion rationale — a predicted span fully inside a street_address span
-    is neither TP nor FP, tracked separately as `excluded`."""
-    per_type: dict[str, list[int]] = {}
-
-    def bucket(t: str) -> list[int]:
-        return per_type.setdefault(t, [0, 0, 0])
-
-    matched_pred: set[int] = set()
-    tp = fp = fn = excluded = 0
-    for gs, ge, gt_type in gt:
-        match_idx = None
-        for i, (ps, pe, pt) in enumerate(pred):
-            if i in matched_pred or pt != gt_type:
-                continue
-            if ps < ge and gs < pe:
-                match_idx = i
-                break
-        if match_idx is not None:
-            matched_pred.add(match_idx)
-            tp += 1
-            bucket(gt_type)[0] += 1
-        else:
-            fn += 1
-            bucket(gt_type)[2] += 1
-    for i, (ps, pe, pt) in enumerate(pred):
-        if i in matched_pred:
-            continue
-        if any(a_s <= ps and pe <= a_e for a_s, a_e in containment_exclude):
-            excluded += 1
-            continue
-        fp += 1
-        bucket(pt)[1] += 1
-    return tp, fp, fn, excluded, per_type
-
-
-def merge_per_type(total, part) -> None:
-    for t, (tp, fp, fn) in part.items():
-        bucket = total.setdefault(t, [0, 0, 0])
-        bucket[0] += tp
-        bucket[1] += fp
-        bucket[2] += fn
-
-
-def prf1(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
-    precision = tp / (tp + fp) if (tp + fp) else 0.0
-    recall = tp / (tp + fn) if (tp + fn) else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
-    return precision, recall, f1
-
-
-def summarize(tp: int, fp: int, fn: int) -> dict:
-    p, r, f = prf1(tp, fp, fn)
-    return {"tp": tp, "fp": fp, "fn": fn, "precision": round(p, 4), "recall": round(r, 4), "f1": round(f, 4)}
+    return [(s["start"], s["end"]) for s in row["spans"] if s["label"] == "street_address"]
 
 
 def run_config(name: str, detector, rows: list[dict], ctx: DetectionContext) -> dict:
@@ -177,13 +111,13 @@ def run_config(name: str, detector, rows: list[dict], ctx: DetectionContext) -> 
         street_addrs = street_address_spans_for_row(row)
         detections = detector.detect(row["text"], ctx)
         pred = pred_spans(detections.detections, canonical_types)
-        tp, fp, fn, excluded, part = score_row(gt, pred, street_addrs)
+        tp, fp, fn, excluded, part = score_row_with_exclusions(gt, pred, street_addrs)
         total_tp += tp
         total_fp += fp
         total_fn += fn
         total_excluded += excluded
-        merge_per_type(per_type, part)
-        merge_per_type(per_lang_type[row["language"]], part)
+        merge_counts(per_type, part)
+        merge_counts(per_lang_type[row["language"]], part)
         if (i + 1) % 500 == 0:
             print(f"  [{name}] {i + 1}/{len(rows)} rows")
 
@@ -232,7 +166,9 @@ def main() -> None:
     out_path.write_text(json.dumps(summary, indent=2))
     print(f"\nWrote {out_path}\n")
 
-    print(f"{'config':<24}{'precision':<12}{'recall':<12}{'f1':<12}{'tp':<8}{'fp':<8}{'fn':<8}{'excl':<6}")
+    print(
+        f"{'config':<24}{'precision':<12}{'recall':<12}{'f1':<12}{'tp':<8}{'fp':<8}{'fn':<8}{'excl':<6}"
+    )
     for r in results:
         print(
             f"{r['config']:<24}{r['precision']:<12}{r['recall']:<12}{r['f1']:<12}"

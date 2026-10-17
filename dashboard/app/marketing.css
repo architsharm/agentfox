@@ -1,41 +1,92 @@
 /*
  * Marketing design system for the public pages.
  *
- * Apple's three principles, applied literally.
+ * This is a developer-tools system, not a consumer-hardware one. The previous
+ * version said so in its own header — "Apple's three principles, applied
+ * literally" — and an audit of the rendered DOM measured what that produced: a
+ * 70px centred hero on five of nine pages, 980px capsule buttons, 28px tiles,
+ * every product shot floating on a drop shadow, and the first piece of evidence
+ * 1,272px below the fold. A security product for AI agents cannot be sold in the
+ * visual register of a phone launch.
  *
- * Deference: the interface gets out of the way and the content is the thing. The
- * previous version had a paper-grain overlay on every surface and a two-colour
- * radial wash behind the hero, both borrowed from dayotter. Both are gone. Large
- * flat areas of near-white are not a mistake to be textured over; they are the
- * point, and they are what makes a product screenshot read as the only object on
- * the page.
+ * The rules, all of them checkable:
  *
- * Clarity: type does the work. The stack starts at -apple-system, so on a Mac or an
- * iPhone this is literally SF Pro and on everything else it is that platform's own
- * face. Body is 17px because that is the size Apple sets running text at and it is
- * noticeably easier than 16. Display sizes are large with negative tracking and
- * semibold rather than bold weight, which is the single most recognisable thing
- * about Apple's typography.
+ *   Type      Six sizes, whole pixels: 56 / 32 / 20 / 15 / 13 / 12. The rendered
+ *             site had 48, because sizes were written as two-decimal rem against
+ *             a 17px root. Nothing below 12px, ever. No literal font-size outside
+ *             this file.
+ *   Alignment Everything starts at the left edge. A centred heading over
+ *             left-aligned body is the single clearest tell of a template.
+ *   Colour    Four neutrals. #86868b is gone: it measured 3.58:1 on the page
+ *             ground and painted 280 nodes, which is what made the site look
+ *             washed out rather than calm.
+ *   Shape     Four radii, 6/10/14/50%. Hairlines separate things; shadow is the
+ *             exception, not the default, and no artifact floats.
+ *   Evidence  A trace, a verdict, a diff is the interface, shown flush on the
+ *             page at full column width — not a photograph of the interface.
  *
- * Depth: shadows are soft, wide and nearly colourless, borders are hairlines, radii
- * are large. Nothing is outlined in a strong colour to make it look separate.
- *
- * Class names are unchanged from the previous system on purpose: fifteen pages and
- * every React mock are written against this API, so replacing the values restyles
- * all of them at once and none of them had to be touched.
+ * Class names are unchanged on purpose: fifteen pages and every React mock are
+ * written against this API, so replacing the values restyles all of them at once.
  */
 
 :root {
   /* Apple's neutral ramp. The greys are true neutrals rather than tinted, because a
      warm grey next to a product screenshot makes the screenshot look colour-cast. */
-  --mk-bg: #fbfbfd;
+  /* The ground has to be a step under white, or a white card on this page
+     has nothing to sit on and the whole light theme reads as a wireframe.
+     #fbfbfd against #ffffff was that failure: a 1.5% difference. */
+  --mk-bg: #f3f4f7;
   --mk-surface: #ffffff;
-  --mk-surface-2: #f5f5f7;
-  --mk-border: #e3e3e6;
-  --mk-border-strong: #d2d2d7;
+  --mk-surface-2: #e7e9ee;
+  --mk-border: #d5d9e0;
+  --mk-border-strong: #c3c8d1;
   --mk-text: #1d1d1f;
   --mk-muted: #6e6e73;
-  --mk-faint: #86868b;
+  --mk-faint: var(--mk-muted);
+
+  /* A warm third value.
+     The measured problem: four background tokens, all within six points of
+     each other on the same neutral axis, so the whole page rendered as one
+     flat field with hairlines on it. Paper is warm enough to read as a
+     different material next to white rather than as a slightly dirty white. */
+  /* Cool, like the rest of the light page. The warm cream read as a stain
+     next to the navy acts and the grey ground. */
+  --mk-paper: #eef1f6;
+
+  /* ---- Measure ---------------------------------------------------------
+     Three widths, in rem, and the rem is the whole point.
+
+     The site had twenty-two different content widths — 76, 62, 60, 58, 56,
+     54, 52, 50, 48, 46, 42, 40 and 34ch, plus a bare 760px — set inline at
+     each call site. That alone would move the right edge from section to
+     section, and `ch` makes it worse: it resolves against each element's own
+     font-size, so 46ch on a lede and 46ch on a body paragraph are different
+     numbers of pixels. The stylesheet already carried a comment diagnosing
+     this for the benchmark page and the lesson never reached the rest.
+
+     In rem they are the same width everywhere, whatever the type is doing.
+       intro  a section's heading and its lede, as one block
+       prose  long-form body copy
+       wide   a figure or table that may run past the reading column       */
+  /* One text measure. Headlines, ledes and long-form docs all stop
+     at this width, and they all start at the wrap's left edge. Grids,
+     tables and product shots still use the full 1120px column. */
+  --w-intro: var(--measure);
+  --w-prose: var(--measure);
+  --w-wide: 56rem;
+
+  /* Ink — navy as a *surface*, not only a button.
+     The single biggest thing the reference sites have that this did not: a
+     dark act. A page that alternates paper, white and ink has a rhythm a
+     reader feels before they read a word; a page with four greys has none.
+     Deeper and slightly bluer than --mk-navy, which was mixed for 15.4:1
+     against a white label at button size and goes muddy across a whole
+     screen. */
+  --mk-ink: #0b1b33;
+  --mk-ink-2: #12294a;
+  --mk-ink-text: #f2f5fa;
+  --mk-ink-muted: #9fb0c9;
+  --mk-ink-border: rgba(255, 255, 255, 0.12);
 
   /* The brand is the two colours in the mark: navy #012455 and orange #fd4901.
      They are split by job rather than used interchangeably, because the measured
@@ -52,8 +103,11 @@
   --mk-accent-hover: #a32d00;
   --mk-accent-fg: #ffffff;
   --mk-accent-soft: #fff0e9;
-  --mk-cta: #012455;
-  --mk-cta-hover: #01326f;
+  /* Darkened brand orange. Logo orange (#fd4901) is 3.31:1 with a white
+     label, which fails at button size. This is the same orange as --mk-accent,
+     measured at 5.32:1, so the button can actually be the brand. */
+  --mk-cta: #c23600;
+  --mk-cta-hover: #a32d00;
   --mk-cta-fg: #ffffff;
 
   /* Semantic colours for verdicts. Separate from the accent, and never used for
@@ -69,17 +123,22 @@
   --mk-shadow-card: 0 1px 2px rgba(0, 0, 0, .03), 0 4px 12px rgba(0, 0, 0, .04);
   --mk-shadow-raise: 0 4px 16px rgba(0, 0, 0, .06);
   --mk-shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, .12);
-  --mk-shadow-float: 0 28px 70px -20px rgba(0, 0, 0, .18);
+  --mk-shadow-float: none;
 
-  --mk-r-sm: 8px;
-  --mk-r-md: 12px;
-  --mk-r-lg: 18px;
-  --mk-r-xl: 28px;
+  /* Four radii, down from eleven across two unrelated scales. The 28px tile and
+     the 980px capsule were the two loudest "Apple marketing page" signals on a
+     security product; both come down to 10px. */
+  --mk-r-sm: var(--radius-sm);
+  --mk-r-md: var(--radius-md);
+  --mk-r-lg: var(--radius-lg);
+  --mk-r-xl: var(--radius-lg);
 
-  --mk-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui,
-    Roboto, var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
-  --mk-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
-    system-ui, Roboto, var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
+  --mk-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Was `var(--font-geist-sans)` — the body font under a different name, which
+     is to say no display face at all. */
+  --mk-display: var(--font-archivo), "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
   --mk-code: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -92,7 +151,14 @@
     --mk-border-strong: #48484a;
     --mk-text: #f5f5f7;
     --mk-muted: #a1a1a6;
-    --mk-faint: #86868b;
+    --mk-faint: var(--mk-muted);
+    /* Paper is a *warm* value against white; on a black ground the warmth has
+       nothing to sit against, so it becomes the raised surface instead. The job
+       either way is a third value rather than another grey. Ink barely moves — a
+       dark act on a dark page still has to read as a deliberate field. */
+    --mk-paper: #141414;
+    --mk-ink: #0a1526;
+    --mk-ink-2: #14294a;
     --mk-brand: #fd4901;
     --mk-navy: #9ab4e2;
     --mk-accent: #ff7a45;
@@ -111,13 +177,13 @@
     --mk-shadow-card: 0 1px 2px rgba(0, 0, 0, .5);
     --mk-shadow-raise: 0 4px 16px rgba(0, 0, 0, .55);
     --mk-shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, .7);
-    --mk-shadow-float: 0 28px 70px -20px rgba(0, 0, 0, .8);
+    --mk-shadow-float: none;
   }
 }
 :root[data-theme="dark"] {
   --mk-bg: #000000; --mk-surface: #1d1d1f; --mk-surface-2: #161617;
   --mk-border: #333336; --mk-border-strong: #48484a;
-  --mk-text: #f5f5f7; --mk-muted: #a1a1a6; --mk-faint: #86868b;
+  --mk-text: #f5f5f7; --mk-muted: #a1a1a6; --mk-faint: var(--mk-muted);
   --mk-brand: #fd4901; --mk-navy: #9ab4e2;
   --mk-accent: #ff7a45; --mk-accent-hover: #ff9066; --mk-accent-fg: #14110e;
   --mk-accent-soft: #2a1408;
@@ -128,7 +194,8 @@
   --mk-shadow-card: 0 1px 2px rgba(0, 0, 0, .5);
   --mk-shadow-raise: 0 4px 16px rgba(0, 0, 0, .55);
   --mk-shadow-pop: 0 18px 48px -12px rgba(0, 0, 0, .7);
-  --mk-shadow-float: 0 28px 70px -20px rgba(0, 0, 0, .8);
+  --mk-shadow-float: none;
+  --mk-paper: #141414; --mk-ink: #0a1526; --mk-ink-2: #14294a;
 }
 
 /* --- Shell ------------------------------------------------------------- */
@@ -137,7 +204,7 @@
   background: var(--mk-bg);
   color: var(--mk-text);
   font-family: var(--mk-sans);
-  font-size: 17px;
+  font-size: var(--t-body);
   line-height: 1.53;
   letter-spacing: -.01em;
   -webkit-font-smoothing: antialiased;
@@ -149,51 +216,200 @@
 
 /* Apple's content column is a little under 1000px and the page is centred in it.
    Wider than this and running text stops being comfortable to read. */
-.mk-wrap { max-width: 1040px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
-.mk-narrow { max-width: 700px; margin: 0 auto; }
+.mk-wrap { max-width: var(--wrap); margin: 0 auto; padding-left: var(--wrap-pad); padding-right: var(--wrap-pad); }
+/* mk-narrow on the wrap used to shrink the column to 40rem and center it,
+   so the hero's left edge sat ~240px to the right of every section below.
+   The narrow measure belongs on the text, not on the column. */
+.mk-wrap.mk-narrow { max-width: var(--wrap); }
+/* Section intros use the same column as the grids under them. */
+.mk-narrow { max-width: none; }
 /* Space is the main compositional device here, so sections are generous and scale
    with the viewport rather than sitting at one fixed value. */
-.mk-section { padding-block: clamp(64px, 9vw, 116px); }
-.mk-section-tight { padding-block: clamp(44px, 6vw, 72px); }
+/* Raised from clamp(48px, 5vw, 72px) after measuring both sites: the same
+   ~970 words sat in 7,996px here against 10,470px there, which is 122 words
+   per 1000px against 92. The copy was not the problem — the room was. */
+/* Measured at a matched 1200px viewport: 160 words per 1000px here against
+   123 there. The copy is comparable — 919 words against 961 — so the whole
+   difference is room, and at desktop the clamp was still topping out well
+   below where the reference sits. Raised again, and the ceiling is what
+   moves: a phone does not need 140px of air between sections. */
+/* One vertical step. Two adjacent sections meet with 56px of pad on
+   each side, so the gap between blocks is 112px on every page. The old
+   clamp ran from 40px to 96px depending on the viewport and the class,
+   and several heroes then zeroed their bottom pad, so the same seam was
+   72px on one page and 190px on the next. */
+.mk-section,
+.mk-section-tight { padding-block: var(--space-section); }
 
 /* --- Type -------------------------------------------------------------- */
 
 /* Not a pill. Apple sets this as small, tracked-out coloured text directly on the
    ground, which is quieter and stops every section opening with a badge. */
+/* Six sizes. There were 48 rendered across the site and 28 on the home page alone
+   — one new size every 8.4 text nodes — because sizes were declared as two-decimal
+   rem values against a 17px root (.68/.72/.74/.87/.93/.94/1.02rem) and as
+   half-pixel px values in globals.css. A reader cannot perceive a hierarchy with
+   48 levels; they perceive a mistake. Every size below is a whole pixel. */
+:root {
+  --t-display: 84px;
+  --t-title: 32px;
+  --t-subhead: 20px;
+  --t-body: 15px;
+  --t-small: 13px;
+  --t-micro: 12px;
+
+  /* --- Figures -----------------------------------------------------------
+     A number that IS the content, not a number inside a sentence.
+
+     This was the gap against every site this was measured against. Our largest
+     evidence — "8 of 8 contained", "66.7% recall", the stat tiles on every
+     signed-in page — rendered at --t-subhead (20px), which is smaller than the
+     heading above it and barely larger than the prose beside it. A benchmark
+     page whose numbers are the smallest confident thing on the screen is
+     arguing against itself.
+
+     Three sizes, because there are three jobs: a headline result, a tile on a
+     dashboard, and a figure inside a row. All three are set LIGHTER than the
+     body, not heavier — 680-weight digits at 20px read as shouting, where 45px
+     at 400 with -0.03em reads as a measurement. That inversion (big and light,
+     small and firm) is what the reference sites have in common and what we did
+     not have anywhere. */
+  --t-figure-lg: clamp(38px, 4.4vw, 56px);
+  --t-figure: 34px;
+  --t-figure-sm: 22px;
+
+  /* Tracking belongs to the size, not to the element. Display type needs
+     negative tracking or it reads loose; uppercase micro-labels need positive
+     or they read cramped. Both were being written per-rule. */
+  --track-display: -0.03em;
+  --track-title: -0.022em;
+  --track-tight: -0.012em;
+  --track-label: 0.07em;
+}
+
+/* One class for every figure that is the point of its block. `tabular-nums` so
+   a column of them lines up and a changing one does not reflow its neighbours. */
+.figure {
+  display: block;
+  font-family: var(--mk-sans, var(--sans));
+  font-size: var(--t-figure);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: var(--track-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--text, var(--mk-text));
+}
+.figure-lg { font-size: var(--t-figure-lg); }
+.figure-sm { font-size: var(--t-figure-sm); letter-spacing: var(--track-title); }
+/* The unit rides with the number at a fraction of its size, so "66.7%" does not
+   become two competing type sizes on one baseline. */
+.figure .unit { font-size: 0.52em; font-weight: 500; letter-spacing: 0; margin-left: 1px; }
+/* What the figure counts. Never a full sentence — that goes underneath. */
+.figure-label {
+  display: block;
+  margin-top: 8px;
+  font-size: var(--t-micro);
+  font-weight: 560;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--muted, var(--mk-muted));
+}
+
+/* UPPERCASE labels only, and 12px is the floor for anything on this site: 368 of
+   1,792 nodes rendered below it, 194 on the product page. Small faint text does
+   not read as technical, it reads as unconsidered. */
 .mk-eyebrow {
   display: inline-block;
   font-family: var(--mk-sans);
-  font-size: .8rem;
+  font-size: var(--t-micro);
   font-weight: 600;
-  letter-spacing: .01em;
+  letter-spacing: .06em;
+  text-transform: uppercase;
   color: var(--mk-accent);
 }
-.mk h1, .mk h2, .mk h3 { text-wrap: balance; margin: 0; font-family: var(--mk-display); }
+.mk h1, .mk h2, .mk h3 {
+  text-wrap: pretty;
+  margin: 0;
+  text-align: start;
+  font-family: var(--mk-display);
+}
+/* Big and light.
+   This was 56px at weight 600 — small AND heavy, which is the opposite of what
+   every site worth comparing to does: Trajectory sets 96px at 500, Bruno 72px at
+   400, Fireworks 48px at 550 with -0.04em. A bold headline at a middling size
+   reads as a slide title; a large one at 430 reads as a masthead, and the weight
+   is what makes the difference, not the size alone.
+   `1.02` line-height because at this size the default leading opens a visible
+   gap between the two lines of a two-line headline. */
+.mk .mk-h1 { max-width: none; }
+.mk .mk-lede { max-width: none; }
 .mk-h1 {
-  font-size: clamp(2.6rem, 6vw, 4.4rem);
-  line-height: 1.06;
-  letter-spacing: -.028em;
-  font-weight: 600;
+  font-size: clamp(2.5rem, 5.6vw, var(--t-display));
+  line-height: 1.03;
+  letter-spacing: -.035em;
+  font-weight: 430;
+  /* Not `balance`. Balance evened the line lengths and in doing so split the
+     accent phrase across two lines and orphaned "for" — the two worst breaks
+     available in a four-word headline. The phrase is held together below
+     instead, and the natural break lands where the sense does. */
+  text-wrap: pretty;
 }
-.mk-h1 em { font-style: normal; color: var(--mk-brand); }
+/* The accent phrase carries a little more weight than the rest of the line, so
+   it reads as emphasis rather than as two headlines in two colours — at 430 a
+   pure colour change is too weak to register as deliberate. */
+/* The accent phrase is one word as far as the line breaker is concerned: a
+   headline that reads "Runtime / firewall for" has broken the one phrase the
+   whole line exists to deliver. */
+.mk-h1 em { font-style: normal; color: var(--mk-accent); font-weight: 520; white-space: nowrap; }
+
+/* The eyebrow: mono, because this product's subject matter IS code and the
+   hero's own panel is a list of tool calls. A tracked-out uppercase grotesk
+   here would be the generic choice; the mono ties the type to the content. */
+.mk-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 22px;
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+}
+.mk-kicker::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mk-accent);
+  /* A slow pulse, not a blink: this is a status light on a thing that is
+     running, and anything faster reads as an alert. */
+  animation: mk-pulse 2.8s ease-in-out infinite;
+}
+@keyframes mk-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.82); } }
+@media (prefers-reduced-motion: reduce) { .mk-kicker::before { animation: none; } }
 .mk-h2 {
-  font-size: clamp(1.9rem, 4vw, 2.9rem);
-  line-height: 1.1;
-  letter-spacing: -.024em;
+  font-size: clamp(1.625rem, 2.6vw, var(--t-title));
+  line-height: 1.15;
+  letter-spacing: -.022em;
   font-weight: 600;
 }
-.mk-h3 { font-size: 1.2rem; line-height: 1.28; letter-spacing: -.015em; font-weight: 600; }
-.mk-lede { font-size: clamp(1.1rem, 1.6vw, 1.3rem); line-height: 1.45; color: var(--mk-muted); letter-spacing: -.012em; }
-.mk-body { color: var(--mk-muted); }
-.mk-fine { font-size: .87rem; line-height: 1.5; color: var(--mk-faint); }
-.mk-mono { font-family: var(--mk-code); font-size: .82rem; letter-spacing: 0; }
+.mk-h3 { font-size: var(--t-subhead); line-height: 1.35; letter-spacing: -.015em; font-weight: 600; }
+.mk-lede { font-size: var(--t-subhead); line-height: 1.5; color: var(--mk-muted); letter-spacing: -.01em; font-weight: 400; }
+.mk-body { font-size: var(--t-body); line-height: 1.6; color: var(--mk-muted); }
+/* `--mk-faint` is gone. It measured 3.58:1 on the page ground and painted 280
+   nodes — a WCAG AA failure at volume, and the reason the site looked washed out
+   rather than calm. Everything that used it now uses the muted role. */
+.mk-fine { font-size: var(--t-small); line-height: 1.5; color: var(--mk-muted); }
+.mk-mono { font-family: var(--mk-code); font-size: var(--t-small); letter-spacing: 0; }
 .mk-label {
   font-family: var(--mk-sans);
-  font-size: .72rem;
+  font-size: var(--t-micro);
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--mk-faint);
+  color: var(--mk-muted);
 }
 .mk a { color: var(--mk-accent); text-underline-offset: 3px; }
 
@@ -206,25 +422,29 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 980px;
-  padding: 12px 22px;
-  font-size: 1rem;
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) 18px;
+  font-size: var(--t-body);
+  font-weight: 600;
   letter-spacing: -.01em;
   text-decoration: none;
   border: 1px solid transparent;
   transition: background-color .2s ease, border-color .2s ease, opacity .2s ease;
 }
-.mk-btn-primary { background: var(--mk-cta); color: var(--mk-cta-fg); }
-.mk-btn-primary:hover { background: var(--mk-cta-hover); }
-.mk-btn-outline {
+/* Scoped to `.mk` on purpose. `.mk a` above is (0,1,1) and a bare `.mk-btn-primary`
+   is (0,1,0), so the link colour won every button that is an anchor — which is all
+   of them — and painted the accent orange on the navy fill at roughly 2:1. Matching
+   the specificity is what makes the label white again. */
+.mk .mk-btn-primary { background: var(--mk-cta); color: var(--mk-cta-fg); }
+.mk .mk-btn-primary:hover { background: var(--mk-cta-hover); }
+.mk .mk-btn-outline {
   background: transparent;
   color: var(--mk-accent);
   border-color: var(--mk-border-strong);
 }
-.mk-btn-outline:hover { border-color: var(--mk-accent); background: var(--mk-accent-soft); }
-.mk-btn-ghost { color: var(--mk-muted); padding-inline: 12px; }
-.mk-btn-ghost:hover { color: var(--mk-text); }
+.mk .mk-btn-outline:hover { border-color: var(--mk-accent); background: var(--mk-accent-soft); }
+.mk .mk-btn-ghost { color: var(--mk-muted); padding-inline: 12px; }
+.mk .mk-btn-ghost:hover { color: var(--mk-text); }
 .mk a:focus-visible, .mk button:focus-visible {
   outline: 2px solid var(--mk-accent);
   outline-offset: 3px;
@@ -237,30 +457,13 @@
    border only appears in dark mode, where a panel and the black ground would
    otherwise have no edge between them. */
 .mk-card {
-  background: var(--mk-surface-2);
-  border: 1px solid transparent;
-  border-radius: var(--mk-r-xl);
-  padding: 28px;
-}
-/* On black, a grey tile and the ground have no edge between them, so the card
-   lifts to the lighter surface and takes a hairline. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .mk-card {
-    background: var(--mk-surface);
-    border-color: var(--mk-border);
-  }
-}
-:root[data-theme="dark"] .mk-card {
   background: var(--mk-surface);
-  border-color: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  padding: 22px;
+  box-shadow: var(--mk-shadow-card);
 }
-/* A band is also --mk-surface-2, so a grey tile on a grey band disappears. On a
-   band the tile inverts to white, which is exactly what Apple does. */
 .mk-band .mk-card { background: var(--mk-surface); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .mk-band .mk-card { background: #222224; }
-}
-:root[data-theme="dark"] .mk-band .mk-card { background: #222224; }
 .mk-card-raised { background: var(--mk-surface); box-shadow: var(--mk-shadow-raise); }
 
 /* The frame every product screenshot and React mock sits in. Hairline border, big
@@ -270,7 +473,7 @@
   background: var(--mk-surface);
   border: 1px solid var(--mk-border);
   border-radius: var(--mk-r-lg);
-  box-shadow: var(--mk-shadow-float);
+  box-shadow: none;
   overflow: hidden;
 }
 .mk-frame-bar {
@@ -286,11 +489,68 @@
   width: 9px; height: 9px; border-radius: 50%;
   background: var(--mk-border-strong); display: block;
 }
-.mk-frame-title { font-family: var(--mk-code); font-size: 11px; color: var(--mk-faint); }
+.mk-frame-title { font-family: var(--mk-code); font-size: var(--t-micro); color: var(--mk-muted); }
+
+/* The hero is one screen with two things in it: the sentence and the evidence.
+   Single column below 940px, where the decision stream drops under the copy. */
+.mk-hero {
+  display: grid;
+  gap: 40px;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: clamp(48px, 6vw, 80px);
+}
+.mk-hero > * { min-width: 0; }
+@media (min-width: 940px) {
+  /* The left column carries a 72px headline, so it needs the room: at 1.05fr
+     "Runtime firewall" did not fit on one line at any weight.
+
+     The shot gets its size from bleeding past the container instead of from
+     the grid. Beside a full-width headline a product shot that stops at the
+     text margin looks like an illustration of the product; one that runs off
+     the edge looks like a window onto it. The act clips it, so on a narrow
+     screen this costs nothing. */
+  .mk-hero { grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr); gap: 56px; }
+  .mk-hero-shot { margin-right: clamp(-96px, calc(560px - 50vw), -24px); }
+}
+
+/* The line a reader would actually type, at the size they would read it. */
+.mk-install {
+  margin: 26px 0 0;
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+  background: var(--mk-surface-2);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.mk-install code { color: var(--mk-text); white-space: pre; }
+.mk-install-2 { color: var(--mk-muted); }
+
+/* Six cells, hairline-separated, no chrome. A 1px grid gap over the border colour
+   draws every divider at once — six bordered cards would draw twelve. */
+.mk-map {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  overflow: hidden;
+}
+@media (min-width: 620px) { .mk-map { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 940px) { .mk-map { grid-template-columns: repeat(3, 1fr); } }
+.mk-map-cell { background: var(--mk-bg); padding: 18px 20px 20px; }
 
 .mk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.mk-grid { display: grid; gap: 20px; }
+.mk-grid { display: grid; gap: var(--gap-grid); }
 .mk-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.mk-grid-pair { grid-template-columns: 1fr; }
+@media (min-width: 760px) { .mk-grid-pair { grid-template-columns: 1fr 1fr; } }
 .mk-grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 /* Counted grids. auto-fit picks its column count from the viewport, which strands
    one card alone on a second row for the five-figure evidence band and the
@@ -304,6 +564,11 @@
 }
 @media (min-width: 1040px) { .mk-grid-5 { grid-template-columns: repeat(5, 1fr); } }
 @media (min-width: 720px) { .mk-grid-4 { grid-template-columns: repeat(2, 1fr); } }
+/* Exactly four, never three: 1 up, then 2, then 4. Skipping the three-column step
+   is the point, because three columns leaves the fourth card alone underneath. */
+.mk-grid-quad { grid-template-columns: 1fr; }
+@media (min-width: 560px) { .mk-grid-quad { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .mk-grid-quad { grid-template-columns: repeat(4, 1fr); } }
 .mk-split { display: grid; gap: 48px; align-items: center; grid-template-columns: 1fr; }
 @media (min-width: 900px) { .mk-split { grid-template-columns: 1fr 1fr; } }
 @media (min-width: 900px) { .mk-split-wide { grid-template-columns: 5fr 7fr; } }
@@ -315,9 +580,8 @@
    value reads on white, on the #f5f5f7 tile and on the band. */
 .mk-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--mk-code);
-  font-size: 11px; letter-spacing: .02em;
-  padding: 4px 9px; border-radius: 980px;
+  font-size: var(--t-small); letter-spacing: .01em;
+  padding: 3px 8px; border-radius: var(--mk-r-md);
   background: #e8e8ed; color: var(--mk-muted);
 }
 @media (prefers-color-scheme: dark) {
@@ -334,32 +598,174 @@
 /* Was a two-colour radial wash in the accent. Apple does not tint the ground behind
    a product; it lightens it very slightly so the object sits in a soft field. This
    is a single neutral gradient and should be almost impossible to point at. */
+/* The light behind the hero.
+   This was a flat grey that ran to `transparent` at exactly 620px, which produced
+   a visible horizontal edge across the page — the hero read as a grey box sitting
+   on white rather than as light falling on it. Two layers now: a faint brand-tinted
+   glow behind the headline, and a neutral gradient that is fully transparent well
+   before the element ends, so there is no edge to see. */
+/* The ground the hero sits on.
+   It was a 7% brand radial centred at the top — so faint it read as a printing
+   error rather than a decision. Every site worth comparing to treats this
+   surface deliberately: Trajectory's entire identity is an atmosphere, Bruno
+   puts a tinted panel behind the product shot.
+
+   Three layers, each doing one job: a warm accent bloom behind the headline, a
+   cooler one behind the panel on the right so the two halves of the composition
+   are not lit identically, and a fine grain over both. The grain is the part
+   that stops a CSS gradient looking like a CSS gradient — it is an inline SVG
+   turbulence, so it costs no request and no image. */
 .mk-wash {
   position: absolute;
   inset-inline: 0;
-  top: 0;
-  height: 620px;
+  top: -60px;
+  height: 900px;
   pointer-events: none;
   z-index: 0;
-  background: linear-gradient(180deg, var(--mk-surface-2) 0%, transparent 100%);
-  opacity: .8;
+  background:
+    radial-gradient(
+      48% 46% at 22% 14%,
+      color-mix(in srgb, var(--mk-accent) 13%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      42% 44% at 82% 30%,
+      color-mix(in srgb, var(--mk-brand) 11%, transparent) 0%,
+      transparent 72%
+    ),
+    linear-gradient(180deg, var(--mk-surface-2) 0%, transparent 82%);
 }
+/* Grain. 0.035 opacity is the whole trick: visible as texture, invisible as
+   dots. `mix-blend-mode` keeps it from greying the surface underneath. */
+.mk-wash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* In dark the same bloom at this strength turns the top of the page muddy, and
+   multiply on a dark ground does nothing — the grain switches to screen. */
+:root[data-theme="dark"] .mk-wash,
+:root:not([data-theme="light"]) .mk-wash { opacity: .55; }
+:root[data-theme="dark"] .mk-wash::after,
+:root:not([data-theme="light"]) .mk-wash::after { mix-blend-mode: screen; opacity: .05; }
 
 /* --- Entrance motion, CSS only ----------------------------------------- */
 
-/* Shorter and smaller than before. Apple moves things a few pixels, not fifteen. */
+/* Movement only, and never opacity.
+   This used to animate `opacity: 0 -> 1` with `fill-mode: both`, which parks the
+   element at zero until the animation runs. A browser throttles animations in a
+   background tab, so a page opened in one — or captured by anything that is not
+   the foreground window — rendered completely blank: 34 elements, all invisible,
+   waiting on a frame that never came. The resting state is now visible by
+   construction, and the animation only moves things eight pixels. */
 @keyframes mk-fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
+  /* It was named fade-up and only did the up: no opacity, so the "fade" was a
+     translate of eight pixels that nobody could see.
+
+     The whole sequence finishes inside ~0.73s, and that ceiling is the
+     constraint, not a preference. `both` means an element is at opacity 0
+     during its delay, so a long stagger is indistinguishable from a page that
+     has not loaded — a capture at 450ms of the first attempt (0.62s steps,
+     90ms apart) showed an empty hero with only the kicker in it. Motion that
+     reads as a loading state is worse than no motion. */
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
 }
-.mk-up { animation: mk-fade-up .5s cubic-bezier(.32, .72, 0, 1) both; }
-.mk-d1 { animation-delay: .05s; }
-.mk-d2 { animation-delay: .1s; }
+/* The page arrives in sequence rather than all at once.
+   This was .5s with 50ms between steps: five elements inside a quarter second,
+   which the eye reads as one event. At 90ms apart the order is legible — kicker,
+   headline, lede, buttons — and it still finishes well under a second. */
+.mk-up { animation: mk-fade-up .44s cubic-bezier(.22, .68, 0, 1) both; }
+.mk-d1 { animation-delay: .02s; }
+.mk-d2 { animation-delay: .08s; }
 .mk-d3 { animation-delay: .15s; }
-.mk-d4 { animation-delay: .2s; }
-.mk-d5 { animation-delay: .25s; }
+.mk-d4 { animation-delay: .22s; }
+.mk-d5 { animation-delay: .29s; }
 @media (prefers-reduced-motion: reduce) {
   .mk-up { animation: none; }
+}
+
+/* --- Benefit patterns -------------------------------------------------- */
+
+/* A three-tick list. The reference site this design answers to uses one under
+   every section paragraph, and it is the single biggest reason its sections scan:
+   three short benefit lines beat a paragraph that contains the same three facts. */
+.mk-ticks { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 12px; }
+.mk-ticks li {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 12px;
+  align-items: start;
+  font-size: var(--t-body);
+  color: var(--mk-text);
+}
+.mk-ticks li::before {
+  content: "";
+  width: 18px; height: 18px; margin-top: 3px;
+  border-radius: 999px;
+  background: var(--mk-accent-soft);
+  /* A tick drawn in the accent, so the list needs no icon library. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b3431f' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-size: 12px 12px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mk-ticks li::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff7a45' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  }
+}
+:root[data-theme="dark"] .mk-ticks li::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff7a45' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+
+/* Three ticks across, for the sections that put the picture underneath rather than
+   beside. One column on a phone, where three tracks would leave every tick a
+   two-word ribbon. */
+@media (min-width: 900px) {
+  .mk-ticks-row { grid-template-columns: repeat(3, 1fr); gap: 28px; }
+}
+
+/* A section's heading beside its own supporting line. The heading is allowed the
+   larger track: it is set at display size and a narrow one rags badly. `end`
+   aligns the two on their last baseline rather than their tops, which is what
+   stops a two-line heading from floating above a one-line lede. */
+.mk-head { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 900px) {
+  .mk-head { grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: end; }
+  .mk-head > p { margin-bottom: 4px; }
+}
+
+/* The "works with what you already run" strip. Names, not logos: we integrate with
+   these projects and have no permission to use anyone's mark. */
+.mk-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin: 0 -8px;
+}
+.mk-strip span {
+  white-space: nowrap;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--mk-text);
+}
+
+/* One statement per section, set large. Used where a section has a single idea and
+   no list, so the page has a change of pace rather than eight identical grids. */
+.mk-statement {
+  font-family: var(--mk-display);
+  font-size: clamp(1.375rem, 2.2vw, var(--t-title));
+  line-height: 1.25;
+  letter-spacing: -.02em;
+  font-weight: 600;
+  max-width: 24ch;
 }
 
 /* --- Bands, lists, footer ---------------------------------------------- */
@@ -368,12 +774,12 @@
    #f5f5f7 full-bleed with no rule between them. */
 .mk-band { background: var(--mk-surface-2); }
 /* A figure that wraps mid-number reads as two numbers. At five across, a cell is
-   about 190px wide, and "42 of 42" at a fixed 2.6rem did not fit: the size now
+   about 190px wide, and a figure like "588 of 588" at a fixed 2.6rem did not fit: the size now
    scales with the viewport and the figure is told never to break. */
 .mk-stat b {
   display: block;
   font-family: var(--mk-display);
-  font-size: clamp(1.7rem, 2.5vw, 2.4rem);
+  font-size: var(--t-title);
   line-height: 1.05;
   letter-spacing: -.03em;
   font-weight: 600;
@@ -383,22 +789,45 @@
 }
 /* Narrower gutters for the five-across band, so the figure gets the width. */
 .mk-grid-5 > .mk-card { padding: 24px 18px; }
-.mk-stat span { display: block; font-size: .9rem; line-height: 1.4; color: var(--mk-muted); margin-top: 8px; }
+.mk-stat span { display: block; font-size: var(--t-small); line-height: 1.45; color: var(--mk-muted); margin-top: 8px; }
 .mk-steps { counter-reset: mkstep; display: grid; gap: 26px; }
 .mk-step { display: flex; gap: 16px; align-items: flex-start; }
 .mk-step-n {
-  flex: 0 0 30px; height: 30px; border-radius: 980px;
+  flex: 0 0 30px; height: 30px; border-radius: var(--mk-r-md);
   background: var(--mk-brand); color: #ffffff;
   display: grid; place-items: center;
-  font-size: 14px; font-weight: 600;
+  font-size: var(--t-small); font-weight: 600;
 }
-.mk-faq { border-top: 1px solid var(--mk-border); padding-block: 26px; }
+.mk-faq { border-top: 1px solid var(--mk-border); padding-block: 16px; }
 .mk-faq:last-child { border-bottom: 1px solid var(--mk-border); }
+.mk-faq > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.mk-faq > summary::-webkit-details-marker { display: none; }
+/* The marker is drawn rather than typed so it rotates, and it sits after the
+   question so the questions themselves line up on the left edge. */
+.mk-faq > summary::after {
+  content: "";
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--mk-muted);
+  border-bottom: 1.5px solid var(--mk-muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform .18s ease;
+}
+.mk-faq[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
+.mk-faq > summary:hover { color: var(--mk-accent); }
 .mk-footer {
   border-top: 1px solid var(--mk-border);
   background: var(--mk-bg);
   padding-block: 48px;
-  font-size: .87rem;
+  font-size: var(--t-small);
 }
 .mk-footer a { color: var(--mk-muted); text-decoration: none; }
 .mk-footer a:hover { color: var(--mk-text); text-decoration: underline; }
@@ -411,16 +840,113 @@
   position: sticky; top: 0; z-index: 40;
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  background: color-mix(in srgb, var(--mk-bg) 72%, transparent);
+  background: color-mix(in srgb, var(--mk-bg) 88%, transparent);
   border-bottom: 1px solid var(--mk-border);
 }
-.mk-nav-inner { display: flex; align-items: center; gap: 20px; height: 52px; }
-.mk-nav-links { display: none; gap: 26px; margin-left: 16px; }
-@media (min-width: 820px) { .mk-nav-links { display: flex; } }
-.mk-nav-links a { color: var(--mk-text); text-decoration: none; font-size: .82rem; opacity: .85; }
-.mk-nav-links a:hover { opacity: 1; }
+/* .mk > * also sets z-index, and it wins on specificity, which put the
+   open menu underneath the page. This restores the bar above the content. */
+.mk > .mk-nav { z-index: 40; }
+/* On the grey ground a translucent grey bar disappears. White keeps the
+   nav a separate object, which is what the dark theme gets for free. */
+:root[data-theme="light"] .mk-nav {
+  background: color-mix(in srgb, #ffffff 90%, transparent);
+  border-bottom-color: #e3e6ed;
+}
+:root[data-theme="light"] .mk-footer { background: #fff; }
+.mk-nav-inner { display: flex; align-items: center; gap: 20px; height: 64px; }
+/* `align-items: center` and a shared box on both kinds of child, because the
+   row mixes <a> and <button>. The button had its own padding and its own
+   colour, so the two sat on different baselines at different weights — which
+   is exactly what "Pricing and GitHub are not aligned" describes. Now the
+   only difference between a link and a menu trigger is the chevron. */
+.mk-nav-links { display: none; gap: 4px; margin-left: 14px; align-items: center; }
+@media (min-width: 900px) { .mk-nav-links { display: flex; } }
+.mk-nav-links > a,
+.mk-nav-links .mk-dd-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: var(--t-small);
+  line-height: 1;
+  color: var(--mk-text);
+  opacity: 0.82;
+  text-decoration: none;
+  cursor: pointer;
+}
+.mk-nav-links > a:hover,
+.mk-nav-links .mk-dd-button:hover,
+.mk-nav-links .mk-dd-button[aria-expanded="true"] {
+  opacity: 1;
+  background: var(--mk-surface-2);
+}
+
+/* GitHub sits with the actions, as an icon. It leaves the site, and an
+   outbound link in a row of internal pages reads as a page until you click. */
+.mk-nav-gh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--mk-muted);
+}
+.mk-nav-gh:hover { color: var(--mk-text); background: var(--mk-surface-2); }
+@media (max-width: 560px) { .mk-nav-gh { display: none; } }
 .mk-nav-cta { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.mk-nav-cta .mk-btn { padding: 7px 15px; font-size: .82rem; }
+/* `white-space: nowrap` because "Try it" was wrapping to two lines inside a 53px
+   sticky bar on every page at phone width, and a button that renders as "Try /
+   it" reads as a broken build. */
+.mk-nav-cta .mk-btn { padding: 7px 14px; font-size: var(--t-small); white-space: nowrap; }
+@media (max-width: 620px) { .mk-nav-cta .mk-nav-try { display: none; } }
+@media (max-width: 899px) {
+  .mk-nav-inner { gap: 10px; }
+  .mk-nav-cta { gap: 8px; padding-right: 44px; }
+}
+
+/* The mobile menu. Below the breakpoint the link row is display:none, and until
+   now nothing replaced it: on a phone the only navigation on the whole site was
+   "Try it" and "Sign in". `<details>` needs no client component, which matters
+   because this nav reads the session cookie on the server. */
+.mk-menu { position: relative; }
+@media (min-width: 900px) { .mk-menu { display: none; } }
+.mk-menu > summary {
+  position: absolute;
+  right: 16px;
+  top: -52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--mk-r-md);
+  color: var(--mk-text);
+  cursor: pointer;
+  list-style: none;
+}
+.mk-menu > summary::-webkit-details-marker { display: none; }
+.mk-menu[open] > summary { background: var(--mk-surface-2); }
+.mk-menu-panel {
+  display: grid;
+  gap: 2px;
+  padding: 10px 16px 16px;
+  border-bottom: 1px solid var(--mk-border);
+  background: var(--mk-bg);
+}
+.mk-menu-panel a {
+  padding: 12px 4px;
+  font-size: var(--t-body);
+  color: var(--mk-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--mk-border);
+}
+.mk-menu-panel a:last-child { border-bottom: 0; }
 
 /* --- Brand ------------------------------------------------------------- */
 
@@ -429,7 +955,3063 @@
   display: inline-flex; align-items: center; gap: 9px;
   text-decoration: none; color: var(--mk-text);
 }
-.mk-brand-name { font-family: var(--mk-display); font-weight: 600; letter-spacing: -.02em; font-size: 1.05rem; }
+.mk-brand-name { font-family: var(--mk-display); font-weight: 600; letter-spacing: -.02em; font-size: var(--t-body); }
 .mk-brand-sub {
-  font-size: .7rem; letter-spacing: .02em; color: var(--mk-faint);
+  font-size: var(--t-micro); letter-spacing: .02em; color: var(--mk-muted);
 }
+
+
+/* --- Product visuals (.pv-*) ---------------------------------------------
+   The drawn replacements for the screenshots. See components/marketing/product.tsx
+   for why these are DOM.
+
+   The craft here is mostly restraint. One surface, one hairline, one shadow, one
+   accent, and a single moment of motion. The screenshots these replaced had every
+   affordance of a real application — a sidebar, a filter row, a notification bell —
+   competing for attention in a 600px column, which is why none of it read. */
+
+.pv {
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-lg);
+  background: var(--mk-surface);
+  box-shadow: none;
+  overflow: hidden;
+  /* Digits line up down the columns; this is a table of records, even drawn. */
+  font-variant-numeric: tabular-nums;
+}
+.pv-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--mk-border);
+  background: var(--mk-surface-2);
+}
+.pv-bar-label {
+  font-family: var(--mk-code);
+  font-size: var(--t-micro);
+  letter-spacing: 0;
+  color: var(--mk-muted);
+  overflow-wrap: anywhere;
+}
+.pv-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-micro);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+  white-space: nowrap;
+}
+.pv-live i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--mk-good);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mk-good) 18%, transparent);
+}
+.pv-body { padding: 16px; display: grid; gap: 10px; }
+.pv-body-tight { padding: 10px; }
+
+/* One call. The row is quiet; the blocked one is not. */
+.pv-call {
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--mk-r-md);
+  background: var(--mk-surface-2);
+  animation: pv-in .5s cubic-bezier(.2, .7, .3, 1) both;
+}
+.pv-call-stop {
+  background: var(--mk-stop-soft);
+  border-color: color-mix(in srgb, var(--mk-stop) 26%, transparent);
+}
+.pv-call-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pv-tool {
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  color: var(--mk-text);
+  overflow-wrap: anywhere;
+}
+.pv-arg {
+  font-family: var(--mk-code);
+  font-size: var(--t-micro);
+  color: var(--mk-muted);
+  overflow-wrap: anywhere;
+}
+/* The verdict is pushed to the end of the row, which is where an eye scanning a
+   list of outcomes goes looking for it. */
+.pv-v {
+  margin-left: auto;
+  font-family: var(--mk-code);
+  font-size: var(--t-micro);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pv-v-go { background: var(--mk-good-soft); color: var(--mk-good); }
+.pv-v-stop { background: var(--mk-stop); color: #fff; }
+.pv-v-hold { background: var(--mk-hold-soft); color: var(--mk-hold); }
+:root:not([data-theme="light"]) .pv-v-stop { color: #1a0d0b; }
+:root[data-theme="dark"] .pv-v-stop { color: #1a0d0b; }
+
+.pv-call-why {
+  display: grid;
+  gap: 4px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--mk-stop) 18%, transparent);
+}
+.pv-rule { font-family: var(--mk-code); font-size: var(--t-small); color: var(--mk-stop); }
+.pv-reason { font-size: var(--t-small); line-height: 1.5; color: var(--mk-muted); }
+
+/* The one piece of motion on the page, and it is the point of the page: the
+   records arrive, and the refusal arrives with them.
+
+   The choreography is the argument. Three calls go through at an even pace, and
+   then the fourth beat is a refusal that does not just appear — it settles, and
+   its reason opens underneath it. Someone who watches the hero for two seconds
+   has watched the product work, which is the one thing a static screenshot of
+   the same panel cannot do.
+
+   The timing was 0.5s steps at 0.09s apart, which is fast enough that all four
+   rows effectively arrive at once and nothing is choreographed at all. */
+@keyframes pv-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+/* The refusal lands rather than fades: a short overshoot on the ring, so the
+   eye is pulled to the one row that matters without anything flashing. */
+@keyframes pv-stop-land {
+  0%   { opacity: 0; transform: translateY(10px) scale(.985); box-shadow: 0 0 0 0 color-mix(in srgb, var(--mk-stop) 32%, transparent); }
+  55%  { opacity: 1; transform: translateY(0) scale(1.012); box-shadow: 0 0 0 7px color-mix(in srgb, var(--mk-stop) 0%, transparent); }
+  100% { opacity: 1; transform: none; box-shadow: 0 0 0 0 color-mix(in srgb, var(--mk-stop) 0%, transparent); }
+}
+.pv-call-stop { animation-name: pv-stop-land; animation-duration: .62s; }
+/* The reason unfolds after the row it belongs to has settled, so it reads as a
+   consequence of the block rather than as part of the same arrival. */
+.pv-call-stop .pv-call-why {
+  animation: pv-why .34s cubic-bezier(.2, .7, .3, 1) both;
+  animation-delay: .52s;
+}
+@keyframes pv-why {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv-call, .pv-call-stop, .pv-call-stop .pv-call-why { animation: none; }
+}
+
+/* --- Trace anatomy -------------------------------------------------------- */
+
+.pv-trace-title {
+  font-family: var(--mk-display);
+  font-size: var(--t-subhead);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  padding: 2px 2px 4px;
+}
+.pv-grid2 { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 620px) { .pv-grid2 { grid-template-columns: 1fr 1fr; } }
+.pv-h {
+  display: block;
+  font-size: var(--t-micro);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+  margin-bottom: 7px;
+}
+.pv-span {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--mk-r-sm);
+  background: var(--mk-surface-2);
+}
+.pv-span + .pv-span { margin-top: 5px; }
+.pv-ms { font-family: var(--mk-code); font-size: var(--t-micro); color: var(--mk-muted); }
+.pv-note {
+  display: grid;
+  gap: 4px;
+  padding: 11px 13px;
+  border-radius: var(--mk-r-md);
+  background: var(--mk-stop-soft);
+  border-left: 2.5px solid var(--mk-stop);
+}
+
+/* --- Estate scan ---------------------------------------------------------- */
+
+.pv-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 560px) { .pv-tiles { grid-template-columns: repeat(4, 1fr); } }
+.pv-tile {
+  padding: 12px 13px;
+  border-radius: var(--mk-r-md);
+  background: var(--mk-surface-2);
+  border-left: 2.5px solid transparent;
+}
+.pv-tile b {
+  display: block;
+  font-family: var(--mk-display);
+  font-size: var(--t-title);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+.pv-tile span { display: block; margin-top: 2px; font-size: var(--t-micro); color: var(--mk-muted); }
+.pv-tile-stop { border-left-color: var(--mk-stop); }
+.pv-tile-stop b { color: var(--mk-stop); }
+.pv-tile-hold { border-left-color: var(--mk-hold); }
+.pv-tile-hold b { color: var(--mk-hold); }
+.pv-tile-ok { border-left-color: var(--mk-good); }
+.pv-found {
+  padding: 12px 14px;
+  border-radius: var(--mk-r-md);
+  background: var(--mk-stop-soft);
+  border: 1px solid color-mix(in srgb, var(--mk-stop) 22%, transparent);
+}
+
+/* The proof rows: attack shape on the left in the reader's own words, verdict on
+   the right. A hairline list rather than four cards, because these are one
+   result read down a column, not four separate objects. */
+.mk-threats {
+  margin-top: 30px;
+  display: grid;
+  gap: 1px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  overflow: hidden;
+}
+.mk-threat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 15px 18px;
+  background: var(--mk-surface);
+}
+.mk-threat b { display: block; font-size: var(--t-body); font-weight: 600; color: var(--mk-text); }
+.mk-threat span { display: block; margin-top: 3px; font-size: var(--t-small); color: var(--mk-muted); }
+.mk-threat-verdict {
+  flex: 0 0 auto;
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--mk-good);
+  white-space: nowrap;
+}
+.mk-threat .mk-threat-verdict { margin-top: 0; }
+
+/* The detector pipeline, drawn as a run of marks rather than a list of rows. The
+   connector is a single line behind them, so adding a detector cannot desynchronise
+   the drawing from the data. */
+.pipe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  position: relative;
+}
+.pipe-node { display: flex; align-items: center; gap: 6px; font-size: var(--t-small); }
+.pipe-node i {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--mk-border-strong);
+  flex: 0 0 auto;
+}
+.pipe-node .mk-mono { color: var(--mk-muted); }
+.pipe-node-hit i { background: var(--mk-stop); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mk-stop) 20%, transparent); }
+.pipe-node-hit .mk-mono { color: var(--mk-stop); font-weight: 600; }
+.pipe-node-slow i { background: var(--mk-hold); }
+.pipe-node-slow .mk-mono { color: var(--mk-hold); }
+
+.pipe-budget {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--mk-surface-2);
+  overflow: hidden;
+}
+.pipe-budget span { display: block; height: 100%; background: var(--mk-accent); }
+
+/* --- The request path -----------------------------------------------------
+ *
+ * A rail with eight stations. The rail is a pseudo-element on the list, so the
+ * line is drawn once regardless of how many stations there are, and the pulse
+ * that travels it is a single absolutely-positioned element for the same reason.
+ * See components/marketing/path.tsx.
+ */
+.rp,
+.bm-doc .rp,
+.mk .bm-doc .rp {
+  position: relative;
+  list-style: none;
+  margin: 30px 0 0;
+  padding: 2px 0 2px 46px;
+  display: grid;
+  gap: 24px;
+  font-size: var(--t-body);
+  color: var(--mk-text);
+}
+.bm-doc .rp li { margin: 0; }
+/* Station titles sit on the same baseline as their mark. */
+.rp-body h3,
+.bm-doc .rp-body h3,
+.mk .bm-doc .rp-body h3 { margin: 0; font-size: var(--t-subhead); line-height: 1.3; }
+.bm-doc .rp-body p { margin: 6px 0 0; }
+/* The rail. Inset top and bottom so it starts at the first mark and ends at the
+   last, rather than running past both. */
+.rp::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 16px;
+  bottom: 16px;
+  width: 2px;
+  background: var(--mk-border);
+  border-radius: 1px;
+}
+
+.rp-station { position: relative; display: block; }
+.rp-mark {
+  position: absolute;
+  left: -46px;
+  top: -1px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--mk-bg);
+  border: 2px solid var(--mk-border);
+  font-family: var(--mk-code);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  color: var(--mk-muted);
+}
+/* The three stations where a call can end are the information in this drawing,
+   so they are the only ones that take colour. */
+.rp-station-stop .rp-mark { border-color: var(--mk-stop); color: var(--mk-stop); }
+.rp-station-key .rp-mark {
+  border-color: var(--mk-accent);
+  background: var(--mk-accent);
+  color: var(--mk-accent-fg);
+}
+.rp-body h3 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+.rp-body p { margin: 6px 0 0; max-width: var(--w-prose); font-size: var(--t-small); }
+.rp-tag {
+  font-family: var(--mk-sans);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--mk-stop);
+}
+
+/* One pulse travelling the rail, so the direction of travel is shown rather than
+   inferred from the numbering.
+   The travel is a percentage of the rail rather than a pixel distance, because the
+   rail's height depends on how the eight bodies wrap at the reader's width — a
+   hard-coded run would stop short on a wide screen and overshoot on a narrow one.
+   So the pulse is a child of the rail, inset to match it, and animates `top` from
+   0% to 100% of that parent. */
+.rp-pulse {
+  position: absolute;
+  left: 9px;
+  top: 16px;
+  bottom: 16px;
+  width: 10px;
+  pointer-events: none;
+}
+.rp-pulse::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--mk-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--mk-accent) 22%, transparent);
+  animation: rp-travel 7s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+@keyframes rp-travel {
+  0%   { top: 0%;   opacity: 0; }
+  7%   { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* The drawing has to be complete and legible with no motion at all: the rail,
+   the marks and the colour carry the whole message, and the pulse only says
+   which way it flows. */
+@media (prefers-reduced-motion: reduce) {
+  .rp-pulse::before { animation: none; opacity: 0; }
+}
+
+/* The waitlist form. The input and the button share a row down to phone width,
+   where the button drops below rather than squeezing the field to nothing. */
+.wl { display: grid; gap: 8px; }
+/* Visible only to screen readers: the card already carries "Join the waitlist"
+   directly above, and two labels stacked is the same instruction twice. */
+.wl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.wl-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.wl-input {
+  flex: 1 1 11ch;
+  min-width: 0;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: var(--t-body);
+  color: var(--mk-text);
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border-strong);
+  border-radius: var(--mk-r-md);
+}
+.wl-input::placeholder { color: var(--mk-muted); }
+.wl-input:focus-visible {
+  outline: 2px solid var(--mk-accent);
+  outline-offset: 1px;
+  border-color: var(--mk-accent);
+}
+.wl-submit { flex: 0 0 auto; }
+.wl-fine { margin: 2px 0 0; font-size: var(--t-small); line-height: 1.5; color: var(--mk-muted); }
+
+/* Card headers are a fixed two-line block so three cards of different title
+   lengths still start their bodies on the same line. */
+.ed-head { display: grid; gap: 7px; justify-items: start; margin-bottom: 4px; }
+.ed-head .mk-h3 { margin: 0; }
+
+/* What the reader sees after submitting. The form is replaced rather than kept
+   beside a message, because leaving a filled-in form under "you're on the list"
+   invites a second submit. */
+.wl-done {
+  margin: 0;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--mk-good) 40%, transparent);
+  border-radius: var(--mk-r-md);
+  background: var(--mk-good-soft);
+  color: var(--mk-good);
+  font-size: var(--t-small);
+  line-height: 1.5;
+  font-weight: 600;
+}
+.wl-error {
+  margin: 0 0 4px;
+  font-size: var(--t-small);
+  line-height: 1.5;
+  color: var(--mk-stop);
+  font-weight: 600;
+}
+
+/* The facts about the table, inside the table. Same edges, one object. */
+.mk-threat-foot {
+  background: var(--mk-surface-2);
+  padding: 15px 18px;
+  display: grid;
+  gap: 12px;
+}
+.mk-threat-foot p {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: 1.55;
+  color: var(--mk-muted);
+}
+
+/* Publishing the limits is this project's best trait, and it was a bare link
+   floating in an empty section. Same width as the proof table above it. */
+.mk-honest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 28px;
+  max-width: none;
+  padding: 20px 22px;
+  border: 1px solid var(--mk-border);
+  border-left: 3px solid var(--mk-accent);
+  border-radius: var(--mk-r-md);
+}
+.mk-honest h2 { margin: 0; }
+.mk-honest p { margin: 6px 0 0; max-width: var(--w-prose); font-size: var(--t-small); }
+.mk-honest .mk-btn { flex: 0 0 auto; }
+
+/* Which experiment each row came from. Quiet, but present — two benchmarks under
+   one heading need their denominators kept apart. */
+.mk-threat-src {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--t-micro);
+  color: var(--mk-muted);
+}
+.mk-threat .mk-mono { font-family: var(--mk-code); font-size: var(--t-small); }
+
+/* The pricing-announcement capture, under the editions grid rather than inside a
+   card: it is about all three editions, not one of them. */
+.mk-notify {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 28px;
+  padding: 20px 22px;
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  background: var(--mk-surface-2);
+}
+.mk-notify h3 { margin: 0; }
+.mk-notify p { margin: 6px 0 0; max-width: 54ch; font-size: var(--t-small); }
+.mk-notify .wl { flex: 0 0 auto; min-width: min(100%, 22rem); }
+
+/* --- The decision card, arriving in the order the check runs ---------------
+ *
+ * Three deliberate motion moments on the home page, not animation on every
+ * element: the hero stream, these three decisions, and the audit chain being
+ * verified. What the motion says is the thing the card exists to say — the
+ * inputs are gathered, and then the verdict lands on them.
+ *
+ * `both` fill means the final state is the resting state, so the card is
+ * complete and legible the moment the animation ends, and identical to how it
+ * renders with motion disabled. */
+.dc-row,
+.dc-verdict { animation: dc-in .45s cubic-bezier(.25, .8, .35, 1) both; }
+@keyframes dc-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+/* The verdict is the payload, so it gets the one flourish: a brief bloom on its
+   own coloured edge as it lands. Colour only, no layout, no size change. */
+.dc-verdict { animation-name: dc-in, dc-land; animation-duration: .45s, .9s; }
+@keyframes dc-land {
+  0%, 40% { box-shadow: none; }
+  60%     { box-shadow: -3px 0 0 0 currentColor; }
+  100%    { box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dc-row, .dc-verdict { animation: none; }
+}
+
+/* The audit chain, linking. Each entry carries the hash of the one before it, so
+   the motion that teaches the mechanism is entry after entry, in order. */
+.chain-entry { animation: dc-in .4s cubic-bezier(.25, .8, .35, 1) both; }
+.chain-entry-broken { animation: dc-in .4s cubic-bezier(.25, .8, .35, 1) both, chain-break 1.1s ease-out .45s 1; }
+@keyframes chain-break {
+  0%, 30% { border-color: var(--mk-border); }
+  55%     { border-color: var(--mk-stop); }
+  100%    { border-color: color-mix(in srgb, var(--mk-stop) 45%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chain-entry, .chain-entry-broken { animation: none; }
+}
+
+/* --- One request, three boundaries ----------------------------------------
+ *
+ * See components/marketing/sequence.tsx. Each stage shows its own artefacts —
+ * the documents, the answer, the tool call — and the state each ends in. The
+ * rows carry the meaning; the words around them are a heading and one line of
+ * condition.
+ */
+.seq { position: relative; margin-top: 36px; }
+
+.seq-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 30px;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .seq-stages { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px; }
+}
+
+.seq-stage {
+  display: grid;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 2px solid var(--mk-border);
+}
+@media (min-width: 900px) {
+  .seq-stage { grid-template-rows: auto auto 1fr auto auto; }
+  .seq-rows { align-self: start; }
+}
+/* Only the stage that refuses outright takes the stop colour, so the sequence
+   reads as the escalation it is rather than three equal warnings. */
+.seq-stage-stop { border-top-color: var(--mk-stop); }
+
+.seq-head { display: flex; align-items: baseline; gap: 10px; }
+.seq-n { font-size: var(--t-micro); font-weight: 600; color: var(--mk-muted); flex: 0 0 auto; }
+.seq-head .mk-h3 { margin: 0; }
+
+/* --- The artefacts -------------------------------------------------------- */
+
+.seq-rows {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-sm);
+  overflow: hidden;
+}
+.seq-row {
+  background: var(--mk-bg);
+  padding: 9px 11px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  font-size: var(--t-small);
+  line-height: 1.45;
+  color: var(--mk-text);
+}
+.seq-row > span { min-width: 0; overflow-wrap: anywhere; }
+.seq-row > i {
+  font-style: normal;
+  flex: 0 0 auto;
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--mk-muted);
+}
+.seq-row-kept > i { color: var(--mk-good); }
+.seq-row-quiet > span { color: var(--mk-muted); }
+/* What was taken away is shown as taken away, not described as taken away. */
+.seq-row-cut > span { color: var(--mk-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--mk-stop) 70%, transparent); }
+.seq-row-cut > i { color: var(--mk-stop); }
+.seq-row-answer { background: var(--mk-good-soft); }
+.seq-row-answer > i { color: var(--mk-good); }
+.seq-row-blocked { background: var(--mk-stop-soft); }
+.seq-row-blocked > span { color: var(--mk-stop); font-weight: 600; }
+.seq-row-blocked > i { color: var(--mk-stop); font-weight: 700; }
+
+.seq-verdict { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.seq-chip {
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--mk-r-sm);
+  background: var(--mk-hold-soft);
+  color: var(--mk-hold);
+}
+.seq-stage-stop .seq-chip { background: var(--mk-stop); color: #fff; }
+.seq-verdict .mk-mono { color: var(--mk-muted); }
+
+.seq-req {
+  margin: 2px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--mk-border);
+  font-size: var(--t-micro);
+  line-height: 1.5;
+  color: var(--mk-muted);
+}
+
+/* --- Motion ---------------------------------------------------------------
+ * Each row arrives, then the one that loses is struck out and the verdict lands.
+ * The keyframes end on the resting state, so any single frame a screenshot
+ * catches is still true and the scene is identical with motion disabled. */
+.seq-rail { display: none; }
+@media (min-width: 900px) {
+  .seq-rail { display: block; position: absolute; top: 0; left: 0; right: 0; height: 2px; pointer-events: none; }
+  .seq-pulse {
+    position: absolute;
+    top: -3px;
+    left: 0;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--mk-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--mk-accent) 22%, transparent);
+    animation: seq-travel 5.4s cubic-bezier(.4, 0, .5, 1) infinite;
+  }
+  @keyframes seq-travel {
+    0%   { left: 0%;   opacity: 0; }
+    7%   { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+  }
+  .seq-row { animation: seq-row-in 5.4s ease-out var(--rd, 0s) infinite; }
+  @keyframes seq-row-in {
+    0%, 3%  { opacity: .25; transform: translateY(3px); }
+    9%, 100% { opacity: 1; transform: none; }
+  }
+  /* The strike-through is drawn as the check runs, rather than being there from
+     the start — that stroke is the moment the document is taken away. */
+  .seq-row-cut > span { animation: seq-strike 5.4s ease-out var(--rd, 0s) infinite; }
+  @keyframes seq-strike {
+    0%, 12%  { text-decoration-color: transparent; }
+    20%, 100% { text-decoration-color: color-mix(in srgb, var(--mk-stop) 70%, transparent); }
+  }
+  .seq-verdict { animation: seq-land 5.4s ease-out var(--d, 0s) infinite; }
+  @keyframes seq-land {
+    0%, 4% { transform: none; }
+    9%     { transform: translateY(-2px); }
+    16%, 100% { transform: none; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seq-pulse, .seq-row, .seq-row-cut > span, .seq-verdict { animation: none; }
+}
+
+/* --- A grant, and a call that does not fit inside it -----------------------
+ * See components/marketing/grant.tsx. The bar runs past the limit line and stops
+ * being green; that crossing is the product's whole argument in one picture. */
+.gl {
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-lg);
+  background: var(--mk-surface);
+  padding: 22px 24px 20px;
+  display: grid;
+  gap: 18px;
+}
+.gl-head { display: grid; gap: 6px; }
+.gl-head .mk-mono { font-size: var(--t-body); color: var(--mk-text); overflow-wrap: anywhere; }
+
+.gl-terms { margin: 0; display: grid; gap: 7px; }
+.gl-terms > div { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+.gl-terms dt {
+  flex: 0 0 auto;
+  min-width: 9ch;
+  font-size: var(--t-micro);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+}
+.gl-terms dd { margin: 0; font-size: var(--t-small); color: var(--mk-text); overflow-wrap: anywhere; }
+
+/* The measurement. */
+.gl-scale { display: grid; gap: 8px; margin-top: 14px; }
+.gl-track {
+  position: relative;
+  margin-top: 20px;
+  height: 34px;
+  border-radius: var(--mk-r-sm);
+  background: var(--mk-surface-2);
+  overflow: visible;
+}
+/* The region the grant actually permits. */
+.gl-allowed {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--mk-r-sm) 0 0 var(--mk-r-sm);
+  background: color-mix(in srgb, var(--mk-good) 16%, transparent);
+}
+/* The attempt. Green until it reaches the ceiling, red past it — one gradient
+   with a hard stop at the limit, so the colour change IS the limit. */
+.gl-bar {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: var(--w);
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--mk-good) 0 16.6667%,
+    var(--mk-stop) 16.6667% 100%
+  );
+  animation: gl-grow 3.6s cubic-bezier(.3, .9, .4, 1) infinite;
+}
+@keyframes gl-grow {
+  0%       { width: 0; }
+  32%, 88% { width: var(--w); }
+  100%     { width: var(--w); }
+}
+.gl-limit { position: absolute; top: -6px; bottom: -6px; width: 0; }
+.gl-limit i {
+  position: absolute;
+  inset: 0 auto 0 -1px;
+  width: 2px;
+  background: var(--mk-text);
+  border-radius: 1px;
+}
+.gl-limit em {
+  position: absolute;
+  left: 8px;
+  top: -19px;
+  font-style: normal;
+  font-size: var(--t-micro);
+  white-space: nowrap;
+  color: var(--mk-muted);
+}
+.gl-limit em b { color: var(--mk-text); font-variant-numeric: tabular-nums; }
+
+.gl-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-micro);
+  color: var(--mk-muted);
+  font-variant-numeric: tabular-nums;
+}
+.gl-call { margin: 6px 0 0; display: grid; gap: 5px; }
+.gl-call .mk-mono { color: var(--mk-muted); overflow-wrap: anywhere; }
+.gl-call .mk-mono b { color: var(--mk-stop); font-weight: 700; }
+
+.gl-verdict { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.gl-chip {
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: var(--mk-r-sm);
+  background: var(--mk-stop);
+  color: #fff;
+}
+.gl-verdict .mk-mono { color: var(--mk-muted); }
+.gl-why { margin: -8px 0 0; font-size: var(--t-small); line-height: 1.55; color: var(--mk-muted); max-width: 62ch; }
+.gl-why b { color: var(--mk-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gl-bar { animation: none; width: var(--w); }
+}
+
+/* --- Two routes into the same product -------------------------------------
+ * Not three tiers. Three equally-weighted cards read as a paid SaaS ladder,
+ * which is the wrong shape for a page where nothing is priced. The hosted route
+ * is the tinted one because it is the one most visitors should take today. */
+.ed-routes { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .ed-routes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
+
+.ed-route {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: 26px 26px 28px;
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-lg);
+}
+.ed-route-hosted {
+  background: var(--mk-surface-2);
+  border-color: var(--mk-border-strong);
+}
+.ed-route .mk-body { margin: 0; max-width: 46ch; }
+.ed-route .mk-btn { justify-self: start; margin-top: 4px; }
+
+.ed-code {
+  margin: 0;
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+  background: var(--mk-surface-2);
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.ed-route-hosted .ed-code { background: var(--mk-bg); }
+.ed-code code { color: var(--mk-text); white-space: pre; }
+.ed-code-2 { color: var(--mk-muted); }
+
+.ed-terms { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.ed-terms li {
+  position: relative;
+  padding-left: 18px;
+  font-size: var(--t-small);
+  line-height: 1.5;
+  color: var(--mk-muted);
+}
+.ed-terms li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--mk-good);
+}
+
+/* Supported rollout: a conversation, on one line. */
+.ed-support {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 26px;
+  padding: 18px 22px;
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+}
+.ed-support p { margin: 0; max-width: var(--w-prose); font-size: var(--t-small); line-height: 1.55; color: var(--mk-muted); }
+.ed-support strong { color: var(--mk-text); }
+.ed-support .mk-btn { flex: 0 0 auto; }
+
+/* The rail, with the record it is describing beside it. Below 1040px the aside
+   drops under the rail rather than squeezing both into unreadable columns. */
+.rp-split { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1040px) {
+  .rp-split { grid-template-columns: minmax(0, 1fr) minmax(0, 430px); gap: 40px; align-items: start; }
+  .rp-aside { position: sticky; top: 76px; }
+}
+.rp-aside .mk-label { display: block; margin-bottom: 10px; }
+/* Container-sized, not viewport-sized. .pv-grid2 splits on a viewport media
+   query, so in a 430px panel at a 1440px viewport it still went two-up and
+   wrapped identifiers mid-word. */
+.rp-aside .pv-grid2,
+.fr-panel .pv-grid2 { grid-template-columns: minmax(0, 1fr); }
+.rp-aside .pv-span, .rp-aside .pv-h, .rp-aside .pv-ms,
+.fr-panel .pv-span, .fr-panel .pv-h, .fr-panel .pv-ms { overflow-wrap: anywhere; }
+
+/* --- Follow the request ---------------------------------------------------
+ * See components/marketing/follow.tsx. Stations on the left, the request on the
+ * right, advancing as you read. Below 1040px the panel drops under the stations
+ * and simply shows the completed record — following a reader down a single
+ * column would mean the panel covering the text it describes. */
+.fr { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1040px) {
+  .fr { grid-template-columns: minmax(0, 1fr) minmax(0, 430px); gap: 40px; align-items: start; }
+  .fr-panel { position: sticky; top: 76px; }
+}
+.fr-panel-inner { display: grid; gap: 10px; }
+.fr-panel .mk-label { display: block; }
+
+/* Which stage of the request is showing. Marks rather than numbers: it is a
+   position indicator, not something to read. */
+.fr-steps { display: flex; gap: 5px; }
+.fr-step {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--mk-border-strong);
+  transition: background-color .25s ease;
+}
+.fr-step-on { background: var(--mk-accent); }
+
+/* The panel changes content, so it must not change size as it does — a jumping
+   sticky element is worse than one that never moves. */
+.fr-frame { min-height: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-step { transition: none; }
+}
+
+/* Rows inside a follow frame. */
+.fr-rows { display: grid; gap: 9px; }
+.fr-rows > div { display: grid; gap: 2px; }
+.fr-rows .mk-mono { color: var(--mk-text); font-size: var(--t-small); overflow-wrap: anywhere; }
+.fr-rule { margin: 8px 0 0; }
+.fr-rule .mk-mono { color: var(--mk-stop); font-size: var(--t-small); }
+/* The frames reuse the boundary-sequence row styles, which live inside .mk. */
+.fr-frame .seq-rows { margin-top: 0; }
+
+/* --- The Boundary ---------------------------------------------------------
+ *
+ * The hero visual. See components/marketing/boundary.tsx for why it exists:
+ * the product IS a boundary, and the panel of log rows it replaced showed what
+ * happened without making that argument.
+ *
+ * Everything draws with stroke-dashoffset, so switching the animation off
+ * leaves the finished diagram rather than an empty frame.
+ */
+/* The diagram sits on its own surface rather than floating in the page.
+   Bruno frames its product shot in a window; Fireworks boxes its chart with
+   crop marks. A drawing with no edges reads as an illustration someone pasted
+   in, not as a panel the product produced. */
+.bd {
+  margin: 0;
+  color: var(--mk-text);
+  padding: 22px 24px 20px;
+  border: 1px solid var(--mk-hairline, var(--mk-border, rgba(0,0,0,.08)));
+  border-radius: var(--mk-r-lg, 14px);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--mk-surface) 92%, var(--mk-bg)),
+      var(--mk-surface));
+  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 12px 36px -14px rgba(0,0,0,.12);
+}
+/* On a black ground a drop shadow does nothing, so the panel is separated by
+   its border and a lighter surface instead. */
+:root[data-theme="dark"] .bd,
+:root:not([data-theme="light"]) .bd { box-shadow: none; border-color: var(--mk-border); }
+.bd svg { display: block; overflow: visible; }
+
+/* The checkpoint itself.
+   The gradient stops are coloured HERE, not with `currentColor` in the markup:
+   a <linearGradient> lives in <defs>, outside the group that sets the colour,
+   so `currentColor` in a stop resolves against the defs' inherited colour —
+   which was the page's text colour — and the boundary rendered near-black instead of accent.
+   A gradient stop does not inherit from the element that references it. */
+.bd-gate { color: var(--mk-accent); }
+#bd-gate stop, #bd-band stop { stop-color: var(--mk-accent); }
+.bd-tick { stroke: var(--mk-accent); stroke-width: 1; opacity: .45; }
+.bd-gate-label {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 8.5px;
+  letter-spacing: .14em;
+  fill: var(--mk-accent);
+  opacity: .8;
+}
+
+/* A call, as a label and a line. */
+.bd-tool {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 12px;
+  fill: var(--mk-text);
+}
+.bd-arg {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 9.5px;
+  fill: var(--mk-muted);
+}
+.bd-line {
+  stroke: var(--mk-good);
+  stroke-width: 1.5;
+  opacity: .7;
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: bd-draw .52s cubic-bezier(.3, .7, .3, 1) both;
+  animation-delay: var(--d);
+}
+.bd-track-stop .bd-line { stroke: var(--mk-stop); opacity: .75; }
+
+.bd-head { fill: none; stroke: var(--mk-good); stroke-width: 1.5; opacity: 0; animation: bd-appear .3s ease-out both; animation-delay: var(--d); }
+
+/* The moment of refusal: a ring that expands once and is gone, and a bar that
+   stays. The ring is the event; the bar is the fact. */
+.bd-impact {
+  fill: none;
+  stroke: var(--mk-stop);
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bd-ring .62s cubic-bezier(.2, .7, .3, 1) both;
+  animation-delay: var(--d);
+}
+.bd-bar {
+  stroke: var(--mk-stop);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: bd-appear .28s ease-out both;
+  animation-delay: var(--d);
+}
+
+.bd-verdict {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 11px;
+  opacity: 0;
+  animation: bd-appear .3s ease-out both;
+  animation-delay: var(--d);
+}
+.bd-verdict-go { fill: var(--mk-good); animation-delay: var(--d); }
+.bd-verdict-stop { fill: var(--mk-stop); font-size: 12px; }
+.bd-rule {
+  font-family: var(--mk-mono, var(--font-geist-mono), ui-monospace, monospace);
+  font-size: 10.5px;
+  fill: var(--mk-muted);
+  opacity: 0;
+  animation: bd-appear .3s ease-out both;
+  animation-delay: var(--d);
+}
+
+@keyframes bd-draw { to { stroke-dashoffset: 0; } }
+@keyframes bd-appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bd-ring {
+  0%   { opacity: .9; r: 4; }
+  70%  { opacity: 0;  r: 17; }
+  100% { opacity: 0;  r: 17; }
+}
+
+.bd figcaption {
+  margin-top: 16px;
+  font-size: var(--t-small);
+  line-height: 1.5;
+  color: var(--mk-muted);
+  max-width: 46ch;
+}
+
+/* Off: the finished diagram, complete and still. */
+@media (prefers-reduced-motion: reduce) {
+  .bd-line { stroke-dashoffset: 0; animation: none; }
+  .bd-head, .bd-bar, .bd-verdict, .bd-rule { opacity: 1; animation: none; }
+  .bd-impact { animation: none; opacity: 0; }
+}
+
+/* --- The gate rule, on the public site ------------------------------------
+ *
+ * The same motif as .gate-rule in globals.css (the hero's checkpoint seen
+ * edge-on), carried to the seam between sections. Applied with an adjacent
+ * sibling so it lands on every section boundary except the first, without a
+ * class on any of them — a divider that has to be remembered is a divider that
+ * will be missed on the next section somebody adds.
+ *
+ * Centred fade rather than the left-anchored one the app header uses: a section
+ * seam is symmetrical and the page has no left edge to measure from.
+ */
+.mk-section + .mk-section,
+.mk-section + .mk-section-tight,
+.mk-section-tight + .mk-section { position: relative; }
+
+.mk-section + .mk-section::before,
+.mk-section + .mk-section-tight::before,
+.mk-section-tight + .mk-section::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 6px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--mk-accent) 26%, transparent) 0 1px,
+      transparent 1px 38px
+    ),
+    linear-gradient(to bottom, var(--mk-border) 1px, transparent 1px);
+  background-size: 100% 4px, 100% 100%;
+  background-repeat: no-repeat;
+  background-position: 0 bottom, 0 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+}
+/* The orange tick marks were a light-mode ornament. On the grey ground they
+   read as a broken rule between every section. The gap is the separator. */
+:root[data-theme="light"] .mk-section + .mk-section::before,
+:root[data-theme="light"] .mk-section + .mk-section-tight::before,
+:root[data-theme="light"] .mk-section-tight + .mk-section::before {
+  display: none;
+}
+
+/* --- /coverage -------------------------------------------------------
+   The numbers on this page come from `lib/generated/coverage.json`, so the layout
+   has to survive them changing: a layer added to the taxonomy, a gap
+   list that grows or empties. Everything below sizes to its content. */
+
+.cov-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 28px 32px;
+  margin-top: 44px;
+  padding-top: 28px;
+  border-top: 1px solid var(--mk-border);
+}
+.cov-kpis > div { display: grid; gap: 6px; align-content: start; }
+.cov-kpis b {
+  font-size: var(--t-figure-lg);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: var(--track-display);
+  font-variant-numeric: tabular-nums;
+}
+.cov-kpis span { font-size: var(--t-small); color: var(--mk-muted); max-width: 26ch; }
+
+.cov-layers { display: grid; gap: 10px; margin-top: 28px; }
+.cov-layer {
+  display: grid;
+  /* The name column is fixed so every bar starts at the same x — a ragged
+     left edge on a bar chart reads as ten unrelated numbers. */
+  grid-template-columns: minmax(0, 15rem) 1fr auto;
+  align-items: center;
+  gap: 16px;
+}
+.cov-layer-name { font-size: var(--t-small); color: var(--mk-text); }
+.cov-layer-score {
+  font-size: var(--t-small);
+  color: var(--mk-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cov-bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--mk-border);
+  overflow: hidden;
+}
+.cov-bar i { display: block; height: 100%; background: var(--mk-accent); border-radius: 4px; }
+@media (max-width: 640px) {
+  .cov-layer { grid-template-columns: 1fr auto; }
+  .cov-bar { grid-column: 1 / -1; }
+}
+
+.cov-gaps {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cov-gaps li {
+  background: var(--mk-bg);
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+}
+.cov-gaps b { font-weight: 500; font-size: var(--t-body); text-wrap: pretty; }
+.cov-gaps span { font-size: var(--t-micro); color: var(--mk-muted); }
+
+.cov-budgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  margin-top: 28px;
+}
+.cov-budgets > div { display: grid; gap: 6px; align-content: start; border-top: 2px solid var(--mk-text); padding-top: 14px; }
+.cov-budgets b {
+  font-size: var(--t-figure);
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cov-budget-label { font-size: var(--t-small); color: var(--mk-text); }
+.cov-budgets span:last-child { font-size: var(--t-micro); color: var(--mk-muted); }
+
+.cov-h3 { margin-top: 56px; }
+
+.cov-neveropen { margin: 20px 0 0; display: grid; gap: 1px; background: var(--mk-border); border: 1px solid var(--mk-border); border-radius: 12px; overflow: hidden; }
+.cov-neveropen > div {
+  background: var(--mk-bg);
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 14rem) 1fr;
+  gap: 16px;
+}
+.cov-neveropen dt { font-size: var(--t-body); font-weight: 500; }
+.cov-neveropen dd { margin: 0; font-size: var(--t-small); color: var(--mk-muted); }
+@media (max-width: 560px) { .cov-neveropen > div { grid-template-columns: 1fr; gap: 4px; } }
+
+.cov-note { font-size: var(--t-small); color: var(--mk-muted); max-width: var(--w-prose); }
+.cov-note code { font-size: 0.92em; }
+
+/* --- /coverage: the origin cut ------------------------------------------
+ *
+ * Four cards rather than the bar list the layers use, because these rows are
+ * read rather than scanned: each one carries a sentence explaining what the
+ * category means, and a reader meeting "autonomous" for the first time needs
+ * that sentence more than they need another bar to compare.
+ *
+ * Two columns at desktop and one on a phone. Not four across: the
+ * descriptions are two lines each and four columns of two-line prose at
+ * 1280px is a wall.
+ */
+.cov-origins {
+  display: grid;
+  gap: 18px 28px;
+  margin-top: 28px;
+  /* Two, explicitly. `auto-fit` gave three at 1280px and left `intrinsic`
+     alone on a second row — and intrinsic is the one row a reader is most
+     likely to skip, so orphaning it is exactly the wrong accident. Four
+     items fill 2x2 at every width above the breakpoint. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 720px) {
+  .cov-origins { grid-template-columns: 1fr; }
+}
+.cov-origin {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border-top: 2px solid var(--mk-text);
+  padding-top: 14px;
+}
+.cov-origin-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cov-origin-head b {
+  font-size: var(--t-body);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.cov-origin-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--t-small);
+}
+.cov-origin-score i { font-style: normal; color: var(--mk-muted); font-size: var(--t-micro); }
+.cov-origin p {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--mk-muted);
+  text-wrap: pretty;
+}
+.cov-origin-absent {
+  font-size: var(--t-micro) !important;
+}
+
+/* --- home: where the policy binds --------------------------------------
+ *
+ * Three across at desktop, one on a phone. Each cell is where / how / what it
+ * governs, stacked, with the "how" carrying the weight because that is the
+ * thing a reader is scanning for — they arrive knowing which of these six
+ * they have.
+ */
+.mk-points {
+  display: grid;
+  gap: 1px;
+  margin-top: 36px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  /* Three, not `auto-fit`. The grid draws its gaps as rule lines by showing
+     the border colour through, so an unfilled cell is not empty space — it
+     is a visible grey rectangle. `auto-fit` gave four columns at 1280px and
+     left two of them as dead panels. Six items fill 3x2, then 2x3, then a
+     column. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 900px) {
+  .mk-points { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .mk-points { grid-template-columns: 1fr; }
+}
+.mk-point {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 20px;
+  background: var(--mk-surface);
+}
+.mk-point-where {
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mk-muted);
+}
+.mk-point b { font-family: var(--mk-code); font-size: var(--t-small); font-weight: 500; }
+.mk-point-governs { font-size: var(--t-small); color: var(--mk-muted); text-wrap: pretty; }
+
+/* --- home: three ways an agent goes wrong -------------------------------
+ *
+ * A numbered rail rather than cards. The three are ordered by how little
+ * there is to blame — attacker, then misconfiguration, then nobody — and a
+ * card grid says "three unrelated things" where a numbered sequence says
+ * "these are one spectrum", which is the argument.
+ */
+.mk-origins {
+  display: grid;
+  gap: 28px;
+  margin-top: 36px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.mk-origin {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border);
+  border-top: 3px solid var(--mk-brand);
+  border-radius: 16px;
+  padding: 22px 22px 24px;
+  box-shadow: var(--mk-shadow-card);
+}
+.mk-origin-n {
+  font-family: var(--mk-display);
+  font-size: 28px;
+  font-weight: 560;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--mk-brand);
+}
+.mk-origin b { font-size: var(--t-h3, 1.25rem); font-weight: 600; text-wrap: balance; }
+.mk-origin p { margin: 0; font-size: var(--t-small); color: var(--mk-text); text-wrap: pretty; }
+.mk-origin-eg {
+  font-size: var(--t-small);
+  color: var(--mk-muted);
+  border-left: 2px solid var(--mk-border);
+  padding-left: 12px;
+  text-wrap: pretty;
+}
+
+/* The two closing facts sit in one row, same cards as the three harms above. */
+.mk-pair {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 800px) {
+  .mk-pair { grid-template-columns: 1fr 1fr; }
+}
+.mk-pair-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border);
+  border-top: 3px solid var(--mk-brand);
+  border-radius: 16px;
+  padding: 22px 22px 24px;
+  box-shadow: var(--mk-shadow-card);
+}
+.mk-pair-card h2 { margin: 0; max-width: none; text-wrap: pretty; }
+.mk-pair-card p { margin: 0; font-size: var(--t-small); color: var(--mk-text); text-wrap: pretty; }
+.mk-pair-card a { color: var(--mk-accent); font-size: var(--t-small); font-weight: 600; }
+.mk-pair-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+
+/* --- Scroll reveal ------------------------------------------------------
+ *
+ * A transition between two real states, not an animation with `both`. The
+ * revealed state is an ordinary style, so a throttled tab, a skipped frame or
+ * a browser that never fires the observer still lands on readable text — the
+ * bug recorded above `mk-fade-up`, where a background tab rendered 34
+ * invisible elements, came from exactly the other choice.
+ *
+ * The hidden state is scoped to `[data-reveal]`, which only the ScrollReveal
+ * component sets and which it never sets under `prefers-reduced-motion`. No
+ * script, no hiding.
+ */
+[data-reveal] .mk-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 0.68, 0, 1),
+    transform 0.55s cubic-bezier(0.22, 0.68, 0, 1);
+}
+[data-reveal] .mk-reveal.is-in { opacity: 1; transform: none; }
+/* Children of a revealed block arriving in order. The delays are on the child,
+   so one observer entry per section still produces a sequence. */
+[data-reveal] .mk-reveal .mk-stagger > * {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.5s cubic-bezier(0.22, 0.68, 0, 1),
+    transform 0.5s cubic-bezier(0.22, 0.68, 0, 1);
+}
+[data-reveal] .mk-reveal.is-in .mk-stagger > * { opacity: 1; transform: none; }
+[data-reveal] .mk-reveal.is-in .mk-stagger > :nth-child(2) { transition-delay: 0.07s; }
+[data-reveal] .mk-reveal.is-in .mk-stagger > :nth-child(3) { transition-delay: 0.14s; }
+[data-reveal] .mk-reveal.is-in .mk-stagger > :nth-child(4) { transition-delay: 0.21s; }
+[data-reveal] .mk-reveal.is-in .mk-stagger > :nth-child(5) { transition-delay: 0.28s; }
+[data-reveal] .mk-reveal.is-in .mk-stagger > :nth-child(6) { transition-delay: 0.35s; }
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] .mk-reveal,
+  [data-reveal] .mk-reveal .mk-stagger > * { opacity: 1; transform: none; transition: none; }
+}
+
+/* --- Threat marquee -----------------------------------------------------
+ *
+ * The track holds the list twice and translates by exactly -50% of itself, so
+ * the loop is seamless at any content length with nothing measured in JS.
+ * Masked at both edges so items enter and leave rather than being clipped.
+ */
+.mk-marquee {
+  position: relative;
+  overflow: hidden;
+  padding-block: 14px;
+  border-block: 1px solid var(--mk-border);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.mk-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: mk-marquee 46s linear infinite;
+}
+.mk-marquee-run { display: flex; flex: none; }
+.mk-marquee-run > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  padding-inline: 18px;
+  white-space: nowrap;
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  color: var(--mk-text);
+}
+:root[data-theme="light"] .mk-marquee {
+  background: var(--mk-surface);
+}
+.mk-marquee-run i { font-style: normal; color: var(--mk-accent); }
+@keyframes mk-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.mk-marquee:hover .mk-marquee-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .mk-marquee-track { animation: none; }
+}
+
+/* --- /hooks -------------------------------------------------------------
+ *
+ * The page turns on one distinction — which checkpoint is a gate and which is
+ * a bystander — so the design spends its only strong signal there: the two
+ * blocking events carry the accent rule and a filled verdict chip, and the
+ * observing one is drawn quieter and says "cannot stop it" in plain words. A
+ * grid that styled all three alike would be the overclaim the page exists to
+ * refuse.
+ */
+.mk-code-block {
+  display: grid;
+  gap: var(--space-2);
+  max-width: none;
+  padding: 18px 20px;
+  border: 1px solid var(--mk-border);
+  border-radius: var(--radius-md);
+  background: var(--mk-surface);
+  overflow-x: auto;
+}
+.mk-code-block code {
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  white-space: pre;
+}
+.mk-code-block code::before { content: "$ "; color: var(--mk-muted); }
+
+.hk-events {
+  display: grid;
+  gap: 24px;
+  margin-top: 40px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 900px) { .hk-events { grid-template-columns: 1fr; } }
+.hk-event {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border-top: 2px solid var(--mk-accent);
+  padding-top: 16px;
+}
+/* The bystander. A hairline instead of the accent rule, because the page's
+   whole argument is that this one is different. */
+.hk-event-observe { border-top: 1px solid var(--mk-border); }
+.hk-event-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hk-event-head code { font-family: var(--mk-code); font-size: var(--t-small); font-weight: 500; }
+.hk-verdict {
+  flex: none;
+  font-size: var(--t-micro);
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--mk-border);
+  color: var(--mk-muted);
+}
+.hk-blocks {
+  background: var(--mk-accent);
+  border-color: var(--mk-accent);
+  /* The themed token, not a literal white — dark mode redefines it. */
+  color: var(--mk-accent-fg);
+}
+.hk-sees { margin: 0; font-size: var(--t-body); font-weight: 600; text-wrap: pretty; }
+.hk-detail { margin: 0; font-size: var(--t-small); color: var(--mk-text); text-wrap: pretty; }
+.hk-evidence { margin: 0; font-size: var(--t-micro); font-family: var(--mk-code); color: var(--mk-muted); }
+.hk-why {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--mk-muted);
+  border-left: 2px solid var(--mk-border);
+  padding-left: 12px;
+  text-wrap: pretty;
+}
+
+.hk-beats {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+}
+.hk-beats li {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 4px 16px;
+  align-items: baseline;
+  padding: 18px 20px;
+  background: var(--mk-surface);
+}
+.hk-beat-n { font-family: var(--mk-code); font-size: var(--t-micro); color: var(--mk-muted); grid-row: span 2; }
+.hk-beats b { font-size: var(--t-body); font-weight: 600; }
+.hk-beat-note { font-family: var(--mk-code); font-size: var(--t-micro); color: var(--mk-muted); }
+
+/* --- /control-points ----------------------------------------------------
+ *
+ * A list, not a grid of cards. Six entries each carrying a command, three
+ * bullets and a "blind to" paragraph is too much for a card, and the reading
+ * order matters: the label on the left, the substance on the right, so the
+ * eye can run down the left column to find its own situation and then stop.
+ */
+.cp-list { display: grid; gap: 0; margin-top: 40px; border-top: 1px solid var(--mk-border); }
+.cp-item {
+  display: grid;
+  grid-template-columns: minmax(180px, 250px) 1fr;
+  gap: 24px 40px;
+  padding-block: 28px;
+  border-bottom: 1px solid var(--mk-border);
+}
+@media (max-width: 800px) { .cp-item { grid-template-columns: 1fr; gap: 14px; } }
+.cp-item-head { display: grid; gap: 6px; align-content: start; }
+.cp-where {
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mk-muted);
+}
+.cp-item-head h3 { margin: 0; font-size: var(--t-body); font-weight: 600; text-wrap: balance; }
+.cp-item-body { display: grid; gap: 14px; align-content: start; }
+.cp-install {
+  font-family: var(--mk-code);
+  font-size: var(--t-micro);
+  color: var(--mk-text);
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+.cp-sees { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.cp-sees li { font-size: var(--t-small); }
+.cp-blind {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--mk-muted);
+  border-left: 2px solid var(--mk-border);
+  padding-left: 12px;
+  text-wrap: pretty;
+}
+/* The one column a reader cannot get anywhere else, so it keeps the accent. */
+.cp-blind b { color: var(--mk-accent); font-weight: 600; }
+.cp-more { font-size: var(--t-small); justify-self: start; }
+
+/* --- /mcp ---------------------------------------------------------------
+ *
+ * Two of the six are gaps and they are drawn as gaps: no accent rule, a
+ * hollow chip. A table that styled all six alike would read as six wins.
+ */
+.mcp-risks {
+  display: grid;
+  gap: 22px;
+  margin-top: 40px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 800px) { .mcp-risks { grid-template-columns: 1fr; } }
+.mcp-risk {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border-top: 2px solid var(--mk-accent);
+  padding-top: 16px;
+}
+.mcp-risk-gap { border-top: 1px dashed var(--mk-border-strong); }
+.mcp-risk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.mcp-risk-head h3 { margin: 0; font-size: var(--t-body); font-weight: 600; text-wrap: balance; }
+.mcp-chip {
+  flex: none;
+  font-size: var(--t-micro);
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--mk-border-strong);
+  color: var(--mk-muted);
+  white-space: nowrap;
+}
+.mcp-chip-on {
+  background: var(--mk-accent);
+  border-color: var(--mk-accent);
+  color: var(--mk-accent-fg);
+}
+.mcp-what { margin: 0; font-size: var(--t-small); text-wrap: pretty; }
+.mcp-how {
+  margin: 0;
+  font-size: var(--t-small);
+  color: var(--mk-muted);
+  border-left: 2px solid var(--mk-border);
+  padding-left: 12px;
+  text-wrap: pretty;
+}
+
+/* --- Header dropdown ----------------------------------------------------
+ *
+ * The panel is positioned against the nav row rather than the button so a
+ * two-column menu does not run off the right edge on a narrow laptop. It is
+ * `hidden` when closed — not just transparent — so its links are out of the
+ * tab order rather than focusable behind the page.
+ */
+.mk-dd { position: relative; display: inline-flex; }
+/* Only the chevron lives here now. Everything else about this button is set
+   with the nav links above, in one rule, so the two cannot drift apart
+   again. */
+.mk-dd-button svg { transition: transform 0.16s ease; opacity: 0.6; }
+.mk-dd-button[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+.mk-dd-panel {
+  position: absolute;
+  top: calc(100% + var(--space-3));
+  left: 0;
+  z-index: 60;
+  min-width: 280px;
+  border: 1px solid var(--mk-border);
+  border-radius: var(--radius-lg);
+  background: var(--mk-surface);
+  box-shadow: var(--mk-shadow-pop);
+  padding: var(--space-3);
+}
+.mk-dd-panel[data-open] { animation: mk-dd-in 0.16s cubic-bezier(0.22, 0.68, 0, 1) both; }
+@keyframes mk-dd-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-dd-panel[data-open] { animation: none; }
+}
+/* Two columns, each a stack of labelled groups. The panel is as tall as its
+   tallest column rather than as tall as every group stacked, which is what
+   made the first version 583px. */
+.mk-dd-inner { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: var(--space-2) var(--space-5); }
+.mk-dd-col { display: grid; align-content: start; gap: var(--space-1); min-width: 0; }
+.mk-dd-col + .mk-dd-col {
+  border-left: 1px solid var(--mk-border);
+  padding-left: var(--space-5);
+}
+.mk-dd-heading {
+  margin: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--t-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--mk-muted);
+}
+/* The first heading in a column sits flush with the panel padding; the ones
+   after it need air above to read as a new group. */
+.mk-dd-col > .mk-dd-section:first-child > .mk-dd-heading { margin-top: 4px; }
+.mk-dd-section ul { list-style: none; margin: 0; padding: 0; display: grid; }
+/* One line each, and the two lines are tight together: the label and its
+   note are one thing, and 2px of leading between them against 10px of
+   padding around them is what makes a row read as a row.
+
+   `white-space: nowrap` on the note is deliberate. Every note is written to
+   fit — six or seven words — and allowing a wrap would let one long entry
+   silently make the whole menu taller, which is the failure this pass was
+   fixing. If a note ever needs two lines, the note is wrong. */
+.mk-dd-section a {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+}
+.mk-dd-section a:hover,
+.mk-dd-section a:focus-visible { background: var(--mk-surface-2); }
+.mk-dd-section a b {
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--mk-text);
+  line-height: 1.3;
+}
+.mk-dd-section a span {
+  font-size: var(--t-micro);
+  color: var(--mk-muted);
+  line-height: 1.35;
+}
+/* Product opens to the right of its label. Resources opens back toward
+   the logo, so a two-column panel does not run off the viewport. */
+.mk-nav-links .mk-dd:nth-child(2) .mk-dd-panel {
+  left: auto;
+  right: 0;
+}
+@media (max-width: 1040px) {
+  .mk-dd-panel { min-width: 0; width: min(420px, 80vw); }
+  .mk-dd-inner { grid-template-columns: 1fr; }
+  .mk-dd-col + .mk-dd-col { border-left: 0; padding-left: 0; }
+}
+
+/* The header row collapses into the burger below this, and the panel would
+   otherwise be wider than the screen. */
+@media (max-width: 1040px) {
+  /* Below this the two-column panel plus the left offset would run past the
+     right edge on the narrower dropdown's position. */
+  .mk-dd-panel[data-wide] { min-width: 420px; }
+  .mk-dd-panel[data-wide] .mk-dd-inner { grid-template-columns: 1fr; }
+}
+/* Matches .mk-nav-links exactly. They differed by 20px, which left a
+   window where the row was hidden and the dropdown was not. */
+@media (max-width: 899px) { .mk-dd { display: none; } }
+
+/* A labelled group inside the phone burger, so a list of fourteen links
+   reads as four short lists rather than one long one. */
+.mk-burger-group { display: contents; }
+.mk-burger-group > p {
+  margin: 12px 0 2px;
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mk-muted);
+}
+
+/* --- Capability page template ------------------------------------------ */
+.cap-challenge {
+  display: grid;
+  gap: var(--space-2);
+  max-width: none;
+  padding-block: 0;
+  border-left: 2px solid var(--mk-accent);
+  padding-left: var(--space-4);
+}
+@media (max-width: 720px) {
+  .cap-challenge { padding-left: var(--space-4); }
+}
+
+.cap-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; max-width: none; }
+.cap-steps > li {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-6);
+  border-top: 1px solid var(--mk-border);
+}
+.cap-steps > li:last-child { border-bottom: 1px solid var(--mk-border); }
+@media (max-width: 640px) {
+  .cap-steps > li { grid-template-columns: 1fr; gap: 10px; }
+}
+.cap-step-n {
+  font-family: var(--mk-code);
+  font-size: var(--t-small);
+  color: var(--mk-accent);
+}
+.cap-step-body { display: grid; gap: var(--space-3); align-content: start; max-width: none; }
+.cap-step-body h2 { margin: 0; font-size: var(--t-h3, 1.35rem); font-weight: 600; text-wrap: balance; }
+.cap-step-code {
+  font-family: var(--mk-code);
+  font-size: var(--t-micro);
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  justify-self: start;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.cap-related {
+  display: grid;
+  gap: 1px;
+  margin-top: 48px;
+  max-width: none;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.cap-related-item {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 18px 20px;
+  background: var(--mk-surface);
+  text-decoration: none;
+  color: inherit;
+}
+.cap-related-item:hover { background: var(--mk-surface-2); }
+.cap-related-item b { font-size: var(--t-small); font-weight: 600; }
+.cap-related-item span { font-size: var(--t-micro); color: var(--mk-muted); text-wrap: pretty; }
+
+/* --- /product routing grid --------------------------------------------- */
+.idx-group + .idx-group { margin-top: 44px; }
+.idx-group > .mk-label { margin-bottom: 14px; }
+.idx-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.idx-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 20px;
+  border: 1px solid var(--mk-border);
+  border-radius: 12px;
+  background: var(--mk-surface);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+.idx-card:hover { border-color: var(--mk-accent); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) {
+  .idx-card { transition: none; }
+  .idx-card:hover { transform: none; }
+}
+.idx-card b { font-size: var(--t-body); font-weight: 600; }
+.idx-card span { font-size: var(--t-small); color: var(--mk-muted); text-wrap: pretty; }
+.idx-card i { font-style: normal; color: var(--mk-accent); font-size: var(--t-small); }
+
+/* --- Capability page features ------------------------------------------
+ *
+ * Five small grids, one per page, and they deliberately share a rhythm: a
+ * mono key, a plain-language line, and the accent spent on the one thing the
+ * page wants you to notice. Five bespoke treatments would make eight sibling
+ * pages look like eight products.
+ */
+
+/* /runtime — the nine surfaces. The two most products lack carry the accent. */
+.surf-grid {
+  display: grid;
+  gap: 1px;
+  margin-top: 40px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+/* Nine items. Three columns divide exactly; two leave one empty cell, and
+   this grid draws its gaps by showing the border colour through, so an empty
+   cell is a visible grey rectangle rather than blank space. The last item
+   spans instead. */
+@media (max-width: 860px) {
+  .surf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .surf-grid > :last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .surf-grid { grid-template-columns: 1fr; }
+  .surf-grid > :last-child { grid-column: auto; }
+}
+.surf {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 18px 20px;
+  background: var(--mk-surface);
+}
+.surf code { font-family: var(--mk-code); font-size: var(--t-small); font-weight: 500; }
+.surf p { margin: 0; font-size: var(--t-small); color: var(--mk-muted); text-wrap: pretty; }
+.surf-rare { box-shadow: inset 3px 0 0 var(--mk-accent); }
+.surf-tag {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  font-size: var(--t-micro);
+  color: var(--mk-accent);
+}
+
+/* /frameworks — count per framework, as a bar against 43. */
+.fw-grid {
+  display: grid;
+  gap: 22px 32px;
+  margin-top: 40px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 720px) { .fw-grid { grid-template-columns: 1fr; } }
+.fw { display: grid; gap: 8px; align-content: start; }
+.fw-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.fw-head b { font-size: var(--t-body); font-weight: 600; }
+.fw-head span { font-family: var(--mk-code); font-size: var(--t-small); color: var(--mk-muted); }
+.fw-bar { display: block; height: 6px; border-radius: 3px; background: var(--mk-border); overflow: hidden; }
+.fw-bar i { display: block; height: 100%; background: var(--mk-accent); border-radius: 3px; }
+.fw p { margin: 0; font-size: var(--t-small); color: var(--mk-muted); text-wrap: pretty; }
+
+/* /grants — two ordered ladders, side by side. */
+.ladders {
+  display: grid;
+  gap: 32px;
+  margin-top: 40px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 720px) { .ladders { grid-template-columns: 1fr; } }
+.ladder ol {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+}
+.ladder li {
+  display: grid;
+  gap: 3px;
+  padding: 12px 16px;
+  background: var(--mk-surface);
+}
+.ladder code { font-family: var(--mk-code); font-size: var(--t-small); font-weight: 500; }
+.ladder span { font-size: var(--t-small); color: var(--mk-muted); text-wrap: pretty; }
+/* Ordered least to most dangerous, and the last rung says so. */
+.ladder li:last-child code { color: var(--mk-accent); }
+
+/* /discovery — four kinds of thing. Feature grids share the reading measure
+   with the heading above them, so a product page does not change width
+   between the title and the diagram. */
+.find-grid,
+.hk-events,
+.ladders,
+.surf-grid,
+.rec-grid,
+.fw-grid,
+.mcp-risks,
+.cp-list,
+.mk-map,
+.idx-grid { max-width: none; }
+.find-grid {
+  display: grid;
+  gap: 22px 28px;
+  margin-top: 40px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 720px) { .find-grid { grid-template-columns: 1fr; } }
+.find { display: grid; gap: 8px; align-content: start; border-top: 2px solid var(--mk-text); padding-top: 14px; }
+.find b { font-size: var(--t-body); font-weight: 600; }
+.find code {
+  font-family: var(--mk-code);
+  font-size: var(--t-micro);
+  color: var(--mk-accent);
+  justify-self: start;
+}
+.find p { margin: 0; font-size: var(--t-small); color: var(--mk-muted); text-wrap: pretty; }
+
+/* /evidence — the fields of one record. */
+.rec-grid {
+  display: grid;
+  gap: 1px;
+  margin-top: 40px;
+  background: var(--mk-border);
+  border: 1px solid var(--mk-border);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 720px) { .rec-grid { grid-template-columns: 1fr; } }
+.rec {
+  display: grid;
+  grid-template-columns: minmax(120px, 170px) 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 14px 18px;
+  background: var(--mk-surface);
+}
+.rec code { font-family: var(--mk-code); font-size: var(--t-micro); }
+.rec p { margin: 0; font-size: var(--t-small); color: var(--mk-muted); text-wrap: pretty; }
+
+/* ========================================================================
+   A dark act
+   ========================================================================
+   The one structural thing the reference sites had that this did not: the
+   page changes material. Paper, then ink, then white — a rhythm a reader
+   feels before reading a word. Four greys within six points of each other
+   gave none.
+
+   The trick that makes it cheap: `.mk-ink-act` does not restyle its
+   children, it *remaps the tokens they already read*. Any section, card,
+   chip or tick list dropped inside themes itself, so a dark act costs one
+   class rather than a parallel stylesheet. Anything that hard-codes a
+   colour instead of taking a token will not follow — which is a useful
+   thing to have made visible.
+*/
+.mk-ink-act {
+  --mk-bg: var(--mk-ink);
+  --mk-surface: var(--mk-ink-2);
+  --mk-surface-2: color-mix(in srgb, var(--mk-ink-2) 76%, var(--mk-ink));
+  --mk-border: var(--mk-ink-border);
+  --mk-border-strong: rgba(255, 255, 255, 0.22);
+  --mk-text: var(--mk-ink-text);
+  --mk-muted: var(--mk-ink-muted);
+  --mk-faint: var(--mk-ink-muted);
+  /* The darkened orange exists for 5.32:1 on white and is far too dim here.
+     On ink the logo orange is the readable one, which is the happy case. */
+  --mk-accent: #ff7a45;
+  --mk-accent-soft: rgba(253, 73, 1, 0.14);
+  --mk-cta: var(--mk-brand);
+  --mk-cta-hover: #ff6a2a;
+  --mk-cta-fg: #17110d;
+  --mk-good: #5ddba0;
+  --mk-good-soft: rgba(93, 219, 160, 0.14);
+  --mk-stop: #ff8a80;
+  --mk-stop-soft: rgba(255, 138, 128, 0.14);
+
+  /* The app's own token names, remapped too.
+     Found the hard way: globals.css sets `h3 { color: var(--text) }` — the
+     application token, not the marketing one — so the platform panel's
+     headline rendered near-black on navy while every sibling took the
+     marketing token and rendered correctly. An act that claims "inside here
+     the foreground is light" has to mean it for both vocabularies, or the
+     bug reappears the next time a marketing section reuses an app component. */
+  --text: var(--mk-ink-text);
+  --muted: var(--mk-ink-muted);
+  --border: var(--mk-ink-border);
+  --surface: var(--mk-ink-2);
+  --bg: var(--mk-ink);
+
+  background: var(--mk-ink);
+  color: var(--mk-ink-text);
+}
+/* The band treatment inside an ink act would be a grey rectangle on navy. */
+.mk-ink-act .mk-band { background: var(--mk-ink-2); }
+.mk-ink-act .mk-card { box-shadow: none; }
+/* The hairline rule this stylesheet draws between consecutive sections is a
+   light-mode device and shows as a scratch on ink. */
+.mk-ink-act + .mk-section::before,
+.mk-ink-act::before { display: none; }
+
+/* Paper, the warm act. */
+.mk-paper-act { background: var(--mk-paper); }
+.mk-paper-act .mk-band { background: color-mix(in srgb, var(--mk-paper) 84%, #000); }
+
+/* ========================================================================
+   Display type
+   ========================================================================
+   Archivo, and the width axis is the point: at `wdth 108` a headline reads
+   as drawn rather than as the body font enlarged, which is what a single
+   family for everything always produces. Tracking tightens as size grows,
+   because a grotesk set large and loose looks accidental.
+*/
+.mk-h1,
+.mk-h2,
+.mk-display {
+  font-family: var(--mk-display);
+  font-variation-settings: "wdth" 108;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+}
+.mk-h1 { letter-spacing: -0.032em; line-height: 1.02; }
+.mk-h2 { line-height: 1.1; }
+/* The italic accent in a headline is a different voice, not a different
+   colour: same face, lighter, so the phrase reads as an aside rather than
+   as a highlighter pass. */
+.mk-h1 em,
+.mk-h2 em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--mk-accent);
+}
+
+/* ========================================================================
+   Product screenshots
+   ======================================================================== */
+.shot { margin: 0; display: grid; gap: 12px; }
+.shot-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--mk-border);
+  background: var(--mk-surface);
+  /* Two shadows: a tight one that reads as an edge and a wide soft one that
+     reads as distance. One shadow doing both is always either too hard at the
+     edge or too vague underneath. */
+  box-shadow:
+    0 1px 2px rgba(11, 27, 51, 0.06),
+    0 24px 60px -24px rgba(11, 27, 51, 0.28);
+}
+.shot-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Captures are wide; when a crop is set the interesting part is the top. */
+  object-fit: cover;
+  object-position: top left;
+}
+.shot-frame[style*="aspect-ratio"] img { height: 100%; }
+.shot figcaption {
+  font-size: var(--t-small);
+  color: var(--mk-muted);
+  text-wrap: pretty;
+  max-width: 54ch;
+}
+/* On ink the white capture would glare, and a light border round a light
+   image is invisible. A hairline of light and a deeper shadow instead. */
+.mk-ink-act .shot-frame {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 32px 80px -28px rgba(0, 0, 0, 0.65);
+}
+
+/* ========================================================================
+   The hero act
+   ========================================================================
+   Paper, not white. The screenshot beside the copy is a white interface, and
+   a white interface on a white page has no edge — the frame ends up doing
+   work the ground should be doing. On paper the capture reads as an object
+   sitting on a surface.
+*/
+.mk-hero-act {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 80% at 88% 20%, rgba(253, 73, 1, 0.16), transparent 46%),
+    radial-gradient(70% 60% at 0% 0%, rgba(36, 86, 170, 0.28), transparent 52%),
+    #071422;
+  border-bottom: 0;
+  color: var(--mk-ink-text);
+}
+/* Two soft pools rather than a gradient across the whole field: a linear
+   wash reads as a banner, and banners are what this page is trying to stop
+   looking like. Low opacity on purpose — it should be felt, not seen. */
+.mk-hero-glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 130%;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 52% at 18% 28%, rgba(253, 73, 1, 0.13), transparent 70%),
+    radial-gradient(38% 48% at 82% 16%, rgba(1, 36, 85, 0.10), transparent 72%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-hero-glow { animation: mk-drift 26s ease-in-out infinite alternate; }
+}
+/* Barely moves. The point is that the page is not quite static, not that
+   anything is happening. */
+@keyframes mk-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-2.5%, 1.5%, 0) scale(1.06); }
+}
+:root[data-theme="dark"] .mk-hero-glow,
+:root:not([data-theme="light"]) .mk-hero-glow {
+  background:
+    radial-gradient(42% 52% at 18% 28%, rgba(253, 73, 1, 0.16), transparent 70%),
+    radial-gradient(38% 48% at 82% 16%, rgba(70, 120, 220, 0.14), transparent 72%);
+}
+
+/* The proof screenshot sits wider than the threat rows above it, because it
+   is the evidence for them and evidence should not be smaller than the claim. */
+.mk-narrow + .mk-split { margin-top: var(--space-7); }
+.mk-split { max-width: none; }
+
+/* Homepage: more air. The column is the same 1120px wrap as every other page. */
+.mk-home .mk-section { padding-block: 104px; }
+.mk-home .mk-hero { padding-block: 72px 40px; gap: 40px; align-items: center; }
+.mk-home .mk-hero-shot { justify-self: stretch; margin-right: 0; max-width: none; }
+.mk-home .mk-narrow { max-width: none; }
+.mk-home .mk-hero-act .mk-lede { max-width: none; }
+.mk-home .seq { margin-top: 48px; }
+.mk-home .mk-origins { margin-top: 48px; }
+
+/* ========================================================================
+   The platform section
+   ========================================================================
+   Tabs down the left, panel on the right. Across the top is the obvious
+   arrangement and it is wrong here: five labels each carrying a verb *and* a
+   product name is two lines apiece, and five two-line tabs in a row is a
+   paragraph pretending to be navigation. Down the side they read as a list
+   of what the product does, which is what they are.
+*/
+.pf {
+  display: grid;
+  gap: 1px;
+  background: var(--mk-ink-border);
+  border: 1px solid var(--mk-ink-border);
+  border-radius: 16px;
+  overflow: hidden;
+  grid-template-columns: minmax(200px, 268px) minmax(0, 1fr);
+}
+@media (max-width: 860px) { .pf { grid-template-columns: 1fr; } }
+
+.pf-tabs { display: grid; align-content: start; gap: 1px; background: var(--mk-ink-border); }
+@media (max-width: 860px) {
+  /* A horizontal strip on a phone, scrolled rather than wrapped: five stacked
+     tabs above a panel means the panel starts below the fold. */
+  .pf-tabs {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .pf-tabs::-webkit-scrollbar { display: none; }
+}
+.pf-tab {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  text-align: left;
+  padding: 16px 20px;
+  border: 0;
+  background: var(--mk-ink);
+  color: var(--mk-ink-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  /* The selected marker is an inset rule rather than a border, so selecting a
+     tab does not move the text by a pixel. */
+  box-shadow: inset 3px 0 0 transparent;
+}
+@media (max-width: 860px) {
+  .pf-tab { box-shadow: inset 0 -3px 0 transparent; white-space: nowrap; }
+}
+.pf-tab:hover { background: var(--mk-ink-2); color: var(--mk-ink-text); }
+.pf-tab-on {
+  background: var(--mk-ink-2);
+  color: var(--mk-ink-text);
+  box-shadow: inset 3px 0 0 var(--mk-brand);
+}
+@media (max-width: 860px) { .pf-tab-on { box-shadow: inset 0 -3px 0 var(--mk-brand); } }
+.pf-verb {
+  font-family: var(--mk-display);
+  font-variation-settings: "wdth" 108;
+  font-size: var(--t-body);
+  font-weight: 600;
+}
+.pf-product { font-size: var(--t-micro); opacity: 0.72; letter-spacing: 0.01em; }
+
+.pf-panel {
+  background: var(--mk-ink-2);
+  padding: clamp(24px, 3vw, 40px);
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+.pf-panel h3 {
+  margin: 0;
+  font-family: var(--mk-display);
+  font-variation-settings: "wdth" 108;
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  max-width: 24ch;
+}
+.pf-panel ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.pf-panel li {
+  position: relative;
+  padding-left: 22px;
+  font-size: var(--t-small);
+  color: var(--mk-ink-text);
+  text-wrap: pretty;
+  max-width: 62ch;
+}
+/* A rule, not a bullet or a tick. A tick means "included", and half of these
+   are descriptions of how something works rather than things you get. */
+.pf-panel li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 12px;
+  height: 1px;
+  background: var(--mk-brand);
+}
+.pf-panel .mk-btn { justify-self: start; margin-top: 4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .pf-panel { animation: mk-pf-in 0.28s cubic-bezier(0.22, 0.68, 0, 1) both; }
+}
+@keyframes mk-pf-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+
+
+
+/* ========================================================================
+   One measure, everywhere
+   ========================================================================
+   The system, so a call site does not have to remember it: a heading or a
+   lede sitting directly in a section's wrap gets the intro measure, body
+   copy gets prose. Inline `maxWidth` beats both, which is exactly why the
+   thirty-nine inline values had to come out rather than be adjusted.
+*/
+.mk-section > .mk-wrap > .mk-h1,
+.mk-section > .mk-wrap > .mk-h2,
+.mk-section > .mk-wrap > h2,
+.mk-section > .mk-wrap > .mk-lede,
+.mk-section-tight > .mk-wrap > .mk-h2,
+.mk-section-tight > .mk-wrap > .mk-lede,
+.mk-narrow > .mk-h1,
+.mk-narrow > .mk-h2,
+.mk-narrow > h2,
+.mk-narrow > .mk-lede {
+  max-width: none;
+}
+.mk-section > .mk-wrap > h2,
+.mk-narrow > h2 {
+  font-size: clamp(1.625rem, 2.6vw, var(--t-title));
+  line-height: 1.15;
+  letter-spacing: -.022em;
+  font-weight: 600;
+}
+.mk-section > .mk-wrap > .mk-body,
+.mk-section > .mk-wrap > .mk-fine,
+.mk-narrow > .mk-body,
+.mk-narrow > .mk-fine,
+.mk-narrow > p {
+  max-width: none;
+}
+/* A grid, table, or card inside a reading column was stuck at the prose
+   measure while the next section used the full wrap. The words stay on
+   the measure. The layout uses the column. */
+.mk-narrow:has(.mk-grid, table, .mk-card) {
+  max-width: none;
+}
+
+/* A capability page's hero, on paper like the homepage's. Same treatment,
+   smaller: these pages open with copy alone, so the glow is quieter and the
+   act does not need the homepage's height. */
+.cap-hero,
+.mk-page-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(80% 90% at 100% 0%, rgba(253, 73, 1, 0.14), transparent 46%),
+    #071422;
+  border-bottom: 0;
+  color: var(--mk-ink-text);
+}
+.cap-hero .mk-hero-glow,
+.mk-page-hero .mk-hero-glow { opacity: 0.45; }
+.mk-page-hero .mk-h1,
+.cap-hero .mk-h1 { color: #f4f7fb; }
+.mk-page-hero .mk-h1 em,
+.cap-hero .mk-h1 em { color: #ff7a45; }
+.mk-page-hero .mk-lede,
+.cap-hero .mk-lede,
+.mk-page-hero .mk-fine,
+.cap-hero .mk-fine { color: #c5d0e0; }
+.mk-page-hero .mk-kicker,
+.cap-hero .mk-kicker,
+.mk-page-hero .mk-eyebrow,
+.cap-hero .mk-eyebrow { color: #ffb088; }
+.mk-page-hero .mk-btn-outline,
+.cap-hero .mk-btn-outline {
+  color: #f4f7fb;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.mk-page-hero .mk-btn-outline:hover,
+.cap-hero .mk-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+/* Long-form pages (how it works, the benchmark write-up) used an 820px
+   rail while every other page's prose stopped at the intro measure, so
+   the right edge jumped as you moved between them. */
+.mk .bm-doc,
+.mk .bm-rail { max-width: none; }
+/* Running text stays on the shared measure. Tables, charts and the
+   button row use the full column, same as every other page's grids. */
+.mk .bm-doc > :is(p, h2, h3, h4, ul, ol, blockquote, .callout, .lede) {
+  max-width: none;
+}
+/* The benchmark hero is dark, and these cards were drawn for a light page.
+   Pin them so the figures stay dark on white instead of inheriting the
+   hero's light text. */
+.mk-page-hero .bm-claim,
+.mk-page-hero .bm-index a { background: #fff; color: #1d1d1f; }
+.mk-page-hero .bm-claim h2,
+.mk-page-hero .bm-claim-limit { color: #6e6e73; }
+.mk-page-hero .bm-claim-figure { color: #1d1d1f; }
+.mk-page-hero .bm-claim-detail { color: #424245; }
+.mk-page-hero .bm-index a:hover { background: #f5f5f7; color: #1d1d1f; }
+/* The long-form pages open with the same hero as everything else, then a
+   document whose first heading already carries 64px of margin. Without this
+   the seam under the hero is that margin plus two section pads. */
+.mk-page-hero + .mk-section .bm-doc > :first-child { margin-top: 0; }
+.pg { padding-block: 0; }
+.cap-hero .mk-h1,
+.mk-page-hero .mk-h1 {
+  font-size: clamp(36px, 3.5vw, 52px);
+  line-height: 1.08;
+  max-width: none;
+}
+.pg-h1 {
+  max-width: none;
+  font-family: var(--mk-display);
+  font-variation-settings: "wdth" 108;
+  font-size: clamp(36px, 3.5vw, 52px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 430;
+}
+.pg-lede { max-width: none; font-size: var(--t-subhead); line-height: 1.5; }
+
+/* Homepage hero. The opening is a product, so the type is larger than the
+   page h1, the secondary button is light-on-navy, and the three figures sit
+   in the first screen rather than halfway down the page. */
+.mk-hero-act .mk-h1 {
+  font-size: clamp(36px, 3.5vw, 52px);
+  font-weight: 560;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  max-width: none;
+  color: #f4f7fb;
+}
+.mk-hero-act .mk-h1 em { color: #ff7a45; white-space: nowrap; }
+.mk-hero-act .mk-lede {
+  max-width: 38ch;
+  color: #c5d0e0;
+  font-size: 18px;
+  line-height: 1.45;
+}
+.mk-hero-act .mk-fine { color: #9aabC2; }
+.mk-hero-act .mk-kicker { color: #ffb088; }
+.mk-hero-act .mk-btn-outline {
+  color: #f4f7fb;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.mk-hero-act .mk-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.mk-hero-act .shot figcaption { color: #c5d0e0; max-width: none; }
+.mk-hero-act .shot figcaption a { color: #ffb088; }
+@media (min-width: 940px) {
+  .mk-hero-act .mk-hero {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 48px;
+    align-items: center;
+    padding-top: clamp(28px, 4vw, 56px);
+    padding-bottom: 8px;
+  }
+  .mk-hero-act .mk-hero-shot { margin-right: 0; }
+}
+@media (min-width: 940px) {
+  .mk-home .mk-hero-act .mk-hero {
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    gap: 48px;
+    align-items: center;
+  }
+}
+/* The name row sits on the hero, not in a field of empty page. */
+.mk-hero-act + .mk-section-tight {
+  padding-block: 22px 26px;
+  background: #fff;
+  border-bottom: 1px solid var(--mk-border);
+}
+
+/* Light theme keeps the same sections, without the navy fields.
+   Those backgrounds and the light-on-navy type are hardcoded, so a
+   token swap does not reach them. Dark mode is unchanged. */
+:root[data-theme="light"] .mk-ink-act {
+  --mk-bg: #f3f4f7;
+  --mk-surface: #ffffff;
+  --mk-surface-2: #e7e9ee;
+  --mk-border: #d5d9e0;
+  --mk-border-strong: #c3c8d1;
+  --mk-text: #1d1d1f;
+  --mk-muted: #6e6e73;
+  --mk-faint: #6e6e73;
+  --mk-accent: #c23600;
+  --mk-accent-soft: #fff0e9;
+  --mk-cta: #c23600;
+  --mk-cta-hover: #a32d00;
+  --mk-cta-fg: #ffffff;
+  --mk-good: #1a7f52;
+  --mk-good-soft: #e9f5ef;
+  --mk-stop: #b3261e;
+  --mk-stop-soft: #fceceb;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --border: #d5d9e0;
+  --surface: #ffffff;
+  --bg: #f3f4f7;
+  background: var(--mk-bg);
+  color: var(--mk-text);
+}
+:root[data-theme="light"] .mk-ink-act .mk-band { background: var(--mk-surface-2); }
+:root[data-theme="light"] .mk-ink-act .shot-frame {
+  border-color: var(--mk-border);
+  box-shadow: var(--mk-shadow-card);
+}
+:root[data-theme="light"] .mk-hero-act,
+:root[data-theme="light"] .cap-hero,
+:root[data-theme="light"] .mk-page-hero {
+  background:
+    radial-gradient(80% 70% at 100% 0%, rgba(253, 73, 1, 0.07), transparent 46%),
+    var(--mk-bg);
+  color: var(--mk-text);
+}
+:root[data-theme="light"] .mk-hero-act .mk-h1,
+:root[data-theme="light"] .mk-page-hero .mk-h1,
+:root[data-theme="light"] .cap-hero .mk-h1,
+:root[data-theme="light"] .pg-h1 { color: var(--mk-text); }
+:root[data-theme="light"] .mk-hero-act .mk-h1 em,
+:root[data-theme="light"] .mk-page-hero .mk-h1 em,
+:root[data-theme="light"] .cap-hero .mk-h1 em { color: var(--mk-accent); }
+:root[data-theme="light"] .mk-hero-act .mk-lede,
+:root[data-theme="light"] .mk-page-hero .mk-lede,
+:root[data-theme="light"] .cap-hero .mk-lede,
+:root[data-theme="light"] .mk-page-hero .mk-fine,
+:root[data-theme="light"] .cap-hero .mk-fine,
+:root[data-theme="light"] .mk-hero-act .mk-fine,
+:root[data-theme="light"] .pg-lede { color: var(--mk-muted); }
+:root[data-theme="light"] .mk-hero-act .mk-kicker,
+:root[data-theme="light"] .mk-page-hero .mk-kicker,
+:root[data-theme="light"] .cap-hero .mk-kicker,
+:root[data-theme="light"] .mk-page-hero .mk-eyebrow,
+:root[data-theme="light"] .cap-hero .mk-eyebrow { color: var(--mk-accent); }
+:root[data-theme="light"] .mk-hero-act .mk-btn-outline,
+:root[data-theme="light"] .mk-page-hero .mk-btn-outline,
+:root[data-theme="light"] .cap-hero .mk-btn-outline {
+  color: var(--mk-text);
+  border-color: var(--mk-border-strong);
+}
+:root[data-theme="light"] .mk-hero-act .mk-btn-outline:hover,
+:root[data-theme="light"] .mk-page-hero .mk-btn-outline:hover,
+:root[data-theme="light"] .cap-hero .mk-btn-outline:hover {
+  background: var(--mk-accent-soft);
+  border-color: var(--mk-accent);
+}
+:root[data-theme="light"] .mk-hero-act .shot figcaption { color: var(--mk-muted); }
+:root[data-theme="light"] .mk-hero-act .shot figcaption a { color: var(--mk-accent); }
+:root[data-theme="light"] .pf,
+:root[data-theme="light"] .pf-tabs { background: var(--mk-border); border-color: var(--mk-border); }
+:root[data-theme="light"] .pf-tab {
+  background: #fff;
+  color: var(--mk-muted);
+}
+:root[data-theme="light"] .pf-tab:hover,
+:root[data-theme="light"] .pf-tab-on {
+  background: var(--mk-accent-soft);
+  color: var(--mk-text);
+}
+:root[data-theme="light"] .pf-panel { background: #fff; }
+:root[data-theme="light"] .pf-panel li { color: var(--mk-text); }
+
+/* Docs. A sidebar and an article, inside the same wrap as the marketing pages.
+   Commands live here. Marketing pages link in and do not print them. */
+.docs-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 48px;
+  width: min(var(--wrap), calc(100% - 2 * var(--wrap-pad)));
+  margin: 0 auto;
+  padding: 40px 0 80px;
+  align-items: start;
+}
+.docs-nav {
+  position: sticky;
+  top: 88px;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+}
+.docs-nav p {
+  margin: 22px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+}
+.docs-nav div:first-child p { margin-top: 0; }
+.docs-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.docs-nav li { margin: 0; }
+.docs-nav a {
+  display: block;
+  padding: 6px 0;
+  color: var(--mk-text);
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.docs-nav a:hover { color: var(--mk-accent); }
+.docs-nav a[aria-current="page"] {
+  color: var(--mk-accent);
+  font-weight: 600;
+}
+.docs-main { min-width: 0; }
+.docs-doc { max-width: 720px; }
+.docs-kicker {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+}
+.docs-doc h1 {
+  margin: 0;
+  font-size: clamp(32px, 3vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--mk-text);
+  text-wrap: pretty;
+}
+.docs-doc h2 {
+  margin: 36px 0 10px;
+  font-size: 20px;
+  line-height: 1.3;
+  color: var(--mk-text);
+  text-wrap: pretty;
+}
+.docs-doc h3 {
+  margin: 22px 0 8px;
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--mk-text);
+  text-wrap: pretty;
+}
+.docs-doc table {
+  width: 100%;
+  margin-top: 14px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.docs-doc th,
+.docs-doc td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--mk-border);
+}
+.docs-doc th {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+}
+.docs-doc p,
+.docs-doc li {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--mk-text);
+}
+.docs-doc p { margin: 12px 0 0; }
+.docs-doc ul { margin: 12px 0 0; padding-left: 1.2em; }
+.docs-doc a { color: var(--mk-accent); }
+.docs-doc pre {
+  margin: 14px 0 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  background: #1c1917;
+  color: #f5f0e8;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.docs-doc pre code {
+  font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  white-space: pre;
+}
+.docs-doc p code,
+.docs-doc li code {
+  font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.92em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--mk-surface-2);
+}
+@media (max-width: 800px) {
+  .docs-shell {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding-top: 28px;
+  }
+  .docs-nav { position: static; }
+}
+
+
+/* Docs blocks (components/docs/blocks.tsx, reference.tsx). */
+.docs-doc .docs-lede { font-size: 18px; color: var(--mk-muted); margin-top: 14px; }
+.docs-code { margin: 16px 0 0; border-radius: 10px; overflow: hidden; background: #1c1917; }
+.docs-code figcaption {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 14px; font-size: 12px; letter-spacing: 0.02em;
+  color: #c9c2b6; background: #292524; border-bottom: 1px solid #3a3531;
+}
+.docs-doc .docs-code pre { margin: 0; border-radius: 0; }
+.docs-code-text { background: #24211e; }
+.docs-code-text pre { color: #d8d1c4; }
+.docs-copy {
+  font: inherit; font-size: 12px; color: #f5f0e8; background: transparent;
+  border: 1px solid #4a443f; border-radius: 6px; padding: 2px 10px; cursor: pointer;
+}
+.docs-copy:hover { border-color: #8a8178; }
+.docs-callout {
+  margin: 18px 0 0; padding: 12px 16px; border-radius: 10px;
+  border: 1px solid var(--mk-border); border-left-width: 4px; background: var(--mk-surface);
+}
+.docs-callout-note { border-left-color: #6e6e73; }
+.docs-callout-tip { border-left-color: #2f7d4f; }
+.docs-callout-warning { border-left-color: var(--mk-accent); }
+.docs-callout-title { margin: 0 !important; font-size: 13px !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mk-muted) !important; }
+.docs-callout > div > p:first-child { margin-top: 6px; }
+.docs-steps { list-style: none; counter-reset: step; margin: 18px 0 0; padding: 0; }
+.docs-step { counter-increment: step; position: relative; padding: 2px 0 6px 44px; margin: 0 0 18px; }
+.docs-step::before {
+  content: counter(step); position: absolute; left: 0; top: 0;
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 14px; font-weight: 600; background: var(--mk-surface-2); color: var(--mk-text);
+}
+.docs-doc .docs-step h3 { margin-top: 2px; }
+.docs-inapp { font-size: 14px !important; margin-top: 14px; }
+.docs-inapp span {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; background: var(--mk-surface-2); color: var(--mk-muted);
+}
+.docs-next { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--mk-border); }
+.docs-next p { font-size: 12px !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mk-muted) !important; margin: 0 !important; }
+.docs-next ul { list-style: none; padding: 0 !important; }
+.docs-next li { margin: 6px 0 0; }
+.docs-next span { color: var(--mk-muted); }
+.docs-muted { color: var(--mk-muted); }
+.docs-type { font-size: 12px; color: var(--mk-muted); font-family: var(--mk-mono, ui-monospace, monospace); }
+.docs-req { font-size: 11px; font-weight: 600; color: var(--mk-accent); text-transform: uppercase; }
+.docs-doc .docs-params td:first-child,
+.docs-doc .docs-tasks td:last-child { white-space: nowrap; }
+.docs-doc td code { font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 0.9em; }
+.docs-cmd { margin-top: 28px; scroll-margin-top: 96px; }
+.docs-cmd .docs-cmd { margin-left: 0; padding-left: 16px; border-left: 2px solid var(--mk-border); }
+.docs-doc .docs-usage { margin-top: 10px; padding: 8px 12px; font-size: 13px; }
+.docs-route { margin-top: 18px; scroll-margin-top: 96px; }
+.docs-route-group h2 { scroll-margin-top: 96px; }
+.docs-method {
+  display: inline-block; min-width: 54px; text-align: center; font-size: 11px; font-weight: 700;
+  padding: 2px 6px; border-radius: 5px; background: var(--mk-surface-2); color: var(--mk-text);
+}
+.docs-method-post { background: #dbeafe; color: #1e3a8a; }
+.docs-method-get { background: #dcfce7; color: #14532d; }
+.docs-method-delete { background: #fee2e2; color: #7f1d1d; }
+.docs-method-put, .docs-method-patch { background: #fef3c7; color: #78350f; }
+@media (max-width: 800px) {
+  .docs-doc .docs-params td:first-child,
+  .docs-doc .docs-tasks td:last-child { white-space: normal; }
+}
+/* Inline-code styling (`.docs-doc li code`) must not reach a code block that sits
+   inside a list item, such as a <Step>: it painted a light chip behind light text. */
+.docs-doc pre code,
+.docs-doc li pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+}
+
+
+/* ------------------------------------------------------------------------
+   Blog (app/blog, components/marketing/blog).
+
+   Posts render inside `.docs-doc`, so body text, headings, tables and code
+   are the docs' own and a reader clicking through from a post to a guide
+   sees one typography. Everything below is what a post has and a docs page
+   does not: the hero, the cover, the rail, the cards and the in-text blocks.
+   Only --mk-* tokens, so both themes follow without a dark block here.
+   ------------------------------------------------------------------------ */
+
+.blog-hero { padding-block: 64px 40px; position: relative; overflow: hidden; }
+.blog-crumbs { display: flex; gap: 8px; align-items: center; font-size: var(--t-small); color: var(--mk-muted); }
+.blog-crumbs a { color: var(--mk-accent); text-decoration: none; }
+.blog-crumbs a:hover { text-decoration: underline; }
+.blog-title {
+  margin: 16px 0 0;
+  max-width: 900px;
+  font-family: var(--mk-display);
+  font-size: clamp(32px, 4.4vw, 52px);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  font-weight: 650;
+  color: var(--mk-text);
+  text-wrap: balance;
+}
+.blog-lede { margin-top: 18px; max-width: 760px; }
+.blog-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; font-size: var(--t-small); color: var(--mk-muted); }
+.blog-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; }
+
+.blog-cover { margin-top: 8px; }
+.blog-cover .shot-frame img { width: 100%; height: auto; display: block; }
+
+.blog-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 64px;
+  padding-top: 48px;
+  padding-bottom: 72px;
+  align-items: start;
+}
+.blog-prose { max-width: 720px; }
+.blog-prose > h2 { scroll-margin-top: 96px; margin-top: 44px; font-size: 24px; letter-spacing: -0.015em; }
+.blog-prose > h3 { scroll-margin-top: 96px; }
+.blog-prose ol { margin: 12px 0 0; padding-left: 1.3em; }
+.blog-prose ol li { font-size: 16px; line-height: 1.6; color: var(--mk-text); }
+.blog-prose li + li { margin-top: 6px; }
+.blog-prose blockquote {
+  margin: 20px 0 0;
+  padding: 4px 0 4px 18px;
+  border-left: 3px solid var(--mk-accent);
+  color: var(--mk-muted);
+}
+.blog-prose blockquote p { color: var(--mk-muted); }
+
+.blog-rail { position: relative; height: 100%; }
+.blog-rail-sticky { position: sticky; top: 96px; }
+.blog-rail-head {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mk-muted);
+}
+.blog-toc { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--mk-border); }
+.blog-toc a {
+  display: block;
+  padding: 5px 0 5px 14px;
+  margin-left: -1px;
+  border-left: 1px solid transparent;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--mk-muted);
+  text-decoration: none;
+}
+.blog-toc a:hover { color: var(--mk-text); border-left-color: var(--mk-accent); }
+.blog-pillars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.blog-pillars a {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  background: var(--mk-surface);
+  text-decoration: none;
+  transition: border-color .15s ease;
+}
+.blog-pillars a:hover { border-color: var(--mk-accent); }
+.blog-pillars b { font-size: var(--t-small); color: var(--mk-text); font-weight: 600; }
+.blog-pillars span { font-size: var(--t-micro); color: var(--mk-muted); line-height: 1.4; }
+
+/* In-text blocks */
+.blog-figure { margin: 28px 0 0; }
+.blog-figure .shot-frame img { width: 100%; height: auto; }
+.blog-diagram { margin: 28px 0 0; display: grid; gap: 12px; }
+.blog-diagram-frame {
+  border: 1px solid var(--mk-border);
+  border-radius: 14px;
+  background: var(--mk-surface);
+  padding: 22px;
+  overflow-x: auto;
+}
+.blog-diagram-frame svg { display: block; width: 100%; height: auto; min-width: 520px; }
+.blog-diagram figcaption, .blog-figure figcaption { font-size: var(--t-small); color: var(--mk-muted); line-height: 1.5; }
+
+.blog-takeaways {
+  margin: 0 0 8px;
+  padding: 18px 22px;
+  border: 1px solid var(--mk-border);
+  border-left: 3px solid var(--mk-accent);
+  border-radius: var(--mk-r-md);
+  background: var(--mk-surface);
+}
+.blog-takeaways-head {
+  margin: 0 !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mk-accent) !important;
+}
+.blog-takeaways ul { margin: 8px 0 0; padding-left: 1.1em; }
+.blog-takeaways li { font-size: 15px !important; }
+
+.blog-cta {
+  margin: 36px 0 8px;
+  padding: 22px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 14px;
+  background: var(--mk-ink);
+  color: var(--mk-ink-text);
+}
+.blog-cta > div:first-child { flex: 1 1 320px; }
+.blog-cta-title { margin: 0 !important; font-size: 18px !important; font-weight: 650; color: var(--mk-ink-text) !important; }
+.blog-cta-body { margin: 6px 0 0 !important; font-size: 15px !important; color: var(--mk-ink-muted) !important; }
+.blog-cta-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.blog-cta .mk-btn-outline { color: var(--mk-ink-text); border-color: var(--mk-ink-border); }
+.docs-doc .blog-cta a.mk-btn { text-decoration: none; }
+.docs-doc .blog-cta a.mk-btn-primary { color: var(--mk-cta-fg, #fff); }
+
+.blog-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 24px 0 0; }
+.blog-stat {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--mk-border);
+  border-radius: var(--mk-r-md);
+  background: var(--mk-surface);
+}
+.blog-stat-value { font-family: var(--mk-display); font-size: 30px; font-weight: 650; letter-spacing: -0.02em; color: var(--mk-text); }
+.blog-stat-label { font-size: 14px; line-height: 1.4; color: var(--mk-text); }
+.blog-stat-source { font-size: var(--t-micro); color: var(--mk-muted); }
+
+.blog-faq { margin-top: 48px; padding-top: 8px; border-top: 1px solid var(--mk-border); }
+.blog-faq h2 { scroll-margin-top: 96px; }
+.blog-faq details { border-bottom: 1px solid var(--mk-border); padding: 14px 0; }
+.blog-faq summary { cursor: pointer; font-weight: 600; font-size: 16px; color: var(--mk-text); list-style-position: outside; }
+.blog-faq details p { color: var(--mk-muted); }
+
+/* Cards: the index and "Keep reading" */
+.blog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.blog-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--mk-border);
+  border-radius: 14px;
+  background: var(--mk-surface);
+  text-decoration: none;
+  color: inherit;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.blog-card:hover { transform: translateY(-2px); box-shadow: var(--mk-shadow-pop); border-color: var(--mk-border-strong); }
+.blog-card-img { aspect-ratio: 16 / 9; overflow: hidden; border-bottom: 1px solid var(--mk-border); background: var(--mk-surface-2); }
+.blog-card-img img { width: 100%; height: 100%; object-fit: cover; object-position: top left; display: block; }
+.blog-card-body { display: grid; gap: 10px; padding: 18px 20px 20px; align-content: start; justify-items: start; }
+.blog-card-body h2, .blog-card-body h3 {
+  margin: 0;
+  font-family: var(--mk-display);
+  font-size: 19px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  font-weight: 650;
+  color: var(--mk-text);
+  text-wrap: pretty;
+}
+.blog-card-body p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--mk-muted); }
+.blog-card-meta { font-size: var(--t-micro); color: var(--mk-muted); }
+.blog-card-featured { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.blog-card-featured .blog-card-img { aspect-ratio: auto; min-height: 300px; border-bottom: 0; border-right: 1px solid var(--mk-border); }
+.blog-card-featured .blog-card-body { padding: 32px; align-content: center; }
+.blog-card-featured h2 { font-size: clamp(24px, 2.4vw, 32px); line-height: 1.12; }
+.blog-card-featured p { font-size: 16px; }
+
+.blog-next-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 28px; }
+
+@media (max-width: 1000px) {
+  .blog-layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .blog-rail-sticky { position: static; }
+  .blog-toc, .blog-rail-head:first-child { display: none; }
+  .blog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .blog-grid { grid-template-columns: minmax(0, 1fr); }
+  .blog-card-featured { grid-template-columns: minmax(0, 1fr); }
+  .blog-card-featured .blog-card-img { min-height: 0; aspect-ratio: 16 / 9; border-right: 0; border-bottom: 1px solid var(--mk-border); }
+  .blog-card-featured .blog-card-body { padding: 20px; }
+  .blog-hero { padding-block: 40px 28px; }
+}
+
+/* Blog diagrams: inline SVG coloured by class, so they follow the theme. */
+.dg text { font-family: var(--mk-sans); fill: var(--mk-text); font-size: 13px; }
+.dg .dg-small { font-size: 11.5px; fill: var(--mk-muted); }
+.dg .dg-mono { font-family: var(--mk-code); font-size: 11.5px; }
+.dg .dg-strong { font-weight: 650; }
+.dg .dg-box { fill: var(--mk-surface-2); stroke: var(--mk-border-strong); stroke-width: 1; }
+.dg .dg-box-accent { fill: var(--mk-accent-soft); stroke: var(--mk-accent); stroke-width: 1.2; }
+.dg .dg-box-stop { fill: var(--mk-stop-soft); stroke: var(--mk-stop); stroke-width: 1.2; }
+.dg .dg-box-good { fill: var(--mk-good-soft); stroke: var(--mk-good); stroke-width: 1.2; }
+.dg .dg-box-hold { fill: var(--mk-hold-soft); stroke: var(--mk-hold); stroke-width: 1.2; }
+.dg .dg-line { stroke: var(--mk-border-strong); stroke-width: 1.5; fill: none; }
+.dg .dg-line-accent { stroke: var(--mk-accent); stroke-width: 1.8; fill: none; }
+.dg .dg-line-stop { stroke: var(--mk-stop); stroke-width: 1.8; fill: none; }
+.dg .dg-dash { stroke-dasharray: 5 4; }
+.dg .dg-fill-accent { fill: var(--mk-accent); }
+.dg .dg-fill-stop { fill: var(--mk-stop); }
+.dg .dg-fill-good { fill: var(--mk-good); }
+.dg .dg-fill-muted { fill: var(--mk-border-strong); }
+.dg text.dg-t-accent { fill: var(--mk-accent); }
+.dg text.dg-t-stop { fill: var(--mk-stop); }
+.dg text.dg-t-good { fill: var(--mk-good); }
+.dg text.dg-t-hold { fill: var(--mk-hold); }

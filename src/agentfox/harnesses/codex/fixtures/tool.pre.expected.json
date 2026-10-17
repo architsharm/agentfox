@@ -1,0 +1,151 @@
+{
+  "source": "Built, not captured: no Codex binary has run this hook yet. Field set and types are Codex's generated hook input schema (codex-rs/hooks/schema/generated/pre-tool-use.command.input.schema.json) at rust-v0.162.0; tool_name `Bash` and `tool_input.command` for a shell call are what pre_tool_use_json_deny_blocks_exec_command_before_execution in codex-rs/core/tests/suite/hooks.rs asserts. Re-capture from a live session and replace this file.",
+  "event": {
+    "harness": "codex",
+    "event": "PreToolUse",
+    "kind": "tool.pre",
+    "tool": "Bash",
+    "arguments": {
+      "command": "echo hello"
+    },
+    "canonical_tool": "shell",
+    "session_id": "019a6c1e-7b2d-7f30-9d41-3c8e5a2b1f07",
+    "cwd": "/Users/x/projects/demo",
+    "permission_mode": "default",
+    "content": "",
+    "surface": "tool_args",
+    "checks_content": false
+  },
+  "decisions": [
+    {
+      "decision": {
+        "kind": "allow"
+      },
+      "stdout": "{}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "allow",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny",
+        "reason": "rm -rf is destructive",
+        "rules": [
+          "shell.destructive"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"AgentFox: rm -rf is destructive (shell.destructive)\"}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny"
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"AgentFox: refused by policy\"}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "ask",
+        "reason": "touches production",
+        "rules": [
+          "approval.required"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"AgentFox: touches production (approval.required)\"}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": "ask"
+    },
+    {
+      "decision": {
+        "kind": "modify",
+        "arguments": {
+          "command": "ls"
+        }
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\", \"updatedInput\": {\"command\": \"ls\"}}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "modify",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "context",
+        "context": "AgentFox: this repository is governed."
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"additionalContext\": \"AgentFox: this repository is governed.\"}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "context",
+      "downgraded_from": null
+    }
+  ],
+  "verdicts": [
+    {
+      "name": "allow",
+      "verdict": {
+        "verdict": "allow"
+      },
+      "stdout": "{}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "deny",
+      "verdict": {
+        "verdict": "block",
+        "reason": "rm -rf is destructive",
+        "rules": [
+          "shell.destructive"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"AgentFox: rm -rf is destructive (shell.destructive)\"}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "deny_bare",
+      "verdict": {
+        "verdict": "block"
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"AgentFox: refused by policy\"}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "escalate",
+      "verdict": {
+        "verdict": "escalate",
+        "reason": "needs a human",
+        "rules": [
+          "approval.required"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"deny\", \"permissionDecisionReason\": \"AgentFox: needs a human (approval.required)\"}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "modify",
+      "verdict": {
+        "verdict": "allow",
+        "rewrittenArguments": {
+          "command": "ls"
+        }
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\", \"updatedInput\": {\"command\": \"ls\"}}}",
+      "stderr": "",
+      "exit_code": 0
+    }
+  ]
+}

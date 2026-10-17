@@ -1,0 +1,230 @@
+{
+  "dataset": "deepset/prompt-injections",
+  "dataset_url": "https://huggingface.co/datasets/deepset/prompt-injections",
+  "dataset_license": "apache-2.0",
+  "methodology": "injection.heuristic's patterns were manually extended using train.json false negatives only; test.json held out and never inspected \u2014 'held_out' is the number to trust. injection.classifier is a pretrained model, never fit to this dataset. injection.similarity matches against a synthetic corpus (capabilities/detection/data/injection_corpus.json) authored independently of this benchmark's dataset.",
+  "configs": {
+    "heuristic": {
+      "held_out": {
+        "n": 116,
+        "tp": 10,
+        "fp": 0,
+        "tn": 56,
+        "fn": 50,
+        "precision": 1.0,
+        "recall": 0.1667,
+        "f1": 0.2857,
+        "accuracy": 0.569,
+        "duration_ms": 30.5,
+        "avg_ms_per_example": 0.263,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "train": {
+        "n": 546,
+        "tp": 53,
+        "fp": 2,
+        "tn": 341,
+        "fn": 150,
+        "precision": 0.9636,
+        "recall": 0.2611,
+        "f1": 0.4109,
+        "accuracy": 0.7216,
+        "duration_ms": 124.1,
+        "avg_ms_per_example": 0.227,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "combined": {
+        "n": 662,
+        "tp": 63,
+        "fp": 2,
+        "tn": 397,
+        "fn": 200,
+        "precision": 0.9692,
+        "recall": 0.2395,
+        "f1": 0.3841,
+        "accuracy": 0.6949,
+        "duration_ms": 149.1,
+        "avg_ms_per_example": 0.225,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      }
+    },
+    "heuristic_classifier": {
+      "held_out": {
+        "n": 116,
+        "tp": 41,
+        "fp": 0,
+        "tn": 56,
+        "fn": 19,
+        "precision": 1.0,
+        "recall": 0.6833,
+        "f1": 0.8119,
+        "accuracy": 0.8362,
+        "duration_ms": 9417.7,
+        "avg_ms_per_example": 81.187,
+        "degraded_examples": 1,
+        "degraded_rate": 0.0086,
+        "degraded_by_detector": {
+          "injection.classifier": 1
+        },
+        "errored_by_detector": {}
+      },
+      "train": {
+        "n": 546,
+        "tp": 184,
+        "fp": 7,
+        "tn": 336,
+        "fn": 19,
+        "precision": 0.9634,
+        "recall": 0.9064,
+        "f1": 0.934,
+        "accuracy": 0.9524,
+        "duration_ms": 36188.8,
+        "avg_ms_per_example": 66.28,
+        "degraded_examples": 6,
+        "degraded_rate": 0.011,
+        "degraded_by_detector": {
+          "injection.classifier": 6
+        },
+        "errored_by_detector": {}
+      },
+      "combined": {
+        "n": 662,
+        "tp": 225,
+        "fp": 7,
+        "tn": 392,
+        "fn": 38,
+        "precision": 0.9698,
+        "recall": 0.8555,
+        "f1": 0.9091,
+        "accuracy": 0.932,
+        "duration_ms": 42094.2,
+        "avg_ms_per_example": 63.586,
+        "degraded_examples": 6,
+        "degraded_rate": 0.0091,
+        "degraded_by_detector": {
+          "injection.classifier": 6
+        },
+        "errored_by_detector": {}
+      }
+    },
+    "heuristic_similarity": {
+      "held_out": {
+        "n": 116,
+        "tp": 10,
+        "fp": 0,
+        "tn": 56,
+        "fn": 50,
+        "precision": 1.0,
+        "recall": 0.1667,
+        "f1": 0.2857,
+        "accuracy": 0.569,
+        "duration_ms": 1287.5,
+        "avg_ms_per_example": 11.099,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "train": {
+        "n": 546,
+        "tp": 54,
+        "fp": 2,
+        "tn": 341,
+        "fn": 149,
+        "precision": 0.9643,
+        "recall": 0.266,
+        "f1": 0.417,
+        "accuracy": 0.7234,
+        "duration_ms": 5522.2,
+        "avg_ms_per_example": 10.114,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "combined": {
+        "n": 662,
+        "tp": 64,
+        "fp": 2,
+        "tn": 397,
+        "fn": 199,
+        "precision": 0.9697,
+        "recall": 0.2433,
+        "f1": 0.3891,
+        "accuracy": 0.6964,
+        "duration_ms": 6660.8,
+        "avg_ms_per_example": 10.062,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      }
+    },
+    "heuristic_classifier_similarity": {
+      "held_out": {
+        "n": 116,
+        "tp": 41,
+        "fp": 0,
+        "tn": 56,
+        "fn": 19,
+        "precision": 1.0,
+        "recall": 0.6833,
+        "f1": 0.8119,
+        "accuracy": 0.8362,
+        "duration_ms": 8095.6,
+        "avg_ms_per_example": 69.79,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "train": {
+        "n": 546,
+        "tp": 185,
+        "fp": 7,
+        "tn": 336,
+        "fn": 18,
+        "precision": 0.9635,
+        "recall": 0.9113,
+        "f1": 0.9367,
+        "accuracy": 0.9542,
+        "duration_ms": 36205.7,
+        "avg_ms_per_example": 66.311,
+        "degraded_examples": 5,
+        "degraded_rate": 0.0092,
+        "degraded_by_detector": {
+          "injection.classifier": 5
+        },
+        "errored_by_detector": {}
+      },
+      "combined": {
+        "n": 662,
+        "tp": 226,
+        "fp": 7,
+        "tn": 392,
+        "fn": 37,
+        "precision": 0.97,
+        "recall": 0.8593,
+        "f1": 0.9113,
+        "accuracy": 0.9335,
+        "duration_ms": 43918.5,
+        "avg_ms_per_example": 66.342,
+        "degraded_examples": 5,
+        "degraded_rate": 0.0076,
+        "degraded_by_detector": {
+          "injection.classifier": 5
+        },
+        "errored_by_detector": {}
+      }
+    }
+  }
+}

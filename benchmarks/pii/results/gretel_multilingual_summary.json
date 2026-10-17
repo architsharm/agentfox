@@ -38,9 +38,9 @@
     {
       "config": "pii.native",
       "tp": 2480,
-      "fp": 4209,
+      "fp": 4207,
       "fn": 12000,
-      "precision": 0.3708,
+      "precision": 0.3709,
       "recall": 0.1713,
       "f1": 0.2343,
       "excluded_contained_in_street_address": 1,
@@ -71,11 +71,11 @@
         },
         "PII.IBAN": {
           "tp": 166,
-          "fp": 323,
+          "fp": 321,
           "fn": 37,
-          "precision": 0.3395,
+          "precision": 0.3409,
           "recall": 0.8177,
-          "f1": 0.4798
+          "f1": 0.4812
         },
         "PII.IP_ADDRESS": {
           "tp": 159,
@@ -236,11 +236,11 @@
           },
           "PII.IBAN": {
             "tp": 95,
-            "fp": 55,
+            "fp": 53,
             "fn": 3,
-            "precision": 0.6333,
+            "precision": 0.6419,
             "recall": 0.9694,
-            "f1": 0.7661
+            "f1": 0.7724
           },
           "PII.IP_ADDRESS": {
             "tp": 75,
@@ -1373,13 +1373,13 @@
     },
     {
       "config": "pii.presidio.full",
-      "tp": 9921,
-      "fp": 35795,
-      "fn": 4559,
-      "precision": 0.217,
-      "recall": 0.6852,
-      "f1": 0.3296,
-      "excluded_contained_in_street_address": 1854,
+      "tp": 9920,
+      "fp": 35718,
+      "fn": 4560,
+      "precision": 0.2174,
+      "recall": 0.6851,
+      "f1": 0.33,
+      "excluded_contained_in_street_address": 1853,
       "by_type": {
         "PII.CREDIT_CARD": {
           "tp": 45,
@@ -1422,16 +1422,16 @@
           "f1": 0.9039
         },
         "PII.PERSON": {
-          "tp": 7045,
-          "fp": 20219,
-          "fn": 3767,
-          "precision": 0.2584,
-          "recall": 0.6516,
-          "f1": 0.37
+          "tp": 7044,
+          "fp": 20153,
+          "fn": 3768,
+          "precision": 0.259,
+          "recall": 0.6515,
+          "f1": 0.3706
         },
         "PII.US_DRIVER_LICENSE": {
           "tp": 107,
-          "fp": 12029,
+          "fp": 12018,
           "fn": 33,
           "precision": 0.0088,
           "recall": 0.7643,
@@ -1506,15 +1506,15 @@
           },
           "PII.PERSON": {
             "tp": 751,
-            "fp": 3292,
+            "fp": 3283,
             "fn": 562,
-            "precision": 0.1858,
+            "precision": 0.1862,
             "recall": 0.572,
-            "f1": 0.2804
+            "f1": 0.2809
           },
           "PII.US_DRIVER_LICENSE": {
             "tp": 5,
-            "fp": 1045,
+            "fp": 1043,
             "fn": 2,
             "precision": 0.0048,
             "recall": 0.7143,
@@ -1588,15 +1588,15 @@
           },
           "PII.PERSON": {
             "tp": 3408,
-            "fp": 2345,
+            "fp": 2339,
             "fn": 1180,
-            "precision": 0.5924,
+            "precision": 0.593,
             "recall": 0.7428,
-            "f1": 0.6591
+            "f1": 0.6595
           },
           "PII.US_DRIVER_LICENSE": {
             "tp": 56,
-            "fp": 6370,
+            "fp": 6365,
             "fn": 16,
             "precision": 0.0087,
             "recall": 0.7778,
@@ -1670,15 +1670,15 @@
           },
           "PII.PERSON": {
             "tp": 403,
-            "fp": 1251,
+            "fp": 1250,
             "fn": 313,
-            "precision": 0.2437,
+            "precision": 0.2438,
             "recall": 0.5628,
-            "f1": 0.3401
+            "f1": 0.3402
           },
           "PII.US_DRIVER_LICENSE": {
             "tp": 2,
-            "fp": 979,
+            "fp": 978,
             "fn": 4,
             "precision": 0.002,
             "recall": 0.3333,
@@ -1752,11 +1752,11 @@
           },
           "PII.PERSON": {
             "tp": 730,
-            "fp": 4593,
+            "fp": 4589,
             "fn": 361,
-            "precision": 0.1371,
+            "precision": 0.1372,
             "recall": 0.6691,
-            "f1": 0.2276
+            "f1": 0.2278
           },
           "PII.US_DRIVER_LICENSE": {
             "tp": 14,
@@ -1833,20 +1833,20 @@
             "f1": 0.95
           },
           "PII.PERSON": {
-            "tp": 596,
-            "fp": 3359,
-            "fn": 344,
-            "precision": 0.1507,
-            "recall": 0.634,
-            "f1": 0.2435
+            "tp": 595,
+            "fp": 3324,
+            "fn": 345,
+            "precision": 0.1518,
+            "recall": 0.633,
+            "f1": 0.2449
           },
           "PII.US_DRIVER_LICENSE": {
             "tp": 11,
-            "fp": 967,
+            "fp": 966,
             "fn": 0,
-            "precision": 0.0112,
+            "precision": 0.0113,
             "recall": 1.0,
-            "f1": 0.0222
+            "f1": 0.0223
           },
           "PII.US_PASSPORT": {
             "tp": 10,
@@ -1916,15 +1916,15 @@
           },
           "PII.PERSON": {
             "tp": 496,
-            "fp": 2529,
+            "fp": 2524,
             "fn": 529,
-            "precision": 0.164,
+            "precision": 0.1642,
             "recall": 0.4839,
-            "f1": 0.2449
+            "f1": 0.2452
           },
           "PII.US_DRIVER_LICENSE": {
             "tp": 10,
-            "fp": 903,
+            "fp": 901,
             "fn": 3,
             "precision": 0.011,
             "recall": 0.7692,
@@ -1998,11 +1998,11 @@
           },
           "PII.PERSON": {
             "tp": 661,
-            "fp": 2850,
+            "fp": 2844,
             "fn": 478,
-            "precision": 0.1883,
+            "precision": 0.1886,
             "recall": 0.5803,
-            "f1": 0.2843
+            "f1": 0.2847
           },
           "PII.US_DRIVER_LICENSE": {
             "tp": 9,

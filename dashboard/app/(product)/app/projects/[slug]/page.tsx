@@ -1,0 +1,877 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { appPageMetadata } from "@/lib/site";
+import { ApiError, api, apiErrorProps, safeApi } from "@/lib/product/api";
+import { ApiDown, NotFound } from "@/components/ui";
+import {
+  ActionPill,
+  Card,
+  Empty,
+  Grid,
+  Header,
+  Kpi,
+  Meta,
+  ModePill,
+  Pill,
+  SeverityPill,
+  Sparkline,
+  Tabs,
+  TimeChart,
+  ago,
+  href,
+  num,
+} from "@/components/kit";
+import { Act } from "@/components/kit/Act";
+import { FilterBar } from "@/components/kit/FilterBar";
+import { RunsTable } from "@/components/kit/RunsTable";
+import { AgentMap } from "@/components/product/AgentMap";
+import { Modal } from "@/components/product/Modal";
+import { AccessEditor } from "@/components/product/agent/AccessEditor";
+import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
+import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
+import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
+import { ensureRange } from "@/lib/product/range";
+import { GuardrailMapLazy as GuardrailMap } from "@/components/product/agent/GuardrailMapLazy";
+import { RangeProvider } from "@/components/kit/RangeContext";
+import { PROJECT_VIEWS, projectHref, projectView } from "@/lib/product/project";
+
+export const metadata: Metadata = appPageMetadata("Project");
+export const dynamic = "force-dynamic";
+
+/** Activity's parts, under `?view=activity&tab=`. The old agent tabs of the same names land here. */
+const ACTIVITY_TABS = [
+  { key: "runs", label: "Runs" },
+  { key: "rules", label: "Guardrails fired" },
+  { key: "quality", label: "Quality" },
+];
+
+type SP = Record<string, string | undefined>;
+
+/**
+ * One project. Five views, chosen in the sidebar: the canvas (its guardrails drawn
+ * where they act, with the project's state in the inspector when nothing on the
+ * canvas is selected), its activity, its access, the features it changed from the
+ * workspace's, its settings.
+ */
+export default async function ProjectDetail({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<SP> }) {
+  const { slug } = await params;
+  const sp = await searchParams;
+  const view = projectView(sp);
+  const sub = view === "activity" ? (ACTIVITY_TABS.some((t) => t.key === sp.tab) ? sp.tab! : sp.tab === "permissions" ? "rules" : "runs") : null;
+  // One round of requests, in parallel: the range (when the URL names none), the
+  // project, and its kill-switch state.
+  const needsRange = view === "canvas" || view === "activity";
+  const [, outcome, controls] = await Promise.all([
+    needsRange ? ensureRange(`/app/projects/${encodeURIComponent(slug)}`, sp, slug) : Promise.resolve(),
+    api(`/api/agents/${encodeURIComponent(slug)}/posture`).then(
+      (posture: any) => ({ posture, error: null as any }),
+      (error: any) => ({ posture: null, error }),
+    ),
+    safeApi<any>("/api/agent-controls", { controls: [] }),
+  ]);
+  const f: Filters = { range: rangeOf(sp.range), agent: slug };
+
+  if (outcome.error) {
+    const e = outcome.error;
+    return (
+      <>
+        <Header title={slug} back={{ href: "/app/projects", label: "Projects" }} />
+        {e instanceof ApiError && e.status === 404 ? (
+          <NotFound what="project" detail={slug} back={{ href: "/app/projects", label: "Projects" }} />
+        ) : (
+          <ApiDown {...apiErrorProps(e)} />
+        )}
+      </>
+    );
+  }
+  const posture = outcome.posture;
+  const a = posture.agent;
+  const control = (controls.controls || []).find((c: any) => c.agent === a.slug);
+  const state = control?.state || "active";
+  const breakerOpen = state === "active" && control?.breaker?.state === "open";
+  const label = PROJECT_VIEWS.find((v) => v.key === view)!.label;
+
+  return (
+    <RangeProvider range={sp.range}>
+    <>
+      <Header
+        title={
+          <>
+            {a.name || a.slug}
+            {view !== "canvas" && <span className="k-muted"> / {label}</span>}
+          </>
+        }
+        meta={
+          <>
+            {a.status === "draft" ? (
+              <Pill tone="outline">Proposed</Pill>
+            ) : breakerOpen ? (
+              <Pill tone="bad">Paused by breaker</Pill>
+            ) : state === "active" ? (
+              <Pill tone="ok">Active</Pill>
+            ) : (
+              <Pill tone="bad">{state === "killed" ? "Stopped" : "Paused"}</Pill>
+            )}
+            {a.risk_tier === "high" && <Pill tone="held">High risk</Pill>}
+            {!a.registered && a.status !== "draft" && <Pill tone="bad">Unregistered</Pill>}
+            {a.is_seed && <Pill tone="outline">Sample</Pill>}
+          </>
+        }
+        actions={
+          <>
+          <Link className="k-btn-primary" href={`/app/projects/${encodeURIComponent(a.slug)}/protect`}>
+            Protect
+          </Link>
+          <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
+            <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
+            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>
+              {state === "active" ? "Pause" : "Resume"}
+            </button>
+          </form>
+          </>
+        }
+      />
+      {sp.review_error && <div className="error">{sp.review_error}</div>}
+      {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
+
+      {view === "canvas" && <Canvas f={f} posture={posture} />}
+      {view === "activity" && (
+        <>
+          <Tabs
+            items={ACTIVITY_TABS.map((t) => ({ ...t, href: projectHref(slug, "activity", { tab: t.key === "runs" ? undefined : t.key, range: sp.range }) }))}
+            active={sub!}
+          />
+          {sub === "runs" && <Activity f={f} outcome={sp.outcome} />}
+          {sub === "rules" && <Rules f={f} slug={slug} />}
+          {sub === "quality" && <Quality f={f} />}
+        </>
+      )}
+      {view === "access" && <Access slug={slug} prefill={sp.grant} />}
+      {view === "features" && <ProjectFeatures slug={slug} />}
+      {view === "settings" && (
+        <>
+          <Meta
+            items={[
+              ["Owner", a.owner_email || "Not assigned"],
+              ["Team", a.owner_team || "—"],
+              ["Environment", a.environment],
+              ["Framework", a.framework || "—"],
+              ["Last active", ago(a.last_seen_at)],
+            ]}
+          />
+          <div style={{ height: 14 }} />
+          <Settings a={a} state={state} />
+        </>
+      )}
+    </>
+    </RangeProvider>
+  );
+}
+
+/** The workspace's switches as this project has them, with its own changes. */
+async function ProjectFeatures({ slug }: { slug: string }) {
+  const features = await safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/features`, null);
+  return features ? <FeaturesEditor initial={features} /> : <Card><Empty>Features could not be loaded.</Empty></Card>;
+}
+
+/**
+ * The canvas: the guardrail map, and in its inspector, when nothing is selected,
+ * the project at a glance: its traffic, its open issues, the guardrails that fired
+ * most, who owns it. The rest is a click away in the sidebar.
+ */
+async function Canvas({ f, posture }: { f: Filters; posture: any }) {
+  const slug = f.agent!;
+  const [map, s, rules, lineage] = await Promise.all([
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null),
+    safeApi<any>(`/api/metrics/summary?${metricsQs(f)}`, null),
+    safeApi<any>(`/api/metrics/rules?${metricsQs(f)}`, { rules: [] }),
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/lineage?depth=2`, { nodes: [], links: [], blast_radius: 0 }),
+  ]);
+  const reach: number = lineage.blast_radius ?? 0;
+  const a = posture.agent;
+  const t = s?.totals || {};
+  const findings: any[] = posture.open_findings || [];
+  const fired: any[] = (rules.rules || []).slice(0, 4);
+  const stat = (label: string, value: number, to: string, bad = false) => (
+    <Link className={`gm-stat${bad && value ? " bad" : ""}`} href={to}>
+      <b>{num(value || 0)}</b>
+      <span>{label}</span>
+    </Link>
+  );
+  const summary = (
+    <div className="gm-summary">
+      <div className="gm-summary-head">
+        <strong>{a.name || a.slug}</strong>
+        <span className="gm-sub">Last {RANGE_DAYS[f.range]} days · nothing selected</span>
+      </div>
+      <div className="gm-stats">
+        {stat("Requests", t.requests, runsHref(f))}
+        {stat("Blocked", t.blocked, runsHref(f, { outcome: "blocked" }))}
+        {stat("Held for a person", t.held, runsHref(f, { outcome: "held" }))}
+        {stat("Errors", t.errors, runsHref(f, { errors: true }), true)}
+      </div>
+      <h4>Open issues</h4>
+      {findings.length ? (
+        <ul className="gm-issues">
+          {findings.slice(0, 3).map((x) => (
+            <li key={x.id}>
+              <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
+              <SeverityPill value={x.severity} />
+            </li>
+          ))}
+          {findings.length > 3 && (
+            <li>
+              <Link href={`/app/findings?agent=${encodeURIComponent(slug)}`}>All {findings.length} issues →</Link>
+            </li>
+          )}
+        </ul>
+      ) : (
+        <p className="k-muted">None open.</p>
+      )}
+      {fired.length > 0 && (
+        <>
+          <h4>Fired most</h4>
+          <ul className="gm-issues">
+            {fired.map((r) => (
+              <li key={r.rule_id}>
+                <Link href={`/app/policies/rules/${encodeURIComponent(r.rule_id)}`}>{ruleTitle(r.rule_id)}</Link>
+                <span className="k-muted">{num(r.fires)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {lineage.links?.length > 0 && (
+        <>
+          <h4>Lineage</h4>
+          <p className="gm-sub">
+            Blast radius {reach}: reachable within two hops, how far a bad decision here could travel.
+          </p>
+          <Modal trigger="Open lineage map" triggerClassName="k-btn-ghost" title={`What ${a.name || a.slug} reaches`}>
+            <AgentMap root={lineage.root || slug} nodes={lineage.nodes || []} links={lineage.links} blastRadius={reach} />
+          </Modal>
+        </>
+      )}
+      <h4>About</h4>
+      <dl className="gm-facts">
+        <dt>Owner</dt>
+        <dd>{a.owner_email || <Link href={projectHref(slug, "settings")}>Assign</Link>}</dd>
+        <dt>Environment</dt>
+        <dd>{a.environment || "—"}</dd>
+        <dt>Framework</dt>
+        <dd>{a.framework || "—"}</dd>
+        <dt>Last active</dt>
+        <dd>{ago(a.last_seen_at)}</dd>
+      </dl>
+    </div>
+  );
+  return map ? <GuardrailMap map={map} summary={summary} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
+}
+
+async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
+  const [access, boundaries] = await Promise.all([
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/access`, null),
+    safeApi<any>("/api/answerability/boundaries", { boundaries: [], question_types: [] }),
+  ]);
+  const boundary = (boundaries.boundaries || []).find((b: any) => b.agent === slug) || null;
+  const types: string[] = boundaries.question_types?.length ? boundaries.question_types : ["fact", "aggregate", "prediction", "opinion", "procedure"];
+  return (
+    <>
+      {access ? (
+        <AccessEditor
+          slug={slug}
+          capabilities={access.capabilities}
+          tried={access.tried}
+          tools={access.tools}
+          unused={access.unused}
+          inCode={access.in_code || []}
+          prefill={prefill}
+        />
+      ) : (
+        <Card>
+          <Empty>Access could not be loaded.</Empty>
+        </Card>
+      )}
+      <Card
+        id="boundary"
+        title="What it may answer"
+        hint="Questions outside this are refused before the model answers."
+        action={<Link href={href("/app/policies/new", { from: "custom", agent: slug })}>Topic rule</Link>}
+      >
+        <form action={`/api/agents/${encodeURIComponent(slug)}/boundary`} method="POST" className="k-form">
+          <div className="k-field">
+            <label htmlFor="b-sor">Data it answers from (optional)</label>
+            <input id="b-sor" className="k-input" name="systems_of_record" defaultValue={boundary?.systems_of_record?.join(", ") || ""} placeholder="price-book, ticket-history" />
+          </div>
+          <div className="k-field">
+            <label htmlFor="b-ent">Topics it knows</label>
+            <input id="b-ent" className="k-input" name="entity_types" defaultValue={boundary?.entity_types?.join(", ") || ""} placeholder="customer, order, invoice" />
+          </div>
+          <div className="k-field">
+            <label htmlFor="b-out">Topics it must not answer (optional)</label>
+            <input id="b-out" className="k-input" name="out_of_scope_topics" defaultValue={boundary?.out_of_scope_topics?.join(", ") || ""} placeholder="legal advice, medical diagnosis" />
+          </div>
+          <div className="k-field">
+            <label htmlFor="b-cov">Its data covers (optional)</label>
+            <span className="k-pills">
+              <input id="b-cov" className="k-input" style={{ width: 90 }} type="number" min={0} name="coverage_months" defaultValue={boundary?.coverage_months ?? ""} />
+              <span className="k-muted">months back</span>
+              <input className="k-input" style={{ width: 90, marginLeft: 12 }} type="number" min={0} name="freshness_hours" defaultValue={boundary?.freshness_hours ?? ""} aria-label="Freshness in hours" />
+              <span className="k-muted">hours old at most</span>
+            </span>
+          </div>
+          <div className="k-field">
+            <label>It may answer</label>
+            <span className="k-pills" style={{ flexWrap: "wrap", gap: 14 }}>
+              {types.map((qt) => (
+                <label key={qt} className="k-check" title={QUESTION_HINT[qt]}>
+                  <input type="checkbox" name="answerable_types" value={qt} defaultChecked={boundary ? boundary.answerable_types?.includes(qt) : true} />
+                  {QUESTION_LABEL[qt] || qt}
+                </label>
+              ))}
+            </span>
+          </div>
+          <div className="k-field">
+            <span />
+            <span>
+              <button type="submit" className="k-btn-primary">
+                {boundary ? "Save" : "Set boundary"}
+              </button>
+            </span>
+          </div>
+        </form>
+      </Card>
+    </>
+  );
+}
+
+async function Rules({ f, slug }: { f: Filters; slug: string }) {
+  const [effective, stats] = await Promise.all([
+    safeApi<any>(`/api/policies/effective?agent=${encodeURIComponent(slug)}`, { rules: [] }),
+    safeApi<any>(`/api/metrics/rules?${metricsQs({ ...f, range: "30d" })}`, { rules: [] }),
+  ]);
+  const byId: Record<string, any> = Object.fromEntries((stats.rules || []).map((r: any) => [r.rule_id, r]));
+  const rules: any[] = effective.rules || [];
+  const changes: any[] = effective.agent_changes || [];
+  const groups = CATEGORIES.map((c) => ({ c, rules: rules.filter((r) => ruleCategory(r.rule_id) === c.key) })).filter((g) => g.rules.length);
+  return (
+    <>
+      <div className="k-toolbar">
+        <span className="k-muted" style={{ fontSize: "var(--t-small)" }}>
+          {rules.length} rules apply · fired in the last 30 days
+        </span>
+        <div className="k-toolbar-end">
+          <Link href={href("/app/policies/new", { agent: slug })} className="k-btn-primary">
+            Add a guardrail
+          </Link>
+        </div>
+      </div>
+      {changes.length > 0 && (
+        <Card title="Changed for this project" flush>
+          <table className="k-table">
+            <tbody>
+              {changes.map((c) => {
+                const what = (x: any) => (x.enabled ? <ActionPill effect={x.effect} /> : <Pill tone="outline">Off</Pill>);
+                return (
+                  <tr key={c.rule_id}>
+                    <td>
+                      <Link className="k-name" href={href(`/app/policies/rules/${encodeURIComponent(c.rule_id)}`, { tab: "tune", agent: slug })}>
+                        {ruleTitle(c.rule_id)}
+                      </Link>
+                      <span className="sub">
+                        {c.kind === "added" ? "Only on this project" : c.has_effect ? "Workspace default replaced for this project" : "Looser than the workspace rule, which still applies"}
+                      </span>
+                    </td>
+                    <td className="tight">{c.default ? <span className="k-pills" style={{ gap: 6 }}><span className="k-muted">Workspace</span>{what(c.default)}</span> : null}</td>
+                    <td className="tight"><span className="k-pills" style={{ gap: 6 }}><span className="k-muted">This agent</span>{what(c.agent)}</span></td>
+                    <td className="tight">
+                      <Act
+                        url={`/api/agents/${encodeURIComponent(slug)}/rules/${encodeURIComponent(c.rule_id)}`}
+                        method="DELETE"
+                        className="k-btn-ghost"
+                        confirm={c.kind === "added" ? "Remove this rule from this project?" : "Reset this rule to the workspace default for this project?"}
+                        done="Done"
+                      >
+                        {c.kind === "added" ? "Remove" : "Reset to workspace default"}
+                      </Act>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
+      {groups.map(({ c, rules }) => (
+        <Card key={c.key} title={categoryLabel(c.key)} flush>
+          <table className="k-table">
+            <tbody>
+              {rules.map((r) => {
+                const s = byId[r.rule_id];
+                return (
+                  <tr key={r.rule_id}>
+                    <td>
+                      <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(r.rule_id)}`}>
+                        {ruleTitle(r.rule_id)}
+                      </Link>
+                      {r.changed_for_agent ? (
+                        <span className="sub">Changed for this project</span>
+                      ) : r.added_for_agent || (r.source && !String(r.source).startsWith("org:")) ? (
+                        <span className="sub">Custom for this project</span>
+                      ) : null}
+                    </td>
+                    <td className="tight"><ActionPill effect={r.effect} /></td>
+                    <td className="tight"><ModePill mode={r.enforcement} /></td>
+                    <td className="tight">{s ? <Sparkline values={s.series} width={60} /> : null}</td>
+                    <td className="num tight">{s ? <Link href={runsHref({ ...f, range: "30d" }, { rule: r.rule_id })}>{num(s.fires)}</Link> : <span className="k-muted">0</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      ))}
+    </>
+  );
+}
+
+async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
+  const qs = new URLSearchParams({ agent: f.agent!, limit: "100", since_days: String(RANGE_DAYS[f.range]), group: "true" });
+  const v = verdictsFor(outcome);
+  if (v) qs.set("verdict", v);
+  if (outcome === "errors") qs.set("errors", "true");
+  const [runs, s] = await Promise.all([
+    safeApi<any>(`/api/traces?${qs}`, { traces: [] }),
+    safeApi<any>(`/api/metrics/summary?${metricsQs(f)}`, null),
+  ]);
+  const t = s?.totals || {};
+  const p = s?.previous || {};
+  const b: any[] = s?.buckets || [];
+  const chip = (key: string, label: string) => (
+    <Link
+      key={key}
+      className={(outcome || "") === key ? "active" : ""}
+      href={projectHref(f.agent!, "activity", { outcome: key || undefined, range: f.range === "7d" ? undefined : f.range })}
+      scroll={false}
+    >
+      {label}
+    </Link>
+  );
+  return (
+    <>
+      <FilterBar>
+        <div className="k-seg">
+          {chip("", "All")}
+          {chip("blocked", "Blocked")}
+          {chip("held", "Held")}
+          {chip("errors", "Errors")}
+        </div>
+      </FilterBar>
+      {/* The trend over the range, against the one before it; a window opens its runs. */}
+      <Grid cols={4}>
+        <Kpi label="Requests" value={num(t.requests || 0)} current={t.requests} prev={p.requests} better="none" href={runsHref(f)} spark={b.map((x) => x.allowed + x.masked + x.held + x.blocked)} />
+        <Kpi label="Blocked" value={num(t.blocked || 0)} current={t.blocked} prev={p.blocked} href={runsHref(f, { outcome: "blocked" })} spark={b.map((x) => x.blocked)} />
+        <Kpi label="Held for a person" value={num(t.held || 0)} current={t.held} prev={p.held} href={runsHref(f, { outcome: "held" })} spark={b.map((x) => x.held)} />
+        <Kpi label="Errors" value={num(t.errors || 0)} current={t.errors} prev={p.errors} tone={t.errors ? "bad" : undefined} href={runsHref(f, { errors: true })} />
+      </Grid>
+      {s && (
+        <Card title="Requests">
+          <TimeChart buckets={b} bucketSeconds={s.bucket_seconds} height={110} linkFor={(start, end) => runsHref(f, { start, end })} />
+        </Card>
+      )}
+      <Card flush>
+        <RunsTable runs={runs.traces} showAgent={false} />
+      </Card>
+    </>
+  );
+}
+
+const FEEDBACK_LABEL: Record<string, string> = { false_positive: "False alarm", true_positive: "Confirmed", false_negative: "Missed" };
+
+const pct = (v?: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+
+async function Quality({ f }: { f: Filters }) {
+  const slug = f.agent!;
+  const q = await safeApi<any>(`/api/metrics/quality?${new URLSearchParams({ agent: slug, range: f.range })}`, null);
+  if (!q) {
+    return (
+      <Card>
+        <Empty>Quality could not be loaded.</Empty>
+      </Card>
+    );
+  }
+  const agentHref = (tab: string) => projectHref(slug, "activity", { tab, range: f.range === "7d" ? undefined : f.range });
+  const wrong = q.wrong_answers;
+  const failed = q.failed_steps;
+  const runs: any[] = q.evals.runs || [];
+  const slos: any[] = q.evals.slos || [];
+  const labels = q.feedback.labels || {};
+  const feedbackTotal = Object.values(labels).reduce((a: number, b: any) => a + Number(b || 0), 0) as number;
+  const last = runs[0];
+  const scoreForm = (label: string, primary = false) => (
+    <form action="/api/eval/online" method="POST">
+      <input type="hidden" name="agent" value={slug} />
+      <input type="hidden" name="since_days" value={RANGE_DAYS[f.range]} />
+      <input type="hidden" name="return_to" value={agentHref("quality")} />
+      <button type="submit" className={primary ? "k-btn-primary" : "k-btn"}>{label}</button>
+    </form>
+  );
+  const rateHint = (n: number) => (q.requests ? `${num(n)} of ${num(q.requests)} requests` : "No requests in this period");
+
+  return (
+    <>
+      <FilterBar />
+      <Grid cols={4}>
+        <Kpi
+          label="Wrong answers"
+          value={q.checked ? pct(wrong.rate) : "Not checked"}
+          tone={wrong.requests ? "bad" : undefined}
+          spark={q.trend.wrong_answers}
+          hint={q.checked ? rateHint(wrong.requests) : "No rule checks answers for this project."}
+          href="#wrong"
+        />
+        <Kpi label="Failed steps" value={pct(failed.rate)} tone={failed.requests ? "bad" : undefined} spark={q.trend.failed_steps} hint={rateHint(failed.requests)} href={runsHref(f, { errors: true })} />
+        <Kpi label="Scored pass rate" value={last ? pct(last.pass_rate) : "Not scored"} tone={last?.pass_rate != null && last.pass_rate < 0.9 ? "warn" : undefined} hint={last ? `Last scored ${ago(last.created_at)}` : "Score recent traffic below."} href="#scored" />
+        <Kpi label="People said wrong" value={num(labels.false_negative || 0)} hint={`${num(feedbackTotal)} labels in this period`} href="#feedback" />
+      </Grid>
+
+      {q.findings.length > 0 && (
+        <Card title="Open quality issues" flush action={<Link href={href("/app/findings", { agent: slug })}>All issues</Link>}>
+          <ul className="k-list">
+            {q.findings.slice(0, 6).map((x: any) => (
+              <li key={x.id}>
+                <div className="k-list-main">
+                  <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
+                </div>
+                <SeverityPill value={x.severity} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      <div id="wrong" />
+      <Card title="Wrong answers caught" hint="Unsupported claims, refusals outside what it may answer, wrong format, unverified completion, made-up tools." flush>
+        {wrong.rules.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>Check</th>
+                <th className="num">Fired</th>
+                <th className="num">Watching</th>
+                <th>Trend</th>
+                <th className="tight">Last</th>
+              </tr>
+            </thead>
+            <tbody>
+              {wrong.rules.map((r: any) => (
+                <tr key={r.rule_id}>
+                  <td>
+                    <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(r.rule_id)}`}>{ruleTitle(r.rule_id)}</Link>
+                  </td>
+                  <td className="num"><Link href={runsHref(f, { rule: r.rule_id })}>{num(r.fires)}</Link></td>
+                  <td className="num">{r.watched ? <Pill tone="outline">{num(r.watched)}</Pill> : "0"}</td>
+                  <td><Sparkline values={r.series} /></td>
+                  <td className="tight muted">{r.sample_trace_id ? <Link href={`/app/traces/${r.sample_trace_id}`}>{ago(r.last_fired)}</Link> : ago(r.last_fired)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : q.checked ? (
+          <Empty action={<Link className="k-btn" href={projectHref(slug, "access")}>Set what it may answer</Link>}>No wrong answers caught in this period.</Empty>
+        ) : (
+          <Empty action={<Link className="k-btn-primary" href={projectHref(slug, "access")}>Set what it may answer</Link>}>Nothing checks this project&apos;s answers yet.</Empty>
+        )}
+      </Card>
+
+      <Card title="Failed steps" flush>
+        {failed.rows.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>Step</th>
+                <th className="num">Count</th>
+                <th className="tight">Last</th>
+              </tr>
+            </thead>
+            <tbody>
+              {failed.rows.map((e: any) => (
+                <tr key={`${e.kind}-${e.name}`}>
+                  <td>
+                    <Link className="k-name" href={`/app/traces/${e.sample_trace_id}`}>{e.name}</Link>
+                    {e.message && <span className="sub">{e.message}</span>}
+                  </td>
+                  <td className="num">{num(e.count)}</td>
+                  <td className="tight muted">{ago(e.last)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : q.requests ? (
+          <Empty>No failed tool or model calls in this period.</Empty>
+        ) : (
+          <Empty action={<Link className="k-btn" href={projectHref(slug, "activity")}>Activity</Link>}>No requests in this period.</Empty>
+        )}
+      </Card>
+
+      <div id="scored" />
+      <Card title="Scored runs" hint="Recent production traffic graded for groundedness, task completion and silent failures." action={runs.length ? scoreForm("Score again") : undefined} flush>
+        {runs.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th className="num">Runs scored</th>
+                <th>Measures</th>
+                <th className="tight">Pass rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {runs.map((r: any) => (
+                <tr key={r.id}>
+                  <td className="muted">{ago(r.created_at)}</td>
+                  <td className="num">{num(r.cases || 0)}</td>
+                  <td className="muted">
+                    {Object.entries(r.scorers || {})
+                      .map(([k, v]: [string, any]) => `${k.replace(/_/g, " ")} ${pct(v)}`)
+                      .join(" · ") || "—"}
+                  </td>
+                  <td className="tight">
+                    {r.pass_rate == null ? <span className="k-muted">—</span> : <Pill tone={r.pass_rate >= 0.9 ? "ok" : r.pass_rate >= 0.7 ? "warn" : "bad"}>{pct(r.pass_rate)}</Pill>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <Empty action={scoreForm("Score recent traffic", true)}>Not scored yet.</Empty>
+        )}
+      </Card>
+
+      <Grid cols={2}>
+        <div id="feedback">
+          <Card title="Feedback" flush>
+            {feedbackTotal ? (
+              <ul className="k-list">
+                {(q.feedback.recent || []).map((x: any, i: number) => (
+                  <li key={i}>
+                    <div className="k-list-main">
+                      {x.trace_id ? <Link href={`/app/traces/${x.trace_id}`}>{x.note || x.detector_key || "Run"}</Link> : x.note || x.detector_key || "Run"}
+                      <span className="sub">{x.actor} · {ago(x.at)}</span>
+                    </div>
+                    <Pill tone={x.label === "false_negative" ? "bad" : x.label === "false_positive" ? "warn" : "ok"}>{FEEDBACK_LABEL[x.label] || x.label}</Pill>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Empty action={<Link className="k-btn" href={projectHref(slug, "activity")}>Open a run</Link>}>No feedback yet. Label a run from its detail page.</Empty>
+            )}
+          </Card>
+        </div>
+        <Card title="Hand-offs to people">
+          {q.handoffs.handoffs || q.handoffs.qualified ? (
+            <Grid cols={3}>
+              <Kpi label="Handed off" value={num(q.handoffs.handoffs)} />
+              <Kpi label="Missed" value={num(q.handoffs.missed)} tone={q.handoffs.missed ? "bad" : undefined} hint={`of ${num(q.handoffs.qualified)} that needed a person`} />
+              <Kpi label="False resolutions" value={num(q.handoffs.false_resolutions)} tone={q.handoffs.false_resolutions ? "bad" : undefined} />
+            </Grid>
+          ) : (
+            <Empty action={<Link className="k-btn" href="/app/escalation">Set up hand-offs</Link>}>No conversations recorded for hand-off checks.</Empty>
+          )}
+        </Card>
+      </Grid>
+
+      <Card title="Reliability targets" action={<Link href="/app/test?tab=reliability">Targets</Link>} flush>
+        {slos.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>Measure</th>
+                <th className="num">Target</th>
+                <th className="num">Actual</th>
+                <th className="tight">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slos.map((s) => (
+                <tr key={s.slo_id || s.scorer}>
+                  <td>{s.scorer}</td>
+                  <td className="num">{s.target != null ? `${Math.round(s.target * 100)}%` : "—"}</td>
+                  <td className="num">{s.attainment != null ? `${Math.round(s.attainment * 100)}%` : "—"}</td>
+                  <td className="tight">
+                    <Pill tone={s.status === "breached" ? "bad" : s.status === "at_risk" ? "warn" : s.status === "met" ? "ok" : "outline"}>
+                      {String(s.status || "no data").replace(/_/g, " ")}
+                    </Pill>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <Empty action={<Link href="/app/test?tab=reliability" className="k-btn">Set a target</Link>}>No targets yet. Set one to track an error budget.</Empty>
+        )}
+      </Card>
+    </>
+  );
+}
+
+async function Settings({ a, state }: { a: any; state: string }) {
+  const action = `/api/agents/${encodeURIComponent(a.slug)}/owner`;
+  const breaker = await safeApi<any>(`/api/agents/${encodeURIComponent(a.slug)}/breaker`, null);
+  return (
+    <>
+      <Card title="Details">
+        <form action={action} method="POST" className="k-form">
+          <div className="k-field">
+            <label htmlFor="s-purpose">Purpose</label>
+            <input id="s-purpose" className="k-input" name="purpose" defaultValue={a.purpose || ""} placeholder="Answers billing questions from account history" />
+          </div>
+          <div className="k-field">
+            <label htmlFor="s-owner">Owner</label>
+            <input id="s-owner" className="k-input" type="email" name="owner_email" defaultValue={a.owner_email || ""} placeholder="owner@company.com" />
+          </div>
+          <div className="k-field">
+            <label htmlFor="s-team">Team</label>
+            <input id="s-team" className="k-input" name="owner_team" defaultValue={a.owner_team || ""} />
+          </div>
+          <div className="k-field">
+            <label htmlFor="s-risk">Risk level</label>
+            <select id="s-risk" className="k-select" name="risk_tier" defaultValue={a.risk_tier || "limited"} style={{ width: 160 }}>
+              <option value="minimal">Minimal</option>
+              <option value="limited">Limited</option>
+              <option value="high">High</option>
+              <option value="prohibited">Prohibited</option>
+            </select>
+          </div>
+          <div className="k-field">
+            <span />
+            <span>
+              <button type="submit" className="k-btn-primary">Save</button>
+            </span>
+          </div>
+        </form>
+      </Card>
+      <Card title="Registration" flush>
+        <table className="k-table">
+          <tbody>
+            <tr><td className="muted">Slug</td><td className="k-mono">{a.slug}</td></tr>
+            <tr><td className="muted">Registered</td><td>{a.registered ? "Yes" : <Pill tone="bad">No</Pill>}</td></tr>
+            <tr><td className="muted">Models</td><td>{a.declared_models?.join(", ") || "—"}</td></tr>
+            <tr><td className="muted">Data it handles</td><td>{a.data_classes?.join(", ") || "—"}</td></tr>
+            <tr><td className="muted">First seen</td><td>{ago(a.first_seen_at)}</td></tr>
+          </tbody>
+        </table>
+      </Card>
+      <Card title="Emergency stop" hint="Pause refuses every call from this project until resumed. Stop is the stronger incident action.">
+        <div className="k-pills" style={{ gap: 8 }}>
+          {state === "active" ? <Pill tone="ok">Active</Pill> : <Pill tone="bad">{state}</Pill>}
+          <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST" className="k-pills" style={{ gap: 8 }}>
+            <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
+            <input className="k-input" name="reason" placeholder="Reason (optional)" style={{ width: 240 }} />
+            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>{state === "active" ? "Pause" : "Resume"}</button>
+          </form>
+          {state !== "killed" && (
+            <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
+              <input type="hidden" name="action" value="kill" />
+              <button type="submit" className="k-btn-danger">Stop</button>
+            </form>
+          )}
+        </div>
+      </Card>
+      {breaker && <Breaker slug={a.slug} b={breaker} />}
+    </>
+  );
+}
+
+const BREAKER_STATE: Record<string, [string, "ok" | "bad" | "held"]> = {
+  closed: ["Closed", "ok"],
+  open: ["Open: calls refused", "bad"],
+  probing: ["Probing", "held"],
+};
+
+/**
+ * The circuit breaker: when a burst of this project's calls is blocked, pause it (or
+ * only raise an issue) without anyone watching, then let calls through again once a
+ * few pass after the cool-down.
+ */
+function Breaker({ slug, b }: { slug: string; b: any }) {
+  const action = `/api/agents/${encodeURIComponent(slug)}/breaker`;
+  const [label, tone] = BREAKER_STATE[b.state] || BREAKER_STATE.closed;
+  const minutes = (s: number) => Math.round((Number(s) / 60) * 10) / 10;
+  return (
+    <Card
+      title="Circuit breaker"
+      hint="Trips when too many of this project's calls are blocked in a short window. Attack tests do not count."
+    >
+      <div className="k-pills" style={{ gap: 8, marginBottom: 12 }}>
+        <Pill tone={tone}>{label}</Pill>
+        <span className="muted">
+          {num(b.window?.blocked || 0)} of {num(b.window?.calls || 0)} calls blocked in the last {minutes(b.window_seconds)} min
+          {b.trips ? ` · tripped ${num(b.trips)} time${b.trips === 1 ? "" : "s"}` : ""}
+        </span>
+      </div>
+      {b.state !== "closed" && (
+        <div className="note-panel" style={{ marginBottom: 12 }}>
+          {b.state === "probing" ? `Probing after: ${b.reason}.` : `${b.reason}.`}
+          {b.state === "open" && b.retry_at ? ` Calls go through again from ${new Date(b.retry_at).toLocaleTimeString()}.` : ""}
+          <form action={action} method="POST" className="k-pills" style={{ gap: 8, marginTop: 8 }}>
+            <input type="hidden" name="action" value="reset" />
+            <input className="k-input" name="reason" placeholder="What was dealt with (optional)" style={{ width: 260 }} />
+            <button type="submit" className="k-btn">Resume now</button>
+          </form>
+        </div>
+      )}
+      <form action={action} method="POST" className="k-form">
+        <div className="k-field">
+          <label htmlFor="b-mode">When it trips</label>
+          <select id="b-mode" name="mode" className="k-select" defaultValue={b.mode} style={{ width: 280 }}>
+            <option value="alert">Raise an issue only</option>
+            <option value="pause">Pause the agent and raise an issue</option>
+            <option value="off">Off</option>
+          </select>
+        </div>
+        <div className="k-field">
+          <label htmlFor="b-pct">Trip at</label>
+          <span className="k-pills" style={{ gap: 6 }}>
+            <input id="b-pct" className="k-input" type="number" name="block_percent" min={5} max={100} defaultValue={Math.round(b.block_ratio * 100)} style={{ width: 80 }} />
+            <span className="muted">% blocked, of at least</span>
+            <input className="k-input" type="number" name="min_calls" min={2} defaultValue={b.min_calls} style={{ width: 80 }} aria-label="Minimum calls" />
+            <span className="muted">calls in</span>
+            <input className="k-input" type="number" name="window_minutes" min={0.5} step={0.5} defaultValue={minutes(b.window_seconds)} style={{ width: 80 }} aria-label="Window in minutes" />
+            <span className="muted">min</span>
+          </span>
+        </div>
+        <div className="k-field">
+          <label htmlFor="b-cool">Pause for</label>
+          <span className="k-pills" style={{ gap: 6 }}>
+            <input id="b-cool" className="k-input" type="number" name="cooldown_minutes" min={0.5} max={60} step={0.5} defaultValue={minutes(b.cooldown_seconds)} style={{ width: 80 }} />
+            <span className="muted">min, then close after</span>
+            <input className="k-input" type="number" name="probe_calls" min={1} defaultValue={b.probe_calls} style={{ width: 80 }} aria-label="Clean calls to close" />
+            <span className="muted">clean calls. A blocked call while probing pauses it again, for twice as long.</span>
+          </span>
+        </div>
+        <div className="k-field">
+          <span />
+          <span>
+            <button type="submit" className="k-btn-primary">Save</button>
+          </span>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+const QUESTION_LABEL: Record<string, string> = {
+  fact: "Facts",
+  aggregate: "Totals and counts",
+  prediction: "Predictions",
+  opinion: "Opinions",
+  procedure: "How-to steps",
+};
+const QUESTION_HINT: Record<string, string> = {
+  fact: "A single fact: \"What is the status of my order?\"",
+  aggregate: "Counts or totals: \"How many orders did I place this year?\"",
+  prediction: "Guesses about the future: \"Will it arrive on time?\"",
+  opinion: "Recommendations: \"Which plan is best for me?\"",
+  procedure: "Steps to follow: \"How do I update my address?\"",
+};

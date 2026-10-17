@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react";
+import Link from "next/link";
+import { WaitlistForm } from "@/components/marketing/waitlist";
 
 /*
  * The editions story for the public pages: what is free, what is paid, and what
@@ -11,15 +13,15 @@ import type { CSSProperties } from "react";
  * Every commercial claim below was checked against the repository before it was
  * written. The sources, so a later editor can re-check them rather than guess:
  *
- *   - Apache-2.0, whole repo .......... LICENSE (Apache License 2.0, full text),
+ *   - open core Apache-2.0 ............ LICENSE (Apache License 2.0, full text),
  *                                       README.md "Licence" section
- *   - nothing gated behind a paid tier  no billing, plan, price or licence-key
- *                                       code exists under src/agentfox/. The
- *                                       `entitlement.py` module is data-access
- *                                       entitlement (who may see which resource),
- *                                       not payment entitlement.
+ *   - Enterprise source-available ..... ee/LICENSE (BSL 1.1: production use free
+ *                                       for one workspace up to four agents;
+ *                                       each version Apache-2.0 after three years)
+ *   - no licence key .................. no billing, plan, price or licence-key
+ *                                       code exists under src/agentfox/ or ee/.
  *   - runs offline, no API key ........ README.md lines 34-35, and
- *                                       src/agentfox/providers/echo.py
+ *                                       src/agentfox/platform/providers/echo.py
  *   - no telemetry phoning home ....... no AgentFox-owned endpoint appears
  *                                       anywhere in src/agentfox/. The only
  *                                       outbound hosts in config.py are the
@@ -27,11 +29,11 @@ import type { CSSProperties } from "react";
  *                                       configures themselves.
  *   - benchmarks reproducible ......... README.md "Benchmarks, reproducible by
  *                                       anyone", nine scripts under benchmarks/
- *   - stdlib-only verifier ............ src/agentfox/audit/evidence.py
+ *   - stdlib-only verifier ............ ee/src/agentfox_ee/evidence/package.py
  *                                       VERIFIER_SCRIPT, written into every
  *                                       package as verify_chain.py
- *   - mappings ship labelled DRAFT .... src/agentfox/compliance/catalog.py:214,
- *                                       src/agentfox/compliance/risk.py:369
+ *   - mappings ship labelled DRAFT .... ee/src/agentfox_ee/compliance/frameworks.py,
+ *                                       ee/src/agentfox_ee/compliance/risk.py
  *   - cloud does not exist yet ........ README.md line 183: single-org
  *                                       multi-tenancy at the session, "not yet a
  *                                       managed multi-region offering", no live
@@ -41,19 +43,13 @@ import type { CSSProperties } from "react";
  * exist, so none of them appear.
  */
 
-const SUPPORT_EMAIL = "support@agentfox.com";
+const SUPPORT_EMAIL = "support@nometria.com";
 
 const SUPPORTED_HREF =
   `mailto:${SUPPORT_EMAIL}` +
   "?subject=Supported%20self-hosted%20deployment";
 
-const CLOUD_HREF =
-  `mailto:${SUPPORT_EMAIL}` +
-  "?subject=Managed%20cloud%20waitlist%20(in%20development)";
-
-const REPO_HREF = "https://github.com/architsharm/guardrails";
-
-const INSTALL_CMD = "pip install git+https://github.com/architsharm/guardrails.git";
+const REPO_HREF = "https://github.com/architsharm/agentfox";
 
 /* --- Shared furniture --------------------------------------------------- */
 
@@ -66,7 +62,7 @@ const COLUMN: CSSProperties = {
 
 const ITEM_BODY: CSSProperties = {
   margin: "5px 0 0",
-  fontSize: ".92rem",
+  fontSize: "var(--t-small)",
   lineHeight: 1.5,
 };
 
@@ -76,19 +72,6 @@ const ACTION_FOOT: CSSProperties = {
   display: "grid",
   gap: 10,
   minWidth: 0,
-};
-
-const CODE_BLOCK: CSSProperties = {
-  margin: 0,
-  padding: "11px 12px",
-  background: "var(--mk-surface-2)",
-  border: "1px solid var(--mk-border)",
-  borderRadius: "var(--mk-r-md)",
-  color: "var(--mk-muted)",
-  lineHeight: 1.6,
-  overflowX: "auto",
-  whiteSpace: "pre-wrap",
-  overflowWrap: "anywhere",
 };
 
 /** One labelled line inside an edition column. */
@@ -105,131 +88,143 @@ function Item({ label, children }: { label: string; children: string }) {
 
 /* --- Editions ----------------------------------------------------------- */
 
-export function Editions() {
+export function Editions({
+  notice,
+  error,
+}: {
+  /** Set by dashboard/app/api/waitlist/route.ts after a form post. */
+  notice?: string;
+  error?: string;
+} = {}) {
   return (
     <section id="editions" className="mk-section">
       <div className="mk-wrap">
-        <div className="mk-narrow mk-up" style={{ textAlign: "center" }}>
+        <div className="mk-narrow mk-up">
           <span className="mk-eyebrow">Editions</span>
           <h2 className="mk-h2" style={{ marginTop: 14 }}>
-            Free forever, supported, or waiting.
-          </h2>
-          <p className="mk-lede" style={{ margin: "14px auto 0", maxWidth: "62ch" }}>
-            Same software in all three. What you pay for is a support relationship.
+            Two ways to run it. Both free today</h2>
+          <p className="mk-lede" style={{ marginTop: 14 }}>
+            The same control plane either way. Nothing is priced yet, and no card is taken anywhere on this site.
           </p>
         </div>
 
-        <div className="mk-grid mk-grid-3" style={{ marginTop: 44 }}>
-          {/* 1. Open source */}
-          <div className="mk-card mk-up mk-d1" style={COLUMN}>
-            <div className="mk-row" style={{ gap: 8 }}>
-              <h3 className="mk-h3">Open source</h3>
-              <span className="mk-chip mk-chip-go">Available now</span>
+        {/* Two routes, not three tiers.
+            Three equally-weighted bordered cards look like a paid SaaS ladder,
+            which is exactly wrong for a page where nothing is priced. There are
+            really only two decisions a visitor makes here — run it yourself, or
+            let us run it — and supported rollout is a conversation, not an
+            edition. It is a strip underneath. */}
+        <div className="ed-routes" style={{ marginTop: 36 }}>
+          <div className="ed-route mk-up mk-d1">
+            <div className="ed-head">
+              <h3 className="mk-h3">Run it yourself</h3>
+              <span className="mk-chip mk-chip-go">Free forever</span>
             </div>
-
-            <Item label="What you get">
-              The whole control plane. Every feature above, none of them gated.
-            </Item>
-            <Item label="Who it is for">
-              Anyone who wants to read the code that decides what their agent may do.
-            </Item>
-            <Item label="Cost">Free, Apache-2.0. No licence key, no gated features.</Item>
-
-            <div style={ACTION_FOOT}>
-              <span className="mk-label">Start here</span>
-              <pre className="mk-mono" style={CODE_BLOCK}>
-                {INSTALL_CMD}
-              </pre>
-              <p className="mk-fine" style={{ margin: 0 }}>
-                The command is <code className="mk-mono">agentfox</code> and the package
-                imports as <code className="mk-mono">agentfox</code>.{" "}
-                <code className="mk-mono">nometria</code>, the old name, still works.
-              </p>
-              <a
-                className="mk-btn mk-btn-outline"
-                href={REPO_HREF}
-                target="_blank"
-                rel="noreferrer"
-                style={{ justifyContent: "center" }}
-              >
-                Read the repository
-              </a>
-            </div>
+            <p className="mk-body">
+              The open core is Apache-2.0, with no licence key and no limit on agents: enforcement,
+              containment, every detector and the dashboard. Runs offline: no API key, no
+              downloaded weights, no network egress. Compliance, evidence packages, monitoring and
+              access checks are AgentFox Enterprise: source-available, free in production for up to
+              four agents, and each release becomes Apache-2.0 after three years.{" "}
+              <Link href="/docs">Install and the demo are in the docs.</Link>
+            </p>
+            <a
+              className="mk-btn mk-btn-outline"
+              href={REPO_HREF}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Read the repository
+            </a>
           </div>
 
-          {/* 2. Supported self-hosted */}
-          <div className="mk-card mk-up mk-d2" style={COLUMN}>
-            <div className="mk-row" style={{ gap: 8 }}>
-              <h3 className="mk-h3">Supported self-hosted</h3>
-              <span className="mk-chip mk-chip-accent">Available now</span>
+          <div className="ed-route ed-route-hosted mk-up mk-d2">
+            <div className="ed-head">
+              <h3 className="mk-h3">Let us run it</h3>
+              <span className="mk-chip mk-chip-accent">Free while in preview</span>
             </div>
-
-            <Item label="What you get">
-              The identical software, plus help with rollout and priority on fixes.
-            </Item>
-            <Item label="Who it is for">
-              Teams putting this in front of an auditor who want a named person to call.
-            </Item>
-            <Item label="Cost">
-              Talk to us. Not priced yet, and we would rather agree it with the first
-              few teams than guess.
-            </Item>
-
-            <div style={ACTION_FOOT}>
-              <span className="mk-label">Start here</span>
-              <a
-                className="mk-btn mk-btn-primary"
-                href={SUPPORTED_HREF}
-                style={{ justifyContent: "center" }}
-              >
-                Email {SUPPORT_EMAIL}
-              </a>
-            </div>
-          </div>
-
-          {/* 3. Managed cloud, in development */}
-          <div className="mk-card mk-up mk-d3" style={COLUMN}>
-            <div className="mk-row" style={{ gap: 8 }}>
-              <h3 className="mk-h3">Managed cloud (in development)</h3>
-              <span className="mk-chip mk-chip-hold">In development</span>
-            </div>
-
-            <Item label="What you get">
-              Nothing yet. It is in development and you cannot sign up today.
-            </Item>
-            <Item label="Who it is for">
-              Teams who would rather not run it themselves, once it exists.
-            </Item>
-            <Item label="Cost">
-              Nothing is priced, because nothing is running.
-            </Item>
-
-            <div style={ACTION_FOOT}>
-              <span className="mk-label">Start here</span>
-              <a
-                className="mk-btn mk-btn-outline"
-                href={CLOUD_HREF}
-                style={{ justifyContent: "center" }}
-              >
-                Join the waitlist
-              </a>
-            </div>
+            <p className="mk-body">
+              The same control plane with AgentFox Enterprise included, operated by us, with
+              upgrades and backups handled. Sign in with GitHub and you have a workspace of your own in
+              about ten seconds.
+            </p>
+            <ul className="ed-terms">
+              <li>No card, and nothing to pay today</li>
+              <li>When paid plans arrive, your first 14 days on one are free</li>
+              <li>We will tell you before anything changes</li>
+            </ul>
+            <a className="mk-btn mk-btn-primary" href="/login">
+              Start free
+            </a>
           </div>
         </div>
 
-        {/* The open-source promise, made checkable. */}
-        <div className="mk-grid mk-grid-4 mk-up mk-d4" style={{ marginTop: 28 }}>
+        {/* Supported rollout: a service conversation, not a third tier. */}
+        <div className="ed-support mk-up mk-d3">
+          <p>
+            <strong>Putting this in front of an auditor?</strong> We help with rollout
+            and give you priority on fixes. Not priced yet — we agree it with you.
+          </p>
+          <a className="mk-btn mk-btn-outline" href={SUPPORTED_HREF}>
+            Talk to us
+          </a>
+        </div>
+
+        {/* The waitlist is not gone, it is pointed at the thing that is actually
+            unknown. Nobody needs to queue for the product — they can sign in — but
+            "tell me before you start charging" is a real request, and it is the one
+            this form now collects. */}
+        <div className="mk-notify mk-up mk-d4">
+          {notice ? (
+            <p className="wl-done" role="status">
+              {notice}
+            </p>
+          ) : (
+            <>
+              <div>
+                <h3 className="mk-h3">Tell me when pricing is announced</h3>
+                <p className="mk-body">
+                  One email, before any plan or paywall exists. Not a queue for
+                  access — that is open now.
+                </p>
+                {error ? (
+                  <p className="wl-error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+              </div>
+              <WaitlistForm />
+            </>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The open-source promise with a file next to each line, so a reader can check any
+ * of the four rather than take them.
+ */
+export function OpenSourcePromise() {
+  return (
+    <section className="mk-section-tight">
+      <div className="mk-wrap">
+        <div className="mk-grid mk-grid-4 mk-up">
           {OSS_FACTS.map((f) => (
             <div
               key={f.label}
               className="mk-card"
-              style={{ padding: 16, display: "grid", gap: 6, minWidth: 0 }}
+              style={{ padding: 20, display: "grid", gap: 6, minWidth: 0 }}
             >
               <span className="mk-label">{f.label}</span>
-              <p className="mk-body" style={{ margin: 0, fontSize: ".9rem", lineHeight: 1.5 }}>
+              <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)", lineHeight: 1.5 }}>
                 {f.body}
               </p>
-              <code className="mk-mono" style={{ color: "var(--mk-faint)", overflowWrap: "anywhere" }}>
+              <code
+                className="mk-mono"
+                style={{ color: "var(--mk-muted)", overflowWrap: "anywhere" }}
+              >
                 {f.where}
               </code>
             </div>
@@ -249,12 +244,12 @@ const OSS_FACTS: { label: string; body: string; where: string }[] = [
   {
     label: "Offline",
     body: "No API key, no downloaded weights.",
-    where: "agentfox init && agentfox demo",
+    where: "No API key, no weights",
   },
   {
     label: "No telemetry",
     body: "Nothing calls an AgentFox server. Outbound hosts are the ones you configure.",
-    where: "src/agentfox/config.py",
+    where: "src/agentfox/core/config.py",
   },
   {
     label: "Reproducible",
@@ -284,11 +279,10 @@ export function WhyOpen() {
   return (
     <section id="why-open" className="mk-section mk-band">
       <div className="mk-wrap">
-        <div className="mk-up" style={{ maxWidth: "34ch" }}>
+        <div className="mk-up" >
           <span className="mk-eyebrow">Why open</span>
           <h2 className="mk-h2" style={{ marginTop: 14 }}>
-            The core is open, and stays open.
-          </h2>
+            The core is open, and stays open</h2>
         </div>
 
         <div className="mk-grid mk-grid-3" style={{ marginTop: 36 }}>
@@ -299,7 +293,7 @@ export function WhyOpen() {
               style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}
             >
               <h3 className="mk-h3">{w.title}</h3>
-              <p className="mk-body" style={{ margin: 0, fontSize: ".94rem" }}>
+              <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)" }}>
                 {w.body}
               </p>
             </div>

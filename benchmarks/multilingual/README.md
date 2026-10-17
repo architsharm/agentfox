@@ -3,15 +3,15 @@
 **Everything in this repo is benchmarked in English. This one asks what happens in the other six.**
 
 ```bash
-PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
-  python benchmarks/multilingual/run_multilingual_parity.py
+PYTHONPATH=src AGENTFOX_CONFIG=none \
+  python -m benchmarks.multilingual.run_multilingual_parity
 ```
 
 ## Why this benchmark exists
 
-AI-security products are evaluated in English and sold worldwide. [`docs/coverage-map.md`](../../docs/coverage-map.md) row **L0.10** says so about this product too — *"Quality degrades in non-English"*, `✗ absent`, with the note that detectors are multilingual for injection but **nothing measures answer quality per language**.
+AI-security products are evaluated in English and sold worldwide. [`docs/design/coverage-map.md`](../../docs/design/coverage-map.md) row **L0.10** says so about this product too — *"Quality degrades in non-English"*, `✗ absent`, with the note that detectors are multilingual for injection but **nothing measures answer quality per language**.
 
-The obvious benchmark — "is this answer good in German?" — is the kind of subjective, LLM-judged check this codebase avoids everywhere else. [`docs/failure-modes.md`](../../docs/failure-modes.md) **F9.3** says so explicitly and prescribes the reframe this benchmark implements:
+The obvious benchmark — "is this answer good in German?" — is the kind of subjective, LLM-judged check this codebase avoids everywhere else. [`docs/design/failure-modes.md`](../../docs/design/failure-modes.md) **F9.3** says so explicitly and prescribes the reframe this benchmark implements:
 
 > This turns "is quality worse in German" (hard, subjective) into "do the same deterministic checks fire more often in German because a parser is English-only" (tractable, and each divergence points at a specific parser to fix).
 
@@ -48,7 +48,7 @@ Section 2 is the real finding. Sections 1 and 3 are included because they are wh
 
 These particular numbers move by a few hundredths of a point between runs — a handful of rows exceed the shipped 40 ms per-detector budget and which ones varies with machine load. At this magnitude that is noise on noise; the finding is the order of magnitude, not the digits.
 
-This is not a cross-lingual finding and is not presented as one. It matches this repo's own committed figure for the heuristic alone on this same file — **0.48% recall**, in [`../results_generalization/summary.json`](../results_generalization/summary.json). **Flat near-zero recall is an absence of detection, not parity.** A benchmark that stopped here could have reported "no cross-lingual divergence detected" and been technically true and completely worthless.
+This is not a cross-lingual finding and is not presented as one. It matches this repo's own committed figure for the heuristic alone on this same file — **0.48% recall**, in [`../generalization/results/summary.json`](../generalization/results/summary.json). **Flat near-zero recall is an absence of detection, not parity.** A benchmark that stopped here could have reported "no cross-lingual divergence detected" and been technically true and completely worthless.
 
 ### With the opt-in classifier, recall parity genuinely holds
 
@@ -68,8 +68,8 @@ The same file scored through `injection.heuristic + injection.classifier` (leole
 
 Two disclosures that belong next to that table, not beneath it:
 
-- **This is not the shipped configuration and not the live path.** `injection.classifier` is opt-in, and on the machine this ran on its forward pass costs ~113 ms against a shipped `detector_timeout_ms` of **40 ms** — so under shipped settings it was dropped on every call *in this run*. **Correction (2026-09-16):** that reproduces only on a cold process. Warm, the classifier costs about 43ms per short prompt and completed on 21 of 21 calls through the real `Enforcer` path with shipped settings; the gateway warms detectors at startup (`gateway/app.py:98`). Long prompts still time out. This config raises that timeout to 400 ms and scores `DetectorPipeline` directly rather than `Enforcer.check_content`, because with the timeout raised the Enforcer's 8-worker pool accumulates straggler threads holding model tensors and segfaults mid-run — the same accumulation [`../run_generalization_benchmark.py`](../run_generalization_benchmark.py) documents and mitigates with `max_workers=2`. **A 100% recall that cannot run inside the product's own latency budget is a finding about the budget, not a product claim.**
-- **Romanian is effectively absent from the dataset.** [`../data_generalization/README.md`](../data_generalization/README.md) advertises seven languages including Romanian; the file contains 13 rows with Romanian orthography. Romanian is reported with its support count and excluded from every headline.
+- **This is not the shipped configuration and not the live path.** `injection.classifier` is opt-in, and on the machine this ran on its forward pass costs ~113 ms against a shipped `detector_timeout_ms` of **40 ms** — so under shipped settings it was dropped on every call *in this run*. **Correction (2026-09-16):** that reproduces only on a cold process. Warm, the classifier costs about 43ms per short prompt and completed on 21 of 21 calls through the real `Enforcer` path with shipped settings; the gateway warms detectors at startup (`gateway/app.py:98`). Long prompts still time out. This config raises that timeout to 400 ms and scores `DetectorPipeline` directly rather than `Enforcer.check_content`, because with the timeout raised the Enforcer's 8-worker pool accumulates straggler threads holding model tensors and segfaults mid-run — the same accumulation [`../generalization/run_generalization_benchmark.py`](../generalization/run_generalization_benchmark.py) documents and mitigates with `max_workers=2`. **A 100% recall that cannot run inside the product's own latency budget is a finding about the budget, not a product claim.**
+- **Romanian is effectively absent from the dataset.** [`../generalization/data/README.md`](../generalization/data/README.md) advertises seven languages including Romanian; the file contains 13 rows with Romanian orthography. Romanian is reported with its support count and excluded from every headline.
 
 ### Precision is where parity actually fails
 
@@ -93,7 +93,7 @@ Why this specific pairing, and not the larger `wild` pools: on the first run wit
 The first run of section 2 was the unflattering one: **13 of 19 matched pairs broke** when the
 same logical content was localised — 12 silent misses and, worse, one *false positive* on
 arithmetic that was correct (`2,5 + 2,5 = 5` reported as "is 50, not 5", because a decimal comma
-was read as a thousands separator). Those are now fixed in `src/agentfox/integrity.py`.
+was read as a thousands separator). Those are now fixed in `src/agentfox/capabilities/grounding/integrity.py`.
 
 | | Before | After |
 |---|---|---|
@@ -123,7 +123,7 @@ to work in the target language. It is reported here rather than quietly dropped.
 
 ## 2. Deterministic-checker parity — the real finding
 
-The F7 integrity checkers in [`src/agentfox/integrity.py`](../../src/agentfox/integrity.py) are not an opt-in extra: they are the deterministic checks that run on live output, and F9.3 names them as the thing to fix. Each pair below is the **same logical content twice** — one English-formatted, one localised — where a deterministic checker must reach the same verdict.
+The F7 integrity checkers in [`src/agentfox/capabilities/grounding/integrity.py`](../../src/agentfox/capabilities/grounding/integrity.py) are not an opt-in extra: they are the deterministic checks that run on live output, and F9.3 names them as the thing to fix. Each pair below is the **same logical content twice** — one English-formatted, one localised — where a deterministic checker must reach the same verdict.
 
 **Parity held on 6 of 19 pairs. 12 checks go silent on localised content; 1 invents an error that isn't there.**
 

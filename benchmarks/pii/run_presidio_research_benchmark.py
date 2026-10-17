@@ -1,7 +1,7 @@
 """Scores AgentFox's PII detectors against presidio-research's span-labeled
 synthetic dataset (`data/synth_dataset_v2.json`, 1,500 rows, MIT).
 
-    uv run python benchmarks/pii/run_presidio_research_benchmark.py
+    uv run python -m benchmarks.pii.run_presidio_research_benchmark
 
 Three detector configurations are scored, all called directly on the detector
 object (`.detect(text, context)`), not through `DetectorPipeline` — the pipeline's
@@ -45,9 +45,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentfox.guardrails.adapters.presidio import DEFAULT_EXCLUDED, PresidioPiiDetector
-from agentfox.guardrails.base import DetectionContext
-from agentfox.guardrails.detectors.pii import NativePiiDetector
+from agentfox.capabilities.detection.adapters.presidio import DEFAULT_EXCLUDED, PresidioPiiDetector
+from agentfox.capabilities.detection.base import DetectionContext
+from agentfox.capabilities.detection.detectors.pii import NativePiiDetector
+from benchmarks._common import merge_counts, pred_spans, prf1, score_row_with_exclusions
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -94,7 +95,7 @@ def gt_spans_for_row(row: dict) -> list[tuple[int, int, str]]:
 def street_address_spans_for_row(row: dict) -> list[tuple[int, int]]:
     """STREET_ADDRESS ground-truth spans — out of scope (no AgentFox address
     detector) but often *contain* a real, separately-real city/country mention
-    a LOCATION recognizer correctly finds. See `score_row`'s containment
+    a LOCATION recognizer correctly finds. See `score_row_with_exclusions`'s containment
     exclusion and README "Fixes applied" — verified directly: 66.5% of raw
     LOCATION false positives (157/236) were confirmed-correct hits landing
     inside one of these spans, not detector errors.
@@ -106,78 +107,6 @@ def street_address_spans_for_row(row: dict) -> list[tuple[int, int]]:
     ]
 
 
-def pred_spans(detections, canonical_types: set[str]) -> list[tuple[int, int, str]]:
-    return [
-        (d.start, d.end, d.entity_type)
-        for d in detections
-        if d.entity_type in canonical_types
-    ]
-
-
-def score_row(
-    gt: list[tuple[int, int, str]],
-    pred: list[tuple[int, int, str]],
-    containment_exclude: list[tuple[int, int]] = (),
-) -> tuple[int, int, int, int, dict[str, list[int]]]:
-    """Greedy one-to-one span-overlap matching, per canonical type.
-
-    An unmatched predicted span fully contained inside a
-    `containment_exclude` span (STREET_ADDRESS ground truth here — see
-    `street_address_spans_for_row`) is neither a TP nor an FP: it's outside
-    what this benchmark's ground truth can credit, not a detector error.
-    Tracked separately as `excluded` so it never silently vanishes from the
-    numbers.
-
-    Returns (tp, fp, fn, excluded, per_type) where per_type[canonical_type] = [tp, fp, fn].
-    """
-    per_type: dict[str, list[int]] = {}
-
-    def bucket(t: str) -> list[int]:
-        return per_type.setdefault(t, [0, 0, 0])
-
-    matched_pred: set[int] = set()
-    tp = fp = fn = excluded = 0
-    for gs, ge, gt_type in gt:
-        match_idx = None
-        for i, (ps, pe, pt) in enumerate(pred):
-            if i in matched_pred or pt != gt_type:
-                continue
-            if ps < ge and gs < pe:  # overlap
-                match_idx = i
-                break
-        if match_idx is not None:
-            matched_pred.add(match_idx)
-            tp += 1
-            bucket(gt_type)[0] += 1
-        else:
-            fn += 1
-            bucket(gt_type)[2] += 1
-    for i, (ps, pe, pt) in enumerate(pred):
-        if i in matched_pred:
-            continue
-        if any(a_s <= ps and pe <= a_e for a_s, a_e in containment_exclude):
-            excluded += 1
-            continue
-        fp += 1
-        bucket(pt)[1] += 1
-    return tp, fp, fn, excluded, per_type
-
-
-def merge_per_type(total: dict[str, list[int]], part: dict[str, list[int]]) -> None:
-    for t, (tp, fp, fn) in part.items():
-        bucket = total.setdefault(t, [0, 0, 0])
-        bucket[0] += tp
-        bucket[1] += fp
-        bucket[2] += fn
-
-
-def prf1(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
-    precision = tp / (tp + fp) if (tp + fp) else 0.0
-    recall = tp / (tp + fn) if (tp + fn) else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
-    return precision, recall, f1
-
-
 def run_config(name: str, detector, rows: list[dict], ctx: DetectionContext) -> dict:
     canonical_types = set(GT_ENTITY_MAP.values())
     total_tp = total_fp = total_fn = total_excluded = 0
@@ -187,12 +116,12 @@ def run_config(name: str, detector, rows: list[dict], ctx: DetectionContext) -> 
         street_addrs = street_address_spans_for_row(row)
         detections = detector.detect(row["full_text"], ctx)
         pred = pred_spans(detections.detections, canonical_types)
-        tp, fp, fn, excluded, part = score_row(gt, pred, street_addrs)
+        tp, fp, fn, excluded, part = score_row_with_exclusions(gt, pred, street_addrs)
         total_tp += tp
         total_fp += fp
         total_fn += fn
         total_excluded += excluded
-        merge_per_type(per_type, part)
+        merge_counts(per_type, part)
         if (i + 1) % 250 == 0:
             print(f"  [{name}] {i + 1}/{len(rows)} rows")
 
@@ -201,12 +130,18 @@ def run_config(name: str, detector, rows: list[dict], ctx: DetectionContext) -> 
     for t, (tp, fp, fn) in sorted(per_type.items()):
         p, r, f = prf1(tp, fp, fn)
         by_type[t] = {
-            "tp": tp, "fp": fp, "fn": fn,
-            "precision": round(p, 4), "recall": round(r, 4), "f1": round(f, 4),
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+            "precision": round(p, 4),
+            "recall": round(r, 4),
+            "f1": round(f, 4),
         }
     return {
         "config": name,
-        "tp": total_tp, "fp": total_fp, "fn": total_fn,
+        "tp": total_tp,
+        "fp": total_fp,
+        "fn": total_fn,
         "excluded_contained_in_street_address": total_excluded,
         "precision": round(precision, 4),
         "recall": round(recall, 4),
@@ -244,7 +179,9 @@ def main() -> None:
     out_path.write_text(json.dumps(summary, indent=2))
     print(f"\nWrote {out_path}\n")
 
-    print(f"{'config':<24}{'precision':<12}{'recall':<12}{'f1':<12}{'tp':<8}{'fp':<8}{'fn':<8}{'excl':<6}")
+    print(
+        f"{'config':<24}{'precision':<12}{'recall':<12}{'f1':<12}{'tp':<8}{'fp':<8}{'fn':<8}{'excl':<6}"
+    )
     for r in results:
         print(
             f"{r['config']:<24}{r['precision']:<12}{r['recall']:<12}{r['f1']:<12}"

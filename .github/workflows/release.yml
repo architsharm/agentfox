@@ -9,8 +9,12 @@ name: Release
 # version declared in the source both match the tag, and publishes a GitHub Release whose
 # notes are the matching CHANGELOG.md section with the two artefacts attached.
 #
-# It deliberately does NOT publish to PyPI. The distribution name is not claimed there,
-# and claiming it is a decision for a human, not for a workflow.
+# It also publishes to PyPI, in a separate job, via Trusted Publishing: PyPI mints a
+# short-lived token from this workflow's OIDC identity, so there is no API token in
+# the repository's secrets, nothing to rotate, and nothing that keeps working if it
+# leaks. The publisher must be authorised once on PyPI for
+# architsharm/agentfox + release.yml + the `pypi` environment, or the job fails
+# closed with a clear error rather than falling back to anything.
 
 on:
   push:
@@ -26,7 +30,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v5
 
@@ -81,7 +85,7 @@ jobs:
                   problems.append(f"{name} is version {built}, but the tag says {version}")
 
           # The two places the version is written by hand. uv build reads the first;
-          # `agentfox version` prints the second. They must agree with the tag, or a
+          # `agentfox --version` prints the second. They must agree with the tag, or a
           # released artefact reports a version nobody can match to a commit.
           declared = re.search(
               r'^version\s*=\s*"([^"]+)"',
@@ -173,3 +177,37 @@ jobs:
             --verify-tag \
             ${FLAGS} \
             dist/*.whl dist/*.tar.gz
+
+  # Separate from `release` on purpose: a PyPI outage must not be able to stop the
+  # GitHub Release, and `id-token: write` should be held by the one job that needs
+  # it rather than by everything in the file.
+  pypi:
+    needs: release
+    runs-on: ubuntu-latest
+    # A GitHub environment, so the PyPI publisher can be pinned to it and a
+    # workflow run from anywhere else cannot use the identity.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/agentfox
+    permissions:
+      # Mints the OIDC token PyPI exchanges for a short-lived upload token. No
+      # `contents` access: this job reads nothing from the repository but its own
+      # checkout.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+
+      # Rebuilt rather than carried over from `release`: an artefact that moved
+      # between jobs is an artefact something could have altered, and `uv build` is
+      # deterministic enough that rebuilding costs less than proving it did not.
+      - name: Build the sdist and the wheel
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Fail rather than skip if this version is already on PyPI. A silent
+          # success would let a tag claim to have published something it did not.
+          skip-existing: false

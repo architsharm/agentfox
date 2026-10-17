@@ -29,13 +29,12 @@ import sys
 import uuid
 
 import _env  # noqa: F401  -- must run before anything imports agentfox settings
-
 from crewai import LLM, Agent, Crew, Process, Task
 from crewai.tools import tool
+from support_tools import AGENT_SLUG, GovernedToolkit
 
 import agentfox
-from agentfox.db import init_db, session_scope
-from support_tools import AGENT_SLUG, GovernedToolkit
+from agentfox.core.db import init_db, session_scope
 
 
 class MissingApiKey(RuntimeError):
@@ -51,9 +50,9 @@ tools to call. Set ONE of these environment variables before running it:
   export ANTHROPIC_API_KEY=sk-ant-...     # preferred, uses Claude
   export OPENAI_API_KEY=sk-...            # fallback, uses GPT-4o-mini
 
-Optionally pin the exact model with NOMETRIA_DEMO_MODEL, e.g.:
+Optionally pin the exact model with AGENTFOX_DEMO_MODEL, e.g.:
 
-  export NOMETRIA_DEMO_MODEL=anthropic/claude-3-5-sonnet-20241022
+  export AGENTFOX_DEMO_MODEL=anthropic/claude-3-5-sonnet-20241022
 
 Nothing was called — no network request was made. See
 demo/redteam-live/README.md for full setup instructions.
@@ -68,7 +67,7 @@ def _resolve_llm() -> LLM:
     # (`autoguard._patch_litellm`), so pinning it here is what guarantees this
     # crew's model calls are actually governed, regardless of which provider you
     # point it at.
-    model_override = os.environ.get("NOMETRIA_DEMO_MODEL")
+    model_override = os.environ.get("AGENTFOX_DEMO_MODEL")
     if os.environ.get("ANTHROPIC_API_KEY"):
         return LLM(model=model_override or "anthropic/claude-haiku-4-5-20251001", is_litellm=True)
     if os.environ.get("OPENAI_API_KEY"):

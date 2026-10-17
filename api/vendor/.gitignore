@@ -1,0 +1,21 @@
+# Build artefacts, except the one wheel that has to ship.
+#
+# This directory was `*`, which is why the deployment rotted silently: the Vercel
+# function installs `../vendor/agentfox-0.3.0-py3-none-any.whl` by name from
+# api/requirements.txt, but that file was ignored, so no rebuild ever reached the
+# repository. What was actually committed here was a wheel under the package's
+# pre-rename name, force-added once and then frozen,
+# while every later `uv build` landed only on the machine that ran it.
+#
+# Negating the one named wheel means a rebuild shows up in `git status` like any
+# other change, and the next person to add a route does not have to know this
+# procedure exists to have their route deployed.
+*
+!.gitignore
+# Any version, not a pinned filename: bumping the version changes the wheel's
+# NAME, so a pinned negation silently stops tracking the new wheel while the
+# old one stays committed — the deploy then keeps installing the previous
+# release with nothing failing anywhere. Found on the 0.3.0 -> 0.3.1 bump.
+!agentfox-*.whl
+# AgentFox Enterprise (ee/), which the hosted service also installs.
+!agentfox_enterprise-*.whl

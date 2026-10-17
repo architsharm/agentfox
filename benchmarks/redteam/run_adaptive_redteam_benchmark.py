@@ -1,6 +1,6 @@
 """Scores the **adaptive** red-team campaign engine (`evaluation/adaptive.py`).
 
-    uv run python benchmarks/redteam/run_adaptive_redteam_benchmark.py
+    uv run python -m benchmarks.redteam.run_adaptive_redteam_benchmark
 
 `run_redteam_benchmark.py` next door asks whether the runner's *wiring* is real —
 does a probe reach every enforcement layer it claims to. This one asks the
@@ -48,18 +48,22 @@ SEED = 1337
 def main() -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     tmpdir = tempfile.mkdtemp(prefix="adaptive_redteam_bench_")
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
-    os.environ["NOMETRIA_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
-    os.environ["NOMETRIA_AUDIT_SIGNING_KEY"] = "bench-key"
-    os.environ["NOMETRIA_ALLOW_EGRESS"] = "false"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
+    os.environ["AGENTFOX_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
+    os.environ["AGENTFOX_AUDIT_SIGNING_KEY"] = "bench-key"
+    os.environ["AGENTFOX_ALLOW_EGRESS"] = "false"
 
-    from agentfox import db
-    from agentfox.config import reset_settings_cache
-    from agentfox.evaluation.adaptive import OPERATORS, SCOPE_STATEMENT, mutation_classes
-    from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
-    from agentfox.models import Agent, Capability, Identity
-    from agentfox.policy import set_mode
-    from agentfox.seed import seed as run_seed
+    from agentfox.capabilities.evaluation.adaptive import (
+        OPERATORS,
+        SCOPE_STATEMENT,
+        mutation_classes,
+    )
+    from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, run_campaign
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
+    from agentfox.core.models import Agent, Capability, Identity
+    from agentfox.fixtures.seed import seed as run_seed
+    from agentfox.platform.policy import set_mode
 
     reset_settings_cache()
     db.reset_engine()
@@ -81,8 +85,7 @@ def main() -> None:
         "budget": BUDGET,
         "seed": SEED,
         "operators": [
-            {"key": op.key, "class": op.mutation_class, "kinds": list(op.kinds)}
-            for op in OPERATORS
+            {"key": op.key, "class": op.mutation_class, "kinds": list(op.kinds)} for op in OPERATORS
         ],
         "agents": {},
         "by_mutation_class": {},
@@ -101,9 +104,7 @@ def main() -> None:
         sem_totals: dict[str, dict[str, int]] = {}
         for slug in slugs:
             static = run_campaign(session, slug, name=f"static-{slug}")
-            static_escapes = {
-                p["key"] for p in static.summary_json["probes"] if p["succeeded"]
-            }
+            static_escapes = {p["key"] for p in static.summary_json["probes"] if p["succeeded"]}
             campaign = run_campaign(
                 session,
                 slug,
@@ -223,15 +224,13 @@ def main() -> None:
     for cls, agg in results["by_mutation_class"].items():
         if agg["attempts"]:
             print(
-                f"  {cls:16s} {agg['escapes']:3d}/{agg['attempts']:3d} "
-                f"= {agg['escape_rate']:.0%}"
+                f"  {cls:16s} {agg['escapes']:3d}/{agg['attempts']:3d} = {agg['escape_rate']:.0%}"
             )
     print("\nescape rate by operator semantics:")
     for sem, agg in results["by_semantics"].items():
         if agg["attempts"]:
             print(
-                f"  {sem:16s} {agg['escapes']:3d}/{agg['attempts']:3d} "
-                f"= {agg['escape_rate']:.0%}"
+                f"  {sem:16s} {agg['escapes']:3d}/{agg['attempts']:3d} = {agg['escape_rate']:.0%}"
             )
     print("\nposture delta:")
     for key in ("campaign_1_direction", "campaign_2_direction", "campaign_3_direction"):

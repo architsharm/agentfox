@@ -1,0 +1,366 @@
+# Intent-based tool containment (P3-4, NOM-RTG-04) — the agent-native policy.
+#
+# This is the file that makes the difference between a model-era filter and an
+# agent-native control plane. Everything here reasons about the *action* and the
+# *provenance of its arguments*, not about the text of a prompt.
+#
+# The design assumption is deliberately pessimistic: assume the model can be
+# convinced of anything, and constrain what a convinced model is permitted to do.
+# These rules hold even when the injection detector missed the payload entirely.
+key: tool-containment
+name: Tool containment and least privilege
+description: >
+  Intent-based authorisation over the full execution path — tool, arguments, argument
+  provenance, prior calls. Controls NOM-RTG-04, NOM-IAM-02, NOM-IAM-03, NOM-RTG-08.
+version: 1
+mode: enforce
+default_effect: allow
+fail_mode: closed
+scope:
+  agents: ["*"]
+
+rules:
+  # --- Taint containment: the core rule -------------------------------
+  # All three are about a *call*: its arguments carry untrusted provenance. They are
+  # scoped to `tool_args` because on `tool_result` every piece of content is, by
+  # definition, a tool result, so a write tool's own output tripped them on every call
+  # (every Bash result at a coding-agent hook, found wiring up Codex CLI).
+  - id: taint.irreversible_tool
+    description: >
+      An irreversible action whose arguments came from untrusted content requires a
+      human. This is the rule that stops an indirect injection from moving money even
+      when the model has already been persuaded to try.
+    when:
+      surface: [tool_args]
+      tool_impact: [irreversible]
+      taint_exceeds: user
+    effect: escalate
+    severity: critical
+    reason: >
+      Irreversible tool invoked with arguments originating in untrusted content
+      (retrieved document, tool result or sub-agent output). Human approval required.
+    controls: [NOM-RTG-04, NOM-IAM-03]
+
+  - id: taint.high_impact_tool
+    description: High-impact (but reversible) actions with untrusted arguments.
+    when:
+      surface: [tool_args]
+      tool_impact: [high_impact]
+      taint_exceeds: user
+    effect: escalate
+    severity: high
+    reason: "High-impact tool invoked with arguments of untrusted provenance."
+    controls: [NOM-RTG-04]
+
+  - id: taint.write_from_tool_result
+    description: >
+      A write whose arguments were copied out of another tool's response — the
+      agent-to-agent and tool-chaining poisoning path.
+    when:
+      surface: [tool_args]
+      tool_impact: [write]
+      taint_exceeds: retrieved
+    effect: escalate
+    severity: medium
+    reason: "Write action carries arguments propagated from a tool result."
+    controls: [NOM-RTG-04, NOM-DSC-04]
+
+  # --- Least privilege (NOM-IAM-02) -----------------------------------
+  # No `reason:` on purpose, like `capability.constraint_violated` below: the
+  # generated one names the agent, the tool, and the two commands that fix it
+  # (`agentfox policy proposals from-traffic`, `agentfox permit grant`). Default deny
+  # has no observe grace, so the refusal is where a new user learns what to run.
+  - id: capability.denied
+    description: The agent tried to use a tool or take an action nobody explicitly gave it permission for.
+    when:
+      capability: denied
+    effect: block
+    severity: high
+    controls: [NOM-IAM-02]
+
+  # The grant exists. A declared limit on one of the arguments did not hold, which
+  # is a different refusal from "nobody gave this agent the tool" and has to read as
+  # one: the reason is generated rather than written here, so it can name the limit
+  # and the value that failed it.
+  - id: capability.constraint_violated
+    description: >
+      The agent holds a grant for this tool, and this call fell outside a limit the
+      grant declares on one of its arguments.
+    when:
+      capability: constraint_violated
+    effect: block
+    severity: high
+    controls: [NOM-IAM-02]
+
+  - id: capability.approval_required
+    description: This specific action is allowed, but only with a human's sign-off first - see Approvals.
+    when:
+      capability: requires_approval
+    effect: escalate
+    severity: medium
+    # No fixed reason: a grant that requires approval and an argument above the
+    # grant's max_taint both land here, and only the capability check knows which.
+    controls: [NOM-IAM-03]
+
+  # --- Intent (NOM-RTG-04) ---------------------------------------------
+  - id: intent.undeclared_irreversible
+    description: >
+      An irreversible action taken without a declared task intent cannot be judged
+      against the task at all, so it cannot be auto-approved.
+    when:
+      tool_impact: [irreversible]
+      intent_declared: false
+    effect: escalate
+    severity: medium
+    reason: "Irreversible action attempted with no declared task intent."
+    controls: [NOM-RTG-04, NOM-IAM-03]
+
+  # --- Consumption & loops (NOM-RTG-08) --------------------------------
+  - id: budget.exceeded
+    description: The agent hit its spending or usage limit for this task (calls, tokens, cost, or how deep it recursed).
+    when:
+      budget_exceeded: true
+    effect: block
+    severity: medium
+    reason: "Agent budget exhausted (calls, tokens, spend or recursion depth)."
+    controls: [NOM-RTG-08]
+
+  - id: loop.runaway
+    description: The agent got stuck repeating the same action instead of making progress.
+    when:
+      loop_detected: true
+    effect: block
+    severity: medium
+    reason: "The same tool has been called repeatedly in one execution path - runaway loop."
+    controls: [NOM-RTG-08]
+
+  # --- Completion: is the agent allowed to stop? ------------------------
+  # Every rule above this point asks whether an action is safe. These ask
+  # whether the run may end, which is a different question and the one nobody
+  # was asking: an agent that reports "your refund is processed" after the
+  # payment API returned an error has broken nothing a content filter can see.
+  #
+  # `completion_requires` names facts the CALLER reports at the moment of the
+  # claim (`guard_completion(completion={"work_verified": True})`). A fact that
+  # is not reported counts as unmet, not assumed — an agent claiming to be done
+  # has to have been checked.
+  #
+  # Observe by default in spirit: this pack is `mode: enforce`, so these two
+  # are deliberately the narrow, uncontroversial pair. Anything workflow-shaped
+  # — commit before stop, CI green before stop — belongs in a deployment's own
+  # policy, because what "finished" means is the deployment's to define.
+  - id: completion.unverified_claim
+    description: >
+      The agent declared a task complete without any confirmation that the work
+      actually happened. The check it skipped is the one that distinguishes a
+      finished task from a confident sentence.
+    when:
+      surface: [completion]
+      completion_requires: [work_verified]
+    effect: escalate
+    severity: high
+    reason: "The agent reported this task as complete without verifying the work landed."
+    controls: [NOM-RTG-08]
+
+  - id: completion.irreversible_unconfirmed
+    description: >
+      A run that took an irreversible action is ending without read-back confirmation
+      that the action succeeded. Reporting success for a transfer that failed is worse
+      than reporting the failure.
+    when:
+      surface: [completion]
+      completion_requires: [irreversible_confirmed]
+      action_operation: [destructive, admin]
+    effect: block
+    severity: critical
+    reason: "An irreversible action in this run was never confirmed to have succeeded."
+    controls: [NOM-RTG-04, NOM-RTG-08]
+
+  # --- A tool nobody declared -------------------------------------------
+  # Distinct from `capability.denied`, which answers "may this agent use this
+  # tool". This answers "is there such a tool" — and a call to one the registry
+  # has never heard of is either a hallucination or registry drift. Both want a
+  # person; neither is caught by a permission check, because there is no
+  # permission to check against.
+  #
+  # Escalate rather than block: an organisation part-way through declaring its
+  # inventory would otherwise have every undeclared call hard-fail, and the
+  # honest answer in that state is "someone look", not "no".
+  - id: tool.not_declared
+    description: >
+      A call to a tool key the registry does not hold. Either the model invented the
+      tool, or it is real and undeclared — and until it is declared, nothing knows
+      what it can do.
+    when:
+      tool_known: false
+    effect: escalate
+    severity: high
+    reason: "This names a tool the registry has never seen, so its impact is unknown."
+    controls: [NOM-RTG-04, NOM-GOV-03]
+
+  # --- High-impact shell, graded ----------------------------------------
+  # `shell.destructive` already covers the catastrophic shapes. These are the
+  # ones a destructive-only list misses: code nobody reviewed, credentials at
+  # rest, a package the world can install, live infrastructure, and history
+  # that is in no backup.
+  #
+  # Graded deliberately. Two block because there is no benign reading of them;
+  # three escalate because they are ordinary operations that a human should
+  # nonetheless be the one to authorise, and because a containment pack that
+  # hard-fails `terraform apply` gets removed rather than tuned.
+  - id: action.remote_code_execution
+    description: A download piped straight into a shell or interpreter - code nobody reviewed.
+    when:
+      action_risk: "remote-code-execution"
+    effect: block
+    severity: critical
+    reason: "This runs code fetched at the moment of execution, which nothing reviewed."
+    controls: [NOM-RTG-04]
+
+  - id: secrets.credential_file
+    description: >
+      A command touching a file that holds credentials — .env, an SSH private key,
+      cloud credentials, a kubeconfig or a service-account JSON.
+    when:
+      action_risk: "credential-file-access"
+    effect: block
+    severity: high
+    reason: "This command reads or writes a file that holds credentials."
+    controls: [NOM-RTG-04, NOM-IAM-02]
+
+  - id: action.supply_chain_publish
+    description: Publishing a package or image that other people will install.
+    when:
+      action_risk: "supply-chain-publish"
+    effect: escalate
+    severity: high
+    reason: "Publishing is public and irreversible; a person should authorise it."
+    controls: [NOM-RTG-04]
+
+  - id: action.infrastructure_mutation
+    description: A change to live infrastructure through terraform, kubectl, helm or a cloud CLI.
+    when:
+      action_risk: "infrastructure-mutation"
+    effect: escalate
+    severity: high
+    reason: "This changes live infrastructure."
+    controls: [NOM-RTG-04]
+
+  - id: action.history_rewrite
+    description: Destroying local history - a hard reset, a force clean, a dropped stash.
+    when:
+      action_risk: "history-rewrite"
+    effect: escalate
+    severity: medium
+    reason: "This destroys work that is in no backup."
+    controls: [NOM-RTG-04]
+
+  # --- The rule the other rules depend on ------------------------------
+  # An agent that can pause enforcement can switch off everything above this
+  # line, so this one is not optional: `policy.PROTECTED_RULES` refuses to load
+  # a tool-containment pack that has removed or disabled it. The enforcement is
+  # at load, not a warning at runtime, for the same reason `availability.py`
+  # puts NEVER_OPEN in the constructor — a setting that can be changed under
+  # pressure at three in the morning is not a guarantee.
+  #
+  # Read-only governance commands are deliberately not matched. `agentfox policy
+  # list`, `findings` and `doctor` are how an agent is supposed to inspect its
+  # own governance, and blocking those would teach people to turn this off.
+  - id: control_plane.tamper
+    description: >
+      A command that would disable AgentFox's own enforcement — putting a policy back
+      into observe mode, changing its own grants, rolling back the schema, minting a
+      token, or writing to the config, the database or the state directory.
+    when:
+      action_risk: "control-plane-tamper"
+    effect: block
+    severity: critical
+    reason: "This command would switch off the controls governing this agent."
+    controls: [NOM-RTG-04, NOM-IAM-02]
+
+  # --- Cascade risk (P9) and data-access scoping (P18) -----------------
+  # action_risk matches on the same action.risks[].code every SQL/shell/HTTP
+  # finding already lands in (capabilities/detection/actions.py) — cascade_risk() and
+  # analyse_access() findings use the identical {code, severity, detail,
+  # evidence} shape and are appended into that same list (enforcement/tool_calls.py's
+  # _cascade_and_access_risks), so these rules are the first ones in this
+  # file to actually react to that condition; nothing shipped did before.
+  - id: cascade.reaches_destructive
+    description: A call that looks harmless reaches a destructive tool through its declared trigger graph.
+    when:
+      action_risk: "cascade-reaches-destructive"
+    effect: block
+    severity: critical
+    reason: "This call reaches a destructive tool through its declared trigger graph."
+    controls: [NOM-RTG-08]
+
+  # The same walk, when every destructive tool it reaches is declared
+  # `effect: communication` (an email, a chat message, a notification): a person
+  # should see the message before it goes, but a ticket update that notifies the
+  # customer is ordinary work, not an attack. One reached tool outside that class
+  # and the finding is cascade-reaches-destructive above instead.
+  - id: cascade.reaches_notification
+    description: A call sends a message that cannot be recalled through its declared trigger graph, and reaches nothing more destructive.
+    when:
+      action_risk: "cascade-reaches-notification"
+    effect: escalate
+    severity: high
+    reason: "This call sends a message that cannot be recalled through its declared trigger graph; approve it before it goes."
+    controls: [NOM-RTG-08]
+
+  - id: cascade.cycle
+    description: The declared trigger graph for this call contains a loop.
+    when:
+      action_risk: "cascade-cycle"
+    effect: block
+    severity: critical
+    reason: "The declared trigger graph for this call contains a cycle."
+    controls: [NOM-RTG-08]
+
+  - id: cascade.blast_radius
+    description: A call's declared trigger graph reaches an unusual depth or fan-out.
+    when:
+      action_risk: "cascade-too-deep"
+    effect: escalate
+    severity: high
+    reason: "This call's declared trigger graph reaches an unusual number of downstream effects."
+    controls: [NOM-RTG-08]
+
+  - id: access.unscoped_table
+    description: A query touches a table with per-principal rows but no predicate binding it to the caller.
+    when:
+      action_risk: "unscoped-table"
+    effect: block
+    severity: critical
+    reason: "This query is not shown to be scoped to the calling principal on a table that carries per-principal rows."
+    controls: [NOM-RTG-04]
+
+  - id: access.undeclared_table
+    description: A query touches a table with no scope declaration at all.
+    when:
+      action_risk: "undeclared-table"
+    effect: escalate
+    severity: high
+    reason: "This query touches a table with no declared scope rule - reported, not assumed safe."
+    controls: [NOM-RTG-04]
+
+  # --- Injection reaching a tool boundary ------------------------------
+  - id: injection.in_tool_arguments
+    description: Instruction-like content inside tool arguments.
+    when:
+      surface: [tool_args]
+      detection: {entity_prefix: INJECTION, min_score: 0.6}
+    effect: block
+    severity: critical
+    reason: "Instruction-like content found inside tool-call arguments."
+    controls: [NOM-RTG-04, NOM-RTG-01]
+
+  - id: secrets.in_tool_arguments
+    description: A password, API key, or other credential showed up in what the agent was about to send to a tool.
+    when:
+      surface: [tool_args]
+      detection: {entity_prefix: SECRET, min_score: 0.9}
+    effect: block
+    severity: critical
+    reason: "Credential found in tool-call arguments."
+    controls: [NOM-RTG-03]

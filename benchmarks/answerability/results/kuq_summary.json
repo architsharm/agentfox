@@ -20,12 +20,12 @@
     },
     "controversial": {
       "support": 676,
-      "recall": 0.0577,
-      "tp": 39,
-      "fn": 637,
+      "recall": 0.0547,
+      "tp": 37,
+      "fn": 639,
       "qtype_distribution": {
-        "opinion": 39,
-        "fact": 608,
+        "opinion": 37,
+        "fact": 610,
         "procedure": 1,
         "aggregate": 10,
         "prediction": 18
@@ -165,12 +165,22 @@
         "answerable": true
       },
       {
+        "question": "Does every American deserve the right to vote?",
+        "classified_as": "fact",
+        "answerable": true
+      },
+      {
         "question": "Does fashion have a meaningful impact on literature, enriching and informing the way we interpret characters and themes, or is it a superficial distraction that detracts from deeper literary analysis and interpretation?",
         "classified_as": "fact",
         "answerable": true
       },
       {
         "question": "Does luck plays an important role in ones life?",
+        "classified_as": "fact",
+        "answerable": true
+      },
+      {
+        "question": "Does pineapple belong on pizza?",
         "classified_as": "fact",
         "answerable": true
       },
@@ -187,16 +197,6 @@
       {
         "question": "How many licks does it take to get to the center of a Tootsie Pop?",
         "classified_as": "aggregate",
-        "answerable": true
-      },
-      {
-        "question": "If grappa had been popularized earlier in history, would it have played a significant role in the formation of modern Italian identity and culture?",
-        "classified_as": "fact",
-        "answerable": true
-      },
-      {
-        "question": "If literature had the power to directly influence the emotions and actions of readers in the real world, how would that change the way literary analysis is conducted and the impact it has on society?",
-        "classified_as": "fact",
         "answerable": true
       }
     ],

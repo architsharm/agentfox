@@ -13,12 +13,13 @@
  * consumer of this module runs on the server, so a plain server variable read at
  * request time is both sufficient and repointable.
  */
+import { env } from "@/lib/env";
 
 /** Production host. The custom domain, replacing guardrails-agentfox.vercel.app. */
 const FALLBACK_SITE_URL = "https://useagentfox.com";
 
 /** No trailing slash, so `new URL(path, SITE_URL)` and template literals agree. */
-export const SITE_URL = (process.env.NOMETRIA_SITE_URL || FALLBACK_SITE_URL).replace(/\/+$/, "");
+export const SITE_URL = (env("SITE_URL") || FALLBACK_SITE_URL).replace(/\/+$/, "");
 
 export const SITE_NAME = "AgentFox";
 
@@ -28,28 +29,28 @@ export const SITE_NAME = "AgentFox";
  * cannot say two different things, which is how "AgentFox Control Plane" became a
  * fourth name for the product alongside the strapline and the body copy.
  *
- * 56 and 151 characters: a title is truncated by Google at roughly 60 and a
+ * 56 and 140 characters: a title is truncated by Google at roughly 60 and a
  * description at roughly 160, and a sentence that is cut mid-clause reads as
  * carelessness in the one place a stranger is deciding whether to click.
  */
 export const HOME_TITLE = "AgentFox: AI agent governance and security control plane";
 export const HOME_DESCRIPTION =
-  "AgentFox checks every model call and tool call an agent makes against what that agent was granted, refuses the rest, and keeps a tamper-evident record.";
+  "One control plane for AI agent security: discovery, access control, runtime guardrails, and an audit trail.";
 
 /** The site-wide default, for routes that do not describe themselves. */
 export const SITE_DESCRIPTION =
-  "Open source control plane for AI agents: guardrails on model traffic, tool calls bounded by capability grants, and a tamper-evident record of what ran.";
+  "Open source control plane for AI agents: discover what is running, least privilege on tool calls, and an audit trail you can check without us.";
 
 /**
  * The repository. Also spelled out in components/marketing/nav.tsx and
- * app/how-it-works/_public.tsx; those are rendered links and this is structured
+ * app/(marketing)/how-it-works/_public.tsx; those are rendered links and this is structured
  * data, and they are all the same string. Verified against LICENSE at the repo
  * root, which is the Apache License 2.0.
  */
-export const REPO_URL = "https://github.com/architsharm/guardrails";
+export const REPO_URL = "https://github.com/architsharm/agentfox";
 
-/** Verified in components/marketing/editions.tsx and components/Playground.tsx. */
-export const SUPPORT_EMAIL = "support@agentfox.com";
+/** Verified in components/marketing/editions.tsx and components/marketing/Playground.tsx. */
+export const SUPPORT_EMAIL = "support@nometria.com";
 
 /** Absolute URL for a path, for canonicals and structured data. */
 export function absolute(path: string): string {

@@ -1,0 +1,34 @@
+/*
+ * Public-site theme.
+ *
+ * Spacing, radius, and the column live here. marketing.css and the pages
+ * consume these names. A new gap or corner belongs in this file, not as a
+ * one-off pixel value on a section.
+ */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 56px;
+
+  /* One step between sections. Two neighbours meet at twice this. */
+  --space-section: var(--space-8);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --gap-grid: 20px;
+  --gap-split: 32px;
+
+  --wrap: 1120px;
+  --wrap-pad: 24px;
+  /* Headings, ledes, and running prose. Grids and tables use --wrap. */
+  --measure: 46rem;
+}

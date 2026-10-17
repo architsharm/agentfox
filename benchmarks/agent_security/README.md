@@ -10,10 +10,10 @@ independently-installed `llm-guard` (not an asserted number — see
 `llm_guard_bridge.py`), rather than taking it on faith.
 
 ```bash
-uv run python benchmarks/agent_security/tier_d_excessive_agency.py
-uv run python benchmarks/agent_security/tier_b_indirect_injection.py
-uv run python benchmarks/agent_security/tier_c_tool_params.py
-uv run python benchmarks/agent_security/tier_a_multiturn.py
+uv run python -m benchmarks.agent_security.tier_d_excessive_agency
+uv run python -m benchmarks.agent_security.tier_b_indirect_injection
+uv run python -m benchmarks.agent_security.tier_c_tool_params
+uv run python -m benchmarks.agent_security.tier_a_multiturn
 ```
 
 Each script is self-contained (own throwaway SQLite DB, cleaned up after). The
@@ -46,8 +46,15 @@ one off.
 `tier_d_excessive_agency.py` — 6 scenarios through the real
 `Enforcer.guard_tool_call` path, using the actual shipped seed data
 (`support-triage` genuinely has no payments/email grant; `payments-ops` genuinely
-has a `<$1000` transfer ceiling). **6/6 correct**, including the kill-switch fix
-below.
+has a `<$1000` transfer ceiling). **5/6 correct**, including the kill-switch fix
+below. The miss is the negative control: an ordinary `tickets.update` is held for
+approval by `cascade.reaches_notification`, because the demo world declares that a
+ticket update triggers `email.send` (added after this tier was first run, which scored
+6/6). It used to be blocked by `cascade.reaches_destructive`; now that `email.send` is
+declared `effect: communication`, a cascade whose only irreversible tail is a message
+escalates instead. This tier scores an escalation as an intervention, the same as a
+block, so the count is unchanged: still 5/6, with the miss now a held call rather than
+a refused one.
 
 LLM Guard cannot participate in this tier — it has no tool registry, no
 capability model, no concept of "this agent's grants." This isn't scored as a
@@ -65,9 +72,9 @@ path") was wired into `preflight` only. `guard_tool_call` — the function
 actually stopped by the kill switch.
 
 **Fixed**: `guard_tool_call` now checks `_control_verdict` first, exactly like
-`preflight` does (`src/agentfox/enforcement.py`). Regression test:
+`preflight` does (`src/agentfox/runtime/enforcement/`). Regression test:
 `test_quarantine_blocks_tool_calls_not_just_completions` in
-`tests/test_tranche0.py`.
+`tests/runtime/test_streaming_kill_switch_and_langgraph.py`.
 
 ## Tier B — indirect injection via tool output
 
@@ -126,8 +133,16 @@ scanner. This is the layered-defense argument made concrete, not asserted.
 injection in an unnamed field, path traversal in an unnamed field; 5 negative
 controls) through `support-triage`'s genuinely granted, ordinary capabilities
 (`kb.search`, `crm.lookup`, `tickets.*`) — every case's capability check passes
-(`all_capability_checks_passed: true`), so any block comes purely from argument-
-value analysis. **10/10 correct.**
+(`all_capability_checks_passed: true`). **8/10 correct.** All 5 attacks are blocked
+by argument-value analysis. The 2 misses are negative controls (`c07`, `c10`), both
+`tickets.update` calls, held for approval by `cascade.reaches_notification`: the demo
+world declares that a ticket update triggers `email.send`, a tool this agent holds no
+grant for. That trigger was added after this tier was first run, which scored 10/10.
+The two controls used to be blocked by `cascade.reaches_destructive`; `email.send` is
+now declared `effect: communication`, so they escalate instead. This tier scores an
+escalation as an intervention, so the count is unchanged at 8/10. The 2 `tickets.update`
+attacks (`c03`, `c05`) are still blocked, by argument-value analysis and
+`action.production_irreversible`, not by the cascade rule.
 
 The gap this closed was real, found by reading `guardrails/actions.py` before
 writing any test: `analyse_arguments` only inspected values under three
@@ -168,7 +183,7 @@ same precondition turn-recording already has — no session_id, no extra cost, n
 regression). Regression tests:
 `test_a_payload_split_across_separate_calls_is_caught_by_the_conversation_window`
 and `test_without_a_session_id_the_conversation_window_check_is_skipped_not_broken`
-in `tests/test_autoguard.py`.
+in `tests/frameworks/autoguard/test_autoguard.py`.
 
 ### The llm-guard comparison here needed a second look
 

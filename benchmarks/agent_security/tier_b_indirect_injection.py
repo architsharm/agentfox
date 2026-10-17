@@ -1,6 +1,6 @@
 """Tier B — indirect/honeypot injection via tool output.
 
-    uv run python benchmarks/agent_security/tier_b_indirect_injection.py
+    uv run python -m benchmarks.agent_security.tier_b_indirect_injection
 
 The attack shape: the user's own request is benign ("summarize this webpage",
 "look up this order"), but *third-party content the agent fetches on the way* —
@@ -27,9 +27,9 @@ Two things are measured, not one:
 20 cases in `data/tier_b_cases.json`: 10 real, documented indirect-injection
 shapes (HTML comments, fake "system notes", hidden divs, one of them the seeded
 `internal.export_report` poisoned MCP tool description shipped in
-`agentfox.seed`) and 10 deliberately benign documents using the same trigger
+`agentfox.fixtures.seed`) and 10 deliberately benign documents using the same trigger
 vocabulary ("ignore", "override", "disregard") with no injection intent — the
-same over-defense discipline as `benchmarks/data_generalization/notinject.json`,
+same over-defense discipline as `benchmarks/generalization/data/notinject.json`,
 so a detector that just pattern-matches loaded words doesn't get credit it
 didn't earn.
 """
@@ -40,14 +40,13 @@ import json
 import os
 from pathlib import Path
 
-from agentfox import db
-from agentfox.config import get_settings, reset_settings_cache
-from agentfox.enforcement import Enforcer
-from agentfox.guardrails import warm_all
-from agentfox.integrations.mcp import McpGovernor
-from agentfox.seed import seed
-
-from _util import wipe_db
+from agentfox.capabilities.detection import warm_all
+from agentfox.core import db
+from agentfox.core.config import get_settings, reset_settings_cache
+from agentfox.fixtures.seed import seed
+from agentfox.frameworks.mcp import McpGovernor
+from agentfox.runtime.enforcement import Enforcer
+from benchmarks._common import wipe_db
 
 DATA_PATH = Path(__file__).parent / "data" / "tier_b_cases.json"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -57,19 +56,19 @@ def load_cases() -> list[dict]:
     return json.loads(DATA_PATH.read_text())
 
 
-def score_nometria(cases: list[dict]) -> list[dict]:
+def score_agentfox(cases: list[dict]) -> list[dict]:
     """Route each case through the real `McpGovernor` post-call gate
     (`surface=tool_result`), the same evaluation a live MCP integration runs."""
     db_path = RESULTS_DIR / "tier_b.db"
     wipe_db(db_path)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{db_path}"
-    os.environ.setdefault("NOMETRIA_AUDIT_SIGNING_KEY", "benchmark-key")
-    os.environ.setdefault("NOMETRIA_ALLOW_EGRESS", "false")
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ.setdefault("AGENTFOX_AUDIT_SIGNING_KEY", "benchmark-key")
+    os.environ.setdefault("AGENTFOX_ALLOW_EGRESS", "false")
     # Score with the full opt-in detection stack, not just the always-on default —
     # this is meant to reflect the platform's real ceiling, the same reasoning the
     # primary injection benchmark uses for its `heuristic_classifier_similarity`
     # config.
-    os.environ["NOMETRIA_ENABLED_DETECTORS"] = json.dumps(
+    os.environ["AGENTFOX_ENABLED_DETECTORS"] = json.dumps(
         ["injection.heuristic", "injection.classifier", "injection.similarity"]
     )
     reset_settings_cache()
@@ -84,7 +83,7 @@ def score_nometria(cases: list[dict]) -> list[dict]:
             session=session, agent_slug="support-triage", server_name="benchmark-tier-b"
         )
         # `kb.search` is one of support-triage's real granted capabilities (see
-        # agentfox.seed.CAPABILITIES) — using a tool_key the agent was never
+        # agentfox.fixtures.seed.CAPABILITIES) — using a tool_key the agent was never
         # granted would make `evaluate()`'s capability check (enforcement.py:349,
         # `if tool_key: decision = check_capability(...)`) fire `capability.denied`
         # on every case regardless of content, masking the actual content-detection
@@ -120,7 +119,7 @@ def score_nometria(cases: list[dict]) -> list[dict]:
 
 
 def score_llm_guard(cases: list[dict]) -> list[dict] | None:
-    from llm_guard_client import LlmGuardUnavailable, scan
+    from benchmarks.agent_security.llm_guard_client import LlmGuardUnavailable, scan
 
     try:
         scanned = scan([c["text"] for c in cases])
@@ -128,7 +127,12 @@ def score_llm_guard(cases: list[dict]) -> list[dict] | None:
         print(f"llm-guard comparison skipped: {exc}")
         return None
     return [
-        {"id": c["id"], "label": c["label"], "flagged": s["is_injection"], "risk_score": s["risk_score"]}
+        {
+            "id": c["id"],
+            "label": c["label"],
+            "flagged": s["is_injection"],
+            "risk_score": s["risk_score"],
+        }
         for c, s in zip(cases, scanned, strict=True)
     ]
 
@@ -163,7 +167,7 @@ def run_mcp_e2e_scenario() -> dict:
     that only trusts user-provided input."""
     db_path = RESULTS_DIR / "tier_b_e2e.db"
     wipe_db(db_path)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{db_path}"
     reset_settings_cache()
     get_settings()
     db.init_db()
@@ -201,7 +205,7 @@ def run_mcp_e2e_scenario() -> dict:
 
 def main() -> None:
     cases = load_cases()
-    agentfox_results = score_nometria(cases)
+    agentfox_results = score_agentfox(cases)
     llm_guard_results = score_llm_guard(cases)
     e2e = run_mcp_e2e_scenario()
 

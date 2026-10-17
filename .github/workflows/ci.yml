@@ -9,20 +9,40 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - name: Install (matches the documented dev venv, not --all-extras)
         run: uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev
-      - run: uv run pytest -q
-      # The agent harness (harness/) and Appendix C are checked against the live code, so
-      # neither can silently drift. Both also run inside pytest (tests/test_harness.py);
+      # Spread across the runner's cores (pytest-xdist). Every test already gets its own
+      # temporary directory and database, so nothing is shared between workers.
+      - run: uv run pytest -q -n auto
+      # The operator plugins (plugins/) and Appendix C are checked against the live code, so
+      # neither can silently drift. Both also run inside pytest (tests/repo/test_plugins.py);
       # these steps just make the failure obvious in the job log.
-      - name: Harness matches the live CLI, repo paths and docs map
-        run: uv run python harness/scripts/check_harness.py
+      - name: Plugins match the live CLI, repo paths and docs map, and their shared copies
+        run: uv run python scripts/check/plugins.py
+      - name: The deployed demo's copy of demo/kit matches the original
+        run: uv run python scripts/check/demo_kit.py
       - name: Appendix C route tables match the running app
-        run: uv run python scripts/api_routes.py --check
+        run: uv run python scripts/gen/api_routes.py --check
+      - name: Docs site reference is current and its commands exist
+        run: uv run python scripts/gen/docs_reference.py --check
       - name: Every published number still matches the result it came from
-        run: uv run python scripts/claims.py --check
+        run: uv run python scripts/check/claims.py --check
+
+  # The open core's suite above runs without AgentFox Enterprise installed, which is what
+  # proves it stands on its own. This one installs `ee/` and runs both suites, which is
+  # what the hosted service runs.
+  enterprise-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+      - name: Install the open core, then the enterprise package beside it
+        run: |
+          uv sync --extra pii --extra classifiers --extra otel --extra postgres --extra sql --extra dev
+          uv pip install --no-deps ./ee
+      - run: uv run pytest -q -n auto tests ee/ee_tests
 
   dashboard-tests:
     runs-on: ubuntu-latest
@@ -30,7 +50,7 @@ jobs:
       run:
         working-directory: dashboard
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -44,10 +64,35 @@ jobs:
   # which belongs in a per-push check. `deps` still catches what actually broke
   # production once already: COPY paths that don't exist, or an extras install that
   # no longer covers what the app imports.
+  # Added after a sweep that cleared 397 findings — among them two undefined
+  # names (`Any` in the coverage probe, `GuardState` in a test, both latent
+  # only because `from __future__ import annotations` defers evaluation), a
+  # dead `used_fallback`, and three unused variables in tests that could as
+  # easily have been forgotten assertions. None of it gated anything, because
+  # nothing ran ruff. Cheap enough to run on every push that there is no
+  # reason it should not.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v5
+      # Pinned, and pinned to the version the repo was actually cleaned with.
+      # `ruff format` output differs between releases, so an unpinned
+      # `--check` here would fail on a day nobody changed anything.
+      - name: Ruff — the rules, from pyproject
+        run: uvx ruff@0.15.7 check .
+      - name: Ruff — formatting, unchanged
+        run: uvx ruff@0.15.7 format --check .
+      # The layer rule and the "core imports nothing outside core" rule, from the
+      # [tool.importlinter] contracts in pyproject. Static analysis only: the package
+      # is found on PYTHONPATH and nothing is installed or imported.
+      - name: Import contracts — layers hold
+        run: PYTHONPATH=src:ee/src uvx --from import-linter==2.15 lint-imports
+
   docker-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
@@ -56,6 +101,28 @@ jobs:
           target: deps
           push: false
 
+  # Runs action.yml the way a user's workflow would (`uses: ./` is this checkout), on a
+  # repository that has a lethal trifecta, so a broken action fails here and not in
+  # someone else's pull request.
+  github-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: A repository with a trifecta
+        run: |
+          mkdir -p "$RUNNER_TEMP/sample"
+          echo '{"mcpServers":{"github":{"command":"npx","args":["@modelcontextprotocol/server-github"]}}}' \
+            > "$RUNNER_TEMP/sample/.mcp.json"
+      - uses: ./
+        id: scan
+        with:
+          path: ${{ runner.temp }}/sample
+          fail-on: none
+      - name: The action found it
+        env:
+          TRIFECTAS: ${{ steps.scan.outputs.trifectas }}
+        run: test "$TRIFECTAS" = "1"
+
   # Belt-and-suspenders for the local pre-commit hook (.pre-commit-config.yaml):
   # catches the case where src/agentfox/ changed and the vendored wheel(s) didn't,
   # e.g. a commit made with --no-verify. This is what let guardrails-api and the
@@ -63,7 +130,7 @@ jobs:
   vendored-wheel-freshness:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Fail if src/agentfox changed without rebuilding the vendored wheels
@@ -74,8 +141,14 @@ jobs:
             exit 0
           fi
           CHANGED="$(git diff --name-only "$BASE" "${{ github.sha }}")"
+          if echo "$CHANGED" | grep -q '^ee/src/' \
+             && ! echo "$CHANGED" | grep -qE '^api/vendor/agentfox_enterprise-.*\.whl$'; then
+            echo "ee/ changed but api/vendor's enterprise wheel wasn't rebuilt alongside it."
+            echo "Run: uv build --wheel --out-dir api/vendor ee"
+            exit 1
+          fi
           if echo "$CHANGED" | grep -q '^src/agentfox/' \
-             && ! echo "$CHANGED" | grep -qE '^(api|demo/redteam-live-lang)/vendor/.*\.whl$'; then
+             && ! echo "$CHANGED" | grep -qE '^(api|demo/redteam-live-lang)/vendor/agentfox-.*\.whl$'; then
             echo "src/agentfox/ changed but the vendored wheel(s) weren't rebuilt alongside it."
             echo "Run: uv build --wheel --out-dir api/vendor && uv build --wheel --out-dir demo/redteam-live-lang/vendor"
             echo "(the local pre-commit hook does this automatically — see .pre-commit-config.yaml)"

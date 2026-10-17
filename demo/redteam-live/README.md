@@ -5,8 +5,8 @@ data, real refund and email side effects, wrapped in `agentfox.auto()` — that
 AgentFox's red-team runner can be pointed at **live** to watch it actually block
 real attacks against real tool calls. Nothing here is a mock: `issue_refund`
 really flips an order's status, `send_email` really queues a message, and every
-call goes through the same governed path (`agentfox.integrations.mcp.McpGovernor`)
-the automated test suite (`tests/test_composition.py`) exercises.
+call goes through the same governed path (`agentfox.frameworks.mcp.McpGovernor`)
+the automated test suite (`tests/capabilities/detection/test_composition.py`) exercises.
 
 Everything below reflects a real run performed while building this demo (see the
 timestamps implied by the output — this is not a guess at what the tool *should*
@@ -14,20 +14,24 @@ say).
 
 ## Files
 
+The support-tools agent itself (dataset, tools, grants, seed, verification) is shared
+with the LangChain demo and lives once in [`demo/kit/`](../kit/). The files here are
+the CrewAI crew plus thin adapters that name this demo's agent (`support-crew-live`).
+
 | File | What it's for |
 |---|---|
-| `_env.py` | Points AgentFox at this demo's own SQLite file. Imported first by everything else. |
-| `support_tools.py` | The fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `crew.py` and `verify_mechanics.py` call into. |
-| `seed_demo_agent.py` | One-time setup: registers the agent, its capability grants, its tools, and the shipped policy packs. |
+| `_env.py` | Puts `demo/` on `sys.path` so `kit` imports, and points AgentFox at this demo's own SQLite file (`kit/env.py`). Imported first by everything else. |
+| `support_tools.py` | This demo's view of `kit/support_tools.py` (the fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `crew.py` and `verify_mechanics.py` call into), with this demo's agent slug. |
+| `seed_demo_agent.py` | One-time setup: registers the agent, its capability grants, its tools, and the shipped policy packs (`kit/seed.py`). |
 | `crew.py` | The live CrewAI crew. **Run this for the actual demo.** |
-| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. |
+| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM (`kit/verify_mechanics.py`) — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. |
 | `requirements.txt` | What to install, and why (see below — do **not** install this into the main repo's `.venv`). |
 
 ## One-time setup
 
 **Use a separate virtualenv, not the main repo's `.venv`.** `crewai` pulls in
 `litellm` and `anthropic` as real dependencies, and several of the main test
-suite's tests (`tests/test_autoguard.py`) assert those libraries are *absent*, to
+suite's tests (`tests/frameworks/autoguard/test_autoguard.py`) assert those libraries are *absent*, to
 prove `agentfox.auto()` reports a missing library honestly instead of silently
 hiding it. Installing this demo's requirements into the tracked `.venv` will make
 those tests fail for reasons that have nothing to do with a regression — this was
@@ -53,20 +57,20 @@ python seed_demo_agent.py
 `seed_demo_agent.py` registers the agent `support-crew-live`, its identity, its
 four capability grants, and loads the three policy packs `agentfox` ships
 (`baseline`, `tool-containment`, `eu-ai-act-high-risk`) — the same packs
-`agentfox seed` loads, using the same `ensure_identity` / `grant_capability` /
-`register_agent` / `McpGovernor.register_tools` helpers `agentfox seed` and
-`tests/test_composition.py`'s `_governor` fixture already use. It's idempotent —
+`agentfox admin seed` loads, using the same `ensure_identity` / `grant_capability` /
+`register_agent` / `McpGovernor.register_tools` helpers `agentfox admin seed` and
+`tests/capabilities/detection/test_composition.py`'s `_governor` fixture already use. It's idempotent —
 safe to re-run.
 
 **This demo uses its own database file** (`demo/redteam-live/demo.db`, via
 `_env.py`), never the repo's own `agentfox.db`. You do not need to set
-`NOMETRIA_DATABASE_URL` yourself, but every command below — including the
+`AGENTFOX_DATABASE_URL` yourself, but every command below — including the
 `agentfox` CLI ones — needs to see the *same* database, so either run everything
 from inside `demo/redteam-live/` (the scripts set the default relative to
 themselves) or export it explicitly:
 
 ```bash
-export NOMETRIA_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live/demo.db"
+export AGENTFOX_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live/demo.db"
 ```
 
 ### The agent this seeds
@@ -78,7 +82,7 @@ and a PII lookup) and granted, on its identity, exactly:
 |---|---|
 | `lookup_customer` | unrestricted |
 | `search_orders` | unrestricted |
-| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox seed`'s own `payments-ops` agent |
+| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox admin seed`'s own `payments-ops` agent |
 | `send_email` | **requires human approval** — same shape as `payments-ops`'s `email.send` grant |
 
 It is not a superuser. A red-team probe attempting a $50,000 refund, or an
@@ -88,7 +92,7 @@ switched off for the demo.
 ## Step 1 — show the probe library
 
 ```bash
-agentfox redteam probes
+agentfox test probes
 ```
 
 Lists every built-in probe: prompt injection, jailbreak, PII/secret
@@ -150,7 +154,7 @@ the chain is wrong on its own.**
    under the $500 cap, and `issue_refund` is a tool this agent genuinely holds.
 
 Individually, both calls pass every check. **AgentFox blocks it anyway**, because
-`agentfox.guardrails.composition.check_composed_escalation` (F3.8) tracks *where
+`agentfox.capabilities.detection.composition.check_composed_escalation` (F3.8) tracks *where
 each argument's value came from* — `TaintTracker`'s `propagated_from` provenance
 — and sees that `order_id` didn't come from the user or from Priya's own
 account; it came from a broad internal search a moment earlier, being reused as
@@ -177,7 +181,7 @@ message in isolation has no way to know that this specific 8-character string
 in this specific tool call is the same one that came back from a search 30
 seconds ago. That's not a text property — it requires tracking data lineage
 across the whole tool-call sequence in one conversation, which is what taint
-tracking is for. This is the exact shape `tests/test_composition.py` proves
+tracking is for. This is the exact shape `tests/capabilities/detection/test_composition.py` proves
 against a synthetic patient-records scenario; here it's the same mechanism
 against real tools with real state.
 
@@ -195,16 +199,16 @@ python verify_mechanics.py
 
 Runs the exact same `GovernedToolkit` path the crew's tools call into, with no
 model involved: a clean refund (succeeds, real mutation), a $50,000 refund
-attempt (blocked — `capability.denied`), the composed-escalation attack above
+attempt (blocked — `capability.constraint_violated`), the composed-escalation attack above
 (blocked — `composition.escalation`), and the negative control. Use this if the
 live LLM is flaky, offline, or does something unexpected mid-meeting — it
 reproduces the same three moments deterministically. It's also how this demo's
 mechanics were verified while building it (see "What I verified" below).
 
-## `agentfox redteam run` — an honest read of a real run
+## `agentfox test redteam` — an honest read of a real run
 
 ```bash
-agentfox redteam run support-crew-live
+agentfox test redteam support-crew-live
 ```
 
 A real run against this seeded agent, performed while building this demo,
@@ -247,7 +251,7 @@ gap, not just adversarial-input detection.
 process the clean $45 refund with no escalation, and that's not inconsistent
 with the paragraph above. `eu-ai-act-high-risk.yaml` ships in `mode: observe`,
 so its rules never change what actually gets blocked in production
-(`EnforcementResult.verdict`) — only `agentfox redteam run` measures
+(`EnforcementResult.verdict`) — only `agentfox test redteam` measures
 `effective_verdict`, the "would this be stopped" counterfactual, which is
 what a readiness score is supposed to answer regardless of what's currently
 switched on. Verified directly:
@@ -271,8 +275,8 @@ specific pack:
 agentfox policy enforce baseline
 python -c "
 import _env
-from agentfox.db import init_db, session_scope
-from agentfox.enforcement import Enforcer
+from agentfox.core.db import init_db, session_scope
+from agentfox.runtime.enforcement import Enforcer
 init_db()
 with session_scope() as s:
     r = Enforcer(s).check_content(
@@ -293,13 +297,13 @@ agentfox policy observe baseline   # put it back
 `crew.py` fails immediately with a clear message, not a stack trace, if neither
 `ANTHROPIC_API_KEY` nor `OPENAI_API_KEY` is set — it makes no network call in
 that case. Set one of them, or optionally pin the exact model with
-`NOMETRIA_DEMO_MODEL` (e.g. `anthropic/claude-3-5-sonnet-20241022`). No other
+`AGENTFOX_DEMO_MODEL` (e.g. `anthropic/claude-3-5-sonnet-20241022`). No other
 third-party network calls happen anywhere in this demo.
 
 ## What I verified myself (and what I didn't)
 
 Everything above that shows real output — the `verify_mechanics.py` run, the
-`agentfox redteam run` numbers, the `agentfox policy list` / `policy enforce
+`agentfox test redteam` numbers, the `agentfox policy list` / `policy enforce
 baseline` before/after, the crew's construction (tools attach, both providers'
 `LLM` objects resolve, `agentfox.auto()` reports `Patched: openai, anthropic,
 litellm`) — was actually run, in an isolated scratch virtualenv, while building
@@ -322,7 +326,7 @@ Found while wiring `issue_refund` through `McpGovernor`, reported rather than
 patched at the time (per that round's instructions, since `src/agentfox/` was
 being edited elsewhere in parallel). **Now fixed**, in the same round as the
 red-team probe/benchmark work: `McpGovernor._govern_result()`
-(`src/agentfox/integrations/mcp.py`) re-runs the full capability check —
+(`src/agentfox/frameworks/mcp.py`) re-runs the full capability check —
 including argument constraints — on the *post*-call evaluation of a tool's own
 result, but was never threading the original call's arguments into that second
 `Enforcer.evaluate()` call. Concretely: `_govern_result` called
@@ -339,11 +343,11 @@ transport had already run the (possibly irreversible) call for real.
 
 Fixed by threading `arguments` through to `_govern_result` → `evaluate()`.
 Regression test: `test_a_call_within_an_argument_constraint_is_not_spuriously_blocked_post_call`
-in `tests/test_mcp_governance.py`. Re-verified directly against this demo
+in `tests/frameworks/test_mcp_governance.py`. Re-verified directly against this demo
 after the fix (`verify_mechanics.py` scenario 1): the clean $45 refund now
 comes back `"status": "refunded"` with no spurious post-decision block, where
 before the fix `outcome.allowed` was `False` for that exact call.
-`support_tools.py`'s `_render()` still keys off `pre_decision` rather than
+`kit/support_tools.py`'s `_render()` still keys off `pre_decision` rather than
 `outcome.allowed` — that was already correct (the pre-flight check is what
 actually gates execution) and remains a reasonable choice independent of this
 fix, not a workaround that needs undoing.

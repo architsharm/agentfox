@@ -1,11 +1,11 @@
 """Fetches gretelai/synthetic_text_to_sql's HF-hosted parquet exports (train + test),
 filters to the rows that actually exercise F3 (destructive-action & blast-radius
-analysis — `src/agentfox/guardrails/actions.py::analyse_sql`), derives ground-truth
+analysis — `src/agentfox/capabilities/detection/actions.py::analyse_sql`), derives ground-truth
 labels independently of the detector under test, constructs adversarial variants for
 the two failure modes the natural data can't supply on its own, and writes a fixed,
 reproducible sample to `data/action_safety.json`.
 
-    uv run --with pyarrow python benchmarks/action_safety/fetch_gretel_sql.py
+    uv run --with pyarrow python -m benchmarks.action_safety.fetch_gretel_sql
 
 Same reasoning as `fetch_trustairlab.py`: parquet via the `refs/convert/parquet` ref
 HF publishes for every dataset, not the paginated `/rows` API.
@@ -142,18 +142,14 @@ def build_cases(rows: list[dict], rng: random.Random) -> dict[str, list[dict]]:
     dml = [r for r in rows if r["sql_task_type"] == "data manipulation"]
     ddl = [r for r in rows if r["sql_task_type"] == "data definition"]
 
-    delete_update = [
-        r for r in dml if re.match(r"^\s*(DELETE|UPDATE)\b", r["sql"], re.I)
-    ]
+    delete_update = [r for r in dml if re.match(r"^\s*(DELETE|UPDATE)\b", r["sql"], re.I)]
 
     natural_dml = []
     single_bounded_sources = []  # feeds the adversarial variants
     for r in delete_update:
         statements = split_statements(r["sql"])
         stacked = len(statements) > 1
-        stmt_has_where, stmt_has_bound = (
-            (None, None) if stacked else parse_bound(statements[0])
-        )
+        stmt_has_where, stmt_has_bound = (None, None) if stacked else parse_bound(statements[0])
         # ground truth: "should this actually be flagged" — stacked, or genuinely
         # unbounded in reality (no WHERE and no FROM/JOIN bounding it), not just
         # "does the text contain the substring WHERE somewhere."

@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/guard_blocking_commands.py\" --deny",
+            "timeout": 10,
+            "statusMessage": "AgentFox plugin: checking for blocking commands"
+          }
+        ]
+      }
+    ]
+  }
+}

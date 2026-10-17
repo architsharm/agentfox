@@ -15,18 +15,19 @@ control plane. The one-liner exists because the sum of small integration asks is
 governance tooling sits in a proof-of-concept for six months.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # Lazily re-exported so `import agentfox` stays fast and side-effect free — importing
 # the package must never open a database or touch a client library.
 _LAZY = {
-    "auto": ("agentfox.autoguard", "auto"),
-    "off": ("agentfox.autoguard", "off"),
-    "state": ("agentfox.autoguard", "state"),
-    "Blocked": ("agentfox.autoguard", "Blocked"),
-    "AgentFox": ("agentfox.sdk", "AgentFox"),
-    "PolicyViolation": ("agentfox.sdk", "PolicyViolation"),
-    "ApprovalRequired": ("agentfox.sdk", "ApprovalRequired"),
+    "auto": ("agentfox.frameworks.autoguard", "auto"),
+    "off": ("agentfox.frameworks.autoguard", "off"),
+    "state": ("agentfox.frameworks.autoguard", "state"),
+    "Blocked": ("agentfox.frameworks.autoguard", "Blocked"),
+    "AgentFox": ("agentfox.frameworks.sdk", "AgentFox"),
+    "AgentFoxError": ("agentfox.errors", "AgentFoxError"),
+    "PolicyViolation": ("agentfox.errors", "PolicyViolation"),
+    "ApprovalRequired": ("agentfox.errors", "ApprovalRequired"),
 }
 
 __all__ = ["__version__", *sorted(_LAZY)]

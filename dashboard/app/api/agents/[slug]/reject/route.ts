@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyReviewAction } from "@/lib/proxy";
+import { proxyReviewAction } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 
@@ -8,5 +8,5 @@ export const dynamic = "force-dynamic";
 // actually lands here is the draft agent's *id*, per the caller in agents/page.tsx.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug: agentId } = await params;
-  return proxyReviewAction(req, `/api/agents/${agentId}/reject`, "/agents");
+  return proxyReviewAction(req, `/api/agents/${agentId}/reject`, "/app/projects");
 }

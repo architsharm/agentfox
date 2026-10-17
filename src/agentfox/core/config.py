@@ -1,0 +1,844 @@
+"""Runtime configuration.
+
+Defaults are deliberately offline-first: no API key, no downloaded
+weights, no network egress. Every upgrade to a hosted model or a wrapped OSS
+classifier is configuration, never a rewrite.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import threading
+import tomllib
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+from pydantic import PrivateAttr, field_validator
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
+)
+
+log = logging.getLogger(__name__)
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+#: Env var naming where this installation keeps the things it writes. Like
+#: CONFIG_ENV_VAR, deliberately not a Settings field: it decides the default of
+#: other fields, which are evaluated when this class is defined.
+STATE_ENV_VAR = "AGENTFOX_STATE_DIR"
+
+
+def _running_from_a_source_checkout() -> bool:
+    """Is `REPO_ROOT` the repository, or a directory inside somebody's venv?
+
+    `parents[2]` of `src/agentfox/core/config.py` is the repository root — and
+    `parents[2]` of `<venv>/lib/python3.12/site-packages/agentfox/core/config.py` is
+    `<venv>/lib/python3.12`. The expression is the same; what it names is not.
+    """
+    return (REPO_ROOT / "pyproject.toml").is_file() and (REPO_ROOT / "src" / "agentfox").is_dir()
+
+
+def state_root() -> Path:
+    """Where this installation writes its database and its evidence packages.
+
+    In the repository, that is the repository — `agentfox.db` and `var/evidence/`
+    where every contributor and every script already expects them.
+
+    Installed from PyPI it cannot be, and the old default put both *inside the
+    virtualenv's lib directory*: a governance database and signed auditor
+    evidence in a tree that `pip install --upgrade`, a rebuilt venv or a stray
+    `rm -rf .venv` throws away, with nothing said about it. The read-only side of
+    this exact mistake is already commented at `compliance_dir` below — the
+    catalog was empty in production because a repo-relative path finds nothing
+    once installed. This is the writing side of it, and it fails the other way
+    round: not empty, but silently disposable.
+    """
+    override = os.environ.get(STATE_ENV_VAR)
+    if override:
+        return Path(override).expanduser().resolve()
+    if _running_from_a_source_checkout():
+        return REPO_ROOT
+    # Not the venv, and not the working directory either: `agentfox findings`
+    # must show the same findings from whichever directory it is typed in.
+    xdg = os.environ.get("XDG_DATA_HOME")
+    return (Path(xdg) / "agentfox" if xdg else Path.home() / ".agentfox").expanduser().resolve()
+
+
+STATE_ROOT = state_root()
+
+#: Environments where development conveniences (the unverified identity header, the
+#: published default secrets below) are acceptable. Everything else — including any
+#: name not in this set — is treated as production, because the failure direction
+#: matters: a typo in a deployment variable must not silently open the door.
+DEV_ENVIRONMENTS = frozenset({"development", "dev", "test", "testing", "local"})
+
+#: The two secrets that ship with a value, so a laptop install works with no setup.
+#: Both values are in this public repository, which makes them no secret at all: the
+#: service secret authenticates the call that mints an *owner* token for any GitHub
+#: identity, and the signing key is what makes the audit chain tamper-evident. A
+#: production process refuses to start while either still has its published value
+#: (see :func:`insecure_production_secrets`).
+DEFAULT_SERVICE_AUTH_SECRET = "dev-insecure-service-secret"
+DEFAULT_AUDIT_SIGNING_KEY = "dev-insecure-checkpoint-key"
+#: Placeholders our own deploy files have shipped. Refused for the same reason: they
+#: are published, so they are as good as the defaults to anyone who reads the repo.
+PUBLISHED_SECRET_VALUES = frozenset(
+    {
+        DEFAULT_SERVICE_AUTH_SECRET,
+        DEFAULT_AUDIT_SIGNING_KEY,
+        "change-me-before-any-real-deployment",
+        "change-me",
+        "",
+    }
+)
+
+
+class InsecureConfigurationError(RuntimeError):
+    """A production deployment is configured with a published secret."""
+
+
+#: Env var naming an explicit config file. Deliberately *not* a Settings field: it
+#: decides where settings come from, so it cannot itself come from that file.
+CONFIG_ENV_VAR = "AGENTFOX_CONFIG"
+#: The file `agentfox init` writes, looked up in the current working directory.
+DEFAULT_CONFIG_FILENAME = "agentfox.toml"
+#: The only table read from the file. Other tables are left for other tools.
+CONFIG_TABLE = "agentfox"
+ENV_PREFIX = "AGENTFOX_"
+
+WEBHOOK_SEVERITIES = ("low", "medium", "high", "critical")
+#: Readings of `Settings.taint_scope`; see the field for what each one measured.
+TAINT_SCOPES = ("session", "argument")
+
+
+class ConfigFileError(RuntimeError):
+    """The config file the operator pointed at explicitly cannot be used."""
+
+
+def resolve_config_file() -> Path | None:
+    """Which config file settings would be read from right now, if any.
+
+    ``AGENTFOX_CONFIG`` wins and must exist — the operator named it, so a typo is an
+    error rather than a silent fall-back to defaults. ``AGENTFOX_CONFIG=none`` turns
+    file loading off entirely. Otherwise ``./agentfox.toml`` in the current working
+    directory, only if present.
+    """
+    explicit = os.environ.get(CONFIG_ENV_VAR)
+    if explicit and explicit.strip().lower() in {"none", "off", "-"}:
+        return None  # explicit opt-out: env and defaults only (tests, CI, containers)
+    if explicit:
+        path = Path(explicit).expanduser()
+        if not path.is_file():
+            raise ConfigFileError(
+                f"{CONFIG_ENV_VAR}={explicit!r} does not point at a readable file."
+            )
+        return path.resolve()
+    candidate = Path.cwd() / DEFAULT_CONFIG_FILENAME
+    if candidate.is_file():
+        return candidate.resolve()
+    return None
+
+
+# The file resolved by the most recent Settings() construction on this thread, handed
+# from ``settings_customise_sources`` (a classmethod, no instance yet) to
+# ``model_post_init`` so the instance can say where it came from.
+_resolved = threading.local()
+
+
+class Settings(BaseSettings):
+    """Source precedence, highest first: init kwargs > ``AGENTFOX_*`` environment
+    variables > the ``[agentfox]`` table of the config file (see :func:`resolve_config_file`) > the
+    defaults below. ``.env`` files are not read.
+    """
+
+    model_config = SettingsConfigDict(env_prefix=ENV_PREFIX, extra="ignore")
+
+    _config_file: Path | None = PrivateAttr(default=None)
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        path = resolve_config_file()
+        _resolved.path = path
+        sources: list[PydanticBaseSettingsSource] = [init_settings, env_settings]
+        toml_source = _toml_source(settings_cls, path)
+        if toml_source is not None:
+            sources.append(toml_source)
+        sources.extend([dotenv_settings, file_secret_settings])
+        return tuple(sources)
+
+    def model_post_init(self, __context: Any) -> None:
+        self._config_file = getattr(_resolved, "path", None)
+        _resolved.path = None
+
+    @property
+    def config_file(self) -> Path | None:
+        """The config file these settings were read from, or ``None``."""
+        return self._config_file
+
+    # --- Persistence -----------------------------------------------------
+    database_url: str = f"sqlite:///{STATE_ROOT / 'agentfox.db'}"
+    sql_echo: bool = False
+
+    # --- Deployment ------------------------------------------------------
+    org_id: str = "org_default"
+    environment: str = "development"
+    # Where this deployment's dashboard is reachable, used to turn a decision id in
+    # a blocked response into a link somebody can open.
+    #
+    # Empty by default and never guessed: the gateway cannot see how it is reached.
+    # Behind a load balancer, in a container, or on a private network, the Host
+    # header is whatever the proxy chose to send, and a link built from it sends an
+    # engineer somewhere that does not exist — which is worse than no link, because
+    # they conclude the dashboard is broken rather than unconfigured. So this is a
+    # deliberate statement by whoever runs the deployment, and the response simply
+    # omits the field until they make it.
+    #
+    # The gateway makes no request to it and does not check that it resolves.
+    console_url: str = ""
+    # Zero egress by default. Nothing leaves the customer boundary unless
+    # this is explicitly turned on.
+    allow_egress: bool = False
+    # Some features fetch a URL an operator names: the OpenAPI document for the
+    # hosted-API scan, a knowledge-base endpoint or a document a source points at
+    # (`core.outbound`). Those fetches are not gated by `allow_egress`: like the
+    # GitHub connect flow they are requests an operator makes deliberately, and they
+    # carry no customer data out. What they must never be is a way to make this
+    # server read its own network, so loopback, private, link-local and reserved
+    # addresses are refused. A self-hosted deployment whose spec or knowledge base
+    # lives on its own network can turn this on; link-local (cloud metadata),
+    # multicast and reserved addresses stay refused regardless.
+    outbound_allow_private_hosts: bool = False
+
+    # Where semantic judgments are made. "local" keeps every judgment in this
+    # process: questions no local detector covers come back UNKNOWN, which the
+    # judgment router already treats as "not authorised". "remote" and "auto"
+    # may call a hosted judgment model, but only with `allow_egress` on and
+    # only through `judgment.JudgmentGateway`, which redacts locally-detected
+    # PII first. Default is local, because asking a third party whether a
+    # string contains personal data discloses the string.
+    judgment_backend: str = "local"
+    # Which evaluators may be consulted, same opt-in shape as
+    # `enabled_detectors`. "deterministic" is always present whether listed or
+    # not — it needs no key, no weights and no network, and some decisions have
+    # no other permitted decider. Adding a tier can only widen coverage: the
+    # routing table in judgment/capability.py forbids each tier from deciding
+    # the kinds it measured *worse* on, so enabling everything cannot make a
+    # control worse than it is today.
+    judgment_tiers: list[str] = ["deterministic"]
+    # Redact before any judgment leaves, and refuse to send at all if the
+    # local redactor cannot load. "We could not check" must mean "we do not
+    # send"; see judgment/egress.py.
+    judgment_redact_before_egress: bool = True
+    judgment_fail_closed: bool = True
+    # What happens when a payload bound for a hosted judgment tier contains
+    # personal data. "block" refuses to make the judgment remotely at all,
+    # "redact" masks what the local detector finds and sends the rest
+    # (default), "allow" sends it as-is and logs a warning. Only "block"
+    # guarantees a subject's data cannot reach a third party, because
+    # redaction can only mask what the local detector found — measured at
+    # 17.8% of it on presidio-research.
+    judgment_pii_egress: str = "redact"
+    # Which registered model provider answers when the `llm` or `local_llm`
+    # tier is enabled. Empty uses `default_provider`. The provider interface is
+    # the neutral one in providers/base.py, so this works with Azure, Bedrock,
+    # Vertex, LiteLLM or a self-hosted endpoint without any of them being
+    # special-cased. A LiteLLM/vLLM endpoint on loopback counts as `local_llm`
+    # and does not egress; anything else counts as `llm` and is gated.
+    judgment_llm_provider: str = ""
+    # Which model that provider should judge with. Empty hands the choice to
+    # the provider's own default — note that `CompletionRequest.model` defaults
+    # to the literal string "default", which the hosted adapters pass straight
+    # through and which is not a model name anywhere, so this sends "" instead
+    # when unset rather than letting that reach the API.
+    judgment_llm_model: str = ""
+
+    # --- Enforcement (Pillar 3) -----------------------------------------
+    # Hard budget for the whole pre-flight pipeline, and per detector.
+    # Was 100 — raised after benchmarking `injection.classifier`/`injection.similarity`
+    # under real dataset load found this *pipeline*-level cap silently overriding
+    # each detector's own, higher `timeout_ms`: `allowance = min(own_timeout_ms,
+    # remaining_ms)` in pipeline.py means a detector's declared budget is a lie if
+    # the shared pipeline ceiling is lower than it. Measured real-world cost for
+    # the two model-backed detectors together: ~24ms typical, up to ~133ms on the
+    # longest real documents in `deepset/prompt-injections` — 100ms was clipping
+    # even ordinary-length inputs into silent, undisclosed degradation. Raised
+    # again to 300ms after `injection.classifier` grew an ensemble secondary-
+    # model backstop (a second sequential forward pass on the common "primary
+    # found nothing" path) — measured up to ~153ms end-to-end alongside
+    # similarity under load; 300ms keeps real margin over that while staying
+    # under `request_budget_ms` below (also raised to preserve the invariant
+    # that one surface's budget can't exceed the whole request's).
+    enforcement_budget_ms: int = 300
+    detector_timeout_ms: int = 40
+    # The *request*-level ceiling across every surface a single governed call
+    # touches. The per-call budget alone is a comfortable lie — one completion
+    # evaluates several messages, the output and every tool call. Raised alongside
+    # `enforcement_budget_ms` so a single surface's budget can never exceed the
+    # whole request's.
+    request_budget_ms: int = 350
+    # Observe-by-default. Enforcement is something a customer turns on
+    # deliberately, after simulating it.
+    default_policy_mode: str = "observe"  # observe | enforce
+    # What happens when a detector errors or blows its budget.
+    fail_mode: str = "open"  # open | closed
+    #: How long a held call waits for a person before it is denied (fails closed).
+    approval_ttl_minutes: int = 30
+    #: What a tool call's provenance is, for the taint rules
+    #: (`taint.irreversible_tool` and friends). The one setting that decides it.
+    #:
+    #: ``session``  — the worst provenance anywhere in the run so far *or* in the
+    #:   call's own arguments. Once untrusted content has entered the run, every
+    #:   later irreversible call carries it, including one with no arguments.
+    #: ``argument`` — only the provenance inferred or declared for this call's own
+    #:   arguments. A value copied from a web page still taints the call it lands in;
+    #:   a call whose arguments the user typed does not inherit the page.
+    #:
+    #: Measured on an AgentDojo replay with provenance inferred from executed tool
+    #: outputs (the `inferred_provenance_summary.json` replay, not yet a published
+    #: claim): session contained 588/588 attacks and let 24/97 benign tasks through
+    #: (43/97 with read tools granted any provenance); argument let 37/97 through
+    #: (62/97 tiered) and contained 527/588. Which trade to make is a product
+    #: decision, so the default is the one every published number was measured under.
+    taint_scope: str = "session"  # session | argument
+
+    # --- Public playground demo -------------------------------------------
+    # An extra CORS origin for the public, unauthenticated playground page
+    # (`gateway/routes/playground.py`) when the dashboard and gateway are not
+    # same-origin in the deployed environment. Additive to the hardcoded
+    # localhost origins in `gateway/app.py`, never a replacement for them.
+    #
+    # Comma-separated, because one API can front several hosts: a primary dashboard and
+    # a standby on another provider, or a custom domain during a move. While this took a
+    # single origin, the standby's playground failed in the browser with "Failed to
+    # fetch" while curl against the same API looked perfectly healthy.
+    playground_cors_origin: str | None = None
+
+    @property
+    def playground_cors_origins(self) -> list[str]:
+        """Each configured origin, trimmed, in order, with blanks and duplicates dropped."""
+        out: list[str] = []
+        for raw in (self.playground_cors_origin or "").split(","):
+            origin = raw.strip().rstrip("/")
+            if origin and origin not in out:
+                out.append(origin)
+        return out
+
+    # --- Outbound finding webhooks ----------------------------------------
+    # Every newly committed Finding at or above `webhook_min_severity` is POSTed
+    # to `webhook_url` (see webhooks.py). Still gated by `allow_egress` above: a
+    # configured URL with egress off sends nothing. With `webhook_secret` set,
+    # each request carries `X-AgentFox-Signature: sha256=<hmac of the raw body>`.
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
+    webhook_timeout_seconds: float = 3.0
+    webhook_min_severity: str = "high"  # critical | high | medium | low
+
+    # --- Monitoring connected sources (agentfox.capabilities.monitoring) --------------------
+    # A Slack incoming-webhook URL that receives a short message for every monitor
+    # finding opened, reopened or closed at or above `slack_min_severity`. A tenant can
+    # also set its own (`PUT /api/alerts/slack`). Like `webhook_url`, gated by
+    # `allow_egress`: the message carries finding titles out of the deployment.
+    slack_webhook_url: str | None = None
+    slack_min_severity: str = "medium"  # critical | high | medium | low
+    # The secret GitHub signs push deliveries to `/api/integrations/github/webhook`
+    # with. A connection may carry its own instead (`POST
+    # /api/integrations/github/webhook-secret`); with neither, the route refuses.
+    github_webhook_secret: str | None = None
+    # How many due monitors one `monitors.run` job runs. Each one downloads and scans
+    # a repository or fetches a document, so this bounds a single serverless call.
+    monitor_batch_limit: int = 5
+    # After this many failed runs in a row a monitor raises a `monitor_failing`
+    # finding (closed by the next successful run).
+    monitor_failure_threshold: int = 3
+
+    # --- Detector cut-offs -----------------------------------------------------
+    #: A cut-off nothing can change without a code edit is a cut-off the improvement loop
+    #: cannot tune and an operator cannot adjust. Read once when detectors register, like
+    #: every other setting, so a change needs a restart.
+    #: Cosine similarity to the nearest known attack before `injection.similarity` fires.
+    embedding_similarity_attack_threshold: float = 0.6
+    #: How far above the nearest benign anchor that similarity must sit.
+    embedding_similarity_benign_margin: float = 0.05
+    #: The backstop classifier's bar. 0.92 is llm-guard's own default for this exact model,
+    #: chosen there because it over-triggers at lower bars (see adapters/classifiers.py).
+    prompt_injection_classifier_secondary_threshold: float = 0.92
+
+    # --- Improvement loop (governed self-improvement, Phase 0) -----------------
+    #: Identity every automated change is recorded under on the audit chain.
+    improvement_actor_id: str = "agentfox-improver"
+    #: Kill switch for the improver. While true, no automated change is applied at any
+    #: autonomy level; proposals are still filed so nothing is lost.
+    improvement_frozen: bool = False
+    #: Rate limit on automated applies per tenant per day, so a faulty class of change
+    #: cannot apply dozens of edits before anyone looks.
+    improvement_max_auto_changes_per_day: int = 20
+    #: A change class whose rollback rate exceeds this drops an autonomy level.
+    improvement_rollback_budget: float = 0.05
+    #: Two-way canary gate defaults.
+    canary_min_dwell_seconds: int = 3600
+    canary_max_block_rate_drop: float = 0.15
+    #: Recurring work. The cron drains the queue; schedules fill it.
+    scheduler_enabled: bool = True
+    #: Also run due jobs off ordinary traffic (at most every 10 minutes per instance),
+    #: for hosts whose cron runs once a day.
+    jobs_on_traffic: bool = True
+    #: A job `running` for longer than this is treated as crashed and recovered.
+    job_stuck_after_seconds: int = 900
+    #: Base for exponential backoff between attempts.
+    job_backoff_base_seconds: int = 60
+
+    # --- Live red-team probes and the public showcase ------------------------
+    #: Kill switch for scheduled probes against deployed agents
+    #: (`evaluation.live_probes`). Each target also needs its own recorded opt-in;
+    #: this turns every target off at once without touching those records.
+    live_probes_enabled: bool = True
+    #: Run AgentFox against its own demo agent in a dedicated tenant and publish the
+    #: results at `GET /api/public/showcase` (`evaluation.showcase`). Off by default:
+    #: only the hosted deployment that backs the marketing site's /live page runs it.
+    showcase_enabled: bool = False
+    #: The tenant the showcase lives in. Nothing outside it is ever read by the
+    #: public endpoint.
+    showcase_org_id: str = "org_showcase"
+
+    @field_validator("taint_scope")
+    @classmethod
+    def _check_taint_scope(cls, value: str) -> str:
+        # A typo here must not quietly fall back to either reading: they contain
+        # different attacks, and the operator chose one on purpose.
+        value = value.strip().lower()
+        if value not in TAINT_SCOPES:
+            raise ValueError(f"must be one of {', '.join(TAINT_SCOPES)}")
+        return value
+
+    @field_validator("webhook_min_severity", "slack_min_severity")
+    @classmethod
+    def _check_webhook_min_severity(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in WEBHOOK_SEVERITIES:
+            raise ValueError(f"must be one of {', '.join(WEBHOOK_SEVERITIES)}")
+        return value
+
+    # --- Cost & reliability ----------------------------------------
+    # Degradation ladder, preferred-first. Empty means no fallback: fail rather than
+    # silently serve from a model the agent was never evaluated against.
+    fallback_chain: list[str] = []
+    breaker_failure_threshold: int = 5
+    breaker_recovery_seconds: float = 30.0
+    # Per-agent circuit breaker (platform/registry/breaker.py): trips when at least
+    # `min_calls` decisions in `window_seconds` were blocked at `block_ratio` or more.
+    # "alert" raises the issue only; "pause" also refuses the agent's calls for the
+    # cool-down, then probes. Each agent can override these from its settings.
+    agent_breaker_mode: str = "alert"  # off | alert | pause
+    agent_breaker_window_seconds: int = 300
+    agent_breaker_min_calls: int = 20
+    agent_breaker_block_ratio: float = 0.5
+    agent_breaker_cooldown_seconds: int = 300
+    agent_breaker_probe_calls: int = 5
+    # Admission control on the inline surface — shed work before it reaches
+    # governance, never after (availability.py's `AdmissionController`). Defaults
+    # generous enough that no self-host demo ever notices them; sizing these to a
+    # deployment's real capacity is the operator's job, the same as the breaker
+    # thresholds above.
+    admission_rate_per_second: float = 200.0
+    admission_burst: int = 400
+    admission_max_concurrent: int = 256
+    admission_shed_below_priority: str = "normal"
+    # How long a service-availability probe's answer is reused before the dependency
+    # is re-checked (availability.py's `probe_services`). This exists
+    # because the probes are not free — the database probe opens a connection beyond
+    # the request's own session, and with `policy_engine = "opa"` the policy probe is
+    # an HTTP call to the sidecar. Paying either per request would make the module
+    # that exists to prevent a latency problem into one. The status endpoints ignore
+    # this and always probe fresh: an operator asking "is it up *now*" must not be
+    # told what was true five seconds ago.
+    service_probe_interval_seconds: float = 5.0
+
+    # --- Streaming ------------------------------------------------
+    # `buffered` enforces output identically to the non-streaming path at the cost of
+    # first-token latency. `windowed` preserves latency but cannot recall content it
+    # has already forwarded. Buffered is the default deliberately.
+    streaming_mode: str = "buffered"  # buffered | windowed
+    stream_window_chars: int = 200
+
+    # --- Detectors -------------------------------------------------------
+    enabled_detectors: list[str] = [
+        "injection.heuristic",
+        # The trained injection model. On by default because the heuristic alone
+        # catches 16.7% of held-out injections (benchmarks/REPORT.md) and published
+        # rule sets do worse; a model is the only thing that moves that number.
+        # Without `agentfox[classifiers]` or its downloaded weights it cannot run:
+        # the pipeline skips it, and `doctor` and the startup log say so and how to fix it.
+        "injection.classifier",
+        "pii.native",
+        "secrets.native",
+        "safety.lexicon",
+        "schema.json",
+        # A workspace's own rules (capabilities/detection/custom.py). Costs nothing
+        # until a workspace defines one, so it is on wherever the others are.
+        "custom.lists",
+        # Regexes over the code in a tool call's arguments; cheap, and acted on only
+        # by the agent-integrity pack, which ships watching.
+        "code.insecure",
+    ]
+    # Restricted-licence model adapters refuse to load without this.
+    accept_restricted_model_licenses: bool = False
+    granite_guardian_model: str = "ibm-granite/granite-guardian-3.0-2b"
+    # NLI cross-encoder for the opt-in `grounding.nli` detector (Apache-2.0, ~140M).
+    # Read from the local cache only; models needing trust_remote_code are refused.
+    grounding_nli_model: str = "cross-encoder/nli-deberta-v3-small"
+    # MIT, ~86M params, no licence gate — but a real CPU forward pass still
+    # costs tens of ms per call versus a regex scan's fractions of one, and every
+    # concurrent request pays it independently (the latency budget is per-request,
+    # not a shared inference queue). Enabled by default anyway (see
+    # `enabled_detectors`): a default that misses five injections in six is not a
+    # trade-off worth inheriting either. Remove it there to run regex only.
+    # leolee99/PIGuard, not the more commonly cited protectai/deberta model — see
+    # PromptInjectionClassifierDetector's docstring for the benchmarked reason
+    # (better recall AND far fewer false positives).
+    prompt_injection_classifier_model: str = "leolee99/PIGuard"
+    # MIT, ~86M params. High-bar ensemble backstop for the primary classifier
+    # above — see PromptInjectionClassifierDetector's docstring for why a second
+    # model, and why this specific one (it's the model this project moved away
+    # from as primary, precisely because of its over-triggering; used here only
+    # above `secondary_threshold`, only when the primary found nothing). Its hits
+    # are advisory: recorded and seen by observing policies, never by enforcing
+    # ones (`PolicyInput.for_mode`). Set to "" / None to run PIGuard alone.
+    prompt_injection_classifier_secondary_model: str | None = (
+        "protectai/deberta-v3-base-prompt-injection-v2"
+    )
+    # Apache-2.0, ~22M params — embeds text locally for cosine-similarity matching
+    # against `capabilities/detection/data/injection_corpus.json`. Same opt-in reasoning as the
+    # classifier above; unlike the classifier, this one improves by editing that
+    # corpus file, no retraining required.
+    embedding_similarity_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+
+    # --- Model server ----------------------------------------------------
+    # Where model-backed detectors run when this process should not hold weights:
+    # a serverless gateway (read-only file system, cold instances) or one without a
+    # GPU. `agentfox serve-models` on another machine runs them; set this to its URL
+    # and every detector in `model_server_detectors` is answered there, under the
+    # same per-detector budget, with a timeout reported as degraded like any other.
+    # Unset, everything runs in this process as before.
+    model_server_url: str | None = None
+    # Bearer token both sides share. `serve-models` refuses to listen beyond
+    # loopback without one.
+    model_server_token: str | None = None
+    # Which detectors go to the model server. Empty means every model-backed one
+    # (the detectors `detection.models.models_for` names a model for).
+    model_server_detectors: list[str] = []
+    # Where a model runs in *this* process: "cpu", "cuda", "mps", or "auto" (cuda,
+    # then mps, then cpu). Matters on the model server; a gateway that sends its
+    # models away never loads one.
+    model_device: str = "auto"
+    # Hosts you run that count as inside this deployment, like loopback: a model
+    # server, or a vLLM / LiteLLM endpoint on your own GPU box. A judgment call to one
+    # is `local_llm`, not egress, so it is not redacted or refused. Exact host names
+    # or IPs; list only machines you control.
+    trusted_model_hosts: list[str] = []
+
+    # --- Wrapped rail orchestrators -------------------------------
+    # Both adapters were registered with their configuration hard-coded empty —
+    # `NemoRailsDetector()` with no config path, `GuardrailsAiDetector()` with no
+    # validators — and `available()` returns False when those are empty. There
+    # was no setting anywhere to fill them, so installing `agentfox[rails]` or
+    # `agentfox[validators]` changed nothing and the two detectors were
+    # unreachable by construction. These are how they are turned on.
+    #
+    # A directory holding a NeMo Guardrails config (`config.yml` plus any Colang
+    # files). Empty by default: NeMo's rails are programs, and which programs to
+    # run is a deployment's decision, not a default.
+    nemo_rails_config_path: str | None = None
+    # Guardrails AI Hub validator slugs, e.g. ["valid_json", "detect_pii"]. Each
+    # must already be installed (`pip install guardrails-ai-<slug-with-dashes>`)
+    # because Hub validators carry licences independent of the Apache-2.0 core,
+    # so none is ever enabled by inheritance.
+    #
+    # Most Hub validators are ported natively (`detection/validators/`) and need
+    # no install; they report one entity type per check. This composite reports
+    # everything as SCHEMA.VIOLATION and exists for running your own Guard, or a
+    # validator that is not ported.
+    guardrails_ai_validators: list[str] = []
+
+    # --- Entitlement -----------------------------------------------
+    # native | openfga. The seam exists because no winner does: customers running
+    # OpenFGA or Cedar keep them, and the much larger group who express permissions as
+    # "this group can read this folder" get a control they can actually switch on.
+    entitlement_engine: str = "native"
+    openfga_url: str | None = None
+    openfga_store_id: str | None = None
+    k_anonymity_threshold: int = 5
+
+    # --- Authentication --------------------------------------------------
+    # auto | development | token | oidc
+    #
+    # `auto` follows `environment`: the unverified identity header is accepted in
+    # development and refused everywhere else, including in any environment name we do
+    # not recognise. A typo in a deployment variable must not silently open the door.
+    auth_mode: str = "auto"
+
+    # --- GitHub connect flow (dashboard "Sign in with GitHub" + repo scan) -----
+    # The dashboard's OAuth callback runs the one privileged "find-or-create user and
+    # mint a token" call before any user token exists — it authenticates with this
+    # shared secret instead. Must match the dashboard's own copy of the same value.
+    service_auth_secret: str = DEFAULT_SERVICE_AUTH_SECRET
+    # Fernet key encrypting every secret held at rest (core/crypto.py). `None` means
+    # "not configured" — connecting a repo fails closed rather than storing a raw token.
+    token_encryption_key: str | None = None
+    # Retired encryption keys, comma-separated. Still accepted for decryption, never
+    # used to encrypt, until `agentfox admin keys rotate` (or the `keys.rotate` job)
+    # has re-encrypted everything under `token_encryption_key`. Then remove them.
+    token_encryption_key_previous: str | None = None
+
+    # --- Deferred job queue ----------------------------------------
+    # POST /api/internal/jobs/run is the cron backstop for a job stuck in
+    # "running" because the request that started it crashed or hit a platform
+    # timeout mid-attempt. `None` means unset, and the route refuses every
+    # call rather than defaulting to an insecure shared value the way
+    # service_auth_secret does — this endpoint can run arbitrary tenants'
+    # queued work, a materially different blast radius than the GitHub
+    # provisioning call that secret guards. Vercel's own cron integration sets
+    # this from the project's CRON_SECRET env var and sends it as
+    # `Authorization: Bearer <value>` automatically once that env var exists.
+    cron_secret: str | None = None
+
+    # --- Action assurance -------------------------------------------
+    # The dialect artefacts are parsed against. Wrong dialect means wrong parse, and
+    # a wrong parse fails closed rather than passing through.
+    sql_dialect: str = "postgres"
+    # How fresh a state read must be to authorise an irreversible act.
+    verified_state_max_age_seconds: int = 300
+    # "standard" escalates an undeclared table (a human should look);
+    # "strict" blocks it outright. See data_access.analyse_access's own docstring.
+    data_access_strictness: str = "standard"
+
+    # --- Agent loop governance -------------------------------------
+    # Mirrors agent_loop.LoopBudget's own defaults — kept here, not just as
+    # dataclass defaults, so a deployment can tune them without a code change.
+    loop_max_steps: int = 25
+    loop_max_repeats: int = 2
+    loop_max_cycle_length: int = 4
+    loop_max_steps_without_progress: int = 5
+
+    # --- Memory write governance (NOM-RTG-13) ----------------------------
+    # How long an unverified memory entry survives before it decays — the
+    # default-closed counterpart to Suppression's default-open `expires_at`.
+    memory_unverified_ttl_seconds: int = 86_400
+
+    # --- Inter-agent message security (NOM-IAM-08) ------------------------
+    # A signature/nonce older than this is rejected even if it verifies.
+    agent_message_validity_seconds: int = 300
+
+    # --- Policy engine (Pillar 6) ---------------------------------------
+    policy_engine: str = "native"  # native | opa
+    opa_url: str = "http://localhost:8181"
+
+    # --- Providers -------------------------------------------------
+    # `echo` is the offline provider: deterministic, no network, no key. It is what
+    # makes the whole system demonstrable with `docker compose up` and nothing else.
+    default_provider: str = "echo"
+    openai_base_url: str = "https://api.openai.com"
+    anthropic_base_url: str = "https://api.anthropic.com"
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+
+    # The providers enterprises actually deploy on. 6 of 11 engineers run Azure
+    # OpenAI, 4 Bedrock, 3 Vertex — a governance product that only speaks to
+    # api.openai.com is unusable at exactly the companies that need governance.
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: str | None = None
+    azure_openai_api_version: str = "2024-10-21"
+    azure_openai_deployment: str | None = None
+    aws_region: str | None = None
+    bedrock_model: str = "anthropic.claude-sonnet-4-20250514-v1:0"
+    vertex_project: str | None = None
+    vertex_location: str = "us-central1"
+    vertex_model: str = "gemini-2.0-flash"
+    # Govern through the routing layer teams already run, rather than compete.
+    litellm_base_url: str | None = None
+    litellm_api_key: str | None = None
+
+    # --- Observability correlation ---------------------------
+    # Correlation itself needs none of these: the join key travels in-band on a
+    # traceparent or vendor header, so a team gets the link with zero configuration.
+    # These only govern the optional write-back of our verdict onto their run.
+    correlation_push: bool = False
+    correlation_timeout_seconds: float = 2.0
+    langsmith_api_url: str = "https://api.smith.langchain.com"
+    langsmith_ui_url: str = "https://smith.langchain.com"
+    langsmith_api_key: str | None = None
+    langsmith_project: str | None = None
+    langfuse_host: str = "https://cloud.langfuse.com"
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_project: str | None = None
+
+    # --- Evaluation (Pillar 4) ------------------------------------------
+    eval_runner: str = "native"  # native | promptfoo
+    promptfoo_bin: str = "promptfoo"
+    online_eval_sample_rate: float = 0.25
+    drift_psi_threshold: float = 0.2
+
+    # --- Audit (Pillar 5) ------------------------------------------------
+    audit_signing_key: str = DEFAULT_AUDIT_SIGNING_KEY
+    # Retired signing keys, comma-separated. Checkpoints signed with one still verify;
+    # new checkpoints are always signed with `audit_signing_key`. Key rotation
+    # re-signs the old checkpoints (after verifying the chain), so these can go.
+    audit_signing_key_previous: str | None = None
+    audit_checkpoint_interval: int = 100
+    # The audit log must not become a new PII liability.
+    redact_at_capture: bool = True
+    evidence_dir: Path = STATE_ROOT / "var" / "evidence"
+
+    # --- Content: capability packs ------------------------------------------
+    # The shipped policies, the control catalog, obligations and threats live in the
+    # capability packs under `agentfox/packs/` (inside the package, so the wheel
+    # carries them: a repo-root-relative path resolves from a source checkout and
+    # silently finds nothing once installed, which is how the control catalog and
+    # the baseline policy were once empty in production).
+    #
+    # The two directories below are overrides, unset by default. Set
+    # `compliance_dir` to read `controls.yaml`, `obligations.yaml` and `threats.yaml`
+    # from your own directory instead of the packs; set `policies_dir` to read the
+    # shipped policy files from a directory instead of the packs.
+    compliance_dir: Path | None = None
+    policies_dir: Path | None = None
+    # Which packs load: `stable` (only stable packs), `incubating` (stable and
+    # incubating) or `sandbox` (every pack).
+    pack_maturity: str = "stable"
+
+    @property
+    def restricted_models_allowed(self) -> bool:
+        return self.accept_restricted_model_licenses
+
+    @property
+    def token_encryption_previous_keys(self) -> list[str]:
+        """Each retired encryption key, in order, without blanks, duplicates or the
+        current key."""
+        return split_keys(self.token_encryption_key_previous, exclude=self.token_encryption_key)
+
+    @property
+    def audit_signing_previous_keys(self) -> list[str]:
+        """Each retired audit signing key, in order, without blanks, duplicates or the
+        current key."""
+        return split_keys(self.audit_signing_key_previous, exclude=self.audit_signing_key)
+
+
+def split_keys(raw: str | None, *, exclude: str | None = None) -> list[str]:
+    """A comma-separated key list, trimmed, in order, without blanks, duplicates or
+    ``exclude`` (the current key, which is never also a previous one)."""
+    out: list[str] = []
+    for part in (raw or "").split(","):
+        key = part.strip()
+        if key and key != exclude and key not in out:
+            out.append(key)
+    return out
+
+
+def _toml_source(
+    settings_cls: type[BaseSettings], path: Path | None
+) -> PydanticBaseSettingsSource | None:
+    """The ``[agentfox]`` table of ``path`` as a settings source, or ``None``.
+
+    Values go through the same field validation as every other source, so
+    ``enabled_detectors = ["pii.native"]`` and ``allow_egress = false`` land as a
+    list and a bool. Unknown keys are ignored (``extra="ignore"``) but named in a
+    warning, since a misspelled key otherwise looks exactly like a setting that
+    silently didn't apply.
+    """
+    if path is None:
+        return None
+    try:
+        with path.open("rb") as fh:
+            data = tomllib.load(fh)
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigFileError(f"{path} is not valid TOML: {exc}") from exc
+    header = CONFIG_TABLE
+    table = data.get(header)
+    if table is None:
+        log.warning("%s has no [%s] table; nothing read from it", path, CONFIG_TABLE)
+        return None
+    if not isinstance(table, dict):
+        raise ConfigFileError(f"{path}: `{header}` must be a table")
+    unknown = sorted(set(table) - set(settings_cls.model_fields))
+    if unknown:
+        log.warning("%s: ignoring unknown [%s] key(s): %s", path, header, ", ".join(unknown))
+    return TomlConfigSettingsSource(settings_cls, toml_file=path, toml_table_header=(header,))
+
+
+def env(name: str, default: str | None = None) -> str | None:
+    """One ``AGENTFOX_<name>`` environment variable read outside `Settings`.
+
+    For the handful of switches that are read straight from the environment
+    (a log level, the agent name `auto()` guesses, the CLI's API URL) rather than
+    through `Settings`. An empty value counts as unset.
+    """
+    return os.environ.get(ENV_PREFIX + name) or default
+
+
+def is_development(settings: Settings | None = None) -> bool:
+    """Whether ``environment`` names a development environment (see DEV_ENVIRONMENTS)."""
+    settings = settings or get_settings()
+    return (settings.environment or "").lower() in DEV_ENVIRONMENTS
+
+
+def insecure_production_secrets(settings: Settings | None = None) -> list[str]:
+    """The published secrets this deployment is running with, outside development.
+
+    Empty in development, where the defaults are the convenience they exist to be.
+    Anywhere else each entry names the variable to set and why it matters.
+    """
+    settings = settings or get_settings()
+    if is_development(settings):
+        return []
+    problems: list[str] = []
+    if settings.service_auth_secret in PUBLISHED_SECRET_VALUES:
+        problems.append(
+            "AGENTFOX_SERVICE_AUTH_SECRET is unset or still a published value — anyone "
+            "could call /api/auth/github/provision and mint an owner token. Set it to a "
+            "random value (e.g. `openssl rand -hex 32`) and give the dashboard the same one."
+        )
+    if settings.audit_signing_key in PUBLISHED_SECRET_VALUES:
+        problems.append(
+            "AGENTFOX_AUDIT_SIGNING_KEY is unset or still a published value — anyone could "
+            "forge audit checkpoints. Set it to a random value you keep outside the database."
+        )
+    return problems
+
+
+def assert_production_secrets(settings: Settings | None = None) -> None:
+    """Refuse to serve a non-development environment that runs on published secrets."""
+    settings = settings or get_settings()
+    problems = insecure_production_secrets(settings)
+    if problems:
+        raise InsecureConfigurationError(
+            f"refusing to start in environment '{settings.environment}':\n  - "
+            + "\n  - ".join(problems)
+            + "\n(Set AGENTFOX_ENVIRONMENT=development only for a local, unexposed install.)"
+        )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+def loaded_config_file() -> Path | None:
+    """The config file the active (cached) settings were read from, if any."""
+    return get_settings().config_file
+
+
+def reset_settings_cache() -> None:
+    """Test hook — settings are cached for the process lifetime otherwise."""
+    get_settings.cache_clear()

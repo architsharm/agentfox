@@ -1,0 +1,16 @@
+# UK regulatory pack: rules translated from examples/policies/uk-regulatory/ in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83), MIT License,
+# Copyright (c) Microsoft Corporation. Starts incubating, and in observe.
+id: regional/uk
+version: 0.1.0
+maturity: incubating
+requires_core: '>=0.3'
+title: UK regulatory pack
+description: UK GDPR and DPA 2018, Arts. 22A-22D automated decision-making, and FCA Consumer Duty and
+  SM&CR rules for agents serving UK customers.
+owners:
+- agentfox-maintainers
+tags:
+- regional
+- uk
+- regulation

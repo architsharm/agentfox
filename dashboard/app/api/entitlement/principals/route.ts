@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 /**
  * Custom body rather than the generic Form* helpers: PrincipalIn.groups/clearances
@@ -21,5 +21,5 @@ export async function POST(req: NextRequest) {
     clearances: split("clearances"),
   };
 
-  return proxyCustomBody(req, "PUT", "/api/entitlement/principals", "/entitlement", body);
+  return proxyCustomBody(req, "PUT", "/api/entitlement/principals", "/app/entitlement", body);
 }

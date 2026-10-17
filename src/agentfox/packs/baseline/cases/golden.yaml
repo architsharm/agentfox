@@ -1,0 +1,51 @@
+# Golden events for the baseline pack, run by `agentfox policy packs test baseline`.
+# `verdict` is the effective verdict: what the pack would do enforcing.
+cases:
+  - name: a confident injection in user input is blocked
+    event:
+      surface: input
+      detections: [{entity_type: INJECTION.INSTRUCTION_OVERRIDE, score: 0.95}]
+    expect: {verdict: block, rules: [injection.direct]}
+
+  - name: a weak injection signal in user input is let through
+    event:
+      surface: input
+      detections: [{entity_type: INJECTION.INSTRUCTION_OVERRIDE, score: 0.5}]
+    expect: {verdict: allow, not_rules: [injection.direct]}
+
+  - name: indirect injection in a retrieved document blocks at a lower score
+    event:
+      surface: retrieved
+      detections: [{entity_type: INJECTION.INSTRUCTION_IN_DATA, score: 0.65}]
+    expect: {verdict: block, rules: [injection.indirect]}
+
+  - name: a secret anywhere is blocked
+    event:
+      surface: tool_args
+      detections: [{entity_type: SECRET.OPENAI_KEY, score: 0.99}]
+    expect: {verdict: block, rules: [secrets.block]}
+
+  - name: personal data in an answer is redacted, not blocked
+    event:
+      surface: output
+      detections: [{entity_type: PII.EMAIL, score: 0.9}]
+    expect: {verdict: redact, rules: [pii.outbound_redact]}
+
+  - name: a social security number is blocked outright
+    event:
+      surface: output
+      detections: [{entity_type: PII.US_SSN, score: 0.95}]
+    expect: {verdict: block, rules: [pii.high_sensitivity]}
+
+  - name: degraded detectors on a high-risk agent escalate
+    event: {surface: input, risk_tier: high, detector_degraded: true}
+    expect: {verdict: escalate, rules: [pipeline.degraded_high_risk]}
+
+  - name: an ordinary question passes
+    event: {surface: input}
+    expect: {verdict: allow}
+
+  - name: baseline protects every tier of an unconfigured deployment
+    kind: fallback
+    risk_tier: limited
+    expect: {policies: [baseline]}

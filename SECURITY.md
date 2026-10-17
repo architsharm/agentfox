@@ -12,7 +12,7 @@ file, or a short script is worth more than a description.
 ## What is in scope
 
 This project's own code: the enforcement path, the policy engine, the audit chain and its
-verifier, the gateway and its authentication, the tenant isolation in `src/agentfox/tenancy.py`,
+verifier, the gateway and its authentication, the tenant isolation in `src/agentfox/core/tenancy.py`,
 and the public playground at the hosted demo.
 
 Two things are explicitly **not** vulnerabilities, because the project already says so in

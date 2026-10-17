@@ -210,12 +210,12 @@
     {
       "config": "pii.presidio.full",
       "tp": 1300,
-      "fp": 693,
+      "fp": 690,
       "fn": 420,
       "excluded_contained_in_street_address": 396,
-      "precision": 0.6523,
+      "precision": 0.6533,
       "recall": 0.7558,
-      "f1": 0.7002,
+      "f1": 0.7008,
       "by_type": {
         "PII.CREDIT_CARD": {
           "tp": 105,
@@ -275,11 +275,11 @@
         },
         "PII.US_DRIVER_LICENSE": {
           "tp": 4,
-          "fp": 120,
+          "fp": 117,
           "fn": 1,
-          "precision": 0.0323,
+          "precision": 0.0331,
           "recall": 0.8,
-          "f1": 0.062
+          "f1": 0.0635
         },
         "PII.US_PHONE": {
           "tp": 54,

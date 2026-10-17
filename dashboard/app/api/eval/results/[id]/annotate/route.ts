@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 /**
  * `redirect_to` comes from a hidden field the page itself sets — this route only
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const form = await req.formData();
   const verdict = ((form.get("verdict") as string) || "agree").trim();
   const note = ((form.get("note") as string) || "").trim();
-  const redirectTo = (form.get("redirect_to") as string) || "/evals";
+  const redirectTo = (form.get("redirect_to") as string) || "/app/evals";
 
   return proxyCustomBody(
     req,

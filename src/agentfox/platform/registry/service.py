@@ -1,0 +1,1369 @@
+"""Pillar 1 — Discovery & Agent Registry.
+
+The design commitment that separates this from a GRC incumbent's registry: **lineage
+is observed, not declared.** Credo AI and OneTrust model a self-reported form; a
+registry that only knows what someone typed into it is the spreadsheet Dana already
+has. Every edge here is derived from spans the agent actually produced, and a
+divergence between declared and observed is itself a finding.
+
+Shadow-agent detection is the same idea applied to the population: traffic
+that does not correlate to a registered agent creates the agent record, marked
+unregistered, with a ready-to-submit registration payload attached. Discovery that
+requires the shadow team to cooperate discovers nothing.
+"""
+
+from __future__ import annotations
+
+import base64
+import binascii
+import datetime as dt
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+from collections import defaultdict, deque
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from agentfox.core.models import (
+    TOOL_EFFECT_CLASSES,
+    Agent,
+    Finding,
+    LineageEdge,
+    McpServer,
+    McpToolSnapshot,
+    Span,
+    Tool,
+    Trace,
+    as_aware,
+    utcnow,
+)
+from agentfox.platform.ledger.findings import auto_resolve, raise_finding, resolve_finding
+from agentfox.platform.policy import PolicyDocument, save_policy
+
+_SLUG = re.compile(r"[^a-z0-9-]+")
+
+
+def slugify(value: str) -> str:
+    return _SLUG.sub("-", (value or "unknown").strip().lower()).strip("-") or "unknown"
+
+
+def _get_or_create(session: Session, model: type, **lookup: Any) -> Any:
+    """Find a row by its unique lookup column, or create and stage a fresh one.
+
+    `register_agent`, `upsert_tool` and `upsert_mcp_server` each hand-rolled this
+    exact find-or-add skeleton before their own field-by-field merge logic; this is
+    the one copy of it.
+    """
+    row = session.scalar(select(model).filter_by(**lookup))
+    if row is None:
+        row = model(**lookup)
+        session.add(row)
+    return row
+
+
+# ---------------------------------------------------------------------------
+# Registration & observation
+# ---------------------------------------------------------------------------
+
+
+def register_agent(
+    session: Session,
+    slug: str,
+    *,
+    name: str = "",
+    purpose: str = "",
+    owner_email: str | None = None,
+    owner_team: str | None = None,
+    environment: str = "production",
+    risk_tier: str = "limited",
+    declared_models: list[str] | None = None,
+    declared_tools: list[str] | None = None,
+    data_classes: list[str] | None = None,
+    framework: str | None = None,
+    draft: bool = False,
+    source_scan_run_id: str | None = None,
+) -> Agent:
+    """Register (or upsert) an agent.
+
+    ``draft=True`` is the repo-scan path (routes/integrations.py): the agent is
+    created inert — ``status="draft"``, ``registered=False`` — so nothing treats it
+    as live until a human approves it. Approval just flips those two fields, it does
+    not re-run this function.
+    """
+    slug = slugify(slug)
+    agent = _get_or_create(session, Agent, slug=slug)
+
+    agent.name = name or agent.name or slug
+    agent.purpose = purpose or agent.purpose
+    agent.owner_email = owner_email or agent.owner_email
+    agent.owner_team = owner_team or agent.owner_team
+    agent.environment = environment
+    agent.risk_tier = risk_tier
+    agent.framework = framework or agent.framework
+    agent.declared_models = declared_models or agent.declared_models or []
+    agent.declared_tools = declared_tools or agent.declared_tools or []
+    agent.data_classes = data_classes or agent.data_classes or []
+    if source_scan_run_id:
+        agent.source_scan_run_id = source_scan_run_id
+    if draft:
+        agent.registered = False
+        agent.status = "draft"
+    else:
+        agent.registered = True
+        agent.status = "active"
+    if agent.first_seen_at is None:
+        agent.first_seen_at = utcnow()
+    session.flush()
+    return agent
+
+
+def _propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None:
+    """Register a scan's proposal as a draft, unless a human already approved it.
+
+    Re-scanning a repository proposes the same slugs again, which updates a draft in
+    place instead of duplicating it. An agent someone already added is left alone: a
+    scan turning a live agent back into a proposal would silently undo the approval.
+    Returns None for such an agent, since this scan did not propose it.
+    """
+    existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+    if existing is not None and existing.status not in ("draft", "rejected"):
+        return None
+    return register_agent(session, slug=slug, draft=True, **fields)
+
+
+def _propose_agent_specs(
+    session: Session,
+    *,
+    run_id: str,
+    repo_short: str,
+    repo_display_name: str,
+    specs: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+    trifecta_dirs: set[str],
+) -> list[str]:
+    """One draft per agent a multi-agent scan found, and its declared delegations.
+
+    The slug is the repository plus the agent's own scan key (its name in code), so a
+    re-scan lands on the same rows. A delegation the code no longer declares is removed
+    from the edges, unless traffic has also seen it: a declared edge is a reading of
+    the code, and the code changed.
+    """
+    slug_of: dict[str, str] = {}
+    created: list[str] = []
+    for spec in specs:
+        key = slugify(str(spec.get("key") or spec.get("name") or ""))
+        slug = repo_short if key == repo_short else f"{repo_short}-{key}"
+        slug_of[str(spec.get("key"))] = slugify(slug)
+        tools = [str(t) for t in spec.get("tools") or [] if t]
+        agent = _propose_draft(
+            session,
+            slug=slug,
+            name=f"{repo_display_name}/{spec.get('name') or key}",
+            purpose="",
+            framework=spec.get("framework"),
+            risk_tier="high" if (spec.get("top_dir") or "root") in trifecta_dirs else "limited",
+            declared_tools=tools or None,
+            source_scan_run_id=run_id,
+        )
+        if agent is not None:
+            created.append(agent.slug)
+
+    wanted: set[tuple[str, str]] = set()
+    for edge in edges:
+        parent = slug_of.get(str(edge.get("parent")))
+        child = slug_of.get(str(edge.get("child")))
+        if not parent or not child or parent == child:
+            continue
+        wanted.add((parent, child))
+        record_edge(
+            session,
+            "agent",
+            parent,
+            "agent",
+            child,
+            "delegates_to",
+            declared=True,
+            kind=str(edge.get("relation") or "delegates"),
+        )
+    for stale in session.scalars(
+        select(LineageEdge).where(
+            LineageEdge.relation == "delegates_to",
+            LineageEdge.declared.is_(True),
+            LineageEdge.observed_count == 0,
+            LineageEdge.src_id.in_(list(slug_of.values())),
+        )
+    ):
+        if (stale.src_id, stale.dst_id) not in wanted:
+            session.delete(stale)
+    session.flush()
+    return created
+
+
+def propose_from_scan(
+    session: Session,
+    *,
+    run_id: str,
+    repo_slug_base: str,
+    repo_display_name: str,
+    frameworks: list[str],
+    sites: list[dict[str, Any]],
+    author: str,
+    agents: list[dict[str, Any]] | None = None,
+    agent_edges: list[dict[str, Any]] | None = None,
+) -> tuple[list[str], list[str]]:
+    """Propose one draft agent per top-level directory and one observe-mode policy
+    per detected framework, from a discovery scan's governable sites.
+
+    A multi-agent system (``agents`` holds two or more, see
+    ``discovery.ScanReport.multi_agent``) is proposed as the agents it is instead: one
+    draft per agent, holding that agent's own tools, with each "hands work to" relation
+    in ``agent_edges`` recorded as a declared ``delegates_to`` edge. Those edges are
+    what the guardrail map draws as sub-agents and what "apply to sub-agents" follows,
+    so both work before the system has run once. Directories holding no agent still
+    get the per-directory proposal, so a model call outside the system is not lost.
+
+    Shared by every scan entry point that ends up here — the GitHub-connected repo
+    scan (``routes/integrations.py``) and a locally-run ``agentfox scan --submit`` /
+    ``agentfox scan --sessions --submit`` (``routes/discovery.py``) — so a scan looks the
+    same in the dashboard whichever door it came through. ``sites`` is intentionally
+    the redacted shape (``{"kind", "top_dir", "provider"}``, see
+    ``discovery.ScanReport.to_submission_payload``): this function never needs, and
+    must never be given, a file's full path, line number or literal source text. A
+    ``tool`` site may carry its function's ``name`` (the connected-repo scan sends it);
+    those become the agent's declared tools.
+    """
+    repo_short = slugify(repo_slug_base)
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    # A lethal trifecta (private data + untrusted input + a way out, see
+    # `agentfox.capabilities.discovery.exposure`) raises the risk tier of the agent in its
+    # directory. It
+    # does not propose an agent on its own: an `.mcp.json` trifecta describes an
+    # IDE's servers, not an application this repo deploys.
+    trifecta_dirs: set[str] = set()
+    for site in sites:
+        if site.get("kind") == "lethal_trifecta":
+            trifecta_dirs.add(site.get("top_dir") or "root")
+            continue
+        groups[site.get("top_dir") or "root"].append(site)
+
+    created_agents: list[str] = []
+    specs = agents or []
+    if len(specs) >= 2:
+        created_agents += _propose_agent_specs(
+            session,
+            run_id=run_id,
+            repo_short=repo_short,
+            repo_display_name=repo_display_name,
+            specs=specs,
+            edges=agent_edges or [],
+            trifecta_dirs=trifecta_dirs,
+        )
+        covered = {spec.get("top_dir") or "root" for spec in specs}
+        groups = {k: v for k, v in groups.items() if k not in covered}
+
+    for group_key, group_sites in groups.items():
+        providers = [s["provider"] for s in group_sites if s.get("provider")]
+        framework = providers[0] if providers else (frameworks[0] if frameworks else None)
+        # A monorepo's top-level directory is often named after the repo itself
+        # (e.g. gpt-researcher/gpt-researcher/) — slugifying both halves would
+        # produce "gpt-researcher-gpt-researcher", which reads as a typo rather
+        # than two distinct things.
+        tools = sorted(
+            {s["name"] for s in group_sites if s.get("kind") == "tool" and s.get("name")}
+        )
+        group_slug = slugify(group_key)
+        slug = repo_short if group_slug == repo_short else f"{repo_short}-{group_slug}"
+        agent = _propose_draft(
+            session,
+            slug=slug,
+            name=f"{repo_display_name}/{group_key}",
+            # A static scan can count code sites, not know what the agent is
+            # *for* — left blank and surfaced honestly until a human sets one.
+            purpose="",
+            framework=framework,
+            # Proposed, like the rest of a draft: a human confirms the class on
+            # approval (`compliance.risk.classify` explains why it is a proposal).
+            risk_tier="high" if group_key in trifecta_dirs else "limited",
+            declared_tools=tools or None,
+            source_scan_run_id=run_id,
+        )
+        if agent is not None:
+            created_agents.append(agent.slug)
+
+    created_policies: list[str] = []
+    for framework in frameworks:
+        doc = PolicyDocument(
+            key=f"scan-{run_id}-{slugify(framework)}",
+            name=f"{framework} guardrails",
+            description=(
+                f"Detects {framework} usage in {repo_display_name} — prompt "
+                f"injection, PII/secret leaks, and unsafe tool actions."
+            ),
+            mode="observe",
+            scope={"agents": [f"{repo_short}-*"]},
+            rules=[],
+        )
+        policy, _version = save_policy(
+            session,
+            doc,
+            author=author,
+            notes=f"Proposed by scan {run_id}",
+            bind_mode="observe",
+        )
+        policy.proposed = True
+        policy.source_scan_run_id = run_id
+        created_policies.append(policy.key)
+
+    return created_agents, created_policies
+
+
+def observe_agent(
+    session: Session,
+    slug: str,
+    *,
+    environment: str = "production",
+    model: str | None = None,
+    framework: str | None = None,
+) -> tuple[Agent, bool]:
+    """Record that an agent was seen. Returns ``(agent, is_new_shadow)``.
+
+    Called on every gateway request and every ingested OTel batch, which is what
+    makes shadow-agent discovery work without asking anyone to cooperate.
+    """
+    slug = slugify(slug)
+    agent = session.scalar(select(Agent).where(Agent.slug == slug))
+    is_new_shadow = False
+
+    if agent is None:
+        agent = Agent(
+            slug=slug,
+            name=slug,
+            environment=environment,
+            registered=False,
+            status="shadow",
+            risk_tier="limited",
+            first_seen_at=utcnow(),
+        )
+        session.add(agent)
+        session.flush()
+        is_new_shadow = True
+        raise_finding(
+            session,
+            type="shadow_agent",
+            severity="high",
+            title=f"Ungoverned agent '{slug}' observed in {environment}",
+            subject_type="agent",
+            subject_id=agent.id,
+            evidence={
+                "slug": slug,
+                "environment": environment,
+                "model": model,
+                "framework": framework,
+                "first_seen": utcnow().isoformat(),
+                # A finding you can act on in one click beats a finding you have
+                # to translate into a form.
+                "suggested_registration": {
+                    "slug": slug,
+                    "name": slug,
+                    "environment": environment,
+                    "owner_email": None,
+                    "purpose": "",
+                    "risk_tier": "limited",
+                    "declared_models": [model] if model else [],
+                },
+            },
+            control_keys=["NOM-DSC-01", "NOM-DSC-02"],
+        )
+
+    # Debounced, not unconditional: a single governed call can resolve the same
+    # agent from more than one DB session in quick succession (e.g. autoguard's
+    # pre-flight check opens its own session independently of whatever session a
+    # caller already has open around the whole call — see frameworks/autoguard's
+    # `_govern`). Writing `last_seen_at` from both stalls one session behind the
+    # other's uncommitted row lock — on Postgres, with no lock_timeout configured,
+    # that's an unbounded hang, not a slow query. Found live: a deployed demo
+    # whose request holds a session open across an `AgentExecutor.invoke()`,
+    # which itself triggers a second, independent resolve of the very same agent
+    # mid-call. Skipping the redundant write when the row was already touched a
+    # moment ago removes the second writer instead of just widening the window.
+    now = utcnow()
+    last_seen = as_aware(agent.last_seen_at)
+    if last_seen is None or (now - last_seen) > dt.timedelta(seconds=5):
+        agent.last_seen_at = now
+    if framework and not agent.framework:
+        agent.framework = framework
+    if model and model not in (agent.declared_models or []):
+        # Observed, not declared — surfaced separately by attest_registry().
+        pass
+    session.flush()
+    return agent, is_new_shadow
+
+
+def detect_shadow_agents(session: Session, window_days: int = 30) -> list[dict[str, Any]]:
+    """Report every unregistered agent with the evidence to act on it.
+
+    Excludes "draft" (proposed by a repo scan, never ran) and "rejected" (a draft a
+    human already declined) — both are unregistered, but neither is what "shadow"
+    means here: traffic that ran without anyone registering it first.
+    """
+    since = utcnow() - dt.timedelta(days=window_days)
+    out: list[dict[str, Any]] = []
+    for agent in session.scalars(
+        select(Agent).where(Agent.registered.is_(False), Agent.status.notin_(("draft", "rejected")))
+    ):
+        traces = list(
+            session.scalars(
+                select(Trace).where(Trace.agent_slug == agent.slug, Trace.started_at >= since)
+            )
+        )
+        out.append(
+            {
+                "slug": agent.slug,
+                "environment": agent.environment,
+                "first_seen": agent.first_seen_at.isoformat() if agent.first_seen_at else None,
+                "last_seen": agent.last_seen_at.isoformat() if agent.last_seen_at else None,
+                "calls": len(traces),
+                "models": sorted({t.model for t in traces if t.model}),
+                "providers": sorted({t.provider for t in traces if t.provider}),
+                "framework": agent.framework,
+                "suggested_registration": {
+                    "slug": agent.slug,
+                    "name": agent.name or agent.slug,
+                    "environment": agent.environment,
+                    "declared_models": sorted({t.model for t in traces if t.model}),
+                },
+            }
+        )
+    return out
+
+
+def unowned_agents(session: Session) -> list[Finding]:
+    """An unowned agent is a reportable compliance finding (NOM-DSC-03)."""
+    findings: list[Finding] = []
+    for agent in list(session.scalars(select(Agent).where(Agent.status != "retired"))):
+        if agent.is_owned:
+            # The condition cleared: someone took ownership since the last scan.
+            auto_resolve(
+                session,
+                type="unowned_agent",
+                subject_type="agent",
+                subject_id=agent.id,
+                note=f"agent '{agent.slug}' now has an accountable owner",
+            )
+            continue
+        finding, _ = raise_finding(
+            session,
+            type="unowned_agent",
+            severity="medium",
+            title=f"Agent '{agent.slug}' has no accountable owner",
+            subject_type="agent",
+            subject_id=agent.id,
+            evidence={"slug": agent.slug, "environment": agent.environment},
+            control_keys=["NOM-DSC-03", "NOM-GOV-03"],
+        )
+        findings.append(finding)
+    session.flush()
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Tools & lineage
+# ---------------------------------------------------------------------------
+
+#: Marks a tool whose `impact` was guessed — from its name and description, when
+#: `auto()` or MCP governance first saw it — rather than declared by an operator,
+#: the CLI/API or code. Kept as a JSON Schema vendor keyword in `schema_json`
+#: rather than a column of its own on purpose: a deployment runs new code before
+#: anyone runs its migration (tests/apps/gateway/test_playground.py pins that window), and a
+#: new column on `tools` would break every tool lookup in it, the enforcement path
+#: included. Validators ignore `x-` keywords; `tool_input_schema` strips it.
+IMPACT_SOURCE_KEY = "x-agentfox-impact-source"
+
+#: Marks a tool whose description and schema were recorded from a tool listing, so
+#: they are the reviewed content a later listing is compared against — even when the
+#: listing gave neither. Without it a bare first listing looked like a tool declared by
+#: key, and the next listing (a poisoned description, say) was recorded, not held.
+#: A vendor keyword in `schema_json` for the same reason as `IMPACT_SOURCE_KEY`.
+LISTED_KEY = "x-agentfox-listed"
+
+#: What kind of irreversible effect a tool has, as an operator declared it (one of
+#: `TOOL_EFFECT_CLASSES`). Today the one class is ``communication``: the effect is a
+#: message leaving (an email, a chat message, a notification), not data destroyed,
+#: money moved or state changed. `cascade_risk` reads it to escalate, rather than
+#: block, a cascade whose only irreversible tail is a message. Never inferred from a
+#: tool's name; an undeclared tool counts as destructive. A vendor keyword in
+#: `schema_json` for the same reason as `IMPACT_SOURCE_KEY`, and kept across
+#: re-listings because it is the operator's statement, not the listing's.
+EFFECT_CLASS_KEY = "x-agentfox-effect"
+
+_MARKER_KEYS = (IMPACT_SOURCE_KEY, LISTED_KEY, EFFECT_CLASS_KEY)
+
+#: Audit action for any change to a registered tool's impact.
+IMPACT_CHANGED_ACTION = "tool.impact_changed"
+
+
+def impact_source_of(tool: Tool) -> str:
+    """``inferred`` for a guessed impact awaiting confirmation, else ``declared``."""
+    schema = tool.schema_json or {}
+    return "inferred" if schema.get(IMPACT_SOURCE_KEY) == "inferred" else "declared"
+
+
+def effect_class_of(tool: Tool) -> str | None:
+    """The declared effect class (`TOOL_EFFECT_CLASSES`), or None when undeclared."""
+    value = (tool.schema_json or {}).get(EFFECT_CLASS_KEY)
+    return value if value in TOOL_EFFECT_CLASSES else None
+
+
+def tool_input_schema(tool: Tool) -> dict[str, Any]:
+    """The tool's input schema as the tool itself declared it, without our markers."""
+    return {k: v for k, v in (tool.schema_json or {}).items() if k not in _MARKER_KEYS}
+
+
+def known_arguments(session: Session, tool_key: str) -> set[str] | None:
+    """The arguments a tool takes: from its declared input schema, else from the calls
+    seen. None when neither says anything."""
+    from agentfox.core.models import Decision
+
+    tool = session.scalar(select(Tool).where(Tool.key == tool_key))
+    declared = set((tool_input_schema(tool).get("properties") or {}).keys()) if tool else set()
+    if declared:
+        return declared
+    seen: set[str] = set()
+    recent = session.scalars(
+        select(Decision)
+        .where(Decision.tool_key == tool_key)
+        .order_by(Decision.created_at.desc())
+        .limit(50)
+    )
+    for decision in recent:
+        seen |= set(((decision.taint_summary_json or {}).get("arguments_snapshot") or {}).keys())
+    return seen or None
+
+
+#: A blank value of each JSON-schema type, for an argument skeleton to fill in.
+_BLANK_BY_TYPE: dict[str, Any] = {
+    "string": "",
+    "integer": 0,
+    "number": 0,
+    "boolean": False,
+    "array": [],
+    "object": {},
+}
+
+
+def argument_skeleton(session: Session, tool_key: str) -> dict[str, Any]:
+    """The tool's arguments with blank values, to prefill a test call.
+
+    Types come from the declared input schema; arguments known only from calls seen
+    are left as empty strings. Never the values a real call carried: those are
+    production data.
+    """
+    known = known_arguments(session, tool_key)
+    if not known:
+        return {}
+    tool = session.scalar(select(Tool).where(Tool.key == tool_key))
+    properties = (tool_input_schema(tool).get("properties") or {}) if tool else {}
+    out: dict[str, Any] = {}
+    for name in sorted(known):
+        spec = properties.get(name) or {}
+        kind = spec.get("type") if isinstance(spec, dict) else None
+        if isinstance(kind, list):
+            kind = next((k for k in kind if k != "null"), None)
+        out[name] = _BLANK_BY_TYPE.get(str(kind), "")
+    return out
+
+
+def is_listed(tool: Tool) -> bool:
+    """True when the tool's description and schema came from a tool listing."""
+    return bool((tool.schema_json or {}).get(LISTED_KEY))
+
+
+def upsert_tool(
+    session: Session,
+    key: str,
+    *,
+    name: str = "",
+    kind: str = "function",
+    impact: str = "read",
+    schema: dict[str, Any] | None = None,
+    description: str = "",
+    mcp_server_id: str | None = None,
+    impact_source: str = "declared",
+    output_trust: str | None = None,
+    annotations: dict[str, Any] | None = None,
+    listed: bool = False,
+    actor: str | None = None,
+    effect_class: str | None = None,
+) -> Tool:
+    """Create or update a tool. ``output_trust=None``, ``annotations=None`` and
+    ``effect_class=None`` leave what is recorded as it is; ``effect_class=""`` clears it.
+
+    ``impact_source="inferred"`` is a guess, and a guess never replaces a declared
+    impact: an MCP listing re-infers on every listing, and before this an unchanged
+    listing put ``read`` back over an operator's ``irreversible``. Every change to an
+    existing tool's impact is appended to the audit chain.
+
+    ``listed=True`` says ``description`` and ``schema`` are a tool listing's, verbatim:
+    empty means empty, so accepting a listing that drops either clears it rather than
+    keeping the old one (which left the drift block on for good). Otherwise an empty
+    value keeps what is stored, as before.
+    """
+    if effect_class and effect_class not in TOOL_EFFECT_CLASSES:
+        raise ValueError(f"effect_class must be one of {TOOL_EFFECT_CLASSES}")
+    tool = session.scalar(select(Tool).where(Tool.key == key))
+    prior_impact = tool.impact if tool is not None else None
+    keep_declared = (
+        impact_source == "inferred"
+        and tool is not None
+        and bool(prior_impact)
+        and impact_source_of(tool) == "declared"
+    )
+    if tool is None:
+        tool = Tool(key=key)
+        session.add(tool)
+
+    tool.name = name or tool.name or key
+    tool.kind = kind
+    if not keep_declared:
+        tool.impact = impact
+    # A fresh dict, so the JSON column registers the change; a declaration clears
+    # the inferred marker, which is how `agentfox declare tool` confirms a guess.
+    if listed:
+        schema_json = dict(schema or {})
+        schema_json[LISTED_KEY] = True
+    else:
+        stored = tool.schema_json or {}
+        schema_json = dict(schema) if schema else dict(stored)
+        if stored.get(LISTED_KEY) and schema:
+            schema_json[LISTED_KEY] = True
+    if impact_source == "inferred" and not keep_declared:
+        schema_json[IMPACT_SOURCE_KEY] = "inferred"
+    else:
+        schema_json.pop(IMPACT_SOURCE_KEY, None)
+    declared_effect = effect_class if effect_class is not None else effect_class_of(tool)
+    if declared_effect:
+        schema_json[EFFECT_CLASS_KEY] = declared_effect
+    else:
+        schema_json.pop(EFFECT_CLASS_KEY, None)
+    tool.schema_json = schema_json
+    tool.description = description if listed else (description or tool.description)
+    tool.mcp_server_id = mcp_server_id or tool.mcp_server_id
+    if output_trust is not None:
+        tool.output_trust = output_trust
+    elif not tool.output_trust:
+        tool.output_trust = "untrusted"
+    if annotations is not None:
+        tool.annotations_json = dict(annotations)
+    session.flush()
+    if prior_impact and prior_impact != tool.impact:
+        from agentfox.platform.ledger import chain
+
+        chain.append(
+            session,
+            IMPACT_CHANGED_ACTION,
+            actor_type="user" if actor else "system",
+            actor_id=actor,
+            subject_type="tool",
+            subject_id=key,
+            payload={"from": prior_impact, "to": tool.impact, "source": impact_source},
+        )
+    return tool
+
+
+def register_called_tool(session: Session, name: str, descriptor: dict[str, Any] | None) -> None:
+    """Put a tool a model called into the registry the first time it is seen.
+
+    Containment reasons over `Tool.impact`, and an unregistered tool is reasoned
+    about as ``read`` — the least dangerous value there is. So the impact is
+    inferred from the tool's name and the description the request declared
+    (`platform.registry.impact.infer_impact`, the guess MCP governance already makes, read
+    cautiously: a name that moves money or sends a message is irreversible, as the
+    learned-permissions guess has it — an unconfirmed payment tool guessed `read`
+    is containment switched off for the one tool that needed it) and recorded as
+    ``impact_source="inferred"``, for a human to confirm with `agentfox declare tool`.
+    A declaration made in code (`@fox.tool(impact=...)`)
+    beats the guess. An existing row is never overwritten — except an inferred one
+    that code has since declared. Shared by the SDK's autoguard and the gateway's
+    proxy routes, which govern the same tool calls.
+    """
+    from agentfox.platform.registry.impact import declared_impact, infer_impact
+
+    declared = declared_impact(name)
+    existing = session.scalar(select(Tool).where(Tool.key == name))
+    if existing is not None:
+        if declared and impact_source_of(existing) == "inferred":
+            upsert_tool(session, name, impact=declared, impact_source="declared")
+        return
+    descriptor = descriptor or {}
+    guess = infer_impact(name, descriptor, cautious=True)
+    try:
+        # A savepoint, because two processes meeting the same new tool at once is
+        # ordinary, and losing that race must not roll back the decisions already
+        # written in this session.
+        with session.begin_nested():
+            upsert_tool(
+                session,
+                name,
+                name=name,
+                impact=declared or guess,
+                impact_source="declared" if declared else "inferred",
+                schema=descriptor.get("inputSchema") or {},
+                description=descriptor.get("description", ""),
+            )
+    except IntegrityError:
+        pass  # registered by someone else a moment ago; theirs stands
+
+
+def record_edge(
+    session: Session,
+    src_type: str,
+    src_id: str,
+    dst_type: str,
+    dst_id: str,
+    relation: str,
+    declared: bool = False,
+    kind: str | None = None,
+) -> LineageEdge:
+    """Record an observed (or declared) lineage edge, idempotent under races.
+
+    ``declared=True`` is an edge read from code (``propose_from_scan``) rather than
+    seen in a span: it is recorded with no observation counted, so "from code, never
+    called" and "called N times" stay distinguishable. ``kind`` says how a declared
+    delegation hands work over (``discovery.agents.RELATIONS``).
+
+    The existence check below and the insert it guards are two separate
+    round-trips, so two callers recording the same edge for the first time at
+    nearly the same moment (two concurrent requests each building their own
+    `McpGovernor` — the ordinary case for this same edge, "agent connects_mcp
+    server", which gets (re-)recorded on every governed call) can both pass the
+    check before either commits. The second one then hits uq_lineage_edge's
+    UniqueViolation on flush — found live, a real deployed request crashed this
+    way, not a theoretical race. The insert attempt runs in its own SAVEPOINT
+    (`begin_nested`) so a lost race only unwinds that nested transaction, not
+    the whole session — SQLAlchemy expunges the losing pending object on
+    rollback — and falls through to the row the winner just committed.
+    """
+    edge = session.scalar(
+        select(LineageEdge).where(
+            LineageEdge.src_id == src_id,
+            LineageEdge.dst_id == dst_id,
+            LineageEdge.relation == relation,
+        )
+    )
+    if edge is None:
+        try:
+            with session.begin_nested():
+                edge = LineageEdge(
+                    src_type=src_type,
+                    src_id=src_id,
+                    dst_type=dst_type,
+                    dst_id=dst_id,
+                    relation=relation,
+                    declared=declared,
+                    kind=kind,
+                    # Set explicitly: the column default is applied at flush,
+                    # and this counter is incremented before the flush happens.
+                    observed_count=0,
+                )
+                session.add(edge)
+                session.flush()
+        except IntegrityError:
+            edge = session.scalar(
+                select(LineageEdge).where(
+                    LineageEdge.src_id == src_id,
+                    LineageEdge.dst_id == dst_id,
+                    LineageEdge.relation == relation,
+                )
+            )
+    edge.observed_count += 0 if declared else 1
+    if not declared:
+        # Only traffic counts as an observation; re-reading the code is not one.
+        edge.last_observed_at = utcnow()
+    if declared:
+        edge.declared = True
+        edge.kind = kind or edge.kind
+    session.flush()
+    return edge
+
+
+def derive_lineage(session: Session, agent_slug: str | None = None) -> int:
+    """Rebuild the lineage graph from observed spans."""
+    query = select(Trace)
+    if agent_slug:
+        query = query.where(Trace.agent_slug == agent_slug)
+    edges = 0
+    for trace in session.scalars(query):
+        if not trace.agent_slug:
+            continue
+        if trace.model:
+            record_edge(session, "agent", trace.agent_slug, "model", trace.model, "uses_model")
+            edges += 1
+        for span in session.scalars(select(Span).where(Span.trace_id == trace.id)):
+            attrs = span.attributes_json or {}
+            if span.kind == "tool":
+                tool_key = str(attrs.get("gen_ai.tool.name") or span.name)
+                record_edge(session, "agent", trace.agent_slug, "tool", tool_key, "calls_tool")
+                edges += 1
+                server = attrs.get("agentfox.integrations.mcp_server")
+                if server:
+                    record_edge(
+                        session, "tool", tool_key, "mcp_server", str(server), "connects_mcp"
+                    )
+                    edges += 1
+            elif span.kind == "retrieval":
+                source = str(attrs.get("agentfox.data_source") or span.name)
+                record_edge(session, "agent", trace.agent_slug, "data_source", source, "reads_data")
+                edges += 1
+            elif span.kind == "subagent":
+                child = str(attrs.get("agentfox.child_agent") or span.name)
+                record_edge(session, "agent", trace.agent_slug, "agent", child, "delegates_to")
+                edges += 1
+    return edges
+
+
+def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]:
+    """Blast-radius query: what does this agent reach, and what reaches it?"""
+    nodes: dict[str, dict[str, Any]] = {}
+    links: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    queue: deque[tuple[str, int]] = deque([(agent_slug, 0)])
+
+    while queue:
+        current, level = queue.popleft()
+        if current in seen or level > depth:
+            continue
+        seen.add(current)
+
+        for edge in session.scalars(select(LineageEdge).where(LineageEdge.src_id == current)):
+            nodes.setdefault(edge.src_id, {"id": edge.src_id, "type": edge.src_type})
+            nodes.setdefault(edge.dst_id, {"id": edge.dst_id, "type": edge.dst_type})
+            links.append(
+                {
+                    "source": edge.src_id,
+                    "target": edge.dst_id,
+                    "relation": edge.relation,
+                    "observed_count": edge.observed_count,
+                    "declared": edge.declared,
+                }
+            )
+            queue.append((edge.dst_id, level + 1))
+
+        for edge in session.scalars(select(LineageEdge).where(LineageEdge.dst_id == current)):
+            nodes.setdefault(edge.src_id, {"id": edge.src_id, "type": edge.src_type})
+            nodes.setdefault(edge.dst_id, {"id": edge.dst_id, "type": edge.dst_type})
+            links.append(
+                {
+                    "source": edge.src_id,
+                    "target": edge.dst_id,
+                    "relation": edge.relation,
+                    "observed_count": edge.observed_count,
+                    "declared": edge.declared,
+                }
+            )
+
+    unique = {f"{link['source']}|{link['target']}|{link['relation']}": link for link in links}
+    return {
+        "root": agent_slug,
+        "depth": depth,
+        "nodes": list(nodes.values()),
+        "links": list(unique.values()),
+        "blast_radius": max(0, len(nodes) - 1),
+    }
+
+
+def attest_registry(session: Session) -> list[Finding]:
+    """Compare declared configuration against observed behaviour."""
+    findings: list[Finding] = []
+    for agent in session.scalars(select(Agent).where(Agent.registered.is_(True))):
+        observed_models = {
+            t.model
+            for t in session.scalars(select(Trace).where(Trace.agent_slug == agent.slug))
+            if t.model
+        }
+        observed_tools = {
+            e.dst_id
+            for e in session.scalars(
+                select(LineageEdge).where(
+                    LineageEdge.src_id == agent.slug, LineageEdge.relation == "calls_tool"
+                )
+            )
+        }
+        undeclared_models = observed_models - set(agent.declared_models or [])
+        undeclared_tools = observed_tools - set(agent.declared_tools or [])
+        if not undeclared_models and not undeclared_tools:
+            auto_resolve(
+                session,
+                type="registry_drift",
+                subject_type="agent",
+                subject_id=agent.id,
+                note=f"agent '{agent.slug}' now uses only declared models and tools",
+            )
+            continue
+        finding, _ = raise_finding(
+            session,
+            type="registry_drift",
+            severity="medium",
+            title=f"Agent '{agent.slug}' uses models/tools it has not declared",
+            subject_type="agent",
+            subject_id=agent.id,
+            evidence={
+                "undeclared_models": sorted(undeclared_models),
+                "undeclared_tools": sorted(undeclared_tools),
+                "declared_models": agent.declared_models,
+                "declared_tools": agent.declared_tools,
+            },
+            control_keys=["NOM-DSC-01", "NOM-DSC-04"],
+        )
+        findings.append(finding)
+    session.flush()
+    return findings
+
+
+def assess_delegation(session: Session) -> list[Finding]:
+    """Detect agent-to-agent delegation cycles and runaway depth.
+
+    Tool-call loop detection never sees this: A delegating to B delegating back to A
+    is not a repeated tool call — every call is to a different agent — so the loop is
+    only visible in the shape of the delegation graph itself, built here from the
+    "delegates_to" edges derive_lineage already records from subagent spans.
+
+    Only edges traffic has actually used count. A delegation read from code (a scan's
+    declared edge) that has never been taken is a possibility, not a runaway chain, and
+    handoffs that point back at the agent they came from — a triage agent its
+    specialists can return to — are the ordinary shape of a multi-agent system.
+    """
+    from agentfox.platform.registry.attribution import delegation_graph
+
+    edges = [
+        (str(e.src_id), str(e.dst_id))
+        for e in session.scalars(
+            select(LineageEdge).where(
+                LineageEdge.relation == "delegates_to", LineageEdge.observed_count > 0
+            )
+        )
+    ]
+    if not edges:
+        return []
+
+    graph = delegation_graph(edges)
+    findings: list[Finding] = []
+    for cycle in graph.cycles:
+        finding, _ = raise_finding(
+            session,
+            type="delegation_cycle",
+            severity="high",
+            title=f"Circular delegation: {' → '.join(cycle)}",
+            subject_type="agent",
+            subject_id=cycle[0],
+            evidence={"cycle": cycle},
+            control_keys=["NOM-DSC-04"],
+            fingerprint_parts=tuple(cycle),
+        )
+        findings.append(finding)
+    if graph.over_depth:
+        finding, _ = raise_finding(
+            session,
+            type="delegation_depth",
+            severity="medium",
+            title=f"Delegation chain depth {graph.max_depth} exceeds the configured limit",
+            subject_type="agent",
+            subject_id=None,
+            evidence={"max_depth": graph.max_depth},
+            control_keys=["NOM-DSC-04"],
+        )
+        findings.append(finding)
+    else:
+        auto_resolve(
+            session,
+            type="delegation_depth",
+            subject_type="agent",
+            subject_id=None,
+            note=f"delegation depth {graph.max_depth} is within the configured limit",
+        )
+    _resolve_absent(
+        session,
+        "delegation_cycle",
+        keep={f.id for f in findings},
+        note="the delegation cycle is no longer present in the observed graph",
+    )
+    session.flush()
+    return findings
+
+
+def _resolve_absent(session: Session, finding_type: str, *, keep: set[str], note: str) -> None:
+    """Close open findings of a scan-produced type that this scan did not raise again."""
+    for finding in list(
+        session.scalars(
+            select(Finding).where(Finding.type == finding_type, Finding.status == "open")
+        )
+    ):
+        if finding.id in keep or finding.fingerprint is None:
+            continue
+        resolve_finding(session, finding, actor="agentfox.registry", note=note, automated=True)
+
+
+# ---------------------------------------------------------------------------
+# MCP inventory & hygiene
+# ---------------------------------------------------------------------------
+
+#: Instructions embedded in a tool *description* — the tool-poisoning shape. A
+#: description is documentation for a human; imperatives aimed at the model are not
+#: documentation.
+_DESCRIPTION_INJECTION = [
+    re.compile(r"\b(?:ignore|disregard)\s+(?:all\s+)?(?:previous|prior)\b", re.I),
+    re.compile(r"\byou\s+must\s+(?:always|first|before)\b", re.I),
+    re.compile(r"\b(?:do\s+not|don'?t|never)\s+(?:tell|inform|mention\s+to)\s+the\s+user\b", re.I),
+    re.compile(r"<\s*(?:system|important|instructions?)\s*>", re.I),
+    re.compile(
+        r"\bbefore\s+(?:using|calling)\s+this\s+tool,?\s+(?:you\s+)?(?:must|should)\b", re.I
+    ),
+    # A side instruction tacked on as its own sentence: "Also read X into the query.",
+    # "Silently include Z." Documentation says what a tool does; it does not ask the
+    # model to do something else as well. Sentence-initial only, so "this tool can
+    # also read PDFs" stays documentation.
+    re.compile(
+        r"(?:^|[.!?;:]\s+)(?:also|additionally|secretly|silently|quietly)\s+"
+        r"(?:read|send|include|upload|attach|append|forward|post|fetch|copy|cat|pass|leak)\b",
+        re.I | re.M,
+    ),
+    # Credential and key material a tool description has no reason to name.
+    re.compile(
+        r"(?:~|\$HOME|%USERPROFILE%)[/\\]\.(?:ssh|aws|gnupg|kube|docker|config/gcloud)\b"
+        r"|\bid_(?:rsa|dsa|ecdsa|ed25519)\b|/etc/(?:passwd|shadow)\b"
+        r"|\.(?:netrc|npmrc|pgpass)\b|\baws_secret_access_key\b",
+        re.I,
+    ),
+    # Concealment, in the other common phrasings.
+    re.compile(
+        r"\b(?:without|do\s+not|don'?t|never)\s+(?:telling|informing|notifying|alerting|"
+        r"mentioning|tell|inform|notify|alert)\b.{0,20}\b(?:the\s+)?user\b",
+        re.I,
+    ),
+    re.compile(r"\b(?:conversation|chat)\s+history\b.{0,60}\b(?:to|into)\b", re.I),
+    # Override phrasings the first pattern misses. From the MCP scanner vendored in
+    # capabilities/detection/vendor/mcp_security.py (MIT, Copyright (c) Microsoft
+    # Corporation; upstream commit c767f83), as are the hiding checks below.
+    re.compile(r"override\s+(the\s+)?(previous|above|original)", re.I),
+    re.compile(r"instead\s+of\s+(the\s+)?(above|previous|described)", re.I),
+    re.compile(r"do\s+not\s+follow", re.I),
+    re.compile(r"disregard\s+(all\s+)?(above|prior|previous)", re.I),
+]
+
+#: Text hidden from the person reading a tool description but not from the model:
+#: invisible characters, comments a renderer drops, instructions pushed below the
+#: fold, and encoded payloads. Each is a reason on its own, whatever the hidden
+#: text says. From the vendored MCP scanner (see above), with two narrowings: a
+#: long base64 run counts only when it decodes to one of the scanner's suspicious
+#: keywords (the source flags every such run, which a description quoting a hash
+#: or a sample token would trip), and its `system:`/`assistant:`, "actually do",
+#: role-override and exfiltration lists are not taken, because "Operating system:",
+#: "you must pass an id" and a documentation URL are ordinary in a description.
+_HIDING: list[tuple[str, re.Pattern[str]]] = [
+    ("invisible unicode", re.compile(r"[​‌‍﻿‪-‮⁦-⁩­⁠᠎]")),
+    (
+        "hidden comment",
+        re.compile(r"<!--.*?-->|\[//\]:\s*#\s*\(.*?\)|\[comment\]:\s*<>\s*\(.*?\)", re.S),
+    ),
+    ("text after a run of blank lines", re.compile(r"\n{5,}.+", re.S)),
+    ("hex-escaped payload", re.compile(r"(?:\\x[0-9a-fA-F]{2}){4,}")),
+]
+_BASE64_RUN = re.compile(r"[A-Za-z0-9+/]{40,}={0,2}")
+_SUSPICIOUS_DECODED = (
+    "ignore",
+    "override",
+    "system",
+    "password",
+    "secret",
+    "admin",
+    "root",
+    "exec",
+    "eval",
+    "import os",
+    "send",
+    "curl",
+    "fetch",
+)
+
+
+def _schema_strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [s for v in value.values() for s in _schema_strings(v)]
+    if isinstance(value, list):
+        return [s for v in value for s in _schema_strings(v)]
+    return []
+
+
+def _hidden_content(tool: dict[str, Any]) -> list[str]:
+    """What, if anything, a tool's metadata hides from the person reading it."""
+    description = str(tool.get("description", "") or "")
+    texts = [description, *_schema_strings(tool.get("inputSchema", {}))]
+    found: list[str] = []
+    for label, pattern in _HIDING:
+        targets = [description] if label == "text after a run of blank lines" else texts
+        if any(pattern.search(t) for t in targets):
+            found.append(label)
+    for text in texts:
+        for run in _BASE64_RUN.findall(text):
+            try:
+                decoded = base64.b64decode(run + "=" * (-len(run) % 4)).decode(
+                    "utf-8", errors="ignore"
+                )
+            except (ValueError, binascii.Error):
+                continue
+            if any(word in decoded.lower() for word in _SUSPICIOUS_DECODED):
+                found.append("encoded instruction")
+                break
+        if "encoded instruction" in found:
+            break
+    return found
+
+
+def normalise_tool_list(data: Any) -> list[dict[str, Any]]:
+    """The tool list from what an MCP server's ``tools/list`` returned.
+
+    Accepts the bare array, the result object (``{"tools": [...]}``, which is what
+    the protocol actually returns) and the whole JSON-RPC response
+    (``{"result": {"tools": [...]}}``). Raises ``ValueError`` on anything else,
+    naming the shapes it accepts.
+    """
+    if isinstance(data, dict) and isinstance(data.get("result"), dict):
+        data = data["result"]
+    if isinstance(data, dict) and "tools" in data:
+        data = data["tools"]
+    if not isinstance(data, list) or not all(isinstance(t, dict) for t in data):
+        raise ValueError(
+            'expected the tools/list output: a list of tools, {"tools": [...]}, or a '
+            'JSON-RPC response {"result": {"tools": [...]}}'
+        )
+    return data
+
+
+def upsert_mcp_server(
+    session: Session,
+    name: str,
+    *,
+    url: str = "",
+    transport: str | None = None,
+    trust_level: str | None = None,
+    pinned_version: str | None = None,
+) -> McpServer:
+    """Create or update an MCP server. ``None`` for a field keeps what is stored.
+
+    A new server gets ``stdio`` and ``untrusted``. An existing one keeps its transport
+    and trust unless a value is passed: every `McpGovernor` upserts the server it
+    governs, so a default here used to flip a remote server to stdio (the live monitor
+    then stopped fetching it) and reset the trust an operator had given it.
+    """
+    server = _get_or_create(session, McpServer, name=name)
+    server.url = url or server.url
+    server.transport = transport or server.transport or "stdio"
+    server.trust_level = trust_level or server.trust_level or "untrusted"
+    server.pinned_version = pinned_version or server.pinned_version
+    session.flush()
+    return server
+
+
+def scan_mcp_server(
+    session: Session, server: McpServer, tools: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Snapshot an MCP server's tools and check hygiene.
+
+    Two checks, both native: **schema drift** (the tools changed under us since the
+    last snapshot) and **description injection** (instructions hidden in tool
+    metadata). ``mcp-scan`` is invoked as an external tool when present — never
+    linked as a dependency, because it is Snyk-owned and Snyk is building this
+    category.
+    """
+    tools = normalise_tool_list(tools)
+    payload = json.dumps(tools, sort_keys=True, default=str)
+    digest = hashlib.sha256(payload.encode()).hexdigest()
+
+    previous = session.scalars(
+        select(McpToolSnapshot)
+        .where(McpToolSnapshot.mcp_server_id == server.id)
+        .order_by(McpToolSnapshot.captured_at.desc())
+    ).first()
+
+    snapshot = McpToolSnapshot(mcp_server_id=server.id, tools_json=tools, digest=digest)
+    session.add(snapshot)
+    server.last_scanned_at = utcnow()
+
+    issues: list[dict[str, Any]] = []
+
+    if previous is not None and previous.digest != digest:
+        before = {t.get("name"): t for t in (previous.tools_json or [])}
+        after = {t.get("name"): t for t in tools}
+        issues.append(
+            {
+                "type": "schema_drift",
+                "severity": "high",
+                "added": sorted(set(after) - set(before)),
+                "removed": sorted(set(before) - set(after)),
+                "changed": sorted(
+                    n
+                    for n in set(before) & set(after)
+                    if json.dumps(before[n], sort_keys=True) != json.dumps(after[n], sort_keys=True)
+                ),
+            }
+        )
+
+    for tool in tools:
+        text = f"{tool.get('description', '')} {json.dumps(tool.get('inputSchema', {}))}"
+        hits = [p.pattern for p in _DESCRIPTION_INJECTION if p.search(text)]
+        hits += [f"hidden: {label}" for label in _hidden_content(tool)]
+        if hits:
+            issues.append(
+                {
+                    "type": "tool_poisoning",
+                    "severity": "critical",
+                    "tool": tool.get("name"),
+                    "patterns": hits,
+                    "excerpt": str(tool.get("description", ""))[:300],
+                }
+            )
+
+    if not server.pinned_version:
+        issues.append(
+            {
+                "type": "unpinned_server",
+                "severity": "medium",
+                "detail": "server has no pinned version; its tools can change silently",
+            }
+        )
+
+    raised: set[str] = set()
+    for issue in issues:
+        finding, _ = raise_finding(
+            session,
+            type=issue["type"],
+            severity=issue["severity"],
+            title=f"MCP server '{server.name}': {issue['type'].replace('_', ' ')}",
+            subject_type="mcp_server",
+            subject_id=server.id,
+            evidence=issue,
+            control_keys=["NOM-DSC-05"],
+            fingerprint_parts=(issue.get("tool"),),
+        )
+        raised.add(finding.id)
+    # Hygiene issues this scan no longer shows are closed, so the queue reflects the
+    # server as it is now. Schema drift is excluded: it describes a change between two
+    # snapshots, and a later scan with no further change does not undo that change.
+    for finding in list(
+        session.scalars(
+            select(Finding).where(
+                Finding.subject_type == "mcp_server",
+                Finding.subject_id == server.id,
+                Finding.type.in_(("tool_poisoning", "unpinned_server")),
+                Finding.status == "open",
+            )
+        )
+    ):
+        if finding.id not in raised and finding.fingerprint is not None:
+            resolve_finding(
+                session,
+                finding,
+                actor="agentfox.registry",
+                note=f"scan of '{server.name}' no longer shows {finding.type.replace('_', ' ')}",
+                automated=True,
+            )
+    session.flush()
+
+    return {
+        "server": server.name,
+        "digest": digest,
+        "tools": len(tools),
+        "issues": issues,
+        "external_scan": _external_mcp_scan(server),
+    }
+
+
+def _external_mcp_scan(server: McpServer) -> dict[str, Any]:
+    """Invoke `mcp-scan` if the operator installed it. Tool, not dependency."""
+    if not shutil.which("mcp-scan"):
+        return {
+            "ran": False,
+            "reason": "mcp-scan not on PATH (optional external tool; Snyk-owned, "
+            "deliberately not a dependency — Appendix A.3)",
+        }
+    try:  # pragma: no cover - requires the external binary
+        proc = subprocess.run(  # noqa: S603
+            ["mcp-scan", "scan", server.url or server.name, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        return {"ran": True, "returncode": proc.returncode, "output": proc.stdout[-4000:]}
+    except Exception as exc:  # pragma: no cover
+        return {"ran": False, "reason": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Inventory summary
+# ---------------------------------------------------------------------------
+
+
+def overview(session: Session) -> dict[str, Any]:
+    """The workspace at a glance: its agents, their risk tiers, and the open issues.
+
+    The open core's Reports summary; AgentFox Enterprise's board view adds control
+    status and obligations on top of it.
+    """
+    agents = list(session.scalars(select(Agent).where(Agent.status != "retired")))
+    findings = list(session.scalars(select(Finding).where(Finding.status == "open")))
+    by_severity: dict[str, int] = {}
+    by_type: dict[str, int] = {}
+    for finding in findings:
+        by_severity[finding.severity] = by_severity.get(finding.severity, 0) + 1
+        by_type[finding.type] = by_type.get(finding.type, 0) + 1
+    by_class: dict[str, int] = {}
+    for agent in agents:
+        by_class[agent.risk_tier] = by_class.get(agent.risk_tier, 0) + 1
+    return {
+        "inventory": inventory(session),
+        "seed_agents": sum(1 for a in agents if a.is_seed),
+        "agents_by_risk_class": by_class,
+        "high_risk_agents": [a.slug for a in agents if a.risk_tier in ("high", "prohibited")],
+        "open_findings": {
+            "total": len(findings),
+            "by_severity": by_severity,
+            "by_type": by_type,
+            "critical": [
+                {"id": f.id, "title": f.title, "subject": f.subject_id}
+                for f in findings
+                if f.severity == "critical"
+            ][:10],
+        },
+    }
+
+
+def inventory(session: Session) -> dict[str, Any]:
+    agents = list(session.scalars(select(Agent)))
+    by_tier: dict[str, int] = {}
+    by_env: dict[str, int] = {}
+    for agent in agents:
+        by_tier[agent.risk_tier] = by_tier.get(agent.risk_tier, 0) + 1
+        by_env[agent.environment] = by_env.get(agent.environment, 0) + 1
+    return {
+        "agents": len(agents),
+        "registered": sum(1 for a in agents if a.registered),
+        # "draft"/"rejected" are unregistered but were never observed running — see
+        # detect_shadow_agents for why they don't belong in the same count as a
+        # genuine shadow agent (traffic nobody registered first).
+        "shadow": sum(
+            1 for a in agents if not a.registered and a.status not in ("draft", "rejected")
+        ),
+        "unowned": sum(1 for a in agents if not a.is_owned),
+        "by_risk_tier": by_tier,
+        "by_environment": by_env,
+        "frameworks": sorted({a.framework for a in agents if a.framework}),
+        "tools": session.scalar(select(func.count()).select_from(Tool)) or 0,
+        "mcp_servers": session.scalar(select(func.count()).select_from(McpServer)) or 0,
+        "lineage_edges": session.scalar(select(func.count()).select_from(LineageEdge)) or 0,
+    }

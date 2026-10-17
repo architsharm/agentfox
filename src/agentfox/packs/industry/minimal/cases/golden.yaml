@@ -1,0 +1,49 @@
+# Golden events for industry/minimal, run by `agentfox policy packs test industry/minimal`.
+# One case per rule: the risk its rule-table entry raises (or the tool it names)
+# fires it with the effect its source outcome maps to (deny -> block, escalate ->
+# escalate, audit -> allow, recorded). What raises each risk is tested against the
+# source policies' own test inputs in tests/platform/packs/test_translated_packs.py.
+cases:
+- name: industry-minimal.file-deletion-requires-manual-intervention (deny upstream)
+  event:
+    surface: tool_args
+    tool_key: delete_file
+  expect:
+    verdict: block
+    rules:
+    - industry-minimal.file-deletion-requires-manual-intervention
+- name: industry-minimal.database-schema-changes-not-permitted (deny upstream)
+  event:
+    surface: tool_args
+    tool_key: drop_table
+  expect:
+    verdict: block
+    rules:
+    - industry-minimal.database-schema-changes-not-permitted
+- name: industry-minimal.arbitrary-code-execution-blocked (deny upstream)
+  event:
+    surface: tool_args
+    tool_key: execute_code
+  expect:
+    verdict: block
+    rules:
+    - industry-minimal.arbitrary-code-execution-blocked
+- name: industry-minimal.direct-ssh-access-not-permitted (deny upstream)
+  event:
+    surface: tool_args
+    tool_key: ssh_connect
+  expect:
+    verdict: block
+    rules:
+    - industry-minimal.direct-ssh-access-not-permitted
+- name: an ordinary answer passes
+  event:
+    surface: output
+  expect:
+    verdict: allow
+- name: an ordinary tool call passes
+  event:
+    surface: tool_args
+    tool_key: search.docs
+  expect:
+    verdict: allow

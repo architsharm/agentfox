@@ -1,7 +1,7 @@
-"""Scores `src/agentfox/answerability.py` against KUQ (`data/kuq.json`, 4,782
+"""Scores `src/agentfox/capabilities/grounding/answerability.py` against KUQ (`data/kuq.json`, 4,782
 rows, MIT).
 
-    uv run python benchmarks/answerability/run_kuq_benchmark.py
+    uv run python -m benchmarks.answerability.run_kuq_benchmark
 
 `answerability.py` is a **declared-boundary** system, not a generic unanswerable-
 question classifier — `classify_answerability(text, boundary)` only refuses a
@@ -39,8 +39,14 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from agentfox.answerability import AGGREGATE, FACT, PROCEDURE, classify_answerability, question_type
-from agentfox.models import KnowledgeBoundary
+from agentfox.capabilities.grounding.answerability import (
+    AGGREGATE,
+    FACT,
+    PROCEDURE,
+    classify_answerability,
+    question_type,
+)
+from agentfox.core.models import KnowledgeBoundary
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -69,7 +75,11 @@ def main() -> None:
         "controversial": Counter(),
         "known": Counter(),
     }
-    examples: dict[str, list] = {"future_unknown_miss": [], "controversial_miss": [], "known_fp": []}
+    examples: dict[str, list] = {
+        "future_unknown_miss": [],
+        "controversial_miss": [],
+        "known_fp": [],
+    }
 
     for row in rows:
         label = row["label"]
@@ -96,7 +106,12 @@ def main() -> None:
                         {"question": text, "classified_as": qtype, "answerable": verdict.answerable}
                     )
 
-    summary = {"dataset": "KUQ knowns_unknowns.jsonl (MIT)", "rows": len(rows), "boundary_answerable_types": DEFAULT_ANSWERABLE_TYPES, "categories": {}}
+    summary = {
+        "dataset": "KUQ knowns_unknowns.jsonl (MIT)",
+        "rows": len(rows),
+        "boundary_answerable_types": DEFAULT_ANSWERABLE_TYPES,
+        "categories": {},
+    }
 
     for label in ("future_unknown", "controversial"):
         c = per_label[label]
@@ -129,7 +144,9 @@ def main() -> None:
 
     for label, stats in summary["categories"].items():
         if label == "known":
-            print(f"known               support={stats['support']:<6} over_refusal_rate={stats['over_refusal_rate']}")
+            print(
+                f"known               support={stats['support']:<6} over_refusal_rate={stats['over_refusal_rate']}"
+            )
         else:
             print(f"{label:<20}support={stats['support']:<6} recall={stats['recall']}")
 

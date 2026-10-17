@@ -1,5 +1,12 @@
 # Prompt-injection detection: a reproducible benchmark
 
+> **October 2026: the classifier is now part of the default.** `injection.classifier`
+> ships enabled alongside the heuristic, so the shipped default's held-out recall is
+> **68.3%**, not 16.7%; the heuristic-alone figure still applies wherever the model is
+> not installed. Its ensemble backstop is advisory: enforcing policies ignore it. See
+> "Round 8" at the end for the numbers and what still does not work. Sections below
+> that say "shipped default" or "opt-in" describe the stack before this change.
+
 **Headline number: heuristic + classifier + similarity together get held-out recall
 to 66.7% (up from an unmodified regex detector's 0%), at 100% precision throughout.**
 Every number here, good and modest, comes from a script anyone can run themselves.
@@ -20,8 +27,8 @@ anyone deciding whether to trust this — can independently verify the number in
 of taking our word for it.
 
 ```bash
-uv run python benchmarks/run_prompt_injection_benchmark.py
-uv run python benchmarks/run_generalization_benchmark.py
+uv run python -m benchmarks.injection.run_prompt_injection_benchmark
+uv run python -m benchmarks.generalization.run_generalization_benchmark
 ```
 
 The first reproduces the `heuristic` config fully offline; the classifier/similarity
@@ -29,10 +36,10 @@ configs additionally need `pip install agentfox[classifiers]` and one-time model
 downloads (~350MB `leolee99/PIGuard`, ~350MB `protectai/deberta-v3-base-prompt-injection-v2`
 for the round-4 ensemble backstop, ~90MB `sentence-transformers/all-MiniLM-L6-v2`).
 Both scripts detect what's available and skip configs they can't run. The primary
-dataset is committed in this repo (`data/train.json`, `data/test.json` —
-`data/README.md` has source/license); the second script's four independent
+dataset is committed in this repo (`injection/data/train.json`, `injection/data/test.json` —
+`injection/data/README.md` has source/license); the second script's four independent
 datasets (three through round 5, a fourth added in round 6) are under
-`data_generalization/` (`data_generalization/README.md`).
+`generalization/data/` (`generalization/data/README.md`).
 
 ## The question that started this
 
@@ -60,7 +67,7 @@ either cost.
 ## What's being measured
 
 - **Detector, config `heuristic`**: `InjectionHeuristicDetector` alone — regex and
-  structural signals, `src/agentfox/guardrails/detectors/injection.py`. Zero extra
+  structural signals, `src/agentfox/capabilities/detection/detectors/injection.py`. Zero extra
   dependencies, sub-millisecond, and what ships **enabled by default**.
 - **Detector, config `heuristic_classifier`**: the same heuristic plus
   `injection.classifier` — as of round 4, an **ensemble of two models**, not one.
@@ -94,20 +101,27 @@ either cost.
 
 ## Results (primary dataset)
 
+> **Correction, October 2026.** One earlier round (commit `10fc1b90`) wrote patterns
+> after reading this dataset's *held-out* misses, and other patterns copied single
+> training rows. Both were removed, together with similarity-corpus entries written
+> from benchmark misses, and every number below was re-measured. Default heuristic
+> held-out recall is **16.7%** (it had been reported as 26.7%). Train and combined
+> rows include the split the patterns were developed on; quote held_out.
+
 | Config | Split | n | Precision | Recall | F1 | Degraded* |
 |---|---|---|---|---|---|---|
-| `heuristic` | **held_out** | 116 | 100.0% | 26.7% | 0.421 | 0.0% |
-| `heuristic` | train | 546 | 97.1% | 33.5% | 0.498 | 0.0% |
-| `heuristic` | combined | 662 | 97.7% | 31.9% | 0.481 | 0.0% |
-| `heuristic_classifier` | **held_out** | 116 | 100.0% | **66.7%** | 0.800 | 0.0% |
-| `heuristic_classifier` | train | 546 | 97.4% | **90.6%** | 0.939 | 0.9% |
-| `heuristic_classifier` | combined | 662 | 97.8% | **85.2%** | 0.911 | 0.8% |
-| `heuristic_similarity` | **held_out** | 116 | 100.0% | 26.7% | 0.421 | 0.0% |
-| `heuristic_similarity` | train | 546 | 97.2% | 34.0% | 0.504 | 0.0% |
-| `heuristic_similarity` | combined | 662 | 97.7% | 32.3% | 0.486 | 0.0% |
-| `heuristic_classifier_similarity` | **held_out** | 116 | **100.0%** | **66.7%** | **0.800** | 0.0% |
-| `heuristic_classifier_similarity` | train | 546 | 97.4% | **91.1%** | 0.942 | 0.9% |
-| `heuristic_classifier_similarity` | combined | 662 | 97.8% | **85.5%** | 0.913 | 0.9% |
+| `heuristic` | **held_out** | 116 | 100.0% | 16.7% | 0.286 | 0.0% |
+| `heuristic` | train | 546 | 96.4% | 26.1% | 0.411 | 0.0% |
+| `heuristic` | combined | 662 | 96.9% | 23.9% | 0.384 | 0.0% |
+| `heuristic_classifier` | **held_out** | 116 | 100.0% | 68.3% | 0.812 | 0.9% |
+| `heuristic_classifier` | train | 546 | 96.3% | 90.6% | 0.934 | 1.1% |
+| `heuristic_classifier` | combined | 662 | 97.0% | 85.5% | 0.909 | 0.9% |
+| `heuristic_similarity` | **held_out** | 116 | 100.0% | 16.7% | 0.286 | 0.0% |
+| `heuristic_similarity` | train | 546 | 96.4% | 26.6% | 0.417 | 0.0% |
+| `heuristic_similarity` | combined | 662 | 97.0% | 24.3% | 0.389 | 0.0% |
+| `heuristic_classifier_similarity` | **held_out** | 116 | 100.0% | 68.3% | 0.812 | 0.0% |
+| `heuristic_classifier_similarity` | train | 546 | 96.4% | 91.1% | 0.937 | 0.9% |
+| `heuristic_classifier_similarity` | combined | 662 | 97.0% | 85.9% | 0.911 | 0.8% |
 
 \* Fraction of examples where a detector timed out and was scored as "no
 detection" rather than a genuine clean pass — see "A second infrastructure bug"
@@ -140,6 +154,8 @@ for a clean comparison.
 | Heuristic + classifier (round 2, protectai/deberta) | 45.0% (27/60 caught) | 100.0% | 0 |
 | Heuristic + classifier + similarity (round 2) | 48.3% (29/60 caught) | 100.0% | 0 |
 | **Heuristic + classifier + similarity (round 3, PIGuard)** | **66.7% (40/60 caught)** | **100.0%** | **0** |
+| Heuristic, after removing patterns fitted to this split (Oct 2026) | 16.7% (10/60 caught) | 100.0% | 0 |
+| **Heuristic + classifier, after the same removal (Oct 2026)** | **68.3% (41/60 caught)** | **100.0%** | **0** |
 
 Zero false positives held at every step, across three full rounds of extending
 this. Round 3's jump — the largest single-round gain so far — came entirely from
@@ -239,7 +255,7 @@ spirit as `NotInject` — ordinary requests that happen to contain
 injection-sounding vocabulary ("Is it safe to ignore this npm audit warning?")
 — but independently written, not copied from any dataset this project
 benchmarks against (`_meta.purpose` in the corpus file says so explicitly, and
-points at `data_generalization/` by name as the boundary not to cross).
+points at `generalization/data/` by name as the boundary not to cross).
 
 Measured in isolation (`injection.similarity`'s `_detect()` called directly, no
 classifier, no pipeline) to get a clean read on the corpus's effect specifically:
@@ -298,9 +314,9 @@ flags `deepset/prompt-injections` itself as noisy ("use with caution... focuses
 heavily on politically biased speech") — reason enough to check against other
 sources before trusting one number.
 
-`benchmarks/run_generalization_benchmark.py` scores the same shipping code against
+`benchmarks/generalization/run_generalization_benchmark.py` scores the same shipping code against
 four independent, apache-2.0/MIT-licensed public datasets, none of which informed
-either detector (full sourcing in `data_generalization/README.md`):
+either detector (full sourcing in `generalization/data/README.md`):
 
 - **`spml`** — [SPML Chatbot Prompt Injection](https://huggingface.co/datasets/reshabhs/SPML_Chatbot_Prompt_Injection)
   (MIT, arXiv:2402.11755), 500-row stratified sample (250/250). A structurally
@@ -320,7 +336,7 @@ either detector (full sourcing in `data_generalization/README.md`):
   real Discord/Reddit/etc. communities plus a matched 1,405-row sample of
   same-community prompts not flagged as one. The least controlled of the four —
   real organic text, not authored for a benchmark — and, per
-  `data_generalization/README.md`, its negative label means "not flagged by the
+  `generalization/data/README.md`, its negative label means "not flagged by the
   source community," not "verified benign," so treat its precision number as a
   lower bound. It's also, by a wide margin, the longest-prompt dataset here
   (mean 2,156 characters vs. the others' short prompts) — which turned out to
@@ -373,7 +389,7 @@ already-running straggler thread (Python can't pre-empt one — the same reason 
 single slow call can outlive its own timeout; see the pipeline-budget section
 below). Enough concurrent stragglers from `trustairlab`'s longer, slower forward
 passes piled up that every subsequent detector call, on every dataset, kept
-missing its window. Fixed in `run_generalization_benchmark.py` by shutting each
+missing its window. Fixed in `generalization/run_generalization_benchmark.py` by shutting each
 config's pipeline down before starting the next.
 
 That fix stopped the cascade, but a second, narrower effect remained even with a
@@ -459,8 +475,8 @@ to fix this. Tested the same way (isolated, no contention):
 Better on **both** axes at once on the datasets this project weighs most — more
 than double the recall on the primary benchmark, at less than a third the
 false-positive rate on the purpose-built precision stress test. That's the basis
-for the swap (`src/agentfox/guardrails/adapters/classifiers.py`,
-`PromptInjectionClassifierDetector`; `src/agentfox/config.py`,
+for the swap (`src/agentfox/capabilities/detection/adapters/classifiers.py`,
+`PromptInjectionClassifierDetector`; `src/agentfox/core/config.py`,
 `prompt_injection_classifier_model`), alongside the honest generalization-dataset
 cost documented above. PIGuard ships custom modeling code rather than a stock
 transformers architecture, so this is the one detector with `trust_remote_code =
@@ -531,7 +547,7 @@ that trade is worth making depends on what a deployment fears more: a novel
 attack phrasing PIGuard alone would miss, or a support bot that starts treating
 "can I ignore this compiler warning" as an attack four times in ten. The
 secondary backstop is a real, opt-out-able config
-(`prompt_injection_classifier_secondary_model` in `src/agentfox/config.py` — set
+(`prompt_injection_classifier_secondary_model` in `src/agentfox/core/config.py` — set
 to `None`/`""` to run PIGuard alone, reverting to round 3's numbers exactly), not
 a forced default a deployment can't see or change.
 
@@ -589,7 +605,7 @@ would reasonably expect to fire, made invisible by a request-level number nobody
 had reconciled against the per-detector numbers it was supposed to bound.
 
 **Fix**: `enforcement_budget_ms` raised from 100ms to 200ms
-(`src/agentfox/config.py`) — enough margin over the measured worst case while
+(`src/agentfox/core/config.py`) — enough margin over the measured worst case while
 staying under the existing 250ms request-level ceiling (`request_budget_ms`, P3-13,
 unchanged). Re-measuring the full real dataset sequentially after the fix:
 degraded rate on the same run dropped from 100% to 1.96%. The benchmark table above
@@ -597,7 +613,7 @@ reports this fixed state; remaining degradation (1.7–3.3%, concentrated on the
 longest documents) is disclosed rather than hidden, and is a legitimate timeout on
 genuinely long inputs, not the budget-mismatch bug. Regression test:
 `test_detector_own_timeout_ms_is_honored_up_to_the_pipeline_budget` in
-`tests/test_guardrails.py` reproduces the exact mechanism — a detector's own higher
+`tests/capabilities/detection/test_detectors_taint_and_budget.py` reproduces the exact mechanism — a detector's own higher
 `timeout_ms` is honored when the pipeline budget allows it, and is still correctly
 clipped when the pipeline budget is the tighter constraint, so this remains a
 conscious trade-off going forward rather than a silent one.
@@ -633,7 +649,7 @@ with no declared `timeout_ms` (the fast, always-on ones), one for detectors that
 declare their own (`injection.classifier` and `injection.similarity`). Stragglers
 from the heavy pool can now only ever starve each other, never the fast pool.
 Regression test: `test_a_stuck_heavy_detector_cannot_starve_the_fast_pool` in
-`tests/test_guardrails.py`.
+`tests/capabilities/detection/test_detectors_taint_and_budget.py`.
 
 ## Two bugs the classifier's own latency exposed early on, and the fix
 
@@ -659,7 +675,7 @@ cluster into two groups:
 **Genuinely missed attacks**: flattery-then-pivot social engineering ("You've
 outdone yourself! Now, one more thing..."), typo-evasion (see above) — named and
 tracked, not fixed yet. See
-`results/heuristic_classifier_similarity_held_out_predictions.json` for the full
+`injection/results/heuristic_classifier_similarity_held_out_predictions.json` for the full
 list.
 
 **Deliberately out of scope**: a large share of this dataset's positive-labeled
@@ -707,34 +723,34 @@ doesn't get taken at face value just because it's favorable.
 
 ## Files
 
-- `fetch_dataset.py` — how `data/*.json` was obtained (re-runnable).
-- `fetch_trustairlab.py` — how `data_generalization/trustairlab.json` was
+- `injection/fetch_dataset.py` — how `injection/data/*.json` was obtained (re-runnable).
+- `generalization/fetch_trustairlab.py` — how `generalization/data/trustairlab.json` was
   obtained (re-runnable; uses the dataset's HF-hosted parquet export directly,
   not the paginated `/rows` API, which rate-limits well before finishing a
   13,735-row config).
-- `data/README.md` — primary dataset source, license, schema.
-- `data_generalization/README.md` — the four generalization datasets' sources,
+- `injection/data/README.md` — primary dataset source, license, schema.
+- `generalization/data/README.md` — the four generalization datasets' sources,
   licenses, and why each was picked.
-- `run_prompt_injection_benchmark.py` — primary benchmark, all four configs ×
+- `injection/run_prompt_injection_benchmark.py` — primary benchmark, all four configs ×
   three splits, with degradation tracking.
-- `run_generalization_benchmark.py` — generalization benchmark, three configs ×
+- `generalization/run_generalization_benchmark.py` — generalization benchmark, three configs ×
   four datasets, with degradation tracking and a per-config pipeline shutdown
   (round 6 — see "A latency-ceiling finding").
-- `results/prompt_injection_summary.json` — every primary config × split
+- `injection/results/prompt_injection_summary.json` — every primary config × split
   aggregate.
-- `results/prompt_injection_{config}_{split}_predictions.json` — every primary
+- `injection/results/prompt_injection_{config}_{split}_predictions.json` — every primary
   example scored individually, including which detector (if any) degraded on it.
-- `results_generalization/summary.json` — every generalization config × dataset
+- `generalization/results/summary.json` — every generalization config × dataset
   aggregate.
-- `results_generalization/{config}_{dataset}_predictions.json` — every
+- `generalization/results/{config}_{dataset}_predictions.json` — every
   generalization example scored individually.
-- `../src/agentfox/guardrails/data/injection_corpus.json` — the synthetic anchor
+- `../src/agentfox/capabilities/detection/data/injection_corpus.json` — the synthetic anchor
   corpus `injection.similarity` matches against. Growing this file (and
   re-running) is the whole improvement path for that detector — no retraining.
-- `../src/agentfox/guardrails/adapters/classifiers.py` —
+- `../src/agentfox/capabilities/detection/adapters/classifiers.py` —
   `PromptInjectionClassifierDetector`, including the round-4 ensemble backstop
   and the reasoning for its threshold.
-- `../src/agentfox/config.py` — `prompt_injection_classifier_secondary_model`,
+- `../src/agentfox/core/config.py` — `prompt_injection_classifier_secondary_model`,
   the config knob that turns the ensemble backstop off (set to `None`/`""` to
   run PIGuard alone, round 3's exact behavior).
 - `../benchmarks/agent_security/` — the four-tier agent-runtime-security
@@ -781,3 +797,53 @@ fixed detector, same datasets, same script, **at the shipped 40ms per-detector t
    similarity detector times out on 100% of everything. A **cold** process that never calls `warm_all()`
    times out on every call until the model loads — the gateway warms at startup, but an in-process
    `agentfox.auto()` user who enables the classifier does not get that for free.
+
+## Round 8 — the classifier becomes part of the default (2026-10-14)
+
+`injection.classifier` (PIGuard, with the protectai backstop at 0.92) is now in the default
+`enabled_detectors`. Two findings drove it. First, the heuristic alone catches 16.7% of the
+held-out split. Second, published open-source rule sets do not close that gap. Vigil's YARA
+rules, LlamaFirewall's regex scanner and Rebuff's keyword heuristic were each run on the same
+splits, and each caught **0.0%** of the held-out deepset positives. Combined, the three added
+at most 4 points of recall on top of our heuristic on any dataset. Recall on these datasets
+comes from a model, not from more patterns.
+
+**The default stack, measured through `DetectorPipeline()` with no overrides, warmed:**
+
+| Dataset | Heuristic alone (old default) | New default | What an enforcing policy acts on (PIGuard alone) |
+|---|---|---|---|
+| deepset held-out (116) | 16.7% | **68.3%**, 0 FP | 68.3%, 0 FP |
+| spml (500) | 9.6% | **86.4%**, 17 FP / 250 | 29.6%, 0 FP |
+| yanismiraoui (1,034) | 0.6% | **98.4%** | 76.0% |
+| notinject (339 benign) FP | 0 | **139 (41%)** | **39 (11.5%)** |
+
+**The mode split.** The backstop is where the recall on spml and yanismiraoui comes from. It is
+also where nearly all of NotInject's false positives come from. Its hits are therefore marked
+`advisory` (`PolicyInput.for_mode`):
+
+- Observe-mode policies see them, so findings and simulations show the full counterfactual.
+- Enforce-mode policies do not, so a block rests on PIGuard's own verdict, at the 11.5%
+  NotInject rate.
+
+**What making it a default found, and fixed.** The classifier had only ever run when someone
+opted in, so two concurrency bugs had never been hit in the test suite:
+
+- A burst of first requests to a cold detector raced `transformers`' lazy import. Most calls
+  failed with `ImportError: cannot import name 'pipeline'`, and fail-open let them through.
+- Concurrent forward passes on one model segfaulted the process (torch 2.13, macOS arm64).
+
+Model loaders now build once under a lock (`detection/loading.py`). Forward passes on a given
+model run one at a time. A request that waits past its budget is reported as degraded, like any
+other timeout.
+
+**Still true:**
+
+- **Without `agentfox[classifiers]` and the weights**, the heuristic alone runs (16.7%). The
+  published Docker image ships both. A pip install without them now logs a startup warning,
+  and `agentfox doctor` names the fix rather than skipping silently.
+- **Long prompts** (TrustAIRLab, mean 2,156 characters) still time out within the 250 ms
+  classifier budget on nearly every call. There the request falls back to the heuristic.
+  Chunked, quantized inference is the next fix.
+- **One forward pass at a time per model** means concurrent requests queue for the classifier.
+  Under load, some calls degrade rather than wait. Batching or model replicas would lift that
+  ceiling; neither is built yet.

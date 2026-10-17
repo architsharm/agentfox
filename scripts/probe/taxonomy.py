@@ -1,6 +1,6 @@
 """An independent taxonomy of LLM and agentic failure, and what we do about each.
 
-Deliberately *not* derived from `docs/failure-modes.md`. That catalogue and this
+Deliberately *not* derived from `docs/design/failure-modes.md`. That catalogue and this
 codebase co-evolved, so scoring ourselves against it is circular — it would tell us we
 cover what we set out to cover and nothing about what we never thought of. This one is
 built from the architecture instead: take the path a request actually travels, and ask
@@ -35,6 +35,10 @@ class Scenario:
     #: Name of a probe function in `run.py`, when the claim is executable.
     probe: str = ""
     tags: list[str] = field(default_factory=list)
+    #: How the agent came to do the wrong thing. Set from `ORIGIN` below, not
+    #: at the constructor, so the whole classification is reviewable in one
+    #: table instead of scattered across 116 call sites.
+    origin: str = "intrinsic"
 
 
 LAYERS = [
@@ -49,6 +53,102 @@ LAYERS = [
     "L8 operational lifecycle",
     "L9 data governance",
 ]
+
+#: **Why** the agent did the wrong thing, as distinct from **where** it went
+#: wrong. `LAYERS` answers where; a reader who wants to know whether they have
+#: an attacker problem or a permissions problem cannot get it from a layer.
+#:
+#: The first three are Zenity's public framing, which is a better carve-up
+#: than anything we had, and the fourth is ours because theirs does not cover
+#: the whole space: a provider outage and an arithmetic error have no actor at
+#: all, and filing them under any of the first three would be a category
+#: error in the direction of making the product sound more security-shaped
+#: than it is.
+ORIGINS = {
+    "external": (
+        "An adversary put something in the agent's path. Injected text, a "
+        "poisoned document, a tool whose description changed after it was "
+        "approved."
+    ),
+    "internal": (
+        "Nobody attacked it. The agent was doing as it was told, holding "
+        "authority it should not have been given — a grant too broad, a scope "
+        "bound to the wrong value, the wrong environment."
+    ),
+    "autonomous": (
+        "No adversary and no excess grant. The agent hit a problem, "
+        "improvised, and took a route nobody sanctioned. This is the branch "
+        "with no one to blame and the hardest one to police, because every "
+        "individual step looks reasonable."
+    ),
+    "intrinsic": (
+        "No actor at all. The model was wrong, the retrieval was wrong, or "
+        "the platform underneath failed. Not a security failure, and counting "
+        "it as one would overstate what this product is."
+    ),
+}
+
+#: The classification. Anything unlisted is `intrinsic`, which is the right
+#: default: it claims the least.
+#:
+#: Where a scenario could be argued into two boxes it is filed by the thing
+#: that *initiated* it. L4.12 (a destructive shell command) is `autonomous`
+#: even though an injection could also produce one, because the scenario as
+#: written is the agent deciding on its own; the injected version of it is
+#: L1.x. L4.14 (an undeclared MCP tool) is `autonomous` rather than external
+#: for the same reason — the agent reached for something nobody registered.
+ORIGIN: dict[str, str] = {
+    # --- external: something was placed in its path ----------------------
+    "L1.1": "external",
+    "L1.2": "external",
+    "L1.3": "external",
+    "L1.4": "external",
+    "L1.5": "external",
+    "L1.6": "external",
+    "L1.9": "external",
+    "L2.14": "external",
+    "L2.17": "external",
+    "L2.18": "external",
+    "L2.19": "external",
+    "L4.3": "external",
+    "L4.7": "external",
+    "L4.13": "external",
+    "L6.5": "external",
+    "L6.7": "external",
+    "L9.4": "external",
+    # --- internal: it held authority it should not have ------------------
+    "L1.7": "internal",
+    "L1.8": "internal",
+    "L4.4": "internal",
+    "L4.6": "internal",
+    "L4.15": "internal",
+    "L4.16": "internal",
+    "L5.4": "internal",
+    "L6.4": "internal",
+    "L8.7": "internal",
+    "L8.9": "internal",
+    "L9.1": "internal",
+    "L9.2": "internal",
+    "L9.3": "internal",
+    # --- autonomous: it improvised -------------------------------------
+    "L3.1": "autonomous",
+    "L3.2": "autonomous",
+    "L3.3": "autonomous",
+    "L3.5": "autonomous",
+    "L3.6": "autonomous",
+    "L4.1": "autonomous",
+    "L4.2": "autonomous",
+    "L4.5": "autonomous",
+    "L4.9": "autonomous",
+    "L4.10": "autonomous",
+    "L4.11": "autonomous",
+    "L4.12": "autonomous",
+    "L4.14": "autonomous",
+    "L5.8": "autonomous",
+    "L6.6": "autonomous",
+    "L7.3": "autonomous",
+    "L7.4": "autonomous",
+}
 
 SCENARIOS: list[Scenario] = [
     # ---------------------------------------------------------------- L0
@@ -319,7 +419,7 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "Incoherent chunking",
         "A sentence split across chunks destroys the meaning.",
-        control='P14 chunk coherence gate',
+        control="P14 chunk coherence gate",
         expect="covered",
         note=(
             "Boundaries that split a sentence, a code fence, or a heading from its body are "
@@ -333,7 +433,7 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "Tokeniser failure on non-Latin script",
         "[UNK] boundary failures on Cyrillic or Greek.",
-        control='P14 document quality — decoder and tokeniser damage',
+        control="P14 document quality — decoder and tokeniser damage",
         expect="covered",
         note=(
             "U+FFFD, [UNK] markers and latin-1 mojibake are detected at ingestion. Verified not "
@@ -347,9 +447,9 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "Context-window truncation drops the evidence",
         "The citation is silently cut before the model sees it.",
-        control='P14 assembly — required evidence is seated before the ranking',
+        control="P14 assembly — required evidence is seated before the ranking",
         expect="covered",
-        note='A cited chunk that cannot fit the token budget is a block, not a warning.',
+        note="A cited chunk that cannot fit the token budget is a block, not a warning.",
         probe="probe_truncated_evidence",
         tags=["F8"],
     ),
@@ -358,7 +458,7 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "Lost in the middle",
         "Evidence present but positioned where the model ignores it.",
-        control='P14 assembly — salience reordering',
+        control="P14 assembly — salience reordering",
         expect="covered",
         note=(
             "Long contexts are reordered so the strongest passages sit at the edges. This is the "
@@ -373,7 +473,10 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "Memory contamination across sessions",
         "One user's data surfaces in another's conversation via memory.",
-        control='memory_binding_breach() checks subject/principal on caller-supplied entries at call time',
+        control=(
+            "memory_binding_breach() checks subject/principal on caller-supplied entries "
+            "at call time"
+        ),
         expect="partial",
         note=(
             "Cross-tenant memory was already prevented, and within a tenant the boundary is "
@@ -392,7 +495,7 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "Retrieval quality drifts over time",
         "nDCG@10 degrades after an embedding-model change.",
-        control='P14 retrieval metrics against a recorded baseline',
+        control="P14 retrieval metrics against a recorded baseline",
         expect="covered",
         note=(
             "nDCG@k, recall@k and precision@k over a golden set, compared to a baseline. nDCG is "
@@ -406,7 +509,7 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "Corrupt document ingested",
         "A bad PDF extraction becomes authoritative context.",
-        control='P14 document quality gate at ingestion',
+        control="P14 document quality gate at ingestion",
         expect="covered",
         note=(
             "Mojibake, control-character noise, lost word boundaries and empty extractions are "
@@ -430,9 +533,7 @@ SCENARIOS: list[Scenario] = [
         "L3 reasoning and planning",
         "Goal drift over a long run",
         "Ends up solving a different problem than asked.",
-        control=(
-            "P13 goal drift — trajectory measured against the recorded intent"
-        ),
+        control=("P13 goal drift — trajectory measured against the recorded intent"),
         expect="covered",
         note=(
             "Each step of a long run is a reasonable next action given the previous one, so drift "
@@ -458,9 +559,7 @@ SCENARIOS: list[Scenario] = [
         "L3 reasoning and planning",
         "Compounding error across steps",
         "Step 3 is subtly wrong; by step 8 no single step looks wrong.",
-        control=(
-            "P13 failure attribution — data flow, not chronology"
-        ),
+        control=("P13 failure attribution — data flow, not chronology"),
         expect="covered",
         note="P13 failure attribution — the strongest unclaimed capability in the "
         "evidence base, and not started.",
@@ -545,9 +644,7 @@ SCENARIOS: list[Scenario] = [
         "L4 tools and actions",
         "Duplicate execution on retry",
         "A refund issued twice after a timeout.",
-        control=(
-            "F3.7 effect ledger with derived idempotency keys"
-        ),
+        control=("F3.7 effect ledger with derived idempotency keys"),
         expect="covered",
         note=(
             "Volatile transport metadata is excluded from the key, so a retry with a fresh request "
@@ -562,9 +659,7 @@ SCENARIOS: list[Scenario] = [
         "L4 tools and actions",
         "Partial completion with no rollback",
         "Three of five writes succeed, then it fails.",
-        control=(
-            "F3.10 compensation planning"
-        ),
+        control=("F3.10 compensation planning"),
         expect="covered",
         note=(
             "Compensations are produced in reverse order and steps with no way back are named "
@@ -579,9 +674,7 @@ SCENARIOS: list[Scenario] = [
         "L4 tools and actions",
         "Cascading side effects",
         "One delete triggers downstream deletes nobody modelled.",
-        control=(
-            "F3.9 cascade analysis over declared triggers"
-        ),
+        control=("F3.9 cascade analysis over declared triggers"),
         expect="covered",
         note=(
             "Blast radius is statement-local and cannot see that a trigger publishes an event four "
@@ -633,9 +726,7 @@ SCENARIOS: list[Scenario] = [
         "L2 retrieval and context",
         "The authoritative system was not the one consulted",
         "The warehouse extract answers, so the ledger is never called.",
-        control=(
-            "P18 source arbitration over declared authority"
-        ),
+        control=("P18 source arbitration over declared authority"),
         expect="covered",
         note=(
             "Provenance ranks documents after they are fetched. This governs the earlier decision "
@@ -644,16 +735,14 @@ SCENARIOS: list[Scenario] = [
             "system of record was reachable."
         ),
         probe="probe_source_bypassed",
-        tags=['F2'],
+        tags=["F2"],
     ),
     Scenario(
         "L2.16",
         "L2 retrieval and context",
         "Two systems disagree and one is silently picked",
         "The ledger says 4000, the CRM says 4310, the agent answers 4000.",
-        control=(
-            "P18 arbitration — a disagreement produces a confirmation step, not a ranking"
-        ),
+        control=("P18 arbitration — a disagreement produces a confirmation step, not a ranking"),
         expect="covered",
         note=(
             "Every product in this space resolves this by picking the higher tier. Picking is the "
@@ -662,7 +751,7 @@ SCENARIOS: list[Scenario] = [
             "is usually the one who can say which reading is right."
         ),
         probe="probe_source_disagreement",
-        tags=['F2'],
+        tags=["F2"],
     ),
     Scenario(
         "L2.17",
@@ -681,6 +770,44 @@ SCENARIOS: list[Scenario] = [
         ),
         probe="probe_memory_write_governance",
         tags=["F8"],
+    ),
+    Scenario(
+        "L2.18",
+        "L2 retrieval and context",
+        "An instruction hidden in a part of a file nobody reads",
+        "A resume whose document properties tell the screening agent to rank the "
+        "candidate first, or an SVG whose <title> says what the picture does not.",
+        control="Enforcer.guard_file() — layers split visible from hidden, hidden wins",
+        expect="covered",
+        note=(
+            "A document is not a string: it has a body a person proofreads and parts "
+            "nobody opens — docProps, review comments, alt text, XML comments — and the "
+            "model reads all of them. Those layers are checked separately and the hidden "
+            "result takes precedence, so the decision can say which part of the file the "
+            "instruction came from. Office formats and markup need no dependency; they "
+            "are zip-of-XML and XML."
+        ),
+        probe="probe_hidden_file_layer",
+        tags=["a4"],
+    ),
+    Scenario(
+        "L2.19",
+        "L2 retrieval and context",
+        "An instruction in an image, or a scanned PDF",
+        "The same payload as L2.18, rendered as pixels — white-on-white text in a "
+        "scan, or a screenshot a computer-use agent reads.",
+        control="Reported unread; nothing is claimed about it",
+        expect="absent",
+        note=(
+            "Deliberately absent rather than partial. Reading pixels needs OCR, which is "
+            "a model this does not bundle, so `guard_file` records the layer as unread on "
+            "the decision — the same way a timed-out detector is recorded — instead of "
+            "returning no findings for a file nobody looked inside. Knowing it was not "
+            "checked is worth something; a clean result for it would be worth less than "
+            "nothing."
+        ),
+        probe="probe_unreadable_file_layer",
+        tags=["a4"],
     ),
     # ---------------------------------------------------------------- L5
     Scenario(
@@ -751,9 +878,7 @@ SCENARIOS: list[Scenario] = [
         "L5 output and disclosure",
         "Binding commitment made on the company's behalf",
         "'We'll refund you in full and waive next year's fee.'",
-        control=(
-            "F6.1 commitment detection on the output"
-        ),
+        control=("F6.1 commitment detection on the output"),
         expect="covered",
         note=(
             "Promises, granted decisions, undertakings, entitlements and quoted prices are "
@@ -779,9 +904,7 @@ SCENARIOS: list[Scenario] = [
         "L5 output and disclosure",
         "Missing AI disclosure",
         "EU AI Act Art. 50 requires the user to know they are talking to a machine.",
-        control=(
-            "F6.3 AI disclosure obligation"
-        ),
+        control=("F6.3 AI disclosure obligation"),
         expect="covered",
         note=(
             "EU AI Act Article 50 has applied since August 2026. Disclosure is per conversation, "
@@ -796,9 +919,7 @@ SCENARIOS: list[Scenario] = [
         "L5 output and disclosure",
         "Adverse action without a reason",
         "A denial with no explanation (FCRA/ECOA).",
-        control=(
-            "F6.4 adverse action reason check"
-        ),
+        control=("F6.4 adverse action reason check"),
         expect="covered",
         note=(
             "A negative decision with no reason, or with boilerplate that satisfies a field and "
@@ -813,9 +934,7 @@ SCENARIOS: list[Scenario] = [
         "L5 output and disclosure",
         "Discriminatory outcome",
         "Screening that disadvantages a protected group.",
-        control=(
-            "F6.5 fairness probe — four-fifths rule"
-        ),
+        control=("F6.5 fairness probe — four-fifths rule"),
         expect="covered",
         note=(
             "Selection rates by group with the four-fifths ratio and parity difference. Reported "
@@ -886,9 +1005,7 @@ SCENARIOS: list[Scenario] = [
         "L4 tools and actions",
         "A tool reads beyond the caller's rows",
         "SELECT * FROM orders, run by an agent acting for one customer.",
-        control=(
-            "P18 data-access scoping proven against the query"
-        ),
+        control=("P18 data-access scoping proven against the query"),
         expect="covered",
         note=(
             "Capability scoping governs which tools may be called and action analysis governs "
@@ -896,16 +1013,14 @@ SCENARIOS: list[Scenario] = [
             "every per-customer table carries a predicate binding it to the caller."
         ),
         probe="probe_unscoped_read",
-        tags=['F4'],
+        tags=["F4"],
     ),
     Scenario(
         "L4.16",
         "L4 tools and actions",
         "The scope predicate is bound to an id the model chose",
         "WHERE customer_id = 'C-4471', where C-4471 is not the caller.",
-        control=(
-            "P18 data-access scoping — the binding must be to the principal"
-        ),
+        control=("P18 data-access scoping — the binding must be to the principal"),
         expect="covered",
         note=(
             "This passes every 'is the query filtered' test. It is horizontal privilege escalation "
@@ -913,16 +1028,14 @@ SCENARIOS: list[Scenario] = [
             "turn, or an injected instruction."
         ),
         probe="probe_scope_bound_to_literal",
-        tags=['F4'],
+        tags=["F4"],
     ),
     Scenario(
         "L4.17",
         "L4 tools and actions",
         "The result is about a different record than the request",
         "Asked for order A-1182, the tool returned A-1183.",
-        control=(
-            "P18 request/result contract"
-        ),
+        control=("P18 request/result contract"),
         expect="covered",
         note=(
             "Groundedness is measured against the retrieved context, so an answer faithfully "
@@ -930,23 +1043,21 @@ SCENARIOS: list[Scenario] = [
             "because every quality signal says it is fine."
         ),
         probe="probe_subject_mismatch",
-        tags=['F1'],
+        tags=["F1"],
     ),
     Scenario(
         "L4.18",
         "L4 tools and actions",
         "A successful response carrying a failure",
         "HTTP 200 with {'error': 'timeout'}, or an empty set for a question assuming rows.",
-        control=(
-            "P18 request/result contract"
-        ),
+        control=("P18 request/result contract"),
         expect="covered",
         note=(
             "The transport succeeded; the call did not. Agents read the payload, not the status, "
             "and answer from whatever is in it including nothing."
         ),
         probe="probe_silent_tool_failure",
-        tags=['F1'],
+        tags=["F1"],
     ),
     # ---------------------------------------------------------------- L6
     Scenario(
@@ -954,9 +1065,7 @@ SCENARIOS: list[Scenario] = [
         "L6 multi-agent",
         "Context lost across a handoff",
         "Subagent receives a summary missing the constraint.",
-        control=(
-            "P13 handoff fidelity"
-        ),
+        control=("P13 handoff fidelity"),
         expect="covered",
         note="P13-2 handoff fidelity not built. Distinct from P11 human hand-off, which "
         "is covered.",
@@ -968,9 +1077,7 @@ SCENARIOS: list[Scenario] = [
         "L6 multi-agent",
         "Semantic drift across a handoff",
         "'Urgent, under £500' becomes 'process this refund'.",
-        control=(
-            "P13 handoff fidelity — drops and inventions"
-        ),
+        control=("P13 handoff fidelity — drops and inventions"),
         expect="covered",
         note=(
             "A rephrased constraint compares equal, so a reword is not a loss. A limit the parent "
@@ -984,9 +1091,7 @@ SCENARIOS: list[Scenario] = [
         "L6 multi-agent",
         "Blame ambiguity after a multi-agent failure",
         "Nobody can say which agent broke it.",
-        control=(
-            "P13 attribution over the execution trace"
-        ),
+        control=("P13 attribution over the execution trace"),
         expect="covered",
         note=(
             "The trace already recorded the path; attribution names the originating step and "
@@ -1019,9 +1124,7 @@ SCENARIOS: list[Scenario] = [
         "L6 multi-agent",
         "Circular delegation or deadlock",
         "A calls B calls A.",
-        control=(
-            "P13 delegation graph"
-        ),
+        control=("P13 delegation graph"),
         expect="covered",
         note=(
             "Agent-to-agent cycles are invisible to tool-loop detection because every call is to a "
@@ -1055,9 +1158,7 @@ SCENARIOS: list[Scenario] = [
         "L5 output and disclosure",
         "The answer claims more precision or authority than it has",
         "'Take 400mg every six hours.' 'Rates will be 3.25% in 2027.'",
-        control=(
-            "P18 register check — specificity licensed by epistemic standing"
-        ),
+        control=("P18 register check — specificity licensed by epistemic standing"),
         expect="covered",
         note=(
             "Answerability decides whether a question can be answered and stops at the door. This "
@@ -1065,7 +1166,7 @@ SCENARIOS: list[Scenario] = [
             "future that has no system of record. Standing is declared, never inferred."
         ),
         probe="probe_answer_register",
-        tags=['F6'],
+        tags=["F6"],
     ),
     # ---------------------------------------------------------------- L7
     Scenario(
@@ -1228,9 +1329,7 @@ SCENARIOS: list[Scenario] = [
         "L8 operational lifecycle",
         "Rate-limit or quota exhaustion",
         "429s from the provider under load.",
-        control=(
-            "P15-4 admission control that sheds work, never governance"
-        ),
+        control=("P15-4 admission control that sheds work, never governance"),
         expect="covered",
         note=(
             "A limiter in front of the guardrails means overload makes the system stop checking "
@@ -1245,9 +1344,7 @@ SCENARIOS: list[Scenario] = [
         "L8 operational lifecycle",
         "A guardrail is down and nobody can tell",
         "The detector times out; requests keep flowing and the dashboard is green.",
-        control=(
-            "PL-7 declared fail modes — visible, bounded, and impossible for some controls"
-        ),
+        control=("PL-7 declared fail modes — visible, bounded, and impossible for some controls"),
         expect="covered",
         note=(
             "A control failing open silently is indistinguishable from one that is working: the "
@@ -1257,16 +1354,14 @@ SCENARIOS: list[Scenario] = [
             "disclosure cannot be declared open at all."
         ),
         probe="probe_fail_open_bounded",
-        tags=['F3'],
+        tags=["F3"],
     ),
     Scenario(
         "L3.6",
         "L3 reasoning and planning",
         "The run loops without repeating any single tool",
         "A calls B calls A calls B; nothing repeats consecutively.",
-        control=(
-            "PL-4 loop governance over the run rather than the step"
-        ),
+        control=("PL-4 loop governance over the run rather than the step"),
         expect="covered",
         note=(
             "Per-tool counting cannot see an alternating pair, an identical call re-issued, or "
@@ -1274,7 +1369,7 @@ SCENARIOS: list[Scenario] = [
             "range rather than a silent cap."
         ),
         probe="probe_loop_shape",
-        tags=['F5'],
+        tags=["F5"],
     ),
     # ---------------------------------------------------------------- L9
     Scenario(
@@ -1347,9 +1442,7 @@ SCENARIOS: list[Scenario] = [
         "L9 data governance",
         "Operator action goes unrecorded",
         "An admin disables a control and nothing captures it.",
-        control=(
-            "operator actions recorded in the same hash-chained log as the decisions"
-        ),
+        control=("operator actions recorded in the same hash-chained log as the decisions"),
         expect="covered",
         note=(
             "Suppressing a detector, changing a business rule's thresholds or mode, and issuing or "
@@ -1386,3 +1479,24 @@ def _assert_unique_ids() -> None:
 
 
 _assert_unique_ids()
+
+
+def _apply_origins() -> None:
+    """Stamp the origin onto each scenario, and refuse an id that is not one.
+
+    A key in `ORIGIN` that matches no scenario is a classification somebody
+    believes is in effect and is not — the same silent miss this whole
+    taxonomy exists to surface, so it is an error rather than a no-op.
+    """
+    by_id = {s.id: s for s in SCENARIOS}
+    unknown = sorted(set(ORIGIN) - set(by_id))
+    if unknown:
+        raise AssertionError(f"ORIGIN names scenario(s) that do not exist: {unknown}")
+    bad = sorted({v for v in ORIGIN.values() if v not in ORIGINS})
+    if bad:
+        raise AssertionError(f"ORIGIN uses origin(s) that are not defined: {bad}")
+    for scenario_id, origin in ORIGIN.items():
+        by_id[scenario_id].origin = origin
+
+
+_apply_origins()

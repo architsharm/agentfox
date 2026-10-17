@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 /**
  * Custom body rather than the generic Form* helpers: EvalCase.input/expected/context
@@ -21,5 +21,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
     split: "test",
   };
 
-  return proxyCustomBody(req, "POST", `/api/eval/suites/${key}/cases`, `/evals/${key}`, body);
+  return proxyCustomBody(req, "POST", `/api/eval/suites/${key}/cases`, `/app/evals/${key}`, body);
 }

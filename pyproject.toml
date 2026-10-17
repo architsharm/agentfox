@@ -1,10 +1,28 @@
 [project]
 name = "agentfox"
-version = "0.3.0"
+version = "0.4.0"
 description = "Agent-native, vendor-neutral governance, security and compliance control plane for AI agents in production."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+authors = [{ name = "Archit Sharma" }]
+keywords = [
+    "ai-agents", "agent-security", "ai-security", "llm-security", "guardrails",
+    "llm-guardrails", "prompt-injection", "indirect-prompt-injection", "tool-calling",
+    "mcp", "mcp-security", "ai-firewall", "llm-firewall", "claude-code", "langgraph",
+    "langchain", "openai", "anthropic", "owasp", "ai-governance", "audit-trail",
+    "eu-ai-act", "red-teaming",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 
 # Core runtime deps only. Everything that wraps a third-party OSS primitive is an
 # optional extra so that `pip install agentfox` stays offline-capable (X-3 / NFR-9).
@@ -28,6 +46,17 @@ dependencies = [
     "cryptography>=43",
 ]
 
+# Where the project lives. Absent until the repository had a stable public name;
+# without these, `pip show agentfox` and any package index render the project with
+# no link back to its source, which for an Apache-2.0 control plane whose whole
+# argument is "read the code that decides" is the wrong omission to ship.
+[project.urls]
+Homepage = "https://useagentfox.com"
+Documentation = "https://useagentfox.com/docs"
+Source = "https://github.com/architsharm/agentfox"
+Issues = "https://github.com/architsharm/agentfox/issues"
+Changelog = "https://github.com/architsharm/agentfox/releases"
+
 [project.optional-dependencies]
 # --- Wrapped OSS primitives (Appendix A.1). All permissive, all swappable. ---
 pii = ["presidio-analyzer>=2.2", "presidio-anonymizer>=2.2"]
@@ -38,6 +67,10 @@ redteam = ["garak>=0.10", "pyrit>=0.5"]                 # NVIDIA Garak + Microso
 # I-1: the primary adoption path. Optional so `pip install agentfox` stays light —
 # the integration module imports and degrades cleanly without it.
 langgraph = ["langgraph>=0.2.60"]
+# The OpenAI Agents SDK adapter (frameworks/openai_agents.py). Optional for the same
+# reason; kept out of `all` because it pulls in the `openai` client, which changes how
+# `auto()` behaves in an environment that did not ask for it.
+openai-agents = ["openai-agents>=0.3"]
 # P9: sqlglot is MIT, zero-dependency and pure Python, so this extra adds no
 # transitive surface. Kept optional only because action assurance is opt-in; without
 # it, SQL analysis fails closed rather than passing statements through unanalysed.
@@ -57,7 +90,7 @@ otel = [
     "opentelemetry-exporter-otlp-proto-http>=1.27",
 ]
 postgres = ["psycopg[binary]>=3.2"]
-dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.7", "mypy>=1.13"]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "pytest-xdist>=3.6", "ruff>=0.7", "mypy>=1.13", "import-linter>=2.1"]
 
 # Everything permissive, in one shot.
 all = ["agentfox[pii,classifiers,rails,validators,redteam,otel,postgres,langgraph,sql]"]
@@ -66,32 +99,209 @@ all = ["agentfox[pii,classifiers,rails,validators,redteam,otel,postgres,langgrap
 
 # NOT included in `all` on purpose (Appendix A.4): Llama Guard / ShieldGemma carry
 # non-OSI licences. Installing this extra is an explicit act, and the adapters
-# additionally refuse to load unless NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES=1.
+# additionally refuse to load unless AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1.
 restricted-classifiers = ["transformers>=4.44", "torch>=2.4"]
 
 [project.scripts]
-agentfox = "agentfox.cli.main:main"
+agentfox = "agentfox.apps.cli.main:main"
 # Kept so an existing install does not lose its command on upgrade. The docs, the
-# harness and the product's own output all say `agentfox`; this is compatibility,
+# plugins and the product's own output all say `agentfox`; this is compatibility,
 # not a second name we advertise.
-nometria = "agentfox.cli.main:main"
+
+# Coding-agent harnesses (`agentfox.harnesses`). The built-in adapters register here
+# exactly as an external `agentfox-harness-*` package registers its own.
+[project.entry-points."agentfox.harnesses"]
+claude = "agentfox.harnesses.claude_code:ADAPTER"
+codex = "agentfox.harnesses.codex:ADAPTER"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agentfox", "src/nometria"]
+packages = ["src/agentfox"]
+
+# `agentfox admin db upgrade` — which the command's own help calls "how a deployed
+# instance is upgraded" — died with a raw alembic traceback for everyone who
+# installed from PyPI, because the migration scripts live at the repository root
+# and the wheel therefore did not carry them. Same shape as the comment on
+# `compliance_dir`: a repo-relative path resolves fine from a checkout and finds
+# nothing once installed. Copied in under `agentfox/` rather than moved, so the
+# repository layout, alembic.ini and CI keep working unchanged.
+[tool.hatch.build.targets.wheel.force-include]
+"migrations" = "agentfox/_migrations"
+"alembic.ini" = "agentfox/_alembic.ini"
+
+[tool.hatch.build]
+exclude = ["**/__pycache__", "**/*.pyc"]
+
+# The dependency rule (ARCHITECTURE.md "Layers"): a layer imports only layers below
+# it. `lint-imports` checks it in CI's lint job and in `just lint`. An exception is
+# listed here by name, with the reason and what removes it, never added silently.
+[tool.importlinter]
+# `agentfox_ee` (ee/src, AgentFox Enterprise) is analysed too, so the contract below can
+# say the open core never imports it.
+root_packages = ["agentfox", "agentfox_ee"]
+# A type-only import has no runtime edge; `if TYPE_CHECKING:` blocks are excluded.
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Layers: apps > frameworks, exporters, harnesses, hooks, fixtures > runtime > capabilities, packs > platform > core"
+type = "layers"
+layers = [
+    "agentfox.apps",
+    "agentfox.frameworks : agentfox.exporters : agentfox.harnesses : agentfox.hooks : agentfox.fixtures",
+    "agentfox.runtime",
+    # Capability packs sit beside the capabilities: data, plus optional checks that
+    # may import what a capability may import.
+    "agentfox.capabilities | agentfox.packs",
+    "agentfox.platform",
+    "agentfox.core",
+]
+ignore_imports = [
+    # TODO: the in-process red-team runner and the live-probe adapter drive the
+    # Enforcer to measure it. Inject the enforcer (or move these runners above the
+    # runtime) so evaluation no longer imports it.
+    "agentfox.capabilities.evaluation.redteam -> agentfox.runtime.enforcement",
+    "agentfox.capabilities.evaluation.live_probes -> agentfox.runtime.enforcement",
+]
+
+[[tool.importlinter.contracts]]
+name = "core imports nothing in agentfox outside core"
+type = "forbidden"
+source_modules = ["agentfox.core"]
+forbidden_modules = [
+    "agentfox.platform",
+    "agentfox.capabilities",
+    "agentfox.runtime",
+    "agentfox.frameworks",
+    "agentfox.exporters",
+    "agentfox.harnesses",
+    "agentfox.hooks",
+    "agentfox.fixtures",
+    "agentfox.apps",
+    "agentfox.errors",
+    "agentfox.packs",
+]
+
+# A harness adapter is reached through the registry (`agentfox.harnesses.get`, `all`,
+# `known`), never by importing it: that is what lets an external adapter, registered
+# by entry point, be a peer of the built-in ones. Only the registry package itself and
+# the hook transport may name an adapter module.
+[[tool.importlinter.contracts]]
+name = "Only harnesses/ and hooks/ import a specific harness adapter"
+type = "forbidden"
+source_modules = [
+    "agentfox.apps",
+    "agentfox.frameworks",
+    "agentfox.exporters",
+    "agentfox.fixtures",
+    "agentfox.runtime",
+    "agentfox.capabilities",
+    "agentfox.platform",
+    "agentfox.core",
+    "agentfox.errors",
+]
+forbidden_modules = ["agentfox.harnesses.claude_code", "agentfox.harnesses.codex"]
+
+# The Enforcer runs the checks it finds in the registry (`platform/checks.py`); it
+# names the modules that register the built-in ones (`runtime/checks.py`) and never
+# imports them, so a check is added by registering it, not by editing the runtime.
+[[tool.importlinter.contracts]]
+name = "The runtime reaches checks through the registry, not by import"
+type = "forbidden"
+source_modules = ["agentfox.runtime"]
+forbidden_modules = [
+    "agentfox.capabilities.grounding.checks",
+    "agentfox.capabilities.containment.checks",
+    "agentfox.capabilities.detection.checks",
+    "agentfox.capabilities.business.checks",
+]
+
+# The open core never imports AgentFox Enterprise. It finds the package through the
+# `agentfox.extensions` entry point (`core/extensions.py`) and runs without it.
+[[tool.importlinter.contracts]]
+name = "The open core does not import the enterprise package"
+type = "forbidden"
+source_modules = ["agentfox"]
+forbidden_modules = ["agentfox_ee"]
+
+# Validators are reached through their registry (`detection/validators`), never by
+# importing a built-in module, so a validator from an `agentfox.validators` entry
+# point is a peer of the built-in ones and a built-in one can be replaced.
+[[tool.importlinter.contracts]]
+name = "Built-in validators are reached through the registry"
+type = "forbidden"
+source_modules = [
+    "agentfox.apps",
+    "agentfox.frameworks",
+    "agentfox.runtime",
+    "agentfox.platform",
+    "agentfox.core",
+]
+forbidden_modules = ["agentfox.capabilities.detection.validators.builtin"]
+
+# A capability pack is data read by the loader (`platform/packs`), and its optional
+# checks are imported by file path. Nothing imports `agentfox.packs` as a module, so a
+# pack can be added, replaced or disabled without an edit anywhere else.
+[[tool.importlinter.contracts]]
+name = "Nothing imports a capability pack"
+type = "forbidden"
+source_modules = [
+    "agentfox.apps",
+    "agentfox.frameworks",
+    "agentfox.exporters",
+    "agentfox.harnesses",
+    "agentfox.hooks",
+    "agentfox.fixtures",
+    "agentfox.runtime",
+    "agentfox.capabilities",
+    "agentfox.platform",
+    "agentfox.core",
+    "agentfox.errors",
+]
+forbidden_modules = ["agentfox.packs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `tests/harnesses/conformance.py` is the harness conformance suite, named for what it is.
+python_files = ["test_*.py", "conformance.py"]
 asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "enterprise: needs AgentFox Enterprise (ee/); skipped when it is not installed",
+]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Alembic writes these. Reformatting a shipped revision to satisfy a line
+# length is a change to a migration that has already run somewhere, for no
+# benefit — and the generated header is over the limit in every one of them.
+#
+# The vendored third-party modules are kept as upstream wrote them (their header
+# lists the only changes), so a later upstream fix can be diffed in; reformatting
+# them to our style would make every such diff a rewrite.
+extend-exclude = ["migrations/versions", "src/agentfox/capabilities/detection/vendor"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["B008"]  # FastAPI Depends() in defaults is the framework idiom
+
+[tool.ruff.lint.per-file-ignores]
+# The poisoned-skill fixture's `description:` has to stay on one line: that is
+# what makes YAML read `IMPORTANT:` as a nested key and raise, which is the
+# behaviour the test exists to pin. Wrapping it would make the YAML parse and
+# the test would quietly stop testing anything.
+"tests/capabilities/discovery/test_skill_scanning.py" = ["E501"]
+# E501 only, and only here. The long lines in these trees are *data* — attack
+# payloads, model prompts, embedded HTML — where the width carries no
+# maintenance cost and rewrapping risks silently altering a string a benchmark
+# measures or a red-team demo fires. Every other rule still applies, so an
+# unused import or an undefined name in a benchmark still fails CI.
+"benchmarks/**" = ["E501"]
+# Rule tables translated from another project's policies: the long lines are
+# regulation citations and regular expressions copied verbatim, which rewrapping
+# could only alter.
+"src/agentfox/packs/*/*/checks/rules.py" = ["E501"]
+"demo/**" = ["E501"]

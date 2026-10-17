@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
+import { requestOrigin } from "@/lib/product/origin";
 
 const ACTIONS = new Set(["quarantine", "kill", "resume"]);
 const PAST: Record<string, string> = { quarantine: "quarantined", kill: "killed", resume: "resumed" };
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   const form = await req.formData();
   const action = String(form.get("action") || "");
   if (!ACTIONS.has(action)) {
-    const target = new URL(`/agents/${slug}`, req.nextUrl.origin);
+    const target = new URL(`/app/projects/${slug}?view=settings`, requestOrigin(req));
     target.searchParams.set("review_error", "invalid control action");
     return NextResponse.redirect(target);
   }
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     req,
     "POST",
     `/api/agents/${encodeURIComponent(slug)}/${action}`,
-    `/agents/${slug}`,
+    `/app/projects/${slug}?view=settings`,
     { reason },
     { successNotice: `agent ${PAST[action]}` },
   );

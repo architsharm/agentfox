@@ -1,13 +1,13 @@
 """Cross-lingual parity — does the product work as well in German as in English?
 
-    PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
-      python benchmarks/multilingual/run_multilingual_parity.py
+    PYTHONPATH=src AGENTFOX_CONFIG=none \
+      python -m benchmarks.multilingual.run_multilingual_parity
 
 **The criticism this answers.** AI-security products are evaluated in English and
-sold worldwide. `docs/coverage-map.md` row L0.10 says so about this product too:
+sold worldwide. `docs/design/coverage-map.md` row L0.10 says so about this product too:
 non-English answer quality is `✗ absent`.
 
-**The reframe (docs/failure-modes.md F9.3).** "Is this answer good in German" is a
+**The reframe (docs/design/failure-modes.md F9.3).** "Is this answer good in German" is a
 subjective, LLM-judged question, and this codebase avoids those. F9.3 says to ask a
 tractable version instead: *do the same deterministic checks reach the same verdict
 on the same content when the content is localised?* That is a **parity** question. It
@@ -20,11 +20,11 @@ Three sections, in ascending order of how badly the product does:
    over 1,034 known injection phrasings, plus benign pools so that "flag everything
    that isn't English" cannot score as success.
 2. **Deterministic-checker parity** — the F7 integrity checkers in
-   `src/agentfox/integrity.py`, which are the checks that actually run on live output.
+   `src/agentfox/capabilities/grounding/integrity.py`, which are the checks that actually run on live output.
    Matched pairs: identical logical content, one English-formatted, one localised,
    where the checker *must* reach the same verdict. This is the real finding and it is
    not flattering.
-3. **Answerability/abstention parity** — `src/agentfox/answerability.py`, reachable
+3. **Answerability/abstention parity** — `src/agentfox/capabilities/grounding/answerability.py`, reachable
    with no model at all, scored on matched questions across seven languages.
 
 Everything here is deterministic and offline. No network, no model download, no judge.
@@ -42,13 +42,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "agent_security"))
-
 RESULTS_DIR = Path(__file__).parent / "results"
-DATA_DIR = Path(__file__).parent.parent / "data_generalization"
+DATA_DIR = Path(__file__).parent.parent / "generalization" / "data"
 DB_PATH = Path("/tmp/agentfox_multilingual_benchmark.db")
 
-#: The seven languages `data_generalization/README.md` says `yanismiraoui.json`
+#: The seven languages `generalization/data/README.md` says `yanismiraoui.json`
 #: contains. Whether it really contains all seven is measured below, not assumed.
 LANGUAGES = {
     "en": "English",
@@ -65,7 +63,7 @@ LANGUAGES = {
 #
 # `yanismiraoui.json` ships **no language field** — only `text` and `label`. The
 # seven languages are named in the dataset card and in this repo's own
-# `data_generalization/README.md`, but nothing in the file says which row is which,
+# `generalization/data/README.md`, but nothing in the file says which row is which,
 # so a per-language score requires assigning languages ourselves.
 #
 # No language-ID library is installed in this venv (checked: langdetect, langid,
@@ -870,7 +868,7 @@ INTEGRITY_PAIRS_EXTENSION: list[dict[str, Any]] = [
 
 
 def _run_checker(pair: dict[str, Any], side: str) -> list[str]:
-    from agentfox.integrity import (
+    from agentfox.capabilities.grounding.integrity import (
         check_arithmetic,
         detect_date_mismatch,
         detect_entity_confusion,
@@ -988,7 +986,7 @@ def run_integrity_parity(pairs: list[dict[str, Any]] | None = None) -> dict[str,
 # (currency_mismatch, scale_mismatch, quarter/year mismatch), which need an answer
 # that differs from its source. Those arms are covered instead by the English side of
 # every pair in section 2 and by the English assertions in
-# `tests/test_provenance_integrity.py`, both of which must keep their verdicts.
+# `tests/capabilities/grounding/test_provenance_integrity.py`, both of which must keep their verdicts.
 #
 # Corpora are the committed English text already in this repo, biggest first:
 #
@@ -999,7 +997,7 @@ def run_integrity_parity(pairs: list[dict[str, Any]] | None = None) -> dict[str,
 #     and case references. Split into paragraphs, because a paragraph is the size of
 #     an answer.
 #   - `entitlement/data/privacylens.json` — English workplace narratives.
-#   - the three `data_generalization` benign pools, English rows only, language
+#   - the three `generalization/data` benign pools, English rows only, language
 #     assigned by the same scorer section 1 validates.
 # ---------------------------------------------------------------------------
 
@@ -1044,7 +1042,7 @@ def _english_fp_units() -> list[dict[str, Any]]:
 
 def run_english_false_positives() -> dict[str, Any]:
     """Every issue reported here is a false positive by construction."""
-    from agentfox.integrity import assess_integrity
+    from agentfox.capabilities.grounding.integrity import assess_integrity
 
     units = _english_fp_units()
     by_corpus: dict[str, dict[str, Any]] = {}
@@ -1162,8 +1160,8 @@ ANSWERABILITY_CASES: list[dict[str, Any]] = [
 
 
 def run_answerability_parity() -> dict[str, Any]:
-    from agentfox.answerability import classify_answerability, question_type
-    from agentfox.models import KnowledgeBoundary
+    from agentfox.capabilities.grounding.answerability import classify_answerability, question_type
+    from agentfox.core.models import KnowledgeBoundary
 
     # The out-of-the-box boundary `declare_boundary()` falls back to, in enforce mode
     # so that `should_abstain` is actually exercised. Same boundary for every language
@@ -1308,7 +1306,7 @@ def build_corpora() -> dict[str, Any]:
 #:
 #: The first is what actually ships. The second exists because of what the first
 #: measures: this repo's own committed generalization results
-#: (`../results_generalization/summary.json`) put the shipped regex heuristic at
+#: (`../generalization/results/summary.json`) put the shipped regex heuristic at
 #: **0.48% recall** on this dataset and the opt-in ML classifier at **98.55%**. A
 #: per-language parity table computed on a stack that detects essentially nothing in
 #: *any* language, English included, would be a table of zeroes reported as perfect
@@ -1338,7 +1336,7 @@ DETECTION_CONFIGS: list[dict[str, Any]] = [
         #  2. With the timeout raised, the Enforcer's default 8-worker pool
         #     accumulates straggler threads holding model tensors and segfaults part
         #     way through a multi-thousand-row run — the same accumulation
-        #     `../run_generalization_benchmark.py` documents and mitigates with
+        #     `../generalization/run_generalization_benchmark.py` documents and mitigates with
         #     `max_workers=2`.
         #
         # So this config scores `DetectorPipeline` directly with `max_workers=2`,
@@ -1374,28 +1372,27 @@ DETECTION_CONFIGS: list[dict[str, Any]] = [
 
 
 def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
-    from _util import wipe_db
-
-    from agentfox import db
-    from agentfox.config import get_settings, reset_settings_cache
-    from agentfox.enforcement import Enforcer
-    from agentfox.seed import seed
+    from agentfox.core import db
+    from agentfox.core.config import get_settings, reset_settings_cache
+    from agentfox.fixtures.seed import seed
+    from agentfox.runtime.enforcement import Enforcer
+    from benchmarks._common import wipe_db
 
     if config["detectors"] is None:
-        os.environ.pop("NOMETRIA_ENABLED_DETECTORS", None)
+        os.environ.pop("AGENTFOX_ENABLED_DETECTORS", None)
     else:
-        os.environ["NOMETRIA_ENABLED_DETECTORS"] = json.dumps(config["detectors"])
+        os.environ["AGENTFOX_ENABLED_DETECTORS"] = json.dumps(config["detectors"])
     if config["detector_timeout_ms"] is None:
-        os.environ.pop("NOMETRIA_DETECTOR_TIMEOUT_MS", None)
+        os.environ.pop("AGENTFOX_DETECTOR_TIMEOUT_MS", None)
     else:
-        os.environ["NOMETRIA_DETECTOR_TIMEOUT_MS"] = str(config["detector_timeout_ms"])
+        os.environ["AGENTFOX_DETECTOR_TIMEOUT_MS"] = str(config["detector_timeout_ms"])
 
-    # `NOMETRIA_DATABASE_URL` is the setting that actually exists. An earlier version
-    # of this script set `NOMETRIA_DB_PATH`, which is not a setting — Settings is
+    # `AGENTFOX_DATABASE_URL` is the setting that actually exists. An earlier version
+    # of this script set `AGENTFOX_DB_PATH`, which is not a setting — Settings is
     # `extra="ignore"`, so it was accepted silently and every run wrote to the repo's
     # shared `agentfox.db` while `wipe_db` deleted a /tmp file that was never created.
     wipe_db(DB_PATH)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
     reset_settings_cache()
     db.reset_engine()
     assert str(DB_PATH) in get_settings().database_url, "benchmark is not on its own database"
@@ -1460,7 +1457,7 @@ def run_detection_parity(corpora: dict[str, Any], config: dict[str, Any]) -> dic
                         }
                     )
     else:
-        from agentfox.guardrails import (
+        from agentfox.capabilities.detection import (
             DetectionContext,
             DetectorPipeline,
             get_detector,
@@ -1729,9 +1726,7 @@ def main(argv: list[str] | None = None) -> None:
         detection = previous["detection_parity"]
         scorer_validation = previous["language_scorer_validation"]
 
-    integrity = (
-        run_integrity_parity() if "integrity" in sections else previous["integrity_parity"]
-    )
+    integrity = run_integrity_parity() if "integrity" in sections else previous["integrity_parity"]
     integrity_extension = (
         run_integrity_parity(INTEGRITY_PAIRS_EXTENSION)
         if "integrity" in sections
@@ -1764,7 +1759,7 @@ def main(argv: list[str] | None = None) -> None:
             "Enforcer.check_content path over 1,034 known injection phrasings, plus "
             "benign pools so that flagging all non-English text cannot score as "
             "success. (2) Matched localisation pairs through the F7 integrity checkers "
-            "in src/agentfox/integrity.py — identical logical content, one "
+            "in src/agentfox/capabilities/grounding/integrity.py — identical logical content, one "
             "English-formatted and one localised, where the checker must reach the same "
             "verdict. (3) Matched questions in seven languages through the model-free "
             "answerability/abstention path. No LLM judge, no network, no subjective "

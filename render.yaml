@@ -1,0 +1,151 @@
+# One-click self-host: the whole control plane, on your own Render account.
+#
+# This is the blueprint the "Deploy to Render" button uses (docs/product-tour.md), and it has to
+# live at the repository root because that is the only path Render's one-click URL
+# looks at. deploy/render.yaml is a different thing and stays where it is: it
+# deploys ONLY the dashboard, pointed at our hosted API, which is how
+# useagentfox.com itself runs. That one is not a self-host — a button wired to it
+# would hand someone a UI for somebody else's control plane.
+#
+# What this provisions instead is a complete, independent installation:
+#
+#   agentfox-db         Postgres. Your traces, grants, findings and audit chain.
+#   agentfox-gateway    The API and enforcement path (deploy/Dockerfile).
+#   agentfox-dashboard  The UI (deploy/Dockerfile.dashboard), pointed at YOUR gateway.
+#
+# Nothing here talks to us. There is no phone-home, no licence check, and no
+# default egress: AGENTFOX_ALLOW_EGRESS is "false" and the provider is `echo`, so a
+# fresh install runs end to end with no model and no API key. Point it at a model
+# when you want one.
+#
+# Plans: the gateway image installs the classifier extra, so it does not fit
+# Render's free instance type — `starter` is the floor, and that is stated on the
+# button in the README rather than discovered on a failed build. The dashboard and
+# the database are fine on free.
+#
+# After the first deploy:
+#   1. Set the GitHub OAuth app's callback to
+#      https://<your-dashboard-host>/api/auth/github/callback
+#   2. AGENTFOX_AUDIT_SIGNING_KEY is prompted for on the first deploy: paste a
+#      random value (`openssl rand -hex 32`) and keep a copy outside Render. The
+#      chain is only as trustworthy as the key that signs it.
+#   3. No demo data is loaded. Without GitHub, create the first operator from the
+#      gateway's shell (`agentfox admin users create you@example.com --role owner
+#      --token`) and sign in on /login with that token.
+#
+# Settings are AGENTFOX_*. See the audit signing key below for the one that must never
+# be regenerated without rotating (docs/deployment/key-rotation.md).
+#
+# Full runbook, including Fly, Docker Compose and bare metal: deploy/README-dashboard.md
+
+databases:
+  - name: agentfox-db
+    databaseName: agentfox
+    user: agentfox
+    plan: free
+
+services:
+  # --- The control plane ----------------------------------------------------
+  - type: web
+    name: agentfox-gateway
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./deploy/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: AGENTFOX_DATABASE_URL
+        fromDatabase:
+          name: agentfox-db
+          property: connectionString
+      - key: AGENTFOX_ORG_ID
+        value: org_default
+      - key: AGENTFOX_ENVIRONMENT
+        value: production
+      # Zero egress by default, exactly as deploy/docker-compose.yml ships it: a
+      # fresh install must be able to run without sending anything anywhere.
+      - key: AGENTFOX_ALLOW_EGRESS
+        value: "false"
+      - key: AGENTFOX_DEFAULT_PROVIDER
+        value: echo
+      # Enforcement is something an operator turns on deliberately, after
+      # simulating it. Tool containment still ships enforcing; this is the
+      # detector-backed policy default.
+      - key: AGENTFOX_DEFAULT_POLICY_MODE
+        value: observe
+      - key: AGENTFOX_FAIL_MODE
+        value: open
+      - key: AGENTFOX_ENFORCEMENT_BUDGET_MS
+        value: "100"
+      - key: AGENTFOX_DETECTOR_TIMEOUT_MS
+        value: "40"
+      - key: AGENTFOX_POLICY_ENGINE
+        value: native
+      - key: AGENTFOX_EVIDENCE_DIR
+        value: /var/agentfox/evidence
+      # Never seen by us. Losing it does not lose the audit chain, but it does end
+      # the ability to verify entries signed before the change — see Appendix
+      # E.2.2. `sync: false`, not `generateValue`: a generated value would change on a
+      # blueprint sync and silently rotate the key. Prompted for once, on creation. To
+      # change it, keep the old value in AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS and run
+      # `agentfox admin keys rotate` (docs/deployment/key-rotation.md).
+      - key: AGENTFOX_AUDIT_SIGNING_KEY
+        sync: false
+      # Authenticates the dashboard's GitHub sign-in call (/api/auth/github/provision),
+      # which mints an owner token. Generated HERE and copied to the dashboard below,
+      # so the two can never differ. It used to be generated on the dashboard only,
+      # which left this service on the published default: sign-in failed, and anyone
+      # who read the source could mint owner tokens on the gateway directly. The
+      # gateway now refuses to start outside development on the default. A blueprint
+      # sync copies the same value to the dashboard, so the pair stays matched (it is a
+      # shared secret between the two services, not a key anything was signed with).
+      - key: AGENTFOX_SERVICE_AUTH_SECRET
+        generateValue: true
+      # The five zero-dependency defaults. The classifier and safety models the
+      # image can carry are opt-in: they need weights, which is what pushes this
+      # service past the free instance type.
+      - key: AGENTFOX_ENABLED_DETECTORS
+        value: '["injection.heuristic","pii.native","secrets.native","safety.lexicon","schema.json"]'
+
+  # --- The UI ---------------------------------------------------------------
+  - type: web
+    name: agentfox-dashboard
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./deploy/Dockerfile.dashboard
+    dockerContext: ./dashboard
+    # /login is the one page that renders without a session cookie, so it is the
+    # only honest health check: "/" and every other path redirect.
+    healthCheckPath: /login
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      # Next's standalone server binds to $HOSTNAME, and Render sets that to the
+      # pod name — so without this the app listens on a name its own proxy cannot
+      # reach and every request 502s while the logs claim a clean start.
+      - key: HOSTNAME
+        value: 0.0.0.0
+      # Your gateway, not ours.
+      - key: AGENTFOX_API_URL
+        fromService:
+          name: agentfox-gateway
+          type: web
+          property: hostport
+      # Sign-in. From a GitHub OAuth app you create; Render prompts once and
+      # stores them, so nothing is committed here.
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      # The gateway's generated value, never a second one (see the gateway above).
+      - key: AGENTFOX_SERVICE_AUTH_SECRET
+        fromService:
+          name: agentfox-gateway
+          type: web
+          envVarKey: AGENTFOX_SERVICE_AUTH_SECRET

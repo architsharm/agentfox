@@ -1,0 +1,6 @@
+# Cloned by setup.sh at a pinned commit; never vendored here.
+upstream/
+# The local gateway's SQLite database and agentfox.toml.
+.data/
+.venv/
+__pycache__/

@@ -1,21 +1,21 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability (private)
-    url: https://github.com/architsharm/guardrails/security/advisories/new
+    url: https://github.com/architsharm/agentfox/security/advisories/new
     about: >
       Never file a vulnerability as a public issue. This opens a private advisory that
       only the maintainer can see, which is the route SECURITY.md asks for.
   - name: What counts as a vulnerability here
-    url: https://github.com/architsharm/guardrails/blob/main/SECURITY.md
+    url: https://github.com/architsharm/agentfox/blob/main/SECURITY.md
     about: >
       Scope, and the two things this project says in public are not vulnerabilities: a
       detector missing an injection, and an attack that works because the tool
       declarations are wrong. Those are worth reporting, just not as advisories.
   - name: Questions and ideas
-    url: https://github.com/architsharm/guardrails/discussions
+    url: https://github.com/architsharm/agentfox/discussions
     about: >
       How do I do X, is this the right tool for my problem, does this design make sense.
       Discussions rather than issues, so the issue tracker stays a list of things to fix.
   - name: Start here if it is your first hour
-    url: https://github.com/architsharm/guardrails/blob/main/docs/getting-started.md
+    url: https://github.com/architsharm/agentfox/blob/main/docs/getting-started.md
     about: A linear walkthrough that ends with your own agent governed.

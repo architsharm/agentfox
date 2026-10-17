@@ -1,0 +1,16 @@
+# Build artefacts, except the one wheel that has to ship.
+#
+# Same failure as api/vendor/: this directory was `*`, requirements.txt installs
+# `../../vendor/agentfox-0.3.0-py3-none-any.whl` by name, and that file was never in
+# the repository — so every Vercel build of this demo failed on a missing local path
+# while the wheel sat on whichever laptop last ran `uv build`.
+#
+# Negating the one filename means a rebuild shows up in `git status` like any other
+# change. See api/vendor/.gitignore, which carries the same note.
+*
+!.gitignore
+# Any version, not a pinned filename: bumping the version changes the wheel's
+# NAME, so a pinned negation silently stops tracking the new wheel while the
+# old one stays committed — the deploy then keeps installing the previous
+# release with nothing failing anywhere. Found on the 0.3.0 -> 0.3.1 bump.
+!agentfox-*.whl

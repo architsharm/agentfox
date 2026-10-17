@@ -1,11 +1,11 @@
 # Install once with `pre-commit install` (after `pip install pre-commit`, or
-# `uvx pre-commit install`). See README.md's "Quick start (development)" section.
+# `uvx pre-commit install`). See CONTRIBUTING.md, "Vendored wheels".
 repos:
   - repo: local
     hooks:
       - id: rebuild-vendored-wheels
         name: rebuild vendored wheels if src/agentfox changed
-        entry: python3 scripts/rebuild_vendored_wheels.py
+        entry: python3 scripts/check/rebuild_vendored_wheels.py
         language: system
-        files: ^src/agentfox/.*\.py$
+        files: ^(src/agentfox/.*\.py|ee/src/.*\.py|ee/pyproject\.toml)$
         pass_filenames: false

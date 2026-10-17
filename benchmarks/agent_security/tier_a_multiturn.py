@@ -1,6 +1,6 @@
 """Tier A — contextual & multi-turn injection (payload splitting).
 
-    uv run python benchmarks/agent_security/tier_a_multiturn.py
+    uv run python -m benchmarks.agent_security.tier_a_multiturn
 
 The attack shape: an attacker spreads a payload across several separate calls in
 one conversation. Turn 1 and 2 look completely innocent scored alone; only the
@@ -13,7 +13,7 @@ hypothetical one: neither `autoguard.py`'s `_govern` (joins one call's own
 `messages` array, never a previous *separate* call) nor the gateway's
 `preflight` (evaluates each message individually, never joins) re-evaluated
 content against conversation history. `Enforcer.check_conversation_window`
-(`src/agentfox/enforcement.py`) closes it for the `agentfox.auto()` SDK path by
+(`src/agentfox/runtime/enforcement/`) closes it for the `agentfox.auto()` SDK path by
 joining the last N turns' recorded `user_text` (from `ConversationTurn`, the
 table P11 escalation governance already writes) with the new message and running
 the same detector pipeline over the assembled text.
@@ -39,14 +39,13 @@ import json
 import os
 from pathlib import Path
 
-from agentfox import db
-from agentfox.config import get_settings, reset_settings_cache
-from agentfox.enforcement import Enforcer
-from agentfox.models import ConversationTurn
-from agentfox.policy import set_mode
-from agentfox.seed import seed
-
-from _util import wipe_db
+from agentfox.core import db
+from agentfox.core.config import get_settings, reset_settings_cache
+from agentfox.core.models import ConversationTurn
+from agentfox.fixtures.seed import seed
+from agentfox.platform.policy import set_mode
+from agentfox.runtime.enforcement import Enforcer
+from benchmarks._common import wipe_db
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -82,8 +81,8 @@ SCENARIOS = [
 
 
 def score_turn_alone(pipeline_text: str) -> bool:
-    from agentfox.guardrails.detectors.injection import InjectionHeuristicDetector
-    from agentfox.guardrails.base import DetectionContext
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.detectors.injection import InjectionHeuristicDetector
 
     result = InjectionHeuristicDetector().detect(pipeline_text, DetectionContext(surface="input"))
     return bool(result.detections)
@@ -107,7 +106,9 @@ def run_scenario(session, scenario: dict) -> dict:
         session_id=scenario["session_id"],
         new_user_text=scenario["final_turn"],
     )
-    window_flagged = window_result.blocked or window_result.escalated or bool(window_result.entities)
+    window_flagged = (
+        window_result.blocked or window_result.escalated or bool(window_result.entities)
+    )
 
     correct = (
         single_turn_flagged == scenario["expect_single_turn_flagged"]
@@ -127,10 +128,7 @@ def run_scenario(session, scenario: dict) -> dict:
 
 
 def score_llm_guard_per_turn(scenario: dict) -> dict | None:
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).parent))
-    from llm_guard_client import LlmGuardUnavailable, scan
+    from benchmarks.agent_security.llm_guard_client import LlmGuardUnavailable, scan
 
     all_turns = [*scenario["turns"], scenario["final_turn"]]
     try:
@@ -160,9 +158,9 @@ def score_llm_guard_per_turn(scenario: dict) -> dict | None:
 def main() -> None:
     db_path = RESULTS_DIR / "tier_a.db"
     wipe_db(db_path)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{db_path}"
-    os.environ.setdefault("NOMETRIA_AUDIT_SIGNING_KEY", "benchmark-key")
-    os.environ.setdefault("NOMETRIA_ALLOW_EGRESS", "false")
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ.setdefault("AGENTFOX_AUDIT_SIGNING_KEY", "benchmark-key")
+    os.environ.setdefault("AGENTFOX_ALLOW_EGRESS", "false")
     reset_settings_cache()
     get_settings()
     db.init_db()

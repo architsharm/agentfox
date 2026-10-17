@@ -1,6 +1,6 @@
 # F3 — destructive-action & blast-radius analysis, benchmarked
 
-**Sequential dataset-sourcing build-out** (see `docs/dataset-sourcing.md`). Four datasets sourced for F3; three built into real benchmarks scoring real, shipping code in `src/agentfox/guardrails/actions.py`, one (ToolEmu) investigated and found not directly benchmarkable — see Dataset 3 below for why that's a legitimate outcome, not a shortfall.
+**Sequential dataset-sourcing build-out** (see `docs/evaluation/dataset-sourcing.md`). Four datasets sourced for F3; three built into real benchmarks scoring real, shipping code in `src/agentfox/capabilities/detection/actions.py`, one (ToolEmu) investigated and found not directly benchmarkable — see Dataset 3 below for why that's a legitimate outcome, not a shortfall.
 
 1. [`gretelai/synthetic_text_to_sql`](https://huggingface.co/datasets/gretelai/synthetic_text_to_sql) (Apache-2.0) — scores `analyse_sql()` directly.
 2. [AgentDojo](https://github.com/ethz-spylab/agentdojo) (MIT) — scores `analyse_arguments()`, the public dispatcher, against realistic multi-domain tool-call arguments.
@@ -8,8 +8,8 @@
 4. [payload-box/sql-injection-payload-list](https://github.com/payload-box/sql-injection-payload-list) (MIT) — scores `analyse_arguments()`'s generic scope backstop against raw SQLi fragments; recall 36.1% → 89.3%, false-positive rate 17.6% → 0.0% after two rounds of directed fixes.
 
 ```bash
-uv run --with pyarrow python benchmarks/action_safety/fetch_gretel_sql.py
-uv run python benchmarks/action_safety/run_action_safety_benchmark.py
+uv run --with pyarrow python -m benchmarks.action_safety.fetch_gretel_sql
+uv run python -m benchmarks.action_safety.run_action_safety_benchmark
 ```
 
 ## Dataset 1 — gretelai/synthetic_text_to_sql
@@ -36,11 +36,11 @@ Fixed by deriving ground truth from sqlglot's own parse tree (checking the `wher
 
 ### A real product bug, found and fixed
 
-`ALTER TABLE t RENAME COLUMN age TO new_age` — a single-column rename — was not being flagged as destructive at all. sqlglot gives a table-level rename (`RENAME TO`) and a column-level rename (`RENAME COLUMN ... TO ...`) different AST node types — `AlterRename` and `RenameColumn` respectively — and `actions.py`'s destructive-ALTER check only listed `AlterRename`. A column rename is a real, breaking schema change (anything referencing the old column name fails), and the module's own docstring says the target is zero false negatives on destructive operations. Fixed: `RenameColumn` added to `_DESTRUCTIVE_ALTER_ACTIONS`. Confirmed against the existing test suite (`tests/test_action_assurance.py`, 56 tests) with no regressions.
+`ALTER TABLE t RENAME COLUMN age TO new_age` — a single-column rename — was not being flagged as destructive at all. sqlglot gives a table-level rename (`RENAME TO`) and a column-level rename (`RENAME COLUMN ... TO ...`) different AST node types — `AlterRename` and `RenameColumn` respectively — and `actions.py`'s destructive-ALTER check only listed `AlterRename`. A column rename is a real, breaking schema change (anything referencing the old column name fails), and the module's own docstring says the target is zero false negatives on destructive operations. Fixed: `RenameColumn` added to `_DESTRUCTIVE_ALTER_ACTIONS`. Confirmed against the existing test suite (`tests/capabilities/detection/test_action_assurance.py`, 56 tests) with no regressions.
 
 ### Both open findings resolved
 
-**1. Fixed — narrowly, per an explicit filtering decision.** The multi-column `RENAME COLUMN a TO x, b TO y` fallback (sqlglot can't build a structured `Alter` tree for this under `postgres`, so it drops to a generic, unstructured `Command` node that bypassed every check) is now caught: `_is_unparsed_alter_rename()` treats a `Command` node as destructive **only** when its captured leading keyword is `ALTER` **and** its unparsed remainder contains `RENAME COLUMN` — deliberately not a blanket "any Command fallback is fail-closed" rule, which would have also caught the unrelated `CREATE OR REPLACE VIEW` fallback in this same dataset and a non-destructive `ALTER COLUMN ... SET UNIQUE` fallback, neither of which this check has any business flagging. Verified directly against all three cases plus a benign `ADD COLUMN`, all four behaving correctly, before touching the benchmark. No regressions (`tests/test_action_assurance.py`, 56 tests, plus the full 1,131-test suite).
+**1. Fixed — narrowly, per an explicit filtering decision.** The multi-column `RENAME COLUMN a TO x, b TO y` fallback (sqlglot can't build a structured `Alter` tree for this under `postgres`, so it drops to a generic, unstructured `Command` node that bypassed every check) is now caught: `_is_unparsed_alter_rename()` treats a `Command` node as destructive **only** when its captured leading keyword is `ALTER` **and** its unparsed remainder contains `RENAME COLUMN` — deliberately not a blanket "any Command fallback is fail-closed" rule, which would have also caught the unrelated `CREATE OR REPLACE VIEW` fallback in this same dataset and a non-destructive `ALTER COLUMN ... SET UNIQUE` fallback, neither of which this check has any business flagging. Verified directly against all three cases plus a benign `ADD COLUMN`, all four behaving correctly, before touching the benchmark. No regressions (`tests/capabilities/detection/test_action_assurance.py`, 56 tests, plus the full 1,131-test suite).
 
 **2. Kept as-is — confirmed correct, not a bug.** `UPDATE ... FROM ... JOIN ...` with no `WHERE` stays flagged as unbounded even where the `JOIN` condition would, in practice, bound the affected rows. `analyse_sql` has no concept of `FROM`/`JOIN`-based row-scoping; crediting it without also verifying the join condition isn't itself trivially-always-true (the same tautology problem the `WHERE`-clause check already guards against) would trade a real false-negative risk for a precision improvement — the wrong direction for a control whose own stated target is zero false negatives on destructive operations. This is the one cost still visible in `train` (1/1200 `natural_dml` cases, 99.92% accuracy / 97.06% precision there); it didn't recur in the `test` sample, and is disclosed here as an accepted trade-off rather than something left unmeasured.
 
@@ -62,8 +62,8 @@ Scores `analyse_arguments()` (the actual public dispatcher `enforcement.py` call
 ```bash
 uv venv /path/to/scratch/.venv
 uv pip install --python /path/to/scratch/.venv/bin/python agentdojo
-AGENTDOJO_VENV_PYTHON=/path/to/scratch/.venv/bin/python uv run python benchmarks/action_safety/fetch_agentdojo.py
-uv run python benchmarks/action_safety/run_agentdojo_benchmark.py
+AGENTDOJO_VENV_PYTHON=/path/to/scratch/.venv/bin/python uv run python -m benchmarks.action_safety.fetch_agentdojo
+uv run python -m benchmarks.action_safety.run_agentdojo_benchmark
 ```
 
 ### What this is testing, and what it isn't
@@ -79,6 +79,10 @@ This is **not** a precision/recall benchmark against a binary label the way the 
 | `injection` (compromised-agent calls) | 65 | 0.0% |
 | `user` (legitimate calls) | 552 | 0.0% — **after a fix; was 2.9% before it** |
 
+The extraction behind these counts reads every registered version of each AgentDojo task, so a task
+that exists in v1, v1.1 and v1.2 is counted up to three times: the 552 user calls are 339 unique
+ones and the 65 injection calls are 45. The flag rates are unaffected (zero either way).
+
 Zero injection-task calls flagged is expected and correct — none of AgentDojo's realistic attacker-controlled values (IBANs, dates, file paths, Slack channel names) are wildcard-, SQL-injection-, or path-traversal-shaped, so there's nothing for a syntax-level check to catch. That's the F3/F4 boundary working as designed, not a gap in this control.
 
 ### A real, larger false-positive class found — and fixed
@@ -87,7 +91,7 @@ Before the fix: **15.8% of the `workspace` suite's 101 legitimate calls were bei
 
 The behavior this produced wasn't just "false positives" — it was close to arbitrary. sqlglot parses a bare two-word phrase like `"vacation plans"` as a valid `alias` expression (`vacation AS plans`), so short natural-language queries silently passed as "clean," carrying no real signal. Longer or differently-shaped phrases like `"Dinner with Blue Sparrow Tech"` don't fit any SQL grammar and fail to parse, tripping the fail-closed `sql.unparseable` rule — critical, blocked. Whether a benign calendar search got through or got blocked came down to whether it happened to resemble a SQL alias, which has nothing to do with actual risk.
 
-**Fixed:** split `_SQL_KEYS` into unconditional (`sql`, `statement`, `command_text` — nothing legitimate names a field that and puts free text in it) and ambiguous (`query`). A `query`-keyed value is now only routed to `analyse_sql` if it actually starts with a recognized SQL verb (`SELECT`, `INSERT`, `DELETE`, `DROP`, etc.); otherwise it falls through to the same generic scope backstop an unnamed argument gets. Verified against all six of: benign short/long search phrases (both now pass through untouched, instead of one silently passing and the other being blocked), genuine SQL smuggled through a `query` key (`DELETE FROM users`, `DROP TABLE users` — both still caught), and the two unconditional keys (`sql`, `statement` — still fail-closed on garbage). Existing test suite (`tests/test_action_assurance.py`) already only used verb-first SQL under the `query` key in every case, so nothing there needed updating. Full suite (1,131 tests) reconfirmed clean after the change.
+**Fixed:** split `_SQL_KEYS` into unconditional (`sql`, `statement`, `command_text` — nothing legitimate names a field that and puts free text in it) and ambiguous (`query`). A `query`-keyed value is now only routed to `analyse_sql` if it actually starts with a recognized SQL verb (`SELECT`, `INSERT`, `DELETE`, `DROP`, etc.); otherwise it falls through to the same generic scope backstop an unnamed argument gets. Verified against all six of: benign short/long search phrases (both now pass through untouched, instead of one silently passing and the other being blocked), genuine SQL smuggled through a `query` key (`DELETE FROM users`, `DROP TABLE users` — both still caught), and the two unconditional keys (`sql`, `statement` — still fail-closed on garbage). Existing test suite (`tests/capabilities/detection/test_action_assurance.py`) already only used verb-first SQL under the `query` key in every case, so nothing there needed updating. Full suite (1,131 tests) reconfirmed clean after the change.
 
 **After the fix: 0.0% flag rate on `user` calls, all four suites**, `workspace` included — down from 15.8% on that suite alone.
 
@@ -223,7 +227,7 @@ Added to `_SHELL_DESTRUCTIVE`, narrowly scoped the same way the existing entries
 
 Verified against 12 positive cases (all four new shapes, several idiom variants each)
 and 6 negative controls (ordinary kill-by-pid, ordinary group-add, ordinary firewall
-rule-add, ordinary package list/install) — all behaved as intended. `tests/test_action_assurance.py`
+rule-add, ordinary package list/install) — all behaved as intended. `tests/capabilities/detection/test_action_assurance.py`
 (56 tests) and the full suite reconfirmed clean after the change.
 
 The two skipped shapes — executing an untrusted downloaded script (`curl | sh`) and
@@ -246,8 +250,8 @@ surfaced six genuine gaps, four of which are now closed above.
 Scores `analyse_arguments()` (the same public dispatcher Dataset 2 scores — `enforcement.py`'s actual entry point) against [payload-box/sql-injection-payload-list](https://github.com/payload-box/sql-injection-payload-list) (MIT — LICENSE fetched and checked directly by `fetch_payloadbox.py` before use, not assumed).
 
 ```bash
-uv run python benchmarks/action_safety/fetch_payloadbox.py
-uv run python benchmarks/action_safety/run_payloadbox_benchmark.py
+uv run python -m benchmarks.action_safety.fetch_payloadbox
+uv run python -m benchmarks.action_safety.run_payloadbox_benchmark
 ```
 
 ### What this is testing, and what it isn't
@@ -279,7 +283,7 @@ Two rounds of "found it, don't just theorize a fix, build and measure it" — th
 **The other four target categories, each verified independently:**
 - **`AND`-based tautology** — `_SQLI_FRAGMENT_RE`'s OR-tautology alternative now also matches `AND` (`' AND 1=1--`, `' OR TRUE--`).
 - **Blind/time-based injection functions** — new alternative for `SLEEP(`, `BENCHMARK(`, `PG_SLEEP(`, `WAITFOR DELAY` (`' AND (SELECT 1 FROM (SELECT(SLEEP(5)))a)--`, `'); WAITFOR DELAY '0:0:5'--`).
-- **Encoding evasion** — reused `src/agentfox/guardrails/normalize.py` (the same normalization `injection.*` already relies on) rather than writing new decoding logic: every one of `normalize()`'s decoded views is now checked too, which catches percent-encoding (`'OR%0a1=1--` decodes to a real newline, which the tautology regex's `\s` already matches) for free. `/**/`-as-whitespace (`'/**/OR/**/1=1--`) is handled by a small, separate normalization step — replacing block comments with a single space before matching — since that's SQL-specific and out of scope for the general-purpose normalizer.
+- **Encoding evasion** — reused `src/agentfox/capabilities/detection/normalize.py` (the same normalization `injection.*` already relies on) rather than writing new decoding logic: every one of `normalize()`'s decoded views is now checked too, which catches percent-encoding (`'OR%0a1=1--` decodes to a real newline, which the tautology regex's `\s` already matches) for free. `/**/`-as-whitespace (`'/**/OR/**/1=1--`) is handled by a small, separate normalization step — replacing block comments with a single space before matching — since that's SQL-specific and out of scope for the general-purpose normalizer.
 - **Full standalone SQL statement pasted whole** — the highest-value and trickiest fix. A verb-prefix heuristic ("does the value start with SELECT?") was tried first and immediately produced new false positives: "Select all items before checking out" and "Select Comfort Mattress Co." both start with a real SQL verb and neither is SQL. Replaced with a stricter check: does the value actually **parse** via sqlglot into a genuine, structured top-level statement (`Select`, `Insert`, `Update`, `Delete`, `Drop`, `Alter`, `Create`, `Grant`, `Revoke`, `Merge`, `Union`, `With`)? Both English sentences above fail to parse as SQL at all under this check, while `SELECT table_name FROM information_schema.tables;` does. A second false-positive class showed up here too and was caught before shipping: a hyphenated business identifier like `ORD-2026-004471` or `Q3-2025 -- renewal` parses via sqlglot as `Sub` (arithmetic subtraction between a column reference and numeric literals) — a bare expression, not a statement. Fixed by using a *positive* list of genuine statement types rather than a list of trivial types to exclude, since the exclusion approach kept finding new never-considered trivial node types.
 
 **Deliberately not extended: `EXEC`/`ATTACH`/`PRAGMA`-style statements that sqlglot can't structure into a real node.** These fall back to sqlglot's generic `Command` node — the same fallback ordinary English produces (`"Call the office or send an email"` parses as `Command` exactly like `EXEC xp_cmdshell 'whoami'` does). A version of this check that trusted `Command` fallback for a curated verb list was tested and abandoned once `CALL` (a real SQL statement type) and `ATTACH` (`"Attach the file to this email"`) turned out to be ordinary English too — the exact collision class this whole round of fixes exists to avoid. Left as a disclosed, honest gap rather than shipped with a hidden false-positive risk.
@@ -291,7 +295,7 @@ Two rounds of "found it, don't just theorize a fix, build and measure it" — th
 | `malicious` | 122 | recall | 36.1% (44/122) | **89.3% (109/122)** |
 | `benign` | 34 | false-positive rate | 17.6% (6/34) | **0.0% (0/34)** |
 
-Verified against: the full 34-case benign set (0 new false positives), the 3 quoted-speech counter-examples that broke the earlier rejected fix (all clean), and the full 122-case malicious set (recall more than doubled). `tests/test_action_assurance.py` needed one update — `test_non_executable_arguments_are_left_alone` used `"DELETE FROM users"` as its example of an innocuous value, which is now correctly recognized as exactly the executable statement it always was; the test's intent (ordinary values stay unflagged) is preserved with a genuinely non-SQL example, and a new test (`test_a_full_statement_pasted_into_an_ordinary_argument_is_caught`) covers the capability that made the old example wrong. 1,131-test full suite reconfirmed clean.
+Verified against: the full 34-case benign set (0 new false positives), the 3 quoted-speech counter-examples that broke the earlier rejected fix (all clean), and the full 122-case malicious set (recall more than doubled). `tests/capabilities/detection/test_action_assurance.py` needed one update — `test_non_executable_arguments_are_left_alone` used `"DELETE FROM users"` as its example of an innocuous value, which is now correctly recognized as exactly the executable statement it always was; the test's intent (ordinary values stay unflagged) is preserved with a genuinely non-SQL example, and a new test (`test_a_full_statement_pasted_into_an_ordinary_argument_is_caught`) covers the capability that made the old example wrong. 1,131-test full suite reconfirmed clean.
 
 ### Remaining misses (13/122), all understood and bucketed
 

@@ -1,0 +1,25 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+agent_control_specification_version: 0.4.0-alpha.1
+metadata:
+  name: minimal-governance
+  version: "1.0"
+extends: []
+policies:
+  minimal_governance:
+    type: rego
+    bundle: rego
+    query: data.agt.examples.production.minimal.result
+intervention_points:
+  input:
+    policy_target: $.input.body
+    policy:
+      id: minimal_governance
+  output:
+    policy_target: $.output.content
+    policy:
+      id: minimal_governance
+  pre_tool_call:
+    policy_target: $.tool_call.args
+    policy:
+      id: minimal_governance

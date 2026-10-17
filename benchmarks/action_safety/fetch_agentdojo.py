@@ -5,7 +5,7 @@ and writes them to `data/agentdojo_calls.json`.
 
     uv venv /tmp/agentdojo_venv
     uv pip install --python /tmp/agentdojo_venv/bin/python agentdojo
-    AGENTDOJO_VENV_PYTHON=/tmp/agentdojo_venv/bin/python uv run python benchmarks/action_safety/fetch_agentdojo.py
+    AGENTDOJO_VENV_PYTHON=/tmp/agentdojo_venv/bin/python uv run python -m benchmarks.action_safety.fetch_agentdojo
 
 No live LLM call anywhere in this pipeline — `ground_truth()` is a static method on
 each task class that returns the `FunctionCall`(s) a *successful* attack (for

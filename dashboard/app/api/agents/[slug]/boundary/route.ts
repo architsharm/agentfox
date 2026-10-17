@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 /**
  * The knowledge-boundary declaration (PUT /api/answerability/boundary) had no UI at
@@ -33,5 +33,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     mode: (form.get("mode") as string) || "observe",
   };
 
-  return proxyCustomBody(req, "PUT", "/api/answerability/boundary", `/agents/${slug}`, body);
+  return proxyCustomBody(req, "PUT", "/api/answerability/boundary", `/app/projects/${slug}?view=access`, body);
 }

@@ -12,8 +12,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from agentfox.config import get_settings
-from agentfox.models import Base
+from agentfox.core.config import get_settings
+from agentfox.core.models import Base
 
 config = context.config
 if config.config_file_name is not None:

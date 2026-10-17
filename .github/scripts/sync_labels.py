@@ -77,7 +77,9 @@ def main() -> int:
                     method="POST",
                     fields={"name": name, "color": colour, "description": description},
                 )
-        elif current["color"].lower() != colour or (current.get("description") or "") != description:
+        elif (
+            current["color"].lower() != colour or (current.get("description") or "") != description
+        ):
             updated.append(name)
             if not dry_run:
                 # The name goes in the path, so a label whose name changed in the

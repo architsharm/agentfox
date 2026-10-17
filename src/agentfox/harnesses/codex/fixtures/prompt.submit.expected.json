@@ -1,0 +1,149 @@
+{
+  "source": "Built, not captured: no Codex binary has run this hook yet. Field set and types are Codex's generated hook input schema (codex-rs/hooks/schema/generated/user-prompt-submit.command.input.schema.json) at rust-v0.162.0; the prompt text is the operator's turn verbatim. Re-capture from a live session and replace this file.",
+  "event": {
+    "harness": "codex",
+    "event": "UserPromptSubmit",
+    "kind": "prompt.submit",
+    "tool": "",
+    "arguments": {},
+    "canonical_tool": "",
+    "session_id": "019a6c1e-7b2d-7f30-9d41-3c8e5a2b1f07",
+    "cwd": "/Users/x/projects/demo",
+    "permission_mode": "default",
+    "content": "Add a --verbose flag to the CLI and update the tests.",
+    "surface": "input",
+    "checks_content": true
+  },
+  "decisions": [
+    {
+      "decision": {
+        "kind": "allow"
+      },
+      "stdout": "{}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "allow",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny",
+        "reason": "rm -rf is destructive",
+        "rules": [
+          "shell.destructive"
+        ]
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: rm -rf is destructive (shell.destructive)\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny"
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: this turn was refused by policy\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "ask",
+        "reason": "touches production",
+        "rules": [
+          "approval.required"
+        ]
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: touches production (approval.required)\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": "ask"
+    },
+    {
+      "decision": {
+        "kind": "modify",
+        "arguments": {
+          "command": "ls"
+        }
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: this turn was refused by policy\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": "modify"
+    },
+    {
+      "decision": {
+        "kind": "context",
+        "context": "AgentFox: this repository is governed."
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"AgentFox: this repository is governed.\"}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "context",
+      "downgraded_from": null
+    }
+  ],
+  "verdicts": [
+    {
+      "name": "allow",
+      "verdict": {
+        "verdict": "allow"
+      },
+      "stdout": "{}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "deny",
+      "verdict": {
+        "verdict": "block",
+        "reason": "rm -rf is destructive",
+        "rules": [
+          "shell.destructive"
+        ]
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: rm -rf is destructive (shell.destructive)\"}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "deny_bare",
+      "verdict": {
+        "verdict": "block"
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: this turn was refused by policy\"}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "escalate",
+      "verdict": {
+        "verdict": "escalate",
+        "reason": "needs a human",
+        "rules": [
+          "approval.required"
+        ]
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: needs a human (approval.required)\"}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "modify",
+      "verdict": {
+        "verdict": "allow",
+        "rewrittenArguments": {
+          "command": "ls"
+        }
+      },
+      "stdout": "{}",
+      "stderr": "",
+      "exit_code": 0
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# Rules in the policy format (plugins/shared/reference/policy-schema.md). New checks
+# emit risk codes; match them here with `action_risk`, so the schema stays fixed.
+key: __POLICY_KEY__
+name: __TITLE__
+description: >
+  What these rules enforce.
+version: 1
+mode: observe
+default_effect: allow
+scope:
+  agents: ["*"]
+
+rules:
+  - id: __NAME__.example
+    description: An irreversible call whose arguments came from untrusted content.
+    when:
+      tool_impact: [irreversible]
+      taint_exceeds: user
+    effect: escalate
+    severity: high
+    reason: "Irreversible call with untrusted arguments."

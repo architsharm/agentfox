@@ -11,27 +11,27 @@ import type { CSSProperties, ReactNode } from "react";
  * Every string below is real output from this product. The sources, so a later editor
  * can re-check them rather than guess:
  *
- *   - grants, agents, limits ........ src/agentfox/seed.py  (CAPABILITIES, AGENTS)
+ *   - grants, agents, limits ........ src/agentfox/fixtures/seed.py  (CAPABILITIES, AGENTS)
  *   - the refused transfer .......... dashboard/app/page.tsx Proof(), and
  *                                     Playground.tsx TOOL_PRESETS
  *   - capability.denied reason ...... dashboard/app/page.tsx Proof()
- *   - constraint_violated reason .... src/agentfox/identity/service.py
+ *   - constraint_violated reason .... src/agentfox/platform/identity/service.py
  *                                     check_capability() + _describe_violation()
- *   - synthetic rule ids ............ src/agentfox/enforcement.py (~line 650)
- *   - grant record layout ........... src/agentfox/cli/capability_cli.py grant()
- *   - finding types and titles ...... src/agentfox/evaluation/redteam.py,
- *                                     src/agentfox/provenance.py,
- *                                     src/agentfox/escalation.py,
- *                                     src/agentfox/answerability.py
+ *   - synthetic rule ids ............ src/agentfox/runtime/enforcement/ (~line 650)
+ *   - grant record layout ........... src/agentfox/apps/cli/capability_cli.py grant()
+ *   - finding types and titles ...... src/agentfox/capabilities/evaluation/redteam.py,
+ *                                     src/agentfox/capabilities/grounding/provenance.py,
+ *                                     src/agentfox/capabilities/containment/escalation.py,
+ *                                     src/agentfox/capabilities/grounding/answerability.py
  *   - chain wording ................. Playground.tsx audit panel
- *   - chain break reasons ........... src/agentfox/audit/chain.py verify()
+ *   - chain break reasons ........... src/agentfox/platform/ledger/chain.py verify()
  *   - the digests in ChainMock ...... computed with chain.py's own
  *                                     compute_digest / compute_payload_digest over
  *                                     the payload shape enforcement.py writes, so
  *                                     they chain correctly rather than being filler
  *   - observe / enforce verdicts .... Playground.tsx turn rendering + agentReply()
- *   - the scripted reply ............ src/agentfox/providers/echo.py _synthesise()
- *   - injection.direct reason ....... src/agentfox/policies_data/baseline.yaml
+ *   - the scripted reply ............ src/agentfox/platform/providers/echo.py _synthesise()
+ *   - injection.direct reason ....... src/agentfox/packs/baseline/policies/baseline.yaml
  *
  * Only marketing.css classes and its tokens are used. No colour is hardcoded, so
  * light and dark both work without a second palette.
@@ -43,12 +43,12 @@ const PAD: CSSProperties = { padding: 16, display: "grid", gap: 14 };
 
 const BODY: CSSProperties = {
   margin: 0,
-  fontSize: ".9rem",
+  fontSize: "var(--t-small)",
   lineHeight: 1.55,
   color: "var(--mk-muted)",
 };
 
-const TIGHT: CSSProperties = { ...BODY, fontSize: ".82rem", color: "var(--mk-faint)" };
+const TIGHT: CSSProperties = { ...BODY, fontSize: "var(--t-small)", color: "var(--mk-muted)" };
 
 const STRONG: CSSProperties = { ...BODY, color: "var(--mk-text)" };
 
@@ -98,8 +98,7 @@ function Code({ children, style }: { children: ReactNode; style?: CSSProperties 
         color: "var(--mk-text)",
         lineHeight: 1.6,
         overflowWrap: "anywhere",
-        ...style,
-      }}
+        ...style }}
     >
       {children}
     </div>
@@ -114,8 +113,7 @@ function Field({ name, children }: { name: string; children: ReactNode }) {
         display: "grid",
         gridTemplateColumns: "minmax(94px, auto) 1fr",
         gap: "4px 12px",
-        alignItems: "baseline",
-      }}
+        alignItems: "baseline" }}
     >
       <span className="mk-label">{name}</span>
       <span className="mk-mono" style={{ color: "var(--mk-text)", overflowWrap: "anywhere" }}>
@@ -153,8 +151,7 @@ function Verdict({
         borderRadius: `0 var(--mk-r-sm) var(--mk-r-sm) 0`,
         padding: "10px 12px",
         display: "grid",
-        gap: 7,
-      }}
+        gap: 7 }}
     >
       <div className="mk-row" style={{ gap: 8 }}>
         <span className={`mk-chip mk-chip-${tone}`}>{verdict}</span>
@@ -175,7 +172,7 @@ function Verdict({
  * The flagship visual: a tool call refused by the capability check, with the grants
  * that refused it sitting next to it.
  *
- * Verified against src/agentfox/seed.py — CAPABILITIES["support-triage"] holds exactly
+ * Verified against src/agentfox/fixtures/seed.py — CAPABILITIES["support-triage"] holds exactly
  * kb.search, crm.lookup and tickets.*, and payments.transfer belongs to payments-ops.
  * If that seed changes, change this.
  */
@@ -234,14 +231,14 @@ export function GrantMock({ className }: { className?: string }) {
         <span className="mk-label">The grant</span>
         <Code>
           payments.transfer &rarr; payments-ops{" "}
-          <span style={{ color: "var(--mk-faint)" }}>agent:payments-ops</span>
+          <span style={{ color: "var(--mk-muted)" }}>agent:payments-ops</span>
         </Code>
         <div style={{ display: "grid", gap: 6 }}>
           <Field name="actions">*</Field>
           <Field name="limits">amount lt 1000; currency in USD</Field>
           <Field name="provenance">
             user{" "}
-            <span style={{ color: "var(--mk-faint)" }}>
+            <span style={{ color: "var(--mk-muted)" }}>
               arguments the user typed, nothing retrieved
             </span>
           </Field>
@@ -289,7 +286,7 @@ type FindingRow = {
 /**
  * Four findings the product raises against itself and against the agents it watches.
  * Types and titles are the literal ones in the source: `redteam_mutation_class`
- * (evaluation/redteam.py), `fabricated_citation` (enforcement.py, titled with
+ * (capabilities/evaluation/redteam.py), `fabricated_citation` (enforcement.py, titled with
  * provenance.py's own reason), `missed_escalation` (escalation.py) and `over_refusal`
  * (answerability.py). `occurrences` is the recurrence count described in the product
  * glossary: the same problem happening again counts on one row rather than filing a
@@ -338,14 +335,14 @@ export function FindingsMock({ className }: { className?: string }) {
               <span className={`mk-chip mk-chip-${f.severity === "high" ? "stop" : "hold"}`}>
                 {f.severity}
               </span>
-              <span className="mk-mono" style={{ color: "var(--mk-faint)" }}>
+              <span className="mk-mono" style={{ color: "var(--mk-muted)" }}>
                 {f.type}
               </span>
             </div>
-            <p style={{ ...STRONG, fontSize: ".92rem" }}>{f.title}</p>
+            <p style={{ ...STRONG, fontSize: "var(--t-small)" }}>{f.title}</p>
             <div className="mk-row" style={{ gap: 7 }}>
               <span className="mk-chip mk-chip-accent">{f.agent}</span>
-              <span className="mk-mono" style={{ color: "var(--mk-faint)" }}>
+              <span className="mk-mono" style={{ color: "var(--mk-muted)" }}>
                 occurrences {f.occurrences}
               </span>
             </div>
@@ -367,7 +364,7 @@ type ChainRow = {
 };
 
 /*
- * Real digests. Each was produced by src/agentfox/audit/chain.py's own functions
+ * Real digests. Each was produced by src/agentfox/platform/ledger/chain.py's own functions
  *
  *   payload_digest = SHA-256(canonical_json(payload))
  *   digest         = SHA-256(seq | occurred_at | action | payload_digest | prev_digest)
@@ -403,38 +400,38 @@ const CHAIN: ChainRow[] = [
 /** The digest seq 2 recomputes to once its recorded verdict is edited to "allow". */
 const TAMPERED_DIGEST = "958e900804910494";
 
-function ChainEntry({ row, broken }: { row: ChainRow; broken?: boolean }) {
+function ChainEntry({ row, broken, i = 0 }: { row: ChainRow; broken?: boolean; i?: number }) {
   return (
     <div
+      className={broken ? "chain-entry chain-entry-broken" : "chain-entry"}
       style={{
+        animationDelay: `${0.15 + i * 0.35}s`,
         border: "1px solid var(--mk-border)",
         borderRadius: "var(--mk-r-sm)",
         background: "var(--mk-surface-2)",
         padding: "9px 11px",
         display: "grid",
-        gap: 5,
-      }}
+        gap: 5 }}
     >
       <div className="mk-row" style={{ gap: 7 }}>
-        <span className="mk-mono" style={{ color: "var(--mk-faint)" }}>
+        <span className="mk-mono" style={{ color: "var(--mk-muted)" }}>
           seq {row.seq}
         </span>
         <span className="mk-mono" style={{ color: "var(--mk-text)" }}>
           {row.action}
         </span>
-        <span className="mk-mono" style={{ color: "var(--mk-faint)" }}>
+        <span className="mk-mono" style={{ color: "var(--mk-muted)" }}>
           {row.tool}
         </span>
       </div>
-      <div className="mk-mono" style={{ color: "var(--mk-faint)", overflowWrap: "anywhere" }}>
+      <div className="mk-mono" style={{ color: "var(--mk-muted)", overflowWrap: "anywhere" }}>
         prev {row.prev}&hellip;
       </div>
       <div
         className="mk-mono"
         style={{
           color: broken ? "var(--mk-stop)" : "var(--mk-text)",
-          overflowWrap: "anywhere",
-        }}
+          overflowWrap: "anywhere" }}
       >
         hash {row.digest}&hellip;
       </div>
@@ -456,26 +453,16 @@ export function ChainMock({ className }: { className?: string }) {
       </div>
 
       <div style={{ display: "grid", gap: 8 }}>
-        <ChainEntry row={first} />
-        <ChainEntry row={second} />
-        <ChainEntry row={third} />
+        <ChainEntry row={first} i={0} />
+        <ChainEntry row={second} i={1} />
+        <ChainEntry row={third} i={2} />
       </div>
-
-      <p style={BODY}>
-        Every record is hashed together with the hash of the record before it. Editing,
-        deleting or reordering any one of them changes every hash after it, so the
-        tampering shows up without needing a copy of the original.
-      </p>
 
       <Rule />
 
       <div style={{ display: "grid", gap: 8 }}>
-        <span className="mk-label">What a broken link looks like</span>
-        <p style={TIGHT}>
-          Someone edits the record at seq 2 so its verdict reads allow. Nothing else is
-          touched.
-        </p>
-        <ChainEntry row={{ ...second, digest: TAMPERED_DIGEST }} broken />
+        <span className="mk-label">Someone edits seq 2 to read allow</span>
+        <ChainEntry row={{ ...second, digest: TAMPERED_DIGEST }} broken i={0} />
         <Verdict tone="stop" verdict="check failed">
           <p style={STRONG}>seq 2: entry digest does not match its contents</p>
           <p style={STRONG}>
@@ -507,8 +494,7 @@ function ModePanel({
         padding: 12,
         display: "grid",
         gap: 9,
-        alignContent: "start",
-      }}
+        alignContent: "start" }}
     >
       <div className="mk-row" style={{ gap: 8 }}>
         <span className={`mk-chip ${mode === "observe" ? "mk-chip-hold" : "mk-chip-accent"}`}>

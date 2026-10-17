@@ -2,7 +2,7 @@
 verified by fetching it directly, see below) and writes it unmodified to
 `data/synth_dataset_v2.json`.
 
-    uv run python benchmarks/pii/fetch_presidio_research.py
+    uv run python -m benchmarks.pii.fetch_presidio_research
 
 Source: https://github.com/microsoft/presidio-research
 File:   data/synth_dataset_v2.json (1,500 span-labeled synthetic sentences)
@@ -21,8 +21,9 @@ untouched and re-usable for a wider comparison later if needed.
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
+
+from benchmarks._common import fetch
 
 DATA_DIR = Path(__file__).parent / "data"
 URL = (
@@ -32,23 +33,16 @@ URL = (
 LICENSE_URL = "https://raw.githubusercontent.com/microsoft/presidio-research/master/LICENSE"
 
 
-def _fetch(url: str) -> str:
-    result = subprocess.run(
-        ["curl", "-sL", "--fail", url], capture_output=True, text=True, check=True
-    )
-    return result.stdout
-
-
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    license_text = _fetch(LICENSE_URL)
+    license_text = fetch(LICENSE_URL)
     if "MIT License" not in license_text:
         raise SystemExit(
             "presidio-research LICENSE no longer reads as MIT — re-verify before using this data."
         )
 
-    raw = _fetch(URL)
+    raw = fetch(URL)
     rows = json.loads(raw)
     print(f"Fetched {len(rows)} rows from presidio-research/synth_dataset_v2.json")
 

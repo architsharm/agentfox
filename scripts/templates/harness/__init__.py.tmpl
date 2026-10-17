@@ -1,0 +1,12 @@
+"""{{display_name}}, governed through its hooks.
+
+`adapter.py` is the wire contract and the capability rows, and `fixtures/` holds hook
+payloads captured from the real tool. Reach it through the registry
+(`agentfox.harnesses.get("{{name}}")`), not by importing this package.
+"""
+
+from __future__ import annotations
+
+from agentfox.harnesses.{{module}}.adapter import ADAPTER, {{class_name}}
+
+__all__ = ["ADAPTER", "{{class_name}}"]

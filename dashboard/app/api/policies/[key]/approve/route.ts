@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyReviewAction } from "@/lib/proxy";
+import { proxyReviewAction } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 
@@ -8,5 +8,5 @@ export const dynamic = "force-dynamic";
 // lands here is the draft policy's *id*, per the caller in policies/page.tsx.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ key: string }> }) {
   const { key: policyId } = await params;
-  return proxyReviewAction(req, `/api/policies/${policyId}/approve`, "/policies");
+  return proxyReviewAction(req, `/api/policies/${policyId}/approve`, "/app/policies");
 }

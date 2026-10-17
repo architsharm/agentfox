@@ -209,11 +209,11 @@
     "control_false_positives_trajectory": "0/9",
     "trajectory_added_latency_ms": {
       "note": "Per governed turn, over the same 22 conversations, 40 repeats. 'detector_component' is the 6 extra pipeline runs F9.4's sub-threshold component needs; 'scoring' is drift, markers and the slope fit.",
-      "detector_component_mean_ms": 3.423,
-      "scoring_mean_ms": 0.389,
-      "total_mean_ms": 3.812,
-      "total_p95_ms": 7.755,
-      "total_max_ms": 21.66
+      "detector_component_mean_ms": 3.728,
+      "scoring_mean_ms": 0.337,
+      "total_mean_ms": 4.065,
+      "total_p95_ms": 4.991,
+      "total_max_ms": 8.388
     }
   },
   "by_family": {

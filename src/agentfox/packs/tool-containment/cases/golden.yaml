@@ -1,0 +1,47 @@
+# Golden events for tool containment, run by `agentfox policy packs test tool-containment`.
+cases:
+  - name: an irreversible call with a retrieved argument needs a person
+    event:
+      surface: tool_args
+      tool_key: payments.transfer
+      tool_impact: irreversible
+      intent: pay the invoice
+      taint: {max_source: user, arguments: {to: retrieved}}
+    expect: {verdict: escalate, rules: [taint.irreversible_tool]}
+
+  - name: the same call with user-supplied arguments goes through
+    event:
+      surface: tool_args
+      tool_key: payments.transfer
+      tool_impact: irreversible
+      intent: pay the invoice
+      taint: {max_source: user, arguments: {to: user}}
+    expect: {verdict: allow, not_rules: [taint.irreversible_tool]}
+
+  - name: an irreversible call with no stated intent needs a person
+    event: {surface: tool_args, tool_key: email.send, tool_impact: irreversible}
+    expect: {verdict: escalate, rules: [intent.undeclared_irreversible]}
+
+  - name: a call nobody granted is blocked
+    event:
+      surface: tool_args
+      tool_key: billing.export
+      capability: {granted: false}
+    expect: {verdict: block, rules: [capability.denied]}
+
+  - name: a call outside the grant's limits is blocked
+    event:
+      surface: tool_args
+      tool_key: payments.refund
+      tool_impact: high_impact
+      intent: refund a duplicate charge
+      capability: {granted: false, constraint_violations: [{argument: amount, limit: lte 500}]}
+    expect: {verdict: block, rules: [capability.constraint_violated]}
+
+  - name: a runaway loop is stopped
+    event: {surface: tool_args, tool_key: kb.search, budget: {loop_detected: true}}
+    expect: {verdict: block, rules: [loop.runaway]}
+
+  - name: a tool nobody declared is held
+    event: {surface: tool_args, tool_key: tickets.close, tool_known: false}
+    expect: {rules: [tool.not_declared]}

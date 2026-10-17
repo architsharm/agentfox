@@ -1,24 +1,50 @@
-import type { Metadata } from "next";
-import { Albert_Sans } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
+import { Archivo } from "next/font/google";
 
-const albertSans = Albert_Sans({ subsets: ["latin"], variable: "--font-sans" });
-import { cookies, headers } from "next/headers";
-import { SESSION_COOKIE, safeApi } from "@/lib/api";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Wordmark } from "@/components/Logo";
-import { AccountMenu } from "@/components/AccountMenu";
-import { NotificationsBell } from "@/components/NotificationsBell";
-import { CommandSearch } from "@/components/CommandSearch";
-import { SideNav, type NavItem } from "@/components/SideNav";
-import { TopbarStats } from "@/components/TopbarStats";
 import { SITE_NAME, SITE_URL, SITE_DESCRIPTION, HOME_TITLE, REPO_URL } from "@/lib/site";
+
+/**
+ * The display face.
+ *
+ * Until now `--mk-display` was aliased to Geist — the body font, and Vercel's
+ * developer-tooling face. One family for everything is why this site read as a
+ * repository with a stylesheet rather than as a product: there was no
+ * typographic voice, only sizes.
+ *
+ * Archivo is a grotesk with an industrial cast and, unusually, a real width
+ * axis, so headlines can sit slightly expanded without a second file. That is
+ * the choice — sturdy and instrument-like, which is what the subject is —
+ * and it is deliberately none of the faces this kind of page defaults to.
+ *
+ * Headings only. Geist keeps the body, where its shorter ascenders and plain
+ * figures are better at small sizes and in tables.
+ */
+const archivo = Archivo({
+  subsets: ["latin"],
+  axes: ["wdth"],
+  display: "swap",
+  variable: "--font-archivo",
+});
 import "./globals.css";
+import "./theme.css";
 import "./marketing.css";
 
-// Runs before paint so a stored theme choice never flashes the wrong colors on load.
-const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("agentfox-theme");if(t&&t!=="system")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
+/**
+ * Runs before paint so a stored theme choice never flashes the wrong colours.
+ *
+ * It only ever *departs* from light, which is rendered on <html> by the server.
+ * Light being the default is the point: leaving the decision to the OS means a
+ * visitor on a dark Mac meets a dark product on their first visit, having just come
+ * from a marketing site that is designed light. "System" is still one of the three
+ * choices in the sidebar; it is simply no longer the one nobody picked.
+ *
+ * The `catch` matters and is deliberately empty: localStorage throws outright in
+ * some privacy modes, and the right outcome there is the light default already in
+ * the markup.
+ */
+const THEME_INIT_SCRIPT = `(function(){try{var r=document.documentElement,t=localStorage.getItem("agentfox-theme");if(t==="system")r.removeAttribute("data-theme");else if(t==="dark")r.setAttribute("data-theme","dark");}catch(e){}})();`;
 
 /**
  * Root metadata. Everything here is inherited by every route, so it holds only
@@ -37,6 +63,21 @@ const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("agentfox-
  * product is genuinely described by, because a longer list is not a ranking signal
  * and reads as stuffing to a human who views source.
  */
+/**
+ * Tints the browser chrome on mobile to the page's own ground, so the status bar
+ * stops sitting in a different colour from the app underneath it. Two entries
+ * rather than one: a single value would be wrong in whichever theme it is not.
+ *
+ * These are `--bg` in each theme, by hand. A media-query meta tag cannot read a
+ * custom property, so if the ramp in globals.css moves, these move with it.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfbfd" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -107,155 +148,49 @@ export const metadata: Metadata = {
  * governance, not a separate top-level stage, and a group with a single row
  * was just an extra click for no organizing benefit.
  *
- * Guardrail tuning and Escalation get their own (indented, `sub: true`) rows
- * rather than living only as tabs a user has to already know to click into —
- * both are substantial pages in their own right (per-detector precision/
- * latency/suppressions data; the missed-escalation and hand-off queue) that
- * were previously reachable only after landing on Policies/Approvals first.
+ * Guardrail tuning and Escalation are NOT rows. They are tabs on Policies and on
+ * Approvals, and they were also listed here as indented children of those two
+ * rows — the same destination in the sidebar twice, drawn in a weaker style the
+ * second time. A sidebar row and a tab on the page it opens are two controls for
+ * one thing, and the reader has to work out that they agree. They are in
+ * NAV_SEARCH_ONLY below instead, so typing the name still finds them.
  */
-const NAV: { group: string; items: NavItem[] }[] = [
-  {
-    group: "",
-    items: [
-      ["Overview", "/"],
-      ["Start here", "/start"],
-    ],
-  },
-  {
-    group: "Discover",
-    items: [
-      ["Agents", "/agents"],
-      ["Verified sources", "/sources"],
-    ],
-  },
-  {
-    group: "Monitor",
-    items: [
-      ["Findings", "/findings"],
-      ["Traces", "/traces"],
-    ],
-  },
-  {
-    group: "Test",
-    items: [
-      ["Evaluation", "/evals"],
-    ],
-  },
-  {
-    group: "Govern",
-    items: [
-      ["Policies", "/policies"],
-      ["Guardrail tuning", "/policies?tab=guardrails", true],
-      ["Access Control", "/entitlement"],
-      ["Approvals", "/approvals"],
-      ["Escalation", "/approvals?tab=escalation", true],
-      ["Compliance", "/compliance"],
-    ],
-  },
-];
-
-/**
- * Destinations that used to be their own sidebar item before the nav was
- * consolidated into tabs — findable by name in search even though the
- * sidebar itself only shows the parent page. Losing a sidebar item is not
- * the same as losing the ability to find the thing by typing its name.
- */
-const NAV_SEARCH_ONLY: { label: string; href: string; group: string }[] = [
-  { label: "Connect GitHub", href: "/start?tab=connect", group: "Start here" },
-  { label: "Connect a hosted API", href: "/start?tab=connect", group: "Start here" },
-  { label: "API tokens", href: "/start?tab=tokens", group: "Start here" },
-  { label: "Board view", href: "/compliance?tab=board", group: "Compliance" },
-  { label: "Glossary", href: "/glossary", group: "Reference" },
-];
-
-const NAV_FLAT = NAV.flatMap(({ group, items }) =>
-  items.map(([label, href]) => ({ label, href, group: group || "Home" })),
-).concat(NAV_SEARCH_ONLY);
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const signedIn = Boolean((await cookies()).get(SESSION_COOKIE)?.value);
-  // Set by middleware.ts. Falls back to showing the chrome — an unset header means
-  // middleware didn't run (e.g. some dev edge cases), and hiding the whole app by
-  // default on an edge case is the wrong failure direction.
-  const pathname = (await headers()).get("x-pathname") || "";
-  const isLoginPage = pathname === "/login";
-  // The public playground (/playground) is unauthenticated by design (see
-  // middleware.ts) and has its own minimal header — the authenticated sidebar/
-  // topbar chrome would be both wrong (nothing here is signed in) and a giveaway
-  // of internal nav to an anonymous visitor.
-  // /benchmark is public and is linked from the playground, so a signed-out visitor
-  // reaches it. Wrapping it in the app chrome would hand them a sidebar whose every
-  // row bounces to sign-in.
-  //
-  // The same reasoning covers the two pages added for signed-out visitors:
-  // /how-it-works is public explanation and carries its own header, and "/" is the
-  // public landing page *only when there is no session*. A signed-in user asking for
-  // "/" still gets Overview inside the full app chrome, exactly as before, which is
-  // why the root check is the one entry here that depends on `signedIn`.
-  const isPublicHome = pathname === "/" && !signedIn;
-  const isChromelessPage =
-    isLoginPage ||
-    isPublicHome ||
-    pathname.startsWith("/how-it-works") ||
-    pathname.startsWith("/playground") ||
-    pathname.startsWith("/benchmark") ||
-    pathname.startsWith("/compare") ||
-    pathname.startsWith("/support") ||
-    pathname.startsWith("/pricing") ||
-    // /product is the long version of the landing page and renders its own
-    // MarketingNav and Footer. Without this it came out with the marketing nav
-    // nested inside the app sidebar, which is two navigations for one page, and
-    // a signed-out visitor could not open it at all (see middleware.ts).
-    pathname.startsWith("/product") ||
-    // The legal pages, for the same two reasons: each renders its own MarketingNav
-    // and Footer, and each has to be readable by someone with no account, since
-    // that is precisely the reader deciding whether to get one.
-    pathname.startsWith("/privacy") ||
-    pathname.startsWith("/terms") ||
-    pathname.startsWith("/security") ||
-    pathname.startsWith("/legal");
-
-  let me: any = null;
-  let attention: any = null;
-  if (signedIn && !isChromelessPage) {
-    [me, attention] = await Promise.all([
-      safeApi("/api/me", null),
-      safeApi("/api/attention", { items: [], total: 0 }),
-    ]);
-  }
-
   return (
-    <html lang="en-GB" className={`${albertSans.variable} ${GeistMono.variable} ${GeistSans.variable}`}>
+    /* `data-theme="light"` is rendered here, on the server, and not only written by
+       the script below. It is the default, so rendering it is what makes the markup
+       React hydrates against match the DOM the script produced for the visitor who
+       has chosen nothing — which is almost everybody. Stamping it from the script
+       alone put an attribute on <html> that the server HTML did not have, and React
+       reported a hydration mismatch on every first load.
+
+       `suppressHydrationWarning` covers the remaining two cases, where the script
+       legitimately disagrees with the server: a visitor who picked Dark, and one who
+       picked System. It applies to this element's own attributes only, not to its
+       subtree, so nothing else on the page stops being checked. */
+    <html
+      lang="en-GB"
+      data-theme="light"
+      suppressHydrationWarning
+      className={`${GeistMono.variable} ${GeistSans.variable} ${archivo.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body>
-        {isChromelessPage ? (
-          <main className="login-main">{children}</main>
-        ) : (
-          <div className="shell">
-            <nav className="side">
-              <div className="brand">
-                <Wordmark />
-                <small>by Nometria</small>
-              </div>
-              <SideNav nav={NAV} />
-              <ThemeToggle />
-            </nav>
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-              {signedIn && (
-                <div className="topbar">
-                  {attention?.counts && <TopbarStats counts={attention.counts} />}
-                  <CommandSearch nav={NAV_FLAT} />
-                  <NotificationsBell items={attention?.items?.slice(0, 6) || []} total={attention?.total || 0} />
-                  {me && <AccountMenu email={me.email} workspace={me.workspace} role={me.role} />}
-                </div>
-              )}
-              <main>{children}</main>
-            </div>
-          </div>
-        )}
-      </body>
+      {/* Nothing but the document.
+       
+          This layout used to decide, from an `x-pathname` header, whether to wrap
+          its children in the app shell or in a bare div — and it is shared by the
+          marketing site and the app, so Next never re-rendered it when a visitor
+          navigated between the two. Clicking "Dashboard" on the home page landed
+          on /app with the marketing wrapper still in place and no sidebar; a
+          reload fixed it, because a reload renders the layout again.
+
+          The shell moved to app/(product)/app/layout.tsx, which the router mounts only for
+          the routes it belongs to. The wrapper that used to sit here was
+          `.login-main { display: block; width: 100% }` — a div that did nothing —
+          and every public page renders its own <main>, so it is simply gone. */}
+      <body>{children}</body>
     </html>
   );
 }

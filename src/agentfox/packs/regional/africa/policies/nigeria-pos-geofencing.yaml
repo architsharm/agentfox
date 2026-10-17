@@ -1,0 +1,58 @@
+# Translated from examples/policies/african-regulatory/rego/pos-geofencing.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: nigeria-pos-geofencing
+name: Nigeria POS terminal geofencing
+description: 'Nigeria POS terminal geofencing: rules translated from the pos-geofencing policy. Starts
+  in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: nigeria-pos-geofencing.location-must-verified-before-pos-action
+  description: 'CBN POS Geo-Fencing: location must be verified before a POS action'
+  when:
+    action_risk: nigeria-pos-geofencing.location-must-verified-before-pos-action
+  effect: block
+  severity: high
+  reason: 'CBN POS Geo-Fencing: location must be verified before a POS action'
+- id: nigeria-pos-geofencing.terminal-location-does-not-match-its
+  description: 'CBN POS Geo-Fencing: terminal location does not match its registered zone'
+  when:
+    action_risk: nigeria-pos-geofencing.terminal-location-does-not-match-its
+  effect: block
+  severity: high
+  reason: 'CBN POS Geo-Fencing: terminal location does not match its registered zone'
+- id: nigeria-pos-geofencing.location-verification-cannot-bypassed
+  description: 'CBN POS Geo-Fencing: location verification cannot be bypassed'
+  when:
+    action_risk: nigeria-pos-geofencing.location-verification-cannot-bypassed
+  effect: block
+  severity: high
+  reason: 'CBN POS Geo-Fencing: location verification cannot be bypassed'
+- id: nigeria-pos-geofencing.terminal-registration-changes-require-human-approval
+  description: 'CBN Agent Banking: terminal registration changes require human approval'
+  when:
+    action_risk: nigeria-pos-geofencing.terminal-registration-changes-require-human-approval
+  effect: escalate
+  severity: medium
+  reason: 'CBN Agent Banking: terminal registration changes require human approval'
+- id: nigeria-pos-geofencing.high-value-pos-transaction-requires-human
+  description: 'CBN Agent Banking: high-value POS transaction requires human approval'
+  when:
+    action_risk: nigeria-pos-geofencing.high-value-pos-transaction-requires-human
+  effect: escalate
+  severity: medium
+  reason: 'CBN Agent Banking: high-value POS transaction requires human approval'
+- id: nigeria-pos-geofencing.terminal-action-recorded
+  description: 'CBN POS Audit: terminal action recorded'
+  when:
+    action_risk: nigeria-pos-geofencing.terminal-action-recorded
+  effect: allow
+  severity: low
+  reason: 'CBN POS Audit: terminal action recorded'

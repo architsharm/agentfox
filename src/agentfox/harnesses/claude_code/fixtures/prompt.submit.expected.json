@@ -1,0 +1,151 @@
+{
+  "source": "Captured for this fixture: Claude Code 2.1.220, `claude -p` in a worktree with a temporary UserPromptSubmit hook that wrote stdin to a file. Verbatim except the home directory, anonymised to /Users/x.",
+  "event": {
+    "harness": "claude",
+    "event": "UserPromptSubmit",
+    "kind": "prompt.submit",
+    "tool": "",
+    "arguments": {
+      "value": null
+    },
+    "canonical_tool": "",
+    "session_id": "61cce473-bc57-42b7-8b6c-76b09fbcf826",
+    "cwd": "/Users/x/guardrails/.claude/worktrees/phase-2",
+    "permission_mode": "default",
+    "content": "Run the shell command 'ls README.md' with the Bash tool, then read the first 3 lines of README.md with the Read tool. Reply with one word: done.",
+    "surface": "input",
+    "checks_content": true
+  },
+  "decisions": [
+    {
+      "decision": {
+        "kind": "allow"
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "allow",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny",
+        "reason": "rm -rf is destructive",
+        "rules": [
+          "shell.destructive"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}, \"decision\": \"block\", \"reason\": \"AgentFox: rm -rf is destructive (shell.destructive)\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny"
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}, \"decision\": \"block\", \"reason\": \"AgentFox: this turn was refused by policy\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "ask",
+        "reason": "touches production",
+        "rules": [
+          "approval.required"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}, \"decision\": \"block\", \"reason\": \"AgentFox: touches production (approval.required)\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": "ask"
+    },
+    {
+      "decision": {
+        "kind": "modify",
+        "arguments": {
+          "command": "ls"
+        }
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}, \"decision\": \"block\", \"reason\": \"AgentFox: this turn was refused by policy\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": "modify"
+    },
+    {
+      "decision": {
+        "kind": "context",
+        "context": "AgentFox: this repository is governed."
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"AgentFox: this repository is governed.\"}}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "context",
+      "downgraded_from": null
+    }
+  ],
+  "verdicts": [
+    {
+      "name": "allow",
+      "verdict": {
+        "verdict": "allow"
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "deny",
+      "verdict": {
+        "verdict": "block",
+        "reason": "rm -rf is destructive",
+        "rules": [
+          "shell.destructive"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}, \"decision\": \"block\", \"reason\": \"AgentFox: rm -rf is destructive (shell.destructive)\"}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "deny_bare",
+      "verdict": {
+        "verdict": "block"
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}, \"decision\": \"block\", \"reason\": \"AgentFox: this turn was refused by policy\"}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "escalate",
+      "verdict": {
+        "verdict": "escalate",
+        "reason": "needs a human",
+        "rules": [
+          "approval.required"
+        ]
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}, \"decision\": \"block\", \"reason\": \"AgentFox: needs a human (approval.required)\"}",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "name": "modify",
+      "verdict": {
+        "verdict": "allow",
+        "rewrittenArguments": {
+          "command": "ls"
+        }
+      },
+      "stdout": "{\"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\"}}",
+      "stderr": "",
+      "exit_code": 0
+    }
+  ]
+}

@@ -1,0 +1,2338 @@
+# Golden events for regional/africa, run by `agentfox policy packs test regional/africa`.
+# One case per rule: the risk its rule-table entry raises (or the tool it names)
+# fires it with the effect its source outcome maps to (deny -> block, escalate ->
+# escalate, audit -> allow, recorded). What raises each risk is tested against the
+# source policies' own test inputs in tests/platform/packs/test_translated_packs.py.
+cases:
+- name: africa-human-approval.v-designated-as-human-approval-action (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-human-approval.v-designated-as-human-approval-action
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-human-approval.v-designated-as-human-approval-action
+- name: africa-human-approval.action-risk-level-v-requires-human (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-human-approval.action-risk-level-v-requires-human
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-human-approval.action-risk-level-v-requires-human
+- name: africa-human-approval.transaction-amount-v-exceeds-configured-threshold (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-human-approval.transaction-amount-v-exceeds-configured-threshold
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-human-approval.transaction-amount-v-exceeds-configured-threshold
+- name: africa-human-approval.bulk-operation-v-records-exceeds-threshold (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-human-approval.bulk-operation-v-records-exceeds-threshold
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-human-approval.bulk-operation-v-records-exceeds-threshold
+- name: africa-model-routing.model-v-not-approved-sensitive-task (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-model-routing.model-v-not-approved-sensitive-task
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - africa-model-routing.model-v-not-approved-sensitive-task
+- name: africa-model-routing.sensitive-task-type-v-requires-explicitly (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-model-routing.sensitive-task-type-v-requires-explicitly
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-model-routing.sensitive-task-type-v-requires-explicitly
+- name: africa-model-routing.sensitive-task-v-processed-by-approved (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-model-routing.sensitive-task-v-processed-by-approved
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - africa-model-routing.sensitive-task-v-processed-by-approved
+- name: africa-pii-leakage.credit-debit-card-number-detected-agent (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: africa-pii-leakage.credit-debit-card-number-detected-agent
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - africa-pii-leakage.credit-debit-card-number-detected-agent
+- name: africa-pii-leakage.bvn-nin-format-identifier-detected-agent (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: africa-pii-leakage.bvn-nin-format-identifier-detected-agent
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - africa-pii-leakage.bvn-nin-format-identifier-detected-agent
+- name: africa-pii-leakage.south-african-id-number-detected-agent (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: africa-pii-leakage.south-african-id-number-detected-agent
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - africa-pii-leakage.south-african-id-number-detected-agent
+- name: africa-pii-leakage.email-address-detected-agent-output-route (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: africa-pii-leakage.email-address-detected-agent-output-route
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-pii-leakage.email-address-detected-agent-output-route
+- name: africa-pii-leakage.phone-number-detected-agent-output-route (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: africa-pii-leakage.phone-number-detected-agent-output-route
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-pii-leakage.phone-number-detected-agent-output-route
+- name: africa-pii-leakage.action-may-produce-personal-data-output (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-pii-leakage.action-may-produce-personal-data-output
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - africa-pii-leakage.action-may-produce-personal-data-output
+- name: africa-prompt-injection.input-contains-known-injection-pattern-action (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-prompt-injection.input-contains-known-injection-pattern-action
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - africa-prompt-injection.input-contains-known-injection-pattern-action
+- name: africa-prompt-injection.structural-injection-marker-detected-route-review (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-prompt-injection.structural-injection-marker-detected-route-review
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-prompt-injection.structural-injection-marker-detected-route-review
+- name: africa-tool-permissions.v-restricted-tool-route-authorization-queue (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: africa-tool-permissions.v-restricted-tool-route-authorization-queue
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - africa-tool-permissions.v-restricted-tool-route-authorization-queue
+- name: nigeria-bvn-nin.block-bvn-value-agent-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-bvn-value-agent-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-bvn-value-agent-output
+- name: nigeria-bvn-nin.block-contextual-bvn-pattern-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-contextual-bvn-pattern-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-contextual-bvn-pattern-output
+- name: nigeria-bvn-nin.block-nin-value-agent-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-nin-value-agent-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-nin-value-agent-output
+- name: nigeria-bvn-nin.block-virtual-nin-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-virtual-nin-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-virtual-nin-output
+- name: nigeria-bvn-nin.block-direct-bvn-nin-transmission-external (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-direct-bvn-nin-transmission-external
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-direct-bvn-nin-transmission-external
+- name: nigeria-bvn-nin.block-bvn-present-params-from-being (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-bvn-present-params-from-being
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-bvn-present-params-from-being
+- name: nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels
+- name: nigeria-bvn-nin.block-illegal-data-persistence (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-illegal-data-persistence
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-illegal-data-persistence
+- name: nigeria-bvn-nin.block-persist-nin-true-flag-params (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-persist-nin-true-flag-params
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-persist-nin-true-flag-params
+- name: nigeria-bvn-nin.block-bulk-nin-identity-data-export (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-bulk-nin-identity-data-export
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-bulk-nin-identity-data-export
+- name: nigeria-bvn-nin.block-bulk-identity-export-true-flag (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.block-bulk-identity-export-true-flag
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-bvn-nin.block-bulk-identity-export-true-flag
+- name: nigeria-bvn-nin.bvn-verification-always-requires-human-approval (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.bvn-verification-always-requires-human-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-bvn-nin.bvn-verification-always-requires-human-approval
+- name: nigeria-bvn-nin.nin-verification-always-requires-human-approval (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.nin-verification-always-requires-human-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-bvn-nin.nin-verification-always-requires-human-approval
+- name: nigeria-bvn-nin.nin-bvn-lookup-without-declared-purpose (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.nin-bvn-lookup-without-declared-purpose
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-bvn-nin.nin-bvn-lookup-without-declared-purpose
+- name: nigeria-bvn-nin.bvn-lookup-attempted-without-declared-purpose (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.bvn-lookup-attempted-without-declared-purpose
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-bvn-nin.bvn-lookup-attempted-without-declared-purpose
+- name: nigeria-bvn-nin.consented-purpose-differs-from-current-purpose (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.consented-purpose-differs-from-current-purpose
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-bvn-nin.consented-purpose-differs-from-current-purpose
+- name: nigeria-bvn-nin.escalate-if-identifier-type-bvn-nin (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.escalate-if-identifier-type-bvn-nin
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-bvn-nin.escalate-if-identifier-type-bvn-nin
+- name: nigeria-bvn-nin.identity-related-action-logged-ndpa-s (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.identity-related-action-logged-ndpa-s
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-bvn-nin.identity-related-action-logged-ndpa-s
+- name: nigeria-bvn-nin.regulated-services-require-verified-nin-defaulting (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-bvn-nin.regulated-services-require-verified-nin-defaulting
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-bvn-nin.regulated-services-require-verified-nin-defaulting
+- name: nigeria-cbn-limits.agent-cannot-self-approve-transactions (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.agent-cannot-self-approve-transactions
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-cbn-limits.agent-cannot-self-approve-transactions
+- name: nigeria-cbn-limits.single-transaction-cannot-exceed-10-000 (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.single-transaction-cannot-exceed-10-000
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-cbn-limits.single-transaction-cannot-exceed-10-000
+- name: nigeria-cbn-limits.detect-10m-text-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-cbn-limits.detect-10m-text-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-cbn-limits.detect-10m-text-output
+- name: nigeria-cbn-limits.transfers-between-5m-10m-require-human (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.transfers-between-5m-10m-require-human
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-cbn-limits.transfers-between-5m-10m-require-human
+- name: nigeria-cbn-limits.transfers-above-tier-2-ceiling-unverified (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.transfers-above-tier-2-ceiling-unverified
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-cbn-limits.transfers-above-tier-2-ceiling-unverified
+- name: nigeria-cbn-limits.any-transfer-above-50-000-unverified (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.any-transfer-above-50-000-unverified
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-cbn-limits.any-transfer-above-50-000-unverified
+- name: nigeria-cbn-limits.all-refunds-require-human-approval-never (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.all-refunds-require-human-approval-never
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-cbn-limits.all-refunds-require-human-approval-never
+- name: nigeria-cbn-limits.bulk-payments-always-require-human-approval (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.bulk-payments-always-require-human-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-cbn-limits.bulk-payments-always-require-human-approval
+- name: nigeria-cbn-limits.ussd-transactions-require-approval (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.ussd-transactions-require-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-cbn-limits.ussd-transactions-require-approval
+- name: nigeria-cbn-limits.financial-transaction-action-logged-required-cbn (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-cbn-limits.financial-transaction-action-logged-required-cbn
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-cbn-limits.financial-transaction-action-logged-required-cbn
+- name: egypt-pdpl.block-breach-suppression-72h-pdpc-3 (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.block-breach-suppression-72h-pdpc-3
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - egypt-pdpl.block-breach-suppression-72h-pdpc-3
+- name: egypt-pdpl.block-biometric-data-triggers-art-7 (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.block-biometric-data-triggers-art-7
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - egypt-pdpl.block-biometric-data-triggers-art-7
+- name: egypt-pdpl.block-egypt-national-id-output-format (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.block-egypt-national-id-output-format
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - egypt-pdpl.block-egypt-national-id-output-format
+- name: egypt-pdpl.block-cross-border-transfer-non-permitted (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.block-cross-border-transfer-non-permitted
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - egypt-pdpl.block-cross-border-transfer-non-permitted
+- name: egypt-pdpl.block-transfer-non-eg-country-without (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.block-transfer-non-eg-country-without
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - egypt-pdpl.block-transfer-non-eg-country-without
+- name: egypt-pdpl.block-agents-advising-unlicensed-data-processing (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.block-agents-advising-unlicensed-data-processing
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - egypt-pdpl.block-agents-advising-unlicensed-data-processing
+- name: egypt-pdpl.block-disproportionate-bulk-record-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.block-disproportionate-bulk-record-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - egypt-pdpl.block-disproportionate-bulk-record-exports
+- name: egypt-pdpl.health-medical-sensitive-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.health-medical-sensitive-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.health-medical-sensitive-data
+- name: egypt-pdpl.financial-data-unique-sensitive-category-egypt (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.financial-data-unique-sensitive-category-egypt
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.financial-data-unique-sensitive-category-egypt
+- name: egypt-pdpl.special-category-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.special-category-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.special-category-data
+- name: egypt-pdpl.children-s-data-classified-as-sensitive (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.children-s-data-classified-as-sensitive
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.children-s-data-classified-as-sensitive
+- name: egypt-pdpl.cross-border-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.cross-border-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.cross-border-language-output
+- name: egypt-pdpl.transfer-action-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.transfer-action-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.transfer-action-with-missing-destination-metadata
+- name: egypt-pdpl.moderate-record-exports (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.moderate-record-exports
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.moderate-record-exports
+- name: egypt-pdpl.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.bulk-export-actions
+- name: egypt-pdpl.dpo-escalate-if-agent-advises-against (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: egypt-pdpl.dpo-escalate-if-agent-advises-against
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - egypt-pdpl.dpo-escalate-if-agent-advises-against
+- name: egypt-pdpl.personal-data-access-logged-data-subject (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.personal-data-access-logged-data-subject
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - egypt-pdpl.personal-data-access-logged-data-subject
+- name: egypt-pdpl.personal-data-modification-erasure-logged-data (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: egypt-pdpl.personal-data-modification-erasure-logged-data
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - egypt-pdpl.personal-data-modification-erasure-logged-data
+- name: ethiopia-pdp.block-breach-suppression-eca-must-notified (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ethiopia-pdp.block-breach-suppression-eca-must-notified
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ethiopia-pdp.block-breach-suppression-eca-must-notified
+- name: ethiopia-pdp.block-biometric-data-transmission (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ethiopia-pdp.block-biometric-data-transmission
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ethiopia-pdp.block-biometric-data-transmission
+- name: ethiopia-pdp.block-cross-border-transfer-non-permitted (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.block-cross-border-transfer-non-permitted
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ethiopia-pdp.block-cross-border-transfer-non-permitted
+- name: ethiopia-pdp.block-transfer-non-et-country-without (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.block-transfer-non-et-country-without
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ethiopia-pdp.block-transfer-non-et-country-without
+- name: ethiopia-pdp.block-unauthorised-access-signals (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ethiopia-pdp.block-unauthorised-access-signals
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ethiopia-pdp.block-unauthorised-access-signals
+- name: ethiopia-pdp.block-fayda-national-id-output-fayda (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ethiopia-pdp.block-fayda-national-id-output-fayda
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ethiopia-pdp.block-fayda-national-id-output-fayda
+- name: ethiopia-pdp.block-large-record-exports-data-sovereignty (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.block-large-record-exports-data-sovereignty
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ethiopia-pdp.block-large-record-exports-data-sovereignty
+- name: ethiopia-pdp.health-genetic-sensitive-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ethiopia-pdp.health-genetic-sensitive-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ethiopia-pdp.health-genetic-sensitive-data
+- name: ethiopia-pdp.special-category-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ethiopia-pdp.special-category-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ethiopia-pdp.special-category-data
+- name: ethiopia-pdp.cross-border-language-agent-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ethiopia-pdp.cross-border-language-agent-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ethiopia-pdp.cross-border-language-agent-output
+- name: ethiopia-pdp.transfer-action-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.transfer-action-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ethiopia-pdp.transfer-action-with-missing-destination-metadata
+- name: ethiopia-pdp.moderate-record-exports-data-sovereignty (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.moderate-record-exports-data-sovereignty
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ethiopia-pdp.moderate-record-exports-data-sovereignty
+- name: ethiopia-pdp.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ethiopia-pdp.bulk-export-actions
+- name: ethiopia-pdp.personal-data-access-logged-record-processing (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.personal-data-access-logged-record-processing
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - ethiopia-pdp.personal-data-access-logged-record-processing
+- name: ethiopia-pdp.personal-data-modification-logged-record-processing (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ethiopia-pdp.personal-data-modification-logged-record-processing
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - ethiopia-pdp.personal-data-modification-logged-record-processing
+- name: ghana-dpa.block-breach-suppression-dpc-must-notified (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ghana-dpa.block-breach-suppression-dpc-must-notified
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ghana-dpa.block-breach-suppression-dpc-must-notified
+- name: ghana-dpa.block-biometric-data-transmission (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ghana-dpa.block-biometric-data-transmission
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ghana-dpa.block-biometric-data-transmission
+- name: ghana-dpa.block-cross-border-transfer-non-permitted (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.block-cross-border-transfer-non-permitted
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ghana-dpa.block-cross-border-transfer-non-permitted
+- name: ghana-dpa.block-transfer-non-gh-country-without (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.block-transfer-non-gh-country-without
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ghana-dpa.block-transfer-non-gh-country-without
+- name: ghana-dpa.block-ghana-card-national-id-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ghana-dpa.block-ghana-card-national-id-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ghana-dpa.block-ghana-card-national-id-output
+- name: ghana-dpa.block-disproportionate-record-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.block-disproportionate-record-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - ghana-dpa.block-disproportionate-record-exports
+- name: ghana-dpa.health-medical-special-personal-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ghana-dpa.health-medical-special-personal-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ghana-dpa.health-medical-special-personal-data
+- name: ghana-dpa.special-category-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ghana-dpa.special-category-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ghana-dpa.special-category-data
+- name: ghana-dpa.cross-border-language-agent-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: ghana-dpa.cross-border-language-agent-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ghana-dpa.cross-border-language-agent-output
+- name: ghana-dpa.transfer-action-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.transfer-action-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ghana-dpa.transfer-action-with-missing-destination-metadata
+- name: ghana-dpa.moderate-record-exports (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.moderate-record-exports
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ghana-dpa.moderate-record-exports
+- name: ghana-dpa.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - ghana-dpa.bulk-export-actions
+- name: ghana-dpa.personal-data-access-logged-data-subject (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.personal-data-access-logged-data-subject
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - ghana-dpa.personal-data-access-logged-data-subject
+- name: ghana-dpa.personal-data-modification-deletion-logged-data (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: ghana-dpa.personal-data-modification-deletion-logged-data
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - ghana-dpa.personal-data-modification-deletion-logged-data
+- name: kenya-dpa.block-breach-suppression (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: kenya-dpa.block-breach-suppression
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - kenya-dpa.block-breach-suppression
+- name: kenya-dpa.block-transfer-non-permitted-region (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.block-transfer-non-permitted-region
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - kenya-dpa.block-transfer-non-permitted-region
+- name: kenya-dpa.block-transfer-non-ke-country-without (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.block-transfer-non-ke-country-without
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - kenya-dpa.block-transfer-non-ke-country-without
+- name: kenya-dpa.block-processing-explicitly-stated-without-consent (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: kenya-dpa.block-processing-explicitly-stated-without-consent
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - kenya-dpa.block-processing-explicitly-stated-without-consent
+- name: kenya-dpa.block-biometric-data-transmission (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: kenya-dpa.block-biometric-data-transmission
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - kenya-dpa.block-biometric-data-transmission
+- name: kenya-dpa.block-national-id-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: kenya-dpa.block-national-id-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - kenya-dpa.block-national-id-output
+- name: kenya-dpa.block-large-record-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.block-large-record-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - kenya-dpa.block-large-record-exports
+- name: kenya-dpa.health-medical-data-requires-approval (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: kenya-dpa.health-medical-data-requires-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - kenya-dpa.health-medical-data-requires-approval
+- name: kenya-dpa.special-category-data-requires-approval (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: kenya-dpa.special-category-data-requires-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - kenya-dpa.special-category-data-requires-approval
+- name: kenya-dpa.cross-border-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: kenya-dpa.cross-border-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - kenya-dpa.cross-border-language-output
+- name: kenya-dpa.transfer-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.transfer-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - kenya-dpa.transfer-with-missing-destination-metadata
+- name: kenya-dpa.moderate-record-exports (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.moderate-record-exports
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - kenya-dpa.moderate-record-exports
+- name: kenya-dpa.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - kenya-dpa.bulk-export-actions
+- name: kenya-dpa.all-personal-data-access-must-logged (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.all-personal-data-access-must-logged
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - kenya-dpa.all-personal-data-access-must-logged
+- name: kenya-dpa.all-personal-data-modifications-must-logged (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: kenya-dpa.all-personal-data-modifications-must-logged
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - kenya-dpa.all-personal-data-modifications-must-logged
+- name: mauritius-dpa.72-hour-commissioner-notification-data-subjects (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.72-hour-commissioner-notification-data-subjects
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.72-hour-commissioner-notification-data-subjects
+- name: mauritius-dpa.biometric-data-uniquely-identifying-genetic-or (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.biometric-data-uniquely-identifying-genetic-or
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.biometric-data-uniquely-identifying-genetic-or
+- name: mauritius-dpa.all-controllers-processors-must-register-registration (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.all-controllers-processors-must-register-registration
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.all-controllers-processors-must-register-registration
+- name: mauritius-dpa.mauritius-national-id-card-format-z (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.mauritius-national-id-card-format-z
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.mauritius-national-id-card-format-z
+- name: mauritius-dpa.cross-border-non-permitted-region-requires (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.cross-border-non-permitted-region-requires
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.cross-border-non-permitted-region-requires
+- name: mauritius-dpa.transfer-non-mu-country-without-documented (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.transfer-non-mu-country-without-documented
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.transfer-non-mu-country-without-documented
+- name: mauritius-dpa.large-record-exports-without-documented-safeguards (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.large-record-exports-without-documented-safeguards
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.large-record-exports-without-documented-safeguards
+- name: mauritius-dpa.health-medical-genetic-mental-health-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.health-medical-genetic-mental-health-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - mauritius-dpa.health-medical-genetic-mental-health-data
+- name: mauritius-dpa.racial-ethnic-political-religious-trade-union (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.racial-ethnic-political-religious-trade-union
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - mauritius-dpa.racial-ethnic-political-religious-trade-union
+- name: mauritius-dpa.mandatory-all-controllers-processors-deny-if (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.mandatory-all-controllers-processors-deny-if
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - mauritius-dpa.mandatory-all-controllers-processors-deny-if
+- name: mauritius-dpa.cross-border-language-agent-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: mauritius-dpa.cross-border-language-agent-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - mauritius-dpa.cross-border-language-agent-output
+- name: mauritius-dpa.transfer-action-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.transfer-action-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - mauritius-dpa.transfer-action-with-missing-destination-metadata
+- name: mauritius-dpa.moderate-record-exports (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.moderate-record-exports
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - mauritius-dpa.moderate-record-exports
+- name: mauritius-dpa.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - mauritius-dpa.bulk-export-actions
+- name: mauritius-dpa.transparency-obligation-data-subjects-must-informed (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.transparency-obligation-data-subjects-must-informed
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - mauritius-dpa.transparency-obligation-data-subjects-must-informed
+- name: mauritius-dpa.access-rectification-restriction-erasure-objection-complaint (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.access-rectification-restriction-erasure-objection-complaint
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - mauritius-dpa.access-rectification-restriction-erasure-objection-complaint
+- name: mauritius-dpa.personal-data-modification-erasure-logged-data (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: mauritius-dpa.personal-data-modification-erasure-logged-data
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - mauritius-dpa.personal-data-modification-erasure-logged-data
+- name: nigeria-ndpa.block-transfer-non-permitted-region (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.block-transfer-non-permitted-region
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-ndpa.block-transfer-non-permitted-region
+- name: nigeria-ndpa.block-transfer-non-nigerian-country-code (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.block-transfer-non-nigerian-country-code
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-ndpa.block-transfer-non-nigerian-country-code
+- name: nigeria-ndpa.block-bulk-data-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.block-bulk-data-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-ndpa.block-bulk-data-exports
+- name: nigeria-ndpa.block-large-record-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.block-large-record-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-ndpa.block-large-record-exports
+- name: nigeria-ndpa.block-biometric-data-transmission (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-ndpa.block-biometric-data-transmission
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-ndpa.block-biometric-data-transmission
+- name: nigeria-ndpa.block-breach-suppression (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-ndpa.block-breach-suppression
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-ndpa.block-breach-suppression
+- name: nigeria-ndpa.cross-border-transfer-with-missing-destination (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.cross-border-transfer-with-missing-destination
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-ndpa.cross-border-transfer-with-missing-destination
+- name: nigeria-ndpa.detected-cross-border-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-ndpa.detected-cross-border-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-ndpa.detected-cross-border-language-output
+- name: nigeria-ndpa.health-medical-data-requires-approval-before (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-ndpa.health-medical-data-requires-approval-before
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-ndpa.health-medical-data-requires-approval-before
+- name: nigeria-ndpa.moderate-record-count-requires-approval (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.moderate-record-count-requires-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-ndpa.moderate-record-count-requires-approval
+- name: nigeria-ndpa.all-pii-access-must-logged-ndpc (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.all-pii-access-must-logged-ndpc
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-ndpa.all-pii-access-must-logged-ndpc
+- name: nigeria-ndpa.all-pii-modifications-must-logged (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-ndpa.all-pii-modifications-must-logged
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-ndpa.all-pii-modifications-must-logged
+- name: nigeria-nfiu-aml.transfer-exceeding-10m-cap-hard-block (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.transfer-exceeding-10m-cap-hard-block
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-nfiu-aml.transfer-exceeding-10m-cap-hard-block
+- name: nigeria-nfiu-aml.structuring-explicit-split-pattern-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.structuring-explicit-split-pattern-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-nfiu-aml.structuring-explicit-split-pattern-output
+- name: nigeria-nfiu-aml.kyc-bypass-attempt (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.kyc-bypass-attempt
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-nfiu-aml.kyc-bypass-attempt
+- name: nigeria-nfiu-aml.transaction-unverified-customer (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.transaction-unverified-customer
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-nfiu-aml.transaction-unverified-customer
+- name: nigeria-nfiu-aml.exact-numeric-ctr-threshold-structured-params (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.exact-numeric-ctr-threshold-structured-params
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-nfiu-aml.exact-numeric-ctr-threshold-structured-params
+- name: nigeria-nfiu-aml.round-trip-layering-pattern-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.round-trip-layering-pattern-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-nfiu-aml.round-trip-layering-pattern-output
+- name: nigeria-nfiu-aml.unverified-or-unknown-counterparty (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.unverified-or-unknown-counterparty
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-nfiu-aml.unverified-or-unknown-counterparty
+- name: nigeria-nfiu-aml.cash-equivalent-or-crypto-conversion (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.cash-equivalent-or-crypto-conversion
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-nfiu-aml.cash-equivalent-or-crypto-conversion
+- name: nigeria-nfiu-aml.politically-exposed-person-transaction (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.politically-exposed-person-transaction
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-nfiu-aml.politically-exposed-person-transaction
+- name: nigeria-nfiu-aml.financial-transaction-logged-5-year-retention (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.financial-transaction-logged-5-year-retention
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-nfiu-aml.financial-transaction-logged-5-year-retention
+- name: nigeria-nfiu-aml.amount-just-under-threshold-zone (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-nfiu-aml.amount-just-under-threshold-zone
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-nfiu-aml.amount-just-under-threshold-zone
+- name: south-africa-popia.biometric-personal-information-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.biometric-personal-information-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - south-africa-popia.biometric-personal-information-output
+- name: south-africa-popia.children-s-personal-information (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.children-s-personal-information
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - south-africa-popia.children-s-personal-information
+- name: south-africa-popia.sa-id-number-detected-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.sa-id-number-detected-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - south-africa-popia.sa-id-number-detected-output
+- name: south-africa-popia.sa-id-number-with-contextual-label (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.sa-id-number-with-contextual-label
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - south-africa-popia.sa-id-number-with-contextual-label
+- name: south-africa-popia.breach-notification-suppression (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.breach-notification-suppression
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - south-africa-popia.breach-notification-suppression
+- name: south-africa-popia.transfer-non-adequate-country-without-consent (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: south-africa-popia.transfer-non-adequate-country-without-consent
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - south-africa-popia.transfer-non-adequate-country-without-consent
+- name: south-africa-popia.purpose-limitation-processing-beyond-original-consent (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.purpose-limitation-processing-beyond-original-consent
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - south-africa-popia.purpose-limitation-processing-beyond-original-consent
+- name: south-africa-popia.any-cross-border-transfer-action-requires (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: south-africa-popia.any-cross-border-transfer-action-requires
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - south-africa-popia.any-cross-border-transfer-action-requires
+- name: south-africa-popia.cross-border-transfer-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.cross-border-transfer-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - south-africa-popia.cross-border-transfer-language-output
+- name: south-africa-popia.health-medical-special-personal-information (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.health-medical-special-personal-information
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - south-africa-popia.health-medical-special-personal-information
+- name: south-africa-popia.race-ethnic-origin-special-personal-information (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.race-ethnic-origin-special-personal-information
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - south-africa-popia.race-ethnic-origin-special-personal-information
+- name: south-africa-popia.criminal-history-special-personal-information (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: south-africa-popia.criminal-history-special-personal-information
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - south-africa-popia.criminal-history-special-personal-information
+- name: south-africa-popia.all-personal-information-access-must-logged (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: south-africa-popia.all-personal-information-access-must-logged
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - south-africa-popia.all-personal-information-access-must-logged
+- name: nigeria-pos-geofencing.location-must-verified-before-pos-action (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-pos-geofencing.location-must-verified-before-pos-action
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-pos-geofencing.location-must-verified-before-pos-action
+- name: nigeria-pos-geofencing.terminal-location-does-not-match-its (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-pos-geofencing.terminal-location-does-not-match-its
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-pos-geofencing.terminal-location-does-not-match-its
+- name: nigeria-pos-geofencing.location-verification-cannot-bypassed (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-pos-geofencing.location-verification-cannot-bypassed
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - nigeria-pos-geofencing.location-verification-cannot-bypassed
+- name: nigeria-pos-geofencing.terminal-registration-changes-require-human-approval (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-pos-geofencing.terminal-registration-changes-require-human-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-pos-geofencing.terminal-registration-changes-require-human-approval
+- name: nigeria-pos-geofencing.high-value-pos-transaction-requires-human (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: nigeria-pos-geofencing.high-value-pos-transaction-requires-human
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - nigeria-pos-geofencing.high-value-pos-transaction-requires-human
+- name: nigeria-pos-geofencing.terminal-action-recorded (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: nigeria-pos-geofencing.terminal-action-recorded
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - nigeria-pos-geofencing.terminal-action-recorded
+- name: rwanda-dpa.block-breach-suppression-48-hour-ncsa (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: rwanda-dpa.block-breach-suppression-48-hour-ncsa
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - rwanda-dpa.block-breach-suppression-48-hour-ncsa
+- name: rwanda-dpa.block-biometric-data-transmission (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: rwanda-dpa.block-biometric-data-transmission
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - rwanda-dpa.block-biometric-data-transmission
+- name: rwanda-dpa.block-cross-border-transfer-non-permitted (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.block-cross-border-transfer-non-permitted
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - rwanda-dpa.block-cross-border-transfer-non-permitted
+- name: rwanda-dpa.block-transfer-non-rw-country-without (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.block-transfer-non-rw-country-without
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - rwanda-dpa.block-transfer-non-rw-country-without
+- name: rwanda-dpa.block-rwanda-national-id-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: rwanda-dpa.block-rwanda-national-id-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - rwanda-dpa.block-rwanda-national-id-output
+- name: rwanda-dpa.block-large-record-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.block-large-record-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - rwanda-dpa.block-large-record-exports
+- name: rwanda-dpa.health-medical-sensitive-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: rwanda-dpa.health-medical-sensitive-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - rwanda-dpa.health-medical-sensitive-data
+- name: rwanda-dpa.special-category-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: rwanda-dpa.special-category-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - rwanda-dpa.special-category-data
+- name: rwanda-dpa.automated-individual-decision-making-data-subject (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.automated-individual-decision-making-data-subject
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - rwanda-dpa.automated-individual-decision-making-data-subject
+- name: rwanda-dpa.cross-border-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: rwanda-dpa.cross-border-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - rwanda-dpa.cross-border-language-output
+- name: rwanda-dpa.transfer-action-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.transfer-action-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - rwanda-dpa.transfer-action-with-missing-destination-metadata
+- name: rwanda-dpa.moderate-record-exports (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.moderate-record-exports
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - rwanda-dpa.moderate-record-exports
+- name: rwanda-dpa.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - rwanda-dpa.bulk-export-actions
+- name: rwanda-dpa.personal-data-access-logged-data-subject (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.personal-data-access-logged-data-subject
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - rwanda-dpa.personal-data-access-logged-data-subject
+- name: rwanda-dpa.personal-data-modification-erasure-logged-data (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: rwanda-dpa.personal-data-modification-erasure-logged-data
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - rwanda-dpa.personal-data-modification-erasure-logged-data
+- name: tanzania-pdpa.block-breach-suppression (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: tanzania-pdpa.block-breach-suppression
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - tanzania-pdpa.block-breach-suppression
+- name: tanzania-pdpa.block-biometric-data-transmission (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: tanzania-pdpa.block-biometric-data-transmission
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - tanzania-pdpa.block-biometric-data-transmission
+- name: tanzania-pdpa.block-transfer-non-permitted-region (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.block-transfer-non-permitted-region
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - tanzania-pdpa.block-transfer-non-permitted-region
+- name: tanzania-pdpa.block-transfer-non-tz-country-without (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.block-transfer-non-tz-country-without
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - tanzania-pdpa.block-transfer-non-tz-country-without
+- name: tanzania-pdpa.block-processing-without-consent (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: tanzania-pdpa.block-processing-without-consent
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - tanzania-pdpa.block-processing-without-consent
+- name: tanzania-pdpa.block-nida-national-id-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: tanzania-pdpa.block-nida-national-id-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - tanzania-pdpa.block-nida-national-id-output
+- name: tanzania-pdpa.block-large-record-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.block-large-record-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - tanzania-pdpa.block-large-record-exports
+- name: tanzania-pdpa.health-medical-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: tanzania-pdpa.health-medical-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - tanzania-pdpa.health-medical-data
+- name: tanzania-pdpa.special-category-data (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: tanzania-pdpa.special-category-data
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - tanzania-pdpa.special-category-data
+- name: tanzania-pdpa.cross-border-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: tanzania-pdpa.cross-border-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - tanzania-pdpa.cross-border-language-output
+- name: tanzania-pdpa.transfer-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.transfer-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - tanzania-pdpa.transfer-with-missing-destination-metadata
+- name: tanzania-pdpa.moderate-record-exports (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.moderate-record-exports
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - tanzania-pdpa.moderate-record-exports
+- name: tanzania-pdpa.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - tanzania-pdpa.bulk-export-actions
+- name: tanzania-pdpa.personal-data-access-logged-pdpc-accountability (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.personal-data-access-logged-pdpc-accountability
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - tanzania-pdpa.personal-data-access-logged-pdpc-accountability
+- name: tanzania-pdpa.personal-data-modification-logged-pdpc-accountability (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: tanzania-pdpa.personal-data-modification-logged-pdpc-accountability
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - tanzania-pdpa.personal-data-modification-logged-pdpc-accountability
+- name: uganda-dppa.block-breach-suppression (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uganda-dppa.block-breach-suppression
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uganda-dppa.block-breach-suppression
+- name: uganda-dppa.block-biometric-data-transmission (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uganda-dppa.block-biometric-data-transmission
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uganda-dppa.block-biometric-data-transmission
+- name: uganda-dppa.block-transfer-non-permitted-region (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.block-transfer-non-permitted-region
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uganda-dppa.block-transfer-non-permitted-region
+- name: uganda-dppa.block-transfer-non-ug-country-without (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.block-transfer-non-ug-country-without
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uganda-dppa.block-transfer-non-ug-country-without
+- name: uganda-dppa.block-national-id-output (deny upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uganda-dppa.block-national-id-output
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uganda-dppa.block-national-id-output
+- name: uganda-dppa.block-large-record-exports (deny upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.block-large-record-exports
+        severity: high
+  expect:
+    verdict: block
+    rules:
+    - uganda-dppa.block-large-record-exports
+- name: uganda-dppa.health-medical-data-requires-approval (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uganda-dppa.health-medical-data-requires-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uganda-dppa.health-medical-data-requires-approval
+- name: uganda-dppa.special-category-data-requires-approval (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uganda-dppa.special-category-data-requires-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uganda-dppa.special-category-data-requires-approval
+- name: uganda-dppa.financial-data-requires-approval (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uganda-dppa.financial-data-requires-approval
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uganda-dppa.financial-data-requires-approval
+- name: uganda-dppa.cross-border-language-output (escalate upstream)
+  event:
+    surface: output
+    action:
+      risks:
+      - code: uganda-dppa.cross-border-language-output
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uganda-dppa.cross-border-language-output
+- name: uganda-dppa.transfer-with-missing-destination-metadata (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.transfer-with-missing-destination-metadata
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uganda-dppa.transfer-with-missing-destination-metadata
+- name: uganda-dppa.moderate-record-exports (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.moderate-record-exports
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uganda-dppa.moderate-record-exports
+- name: uganda-dppa.bulk-export-actions (escalate upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.bulk-export-actions
+        severity: medium
+  expect:
+    verdict: escalate
+    rules:
+    - uganda-dppa.bulk-export-actions
+- name: uganda-dppa.all-personal-data-access-must-logged (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.all-personal-data-access-must-logged
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uganda-dppa.all-personal-data-access-must-logged
+- name: uganda-dppa.all-personal-data-modifications-must-logged (audit upstream)
+  event:
+    surface: tool_args
+    action:
+      risks:
+      - code: uganda-dppa.all-personal-data-modifications-must-logged
+        severity: low
+  expect:
+    verdict: allow
+    rules:
+    - uganda-dppa.all-personal-data-modifications-must-logged
+- name: an ordinary answer passes
+  event:
+    surface: output
+  expect:
+    verdict: allow
+- name: an ordinary tool call passes
+  event:
+    surface: tool_args
+    tool_key: search.docs
+  expect:
+    verdict: allow

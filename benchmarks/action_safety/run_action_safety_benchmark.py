@@ -1,8 +1,8 @@
-"""Scores the real, shipping `analyse_sql()` (`src/agentfox/guardrails/actions.py`)
+"""Scores the real, shipping `analyse_sql()` (`src/agentfox/capabilities/detection/actions.py`)
 against `data/action_safety.json`. No mock, no reimplementation — the exact function
 `enforcement.py` calls on generated SQL artefacts.
 
-    uv run python benchmarks/action_safety/run_action_safety_benchmark.py
+    uv run python -m benchmarks.action_safety.run_action_safety_benchmark
 
 Four categories, each scored against ground truth derived independently of the
 detector (see `fetch_gretel_sql.py`'s docstring for how, and its stated limitation):
@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agentfox.guardrails.actions import analyse_sql
+from agentfox.capabilities.detection.actions import analyse_sql
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"

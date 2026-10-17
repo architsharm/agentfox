@@ -1,9 +1,9 @@
-"""Scores the real, shipping `analyse_arguments()` (`src/agentfox/guardrails/actions.py`
+"""Scores the real, shipping `analyse_arguments()` (`src/agentfox/capabilities/detection/actions.py`
 — the actual public dispatcher: SQL/shell/URL fields by declared key name, plus the
 generic wildcard/SQLi-fragment/path-traversal scope backstop on every other string
 argument) against `data/agentdojo_calls.json`.
 
-    uv run python benchmarks/action_safety/run_agentdojo_benchmark.py
+    uv run python -m benchmarks.action_safety.run_agentdojo_benchmark
 
 Not a precision/recall benchmark against a binary label — see README.md for why.
 AgentDojo's injection tasks are an *entitlement/taint* attack (a legitimate-shaped
@@ -21,7 +21,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from agentfox.guardrails.actions import analyse_arguments
+from agentfox.capabilities.detection.actions import analyse_arguments
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"

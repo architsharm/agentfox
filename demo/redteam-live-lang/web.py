@@ -8,7 +8,7 @@ from it. That is a deliberate fit for a stateless serverless function — there 
 guarantee two requests in the same conversation land on the same warm instance, so
 any server-held-history design would silently lose turns. The governed state that
 actually matters (capability grants, taint marks, audit trail, order/customer
-records) lives in Postgres via `NOMETRIA_DATABASE_URL`, not in this file.
+records) lives in Postgres via `AGENTFOX_DATABASE_URL`, not in this file.
 
 Local dev:  uvicorn web:app --reload --port 8000
 Deployed:   this module's `app` is Vercel's entrypoint (see vercel.json).
@@ -17,19 +17,16 @@ Deployed:   this module's `app` is Vercel's entrypoint (see vercel.json).
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 import _env  # noqa: F401  -- must run before anything imports agentfox settings
-
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-
 import seed_demo_agent
 from agent import MissingApiKey, SessionState, run_turn
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from langchain_core.messages import AIMessage, HumanMessage
-from agentfox.autoguard import Blocked
-from agentfox.db import init_db, session_scope
+from pydantic import BaseModel
 from recorded_scenarios import (
     ALLOW_TURNS,
     BLOCK_TURNS,
@@ -37,6 +34,11 @@ from recorded_scenarios import (
     COMPOSED_TURNS,
     ESCALATE_TURNS,
 )
+
+from agentfox.core.db import init_db, session_scope
+from agentfox.frameworks.autoguard import Blocked
+
+_log = logging.getLogger("redteam-live-lang")
 
 app = FastAPI(title="AgentFox red-team live demo (LangChain)")
 
@@ -56,7 +58,30 @@ def _ensure_seeded() -> None:
     if _seeded:
         return
     seed_demo_agent.main()
+    _rotate_keys_if_configured()
     _seeded = True
+
+
+def _rotate_keys_if_configured() -> None:
+    """With a previous key set (`AGENTFOX_TOKEN_ENCRYPTION_KEY_PREVIOUS`,
+    `AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS`), move this demo's own database onto the
+    current keys. This deployment has no job runner of its own, so cold start is
+    where it happens. Free when no previous key is set, idempotent when one is, and
+    never fatal: a failure is logged and the demo still serves."""
+    from agentfox.platform.keys.rotation import PENDING, rotate, status_summary
+
+    try:
+        if PENDING not in status_summary(fresh=True).values():
+            return
+        with session_scope() as session:
+            report = rotate(session, actor_id="demo-startup")
+        _log.warning(
+            "key rotation: re-encrypted %s value(s), re-signed %s checkpoint(s)",
+            report["token_encryption"]["reencrypted"],
+            report["audit_signing"]["resigned"],
+        )
+    except Exception as exc:  # noqa: BLE001 - the demo must come up regardless
+        _log.warning("key rotation skipped: %s", type(exc).__name__)
 
 
 class ChatTurn(BaseModel):
@@ -139,11 +164,12 @@ def chat(req: ChatRequest) -> dict:
 
 @app.post("/api/redteam")
 def redteam() -> dict:
-    """Runs the same built-in probe suite `agentfox redteam run` does, against this
+    """Runs the same built-in probe suite `agentfox test redteam` does, against this
     demo's seeded agent, and returns the campaign summary as JSON."""
     _ensure_seeded()
-    from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
     from support_tools import AGENT_SLUG
+
+    from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, run_campaign
 
     init_db()
     with session_scope() as session:
@@ -167,7 +193,9 @@ def redteam() -> dict:
 def health() -> dict:
     return {
         "status": "ok",
-        "has_llm_key": bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")),
+        "has_llm_key": bool(
+            os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        ),
     }
 
 
@@ -612,6 +640,7 @@ document.getElementById('rt-btn').addEventListener('click', async () => {
 </script>
 </body>
 </html>"""
+
 
 def _safe_js(value: object) -> str:
     """`</script>` inside a JSON string embedded in an inline <script> tag would

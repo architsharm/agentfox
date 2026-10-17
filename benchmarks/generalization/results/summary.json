@@ -1,0 +1,216 @@
+{
+  "datasets": {
+    "spml": "reshabhs/SPML_Chatbot_Prompt_Injection (MIT, 500-row stratified sample)",
+    "yanismiraoui": "yanismiraoui/prompt_injections (apache-2.0, recall-only, 7 languages)",
+    "notinject": "leolee99/NotInject (MIT, all-benign, false-positive stress test)"
+  },
+  "note": "None of these datasets informs injection.heuristic's patterns or injection.similarity's corpus (TrustAIRLab-derived corpus entries were removed in October 2026) \u2014 this measures generalization, not fit.",
+  "configs": {
+    "heuristic": {
+      "spml": {
+        "n": 500,
+        "tp": 24,
+        "fp": 0,
+        "tn": 250,
+        "fn": 226,
+        "precision": 1.0,
+        "recall": 0.096,
+        "duration_ms": 202.7,
+        "avg_ms_per_example": 0.405,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "yanismiraoui": {
+        "n": 1034,
+        "tp": 9,
+        "fp": 0,
+        "tn": 0,
+        "fn": 1025,
+        "precision": 1.0,
+        "recall": 0.0087,
+        "duration_ms": 157.8,
+        "avg_ms_per_example": 0.153,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "notinject": {
+        "n": 339,
+        "tp": 0,
+        "fp": 0,
+        "tn": 339,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "duration_ms": 37.0,
+        "avg_ms_per_example": 0.109,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "trustairlab": {
+        "n": 2810,
+        "tp": 336,
+        "fp": 117,
+        "tn": 1288,
+        "fn": 1069,
+        "precision": 0.7417,
+        "recall": 0.2391,
+        "duration_ms": 13509.0,
+        "avg_ms_per_example": 4.807,
+        "degraded_examples": 13,
+        "degraded_rate": 0.0046,
+        "degraded_by_detector": {
+          "injection.heuristic": 13
+        },
+        "errored_by_detector": {}
+      }
+    },
+    "heuristic_classifier": {
+      "spml": {
+        "n": 500,
+        "tp": 216,
+        "fp": 17,
+        "tn": 233,
+        "fn": 34,
+        "precision": 0.927,
+        "recall": 0.864,
+        "duration_ms": 44304.8,
+        "avg_ms_per_example": 88.61,
+        "degraded_examples": 35,
+        "degraded_rate": 0.07,
+        "degraded_by_detector": {
+          "injection.classifier": 35
+        },
+        "errored_by_detector": {}
+      },
+      "yanismiraoui": {
+        "n": 1034,
+        "tp": 1019,
+        "fp": 0,
+        "tn": 0,
+        "fn": 15,
+        "precision": 1.0,
+        "recall": 0.9855,
+        "duration_ms": 50448.3,
+        "avg_ms_per_example": 48.789,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "notinject": {
+        "n": 339,
+        "tp": 0,
+        "fp": 140,
+        "tn": 199,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null,
+        "duration_ms": 18164.5,
+        "avg_ms_per_example": 53.583,
+        "degraded_examples": 0,
+        "degraded_rate": 0.0,
+        "degraded_by_detector": {},
+        "errored_by_detector": {}
+      },
+      "trustairlab": {
+        "n": 2810,
+        "tp": 336,
+        "fp": 118,
+        "tn": 1287,
+        "fn": 1069,
+        "precision": 0.7401,
+        "recall": 0.2391,
+        "duration_ms": 734978.9,
+        "avg_ms_per_example": 261.558,
+        "degraded_examples": 2808,
+        "degraded_rate": 0.9993,
+        "degraded_by_detector": {
+          "injection.classifier": 2808,
+          "injection.heuristic": 25
+        },
+        "errored_by_detector": {}
+      }
+    },
+    "heuristic_classifier_similarity": {
+      "spml": {
+        "n": 500,
+        "tp": 24,
+        "fp": 0,
+        "tn": 250,
+        "fn": 226,
+        "precision": 1.0,
+        "recall": 0.096,
+        "duration_ms": 154416.6,
+        "avg_ms_per_example": 308.833,
+        "degraded_examples": 500,
+        "degraded_rate": 1.0,
+        "degraded_by_detector": {
+          "injection.classifier": 500,
+          "injection.similarity": 500
+        },
+        "errored_by_detector": {}
+      },
+      "yanismiraoui": {
+        "n": 1034,
+        "tp": 9,
+        "fp": 0,
+        "tn": 0,
+        "fn": 1025,
+        "precision": 1.0,
+        "recall": 0.0087,
+        "duration_ms": 319163.9,
+        "avg_ms_per_example": 308.669,
+        "degraded_examples": 1034,
+        "degraded_rate": 1.0,
+        "degraded_by_detector": {
+          "injection.classifier": 1034,
+          "injection.similarity": 1034
+        },
+        "errored_by_detector": {}
+      },
+      "notinject": {
+        "n": 339,
+        "tp": 0,
+        "fp": 0,
+        "tn": 339,
+        "fn": 0,
+        "precision": null,
+        "recall": null,
+        "duration_ms": 104746.1,
+        "avg_ms_per_example": 308.985,
+        "degraded_examples": 339,
+        "degraded_rate": 1.0,
+        "degraded_by_detector": {
+          "injection.classifier": 339,
+          "injection.similarity": 339
+        },
+        "errored_by_detector": {}
+      },
+      "trustairlab": {
+        "n": 2810,
+        "tp": 326,
+        "fp": 116,
+        "tn": 1289,
+        "fn": 1079,
+        "precision": 0.7376,
+        "recall": 0.232,
+        "duration_ms": 868636.5,
+        "avg_ms_per_example": 309.123,
+        "degraded_examples": 2810,
+        "degraded_rate": 1.0,
+        "degraded_by_detector": {
+          "injection.classifier": 2810,
+          "injection.similarity": 2810,
+          "injection.heuristic": 49
+        },
+        "errored_by_detector": {}
+      }
+    }
+  }
+}

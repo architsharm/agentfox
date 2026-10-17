@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyFormPost } from "@/lib/proxy";
+import { proxyFormPost } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 
@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
  * no way onto this page at all otherwise.
  */
 export async function POST(req: NextRequest) {
-  return proxyFormPost(req, "/api/agents", "/agents");
+  return proxyFormPost(req, "/api/agents", "/app/projects");
 }

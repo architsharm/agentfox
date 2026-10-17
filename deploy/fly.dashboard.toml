@@ -2,12 +2,14 @@
 #
 #   fly launch --no-deploy --copy-config --config deploy/fly.dashboard.toml
 #   fly secrets set GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... \
-#                   NOMETRIA_SERVICE_AUTH_SECRET=...
+#                   AGENTFOX_SERVICE_AUTH_SECRET=...
 #   fly deploy --config deploy/fly.dashboard.toml --dockerfile deploy/Dockerfile.dashboard
 #
 # The Dockerfile expects the build context to be ./dashboard, so run the deploy
 # from the repo root with `--build-context` support, or from ./dashboard with the
 # Dockerfile path adjusted. Runbook: deploy/README-dashboard.md
+#
+# Settings are AGENTFOX_*.
 app = "nometria-dashboard"
 primary_region = "iad"
 
@@ -17,7 +19,7 @@ primary_region = "iad"
 [env]
   NODE_ENV = "production"
   PORT = "3000"
-  NOMETRIA_API_URL = "https://guardrails-api.vercel.app"
+  AGENTFOX_API_URL = "https://guardrails-api.vercel.app"
 
 [http_service]
   internal_port = 3000

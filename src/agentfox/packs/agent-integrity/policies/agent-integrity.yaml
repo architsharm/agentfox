@@ -1,0 +1,43 @@
+# Rules over the task-alignment risk (judgment/checks.py), the insecure-code
+# detector (detectors/code.py) and the opt-in grounding model (adapters/grounding.py).
+key: agent-integrity
+name: Agent integrity
+description: >
+  Holds tool calls that drift from the stated task, insecure code in what an agent
+  writes, and answers the context does not support.
+version: 1
+mode: observe
+default_effect: allow
+scope:
+  agents: ["*"]
+
+rules:
+  - id: intent.misaligned
+    description: A tool call that does something the agent's task did not ask for.
+    when:
+      surface: [tool_args]
+      action_risk: intent.misaligned
+    effect: escalate
+    severity: high
+    reason: "This tool call does not serve the agent's stated task."
+    message: "I need a person to confirm this step before I continue."
+
+  - id: code.insecure
+    description: Code the agent is writing or running has a pattern static analysers flag.
+    when:
+      surface: [tool_args]
+      detection: {entity_prefix: CODE, min_score: 0.7}
+    effect: escalate
+    severity: high
+    reason: "Insecure code pattern in what the agent is about to write or run."
+
+  - id: grounding.unsupported
+    description: An answer the retrieved context does not support.
+    when:
+      surface: [output]
+      detection: {entity: GROUNDING.UNSUPPORTED, min_score: 0.7}
+    effect: block
+    severity: medium
+    reason: "The answer makes a claim the retrieved context does not support."
+    message: "I couldn't confirm that from our records."
+    on_block: reask

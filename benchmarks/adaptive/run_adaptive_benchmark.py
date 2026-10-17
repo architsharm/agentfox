@@ -1,6 +1,6 @@
 """Adaptive attack evaluation against our own detectors — and what it costs the attacker.
 
-    uv run python benchmarks/adaptive/run_adaptive_benchmark.py
+    uv run python -m benchmarks.adaptive.run_adaptive_benchmark
 
 **The question this answers.** [`../REPORT.md`](../REPORT.md) measures our detectors
 against *static* datasets: fixed text, written once, never revised in response to what
@@ -51,7 +51,6 @@ import json
 import os
 import random
 import re
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -60,19 +59,14 @@ BENCHMARK_DIR = Path(__file__).parent
 DB_PATH = Path("/tmp/agentfox_adaptive_benchmark.db")
 
 # Set before agentfox is imported, so the benchmark never touches the repo database.
-os.environ.setdefault("NOMETRIA_DATABASE_URL", f"sqlite:///{DB_PATH}")
+os.environ.setdefault("AGENTFOX_DATABASE_URL", f"sqlite:///{DB_PATH}")
 
-sys.path.insert(0, str(BENCHMARK_DIR.parent / "agent_security"))
-sys.path.insert(0, str(BENCHMARK_DIR))
-sys.path.insert(0, str(BENCHMARK_DIR.parent.parent / "tests"))
-
-from _util import wipe_db  # noqa: E402
-from operators import BACKFIRES, BY_KEY, COUNTERS, OPERATORS  # noqa: E402
-
-from agentfox import db  # noqa: E402
-from agentfox.config import get_settings  # noqa: E402
-from agentfox.enforcement import Enforcer  # noqa: E402
-from agentfox.seed import seed as seed_fixture  # noqa: E402
+from agentfox.core import db  # noqa: E402
+from agentfox.core.config import get_settings  # noqa: E402
+from agentfox.fixtures.seed import seed as seed_fixture  # noqa: E402
+from agentfox.runtime.enforcement import Enforcer  # noqa: E402
+from benchmarks._common import wipe_db  # noqa: E402
+from benchmarks.adaptive.operators import BACKFIRES, BY_KEY, COUNTERS, OPERATORS  # noqa: E402
 
 RESULTS_DIR = BENCHMARK_DIR / "results"
 
@@ -166,7 +160,7 @@ EXTRA_ACTION_SEEDS = {
 
 def load_seeds(rng: random.Random) -> list[dict[str, Any]]:
     """Corpus attacks + a fixed sample of deepset positives + the containment payloads."""
-    from corpus.injection import ATTACKS  # noqa: PLC0415 — needs the tests/ path insert
+    from tests.corpus.injection import ATTACKS  # noqa: PLC0415
 
     seeds: list[dict[str, Any]] = []
     for index, case in enumerate(ATTACKS):
@@ -181,7 +175,7 @@ def load_seeds(rng: random.Random) -> list[dict[str, Any]]:
 
     rows: list[dict[str, Any]] = []
     for split in ("train.json", "test.json"):
-        path = BENCHMARK_DIR.parent / "data" / split
+        path = BENCHMARK_DIR.parent / "injection" / "data" / split
         if path.exists():
             rows.extend(
                 {"split": split, **row} for row in json.loads(path.read_text()) if row["label"] == 1
@@ -390,9 +384,7 @@ def search(
             candidates = [op for op in pool if op.family not in used_families]
             if not candidates:
                 break
-            weights = [
-                credits[op.key] * (3.0 if op.family in steer else 1.0) for op in candidates
-            ]
+            weights = [credits[op.key] * (3.0 if op.family in steer else 1.0) for op in candidates]
             pick = rng.choices(candidates, weights=weights)[0]
             chosen.append(pick)
             used_families.add(pick.family)
@@ -804,9 +796,7 @@ def main() -> None:
                 "scored as `no detection`, so a slow attempt can read as a bypass on one "
                 "machine and not on another. Counted below rather than hidden."
             ),
-            "degraded_attempts": degraded_attempts + sum(
-                1 for a in all_attempts if a["degraded"]
-            ),
+            "degraded_attempts": degraded_attempts + sum(1 for a in all_attempts if a["degraded"]),
             "degraded_rate": round(
                 (degraded_attempts + sum(1 for a in all_attempts if a["degraded"]))
                 / total_attempts,
@@ -862,8 +852,10 @@ def main() -> None:
     wipe_db(DB_PATH)
 
     # --- console report -----------------------------------------------------
-    print(f"\nASR (success = allow verdict, zero entities), {len(searches)} searches, "
-          f"{total_attempts} attempts, {summary_doc['config']['wall_clock_seconds']}s")
+    print(
+        f"\nASR (success = allow verdict, zero entities), {len(searches)} searches, "
+        f"{total_attempts} attempts, {summary_doc['config']['wall_clock_seconds']}s"
+    )
     header = "  {:34s}" + "".join(f"{f'@{b}':>8s}" for b in BUDGETS) + "{:>8s}"
     print(header.format("config (seeds)", "median"))
     for key, row in curves.items():

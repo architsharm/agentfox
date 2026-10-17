@@ -1,0 +1,94 @@
+{
+  "source": "Captured for this fixture: Claude Code 2.1.292, `claude -p` in a scratch repo with a temporary Stop hook that wrote stdin to a file (first of two Stop events; the hook blocked it and allowed the second). Verbatim except the home directory, anonymised to /Users/x.",
+  "event": {
+    "harness": "claude",
+    "event": "Stop",
+    "kind": "stop",
+    "tool": "",
+    "arguments": {
+      "value": null
+    },
+    "canonical_tool": "",
+    "session_id": "ca31e8b5-3e3a-4d39-b8c8-75ec93832427",
+    "cwd": "/private/tmp/claude-501/-Users-x-guardrails/d4370986-754e-44d6-a802-518f2da3fa12/scratchpad/stopprobe",
+    "permission_mode": "default",
+    "content": "",
+    "reentered": false,
+    "surface": "input",
+    "checks_content": true
+  },
+  "decisions": [
+    {
+      "decision": {
+        "kind": "allow"
+      },
+      "stdout": "{}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "allow",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny",
+        "reason": "the service is not detached",
+        "rules": [
+          "delivery.service_persistence"
+        ]
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: the service is not detached (delivery.service_persistence)\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "deny"
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: not finished yet\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": null
+    },
+    {
+      "decision": {
+        "kind": "ask",
+        "reason": "touches production",
+        "rules": [
+          "approval.required"
+        ]
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: touches production (approval.required)\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": "ask"
+    },
+    {
+      "decision": {
+        "kind": "modify",
+        "arguments": {
+          "command": "ls"
+        }
+      },
+      "stdout": "{\"decision\": \"block\", \"reason\": \"AgentFox: not finished yet\"}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "deny",
+      "downgraded_from": "modify"
+    },
+    {
+      "decision": {
+        "kind": "context",
+        "context": "AgentFox: this repository is governed."
+      },
+      "stdout": "{}",
+      "stderr": "",
+      "exit_code": 0,
+      "applied": "allow",
+      "downgraded_from": "context"
+    }
+  ]
+}

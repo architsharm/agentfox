@@ -51,15 +51,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import _env  # noqa: F401  -- must run before anything imports agentfox settings
-
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import tool
+from support_tools import AGENT_SLUG, GovernedToolkit, decision_summary
 
 import agentfox
-from agentfox.db import init_db, session_scope
-from support_tools import AGENT_SLUG, GovernedToolkit, decision_summary
+from agentfox.core.db import init_db, session_scope
 
 
 class MissingApiKey(RuntimeError):
@@ -75,9 +74,9 @@ tools to call. Set ONE of these environment variables before running it:
   export ANTHROPIC_API_KEY=sk-ant-...     # preferred, uses Claude
   export OPENAI_API_KEY=sk-...            # fallback, uses GPT-4o-mini
 
-Optionally pin the exact model with NOMETRIA_DEMO_MODEL, e.g.:
+Optionally pin the exact model with AGENTFOX_DEMO_MODEL, e.g.:
 
-  export NOMETRIA_DEMO_MODEL=claude-3-5-sonnet-20241022
+  export AGENTFOX_DEMO_MODEL=claude-3-5-sonnet-20241022
 
 Nothing was called — no network request was made. See
 demo/redteam-live-lang/README.md for full setup instructions.
@@ -103,7 +102,7 @@ def _resolve_llm() -> Any:
     verified under) never even attempts an import of a provider package, let alone a
     network call — mirrors `crew.py`'s `_resolve_llm()` fail-fast contract exactly.
     """
-    model_override = os.environ.get("NOMETRIA_DEMO_MODEL")
+    model_override = os.environ.get("AGENTFOX_DEMO_MODEL")
     if os.environ.get("ANTHROPIC_API_KEY"):
         from langchain_anthropic import ChatAnthropic
 

@@ -1,10 +1,10 @@
-"""Scores the real, shipping `analyse_arguments()` (`src/agentfox/guardrails/actions.py`
+"""Scores the real, shipping `analyse_arguments()` (`src/agentfox/capabilities/detection/actions.py`
 — the public dispatcher `enforcement.py` actually calls, which routes SQL/shell/URL
 -declared fields by key name and everything else through the generic
 wildcard/SQLi-fragment/path-traversal `analyse_scope` backstop) against
 `data/payloadbox_cases.json`.
 
-    uv run python benchmarks/action_safety/run_payloadbox_benchmark.py
+    uv run python -m benchmarks.action_safety.run_payloadbox_benchmark
 
 Every case places one raw payload-box fragment (or one hand-authored benign value)
 as the value of an ordinary, non-SQL-declared argument — e.g. `{"order_id": "1 OR
@@ -31,7 +31,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from agentfox.guardrails.actions import analyse_arguments
+from agentfox.capabilities.detection.actions import analyse_arguments
 
 DATA_DIR = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"

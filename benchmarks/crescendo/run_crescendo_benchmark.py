@@ -1,9 +1,9 @@
 """Crescendo — gradual multi-turn manipulation, where no single turn is the attack.
 
-    PYTHONPATH=src:benchmarks/agent_security NOMETRIA_CONFIG=none \
-      python benchmarks/crescendo/run_crescendo_benchmark.py
+    PYTHONPATH=src AGENTFOX_CONFIG=none \
+      python -m benchmarks.crescendo.run_crescendo_benchmark
 
-**The gap.** `docs/coverage-map.md` row L1.6 was `✗ absent`: "Detection is per-message.
+**The gap.** `docs/design/coverage-map.md` row L1.6 was `✗ absent`: "Detection is per-message.
 Nothing scores a conversation's trajectory, and this is a published, effective
 technique." Microsoft's Crescendo (arXiv:2404.01833) escalates gradually — each turn
 is an unremarkable request, and the conversation as a whole arrives somewhere no
@@ -30,7 +30,7 @@ Every conversation is scored three ways:
 * **Windowed** — `Enforcer.check_conversation_window` re-run at every turn index, with
   only the turns before it in the conversation store, so the *first* turn at which the
   trajectory is caught is a measured number rather than a yes/no.
-* **Trajectory** — `CRESCENDO.TRAJECTORY_DRIFT` (F9.4, `src/agentfox/trajectory.py`),
+* **Trajectory** — `CRESCENDO.TRAJECTORY_DRIFT` (F9.4, `src/agentfox/capabilities/detection/trajectory.py`),
   which rides on the same `check_conversation_window` call and reads the same window as
   a *sequence* rather than a join. Added after the first run of this benchmark returned
   0/13 and confirmed the gap; it is scored here as a third column rather than replacing
@@ -49,11 +49,8 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "agent_security"))
 
 RESULTS_DIR = Path(__file__).parent / "results"
 DB_PATH = Path("/tmp/agentfox_crescendo_benchmark.db")
@@ -478,7 +475,7 @@ def score_conversation(
     enforcer: Any, session: Any, convo: dict[str, Any], is_attack: bool
 ) -> dict[str, Any]:
     """Score one conversation per-message and, at every turn, over the window."""
-    from agentfox.models import ConversationTurn
+    from agentfox.core.models import ConversationTurn
 
     session_id = f"crescendo-{convo['id']}"
     per_turn: list[dict[str, Any]] = []
@@ -556,9 +553,7 @@ def score_conversation(
         "trajectory_caught_before_final_turn": (
             first_trajectory is not None and first_trajectory < len(convo["turns"]) - 1
         ),
-        "trajectory_markers": sorted(
-            {m for r in windowed for m in r["trajectory_markers"]}
-        ),
+        "trajectory_markers": sorted({m for r in windowed for m in r["trajectory_markers"]}),
         "id": convo["id"],
         "family": convo["family"],
         "goal": convo.get("goal"),
@@ -592,9 +587,9 @@ def measure_trajectory_latency(repeats: int = 40) -> dict[str, Any]:
     import statistics
     import time
 
-    from agentfox.guardrails.base import DetectionContext
-    from agentfox.guardrails.pipeline import DetectorPipeline
-    from agentfox.trajectory import assess
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
+    from agentfox.capabilities.detection.trajectory import assess
 
     pipeline = DetectorPipeline()
     context = DetectionContext(surface="input", taint_source="user")
@@ -632,15 +627,14 @@ def measure_trajectory_latency(repeats: int = 40) -> dict[str, Any]:
 
 
 def main() -> None:
-    from _util import wipe_db
+    from agentfox.core import db
+    from agentfox.core.config import get_settings, reset_settings_cache
+    from agentfox.fixtures.seed import seed
+    from agentfox.runtime.enforcement import Enforcer
+    from benchmarks._common import wipe_db
 
-    from agentfox import db
-    from agentfox.config import get_settings, reset_settings_cache
-    from agentfox.enforcement import Enforcer
-    from agentfox.seed import seed
-
-    # `NOMETRIA_DATABASE_URL` is the setting that actually exists. An earlier version
-    # of this script set `NOMETRIA_DB_PATH`, which is not a setting at all — Settings
+    # `AGENTFOX_DATABASE_URL` is the setting that actually exists. An earlier version
+    # of this script set `AGENTFOX_DB_PATH`, which is not a setting at all — Settings
     # is `extra="ignore"`, so it was accepted silently and every run wrote to the
     # repo's shared `agentfox.db` instead, while `wipe_db` faithfully deleted a /tmp
     # file that was never created.
@@ -651,7 +645,7 @@ def main() -> None:
     # duplicates and no longer detected the payload split it is there to prove. The
     # liveness gate caught it, which is the whole reason it exists.
     wipe_db(DB_PATH)
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
     reset_settings_cache()
     db.reset_engine()
     assert str(DB_PATH) in get_settings().database_url, "benchmark is not on its own database"

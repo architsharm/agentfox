@@ -1,0 +1,213 @@
+# Coding agents — the job, not the standard.
+#
+# Every other pack in this directory is named after a thing it implements:
+# `baseline` is the detector floor, `tool-containment` is the capability model,
+# `eu-ai-act-high-risk` is a regulation. None of them is named after a person
+# with a problem, and the person installing our hooks has exactly one: they run
+# Claude Code or Cursor on a laptop that can reach production.
+#
+# So this pack composes what those three already do and changes only the
+# choices that are wrong for that job. It invents no detector and no condition
+# type. What it contributes is the tuning, and the tuning is the product: a
+# coding agent's inputs are overwhelmingly machine output — diffs, test
+# failures, JSON, logs — so instruction-shaped English arriving in a tool
+# result is far more anomalous here than in a support agent reading customer
+# mail, and can be caught at a threshold that would be intolerable there.
+#
+# **Enable it alongside the others, not instead of them.** Nothing here
+# repeats a rule that already fires; a pack that restated `capability.denied`
+# would double every decision record and teach the reader that packs are
+# alternatives. They are layers.
+#
+# Ships in observe, like everything else. Run it for a week, read
+# `agentfox policy simulate`, then promote it.
+key: coding-agent
+name: Coding agent profile
+description: >
+  Tuning for an agent that edits code and runs shell commands on a developer
+  machine: a lower injection threshold on tool results, credentials caught on
+  the way in as well as the way out, and the agent's own instruction files
+  treated as an attack surface.
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+# The wildcard is narrowed when the pack is bound: `agentfox init` and
+# `agentfox hooks install --write` scope it to the agents a coding harness's hooks
+# actually govern, and skip it when there are none (policy/coding.py). Bound to
+# everything, its PII rule told a support bot it was "in a coding session".
+scope:
+  agents: ["*"]
+
+rules:
+  # --- What a coding agent reads ------------------------------------------
+  #
+  # The event this pack exists for. A coding agent fetches an issue, a PR
+  # comment, a dependency README, a CI log — third-party prose, arriving as
+  # context, through a tool call that was itself completely ordinary. A hook
+  # bound only to the tool call cannot see it; `PostToolUse` can.
+
+  - id: code.injection_in_fetched_content
+    description: >
+      Instruction-like content in something the agent fetched. Scored at 0.5
+      rather than baseline's 0.6 because of what a coding agent's tool results
+      normally look like: `git diff`, a stack trace, a JSON body, a test
+      report. Second-person imperative English addressed to the model is a
+      much stronger signal in that stream than it is in a mailbox, so the
+      threshold that would be noisy elsewhere is the right one here.
+    when:
+      surface: [tool_result, retrieved]
+      detection: {entity_prefix: INJECTION, min_score: 0.5}
+    effect: block
+    severity: critical
+    reason: >
+      Instruction-like content arrived in a tool result. The call that fetched
+      it was ordinary; the content is not.
+    controls: [NOM-RTG-01, NOM-DSC-05]
+
+  - id: code.secret_in_fetched_content
+    description: >
+      A credential in what came back, rather than in what was sent. Baseline's
+      `secrets.block` catches a secret anywhere at 0.9; this catches it in a
+      tool result at 0.7, because the failure here is not the agent leaking a
+      key — it is the key entering the context window at all, after which
+      every later turn can disclose it and no downstream control can unsee it.
+    when:
+      surface: [tool_result]
+      detection: {entity_prefix: SECRET, min_score: 0.7}
+    effect: block
+    severity: high
+    reason: >
+      A credential came back from a tool and is now in the agent's context.
+    controls: [NOM-RTG-03, NOM-IAM-02]
+
+  # --- What a coding agent is told ----------------------------------------
+
+  - id: code.injection_adopted
+    description: >
+      The model's own reasoning carrying a directive it did not get from the
+      operator. Baseline already runs this at 0.4; a coding agent gets it at
+      0.3 because the blast radius on this surface is a shell, and because the
+      reasoning of an agent doing mechanical work is unusually uniform — it
+      narrates diffs and plans, not instructions to itself in the second
+      person.
+    when:
+      surface: [reasoning]
+      detection: {entity_prefix: INJECTION, min_score: 0.3}
+    effect: escalate
+    severity: critical
+    reason: >
+      A directive appears in the model's own reasoning. On a surface that ends
+      in a shell command, an adopted instruction is a compromise in progress
+      rather than an attempt.
+    controls: [NOM-RTG-01]
+
+  - id: code.injection_in_operator_turn
+    description: >
+      The operator's own turn. Not because we distrust the person typing — but
+      because a turn is routinely pasted, and a pasted stack trace, log or
+      issue body carries whatever was in it. Escalate rather than block: this
+      is the one surface where a false positive costs the operator their own
+      sentence.
+    when:
+      surface: [input]
+      detection: {entity_prefix: INJECTION, min_score: 0.7}
+    effect: escalate
+    severity: medium
+    reason: >
+      Instruction-like content in the submitted turn. Most often a pasted
+      artifact carrying something the person did not read.
+    controls: [NOM-RTG-01]
+
+  # --- What a coding agent does -------------------------------------------
+  #
+  # `tool-containment` already blocks credential-file access and escalates
+  # history rewrites. These two raise the severity of the pair that are worse
+  # on a machine with production credentials on it than they are anywhere
+  # else, and nothing here duplicates a condition those rules already match.
+
+  - id: code.pii_out_of_a_developer_machine
+    description: >
+      Personal data in what the agent is sending. A coding agent that has just
+      queried a production replica is holding real customer rows, and the next
+      tool call may be a web request or a file write outside the repository.
+    when:
+      surface: [tool_args]
+      detection: {entity_prefix: PII, min_score: 0.7}
+    effect: escalate
+    severity: high
+    reason: >
+      Personal data in a tool-call argument from a coding session.
+    controls: [NOM-DSC-01]
+
+  # --- The command blocklist ------------------------------------------------
+  #
+  # Shapes ported from a Claude Code governance plugin's default policy (MIT;
+  # see capabilities/detection/shell_blocklist.py for the source and the one
+  # change made). `tool-containment` already blocks the catastrophic versions
+  # (`rm -rf /`, `curl | sh`); these are the narrower ones that matter on a
+  # developer machine, raised at `high` by the action analyser so this pack,
+  # not the analyser, decides what they mean.
+
+  - id: code.recursive_delete
+    description: >
+      `rm` with both a recursive and a force flag, read through a shell
+      tokenizer: wrappers (`sudo`, `env`, `timeout`), quoted flags and command
+      substitutions count; text that only mentions `rm -rf` does not, nor does a
+      plain cleanup of build artefacts such as `node_modules` or `dist`.
+    when:
+      surface: [tool_args]
+      action_risk: "shell.recursive-delete"
+    effect: block
+    severity: high
+    reason: "Recursive forced delete outside build artefacts."
+    controls: [NOM-RTG-04]
+
+  - id: code.download_to_shell
+    description: A downloaded script run straight in a shell (`curl … | bash`, `bash <(wget …)`).
+    when:
+      surface: [tool_args]
+      action_risk: "shell.download-to-shell"
+    effect: block
+    severity: high
+    reason: "Downloaded shell bootstrap."
+    controls: [NOM-RTG-04]
+
+  - id: code.cloud_metadata
+    description: >
+      A cloud instance-metadata endpoint (169.254.169.254, 100.100.100.200,
+      metadata.google.internal), in a command or in any URL argument. It hands
+      out the machine's credentials.
+    when:
+      surface: [tool_args]
+      action_risk: "net.cloud-metadata"
+    effect: block
+    severity: high
+    reason: "Direct access to a cloud metadata endpoint."
+    controls: [NOM-RTG-04]
+
+  - id: code.secret_read
+    description: >
+      A command that reads a credential file (`.env`, SSH keys, cloud and
+      registry credentials) or dumps the environment. `.env.example`,
+      `.sample` and `.template` files are exempt.
+    when:
+      surface: [tool_args]
+      action_risk: "shell.secret-read"
+    effect: block
+    severity: high
+    reason: "Read of a credential file or of the environment."
+    controls: [NOM-RTG-04, NOM-IAM-02]
+
+  - id: code.credential_path
+    description: >
+      A read tool pointed at a credential file or directory (`~/.ssh`,
+      `~/.aws`, `.env`, `/proc/<pid>/environ`). Writes are left to the rules
+      on writes.
+    when:
+      surface: [tool_args]
+      action_risk: "fs.credential-path"
+    effect: block
+    severity: high
+    reason: "Direct read of a credential path."
+    controls: [NOM-RTG-04, NOM-IAM-02]

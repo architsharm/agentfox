@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyCustomBody } from "@/lib/proxy";
+import { proxyCustomBody } from "@/lib/product/proxy";
 
 /**
  * Custom body rather than the generic Form* helpers: EvidenceIn.agents/controls
@@ -30,5 +30,5 @@ export async function POST(req: NextRequest) {
   if (periodFrom) body.period_from = periodFrom;
   if (periodTo) body.period_to = periodTo;
 
-  return proxyCustomBody(req, "POST", "/api/evidence", "/compliance?tab=evidence", body);
+  return proxyCustomBody(req, "POST", "/api/evidence", "/app/reports?tab=evidence", body);
 }

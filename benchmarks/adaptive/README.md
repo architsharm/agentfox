@@ -5,7 +5,7 @@
 **Second pass.** The first run found four detector gaps and fixed none of them. Three were real bugs and are now fixed in `src/`; every number below is the re-measurement, with the pre-fix number beside it. See [Fixes applied](#fixes-applied).
 
 ```bash
-uv run python benchmarks/adaptive/run_adaptive_benchmark.py
+uv run python -m benchmarks.adaptive.run_adaptive_benchmark
 ```
 
 ## Why this benchmark exists
@@ -38,7 +38,7 @@ That filter is why the ASR denominator moved: before the fixes the same 81 candi
 
 **Two surfaces.** `indirect_retrieved` (payload inside a retrieved document, taint `retrieved`) is the real agent threat model and the harder target — the detector adds a provenance boost and switches on an obfuscation-only rule at that taint rank. `direct_input` is the payload the user typed.
 
-Offline, no model calls, no network. Fixed seed; 190 searches, 5,593 attempts, **29 seconds** wall clock. The pre-fix run reported below was re-measured on this same seed set, so every before/after pair differs only in `src/`.
+Offline, no model calls, no network. Fixed seed; 190 searches, 5,642 attempts, **34 seconds** wall clock. The pre-fix run reported below was re-measured on this same seed set, so every before/after pair differs only in `src/`.
 
 ## Results — ASR curve
 
@@ -46,16 +46,16 @@ Attack success rate by attacker budget, over the seeds the shipped stack detects
 
 | Configuration | @1 | @5 | @10 | @25 | @50 | median attempts |
 |---|---|---|---|---|---|---|
-| `indirect_retrieved` / all operators (48) | 0.0% | 56.2% | 89.6% | 100.0% | **100.0%** | 4 |
-| `indirect_retrieved` / **readable only** (48) | 0.0% | 25.0% | 39.6% | 62.5% | **72.9%** | 9 |
+| `indirect_retrieved` / all operators (48) | 0.0% | 58.3% | 89.6% | 100.0% | **100.0%** | 4 |
+| `indirect_retrieved` / **readable only** (48) | 0.0% | 25.0% | 37.5% | 62.5% | **70.8%** | 9 |
 | `direct_input` / all operators (47) | 0.0% | 72.3% | 93.6% | 100.0% | **100.0%** | 4 |
-| `direct_input` / **readable only** (47) | 0.0% | 31.9% | 46.8% | 72.3% | **74.5%** | 6 |
+| `direct_input` / **readable only** (47) | 0.0% | 27.7% | 44.7% | 72.3% | **74.5%** | 7 |
 
-**Read this as: a quarter of the attacks our detectors stop are through within five adapted attempts, and roughly three in four are through within fifty — using only mutations that leave the instruction plainly readable.** With the full move set every single seed falls, on both surfaces, within 25 attempts. The paper's >90% figure is not something we are an exception to; with the full move set we now exceed it against ourselves.
+**Read this as: a quarter of the attacks our detectors stop are through within five adapted attempts, and roughly seven in ten are through within fifty — using only mutations that leave the instruction plainly readable.** With the full move set every single seed falls, on both surfaces, within 25 attempts. The paper's >90% figure is not something we are an exception to; with the full move set we now exceed it against ourselves.
 
 The fixes moved the readable-only columns and pushed the `all` columns *up*, which is the expected shape twice over: nothing in this round addressed encodings, a detector cannot read what has been hex-encoded, and — as the per-operator section below shows — one thing the pre-fix detector did appear to catch about encoded payloads turned out to be an em-dash in the benchmark's own wrapper text. **Fixing the two character-obfuscation bugs raised the cost of a readable bypass and did nothing about the ceiling.**
 
-165 of 190 searches ended in a bypass. Every one was re-run on the persisting path (the search itself runs `persist=False` for speed) and **165/165 reproduced**, so no part of this number is an artefact of the faster path.
+164 of 190 searches ended in a bypass. Every one was re-run on the persisting path (the search itself runs `persist=False` for speed) and **164/164 reproduced**, so no part of this number is an artefact of the faster path.
 
 ## Results — per-operator effectiveness
 
@@ -81,7 +81,7 @@ The useful engineering output. `solo` is the clean measure: that operator, alone
 | `char.homoglyph_mapped` | char obfuscation | readable | 3.9% | 3.2% | 7 |
 | `char.zero_width` | char obfuscation | readable | 0.0% | 0.0% | 2 |
 
-**The two character-obfuscation operators that were the top readable moves are now the bottom ones.** Unmapped separators went 66.7% → 8.4% and unmapped homoglyphs 53.8% → 3.2%, and the gap between "mapped" and "unmapped" — 26.9% against 66.7%, 3.9% against 53.8% — has closed to nothing, which is the point: the fix was not a bigger table, it was a check that does not need one. `restate.synonyms` is now the strongest readable operator by a wide margin, and it is the arms race the detector's own docstring says it is losing on purpose.
+**Correction (October 2026): the character-obfuscation gap is not closed.** An earlier round reported unmapped separators 66.7% → 8.4% and unmapped homoglyphs 53.8% → 3.2%, and credited a structural check. But the "unmapped" operators used a fixed list of characters, and every one of them had since been added to the product's own tables, so they were no longer testing unmapped characters at all. The operators now pick, each run, lookalikes and separators the product does not handle (`operators.py`, `_unmapped_homoglyphs` / `_unmapped_separators`). Measured that way, an unmapped homoglyph on its own gets through **30.1%** of the time and an unmapped separator **58.1%**, against 3.2% and 4.3% for mapped ones. This is an open detection gap, not a solved one: a lookalike or separator outside the tables still produces little or no signal.
 
 **The `requires_decode` operators went up, and the reason is worth more than the number.** Re-running the ablation over only the 78 seed×surface pairs both runs detect — so the denominator is identical — `encode.hex` is 83.3% before and **100.0%** after, `encode.reversed` 75.6% → 88.5%, `encode.rot13` 60.3% → 74.4%. Nothing in this round touched encoding, so that had to be explained rather than shrugged at.
 
@@ -104,14 +104,14 @@ A bypass is not harm. For every bypass whose seed names an obvious harmful actio
 | Action | Bypasses | Action verdict | Stopped by |
 |---|---|---|---|
 | exfiltration via `email.send` (support-triage) | 18 | block | `capability.denied`, `taint.irreversible_tool` |
-| destructive SQL via `tickets.update` | 8 | block | `sql.unbounded_mutation`, `cascade.reaches_destructive` |
+| destructive SQL via `tickets.update` | 8 | block | `sql.unbounded_mutation`, `cascade.reaches_notification` |
 | transfer via `payments.transfer` (payments-ops) | 12 | escalate | `taint.irreversible_tool`, `eu.art14.human_oversight` |
 
 **38 of 38 contained** (28 of 28 before the fixes). 38 further bypasses came from seeds that name no specific action ("you are now DAN", a system-prompt leak) and were excluded rather than assigned an invented one.
 
 So the two-sided headline this repo wants:
 
-> **Search-based adaptive attack defeats our content detectors on 73% of the attacks they currently catch, within 50 attempts, using only readable mutations — down from 75% before this round's fixes, against a set of attacks that is now 20% larger because the fixes also closed three detection misses. In all 38 of those cases where the attack named a harmful action, the action was still contained.**
+> **Search-based adaptive attack defeats our content detectors on 71% of the attacks they currently catch, within 50 attempts, using only readable mutations — down from 75% before this round's fixes (73% right after them; the persona-jailbreak patterns added later stopped one more), against a set of attacks that is now 20% larger because the fixes also closed three detection misses. In all 38 of those cases where the attack named a harmful action, the action was still contained.**
 
 ## What this benchmark does not show
 
@@ -123,7 +123,7 @@ Read this before quoting the number.
 - **48 seeds is a small set, and it is a biased one.** It is specifically the subset our detectors catch, so the ASR denominator excludes the 33 candidates already missed — and it moved when the detectors were fixed, which is why the fixes section reports a shared-seed row beside each headline one. That makes the number mean "how robust is what we do catch", not "how safe is the product against this corpus". The second question is answered by REPORT.md and by containment, not here.
 - **The containment column is invariant to the payload, by design.** The action path never reads the attacker's text; it reasons about grants, taint, declared constraints and statement semantics. So 38/38 is not evidence that containment resists *these particular* bypasses — it is evidence that containment does not depend on the bypass at all. That invariance is the finding. Its limits are the ones [`../containment/`](../containment/README.md) already discloses: containment is exactly as good as the operator's declarations behind it.
 - **One operator was removed for making the number meaningless.** An indirection operator that *replaced* the payload with a pointer to it ("do what the previous document said") solved 38 of 136 searches on its own at a 76% hit rate. A detector cannot find an instruction that is not in the text, and this benchmark has no way to check whether the referenced document exists. It was deleted and every operator now has to leave the payload recoverable in its output. The measurement is recorded here rather than in a commit message because it moved every ASR cell in this README.
-- **Not bit-for-bit reproducible, and the reason is disclosed.** 9 of 5,593 attempts (0.16%) had a detector blow the latency ceiling and get scored as "no detection" — the same effect REPORT.md's `degraded` column discloses. 5 searches were touched by one (11 of 4,198 and 6 searches in the pre-fix run). Re-running can move a cell by a couple of points. Production runs at that same ceiling, so this is a property of the thing being measured, not of the benchmark.
+- **Not bit-for-bit reproducible, and the reason is disclosed.** 9 of 5,642 attempts (0.16%) had a detector blow the latency ceiling and get scored as "no detection" — the same effect REPORT.md's `degraded` column discloses. 5 searches were touched by one (11 of 4,198 and 6 searches in the pre-fix run). Re-running can move a cell by a couple of points. Production runs at that same ceiling, so this is a property of the thing being measured, not of the benchmark.
 - **The defence was fixed between the two runs, and the attacker was not touched.** Three detector bugs this benchmark found are now fixed (see [Fixes applied](#fixes-applied)); no threshold was tuned, no benchmark string was special-cased, and every fix was held to a false-positive measurement on benign corpora it had never been run against. Equally, the attacker's knobs (`P_HILL_CLIMB`, `P_STEER`, credit multipliers) were set once and not swept; a tuned attacker would do better.
 
 <a id="fixes-applied"></a>
@@ -144,7 +144,7 @@ Four gaps were found. **Three were genuine bugs and are fixed**; the fourth is a
 
 ### Attack success — before and after
 
-Each run's own denominator moved (40/38 detected seeds before, 48/47 after), so both readings are given. The like-for-like row is the one to quote for the *fix*; the headline row is the one to quote for the *product*.
+Each run's own denominator moved (40/38 detected seeds before, 48/47 after), so both readings are given. The "after" column is this round's own measurement; the current figures, re-measured after the later persona-jailbreak and letter-spacing detection work, are in the table at the top (readable-only `indirect_retrieved` @50 is now 70.8%). The like-for-like row is the one to quote for the *fix*; the headline row is the one to quote for the *product*.
 
 | Configuration | Denominator | @5 before → after | @10 before → after | @50 before → after |
 |---|---|---|---|---|
@@ -155,7 +155,7 @@ Each run's own denominator moved (40/38 detected seeds before, 48/47 after), so 
 | `indirect_retrieved` / all operators | 40 shared seeds | 52.5% → 57.5% | 75.0% → 87.5% | 97.5% → 100.0% |
 | `direct_input` / all operators | 38 shared seeds | 84.2% → 73.7% | 94.7% → 94.7% | 100.0% → 100.0% |
 
-**The fixes cost the attacker attempts, not the attack.** At a five-attempt budget the readable-only success rate roughly halves on direct input; at fifty it barely moves. That is the honest shape of a pattern-and-normalisation fix against a search-based attacker: closing two specific moves makes the search longer, and the search still finds `restate.synonyms`. **73% of the attacks we catch still fall to a readable mutation within 50 attempts**, and this benchmark's position has not changed — containment, not detection, is the thing that holds.
+**The fixes cost the attacker attempts, not the attack.** At a five-attempt budget the readable-only success rate roughly halves on direct input; at fifty it barely moves. That is the honest shape of a pattern-and-normalisation fix against a search-based attacker: closing two specific moves makes the search longer, and the search still finds `restate.synonyms`. **73% of the attacks we caught then still fell to a readable mutation within 50 attempts** (71% today), and this benchmark's position has not changed — containment, not detection, is the thing that holds.
 
 The `all`-operator rows are noisier and should be read as a correction rather than as a result: `indirect_retrieved` rises because of the em-dash artefact described above (encoded payloads that only ever raised a finding because of the wrapper's punctuation now raise none), while `direct_input` falls at @5 and is identical by @10. Neither says anything about encodings, which this round did not touch.
 
@@ -213,7 +213,7 @@ The normalised view of the second is `Ignoreallpreviousinstructionsnow`, and eve
 
 **2. The confusables and separator tables are incomplete, and an unmapped character produces no signal whatsoever.** `_CONFUSABLES` covers a/e/o/p/c/y/x/m/h/b/t/k/i and some Greek. Substituting the letters it omits — `s`→`ѕ` U+0455, `d`→`ԁ`, `g`→`ɡ`, `n`→`ո` — leaves the text unfolded, and because `evasion_score` only counts homoglyphs it recognised, it also leaves `INJECTION.OBFUSCATED_CONTENT` silent. Unmapped homoglyphs bypass at 55.3%; mapped ones at 4.0%. The same is true of separators outside `[-._*·|/\\ ]`: `I~g~n~o~r~e` produces no transform and no evasion signal at all, and is the single most effective readable operator in the run at 68.4%.
 
-> **Fixed, but not by completing the table.** A word that changes script halfway through now raises obfuscation evidence whatever the character is, and the separator class is every punctuation character with a *shape* test doing the discriminating. The table was extended too, as a convenience for folding rather than as the defence. `char.homoglyph_unmapped` 53.8% → 3.2%, `char.separator_unmapped` 66.7% → 8.4% — the mapped/unmapped gap this finding was built on is gone.
+> **Partly fixed; the gap reopened under an honest test.** A word that changes script halfway through now raises obfuscation evidence, and the separator class covers ASCII punctuation. The table was also extended with the exact letters this operator used, which is what made the old 53.8% → 3.2% look like a structural fix. With the operator now drawing characters the product does not map, the bypass rates are 30.1% (homoglyphs) and 58.1% (separators): see the correction above.
 
 **3. The instruction-override object list omits two of the commonest nouns in real injection text.** `restrictions` and `constraints` are not in the `(?:instruction|prompt|rule|direction|message)s?` alternation:
 

@@ -12,12 +12,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/api";
+import { apiBase, env } from "@/lib/env";
+import { SESSION_COOKIE } from "@/lib/product/api";
 
 export const dynamic = "force-dynamic";
 
 const STATE_COOKIE = "gh_oauth_state";
-const API_BASE = process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const API_BASE = apiBase();
 
 function fail(origin: string, message: string) {
   const url = new URL("/login", origin);
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const serviceSecret = process.env.NOMETRIA_SERVICE_AUTH_SECRET;
+  const serviceSecret = env("SERVICE_AUTH_SECRET");
   if (!clientId || !clientSecret || !serviceSecret) {
     return fail(origin, "GitHub sign-in is not fully configured on this deployment");
   }
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
   // because no user token exists yet at this point.
   const provisionRes = await fetch(`${API_BASE}/api/auth/github/provision`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Nometria-Service-Secret": serviceSecret },
+    headers: { "Content-Type": "application/json", "X-AgentFox-Service-Secret": serviceSecret },
     body: JSON.stringify({
       github_user_id: String(profile.id),
       github_login: profile.login,
@@ -102,7 +103,9 @@ export async function GET(req: NextRequest) {
     body: JSON.stringify({ access_token: githubToken }),
   });
 
-  const res = NextResponse.redirect(new URL("/start?tab=connect", origin));
+  // The welcome page scans a repository and sets it up in one flow; a workspace
+  // that is already past that is sent on to Home from there.
+  const res = NextResponse.redirect(new URL("/app/welcome", origin));
   res.cookies.delete(STATE_COOKIE);
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

@@ -1,0 +1,4 @@
+# Versions this demo was last run with. The upstream requirements.txt is unpinned;
+# these keep a fresh setup from picking up a breaking Agents SDK release.
+openai-agents==0.23.1
+openai-chatkit==1.6.5

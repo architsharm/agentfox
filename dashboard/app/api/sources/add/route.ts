@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiBase } from "@/lib/env";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE } from "@/lib/api";
+import { SESSION_COOKIE } from "@/lib/product/api";
+import { connectionBody } from "@/lib/product/sourceConnection";
+import { requestOrigin } from "@/lib/product/origin";
 
-const API_BASE = process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
+const API_BASE = apiBase();
 
 /**
  * The single-flow "add a source" form posts here instead of chaining a plain
@@ -13,7 +16,7 @@ const API_BASE = process.env.NOMETRIA_API_URL || "http://127.0.0.1:8080";
  * than "do step 1, then remember to also do step 2".
  */
 export async function POST(req: NextRequest) {
-  const target = new URL("/sources", req.nextUrl.origin);
+  const target = new URL("/app/sources", requestOrigin(req));
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) {
     target.searchParams.set("review_error", "not signed in");
@@ -50,30 +53,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.redirect(target);
     }
 
-    const config: Record<string, unknown> =
-      type === "database"
-        ? {
-            dialect: str("dialect") || "postgresql",
-            host: str("host") || undefined,
-            port: str("port") ? Number(str("port")) : undefined,
-            database: str("database") || undefined,
-            username: str("username") || undefined,
-            check_table: str("check_table") || undefined,
-          }
-        : {
-            base_url: str("base_url"),
-            auth_header: str("auth_header") || "Authorization",
-            auth_prefix: str("auth_prefix") || "Bearer ",
-          };
-
-    const connectionBody: Record<string, unknown> = { key, kind: type, config };
-    const credential = str("credential");
-    if (credential) connectionBody.credential = credential;
+    const connection = connectionBody(form, key, type);
 
     const connectionRes = await fetch(`${API_BASE}/api/sources/connections`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(connectionBody),
+      body: JSON.stringify(connection),
     });
     if (!connectionRes.ok) {
       const body = await connectionRes.json().catch(() => ({}));

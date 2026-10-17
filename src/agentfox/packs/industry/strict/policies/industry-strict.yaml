@@ -1,0 +1,29 @@
+# Translated from examples/policies/production/rego/strict.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: industry-strict
+name: Strict
+description: 'Strict: rules translated from the strict policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: industry-strict.credential-pattern-detected-output
+  description: Credential pattern detected in output
+  when:
+    action_risk: industry-strict.credential-pattern-detected-output
+  effect: block
+  severity: high
+  reason: Credential pattern detected in output
+- id: industry-strict.pii-detected-output
+  description: PII detected in output
+  when:
+    action_risk: industry-strict.pii-detected-output
+  effect: block
+  severity: high
+  reason: PII detected in output

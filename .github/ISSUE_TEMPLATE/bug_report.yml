@@ -42,7 +42,7 @@ body:
     attributes:
       label: AgentFox version
       description: >
-        Output of `agentfox version` (the first line is enough), or the commit SHA if
+        Output of `agentfox --version` (the first line is enough), or the commit SHA if
         you are running from a clone.
       placeholder: "0.1.0, or commit 1b91e2c"
     validations:

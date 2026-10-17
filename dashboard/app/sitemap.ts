@@ -19,49 +19,44 @@
  */
 
 import type { MetadataRoute } from "next";
+import { BLOG_POSTS, blogPath } from "@/lib/marketing/blog";
+import { DOC_PAGES } from "@/lib/docs/pages";
+import { ALL_PAGES } from "@/lib/marketing/nav";
 import { SITE_URL } from "@/lib/site";
 
 const BUILT_AT = new Date();
 
-type Entry = {
-  path: string;
-  changeFrequency: "weekly" | "monthly" | "yearly";
-  priority: number;
-};
-
-const ROUTES: Entry[] = [
-  { path: "/", changeFrequency: "weekly", priority: 1 },
-  { path: "/product", changeFrequency: "weekly", priority: 0.9 },
-  { path: "/how-it-works", changeFrequency: "monthly", priority: 0.8 },
-  { path: "/playground", changeFrequency: "monthly", priority: 0.8 },
-  { path: "/benchmark", changeFrequency: "monthly", priority: 0.7 },
-  // /compare is the page a buyer searches for by name ("agentfox vs ..."), so it
-  // ranks above the other secondary pages. /pricing is expected to exist whether or
-  // not anything is priced, and /support is where an existing user goes, not a
-  // searcher, which is why it sits lowest of the three.
-  { path: "/compare", changeFrequency: "monthly", priority: 0.8 },
-  { path: "/pricing", changeFrequency: "monthly", priority: 0.7 },
-  { path: "/support", changeFrequency: "monthly", priority: 0.6 },
-  // Low priority and rarely changing, but present: these are the pages a cautious
-  // reader searches for by name before trusting a hosted demo with anything, and a
-  // legal page that is not in the sitemap is one more reason to assume it is not
-  // there. /legal is the hub, so it carries the other three.
-  { path: "/legal", changeFrequency: "yearly", priority: 0.4 },
-  { path: "/privacy", changeFrequency: "yearly", priority: 0.4 },
-  { path: "/terms", changeFrequency: "yearly", priority: 0.3 },
-  { path: "/security", changeFrequency: "yearly", priority: 0.4 },
-  // /login is deliberately absent. It is public and crawlable (app/robots.ts allows
-  // it on purpose, so the `noindex` on the page itself can be read at all), but a
-  // sitemap is a list of URLs you are asking to have indexed, and app/login/page.tsx
-  // asks for the opposite. Listing it anyway produces a "Submitted URL marked
-  // noindex" error in Search Console for a page that is behaving exactly as intended.
-];
-
 export default function sitemap(): MetadataRoute.Sitemap {
-  return ROUTES.map(({ path, changeFrequency, priority }) => ({
-    url: `${SITE_URL}${path}`,
+  // Derived from lib/marketing/nav.ts rather than kept here. This file used to hold its
+  // own copy of the site's page list, which is how it came to be missing three
+  // pages at once: the nav knew about them and nothing told the sitemap.
+  //
+  // A page without a `sitemap` hint is deliberately absent — /login is public
+  // and crawlable so its own `noindex` can be read, and listing a noindex page
+  // in a sitemap is a Search Console error for a page behaving as intended.
+  const pages: MetadataRoute.Sitemap = ALL_PAGES.filter((page) => page.sitemap).map((page) => ({
+    url: `${SITE_URL}${page.href}`,
     lastModified: BUILT_AT,
-    changeFrequency,
-    priority,
+    changeFrequency: page.sitemap!.changeFrequency,
+    priority: page.sitemap!.priority,
   }));
+  // Every docs page, from lib/docs/pages.ts (the docs sidebar's own list). /docs itself is
+  // already in the site nav above.
+  const listed = new Set(pages.map((p) => p.url));
+  const docs: MetadataRoute.Sitemap = DOC_PAGES.map((page) => ({
+    url: `${SITE_URL}${page.href}`,
+    lastModified: BUILT_AT,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  })).filter((page) => !listed.has(page.url));
+  // Every blog post, from lib/marketing/blog.ts. A post's own date rather than the build
+  // time: a post does not change because the site was redeployed, and a
+  // lastModified that moves on every deploy teaches a crawler to ignore it.
+  const posts: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
+    url: `${SITE_URL}${blogPath(post.slug)}`,
+    lastModified: new Date(`${post.updated ?? post.published}T00:00:00Z`),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+  return [...pages, ...docs, ...posts];
 }

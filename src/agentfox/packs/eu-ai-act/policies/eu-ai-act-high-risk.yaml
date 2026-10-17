@@ -1,0 +1,117 @@
+# Policy pack: EU AI Act high-risk systems (P6-7).
+#
+# A customer with an Annex III agent should start from a defensible baseline rather
+# than a blank editor. This pack turns the obligations that *can* be enforced at
+# runtime into rules, and it is explicit about the ones that cannot.
+#
+# ⚠ This pack is an engineering interpretation of the regulation, not legal advice,
+# and it does not make a system compliant. It enforces technical measures that
+# support specific articles. Conformity assessment (Art. 43), CE marking, EU database
+# registration (Art. 49) and the fundamental-rights impact assessment (Art. 27) are
+# organisational obligations no policy engine can discharge — see the declared gaps
+# in compliance/controls.yaml.
+key: eu-ai-act-high-risk
+name: EU AI Act — high-risk system controls
+description: >
+  Runtime-enforceable measures supporting Art. 12 (record-keeping), Art. 14 (human
+  oversight), Art. 15 (accuracy, robustness, cybersecurity) and Art. 50
+  (transparency) for agents classified high-risk.
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: closed
+scope:
+  agents: ["*"]
+
+rules:
+  # --- Art. 14 — human oversight ---------------------------------------
+  - id: eu.art14.human_oversight
+    description: >
+      High-risk systems must be designed so that natural persons can oversee them.
+      Any irreversible action by a high-risk agent goes to a human.
+    when:
+      risk_tier: [high]
+      tool_impact: [irreversible]
+    effect: escalate
+    severity: high
+    reason: "EU AI Act Art. 14 - irreversible action by a high-risk system requires human oversight."
+    controls: [NOM-IAM-03, NOM-GOV-03]
+
+  - id: eu.art14.no_covert_action
+    description: Instructions telling the agent to act without informing the user.
+    when:
+      risk_tier: [high]
+      detection: {entity_prefix: INJECTION.COVERT_INSTRUCTION, min_score: 0.6}
+    effect: block
+    severity: critical
+    reason: "EU AI Act Art. 14 - content instructing the agent to act without informing the user."
+    controls: [NOM-IAM-03, NOM-RTG-01]
+
+  # --- Art. 15 — accuracy, robustness, cybersecurity -------------------
+  - id: eu.art15.no_degraded_enforcement
+    description: >
+      A high-risk system may not operate with degraded protective measures. This is
+      the rule that makes fail_mode=closed meaningful for this tier.
+    when:
+      risk_tier: [high]
+      detector_degraded: true
+    effect: block
+    severity: high
+    reason: "EU AI Act Art. 15 - high-risk system operating with degraded protective measures."
+    controls: [NOM-RTG-06]
+
+  - id: eu.art15.injection_resistance
+    description: Someone tried to hijack a high-risk agent's instructions through the content it was given to process.
+    when:
+      risk_tier: [high]
+      detection: {entity_prefix: INJECTION, min_score: 0.5}
+    effect: block
+    severity: critical
+    reason: "EU AI Act Art. 15 - resilience against attempts to alter system behaviour."
+    controls: [NOM-RTG-01]
+
+  # --- Art. 10 — data governance ---------------------------------------
+  - id: eu.art10.special_category_data
+    description: Special-category personal data must not transit to a third-party model.
+    when:
+      risk_tier: [high]
+      surface: [input]
+      detection: {entity_prefix: PII, min_score: 0.6}
+    effect: block
+    severity: critical
+    reason: "EU AI Act Art. 10 / GDPR - personal data in a high-risk system's prompt."
+    controls: [NOM-RTG-02, NOM-AUD-05]
+
+  # --- Art. 12 — record-keeping ----------------------------------------
+  # Not expressible as a blocking rule: logging is enforced architecturally (every
+  # decision writes a trace and a chained audit entry, controls NOM-AUD-01/02).
+  # Recorded here so the pack maps 1:1 to the articles a reviewer will ask about.
+
+  # --- Art. 50 — transparency -------------------------------------------
+  - id: eu.art50.impersonation
+    description: >
+      Output claiming to be human undermines the Art. 50 disclosure duty. Reads the
+      `disclosure.claims_human` risk the commitment check raises when an answer says
+      it is a person ("I'm a real person", "I am not a bot"). Lexical and narrow, so
+      this escalates rather than blocks. A missing disclosure (as opposed to a false
+      one) is the separate `disclosure.ai_missing` risk, raised only when the caller
+      declares a human counterparty.
+    when:
+      surface: [output]
+      action_risk: "disclosure.claims_human"
+    effect: escalate
+    severity: medium
+    reason: "EU AI Act Art. 50 - review required for disclosure obligations."
+    controls: [NOM-RTG-05]
+
+  # --- Prohibited practices (Art. 5) -----------------------------------
+  - id: eu.art5.prohibited_tier
+    description: >
+      An agent classified prohibited must not run at all. If one is in production,
+      that is a governance failure, and the platform should say so on every call.
+    when:
+      risk_tier: [prohibited]
+    effect: block
+    severity: critical
+    reason: "EU AI Act Art. 5 - agent is classified as a prohibited practice and must not operate."
+    controls: [NOM-GOV-03, NOM-GOV-05]

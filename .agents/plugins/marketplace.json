@@ -1,0 +1,11 @@
+{
+  "name": "agentfox",
+  "interface": { "displayName": "AgentFox" },
+  "plugins": [
+    {
+      "name": "agentfox",
+      "source": "./plugins/codex",
+      "category": "Developer Tools"
+    }
+  ]
+}

@@ -13,14 +13,23 @@ one](#adaptive-campaigns--configuration-regression-testing-that-mutates).
 **A different kind of benchmark from most others in this repo.** `benchmarks/REPORT.md`,
 `benchmarks/pii/`, `benchmarks/action_safety/` all score whether a *detector* correctly
 classifies text against a public dataset's own labels. This one asks a different
-question: does the red-team *runner* — `NativeRedTeamRunner`, what `agentfox redteam run`
+question: does the red-team *runner* — `NativeRedTeamRunner`, what `agentfox test redteam`
 actually calls — reach every layer of enforcement it claims to exercise, and does it
 produce an honest recall **and** precision number, not just a one-sided "attacks caught"
 count? Before this round, the answer to both was no, for structural reasons fixed here.
 
 ```bash
-uv run python benchmarks/redteam/run_redteam_benchmark.py
+uv run python -m benchmarks.redteam.run_redteam_benchmark
 ```
+
+> **What the recall here is not.** The probes are the product's own built-in library,
+> and some detector patterns were written after a probe got through (for example the
+> "repeat the text above" leak pattern, added when `system_prompt.leak` scored 0.0).
+> So this recall is a regression check that those layers stay wired and keep catching
+> what they were fixed to catch. It is **not** a measure of how well detection
+> generalises to attacks nobody wrote a probe for; for that, see the held-out and
+> generalization numbers in `benchmarks/REPORT.md`, which come from public datasets
+> the patterns are not fitted to.
 
 ## Two structural gaps, found by reading what a probe actually reaches
 
@@ -31,7 +40,7 @@ constraint checks (`identity.check_capability`), the action-assurance/SQLi-scope
 privilege escalation (F3.8, needs a real `guard_tool_call` + shared `TaintTracker`) were
 **structurally unreachable by any red-team probe** — not weak against them, *invisible*
 to them, regardless of how well those layers actually work. `kind="tool_call"` and
-`kind="scenario"` probes (`src/agentfox/evaluation/redteam.py`) close this: they call
+`kind="scenario"` probes (`src/agentfox/capabilities/evaluation/redteam.py`) close this: they call
 `guard_tool_call()` directly, the same path `McpGovernor` and `AgentFoxGuard.tool_node`
 use, against a synthetic `redteam.sim.*` tool the runner provisions itself — so a probe
 still runs against *any* agent slug, the way content probes always could.
@@ -71,7 +80,7 @@ weakening a real compliance control to make a demo number look cleaner.
 Every one of these was found by actually running the campaign against a live seeded
 agent and reading the real output — not from inspecting the code in the abstract.
 
-1. **The CLI (`agentfox redteam run`) always printed "blocked" for a benign probe**,
+1. **The CLI (`agentfox test redteam`) always printed "blocked" for a benign probe**,
    regardless of its real verdict — `succeeded` is defined to be `False` whenever
    `expect_blocked` is `False`, and the old table rendered off `succeeded` alone. Fixed:
    the table now reads `over_blocked` and `expect_blocked` explicitly, and the summary
@@ -99,8 +108,8 @@ agent and reading the real output — not from inspecting the code in the abstra
    0.7–0.8 on `injection.heuristic` — genuine detections — but never cleared this
    separate policy-level gate, which is independent of and stricter than the detector's
    own scoring (already benchmarked at 100% precision, `benchmarks/REPORT.md`). Checked
-   directly against `benchmarks/data/train.json`, `data/test.json`, and
-   `data_generalization/notinject.json`: zero benign examples score ≥0.7 in any of the
+   directly against `benchmarks/injection/data/train.json`, `data/test.json`, and
+   `generalization/data/notinject.json`: zero benign examples score ≥0.7 in any of the
    three (2 score exactly 0.6 in `train.json`, which is why the fix is 0.7 and not a
    blanket match to `injection.indirect`'s 0.6). Lowered to 0.7 — recovers 15 real
    held-out attacks the detector already caught but the policy gate was silently
@@ -115,7 +124,7 @@ agent and reading the real output — not from inspecting the code in the abstra
 
 None of fixes 4–5 changes any already-published benchmark number:
 `benchmarks/REPORT.md`'s primary held-out recall (66.7% @ 100% precision) is re-verified
-unchanged after both changes (`uv run python benchmarks/run_prompt_injection_benchmark.py`)
+unchanged after both changes (`uv run python -m benchmarks.injection.run_prompt_injection_benchmark`)
 — the detector's own scoring, which that number measures, was never the problem; the
 policy-level gate sitting on top of it was.
 
@@ -142,12 +151,12 @@ policy-level gate sitting on top of it was.
 # Adaptive campaigns — configuration regression testing that mutates
 
 ```bash
-uv run python benchmarks/redteam/run_adaptive_redteam_benchmark.py
+uv run python -m benchmarks.redteam.run_adaptive_redteam_benchmark
 ```
 
 ## Why the claim changed, not just the code
 
-`docs/gap-analysis.md` item 3.2 already admitted the gap in plain terms: "adaptive /
+`docs/design/gap-analysis.md` item 3.2 already admitted the gap in plain terms: "adaptive /
 generative red teaming (ours is static probes)". The standing critique of automated
 red-teaming products is sharper and lands on the 22-probe suite above exactly as
 written: **a fixed list of prompts only ever proves things about that fixed list**, and
@@ -164,7 +173,7 @@ feature claims:
 
 That is **configuration regression testing**, which is a genuinely useful thing to run
 in CI and a genuinely dishonest thing to call adversarial robustness. The distinction is
-not left to this README: `SCOPE_STATEMENT` (`src/agentfox/evaluation/adaptive.py`) is
+not left to this README: `SCOPE_STATEMENT` (`src/agentfox/capabilities/evaluation/adaptive.py`) is
 carried verbatim into every adaptive campaign's stored summary, its
 `what_this_does_not_establish` list travels with it, and the campaign **headline** is the
 posture sentence rather than a pass rate — a red-team pass rate goes *up* the weaker
@@ -182,7 +191,7 @@ as well as text, scored on the full enforcement path, generated from a live depl
 grants and policies, and diffed against the previous campaign. `src/agentfox/` cannot
 import from `benchmarks/` (it is the shipped package; `benchmarks/` is not packaged), so
 the two operator libraries are genuinely separate today. **They should be consolidated**
-— the shared text transforms belong in `src/agentfox/evaluation/adaptive.py` with the
+— the shared text transforms belong in `src/agentfox/capabilities/evaluation/adaptive.py` with the
 benchmark importing them — and until that happens the duplication is stated here rather
 than left for someone to discover. What was taken from it immediately is the thing that
 changes how results must be read: the `readable` / `requires_decode` semantics split,
@@ -216,6 +225,18 @@ adopted verbatim and reported in the table below.
   `benchmarks/containment/`.
 
 ## Results — three seed agents, `budget=4`, `seed=1337`, `enforce` mode
+
+The tables in this section are the **first run, before the nested-argument fix** (finding 2
+below; fixed in the 2026-09-16 update at the end). `results/adaptive_redteam_summary.json` holds
+the re-run after that fix, and the update's "Before and after" table gives both. In the current file the classes that moved are
+`argument_shape` 0/42 (was 10/41), `provenance` 0/30 (was 0/31) and `tool_scope` 0/29 (was 0/25),
+with `encoding` at 26/31, and the semantics split is `structural` 0/105, `readable` 3/39,
+`requires_decode` 26/34. The one attempt that moved from `provenance` to `argument_shape` came
+from the refusal-reason fix of 2026-09-23 (a grant that exists but is exceeded now reports
+`capability.constraint_violated` instead of `capability.denied`), which changes the feedback the
+search adapts to; no verdict changed. `encoding` and `requires_decode` move by one or two
+between runs (24 to 26 escapes seen on 2026-10-07), because a long hex payload can exceed the
+40ms per-detector budget and then scores as no detection.
 
 | Agent | Risk tier | Static escapes | Adaptive escapes | Found *only* by mutation | Attempts | Benign FPs |
 |---|---|---|---|---|---|---|
@@ -327,8 +348,15 @@ Where a *second*, independent mechanism covers the call (a declared cascade trig
 defence-in-depth working as designed. Where action assurance was the only thing looking
 — `tickets.purge_all` — the call goes from `block` to `allow`.
 
-Disclosed rather than fixed here: `src/agentfox/guardrails/actions.py` is owned by
+Disclosed rather than fixed here: `src/agentfox/capabilities/detection/actions.py` is owned by
 another engineer this round. It is the highest-value item this benchmark produced.
+
+Re-checked since: the first two rows no longer read as they did. Nested SQL is now
+caught (`{"params": {"sql": "DELETE FROM customers"}}` on `tickets.update` fires
+`sql.unbounded_mutation` and `action.production_irreversible` and blocks), and the
+cascade from `tickets.update` to `email.send` is now `cascade.reaches_notification`, an
+escalation, because `email.send` is declared `effect: communication`. The cascade rule
+alone would no longer block that nested call; the SQL analysis does.
 
 ### 3. A glob capability grant authorises tools nobody granted
 
@@ -343,7 +371,7 @@ the finding is not in any prompt: it is in the shape of a capability row.
 
 ### 4. The capability and taint layer held under every honest mutation
 
-`provenance` 0/31 and `tool_scope` 0/25. Re-declaring every argument as user-sourced,
+`provenance` 0/31 and `tool_scope` 0/25 (0/30 and 0/29 in the current re-run). Re-declaring every argument as user-sourced,
 trying sibling keys in a namespace, and supplying a plausible declared intent did not get
 a single ungranted or over-ceiling call through on any agent. All nine
 `ungranted.registered` probes (a real irreversible tool the agent genuinely lacks, on
@@ -494,11 +522,11 @@ latency problem this module exists to prevent.
 |---|---|---|
 | `structural` (re-nesting, argument reshaping) | 10/101 escaped (10%) | **0/105 escaped (0%)** |
 | `readable` (payloads a model simply reads) | 3/39 (8%) | 3/39 (8%) |
-| `requires_decode` (base64, hex, reversal) | 26/34 (76%) | 25/34 (74%) |
+| `requires_decode` (base64, hex, reversal) | 26/34 (76%) | 26/34 (76%) |
 
-The `readable` and `requires_decode` columns are unchanged, which is the honest read: this fix
+The `readable` and `requires_decode` columns are unchanged (`requires_decode` varies by one or two between runs; see the note on the detector budget above), which is the honest read: this fix
 closed a structural bypass and did nothing whatever for detection, because it is not a detection
-fix. Regression cases for the nested shapes live in `tests/test_action_assurance.py`.
+fix. Regression cases for the nested shapes live in `tests/capabilities/detection/test_action_assurance.py`.
 
 **Still open from the same run**, and deliberately not fixed here: glob grant overbreadth
 (`tickets.*` authorises `tickets.purge_all`, a key nobody granted — arguably correct behaviour for

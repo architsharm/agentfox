@@ -6,29 +6,59 @@ One entry per capability area. Each links to a self-contained directory with its
 
 | Area | Directory | Status | Headline |
 |---|---|---|---|
-| Prompt injection detection | [`REPORT.md`](REPORT.md) | Benchmarked, 4 generalization datasets | Held-out recall 66.7% @ 100% precision (ensemble); see report for the latency-ceiling correction |
+| Prompt injection detection | [`injection/`](injection/run_prompt_injection_benchmark.py), [`generalization/`](generalization/data/README.md); write-up in [`REPORT.md`](REPORT.md) | Benchmarked, 4 generalization datasets | Held-out recall 66.7% @ 100% precision (ensemble); see report for the latency-ceiling correction |
 | **Containment under detector bypass** | [`containment/`](containment/README.md) | Benchmarked, detectors disabled | **8/8 attacks contained with zero detector signal**, 4/4 legitimate controls still allowed — what survives when detection fails completely |
-| **Adaptive (search-based) attack vs. our own detectors** | [`adaptive/`](adaptive/README.md) | Benchmarked, attacker gets feedback, **3 detector bugs found and fixed** | **73% attack success at 50 attempts** on the attacks we do catch (readable-only mutations, indirect/retrieved) — down from 79% pre-fix against a detected-seed set 20% larger, with benign false positives on the NotInject over-defense set cut **8.6% → 0.3%** — and **38/38** of those bypasses still contained at the action |
+| **Adaptive (search-based) attack vs. our own detectors** | [`adaptive/`](adaptive/README.md) | Benchmarked, attacker gets feedback, **3 detector bugs found and fixed** | **74% attack success at 50 attempts** on the attacks we do catch (readable-only mutations, indirect/retrieved) — down from 75.0% pre-fix, against a detected-seed set that grew from 40 to 48 seeds with the fixes (47 after the October 2026 removal of benchmark-fitted patterns), with benign false positives on the NotInject over-defense set cut **8.6% → 0.3%** — and **37/37** of those bypasses still contained at the action |
 | Agent-runtime security (4 tiers vs LLM Guard) | [`agent_security/`](agent_security/README.md) | Benchmarked vs a real installed competitor | Four tiers (multi-turn, indirect injection, tool-param anomaly, excessive agency) LLM Guard structurally can't cover |
-| **AgentDojo end to end** | [`agentdojo_e2e/`](agentdojo_e2e/README.md) | Benchmarked, 617 ground-truth calls | **100% benign utility (552/552) with 100% of acting attack calls contained (42/42)**; read-only attack calls contained 20/23, and identical with detectors disabled |
-| F3 — destructive actions & blast radius | [`action_safety/`](action_safety/README.md) | Benchmarked, 4 datasets, fixed to 100% | gretelai/AgentDojo both 100% precision+recall on held-out; payload-box 36.1%→89.3% recall after 2 fix rounds |
+| **AgentDojo end to end** | [`agentdojo/`](agentdojo/README.md) | Benchmarked, 97 user tasks and 949 attack pairs, executed ground truth, provenance inferred | Session-level taint: **588/588 attack pairs contained**, **24/97 benign tasks run without escalation**. Argument-level taint: 527/588 contained, 37/97 benign tasks. With provenance taken from the benchmark's labels the same replay gives 97/97 and 588/588, which is an upper bound. Detectors off throughout |
+| **Head to head on AgentDojo (vs llm-guard; Prompt Guard 2 blocked on licence)** | [`head_to_head/`](head_to_head/README.md) | Benchmarked vs a real installed competitor, same 588 pairs and 97 tasks, threshold swept | llm-guard alone let **86/588 (14.6% [12.0, 17.7])** attack pairs through at its default; AgentFox containment let **0/588** through. llm-guard completes more benign tasks (42/97 vs 24/97), ties containment when chunked and tuned on the test set, and costs 71.9 ms p50 per tool result against 6.9 ms. Prompt Guard 2 is wired but gated on Hugging Face |
+| **Third-party injection corpus and red-team scenarios** | [`toolkit_corpus/`](toolkit_corpus/README.md) | Benchmarked on another project's published MIT fixture (280 labelled rows, 24 scenarios); their numbers quoted from their files, not re-run | On their corpus, `injection.heuristic` caught 71/110 attack rows and flagged 32/170 benign rows; their rules detector reports 7/110 and 16/170. That is more recall and twice the false positives, and prompt_leakage and output_exfiltration are 0/16 each for both. On their scenarios, as we instantiated them: 12/12 unsafe actions contained with detectors off, 11/12 benign actions executed with detectors on |
+| F3 — destructive actions & blast radius | [`action_safety/`](action_safety/README.md) | Benchmarked, 4 datasets, fixed to 100% | gretelai SQL: 100% precision and recall on the held-out split, which has 8 natural DML and 12 natural DDL positives; AgentDojo arguments: none of the 45 unique attacker calls or 339 unique benign calls flagged, as expected for well-formed calls (the results file counts each task once per registered AgentDojo version, so it reports flagged 0/65 attacker and 0/552 benign calls); payload-box 36.1%→89.3% recall after 2 fix rounds, measured on the data the fixes were made against |
 | PII detection | [`pii/`](pii/README.md) | Benchmarked, 3 datasets, 2 fix rounds | Default-policy precision 15.2%→51.9% (worst dataset); `US_SSN` 14.4%→87.3% via a score-gate |
 | **Cross-lingual parity (F9.3 / L0.10)** | [`multilingual/`](multilingual/README.md) | Benchmarked, gap found **and closed** | **6/19 → 19/19 matched pairs** now reach the same verdict when content is localised (12 silent misses and 1 false positive on *correct* arithmetic, fixed), plus a date-format check that did not exist — at an English false-positive rate of **0.097%** across 4,138 texts. Injection *recall* parity holds; benign non-English is still flagged more often, and the abstention path is still English-only |
 | **Crescendo / multi-turn trajectory (F9.4 / L1.6)** | [`crescendo/`](crescendo/README.md) | Benchmarked, gap found **and closed** | **0/13 → 10/13 detected** after building `CRESCENDO.TRAJECTORY_DRIFT`, all 10 caught before the final turn (median turn 3), with control false positives still **0/9** and single turns still 0/79 — payload-splitting defence never transferred; the signal is the slope |
-| F1 — answerability & abstention | [`answerability/`](answerability/README.md) | Benchmarked, 2 datasets, fixes applied | `PREDICTION` recall 39.0%→69.0%, `OPINION` 0.74%→5.62%, both via structural (not blanket) markers |
+| F1 — answerability & abstention | [`answerability/`](answerability/README.md) | Benchmarked, 2 datasets, fixes applied | `PREDICTION` recall 39.0%→68.4%, `OPINION` 0.74%→5.47%, over-refusal on known questions 0.90%→0.75%, all via structural (not blanket) markers; tuned on the same KUQ rows it reports |
 | F2 — source authority & provenance | [`source_authority/`](source_authority/README.md) | **Investigated, not benchmarkable** | Mechanism is declared/registry-based; all 3 sourced datasets (HALLMARK, CRED-1, ALCE) test a different, automatic-classifier capability the product doesn't implement |
 | F4 — entitlement & disclosure control | [`entitlement/`](entitlement/README.md) | Self-constructed scenario benchmark | Purpose-limitation check: 100% recall / 0% FP across 493 real PrivacyLens vignettes — a mechanical-correctness check, not a classifier stress test; read the caveat before citing this number |
 | Secrets detection | [`secrets/`](secrets/README.md) | **Investigated, blocked on access** | Both sourced datasets (CredData, SecretBench) need a human license call or an author data-agreement — neither completable same-day |
 | F3.8 — composed privilege escalation | [`composed_privilege_escalation/`](composed_privilege_escalation/README.md) | **Built** | New `guardrails/composition.py` (P9-11) detects a read tool's output flowing into a write tool's argument, using the taint tracker's existing provenance. 11 tests (unit + end-to-end), no labeled dataset exists to score precision/recall against |
-| P4-4 — automated red-teaming (static + **adaptive**) | [`redteam/`](redteam/README.md) | Benchmarked, adaptive engine added | Static: recall 100% / precision 100% (95% on payments-ops — a real Art. 14 interaction, not a bug). Adaptive: **every escape was found only by mutation** (static reports none), but only **3/39 (8%) with payloads a model can simply read** — the 74% figure is all `requires_decode`. The capability/taint layer held: `provenance` 0/31, `tool_scope` 0/29, and `structural` **0/105 after** the nested-argument fix this benchmark found (10/101 before). Headline is a posture delta, never a pass rate |
+| **Judgment tiers (opt-in: Jev / LLM / local LLM)** | [`judgment/`](judgment/README.md) | Benchmarked, off by default | **160/165 injection payloads that defeated our pattern detectors**, caught once a tier is on, at **94.7% precision against NotInject**. **SQL blast radius unchanged**, verified live with every tier enabled |
+| P4-4 — automated red-teaming (static + **adaptive**) | [`redteam/`](redteam/README.md) | Benchmarked, adaptive engine added | Static: recall 100% / precision 100% (95% on payments-ops — a real Art. 14 interaction, not a bug). Adaptive: **every escape was found only by mutation** (static reports none), but only **3/39 (8%) with payloads a model can simply read** — the 76% figure is all `requires_decode`. The capability/taint layer held: `provenance` 0/30, `tool_scope` 0/29, and `structural` **0/105 after** the nested-argument fix this benchmark found (10/101 before). Headline is a posture delta, never a pass rate |
+
+## Layout
+
+- One folder per claim family, named as the claim ids in [`claims.yaml`](claims.yaml) are prefixed
+  (`containment/` holds the `containment.*` claims, `agentdojo/` the `agentdojo.*` ones, and so on).
+  `judgment/` holds both `judgment.*` (the judgment-tier benchmark) and `jev.*` (the study of Jev,
+  the model behind the default judgment tier); they are one capability, so they share a folder.
+- [`_common/`](_common/__init__.py) holds the helpers more than one script used to copy: the
+  throwaway-database reset, the dataset download, and the PII span arithmetic. Each script still owns
+  its ground truth, scoring rules and result format.
+- Every script runs as a module from the repository root, so `benchmarks._common` imports without
+  any `sys.path` edits: `uv run python -m benchmarks.containment.run_containment_benchmark`.
+
+## Sending benchmark data to a third-party API
+
+Benchmarks run with `allow_egress` off, like the product. A run that sends any non-synthetic
+dataset text to a third-party API needs `allow_egress` turned on explicitly for that run and a
+stated reason for doing it. Scripts that call a hosted model take that as
+`--allow-egress "<reason>"` and refuse without it, printing what would have been sent
+([`_common/egress.py`](_common/egress.py); `tests/repo/test_benchmark_egress.py` fails if a
+script reaches a hosted model without asking).
+
+The committed dataset this matters most for is TAB, `pii/data/tab_echr_test.json`: 127 published
+European Court of Human Rights judgments. It is public court data, but it is real text that names
+real people, not synthetic. An earlier internal run sent those 127 to a hosted judgment API in a
+batch of 7,221 texts that was described as all synthetic; the other 7,094 were. See
+[`docs/architecture/judgment-egress.md`](../docs/architecture/judgment-egress.md).
 
 ## Reading this table honestly
 
 The standing version of this, including the limits that apply before any number and how to report a
-bypass: [`docs/evidence-standards.md`](../docs/evidence-standards.md).
+bypass: [`docs/evaluation/evidence-standards.md`](../docs/evaluation/evidence-standards.md).
 
 - **"Benchmarked" rows** score existing code against a public dataset's own independently-authored ground truth — the strongest form of evidence in this list.
 - **The F4 row is a self-constructed scenario benchmark**, not a labeled-dataset score — real content, mechanically-derived scenarios. Its 100%/100% result is expected-by-construction, not a stress-test finding; see `entitlement/README.md` for exactly what it does and doesn't establish.
 - **The "investigated" rows (F2, secrets) are real findings, not gaps in effort.** Each required fetching and directly inspecting the candidate dataset's actual schema before concluding it didn't fit (or, for secrets, before confirming a genuine licensing/access blocker) — the same discipline that caught (and then fixed) real precision problems everywhere else in this table. F3.8 is a different outcome from the same discipline: the dataset didn't fit, but the code gap it surfaced turned out to be closeable, and was closed.
 
-See `docs/dataset-sourcing.md` for the original research this build-out worked through, and `docs/failure-modes.md` / `docs/gap-analysis.md` for how these findings map onto the product's own tracked capability status.
+See `docs/evaluation/dataset-sourcing.md` for the original research this build-out worked through, and `docs/design/failure-modes.md` / `docs/design/gap-analysis.md` for how these findings map onto the product's own tracked capability status.

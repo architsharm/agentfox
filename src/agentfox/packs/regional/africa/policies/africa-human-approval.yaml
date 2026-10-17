@@ -1,0 +1,44 @@
+# Translated from examples/policies/african-regulatory/rego/agent-human-approval.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: africa-human-approval
+name: Human approval for high-risk actions
+description: 'Human approval for high-risk actions: rules translated from the agent-human-approval policy.
+  Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: africa-human-approval.v-designated-as-human-approval-action
+  description: 'Human approval required: ''%v'' is designated as a human-approval action.'
+  when:
+    action_risk: africa-human-approval.v-designated-as-human-approval-action
+  effect: escalate
+  severity: medium
+  reason: 'Human approval required: <value> is designated as a human-approval action.'
+- id: africa-human-approval.action-risk-level-v-requires-human
+  description: 'Human approval required: action risk level ''%v'' requires human authorisation.'
+  when:
+    action_risk: africa-human-approval.action-risk-level-v-requires-human
+  effect: escalate
+  severity: medium
+  reason: 'Human approval required: action risk level <value> requires human authorisation.'
+- id: africa-human-approval.transaction-amount-v-exceeds-configured-threshold
+  description: 'Human approval required: transaction amount %v exceeds configured threshold %v.'
+  when:
+    action_risk: africa-human-approval.transaction-amount-v-exceeds-configured-threshold
+  effect: escalate
+  severity: medium
+  reason: 'Human approval required: transaction amount <value> exceeds configured threshold <value>.'
+- id: africa-human-approval.bulk-operation-v-records-exceeds-threshold
+  description: 'Human approval required: bulk operation on %v records exceeds threshold %v.'
+  when:
+    action_risk: africa-human-approval.bulk-operation-v-records-exceeds-threshold
+  effect: escalate
+  severity: medium
+  reason: 'Human approval required: bulk operation on <value> records exceeds threshold <value>.'

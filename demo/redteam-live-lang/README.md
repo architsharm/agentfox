@@ -4,8 +4,8 @@ The LangChain sibling of `demo/redteam-live/` (a real CrewAI crew) — same real
 in-memory customer/order data, same real refund and email side effects, same
 `agentfox.auto()` wiring, same three demo scenarios. Nothing here is a mock:
 `issue_refund` really flips an order's status, `send_email` really queues a message,
-and every call goes through the same governed path (`agentfox.integrations.mcp.
-McpGovernor`) the automated test suite (`tests/test_composition.py`) exercises.
+and every call goes through the same governed path (`agentfox.frameworks.mcp.
+McpGovernor`) the automated test suite (`tests/capabilities/detection/test_composition.py`) exercises.
 
 **What's actually different from `demo/redteam-live/`: only the agent framework.**
 CrewAI's `Agent`/`Task`/`Crew` is replaced with a LangChain tool-calling agent
@@ -22,13 +22,22 @@ say).
 
 ## Files
 
+The support-tools agent itself (dataset, tools, grants, seed, verification) is shared
+with the CrewAI demo and lives once in [`demo/kit/`](../kit/). `kit/` here is a
+committed, byte-identical copy of it, because this folder is the Vercel project's Root
+Directory and nothing outside it exists at deploy time. **Never edit `kit/` here**: edit
+`demo/kit/`, then run `python scripts/check/demo_kit.py --write` from the repo root
+(the check runs in `just check`, CI and `tests/repo/test_demo_kit.py`, and fails on
+drift).
+
 | File | What it's for |
 |---|---|
-| `_env.py` | Points AgentFox at this demo's own SQLite file (`demo.db`, distinct from the CrewAI demo's). Imported first by everything else. Byte-identical to the CrewAI demo's copy — the path derives from `__file__`, so it already points at the right place. |
-| `support_tools.py` | The fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `agent.py` and `verify_mechanics.py` call into. Ported near-verbatim from `demo/redteam-live/support_tools.py`; see the diff below. |
-| `seed_demo_agent.py` | One-time setup: registers the agent (`support-crew-live-lang`), its capability grants, its tools, and the shipped policy packs. |
+| `_env.py` | Points AgentFox at this demo's own SQLite file (`demo.db`, distinct from the CrewAI demo's), or the deployment's Neon Postgres (`kit/env.py`). Imported first by everything else. |
+| `support_tools.py` | This demo's view of `kit/support_tools.py` (the fake dataset, the four tool implementations, and `GovernedToolkit` — the governed wrapper both `agent.py` and `verify_mechanics.py` call into), with this demo's agent slug. |
+| `seed_demo_agent.py` | One-time setup: registers the agent (`support-crew-live-lang`), its capability grants, its tools, and the shipped policy packs (`kit/seed.py`). |
 | `agent.py` | The live LangChain agent. **Run this for the actual demo.** The genuinely new piece — CrewAI's `Agent`/`Task`/`Crew` replaced with a LangChain tool-calling agent. |
-| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. Copied near-verbatim; it never touches the agent framework. |
+| `verify_mechanics.py` | The same governed tool-call path, driven directly with no LLM (`kit/verify_mechanics.py`) — a deterministic fallback if the live model misbehaves mid-meeting, and how this demo was verified end to end. It never touches the agent framework. |
+| `kit/` | The deployed copy of `demo/kit/` (see above). |
 | `requirements-dev.txt` | What to install locally, and why (see below — do **not** install this into the main repo's `.venv`). |
 | `requirements.txt` / `vercel.json` / `web.py` / `vendor/` | The Vercel-deployed version of this demo — see "Deploying this live, in a browser" below. Not needed for local CLI use. |
 
@@ -37,7 +46,7 @@ say).
 **Use a separate virtualenv, not the main repo's `.venv`.** `langchain-anthropic`
 and `langchain-openai` pull in `anthropic` and `openai` as real transitive
 dependencies, and one of the main test suite's tests
-(`tests/test_autoguard.py::test_missing_litellm_and_langchain_are_reported_not_hidden`)
+(`tests/frameworks/autoguard/test_autoguard.py::test_missing_litellm_and_langchain_are_reported_not_hidden`)
 asserts `langchain_core` (and `litellm`) are *absent*, to prove `agentfox.auto()`
 reports a missing library honestly instead of silently hiding it. Installing this
 demo's requirements into the tracked `.venv` would make that test fail for reasons
@@ -75,7 +84,7 @@ the *same* database, so either run everything from inside `demo/redteam-live-lan
 (the scripts set the default relative to themselves) or export it explicitly:
 
 ```bash
-export NOMETRIA_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live-lang/demo.db"
+export AGENTFOX_DATABASE_URL="sqlite:///$(pwd)/demo/redteam-live-lang/demo.db"
 ```
 
 ### The agent this seeds
@@ -88,7 +97,7 @@ the same four grants as the CrewAI demo's agent:
 |---|---|
 | `lookup_customer` | unrestricted |
 | `search_orders` | unrestricted |
-| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox seed`'s own `payments-ops` agent |
+| `issue_refund` | **capped at $500** (`constraints: {amount: {lte: 500}}`) — mirrors `agentfox admin seed`'s own `payments-ops` agent |
 | `send_email` | **requires human approval** — same shape as `payments-ops`'s `email.send` grant |
 
 It is not a superuser. A red-team probe attempting a $50,000 refund, or an
@@ -98,7 +107,7 @@ switched off for the demo.
 ## Step 1 — show the probe library
 
 ```bash
-agentfox redteam probes
+agentfox test probes
 ```
 
 Real output, captured while building this demo:
@@ -184,7 +193,7 @@ the chain is wrong on its own.**
    under the $500 cap, and `issue_refund` is a tool this agent genuinely holds.
 
 Individually, both calls pass every check. **AgentFox blocks it anyway**, because
-`agentfox.guardrails.composition.check_composed_escalation` (F3.8) tracks *where
+`agentfox.capabilities.detection.composition.check_composed_escalation` (F3.8) tracks *where
 each argument's value came from* — `TaintTracker`'s `propagated_from` provenance —
 and sees that `order_id` didn't come from the user or from Priya's own account; it
 came from a broad internal search a moment earlier, being reused as if it had been
@@ -206,7 +215,7 @@ message in isolation has no way to know that this specific 8-character string in
 this specific tool call is the same one that came back from a search 30 seconds ago.
 That's not a text property — it requires tracking data lineage across the whole
 tool-call sequence in one conversation, which is what taint tracking is for. This is
-the exact shape `tests/test_composition.py` proves against a synthetic
+the exact shape `tests/capabilities/detection/test_composition.py` proves against a synthetic
 patient-records scenario; here it's the same mechanism against real tools with real
 state, and it works identically regardless of which agent framework is issuing the
 tool calls — the check lives in `McpGovernor`, below the framework entirely.
@@ -253,12 +262,12 @@ model involved. Real output, captured while building this demo:
 === issue_refund('ORD-7003', $50,000.00) ===
 {
   "status": "BLOCKED_BY_AGENTFOX",
-  "reason": "EU AI Act Art. 14 — irreversible action by a high-risk system requires human oversight.; No capability grants this agent the requested tool and action (default deny).",
-  "rules_fired": ["eu.art14.human_oversight", "capability.denied"],
+  "reason": "EU AI Act Art. 14 — irreversible action by a high-risk system requires human oversight.; agent:support-crew-live-lang holds a grant for 'mcp:support-tools/issue_refund', so this is not a missing permission. The grant allows amount at most 500, but this call passed 50000.0.",
+  "rules_fired": ["eu.art14.human_oversight", "capability.constraint_violated"],
   "verdict": "block"
 }
   [ok] oversized refund was BLOCKED
-  [ok] a capability-denial rule fired
+  [ok] the capability ceiling rule fired (capability.constraint_violated)
   [ok] order state NOT mutated despite the attempt
 
 ### 3. ATTACK — F3.8 composed escalation: search result -> refund argument ###
@@ -301,10 +310,10 @@ Byte-for-byte the same mechanics and the same rules firing as the CrewAI demo's 
 (order IDs and dollar amounts included) — expected, since this script never touches
 the agent framework at all.
 
-## `agentfox redteam run` — an honest read of a real run
+## `agentfox test redteam` — an honest read of a real run
 
 ```bash
-agentfox redteam run support-crew-live-lang
+agentfox test redteam support-crew-live-lang
 ```
 
 Real output, captured while building this demo:
@@ -343,8 +352,8 @@ building this demo):
 agentfox policy enforce baseline
 python -c "
 import _env
-from agentfox.db import init_db, session_scope
-from agentfox.enforcement import Enforcer
+from agentfox.core.db import init_db, session_scope
+from agentfox.runtime.enforcement import Enforcer
 init_db()
 with session_scope() as s:
     r = Enforcer(s).check_content(
@@ -364,13 +373,13 @@ agentfox policy observe baseline   # put it back
 `ANTHROPIC_API_KEY` nor `OPENAI_API_KEY` is set — it makes no network call in that
 case (verified directly: `_resolve_llm()` raises `MissingApiKey` before any
 provider package is even imported). Set one of them, or optionally pin the exact
-model with `NOMETRIA_DEMO_MODEL` (e.g. `claude-3-5-sonnet-20241022`). No other
+model with `AGENTFOX_DEMO_MODEL` (e.g. `claude-3-5-sonnet-20241022`). No other
 third-party network calls happen anywhere in this demo.
 
 ## What I verified myself (and what I didn't)
 
 Everything above that shows real output — the `verify_mechanics.py` run, the
-`agentfox redteam probes` / `redteam run` output, the `agentfox policy list` /
+`agentfox test probes` / `redteam run` output, the `agentfox policy list` /
 `policy enforce baseline` before/after — was actually run, in an isolated scratch
 virtualenv, while building this demo. I additionally confirmed, directly, without
 needing a live key:
@@ -383,11 +392,11 @@ needing a live key:
   object is lazy and doesn't itself call out): `build_agent_executor()` returns a
   real `AgentExecutor` with all four tools bound (`lookup_customer`,
   `search_orders`, `issue_refund`, `send_email`), for both providers, and
-  `NOMETRIA_DEMO_MODEL` correctly pins the model name.
+  `AGENTFOX_DEMO_MODEL` correctly pins the model name.
 - **`agentfox.auto()`'s patch report.** Importing `agent.py` prints
   `Patched: openai, anthropic, langchain` — `_patch_langchain` patches
   `langchain_core.language_models.chat_models.BaseChatModel.invoke` directly (see
-  `src/agentfox/autoguard.py`), which every LangChain chat model inherits regardless
+  `src/agentfox/frameworks/autoguard/`), which every LangChain chat model inherits regardless
   of provider. This is a real difference from the CrewAI demo worth calling out:
   CrewAI's `crew.py` had to pass `LLM(..., is_litellm=True)` specifically because
   `agentfox.auto()` only patches `litellm.completion`, not CrewAI's own client
@@ -400,7 +409,7 @@ needing a live key:
   that does *not* double-govern a single model call. `autoguard._govern()`'s
   `_IN_AGENTFOX` re-entrancy guard makes the inner raw-SDK patch a no-op
   pass-through once the outer `BaseChatModel.invoke` patch is already governing the
-  call in progress. Read `src/agentfox/autoguard.py` lines ~299-320 for exactly
+  call in progress. Read `src/agentfox/frameworks/autoguard/` lines ~299-320 for exactly
   where that guard sits.)
 - **`GovernedToolkit`'s governed call path** (shared with the CrewAI demo,
   unmodified in its logic) — via `verify_mechanics.py`, exactly as the CrewAI demo
@@ -416,36 +425,27 @@ instruction (see Step 2's caveat).
 ## What changed vs. the CrewAI version
 
 The brief for this port was: same governance story, same tools, same dataset, same
-scenarios, framework swapped. Here is exactly what did and didn't change, file by
-file:
+scenarios, framework swapped. This demo started as a copy of the CrewAI one; the
+shared files have since been merged into one implementation in `demo/kit/`, so what
+differs is now explicit in the adapters rather than spread across two forks:
 
-- **`_env.py`** — unchanged, byte-for-byte. The DB path derives from `__file__`, so
-  copying it into a new directory already gives it a new, non-colliding path
-  (`demo/redteam-live-lang/demo.db`).
-- **`support_tools.py`** — the dataset, the four tool implementations, the
-  capability grants, `GovernedToolkit`, and `_render()` are unchanged in behavior.
-  Two small, additive differences from the CrewAI original:
-  1. `AGENT_SLUG` is `support-crew-live-lang` instead of `support-crew-live`, so the
-     two demos' agent identities never collide even if they ever shared a database.
-  2. `GovernedToolkit` gained a `calls: list[McpCallOutcome]` field (appended to in
-     `_call()`) and a new module-level `decision_summary()` helper. Neither existed
-     in the CrewAI version, because `crew.py` never needed to report structured
-     governance info back to a caller — it just printed CrewAI's own free-text
-     result. This demo's `agent.py` does need that, per this work's brief (`run_turn`
-     must return "verdict, rules_fired, blocked/allowed" for a future HTTP caller to
-     show a user), so the toolkit now keeps a record of what happened. This is
-     additive only — nothing about how a tool call is evaluated or rendered changed.
-  Docstring wording that referenced CrewAI specifically (e.g. "which is exactly what
-  a CrewAI tool is") was updated to the LangChain equivalent; no logic in those
-  docstrings' vicinity changed.
-- **`seed_demo_agent.py`** — unchanged in structure and grants. `framework="crewai"`
-  became `framework="langchain"`, and the `purpose` text and print statements
-  reference the LangChain agent instead of the CrewAI crew. Same policy packs, same
-  grants, same idempotency.
-- **`verify_mechanics.py`** — unchanged, essentially verbatim (only the module
-  docstring's "live CrewAI crew" wording became "live LangChain agent" — no code
-  differs). It drives `GovernedToolkit` directly and has never touched the agent
-  framework in either demo.
+- **`_env.py` → `kit/env.py`** — the same per-demo SQLite default
+  (`demo/redteam-live-lang/demo.db`), plus deriving the database URL from the Vercel
+  Neon integration's own variable when deployed (a no-op locally, and for the CrewAI
+  demo, which is never deployed).
+- **`support_tools.py` → `kit/support_tools.py`** — the dataset, the four tool
+  implementations, the capability grants, `GovernedToolkit`, and `_render()` are
+  shared. The only per-demo value is `AGENT_SLUG` (`support-crew-live-lang` here,
+  `support-crew-live` for CrewAI), so the two demos' agent identities never collide
+  even if they ever shared a database. `GovernedToolkit`'s `calls` list (every
+  outcome, in order) and `decision_summary()` exist for this demo's `agent.py`, whose
+  `run_turn` returns "verdict, rules_fired, blocked/allowed" to its HTTP caller; both
+  are additive, so the CrewAI demo simply doesn't use them.
+- **`seed_demo_agent.py` → `kit/seed.py`** — same structure, grants, policy packs
+  and idempotency for both demos; this demo passes `framework="langchain"` and its own
+  name and purpose text.
+- **`verify_mechanics.py` → `kit/verify_mechanics.py`** — identical checks for both
+  demos; each passes its own `GovernedToolkit`. It never touches the agent framework.
 - **`agent.py`** (the new file, replacing `crew.py`) — the one genuinely new piece:
   - CrewAI's `Agent`/`Task`/`Crew` replaced with
     `langchain.agents.create_tool_calling_agent` + `AgentExecutor` (`langchain==0.3.x`
@@ -483,7 +483,7 @@ file:
   became `langchain>=0.3,<0.4` / `langchain-core>=0.3` / `langchain-anthropic>=0.3` /
   `langchain-openai>=0.3`. The "don't install this in the tracked `.venv`" warning
   carries over with the same reasoning, pointed at a different
-  `tests/test_autoguard.py` assertion
+  `tests/frameworks/autoguard/test_autoguard.py` assertion
   (`test_missing_litellm_and_langchain_are_reported_not_hidden` instead of the
   crewai-specific ones).
 
@@ -507,7 +507,7 @@ turn list each request) rather than server-side, because a serverless function's
 filesystem/process state does not reliably persist between two requests in the same
 conversation — the governed state that actually matters (capability grants, taint
 marks, audit trail, order/customer records) lives in Postgres via
-`NOMETRIA_DATABASE_URL`, not in the function's memory. `web.py`'s `_ensure_seeded()`
+`AGENTFOX_DATABASE_URL`, not in the function's memory. `web.py`'s `_ensure_seeded()`
 runs `seed_demo_agent.main()` lazily on first request rather than requiring a
 separate manual step, and is safe to call on every cold start — `save_policy` and
 the capability-grant loop are already idempotent at the DB level (checked directly,
@@ -517,13 +517,13 @@ not assumed; see `web.py`'s docstring).
 
 1. A Vercel project with **Root Directory** set to `demo/redteam-live-lang` (same
    pattern as the already-deployed `guardrails-api` project, whose Root Directory is
-   `api`) — importing `architsharm/guardrails` a second time as a separate project.
+   `api`) — importing `architsharm/agentfox` a second time as a separate project.
 2. A Postgres database bound to it — this demo uses its own, freshly-created Neon
    database via Vercel's Storage tab (native integration, already connected to this
    Vercel account for `guardrails-api`), **not** `guardrails-api`'s own `guardrails-db`
    — red-team demo traffic and probe runs should not land in the same database as
    real product compliance data.
-3. The standard `NOMETRIA_*` environment variables (service auth secret, token
+3. The standard `AGENTFOX_*` environment variables (service auth secret, token
    encryption key, audit signing key, evidence dir, environment, auth mode) —
    freshly generated for this project, the same way `agentfox init` generates them
    locally, not copied from `guardrails-api`'s.
@@ -536,6 +536,12 @@ not assumed; see `web.py`'s docstring).
    composed-escalation mechanics via `verify_mechanics.py`-equivalent checks) except
    the chat endpoint, which returns the same clean `missing_api_key` message
    `agent.py`'s CLI does — never a crash, never a fabricated response.
+
+Because the Root Directory is this folder, the deployment can only see files inside
+it: that is why the agentfox wheel is committed under `vendor/` and the shared kit is
+committed as `kit/` (a copy of `demo/kit/`, kept identical by
+`scripts/check/demo_kit.py`). Do not make anything here import from outside this
+folder.
 
 Rebuild the wheel after any `src/agentfox` change intended for this deployment:
 `uv build --wheel --out-dir demo/redteam-live-lang/vendor`, delete the old wheel,

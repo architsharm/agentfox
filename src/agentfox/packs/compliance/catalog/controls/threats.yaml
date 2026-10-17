@@ -1,0 +1,157 @@
+# AgentFox threat catalogue
+# =========================
+# The published threat models this product is measured against, as a closed list.
+#
+# Separate from `controls.yaml`'s `frameworks` block on purpose, and the separation
+# is the point rather than a duplication.
+#
+# A *compliance framework* (SOC 2, ISO 42001, the EU AI Act) is a thing you attest
+# to. A *threat model* (OWASP, ATLAS) is a thing you are attacked by. They are both
+# lists of identifiers that controls map onto, which is why they ended up in the
+# same table, and they answer different questions for different people. "Which of
+# CC6.6's requirements have we met" is a GRC question asked quarterly. "Can somebody
+# prompt-inject this agent" is a security question asked before every launch. Filing
+# the second inside the first put the security engineer's primary lens behind a tab
+# on the compliance page, next to six things they do not care about.
+#
+# Why the catalogue has to be declared rather than derived from the mappings in
+# `controls.yaml`: a threat with no control mapped to it would simply not appear,
+# so the one view whose entire job is to show gaps would be structurally incapable
+# of showing the largest kind. LLM07 is the live example — nothing in the control
+# catalogue mentions it, so until this file existed it did not exist either.
+#
+# `coverage_intent` is a deliberate, reviewable statement about what this product
+# is *for*, so that an uncovered threat reads as a choice or a gap rather than an
+# oversight. `out_of_scope` means no amount of runtime governance addresses it —
+# training-data poisoning is a problem for whoever trained the model — and it is
+# excluded from the coverage ratio rather than counted as a failure. Anything else
+# with no control is a gap, and says so.
+version: 0.1.0
+review_status: draft
+
+catalogues:
+  owasp-llm:
+    title: OWASP Top 10 for LLM Applications (2025)
+    url: https://genai.owasp.org/llm-top-10/
+    entries:
+      - id: LLM01
+        title: Prompt Injection
+        coverage_intent: runtime
+      - id: LLM02
+        title: Sensitive Information Disclosure
+        coverage_intent: runtime
+      - id: LLM03
+        title: Supply Chain
+        coverage_intent: runtime
+      - id: LLM04
+        title: Data and Model Poisoning
+        coverage_intent: partial
+        note: >
+          Runtime governance can see poisoned *retrieved* content and poisoned memory
+          writes. It cannot see poisoned training data, which happened before this
+          product was in the path.
+      - id: LLM05
+        title: Improper Output Handling
+        coverage_intent: runtime
+      - id: LLM06
+        title: Excessive Agency
+        coverage_intent: runtime
+      - id: LLM07
+        title: System Prompt Leakage
+        coverage_intent: runtime
+      - id: LLM08
+        title: Vector and Embedding Weaknesses
+        coverage_intent: runtime
+      - id: LLM09
+        title: Misinformation
+        coverage_intent: runtime
+      - id: LLM10
+        title: Unbounded Consumption
+        coverage_intent: runtime
+
+  owasp-agentic:
+    title: OWASP Agentic AI — Threats and Mitigations (T1–T15)
+    url: https://genai.owasp.org/resource/agentic-ai-threats-and-mitigations/
+    entries:
+      - id: T1
+        title: Memory Poisoning
+        coverage_intent: runtime
+      - id: T2
+        title: Tool Misuse
+        coverage_intent: runtime
+      - id: T3
+        title: Privilege Compromise
+        coverage_intent: runtime
+      - id: T4
+        title: Resource Overload
+        coverage_intent: runtime
+      - id: T5
+        title: Cascading Hallucination
+        coverage_intent: runtime
+      - id: T6
+        title: Intent Breaking & Goal Manipulation
+        coverage_intent: runtime
+      - id: T7
+        title: Misaligned & Deceptive Behaviors
+        coverage_intent: runtime
+      - id: T8
+        title: Repudiation & Untraceability
+        coverage_intent: runtime
+      - id: T9
+        title: Identity Spoofing & Impersonation
+        coverage_intent: runtime
+      - id: T10
+        title: Overwhelming Human-in-the-Loop
+        coverage_intent: runtime
+      - id: T11
+        title: Unexpected RCE and Code Attacks
+        coverage_intent: partial
+        note: >
+          What the agent is *asked* to execute is governed; what the sandbox does with
+          it is the sandbox's job, and this product does not run your code.
+      - id: T12
+        title: Agent Communication Poisoning
+        coverage_intent: runtime
+      - id: T13
+        title: Rogue Agents
+        coverage_intent: runtime
+      - id: T14
+        title: Human Attacks on Multi-Agent Systems
+        coverage_intent: runtime
+      - id: T15
+        title: Human Manipulation
+        coverage_intent: runtime
+
+  mitre-atlas:
+    title: MITRE ATLAS — techniques reachable at runtime
+    url: https://atlas.mitre.org/
+    # Deliberately not the whole of ATLAS. Most of it describes attacks on the model
+    # supply chain and the training pipeline, which a runtime control plane is not in
+    # the path of. Listing all of it to score 9% would be theatre; listing the
+    # reachable subset and saying so is the honest version.
+    entries:
+      - id: AML.T0020
+        title: Poison Training Data
+        coverage_intent: out_of_scope
+        note: Happens before this product is in the path.
+      - id: AML.T0031
+        title: Erode ML Model Integrity
+        coverage_intent: partial
+      - id: AML.T0043
+        title: Craft Adversarial Data
+        coverage_intent: runtime
+      - id: AML.T0051
+        title: LLM Prompt Injection
+        coverage_intent: runtime
+      - id: AML.T0053
+        title: LLM Plugin Compromise
+        coverage_intent: runtime
+      - id: AML.T0054
+        title: LLM Jailbreak
+        coverage_intent: runtime
+      - id: AML.T0055
+        title: Unsecured Credentials
+        coverage_intent: runtime
+      - id: AML.T0057
+        title: LLM Data Leakage
+        coverage_intent: runtime

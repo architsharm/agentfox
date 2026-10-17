@@ -1,0 +1,71 @@
+# The payments side of the demo world (`fixtures/seed.py`): the money-moving tools,
+# the payments operations agent and its grants. It may transfer only small amounts,
+# only in USD, and only when the arguments did not come from untrusted content.
+tools:
+- key: payments.transfer
+  name: Transfer funds
+  impact: irreversible
+  description: Move money between accounts. Irreversible once settled.
+  schema:
+    type: object
+    properties:
+      amount:
+        type: number
+        minimum: 0
+      currency:
+        type: string
+        enum:
+        - USD
+        - EUR
+        - GBP
+      to:
+        type: string
+    required:
+    - amount
+    - currency
+    - to
+- key: payments.refund
+  name: Issue refund
+  impact: high_impact
+  description: Refund a charge to the original payment method.
+agents:
+- slug: payments-ops
+  name: Payments Operations Agent
+  purpose: Handles refund and transfer requests for the finance operations team. Processes
+    creditworthiness and lending exceptions.
+  owner_email: marcus@example.com
+  owner_team: Finance Systems
+  risk_tier: high
+  framework: claude-agent-sdk
+  declared_models:
+  - echo-1
+  declared_tools:
+  - crm.lookup
+  - payments.refund
+  - payments.transfer
+  - email.send
+  data_classes:
+  - pii
+  - financial
+  - pci
+capabilities:
+  payments-ops:
+  - tool_key: crm.lookup
+    max_taint: user
+  - tool_key: payments.refund
+    max_taint: user
+    constraints:
+      amount:
+        lte: 500
+  - tool_key: payments.transfer
+    max_taint: user
+    requires_approval: false
+    constraints:
+      amount:
+        lt: 1000
+      currency:
+        in:
+        - USD
+  - tool_key: email.send
+    max_taint: user
+    requires_approval: true

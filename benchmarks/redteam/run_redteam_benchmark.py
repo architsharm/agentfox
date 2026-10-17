@@ -1,9 +1,9 @@
-"""Scores `src/agentfox/evaluation/redteam.py`'s `NativeRedTeamRunner` — the
+"""Scores `src/agentfox/capabilities/evaluation/redteam.py`'s `NativeRedTeamRunner` — the
 red-team campaign runner itself, not the underlying detectors it calls (those
 are separately benchmarked: `benchmarks/REPORT.md`, `benchmarks/pii/`,
 `benchmarks/action_safety/`).
 
-    uv run python benchmarks/redteam/run_redteam_benchmark.py
+    uv run python -m benchmarks.redteam.run_redteam_benchmark
 
 **A different kind of benchmark from most others in this repo, and that
 difference is the point.** `benchmarks/REPORT.md` etc. score whether a
@@ -41,16 +41,16 @@ RESULTS_DIR = Path(__file__).parent / "results"
 def main() -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     tmpdir = tempfile.mkdtemp(prefix="redteam_bench_")
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
-    os.environ["NOMETRIA_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
-    os.environ["NOMETRIA_AUDIT_SIGNING_KEY"] = "bench-key"
-    os.environ["NOMETRIA_ALLOW_EGRESS"] = "false"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
+    os.environ["AGENTFOX_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
+    os.environ["AGENTFOX_AUDIT_SIGNING_KEY"] = "bench-key"
+    os.environ["AGENTFOX_ALLOW_EGRESS"] = "false"
 
-    from agentfox import db
-    from agentfox.config import reset_settings_cache
-    from agentfox.evaluation.redteam import BUILTIN_PROBES, run_campaign
-    from agentfox.policy import set_mode
-    from agentfox.seed import seed as run_seed
+    from agentfox.capabilities.evaluation.redteam import BUILTIN_PROBES, run_campaign
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
+    from agentfox.fixtures.seed import seed as run_seed
+    from agentfox.platform.policy import set_mode
 
     reset_settings_cache()
     db.reset_engine()
@@ -58,7 +58,9 @@ def main() -> None:
 
     attacks = [p for p in BUILTIN_PROBES if p.expect_blocked]
     benign = [p for p in BUILTIN_PROBES if not p.expect_blocked]
-    print(f"{len(BUILTIN_PROBES)} built-in probes: {len(attacks)} attacks, {len(benign)} benign controls")
+    print(
+        f"{len(BUILTIN_PROBES)} built-in probes: {len(attacks)} attacks, {len(benign)} benign controls"
+    )
     by_kind: dict[str, int] = {}
     for p in BUILTIN_PROBES:
         by_kind[p.kind] = by_kind.get(p.kind, 0) + 1
@@ -72,7 +74,7 @@ def main() -> None:
         # Every registered agent, not just one — the runner's own doc claims it
         # exercises "the deployed configuration", so this checks that holds across
         # every seed agent's actual grants, not just a single hand-picked one.
-        from agentfox.models import Agent
+        from agentfox.core.models import Agent
 
         agent_slugs = [a.slug for a in session.query(Agent).all()]
         print(f"scoring against agents: {agent_slugs}")

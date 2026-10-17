@@ -1,8 +1,8 @@
-"""Scores `src/agentfox/entitlement.py::filter_retrieval`'s purpose-limitation
+"""Scores `src/agentfox/capabilities/grounding/entitlement.py::filter_retrieval`'s purpose-limitation
 check (F4.6, GDPR Art. 5(1)(b)) against scenarios built from PrivacyLens's real
 vignette content (`data/privacylens.json`, 493 rows, MIT).
 
-    uv run python benchmarks/entitlement/run_privacylens_benchmark.py
+    uv run python -m benchmarks.entitlement.run_privacylens_benchmark
 
 **This benchmark is a different kind from every other one in this repo, and
 that difference is the point of this docstring.** Every prior benchmark
@@ -11,7 +11,7 @@ that difference is the point of this docstring.** Every prior benchmark
 or "this is a future-tense question," and the detector is checked against that
 external, independently-authored answer. `entitlement.py`'s mechanism has no
 public dataset that supplies labels in its shape at all (see
-`docs/dataset-sourcing.md`'s own "Gap, stated plainly" note, and this repo's
+`docs/evaluation/dataset-sourcing.md`'s own "Gap, stated plainly" note, and this repo's
 `benchmarks/source_authority/README.md` for the same conclusion reached
 independently for F2). What follows instead is a **self-constructed scenario
 benchmark**: PrivacyLens supplies real, human-authored, varied *content*
@@ -72,14 +72,18 @@ def main() -> None:
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     tmpdir = tempfile.mkdtemp(prefix="privacylens_bench_")
-    os.environ["NOMETRIA_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
-    os.environ["NOMETRIA_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
-    os.environ["NOMETRIA_AUDIT_SIGNING_KEY"] = "bench-key"
-    os.environ["NOMETRIA_ALLOW_EGRESS"] = "false"
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{tmpdir}/bench.db"
+    os.environ["AGENTFOX_EVIDENCE_DIR"] = f"{tmpdir}/evidence"
+    os.environ["AGENTFOX_AUDIT_SIGNING_KEY"] = "bench-key"
+    os.environ["AGENTFOX_ALLOW_EGRESS"] = "false"
 
-    from agentfox import db
-    from agentfox.config import reset_settings_cache
-    from agentfox.entitlement import filter_retrieval, grant, upsert_principal
+    from agentfox.capabilities.grounding.entitlement import (
+        filter_retrieval,
+        grant,
+        upsert_principal,
+    )
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
 
     reset_settings_cache()
     db.reset_engine()
@@ -135,7 +139,9 @@ def main() -> None:
                     )
 
             # Negative case: same resource, its own declared (original) purpose.
-            neg_decision = filter_retrieval(session, principal, [chunk], purpose="original_collection")
+            neg_decision = filter_retrieval(
+                session, principal, [chunk], purpose="original_collection"
+            )
             allowed_correctly = bool(neg_decision.visible) and not neg_decision.withheld
             if allowed_correctly:
                 neg_tn += 1

@@ -1,4 +1,4 @@
-import { proxyJson } from "@/lib/proxy";
+import { proxyJson } from "@/lib/product/proxy";
 
 /**
  * Client-fetchable mirror of the server-only `api()` helper, scoped to one

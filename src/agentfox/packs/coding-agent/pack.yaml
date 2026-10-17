@@ -1,0 +1,15 @@
+# Rules for coding agents governed through their hooks (Claude Code today). Written
+# against canonical tool names, so it does not depend on which harness is attached.
+id: coding-agent
+version: 1.0.0
+maturity: stable
+requires_core: ">=0.3"
+title: Coding agents
+description: >
+  Shell, file and web rules for coding agents, harness-neutral: secrets in commands,
+  destructive shell, injected instructions in what the agent reads.
+owners: [agentfox-maintainers]
+tags: [coding-agent, shell, harness]
+compliance:
+  controls: [NOM-DSC-01, NOM-DSC-05, NOM-IAM-02, NOM-RTG-01, NOM-RTG-03]
+requires_detectors: [injection.heuristic, pii.native, secrets.native]

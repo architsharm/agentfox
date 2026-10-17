@@ -4,7 +4,7 @@ each fragment as the value of an ORDINARY, non-SQL-declared tool-call argument
 (e.g. ``{"order_id": fragment}``) — the exact scenario `analyse_scope()` (via the
 `analyse_arguments()` dispatcher) is meant to catch, not `analyse_sql()`.
 
-    uv run python benchmarks/action_safety/fetch_payloadbox.py
+    uv run python -m benchmarks.action_safety.fetch_payloadbox
 
 Source: https://github.com/payload-box/sql-injection-payload-list (MIT — LICENSE
 verified by fetching it directly, see below). Five dialect files
@@ -46,9 +46,7 @@ import subprocess
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent / "data"
-RAW_BASE = (
-    "https://raw.githubusercontent.com/payload-box/sql-injection-payload-list/main"
-)
+RAW_BASE = "https://raw.githubusercontent.com/payload-box/sql-injection-payload-list/main"
 LICENSE_URL = f"{RAW_BASE}/LICENSE"
 SEED = 20260829
 
@@ -204,8 +202,10 @@ def build_malicious_cases(rng: random.Random) -> list[dict]:
                 "authored": False,
             }
         )
-    print(f"\n{len(cases)} unique fragments across {len(SOURCE_FILES)} source files "
-          f"({sum(len(v) for v in per_file.values())} raw lines before global dedup)")
+    print(
+        f"\n{len(cases)} unique fragments across {len(SOURCE_FILES)} source files "
+        f"({sum(len(v) for v in per_file.values())} raw lines before global dedup)"
+    )
     return cases
 
 
@@ -234,8 +234,10 @@ def main() -> None:
 
     out = {"malicious": malicious, "benign": benign}
     (DATA_DIR / "payloadbox_cases.json").write_text(json.dumps(out, indent=2))
-    print(f"\nwrote {len(malicious)} malicious + {len(benign)} benign cases "
-          f"to data/payloadbox_cases.json")
+    print(
+        f"\nwrote {len(malicious)} malicious + {len(benign)} benign cases "
+        f"to data/payloadbox_cases.json"
+    )
 
 
 if __name__ == "__main__":

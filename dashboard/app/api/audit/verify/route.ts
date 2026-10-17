@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/proxy";
+import { proxyRedirectWithHandler } from "@/lib/product/proxy";
 
 /**
  * A full independent re-derivation of the audit-chain hash, on demand — the
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     req,
     "POST",
     "/api/audit/verify",
-    "/compliance?tab=evidence",
+    "/app/reports?tab=audit",
     undefined,
     (res, body) => {
       if (!res.ok) return { error: body.detail || res.statusText };

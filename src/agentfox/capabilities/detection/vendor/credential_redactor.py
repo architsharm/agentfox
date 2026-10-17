@@ -1,0 +1,580 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+#
+# Vendored into AgentFox from agent-governance-python/agent-os/src/agent_os/
+# credential_redactor.py at upstream commit c767f83. MIT license text: LICENSE in
+# this directory.
+#
+# Changes from upstream:
+#   1. `from .hipaa_patterns import HIPAA_PHI_RAW_PATTERNS` is replaced by an empty
+#      local tuple. The healthcare (MRN/NPI/health-plan) patterns are not vendored;
+#      AgentFox's PII detector owns PII/PHI. `PHI_PATTERNS` and
+#      `HEALTHCARE_IDENTIFIER_PATTERNS` are therefore empty here. Nothing else in
+#      this file is changed.
+"""Credential redaction and PII/CRI detection for MCP audit and response safety."""
+
+from __future__ import annotations
+
+import logging
+import re
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
+# Changes from upstream (1): healthcare patterns are not vendored.
+HIPAA_PHI_RAW_PATTERNS: tuple[tuple[str, str], ...] = ()
+
+logger = logging.getLogger(__name__)
+
+REDACTED_PLACEHOLDER = "[REDACTED]"
+
+
+def _compile_named_patterns(
+    raw_patterns: tuple[
+        tuple[str, str] | tuple[str, str, Callable[[re.Match[str]], bool]],
+        ...,
+    ],
+) -> tuple[CredentialPattern, ...]:
+    """Compile named regex definitions into ``CredentialPattern`` records."""
+    return tuple(
+        CredentialPattern(
+            name=pattern[0],
+            pattern=re.compile(pattern[1]),
+            validator=pattern[2] if len(pattern) > 2 else None,
+        )
+        for pattern in raw_patterns
+    )
+
+
+def _select_named_patterns(
+    patterns: tuple[CredentialPattern, ...], names: frozenset[str]
+) -> tuple[CredentialPattern, ...]:
+    """Return the subset of compiled patterns whose names are in ``names``."""
+    return tuple(pattern for pattern in patterns if pattern.name in names)
+
+
+@dataclass(frozen=True)
+class CredentialPattern:
+    """A named credential detection pattern."""
+
+    name: str
+    pattern: re.Pattern[str]
+    validator: Callable[[re.Match[str]], bool] | None = None
+
+
+@dataclass(frozen=True)
+class CredentialMatch:
+    """A credential-like value detected in text.
+
+    ``start`` and ``end`` are the character offsets of the match within the
+    scanned string (``-1`` when unknown). They let callers reason about
+    overlapping spans (for example, suppressing a PII match that falls inside a
+    credential match) without re-scanning. ``matched_text`` holds the raw value
+    and must never be logged or echoed to callers.
+    """
+
+    name: str
+    matched_text: str
+    start: int = -1
+    end: int = -1
+
+
+class CredentialRedactor:
+    """Detect and redact credential-like material in strings and nested objects.
+
+    Use this helper before persisting audit payloads or returning tool output to
+    callers. The class operates on plain strings as well as nested dictionaries,
+    lists, and tuples, replacing detected secret values with a stable
+    placeholder.
+
+    By default :meth:`redact` (and the structure/mapping helpers) scrub
+    *secrets only* — the material in :attr:`PATTERNS`. PII/CRI (email, phone,
+    SSN, credit card, IP) is *detected* by :meth:`find_pii_matches` but is not
+    removed unless the caller opts in with ``redact_pii=True``. This split is
+    deliberate: PII handling is often policy-driven (report vs. block vs.
+    scrub), so callers choose when to strip it rather than having it removed
+    silently.
+
+    .. note::
+        ``redact()`` and the nested helpers leave PII unchanged by default. Pass
+        ``redact_pii=True`` when output must not contain PII; use
+        :meth:`find_pii_matches` / :meth:`contains_pii` for detection without
+        removal.
+    """
+
+    # Python's stdlib ``re`` does not support per-pattern timeouts. These
+    # patterns are kept simple and anchored to avoid pathological backtracking.
+    #
+    # Both anchors use a ``(?<![A-Za-z0-9])`` lookbehind and a
+    # ``(?![A-Za-z0-9])`` lookahead rather than ``\b`` so a secret glued
+    # directly to a word character via ``_`` or ``-`` (for example
+    # ``session_sk-...`` or ``AKIA<key>_old``) is still detected. ``\b``
+    # treats ``_`` as a word character, so ``_sk-`` has no boundary and the
+    # secret would be missed; the explicit lookaround treats ``_`` (and
+    # ``-``, ``/``, ``.``, whitespace) as a valid edge while still not
+    # matching inside an alphanumeric word.
+    #
+    # Slack and xapp tokens intentionally omit a right-edge lookahead
+    # because their value class includes ``-``, and a trailing ``\b`` would
+    # backtrack and redact only a prefix, leaking the final segment.
+    PATTERNS: tuple[CredentialPattern, ...] = (
+        CredentialPattern(
+            name="OpenAI API key",
+            pattern=re.compile(r"(?<![A-Za-z0-9])sk-[A-Za-z0-9][A-Za-z0-9_-]{18,}(?![A-Za-z0-9])"),
+        ),
+        CredentialPattern(
+            name="GitHub token",
+            pattern=re.compile(
+                r"(?<![A-Za-z0-9])(?:gh[psour]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{22,})(?![A-Za-z0-9])"
+            ),
+        ),
+        CredentialPattern(
+            name="AWS access key",
+            pattern=re.compile(r"(?<![A-Za-z0-9])AKIA[A-Z0-9]{16}(?![A-Za-z0-9])"),
+        ),
+        CredentialPattern(
+            # The 40-char base64 secret value has no distinctive prefix, so it is
+            # anchored to the assignment keyword to avoid matching arbitrary
+            # base64 blobs. The generic "secret" pattern misses it because
+            # "secret" inside "aws_secret_access_key" has no word boundary.
+            name="AWS secret access key",
+            pattern=re.compile(
+                r"(?i)aws[_ -]?secret[_ -]?access[_ -]?key"
+                r"[\"']?\s*[:=]\s*[\"']?[A-Za-z0-9/+=]{40,}"
+            ),
+        ),
+        CredentialPattern(
+            name="Azure key",
+            pattern=re.compile(
+                r"(?i)(?:accountkey|sharedaccesskey|azure[_-]?key)\s*[:=]\s*[A-Za-z0-9+/=]{20,}"
+            ),
+        ),
+        CredentialPattern(
+            # Azure Storage SAS token. The "sig" query parameter carries the
+            # secret HMAC signature (base64(HMAC-SHA256) = 44 chars, longer when
+            # URL-encoded). Matching the sig value directly is order-independent
+            # (SAS params are not ordered) and single-pass. The 43-char floor is
+            # far above an incidental short "sig=" query value, so it stands in
+            # for a context anchor without the false positives.
+            name="Azure SAS token",
+            pattern=re.compile(r"(?i)(?<![A-Za-z0-9])sig=[A-Za-z0-9%/+=_.~-]{43,}"),
+        ),
+        CredentialPattern(
+            name="Bearer token",
+            pattern=re.compile(r"(?<![A-Za-z0-9])Bearer\s+[A-Za-z0-9._\-+/=]{16,}\b"),
+        ),
+        CredentialPattern(
+            name="PEM private key",
+            pattern=re.compile(
+                r"-----BEGIN (?P<label>(?:(?:RSA|EC|DSA|OPENSSH|ENCRYPTED) )?PRIVATE KEY)-----"
+                r"(?:\r?\n[!-~ \t]*)*?"
+                r"\r?\n-----END (?P=label)-----"
+            ),
+        ),
+        CredentialPattern(
+            name="Connection string secret",
+            pattern=re.compile(
+                r"(?i)(?<![A-Za-z0-9])(?:password|pwd|accountkey|sharedaccesssignature)\s*=\s*[^;\s]{4,}"
+            ),
+        ),
+        CredentialPattern(
+            name="Basic auth secret",
+            # Bound the scheme-like scan at every candidate start. Without this
+            # limit, separator-dense input with no ``://`` makes the unbounded
+            # scheme class scan overlapping suffixes repeatedly. Allow any
+            # scheme character to start the bounded suffix: a long valid scheme
+            # may have only digits or punctuation in its final 64 characters,
+            # but its username/password must still be redacted fail-closed.
+            pattern=re.compile(
+                r"(?i)(?:(?<![A-Za-z0-9])Basic\s+[A-Za-z0-9+/=]{8,}(?![A-Za-z0-9+/=])"
+                r"|[a-z0-9+.-]{1,64}://[^/\s:@]+:[^@\s/]+@)"
+            ),
+        ),
+        CredentialPattern(
+            name="JWT",
+            pattern=re.compile(
+                r"(?<![A-Za-z0-9])eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9._-]{6,}\.[A-Za-z0-9._-]{6,}\b"
+            ),
+        ),
+        CredentialPattern(
+            # Covers bot/user/legacy tokens (xoxb/xoxa/xoxp/xoxr/xoxs) and
+            # app-level tokens (xapp-). No trailing \b: the "-" in the value
+            # class lets a word boundary backtrack and redact only a prefix,
+            # leaking the token's final secret segment. The value class already
+            # bounds the match, so greedy consumption stops at the first
+            # non-token character.
+            name="Slack token",
+            pattern=re.compile(r"(?<![A-Za-z0-9])(?:xox[baprs]|xapp)-[A-Za-z0-9-]{10,}"),
+        ),
+        CredentialPattern(
+            # The value class includes "_"/"-", and the length is fixed at 35,
+            # so a real key can end in one of them. A trailing \b treats "-"
+            # as an automatic boundary on its own, since "-" is not a word
+            # character, so it redacted a key ending in "-" even when glued
+            # straight to more text. The mirror assertion by itself loses that
+            # shape: a detector change must never lose a shape the previous
+            # version caught, so the trailing assertion also accepts whenever
+            # the character actually consumed is "-", regardless of what
+            # follows, restoring the original \b behavior for exactly that
+            # case while keeping the "one more alphanumeric character" guard
+            # everywhere else. Verified against base and head with no
+            # regressions and no new over-redaction; pinned as a positive
+            # case by test_redacts_google_api_key_ending_in_hyphen_when_glued.
+            name="Google API key",
+            pattern=re.compile(r"(?<![A-Za-z0-9])AIza[0-9A-Za-z_\-]{35}(?:(?![A-Za-z0-9])|(?<=-))"),
+        ),
+        CredentialPattern(
+            name="Stripe secret key",
+            pattern=re.compile(
+                r"(?<![A-Za-z0-9])(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{10,}(?![A-Za-z0-9])"
+            ),
+        ),
+        CredentialPattern(
+            name="Generic API secret",
+            pattern=re.compile(
+                r"(?i)(?<![A-Za-z0-9])(?:api[_-]?key|client[_-]?secret|secret|token)\b\s*[:=]\s*['\"]?[^\s'\";]{6,}"
+            ),
+        ),
+    )
+
+    _COMPILED_HEALTHCARE_PATTERNS: tuple[CredentialPattern, ...] = _compile_named_patterns(
+        HIPAA_PHI_RAW_PATTERNS
+    )
+    _PHI_PATTERN_NAMES = frozenset({"Medical Record Number (MRN)", "Health Plan ID"})
+    _NON_PHI_HEALTHCARE_IDENTIFIER_NAMES = frozenset({"National Provider Identifier (NPI)"})
+
+    # Strict PHI patterns remain separately inspectable for callers that need
+    # HIPAA-specific handling of patient-linked identifiers.
+    PHI_PATTERNS: tuple[CredentialPattern, ...] = _select_named_patterns(
+        _COMPILED_HEALTHCARE_PATTERNS,
+        _PHI_PATTERN_NAMES,
+    )
+
+    # Healthcare identifiers that are useful for detection but are not PHI.
+    # NPIs identify providers and are publicly available via NPPES, so they
+    # live outside ``PHI_PATTERNS`` while remaining part of compatibility scans.
+    HEALTHCARE_IDENTIFIER_PATTERNS: tuple[CredentialPattern, ...] = _select_named_patterns(
+        _COMPILED_HEALTHCARE_PATTERNS,
+        _NON_PHI_HEALTHCARE_IDENTIFIER_NAMES,
+    )
+
+    # Ordinary PII / CRI patterns — detection-only (not used for redaction by
+    # default). These catch non-HIPAA personally identifiable information that
+    # should not flow into LLM context in enterprise governance scenarios.
+    PII_PATTERNS: tuple[CredentialPattern, ...] = (
+        CredentialPattern(
+            name="Email address",
+            # RFC 5321 limits the local part to 64 octets. The character class
+            # below is ASCII-only, so the same limit also bounds regex work at
+            # every candidate start. Without it, separator-dense input that
+            # contains no ``@`` makes the greedy local part scan overlapping
+            # suffixes from many candidate starts, producing quadratic behavior.
+            # Deliberately omit word boundaries around the pattern. This is a
+            # fail-closed egress detector, not an RFC validator: if untrusted
+            # output pads a readable address with uninterrupted word characters,
+            # the engine must report a bounded match instead of missing it.
+            # With redact_pii=True, only the final 64 local-part characters and
+            # domain are redacted; an overlong local-part prefix stays visible.
+            # Version strings such as pkg@1.0.0.dev1 may also match intentionally.
+            pattern=re.compile(r"[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"),
+        ),
+        CredentialPattern(
+            name="US phone number",
+            pattern=re.compile(r"(?<!\d)(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}(?!\d)"),
+        ),
+        CredentialPattern(
+            name="US SSN",
+            # Accept the space and dot separated forms the dash-only pattern
+            # missed (issue #3239). A separator is required: this module feeds
+            # the MCP gateway, where pii_leak is a hard-block category, so a
+            # bare nine-digit match would deny any request carrying a tracking
+            # number, ZIP+4, or ABA routing number. policy/lib/patterns.rego
+            # keeps the looser form for detection-only reporting.
+            # Use the lookaround idiom documented above rather than ``\b`` so an
+            # SSN adjacent to ``_`` (``employee_123-45-6789``) is still detected.
+            pattern=re.compile(r"(?<![A-Za-z0-9])\d{3}[\s.-]\d{2}[\s.-]\d{4}(?![A-Za-z0-9])"),
+        ),
+        CredentialPattern(
+            name="US SSN",
+            # A bare nine-digit SSN placed next to an explicit cue (``SSN:``,
+            # ``ssn=``, ``social security number``) evaded the separator-required
+            # pattern above, so cued tool output passed the gateway and adapter
+            # gates unredacted (issue #3592). Match a case-insensitive cue within
+            # a short window before an undelimited nine-digit run. The bare-uncued
+            # forms (tracking, ABA, ZIP+4) stay non-matching, so pii_leak does not
+            # hard-block ordinary traffic. Kept in lockstep with the adapter copy
+            # in integrations/base.py.
+            pattern=re.compile(
+                r"(?i:\bssn\b|\bsocial[\s._-]+security(?:[\s._-]+(?:number|no\.?|#))?)"
+                r"[\s:=#.\-\"']{1,4}"
+                r"(?<!\d)\d{9}(?![A-Za-z0-9])"
+            ),
+        ),
+        CredentialPattern(
+            name="Credit card number",
+            pattern=re.compile(r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b"),
+        ),
+        CredentialPattern(
+            name="IPv4 address",
+            pattern=re.compile(
+                r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
+            ),
+        ),
+    )
+
+    @classmethod
+    def find_pii_matches(cls, value: str | None) -> list[CredentialMatch]:
+        """Return all PII- and PHI-like matches found in a string.
+
+        Unlike :meth:`find_matches`, these patterns detect personally
+        identifiable information plus healthcare identifiers (email, phone,
+        SSN, credit card, IP address, MRN, NPI, health plan identifiers)
+        rather than secrets. ``PII_PATTERNS``, ``PHI_PATTERNS``, and
+        ``HEALTHCARE_IDENTIFIER_PATTERNS`` remain separately inspectable for
+        callers that need category-aware handling; this method intentionally
+        scans them in the historical effective order of PHI first, then
+        non-PHI healthcare identifiers, then ordinary PII. Use for detection
+        and policy enforcement, not for audit redaction.
+
+        Args:
+            value: String content to inspect.
+
+        Returns:
+            A list of ``CredentialMatch`` records for each detected PII, PHI,
+            or non-PHI healthcare identifier span.
+        """
+        if not value:
+            return []
+
+        matches: list[CredentialMatch] = []
+        ordered_patterns = cls.PHI_PATTERNS + cls.HEALTHCARE_IDENTIFIER_PATTERNS + cls.PII_PATTERNS
+        for pii_pattern in ordered_patterns:
+            for match in pii_pattern.pattern.finditer(value):
+                if pii_pattern.validator and not pii_pattern.validator(match):
+                    continue
+                matches.append(
+                    CredentialMatch(
+                        name=pii_pattern.name,
+                        matched_text=match.group(0),
+                        start=match.start(),
+                        end=match.end(),
+                    )
+                )
+        return matches
+
+    @classmethod
+    def contains_pii(cls, value: str | None) -> bool:
+        """Return whether a string contains any PII, PHI, or healthcare identifier.
+
+        Args:
+            value: String content to inspect.
+
+        Returns:
+            ``True`` when at least one PII, PHI, or healthcare identifier
+            pattern matches.
+        """
+        return bool(cls.find_pii_matches(value))
+
+    @classmethod
+    def redact(cls, value: str | None, *, redact_pii: bool = False) -> str:
+        """Redact credential-like values from a string.
+
+        Redaction is driven by the exact spans that :meth:`find_matches`
+        reports, so redaction removes precisely what detection finds. This is
+        deliberately not a sequential ``subn`` over the patterns: applying
+        patterns to a progressively mutated string lets an earlier greedy
+        pattern consume the anchor keyword of a later one, which would remove
+        less than detection reported and leave a secret in place.
+
+        By default this scrubs *secrets only* (:attr:`PATTERNS`); PII/PHI and
+        healthcare identifiers detected by :meth:`find_pii_matches` (email,
+        phone, SSN, credit card, IP, MRN, NPI, health plan identifiers) are
+        left in place. Pass ``redact_pii=True`` to also remove those spans
+        — for example before returning tool output to a model or persisting an
+        audit payload where PII or PHI must not flow through. Overlapping
+        secret/PII spans are merged, so PII inside a secret (or vice versa) is
+        redacted once.
+
+        Args:
+            value: String content that may contain credential-like material.
+            redact_pii: When ``True``, also redact PII/CRI spans in addition to
+                secrets. Defaults to ``False`` (secrets-only, backwards
+                compatible).
+
+        Returns:
+            A string with each detected credential (and, when ``redact_pii`` is
+            set, each detected PII span) replaced by ``REDACTED_PLACEHOLDER``.
+            Empty input returns an empty string.
+        """
+        if not value:
+            return ""
+
+        matches = cls.find_matches(value)
+        if redact_pii:
+            matches = matches + cls.find_pii_matches(value)
+        spans = sorted(
+            (match.start, match.end)
+            for match in matches
+            if match.start >= 0 and match.end > match.start
+        )
+        if not spans:
+            return value
+
+        merged: list[list[int]] = []
+        for start, end in spans:
+            if merged and start < merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], end)
+            else:
+                merged.append([start, end])
+
+        pieces: list[str] = []
+        cursor = 0
+        for start, end in merged:
+            pieces.append(value[cursor:start])
+            pieces.append(REDACTED_PLACEHOLDER)
+            cursor = end
+        pieces.append(value[cursor:])
+
+        logger.info("Credential redaction applied to %s span(s)", len(merged))
+        return "".join(pieces)
+
+    @classmethod
+    def scan_and_redact(cls, value: str | None) -> tuple[str, list[str]]:
+        """Detect and redact credentials in a single, consistent operation.
+
+        This is the one call a host should use to clean text before returning it
+        to a model: it both removes credential-like material and reports which
+        credential *types* were present. Redaction is driven by the same
+        :meth:`find_matches` spans used for detection, so a type reported here is
+        always removed from ``redacted_text``.
+
+        Args:
+            value: String content that may contain credential-like material.
+
+        Returns:
+            A tuple of ``(redacted_text, credential_type_names)``. The names are
+            de-duplicated pattern labels (for example ``"Slack token"``) and
+            contain no raw secret material, so the result is safe to log. Empty
+            input returns ``("", [])``.
+        """
+        if not value:
+            return "", []
+        type_names = cls.detect_credential_types(value)
+        return cls.redact(value), type_names
+
+    @classmethod
+    def redact_mapping(
+        cls, mapping: dict[str, Any] | None, *, redact_pii: bool = False
+    ) -> dict[str, Any]:
+        """Redact all nested values in a mapping.
+
+        Args:
+            mapping: A possibly nested mapping containing strings, lists,
+                tuples, or dictionaries.
+            redact_pii: When ``True``, also redact PII/CRI spans in nested
+                strings. Defaults to ``False`` (secrets-only).
+
+        Returns:
+            A new mapping with nested strings redacted recursively. Empty input
+            returns an empty dictionary.
+        """
+        if not mapping:
+            return {}
+        return {
+            key: cls.redact_data_structure(value, redact_pii=redact_pii)
+            for key, value in mapping.items()
+        }
+
+    @classmethod
+    def redact_dictionary(
+        cls, mapping: dict[str, Any] | None, *, redact_pii: bool = False
+    ) -> dict[str, Any]:
+        """Compatibility alias for dictionary redaction.
+
+        Args:
+            mapping: Dictionary-like content to redact.
+            redact_pii: When ``True``, also redact PII/CRI spans. Defaults to
+                ``False`` (secrets-only).
+
+        Returns:
+            The redacted mapping produced by :meth:`redact_mapping`.
+        """
+        return cls.redact_mapping(mapping, redact_pii=redact_pii)
+
+    @classmethod
+    def redact_data_structure(cls, value: Any, *, redact_pii: bool = False) -> Any:
+        """Recursively redact nested strings in dicts, lists, and tuples.
+
+        Args:
+            value: Any Python value that may contain nested strings.
+            redact_pii: When ``True``, also redact PII/CRI spans in nested
+                strings. Defaults to ``False`` (secrets-only).
+
+        Returns:
+            A value of the same general shape with strings redacted in place of
+            their original secret-bearing content.
+        """
+        if isinstance(value, str):
+            return cls.redact(value, redact_pii=redact_pii)
+        if isinstance(value, dict):
+            return {
+                key: cls.redact_data_structure(item, redact_pii=redact_pii)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [cls.redact_data_structure(item, redact_pii=redact_pii) for item in value]
+        if isinstance(value, tuple):
+            return tuple(cls.redact_data_structure(item, redact_pii=redact_pii) for item in value)
+        return value
+
+    @classmethod
+    def contains_credentials(cls, value: str | None) -> bool:
+        """Return whether a string contains any known credential pattern.
+
+        Args:
+            value: String content to inspect.
+
+        Returns:
+            ``True`` when at least one credential pattern matches, otherwise
+            ``False``.
+        """
+        return bool(cls.find_matches(value))
+
+    @classmethod
+    def detect_credential_types(cls, value: str | None) -> list[str]:
+        """Return the names of detected credential patterns.
+
+        Args:
+            value: String content to inspect.
+
+        Returns:
+            A de-duplicated list of credential type labels in detection order.
+        """
+        return list(dict.fromkeys(match.name for match in cls.find_matches(value)))
+
+    @classmethod
+    def find_matches(cls, value: str | None) -> list[CredentialMatch]:
+        """Return all credential-like matches found in a string.
+
+        Args:
+            value: String content to inspect.
+
+        Returns:
+            A list of ``CredentialMatch`` records describing each detected
+            credential-like span. Empty input returns an empty list.
+        """
+        if not value:
+            return []
+
+        matches: list[CredentialMatch] = []
+        for credential_pattern in cls.PATTERNS:
+            for match in credential_pattern.pattern.finditer(value):
+                matches.append(
+                    CredentialMatch(
+                        name=credential_pattern.name,
+                        matched_text=match.group(0),
+                        start=match.start(),
+                        end=match.end(),
+                    )
+                )
+        return matches

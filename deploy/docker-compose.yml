@@ -1,19 +1,39 @@
 # AgentFox — self-hosted control plane.
 #
 # Self-host is the default and only MVP deployment mode (X-8, P3-8, NFR-4). Nothing
-# here reaches the internet at *runtime*: the default model provider is `echo`, egress
-# is off, and every classifier's weights are already baked into the gateway image
-# (deploy/Dockerfile) rather than fetched on first use. A regulated customer can run
-# the built image in an air-gapped VPC and every pillar still functions.
+# here reaches the internet at *runtime*: the default model provider is `echo` and
+# egress is off. The gateway image (deploy/Dockerfile) carries the weights of the four
+# permissive-licence models — Granite Guardian, PIGuard, the protectai ensemble
+# backstop and the MiniLM embedding model — so the detectors enabled below never fetch
+# anything on first use, and a regulated customer can run the image air-gapped.
 #
-# The *build* is a different story once the classifier tier is enabled: fetching
-# those weights needs network egress, and Llama Guard additionally needs an HF_TOKEN
-# from an account that has accepted Meta's licence — see the `secrets:` block below
-# and deploy/Dockerfile's own comments. Set HF_TOKEN in your shell before building:
+# The licence-gated Llama Guard tier (`safety.restricted`) is NOT in the image you
+# pull: the published image never carries gated weights. It is off by default here
+# too. To opt in, after the licence review docs/design/oss-register.md §A.4 calls
+# for:
+#   1. accept Meta's licence for meta-llama/Llama-Guard-3-8B on Hugging Face,
+#   2. build the image yourself with that account's token, which bakes the weights in:
+#        export HF_TOKEN=hf_...
+#        docker compose -f deploy/docker-compose.yml build gateway
+#   3. add "safety.restricted" to AGENTFOX_ENABLED_DETECTORS below, and
+#   4. set AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES to "1".
+# Without the token the build skips that tier and everything else still builds.
 #
-#   export HF_TOKEN=hf_...
-#   docker compose -f deploy/docker-compose.yml build
+#   export AGENTFOX_SERVICE_AUTH_SECRET="$(openssl rand -hex 32)"
+#   export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"   # keep a copy
 #   docker compose -f deploy/docker-compose.yml up
+#
+# (Or put both in deploy/.env.) The gateway runs in production and refuses to start on
+# a missing or published secret: the service secret authenticates the call that mints
+# an owner token, and the signing key is what makes the audit chain tamper-evident.
+#
+# First operator — no demo data is loaded (the image no longer seeds on boot):
+#   docker compose -f deploy/docker-compose.yml exec gateway \
+#     agentfox admin users create you@example.com --role owner --token
+# then open http://localhost:3000/login → "Self-hosted? Sign in with an API token" and
+# paste the token. For demo data instead: `... exec gateway agentfox admin seed`.
+#
+# Settings are read as AGENTFOX_*.
 #
 #   control plane   http://localhost:3000
 #   API + gateway   http://localhost:8080
@@ -43,7 +63,7 @@ services:
       retries: 20
 
   # Appendix A.1: OPA is the wrapped policy decision engine. It is optional —
-  # NOMETRIA_POLICY_ENGINE defaults to `native`, and the OPA adapter falls back to
+  # AGENTFOX_POLICY_ENGINE defaults to `native`, and the OPA adapter falls back to
   # the native evaluator if this container is unreachable, because a policy-engine
   # outage must never take the customer's agent down (NFR-2).
   opa:
@@ -53,48 +73,62 @@ services:
       - "8181:8181"
 
   gateway:
+    # Published by .github/workflows/publish-images.yml. Pulled by default; run
+    # `docker compose build gateway` to build from source instead.
+    image: ghcr.io/architsharm/agentfox/gateway:latest
     build:
       context: ..
       dockerfile: deploy/Dockerfile
       secrets:
         - hf_token
     environment:
-      NOMETRIA_DATABASE_URL: postgresql+psycopg://agentfox:nometria@db:5432/agentfox
-      NOMETRIA_ORG_ID: org_default
-      NOMETRIA_ENVIRONMENT: production
+      # The password must match POSTGRES_PASSWORD on the db service above.
+      AGENTFOX_DATABASE_URL: postgresql+psycopg://agentfox:agentfox@db:5432/agentfox
+      AGENTFOX_ORG_ID: org_default
+      AGENTFOX_ENVIRONMENT: production
       # Zero egress by default. Set to "true" and supply a key to use a hosted model.
-      NOMETRIA_ALLOW_EGRESS: "false"
-      NOMETRIA_DEFAULT_PROVIDER: echo
-      # Observe by default: enforcement is something the customer turns on
-      # deliberately, after simulating it (PRD R3).
-      NOMETRIA_DEFAULT_POLICY_MODE: observe
-      NOMETRIA_FAIL_MODE: open
-      NOMETRIA_ENFORCEMENT_BUDGET_MS: "100"
-      NOMETRIA_DETECTOR_TIMEOUT_MS: "40"
-      NOMETRIA_POLICY_ENGINE: native
-      NOMETRIA_OPA_URL: http://opa:8181
-      # Every detector this image has weights baked in for (deploy/Dockerfile),
-      # on top of the 5 zero-dependency defaults. `safety.restricted` is Llama Guard
-      # 3-8B — gated behind the flag below, not behind this list alone.
-      NOMETRIA_ENABLED_DETECTORS: >-
+      AGENTFOX_ALLOW_EGRESS: "false"
+      AGENTFOX_DEFAULT_PROVIDER: echo
+      # The mode used when no bound policy decides. Detector-backed policy is
+      # something the customer turns on deliberately, after simulating it (PRD R3).
+      # Tool containment still ships enforcing, and a missing grant is refused
+      # whatever this says.
+      AGENTFOX_DEFAULT_POLICY_MODE: observe
+      AGENTFOX_FAIL_MODE: open
+      AGENTFOX_ENFORCEMENT_BUDGET_MS: "100"
+      AGENTFOX_DETECTOR_TIMEOUT_MS: "40"
+      AGENTFOX_POLICY_ENGINE: native
+      AGENTFOX_OPA_URL: http://opa:8181
+      # The 5 zero-dependency defaults, plus the model detectors whose weights the
+      # published image carries (deploy/Dockerfile). Two are left out on purpose:
+      #   * `safety.restricted` (Llama Guard 3-8B): see the opt-in steps at the top.
+      #   * `safety.granite` (Granite Guardian, 2B): its weights are in the image, but
+      #     on CPU one check takes about 9 s and the gateway needs about 10 GB of
+      #     memory, against a 300 ms request budget; enabled there it times out on
+      #     every call instead of checking. Add it here on a GPU host, or with
+      #     AGENTFOX_DETECTOR_TIMEOUT_MS and AGENTFOX_ENFORCEMENT_BUDGET_MS raised to
+      #     match, for a deployment that can wait for it.
+      AGENTFOX_ENABLED_DETECTORS: >-
         ["injection.heuristic","pii.native","secrets.native","safety.lexicon",
-        "schema.json","injection.classifier","safety.granite","injection.similarity",
-        "safety.restricted"]
+        "schema.json","injection.classifier","injection.similarity"]
       # Appendix A.4: Llama Guard's licence is non-OSI (acceptable-use policy, a
-      # >700M-MAU clause) and the code refuses to load it without this being set.
-      # Setting it to "1" is a legal decision, not a technical one — confirm you've
-      # done the licence review Appendix A.4 calls for before deploying with this on.
-      NOMETRIA_ACCEPT_RESTRICTED_MODEL_LICENSES: "1"
-      # CHANGE THIS. The checkpoint signing key should live outside the application
-      # database and be held by the customer (NFR-7, Appendix E.2.2).
-      NOMETRIA_AUDIT_SIGNING_KEY: change-me-before-any-real-deployment
-      NOMETRIA_EVIDENCE_DIR: /var/agentfox/evidence
-      # The public playground page (dashboard/app/playground) calls this origin
+      # >700M-MAU clause) and the code refuses to load it unless this is "1". Turning
+      # it on is a legal decision, not a technical one, so it ships off.
+      AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES: "0"
+      # The checkpoint signing key should live outside the application database and be
+      # held by the customer (NFR-7, Appendix E.2.2). Required: see the top of this file.
+      AGENTFOX_AUDIT_SIGNING_KEY: ${AGENTFOX_AUDIT_SIGNING_KEY:?set AGENTFOX_AUDIT_SIGNING_KEY to a random value (openssl rand -hex 32)}
+      # Authenticates the dashboard's GitHub sign-in to the gateway. Required even if
+      # you never enable GitHub sign-in: the published default would let anyone mint
+      # an owner token. The dashboard below is given the same value.
+      AGENTFOX_SERVICE_AUTH_SECRET: ${AGENTFOX_SERVICE_AUTH_SECRET:?set AGENTFOX_SERVICE_AUTH_SECRET to a random value (openssl rand -hex 32)}
+      AGENTFOX_EVIDENCE_DIR: /var/agentfox/evidence
+      # The public playground page (dashboard/app/(marketing)/playground) calls this origin
       # directly from the visitor's browser, unauthenticated — additive to the
       # hardcoded localhost origins in gateway/app.py, not a replacement. Only
       # needed once the dashboard is actually reachable from somewhere other than
       # this same machine.
-      NOMETRIA_PLAYGROUND_CORS_ORIGIN: http://localhost:3000
+      AGENTFOX_PLAYGROUND_CORS_ORIGIN: http://localhost:3000
     ports:
       - "8080:8080"
     volumes:
@@ -110,20 +144,32 @@ services:
       retries: 10
 
   dashboard:
+    image: ghcr.io/architsharm/agentfox/dashboard:latest
     build:
       context: ../dashboard
       dockerfile: ../deploy/Dockerfile.dashboard
     environment:
       # Read at request time, not baked at build time — so one image can be pointed
       # at any control plane.
-      NOMETRIA_API_URL: http://gateway:8080
-      NOMETRIA_USER: admin@example.com
+      AGENTFOX_API_URL: http://gateway:8080
+      # Sign-in. The gateway above runs in production, so the development identity
+      # header is refused there and every page needs a real operator token. Two ways
+      # to get one into the browser:
+      #   * an API token, pasted on /login (see "First operator" at the top) — works
+      #     with nothing else configured;
+      #   * GitHub OAuth: create an OAuth app whose callback is
+      #     http://localhost:3000/api/auth/github/callback and export
+      #     GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET before `up`. Without them the
+      #     GitHub button answers 503 and the token sign-in still works.
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      AGENTFOX_SERVICE_AUTH_SECRET: ${AGENTFOX_SERVICE_AUTH_SECRET:?set AGENTFOX_SERVICE_AUTH_SECRET}
       # The one deliberate exception to "server-to-server only": the public
       # playground page is a Client Component, so it fetches from the *visitor's
       # browser*, not from this container — it needs an address the browser can
       # reach (the published host port), not the internal Docker DNS name above.
       # Same value as the published `gateway` port mapping below.
-      NOMETRIA_PLAYGROUND_API_URL: http://localhost:8080
+      AGENTFOX_PLAYGROUND_API_URL: http://localhost:8080
     ports:
       - "3000:3000"
     depends_on:

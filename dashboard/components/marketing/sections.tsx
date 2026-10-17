@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+import { FLAT, PRODUCT, RESOURCES, SECONDARY } from "@/lib/marketing/nav";
 import { BrandLockup } from "@/components/marketing/brand";
 
 /**
@@ -11,8 +13,8 @@ import { BrandLockup } from "@/components/marketing/brand";
  *
  * Every figure here is copied from a file in this repository rather than written for
  * the page: README.md for the containment and detection results and the MVP status
- * line, app/benchmark/page.tsx for the AgentDojo denominator and the llm-guard
- * comparison, app/page.tsx and app/how-it-works/page.tsx for the behavioural claims
+ * line, app/(marketing)/benchmark/page.tsx for the AgentDojo denominator and the llm-guard
+ * comparison, app/page.tsx and app/(marketing)/how-it-works/page.tsx for the behavioural claims
  * (observe by default, the tool-containment exception, the fail-open contract, the two
  * scanner guarantees). Nothing is rounded, and the numbers that make the product look
  * worse are on the page next to the ones that do not, because leading with those is the
@@ -23,7 +25,7 @@ import { BrandLockup } from "@/components/marketing/brand";
  */
 
 /** Duplicated rather than imported: nav.tsx owns its own copy and is edited elsewhere. */
-const REPO = "https://github.com/architsharm/guardrails";
+const REPO = "https://github.com/architsharm/agentfox";
 const LICENSE = `${REPO}/blob/main/LICENSE`;
 const SECURITY = `${REPO}/blob/main/SECURITY.md`;
 
@@ -48,24 +50,20 @@ function SectionHead({
   eyebrow,
   title,
   lede,
-  center = false,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   lede?: string;
   center?: boolean;
 }) {
   return (
-    <div
-      className={center ? "mk-narrow mk-up" : "mk-up"}
-      style={{ textAlign: center ? "center" : "left", maxWidth: center ? undefined : "34ch" }}
-    >
-      <span className="mk-eyebrow">{eyebrow}</span>
-      <h2 className="mk-h2" style={{ marginTop: 14 }}>
+    <div className="mk-narrow mk-up">
+      {eyebrow && <span className="mk-eyebrow">{eyebrow}</span>}
+      <h2 className="mk-h2" style={{ marginTop: eyebrow ? 14 : 0 }}>
         {title}
       </h2>
       {lede && (
-        <p className="mk-lede" style={{ margin: "14px auto 0", maxWidth: "62ch" }}>
+        <p className="mk-lede" style={{ margin: "14px 0 0" }}>
           {lede}
         </p>
       )}
@@ -105,8 +103,8 @@ export function Features() {
       <div className="mk-wrap">
         <SectionHead
           eyebrow="What it does"
-          title="Five things, and the last one admits what it is."
-          lede="One line in your entry point puts every model call and every tool call on this path. What follows is what each layer is actually for."
+          title="Five things, and the last one admits what it is"
+          lede="One line in your entry point puts your model SDK calls on this path; tool calls join it through the tool wrapper, the MCP governor, the coding-agent hooks or the gateway. What follows is what each layer is actually for."
           center
         />
         <div className="mk-grid mk-grid-2" style={{ marginTop: 44 }}>
@@ -120,7 +118,7 @@ export function Features() {
                 <h3 className="mk-h3">{f.title}</h3>
                 {f.chip && <span className="mk-chip mk-chip-hold">{f.chip}</span>}
               </div>
-              <p className="mk-body" style={{ margin: 0, fontSize: ".94rem" }}>
+              <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)" }}>
                 {f.body}
               </p>
             </div>
@@ -136,19 +134,19 @@ export function Features() {
 const STATS: { n: string; label: string; tone?: string }[] = [
   { n: "8 of 8", label: "attacks contained with every detector switched off" },
   { n: "4 of 4", label: "legitimate calls still allowed in that same run" },
-  { n: "42 of 42", label: "AgentDojo attacker calls that act, contained" },
-  { n: "62 of 65", label: "attacker calls contained overall, three read-only escapes" },
-  { n: "66.7%", label: "held-out prompt-injection recall, our weakest layer", tone: "weak" },
+  { n: "588 of 588", label: "AgentDojo attack pairs contained, with provenance inferred" },
+  { n: "24 of 97", label: "benign AgentDojo tasks ran without escalating to a human", tone: "weak" },
+  { n: "68.3%", label: "held-out injection recall of the default detectors, our weakest layer", tone: "weak" },
 ];
 
 export function Evidence() {
   return (
-    <section id="evidence" className="mk-band">
-      <div className="mk-section mk-wrap">
+    <section id="evidence" className="mk-section mk-band">
+      <div className="mk-wrap">
         <SectionHead
           eyebrow="Evidence"
-          title="Measured with every detector switched off."
-          lede="Switching the detectors off is a total bypass rather than a weakened threshold or a simulated miss. What is left is capability grants, argument provenance and declared impact tiers, which is the whole design."
+          title="Measured with every detector switched off"
+          lede="Most tools try to recognise the malicious text. We do that too, and we publish how badly it goes: the default detectors find 68.3% of a held-out set (16.7% with the heuristic alone), and against the heuristic-only stack we shipped until October 2026, an attacker who reads the verdict and retries gets 73% of what it does catch through. So we switched every detector off and measured what was left."
           center
         />
         <div className="mk-grid mk-grid-5 mk-up mk-d2" style={{ marginTop: 40 }}>
@@ -163,10 +161,11 @@ export function Evidence() {
         </div>
         <p
           className="mk-fine mk-up mk-d3"
-          style={{ maxWidth: "70ch", margin: "24px auto 0", textAlign: "center" }}
+          style={{ maxWidth: "var(--w-prose)", marginTop: 24 }}
         >
-          The three calls that escaped the AgentDojo replay are all read-only, and the
-          benchmark page names them one by one. The weakest figure is in the set on purpose.
+          Session-level taint contains every AgentDojo attack by escalating broadly: three
+          benign tasks in four went to a human too. Per-argument taint lets more work run and
+          misses 61 attacker calls. The weakest figures are in the set on purpose.
         </p>
         <div
           className="mk-row mk-up mk-d4"
@@ -192,25 +191,24 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
     title: "Put one line in your entry point, or call it over HTTP",
     body: (
       <>
-        <code className="mk-mono">import agentfox; agentfox.auto()</code> wraps the OpenAI,
-        Anthropic, LiteLLM and LangChain clients already running in that process. From any
-        other language, post a single tool call to{" "}
-        <code className="mk-mono">/v1/guard/tool_call</code>, or point an existing client&rsquo;s
-        base URL at the gateway and change nothing else.
+        One line in the entry point wraps the OpenAI, Anthropic, LiteLLM and LangChain
+        clients already running in that process. From any other language, post a single
+        tool call, or point an existing client&rsquo;s base URL at the gateway.{" "}
+        <Link href="/docs/guides/python-auto">The calls are in the docs.</Link>
       </>
     ),
   },
   {
-    title: "Watch in observe mode, where nothing is blocked",
+    title: "Watch in observe mode, where no model traffic is blocked",
     body: "The policy that governs model traffic starts in observe: it records what it would have done and lets the call through. You read what gets flagged against your own traffic and tune the detectors per policy before anything is refused.",
   },
   {
     title: "Turn enforcement on when the findings look right",
     body: (
       <>
-        <code className="mk-mono">agentfox policy enforce baseline</code> is the one step that
-        starts blocking model traffic, and the one-liner picks it up with no code change.{" "}
-        <code className="mk-mono">agentfox policy observe baseline</code> puts it back.
+        Enforcement is the step that starts blocking model traffic. Until then the
+        policy records what it would have done and lets the call through.{" "}
+        <Link href="/docs/reference/policies">How to turn it on is in the docs.</Link>
       </>
     ),
   },
@@ -218,21 +216,30 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
 
 export function HowItWorks() {
   return (
-    <section id="adopt" className="mk-section">
+    <section id="adopt" className="mk-section mk-band">
       <div className="mk-wrap mk-split mk-split-wide">
         <div className="mk-up">
-          <span className="mk-eyebrow">Getting there</span>
+
+          {/* This heading said "Nothing is blocked until you say so", and then
+              "Nothing gets blocked until you say so", and both were contradicted by
+              the second paragraph under them. Three shipped packs, two modes.
+              src/agentfox/packs/<pack>/policies/: baseline is `mode: observe`,
+              eu-ai-act-high-risk is `mode: observe`, tool-containment is
+              `mode: enforce`. So an agent is held to its grants from the first
+              request and the detector rules watch until you promote them, which is
+              what the heading now says rather than what the body has to correct. */}
           <h2 className="mk-h2" style={{ marginTop: 14 }}>
-            From nothing to governed, in the order you would actually do it.
-          </h2>
-          <p className="mk-body" style={{ marginTop: 14, maxWidth: "48ch" }}>
-            Nothing in the first three steps refuses a call. A library that starts rejecting
-            production traffic because someone added an import gets switched off within a day.
-          </p>
-          <p className="mk-fine" style={{ marginTop: 18, maxWidth: "48ch" }}>
-            One exception from day one: a tool that can move money, delete something or send an
-            email, called with a value that came from a document rather than a person, is
-            refused or sent to a human.
+            Detectors watch first. Grants hold from the first request</h2>
+          <p className="mk-body" style={{ marginTop: 14 }}>
+            The rules that read model traffic ship in observe: they record what they
+            would have done and let the call through. You tune against your own traffic,
+            then turn them on when the findings look right.
+            <br />
+            <br />
+            One exception is on from day one. A tool that moves money, deletes something
+            or sends an email will not accept an argument that came out of a web page, a
+            retrieved document or another tool&rsquo;s output. Those calls stop for a
+            human.
           </p>
         </div>
         <ol className="mk-steps mk-up mk-d2" style={{ listStyle: "none", margin: 0, padding: 0 }}>
@@ -243,7 +250,7 @@ export function HowItWorks() {
               </span>
               <div>
                 <h3 className="mk-h3">{s.title}</h3>
-                <p className="mk-body" style={{ margin: "6px 0 0", fontSize: ".94rem" }}>
+                <p className="mk-body" style={{ margin: "6px 0 0", fontSize: "var(--t-small)" }}>
                   {s.body}
                 </p>
               </div>
@@ -262,8 +269,10 @@ const LIMITS: { title: string; body: React.ReactNode }[] = [
     title: "Detection is a speed bump, and we measure it against ourselves",
     body: (
       <>
-        Held-out injection recall is 66.7%. An attacker who reads our verdict and tries again
-        gets 73% of what we do catch through within 50 attempts.
+        Held-out injection recall is 68.3% for the default detectors and 16.7% for the
+        heuristic alone, which is what runs without the model weights. Against the
+        heuristic-only stack we shipped until October 2026, an attacker who reads our verdict
+        and tries again gets 73% of what it catches through within 50 attempts.
       </>
     ),
   },
@@ -287,7 +296,7 @@ const LIMITS: { title: string; body: React.ReactNode }[] = [
     ),
   },
   {
-    title: "It is MVP v0.3",
+    title: "It is an early release",
     body: (
       <>
         No SSO. Multi-tenancy is enforced at the session for a single organisation, and this is
@@ -303,7 +312,7 @@ export function Honesty() {
       <div className="mk-wrap">
         <SectionHead
           eyebrow="What it does not do"
-          title="The limits, in our own words, before you find them yourself."
+          title="The limits, in our own words, before you find them yourself"
           lede="We do not claim adversarial robustness and we do not believe anyone can claim it honestly today. Here is everything that follows from that."
           center
         />
@@ -311,7 +320,7 @@ export function Honesty() {
           {LIMITS.map((l, i) => (
             <div key={l.title} className={`mk-card mk-up mk-d${Math.min(i + 1, 5)}`}>
               <h3 className="mk-h3">{l.title}</h3>
-              <p className="mk-body" style={{ margin: "8px 0 0", fontSize: ".94rem" }}>
+              <p className="mk-body" style={{ margin: "8px 0 0", fontSize: "var(--t-small)" }}>
                 {l.body}
               </p>
             </div>
@@ -349,9 +358,9 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "Where does this sit relative to a gateway or a web application firewall?",
     a: (
       <>
-        A firewall reads HTTP at the edge; a gateway routes and rate-limits it. Neither knows
-        which agent made the call, what it was granted, or where an argument&rsquo;s value came
-        from. This works one layer in, on the agent&rsquo;s own actions, and replaces neither.
+        A firewall reads HTTP. A gateway routes it. Neither knows which agent made the
+        call, what it was granted, or where an argument came from. This checks the
+        action. It does not replace either of those.
       </>
     ),
   },
@@ -359,9 +368,8 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "What does it cost in latency?",
     a: (
       <>
-        We have not benchmarked it, so we will not quote you a number. What is written down:
-        detectors run under a shipped 40ms timeout each, and the tool-call check reads no text
-        and calls no model at all.
+        No published figure yet. What is measured: each detector runs under a shipped 40ms
+        timeout, and the tool-call check reads no text and calls no model at all.
       </>
     ),
   },
@@ -369,11 +377,9 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "What happens if the control plane is slow or down?",
     a: (
       <>
-        You declare per service whether it fails open or fails closed, and the shipped default
-        is open. Fail open still serves the request but writes a degradation record, stamps the
-        response with a header naming the control that was down, and converts to closed once
-        the degradation outlasts its budget. Four controls can never be set to fail open at
-        all: tenant isolation, entitlement filtering, data access scope and the audit chain.
+        You choose fail open or closed per service. The default is open: the request
+        proceeds, and the gap is written down. Tenant isolation, entitlement, data
+        access scope, and the audit chain cannot fail open.
       </>
     ),
   },
@@ -381,11 +387,9 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "What happens on escalate?",
     a: (
       <>
-        The tool is not called. The caller gets an approval id back instead of a result, the
-        request lands on the Approvals screen for whoever holds the approver role, and it can
-        also be decided from the command line or polled over the API. Every request carries a
-        clock and the default action when it runs out is deny, so an approval nobody answers
-        ends in a refusal.
+        The tool is not called. The caller gets an approval id instead of a result and the
+        request lands on the Approvals screen, the CLI or the API. Every request carries a
+        clock, and the default when it runs out is deny.
       </>
     ),
   },
@@ -393,10 +397,10 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
     q: "Does it work outside Python?",
     a: (
       <>
-        Yes, two ways, neither of which puts AgentFox code in your application. Post a single
-        tool call to <code className="mk-mono">/v1/guard/tool_call</code> and read the verdict
-        back, or point an existing OpenAI or Anthropic client&rsquo;s base URL at the gateway,
-        which speaks the API your code already calls.
+        Yes. Point an existing OpenAI or Anthropic client&rsquo;s base URL at the gateway,
+        which speaks the API your code already calls, or post a tool call to the gateway
+        and read the verdict back. Neither puts AgentFox code in the application.{" "}
+        <Link href="/docs/guides/python-auto">The calls are in the docs.</Link>
       </>
     ),
   },
@@ -407,9 +411,8 @@ const QUESTIONS: { q: string; a: React.ReactNode }[] = [
         Open the <Link href="/playground">playground</Link>. There is no account and nothing to
         install, every visitor gets a throwaway sandbox running the same enforcement code the
         product runs in production, and the audit chain on the page reports its own
-        verification state as you go. If you would rather point something at your own code
-        without a permanent install, <code className="mk-mono">quickscan.sh</code> installs
-        into a virtualenv it removes on exit.
+        verification state as you go. A one-off scan of a directory, from a virtualenv that
+        is removed on exit, is in the <Link href="/docs">docs</Link>.
       </>
     ),
   },
@@ -427,21 +430,20 @@ export function FAQ({ n, more }: { n?: number; more?: boolean } = {}) {
     <section id="faq" className="mk-section">
       <div className="mk-wrap">
         <SectionHead
-          eyebrow="Before you install anything"
-          title="The questions developers actually ask."
+          title="Questions"
           center
         />
-        <div className="mk-narrow mk-up mk-d2" style={{ marginTop: 36 }}>
-          {shown.map((item) => (
-            <div key={item.q} className="mk-faq">
-              <h3 className="mk-h3">{item.q}</h3>
-              <p className="mk-body" style={{ margin: "8px 0 0", fontSize: ".94rem" }}>
+        <div className="mk-narrow mk-up mk-d2" style={{ marginTop: 32 }}>
+          {shown.map((item, i) => (
+            <details key={item.q} className="mk-faq" open={i === 0}>
+              <summary className="mk-h3">{item.q}</summary>
+              <p className="mk-body" style={{ margin: "10px 0 0", fontSize: "var(--t-small)" }}>
                 {item.a}
               </p>
-            </div>
+            </details>
           ))}
           {more && (
-            <p className="mk-fine" style={{ marginTop: 22, textAlign: "center" }}>
+            <p className="mk-fine" style={{ marginTop: 22 }}>
               <Link href="/product#faq">
                 {QUESTIONS.length - shown.length} more, on the product page
               </Link>
@@ -457,26 +459,18 @@ export function FAQ({ n, more }: { n?: number; more?: boolean } = {}) {
 
 export function CTA() {
   return (
-    <section className="mk-section">
+    <section className="mk-section mk-ink-act">
       <div className="mk-wrap">
         <div
           className="mk-card mk-card-raised mk-up"
-          style={{
-            padding: "48px 24px",
-            textAlign: "center",
-            borderRadius: "var(--mk-r-xl)",
-            background:
-              "radial-gradient(70% 130% at 50% 0%, color-mix(in srgb, var(--mk-accent) 14%, var(--mk-surface)) 0%, var(--mk-surface) 72%)",
-          }}
+          style={{ padding: "36px 32px" }}
         >
           <div className="mk-narrow">
-            <h2 className="mk-h2">Try to break it before you trust it.</h2>
-            <p className="mk-lede" style={{ marginTop: 14 }}>
-              The playground needs no account and no install, and it runs the same enforcement
-              code as the product. If you would rather run it yourself, the demo is two commands
-              and finishes offline in about six seconds.
+            <h2 className="mk-h2">Red team a call in the browser</h2>
+            <p className="mk-lede" style={{ marginTop: 12 }}>
+              No account. The playground uses the same enforcement code as the product.
             </p>
-            <div className="mk-row" style={{ justifyContent: "center", marginTop: 24, gap: 10 }}>
+            <div className="mk-row" style={{ marginTop: 20, gap: 10 }}>
               <Link href="/playground" className="mk-btn mk-btn-primary">
                 Open the playground
               </Link>
@@ -484,27 +478,9 @@ export function CTA() {
                 Read the source
               </Out>
             </div>
-            <pre
-              className="mk-mono"
-              style={{
-                marginTop: 26,
-                padding: "14px 16px",
-                textAlign: "left",
-                overflowX: "auto",
-                background: "var(--mk-surface-2)",
-                border: "1px solid var(--mk-border)",
-                borderRadius: "var(--mk-r-md)",
-                color: "var(--mk-muted)",
-                lineHeight: 1.7,
-              }}
-            >
-              {`pip install git+https://github.com/architsharm/guardrails.git\nagentfox init && agentfox demo`}
-            </pre>
-            <p className="mk-fine" style={{ marginTop: 12 }}>
-              <code className="mk-mono">init</code> creates a SQLite database and loads 43
-              controls and three policy packs. <code className="mk-mono">demo</code> runs a
-              thirteen-step walkthrough. Both are offline: no API key, no downloaded weights, no
-              network egress.
+            <p className="mk-fine" style={{ marginTop: 16 }}>
+              Offline: no API key, no downloaded weights, no network egress.{" "}
+              <Link href="/docs">Install from the docs.</Link>
             </p>
           </div>
         </div>
@@ -526,14 +502,18 @@ export function CTA() {
  */
 type FootLink = { label: string; href: string; out?: boolean };
 
-const FOOT_PRODUCT: FootLink[] = [
-  { label: "Product tour", href: "/product" },
-  { label: "How it works", href: "/how-it-works" },
-  { label: "Compare", href: "/compare" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Playground", href: "/playground" },
-  { label: "Benchmarks", href: "/benchmark" },
-];
+/* Derived from lib/marketing/nav.ts, like the header, the sitemap and llms.txt. The
+   footer is where a reader goes when the header did not have what they
+   wanted, so it carries everything the menus carry rather than a curated
+   subset that drifts from them. */
+const FOOT_PRODUCT: FootLink[] = PRODUCT.sections
+  .flatMap((section) => section.items)
+  .map((item) => ({ label: item.label, href: item.href }));
+
+const FOOT_RESOURCES: FootLink[] = [
+  ...RESOURCES.sections.flatMap((section) => section.items),
+  ...FLAT,
+].map((item) => ({ label: item.label, href: item.href }));
 
 const FOOT_PROJECT: FootLink[] = [
   { label: "Support", href: "/support" },
@@ -551,6 +531,7 @@ const FOOT_LEGAL: FootLink[] = [
 
 const FOOT_COLUMNS: [string, FootLink[]][] = [
   ["Product", FOOT_PRODUCT],
+  ["Resources", FOOT_RESOURCES],
   ["Project", FOOT_PROJECT],
   ["Legal", FOOT_LEGAL],
 ];
@@ -566,19 +547,21 @@ export function Footer() {
         className="mk-wrap"
         style={{ display: "flex", flexWrap: "wrap", gap: 28, justifyContent: "space-between" }}
       >
-        <div style={{ maxWidth: "34ch" }}>
+        <div >
           <BrandLockup size={30} sub />
+          {/* "Maintained in the open by one developer" and "MVP v0.3" were in the
+              footer of all nine pages, so anyone who browsed four of them read that
+              this is a v0.3 side project eight times. Both facts are true and both
+              stay on the site — on /support and /pricing, once, where a reader is
+              asking the question they answer. A footer is not the place to argue
+              against yourself. */}
           <p className="mk-fine" style={{ margin: "8px 0 0" }}>
-            An open-source control plane for AI agents. Maintained in the open by one
-            developer.
-          </p>
-          <p className="mk-label" style={{ marginTop: 12 }}>
-            MVP v0.3
+            An open-source control plane for AI agents.
           </p>
         </div>
         <nav
           aria-label="Footer"
-          style={{ display: "flex", flexWrap: "wrap", gap: 40, fontSize: ".9rem" }}
+          style={{ display: "flex", flexWrap: "wrap", gap: 40, fontSize: "var(--t-small)" }}
         >
           {FOOT_COLUMNS.map(([heading, links]) => (
             <div key={heading} style={{ display: "grid", gap: 8, alignContent: "start" }}>

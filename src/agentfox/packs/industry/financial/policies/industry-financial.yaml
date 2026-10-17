@@ -1,0 +1,45 @@
+# Translated from examples/policies/production/rego/financial.rego in
+# https://github.com/microsoft/agent-governance-toolkit (commit c767f83).
+# Copyright (c) Microsoft Corporation. Licensed under the MIT License; full text in
+# THIRD_PARTY_NOTICES.md. See this pack's README for the translation and what was left out.
+key: industry-financial
+name: Financial services
+description: 'Financial services: rules translated from the financial policy. Starts in observe.'
+version: 1
+mode: observe
+default_effect: allow
+fail_mode: open
+scope:
+  agents:
+  - '*'
+rules:
+- id: industry-financial.credit-card-number-detected
+  description: 'PCI: Credit card number detected'
+  when:
+    action_risk: industry-financial.credit-card-number-detected
+  effect: block
+  severity: high
+  reason: 'PCI: Credit card number detected'
+- id: industry-financial.ssn-pattern-detected
+  description: 'PII: SSN pattern detected'
+  when:
+    action_risk: industry-financial.ssn-pattern-detected
+  effect: block
+  severity: high
+  reason: 'PII: SSN pattern detected'
+- id: industry-financial.code-execution-prohibited
+  description: Code execution prohibited
+  when:
+    surface:
+    - tool_args
+    tool: execute_code
+  effect: block
+  severity: high
+  reason: Code execution prohibited
+- id: industry-financial.financial-transactions-require-compliance-approval
+  description: Financial transactions require compliance approval
+  when:
+    action_risk: industry-financial.financial-transactions-require-compliance-approval
+  effect: escalate
+  severity: medium
+  reason: Financial transactions require compliance approval

@@ -7,7 +7,7 @@ import Link from "next/link";
  * the fastest recovery is the nav the reader already knows.
  *
  * Pages that know what kind of record is missing should keep using the
- * `NotFound` component in components/ui.tsx instead: "no finding at this id" is
+ * `NotFound` component in components/ui/index.tsx instead: "no finding at this id" is
  * a more useful sentence than "no such page".
  */
 export default function NotFound() {

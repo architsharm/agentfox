@@ -1,0 +1,41 @@
+# Candidate policy — start here, then: validate → lint → simulate → (user decides) enforce.
+# Schema: plugins/shared/reference/policy-schema.md. Real examples: src/agentfox/packs/*/policies/.
+key: support-refunds                 # unique; becomes the name in `policy list`
+name: Support refunds
+description: >
+  Refund tools may not act on untrusted content, and outbound replies never carry card data.
+version: 1
+mode: observe                        # ALWAYS start in observe
+default_effect: allow
+fail_mode: closed                    # a detector outage blocks rather than waves through
+scope:
+  agents: ["support-*"]              # glob on agent slug
+
+rules:
+  - id: refunds.no_tainted_amount
+    description: A refund amount that came from a retrieved document or tool result needs a human.
+    when:
+      tool: "payments.refund"
+      taint_exceeds: user            # taint order: none < user < retrieved < tool_result < subagent < memory
+    effect: escalate
+    severity: critical
+    reason: Refund amount originates in untrusted content.
+    controls: [NOM-RTG-04]
+
+  - id: refunds.cap
+    description: Refunds above 500 are never automatic.
+    when:
+      tool: "payments.refund"
+      argument: {path: amount, op: gt, value: 500}
+    effect: escalate
+    severity: high
+    reason: Refund above the automatic limit.
+
+  - id: replies.no_card_data
+    when:
+      surface: [output]
+      detection: {entity: PII.CREDIT_CARD, min_score: 0.5}
+    effect: redact
+    severity: high
+    reason: Card numbers never leave in a reply.
+    controls: [NOM-RTG-02]

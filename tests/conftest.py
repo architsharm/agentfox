@@ -8,25 +8,103 @@ catch.
 
 from __future__ import annotations
 
+import os
+
+# Set before anything imports the CLI, because Rich decides whether to emit colour
+# from the environment it finds, and conftest is imported before any test module.
+#
+# Rich treats CI as a colour-capable terminal, so on GitHub Actions `agentfox --help`
+# comes back as '\x1b[2m│\x1b[0m \x1b[1;36manalyse-action\x1b[0m …' where locally it
+# is a plain '│ analyse-action …'. Two tests in test_cli_experience.py parse that
+# output — one looks for a leading box character, one for option flags — so both
+# passed on every developer machine and failed on every CI run.
+#
+# `TERM=dumb` and not `NO_COLOR`, which is the counterintuitive part and was measured
+# rather than assumed. With CI=true and TERM=xterm-256color:
+#
+#   NO_COLOR=1             -> still emits ANSI
+#   TERM=dumb              -> no ANSI
+#   NO_COLOR=1 TERM=dumb   -> emits ANSI again
+#
+# Assigned rather than setdefault: CI exports its own TERM, so a default would never
+# win, which is exactly the case this exists to fix. Width is 80 either way, so the
+# wrapping the tests read is unchanged.
+os.environ["TERM"] = "dumb"
+
+# Every finding the suite raises must be of a registered type
+# (`platform/ledger/finding_types.py`). Production only warns; here it is an error, so
+# a new finding type without a registry entry fails the test that raises it.
+os.environ["AGENTFOX_STRICT_FINDING_TYPES"] = "1"
+# No background job passes after test requests; tests that exercise the traffic
+# trigger turn it on themselves.
+os.environ["AGENTFOX_JOBS_ON_TRAFFIC"] = "0"
+# `injection.classifier` is enabled by default and runs wherever its weights are in
+# the Hugging Face cache. CI has no weights, a developer machine often does, so the
+# same test saw a different detector set in each place (and a cold model load on the
+# pipeline's threads). Point the suite at an empty cache so both match CI; set
+# AGENTFOX_TEST_REAL_MODELS=1 to run against the real cache.
+if os.environ.get("AGENTFOX_TEST_REAL_MODELS") != "1":
+    import tempfile
+
+    os.environ["HF_HUB_CACHE"] = tempfile.mkdtemp(prefix="agentfox-test-hf-")
+    os.environ["HF_HUB_OFFLINE"] = "1"
+
+import shutil
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from sqlalchemy.orm import Session
 
 
-@pytest.fixture(autouse=True)
-def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
-    monkeypatch.setenv("NOMETRIA_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
-    monkeypatch.setenv("NOMETRIA_EVIDENCE_DIR", str(tmp_path / "evidence"))
-    monkeypatch.setenv("NOMETRIA_AUDIT_SIGNING_KEY", "test-key")
-    monkeypatch.setenv("NOMETRIA_ALLOW_EGRESS", "false")
-    # A developer's shell NOMETRIA_CONFIG, or a agentfox.toml left in the cwd by
-    # `agentfox init`, must never leak into a test. Tests of file loading delenv this.
-    monkeypatch.setenv("NOMETRIA_CONFIG", "none")
+@pytest.fixture(scope="session")
+def schema_template(tmp_path_factory) -> Path:
+    """An empty database with the whole schema, built once per run.
 
-    from agentfox import db
-    from agentfox.availability import reset_admission_controller
-    from agentfox.config import get_settings, reset_settings_cache
+    Creating some eighty tables took about a third of a second, and every test did it
+    through `isolated_db`: with four and a half thousand tests that was most of the
+    suite's wall time. Each test now starts from a copy of this file instead, which
+    is the same empty, stamped schema `init_db` would have created.
+    """
+    from agentfox.core import db
+    from agentfox.core.config import reset_settings_cache
+
+    path = tmp_path_factory.mktemp("schema") / "template.db"
+    previous = os.environ.get("AGENTFOX_DATABASE_URL")
+    os.environ["AGENTFOX_DATABASE_URL"] = f"sqlite:///{path}"
+    try:
+        reset_settings_cache()
+        db.reset_engine()
+        db.init_db()
+    finally:
+        db.reset_engine()
+        if previous is None:
+            os.environ.pop("AGENTFOX_DATABASE_URL", None)
+        else:
+            os.environ["AGENTFOX_DATABASE_URL"] = previous
+        reset_settings_cache()
+    return path
+
+
+@pytest.fixture(autouse=True)
+def isolated_db(tmp_path, monkeypatch, schema_template) -> Iterator[None]:
+    shutil.copyfile(schema_template, tmp_path / "test.db")
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+    monkeypatch.setenv("AGENTFOX_EVIDENCE_DIR", str(tmp_path / "evidence"))
+    monkeypatch.setenv("AGENTFOX_AUDIT_SIGNING_KEY", "test-key")
+    # Not the published default: create_app() refuses to start a non-development
+    # environment on it, and many tests switch the environment to production.
+    monkeypatch.setenv("AGENTFOX_SERVICE_AUTH_SECRET", "test-service-secret")
+    monkeypatch.setenv("AGENTFOX_ALLOW_EGRESS", "false")
+    # A developer's shell AGENTFOX_CONFIG, or a agentfox.toml left in the cwd by
+    # `agentfox init`, must never leak into a test. Tests of file loading delenv this.
+    monkeypatch.setenv("AGENTFOX_CONFIG", "none")
+    # The hook writes per-session delivery state; never into the developer's run dir.
+    monkeypatch.setenv("AGENTFOX_DELIVERY_STATE", str(tmp_path / "delivery"))
+
+    from agentfox.core import db
+    from agentfox.core.config import get_settings, reset_settings_cache
+    from agentfox.runtime.availability import reset_admission_controller
 
     reset_settings_cache()
     db.reset_engine()
@@ -41,7 +119,7 @@ def isolated_db(tmp_path, monkeypatch) -> Iterator[None]:
 
 @pytest.fixture
 def session() -> Iterator[Session]:
-    from agentfox.db import session_scope
+    from agentfox.core.db import session_scope
 
     with session_scope() as s:
         yield s
@@ -50,7 +128,7 @@ def session() -> Iterator[Session]:
 @pytest.fixture
 def seeded(session) -> Session:
     """A seeded environment: agents, identities, capabilities, policies, controls."""
-    from agentfox.seed import seed
+    from agentfox.fixtures.seed import seed
 
     seed(session)
     return session
@@ -58,7 +136,7 @@ def seeded(session) -> Session:
 
 @pytest.fixture
 def enforcer(seeded):
-    from agentfox.enforcement import Enforcer
+    from agentfox.runtime.enforcement import Enforcer
 
     return Enforcer(seeded)
 
@@ -68,9 +146,9 @@ def client(tmp_path):
     """FastAPI test client sharing the isolated database."""
     from fastapi.testclient import TestClient
 
-    from agentfox.db import session_scope
-    from agentfox.gateway.app import create_app
-    from agentfox.seed import seed
+    from agentfox.apps.gateway.app import create_app
+    from agentfox.core.db import session_scope
+    from agentfox.fixtures.seed import seed
 
     with session_scope() as s:
         seed(s)
@@ -78,7 +156,7 @@ def client(tmp_path):
 
 
 def as_user(email: str) -> dict[str, str]:
-    return {"X-Nometria-User": email}
+    return {"X-AgentFox-User": email}
 
 
 # Convenience payloads reused across tests.
@@ -88,3 +166,28 @@ INDIRECT_INJECTION = (
 )
 PII_TEXT = "Contact jane.doe@example.com, SSN 123-45-6789, card 4111 1111 1111 1111."
 SECRET_TEXT = "deploy with sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345 in the header"
+
+
+def promote(client, key: str, email: str = "admin@example.com"):
+    """Promote a policy to enforce over the API the way the editor does: simulate the
+    live version's rules, then promote. Enforcing without a recorded simulation is
+    refused server-side (#64)."""
+    headers = as_user(email)
+    policy = client.get(f"/api/policies/{key}", headers=headers).json()
+    client.post("/api/policies/simulate", json={"body": policy["body"]}, headers=headers)
+    response = client.post(f"/api/policies/{key}/mode", json={"mode": "enforce"}, headers=headers)
+    assert response.status_code == 200, response.text
+    return response
+
+
+def pytest_collection_modifyitems(config, items):
+    """`@pytest.mark.enterprise` tests run only where AgentFox Enterprise is installed
+    (CI's enterprise job); the open core's own suite skips them."""
+    from agentfox.core import extensions
+
+    if extensions.loaded():
+        return
+    skip = pytest.mark.skip(reason="needs AgentFox Enterprise (ee/)")
+    for item in items:
+        if "enterprise" in item.keywords:
+            item.add_marker(skip)

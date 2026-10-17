@@ -1,0 +1,286 @@
+{
+  "task": "toxicity",
+  "threshold": 0.5,
+  "latency_ms_median": {
+    "safety.lexicon": 0.02,
+    "validator.bert_toxic": 19.1,
+    "validator.nsfw_text": 12.92
+  },
+  "arms": {
+    "safety.lexicon": {
+      "members": [
+        "safety.lexicon"
+      ],
+      "side": "ours",
+      "all": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 137,
+        "tn": 1858,
+        "precision": 100.0,
+        "recall": 3.5,
+        "recall_ci": [
+          1.5,
+          8.0
+        ],
+        "f1": 6.8,
+        "fpr": 0.0,
+        "fpr_ci": [
+          0.0,
+          0.2
+        ]
+      },
+      "by_dataset": {
+        "toxicchat": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 137,
+          "tn": 1858,
+          "precision": 100.0,
+          "recall": 3.5,
+          "recall_ci": [
+            1.5,
+            8.0
+          ],
+          "f1": 6.8,
+          "fpr": 0.0,
+          "fpr_ci": [
+            0.0,
+            0.2
+          ]
+        }
+      }
+    },
+    "validator.bert_toxic": {
+      "members": [
+        "validator.bert_toxic"
+      ],
+      "side": "theirs",
+      "all": {
+        "tp": 35,
+        "fp": 23,
+        "fn": 107,
+        "tn": 1835,
+        "precision": 60.3,
+        "recall": 24.6,
+        "recall_ci": [
+          18.3,
+          32.3
+        ],
+        "f1": 35.0,
+        "fpr": 1.2,
+        "fpr_ci": [
+          0.8,
+          1.9
+        ]
+      },
+      "by_dataset": {
+        "toxicchat": {
+          "tp": 35,
+          "fp": 23,
+          "fn": 107,
+          "tn": 1835,
+          "precision": 60.3,
+          "recall": 24.6,
+          "recall_ci": [
+            18.3,
+            32.3
+          ],
+          "f1": 35.0,
+          "fpr": 1.2,
+          "fpr_ci": [
+            0.8,
+            1.9
+          ]
+        }
+      }
+    },
+    "validator.nsfw_text": {
+      "members": [
+        "validator.nsfw_text"
+      ],
+      "side": "theirs",
+      "all": {
+        "tp": 124,
+        "fp": 382,
+        "fn": 18,
+        "tn": 1476,
+        "precision": 24.5,
+        "recall": 87.3,
+        "recall_ci": [
+          80.9,
+          91.8
+        ],
+        "f1": 38.3,
+        "fpr": 20.6,
+        "fpr_ci": [
+          18.8,
+          22.5
+        ]
+      },
+      "by_dataset": {
+        "toxicchat": {
+          "tp": 124,
+          "fp": 382,
+          "fn": 18,
+          "tn": 1476,
+          "precision": 24.5,
+          "recall": 87.3,
+          "recall_ci": [
+            80.9,
+            91.8
+          ],
+          "f1": 38.3,
+          "fpr": 20.6,
+          "fpr_ci": [
+            18.8,
+            22.5
+          ]
+        }
+      }
+    },
+    "safety.lexicon + validator.bert_toxic": {
+      "members": [
+        "safety.lexicon",
+        "validator.bert_toxic"
+      ],
+      "side": "both",
+      "all": {
+        "tp": 40,
+        "fp": 23,
+        "fn": 102,
+        "tn": 1835,
+        "precision": 63.5,
+        "recall": 28.2,
+        "recall_ci": [
+          21.4,
+          36.1
+        ],
+        "f1": 39.0,
+        "fpr": 1.2,
+        "fpr_ci": [
+          0.8,
+          1.9
+        ]
+      },
+      "by_dataset": {
+        "toxicchat": {
+          "tp": 40,
+          "fp": 23,
+          "fn": 102,
+          "tn": 1835,
+          "precision": 63.5,
+          "recall": 28.2,
+          "recall_ci": [
+            21.4,
+            36.1
+          ],
+          "f1": 39.0,
+          "fpr": 1.2,
+          "fpr_ci": [
+            0.8,
+            1.9
+          ]
+        }
+      }
+    },
+    "safety.lexicon + validator.nsfw_text": {
+      "members": [
+        "safety.lexicon",
+        "validator.nsfw_text"
+      ],
+      "side": "both",
+      "all": {
+        "tp": 124,
+        "fp": 382,
+        "fn": 18,
+        "tn": 1476,
+        "precision": 24.5,
+        "recall": 87.3,
+        "recall_ci": [
+          80.9,
+          91.8
+        ],
+        "f1": 38.3,
+        "fpr": 20.6,
+        "fpr_ci": [
+          18.8,
+          22.5
+        ]
+      },
+      "by_dataset": {
+        "toxicchat": {
+          "tp": 124,
+          "fp": 382,
+          "fn": 18,
+          "tn": 1476,
+          "precision": 24.5,
+          "recall": 87.3,
+          "recall_ci": [
+            80.9,
+            91.8
+          ],
+          "f1": 38.3,
+          "fpr": 20.6,
+          "fpr_ci": [
+            18.8,
+            22.5
+          ]
+        }
+      }
+    },
+    "all ours + all theirs": {
+      "members": [
+        "safety.lexicon",
+        "validator.bert_toxic",
+        "validator.nsfw_text"
+      ],
+      "side": "both",
+      "all": {
+        "tp": 127,
+        "fp": 388,
+        "fn": 15,
+        "tn": 1470,
+        "precision": 24.7,
+        "recall": 89.4,
+        "recall_ci": [
+          83.3,
+          93.5
+        ],
+        "f1": 38.7,
+        "fpr": 20.9,
+        "fpr_ci": [
+          19.1,
+          22.8
+        ]
+      },
+      "by_dataset": {
+        "toxicchat": {
+          "tp": 127,
+          "fp": 388,
+          "fn": 15,
+          "tn": 1470,
+          "precision": 24.7,
+          "recall": 89.4,
+          "recall_ci": [
+            83.3,
+            93.5
+          ],
+          "f1": 38.7,
+          "fpr": 20.9,
+          "fpr_ci": [
+            19.1,
+            22.8
+          ]
+        }
+      }
+    }
+  },
+  "rows": 2000,
+  "limit_per_dataset": 2000,
+  "skipped": {
+    "safety.granite": "not registered or not available here",
+    "validator.toxic_language": "not registered or not available here",
+    "validator.profanity_free": "not registered or not available here"
+  }
+}

@@ -1,0 +1,15 @@
+# What an agent may do with a tool call: taint gates, destructive actions, undeclared
+# tools and intents, blast radius. The one pack that ships in enforce.
+id: tool-containment
+version: 1.0.0
+maturity: stable
+requires_core: ">=0.3"
+title: Tool containment
+description: >
+  Containment rules for tool calls that do not depend on a detector recognising the
+  payload: provenance, impact, destructive statements, undeclared tools and intents.
+owners: [agentfox-maintainers]
+tags: [containment, tools, provenance]
+compliance:
+  controls: [NOM-IAM-02, NOM-IAM-03, NOM-RTG-01, NOM-RTG-03, NOM-RTG-04, NOM-RTG-08, NOM-DSC-04, NOM-GOV-03]
+requires_detectors: [injection.heuristic, secrets.native]

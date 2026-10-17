@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { proxyReviewAction } from "@/lib/proxy";
+import { proxyReviewAction } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  return proxyReviewAction(req, "/api/controls/sync", "/compliance");
+  return proxyReviewAction(req, "/api/controls/sync", "/app/compliance");
 }

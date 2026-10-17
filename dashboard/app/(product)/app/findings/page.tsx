@@ -1,0 +1,143 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { appPageMetadata } from "@/lib/site";
+import { api, apiErrorProps, safeApi } from "@/lib/product/api";
+import { ApiDown, findingTypeInfo } from "@/components/ui";
+import { Card, Empty, Header, SeverityPill, Tabs, ago, href, num } from "@/components/kit";
+import { FilterBar } from "@/components/kit/FilterBar";
+import { severityRank, sentence } from "@/lib/product/vocab";
+
+export const metadata: Metadata = appPageMetadata("Issues", "Problems that need a person, most severe first.");
+export const dynamic = "force-dynamic";
+
+type SP = Record<string, string | undefined>;
+
+const STATUSES = [
+  { key: "open", label: "Open" },
+  { key: "resolved", label: "Resolved" },
+  { key: "suppressed", label: "Accepted" },
+];
+
+const SEVERITIES = ["critical", "high", "medium", "low"];
+
+export default async function Issues({ searchParams }: { searchParams: Promise<SP> }) {
+  const sp = await searchParams;
+  const status = STATUSES.some((s) => s.key === sp.status) ? sp.status! : "open";
+  const qs = new URLSearchParams({ limit: "200", status });
+  if (sp.severity) qs.set("severity", sp.severity);
+  if (sp.agent) qs.set("agent", sp.agent);
+
+  let data: any;
+  try {
+    data = await api(`/api/findings?${qs}`);
+  } catch (e: any) {
+    return (
+      <>
+        <Header title="Issues" />
+        <ApiDown {...apiErrorProps(e)} />
+      </>
+    );
+  }
+  const [agents, counts] = await Promise.all([
+    safeApi<any>("/api/agents", { agents: [] }),
+    Promise.all(STATUSES.map((s) => safeApi<any>(`/api/findings?status=${s.key}&limit=500${sp.agent ? `&agent=${sp.agent}` : ""}`, { findings: [] }))),
+  ]);
+  const rows = group(data.findings || []).sort(
+    (a, b) => severityRank(a.severity) - severityRank(b.severity) || String(b.last_seen_at).localeCompare(String(a.last_seen_at)),
+  );
+  const keep = { agent: sp.agent, severity: sp.severity };
+  // "No open issues" in a workspace that has never been scanned or sent a request
+  // reads as good news when it means nothing has been looked at yet. Asked only
+  // when the list is empty, so a busy workspace pays nothing for it.
+  const untouched =
+    rows.length === 0 && status === "open"
+      ? await safeApi<any>("/api/onboarding", null).then((o) => Boolean(o && !o.counts?.scans && !o.counts?.traces))
+      : false;
+
+  return (
+    <>
+      <Header title="Issues" />
+      <Tabs
+        active={status}
+        items={STATUSES.map((s, i) => ({
+          key: s.key,
+          label: s.label,
+          count: group(counts[i].findings || []).length,
+          href: href("/app/findings", { ...keep, status: s.key === "open" ? undefined : s.key }),
+        }))}
+      />
+      <FilterBar range={false} agents={(agents.agents || []).map((a: any) => ({ slug: a.slug, name: a.name }))}>
+        <div className="k-seg" role="group" aria-label="Severity">
+          <Link href={href("/app/findings", { agent: sp.agent, status: sp.status })} className={!sp.severity ? "active" : ""} scroll={false}>
+            All
+          </Link>
+          {SEVERITIES.map((s) => (
+            <Link key={s} href={href("/app/findings", { agent: sp.agent, status: sp.status, severity: s })} className={sp.severity === s ? "active" : ""} scroll={false}>
+              {s[0].toUpperCase() + s.slice(1)}
+            </Link>
+          ))}
+        </div>
+      </FilterBar>
+      <Card flush>
+        {rows.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th className="tight">Severity</th>
+                <th>Issue</th>
+                <th>Agent</th>
+                <th className="num">Times</th>
+                <th className="tight">Last seen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((f: any) => (
+                <tr key={f.id}>
+                  <td className="tight"><SeverityPill value={f.severity} /></td>
+                  <td>
+                    <Link className="k-name" href={`/app/findings/${f.id}`}>{sentence(f.title)}</Link>
+                    <span className="sub">{findingTypeInfo(f.type).label}</span>
+                  </td>
+                  <td>
+                    {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : <span className="k-muted">—</span>}
+                  </td>
+                  <td className="num">{num(f.occurrences || 1)}</td>
+                  <td className="tight muted">{ago(f.last_seen_at || f.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          untouched ? (
+            <Empty action={<Link href="/app/welcome?again=1" className="k-btn-primary">Scan a repository</Link>}>
+              Nothing scanned yet. Issues appear once a repository is scanned or an agent sends a request.
+            </Empty>
+          ) : (
+            <Empty>{status === "open" ? "No open issues." : "Nothing here."}</Empty>
+          )
+        )}
+      </Card>
+    </>
+  );
+}
+
+/**
+ * One row per problem. Issues raised before findings carried a fingerprint (Sept
+ * 2026) were never merged, so the same problem can appear as many rows; they are
+ * counted together here, linking to the most recent.
+ */
+function group(findings: any[]): any[] {
+  const byKey = new Map<string, any>();
+  for (const f of findings) {
+    const key = [f.type, f.title, f.agent_slug || "", f.subject_type || "", f.subject_id || "", f.status].join("|");
+    const seen = byKey.get(key);
+    const at = String(f.last_seen_at || f.created_at || "");
+    if (!seen) {
+      byKey.set(key, { ...f, occurrences: f.occurrences || 1 });
+      continue;
+    }
+    seen.occurrences += f.occurrences || 1;
+    if (at > String(seen.last_seen_at || seen.created_at || "")) Object.assign(seen, { id: f.id, last_seen_at: at });
+  }
+  return Array.from(byKey.values());
+}
