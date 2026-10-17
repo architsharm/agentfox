@@ -22,7 +22,7 @@ rich>=13.9
 # Split into two lines rather than psycopg[binary]: Vercel's Python builder did not
 # resolve the bracket-extra syntax into an importable `psycopg` module.
 psycopg>=3.2
-psycopg-binary>=3.2
+psycopg-binary>=3.3.6
 sqlglot>=25.0
 # Encrypts a connected GitHub account's access token at rest (routes/integrations.py).
 cryptography>=43
