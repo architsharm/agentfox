@@ -202,6 +202,8 @@ _ADDITIVE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("playground_sandboxes", "spare", "BOOLEAN NOT NULL DEFAULT FALSE"),
     # e2a8c5f1b964 — an agent's circuit breaker settings and state.
     ("agent_controls", "breaker_json", "JSON"),
+    # a7d3e9c2f518 — a delegation edge read from code says how the parent hands over.
+    ("lineage_edges", "kind", "VARCHAR(32)"),
 )
 
 

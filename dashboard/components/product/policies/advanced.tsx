@@ -328,7 +328,7 @@ export async function AdvancedTuning({ agent }: { agent?: string }) {
                 <tr key={s.id}>
                   <td className="k-mono">{s.detector_key}</td>
                   <td>
-                    {s.agent === "*" ? <span className="k-muted">All agents</span> : <Link href={`/app/agents/${s.agent}`}>{s.agent}</Link>}
+                    {s.agent === "*" ? <span className="k-muted">All agents</span> : <Link href={`/app/projects/${s.agent}`}>{s.agent}</Link>}
                     {s.entity_type && <Pill tone="outline">{s.entity_type}</Pill>}
                   </td>
                   <td className="k-muted">{s.reason || "-"}</td>

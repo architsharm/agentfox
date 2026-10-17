@@ -28,6 +28,7 @@ from agentfox.core.models import (
     Finding,
     Handoff,
     Identity,
+    LineageEdge,
     McpServer,
     Tool,
     User,
@@ -209,8 +210,23 @@ def list_agents(
         query = query.where(Agent.registered.is_(registered))
     if environment:
         query = query.where(Agent.environment == environment)
+    # Who each agent hands work to, from code or traffic: what lets the Proposed list
+    # show a scanned multi-agent system as one system with its members under it.
+    children: dict[str, list[dict[str, Any]]] = {}
+    for edge in session.scalars(
+        select(LineageEdge)
+        .where(LineageEdge.relation == "delegates_to", LineageEdge.dst_type == "agent")
+        .order_by(LineageEdge.src_id, LineageEdge.dst_id)
+    ):
+        if edge.src_id != edge.dst_id:
+            children.setdefault(edge.src_id, []).append(
+                {"slug": edge.dst_id, "relation": edge.kind, "declared": bool(edge.declared)}
+            )
     return {
-        "agents": [_agent_json(a, session) for a in session.scalars(query)],
+        "agents": [
+            {**_agent_json(a, session), "children": children.get(a.slug, [])}
+            for a in session.scalars(query)
+        ],
         "inventory": inventory(session),
     }
 

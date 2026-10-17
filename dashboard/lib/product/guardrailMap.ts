@@ -38,14 +38,75 @@ export type MapTool = {
   sources?: ("code" | "granted" | "seen")[];
   grant?: { id: string; key: string; max_taint: string; actions: string[] } | null;
 };
+/** How a parent hands work to a sub-agent, when its code says (a repo scan read it). */
+export type Relation = "handoff" | "as_tool" | "delegates" | "member";
+/** One end of a delegation: a sub-agent this agent hands work to, or a parent that hands it work. */
+export type MapLink = {
+  slug: string;
+  name?: string;
+  calls: number;
+  /** Read from the code by a repo scan. */
+  declared?: boolean;
+  /** Seen in traffic. */
+  seen?: boolean;
+  relation?: Relation | string | null;
+};
 export type AgentMap = {
-  agent: { slug: string; name: string };
+  agent: { slug: string; name: string; framework?: string | null };
   window_days: number;
   stages: Stage[];
   everywhere: MapRule[];
   tools: MapTool[];
-  subagents: { slug: string; calls: number }[];
+  subagents: MapLink[];
+  /** The agents that hand this one work. */
+  parents?: MapLink[];
 };
+
+// --- sub-agents --------------------------------------------------------------------
+
+/** What the arrow to a sub-agent means, in words. A crew's members are a crew; other teams are a team. */
+export function relationLabel(relation: MapLink["relation"], framework?: string | null): string {
+  switch (relation) {
+    case "handoff":
+      return "Hands off to";
+    case "as_tool":
+      return "Used as a tool";
+    case "member":
+      return framework === "CrewAI" ? "Crew member" : "Team member";
+    default:
+      return "Delegates to";
+  }
+}
+
+/** The same relation seen from the sub-agent's side. */
+export function parentLabel(relation: MapLink["relation"]): string {
+  switch (relation) {
+    case "as_tool":
+      return "Used as a tool by";
+    case "member":
+      return "Member of";
+    case "handoff":
+      return "Handed off from";
+    default:
+      return "Called by";
+  }
+}
+
+/** "3 calls", or for a delegation only the code knows about yet, "From code · no calls yet". */
+export function linkActivity(s: MapLink): string {
+  if (s.calls > 0) return `${s.calls} ${s.calls === 1 ? "call" : "calls"}`;
+  return s.declared ? "From code · no calls yet" : "No calls yet";
+}
+
+/** At most this many sub-agents are drawn; the rest are summed up in one node. */
+export const DRAW_SUBAGENTS = 6;
+
+/** The sub-agents drawn, busiest first, and how many are left out. */
+export function drawnSubagents(subs: MapLink[], max = DRAW_SUBAGENTS): { shown: MapLink[]; rest: number } {
+  const ranked = [...subs].sort((a, b) => b.calls - a.calls || a.slug.localeCompare(b.slug));
+  const shown = ranked.length > max ? ranked.slice(0, max - 1) : ranked;
+  return { shown, rest: ranked.length - shown.length };
+}
 
 // --- tone ------------------------------------------------------------------------
 
@@ -231,12 +292,27 @@ export function filterTools(tools: MapTool[], query: string, filter: ToolFilter)
   });
 }
 
-/** Up to this many tools are drawn one by one; more are drawn as groups. */
-export const DRAW_EACH = 12;
-/** At most this many tools of an opened group are drawn; the rest are in the list. */
-export const DRAW_OPEN = 12;
-/** At most this many groups are drawn; the rest are in the list. */
-export const DRAW_GROUPS = 12;
+/**
+ * The canvas shows a project's shape before its detail. Up to this many tools are
+ * drawn one by one; with more, they are one "Tools" node until it is expanded, and
+ * then one node per group.
+ */
+export const DRAW_EACH = 6;
+/** At most this many tools of an opened group are drawn; "+N more" opens the rest in the inspector. */
+export const DRAW_OPEN = 6;
+/** At most this many groups are drawn; "+N more" opens the whole list in the inspector. */
+export const DRAW_GROUPS = 6;
+
+export type Drawn = { collapsed: boolean; tools: MapTool[]; groups: ToolGroup[] | null; open: ToolGroup | null };
+
+/** What the canvas draws for these tools. A single group is drawn open: there is nothing to choose. */
+export function drawTools(visible: MapTool[], by: GroupBy, expanded: boolean, openKey: string | null): Drawn {
+  if (visible.length <= DRAW_EACH) return { collapsed: false, tools: visible, groups: null, open: null };
+  if (!expanded) return { collapsed: true, tools: [], groups: null, open: null };
+  const groups = groupTools(visible, by);
+  const open = groups.length === 1 ? groups[0] : groups.find((g) => g.key === openKey) || null;
+  return { collapsed: false, tools: [], groups, open };
+}
 
 export function groupSummary(tools: MapTool[]) {
   const by = (p: Permission) => tools.filter((t) => t.permission === p).length;

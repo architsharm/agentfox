@@ -220,7 +220,7 @@ arguments: amount 250 · currency USD · to acct_attacker_991`}</Output>
       <NextSteps
         items={[
           { href: "/docs/guides/approvals", label: "Approvals and the kill switch", why: "set up sign-off from code" },
-          { href: "/docs/app/agents#kill-switch", label: "Kill switch", why: "stop an agent outright" },
+          { href: "/docs/app/projects#kill-switch", label: "Kill switch", why: "stop an agent outright" },
           { href: "/docs/app/findings", label: "Findings", why: "breached hand-offs also land there" },
         ]}
       />

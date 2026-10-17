@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  DRAW_EACH,
+  drawTools,
   filterTools,
   groupSummary,
   groupTools,
@@ -106,5 +108,27 @@ describe("changes", () => {
     const viaPattern = tool(1, { key: "crm.lookup", grant: { id: "g2", key: "crm.*", max_taint: "user", actions: ["*"] } });
     expect(permissionCall("a", viaPattern, "not_granted")).toBeNull();
     expect(permissionCall("a", viaPattern, "allowed")?.body).toMatchObject({ tool_key: "crm.lookup", requires_approval: false, constraints: {} });
+  });
+});
+
+describe("what the canvas draws", () => {
+  const many = Array.from({ length: 40 }, (_, i) => tool(i));
+
+  it("draws a few tools one by one", () => {
+    const few = many.slice(0, DRAW_EACH);
+    expect(drawTools(few, "impact", false, null)).toMatchObject({ collapsed: false, tools: few, groups: null });
+  });
+
+  it("collapses many tools into one node until expanded", () => {
+    expect(drawTools(many, "impact", false, null)).toMatchObject({ collapsed: true, tools: [], groups: null });
+    const open = drawTools(many, "impact", true, "impact:write");
+    expect(open.collapsed).toBe(false);
+    expect(open.groups?.length).toBe(5);
+    expect(open.open?.label).toBe("Writes");
+  });
+
+  it("opens the only group there is", () => {
+    const same = many.map((t) => ({ ...t, impact: "read" }));
+    expect(drawTools(same, "impact", true, null).open?.label).toBe("Read only");
   });
 });

@@ -1,11 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
 import type { AgentMap } from "./GuardrailMap";
 
 /**
  * The map's graph library is the heaviest thing on the agent page; load it only when
- * the Map tab is open, not with every agent view.
+ * the canvas is open, not with every project view.
  */
 const Map = dynamic(() => import("./GuardrailMap").then((m) => m.GuardrailMap), {
   ssr: false,
@@ -18,6 +19,6 @@ const Map = dynamic(() => import("./GuardrailMap").then((m) => m.GuardrailMap), 
   ),
 });
 
-export function GuardrailMapLazy({ map }: { map: AgentMap }) {
-  return <Map map={map} />;
+export function GuardrailMapLazy({ map, summary }: { map: AgentMap; summary?: ReactNode }) {
+  return <Map map={map} summary={summary} />;
 }

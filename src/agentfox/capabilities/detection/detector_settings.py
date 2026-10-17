@@ -5,8 +5,14 @@
 model-backed detector they installed, or switch a noisy one off, from the
 dashboard instead of an environment variable and a restart.
 
-Switching a detector off silences it for the whole workspace, which makes it a
-privileged operator action recorded like a suppression (`operator_log.PRIVILEGED`).
+A project can change the workspace's choice for itself (`AgentDetectorSetting`), in
+either direction: switch on a detector only it needs, or switch off one that is
+noise for it. No row means it runs what the workspace runs, so a change for the
+workspace reaches every project that has not changed that detector.
+
+Switching a detector off silences it for the whole workspace, or for one project,
+which makes both privileged operator actions recorded like a suppression
+(`operator_log.PRIVILEGED`).
 """
 
 from __future__ import annotations
@@ -15,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
-from agentfox.core.models import DetectorSetting
+from agentfox.core.models import AgentDetectorSetting, DetectorSetting
 from agentfox.platform.ledger import operator_log
 
 #: Never switchable off per workspace: the always-on safety net, and the detector
@@ -36,8 +42,19 @@ WORKSPACE_RULES = "custom.lists"
 WORKSPACE_VALIDATORS = "custom.validators"
 
 
-def enabled_for(session: Session) -> frozenset[str]:
-    """The detectors this workspace runs: the deployment's list, plus its overrides.
+def agent_overrides(session: Session, agent: str) -> dict[str, bool]:
+    """What one project changed, by detector key."""
+    return {
+        row.key: row.enabled
+        for row in session.scalars(
+            select(AgentDetectorSetting).where(AgentDetectorSetting.agent == agent)
+        )
+    }
+
+
+def enabled_for(session: Session, agent: str | None = None) -> frozenset[str]:
+    """The detectors this workspace runs (or one project in it): the deployment's
+    list, plus the workspace's overrides, plus the project's.
 
     `ALWAYS_ON` limits what a workspace may switch off; it does not add to the
     deployment's list. A deployment that runs no detectors at all (a bypass, a
@@ -53,11 +70,15 @@ def enabled_for(session: Session) -> frozenset[str]:
 
     if any_enabled(session):
         enabled.add(DETECTOR_KEY)
-    for key, on in overrides(session).items():
-        if on:
-            enabled.add(key)
-        elif key not in ALWAYS_ON:
-            enabled.discard(key)
+    layers = [overrides(session)]
+    if agent:
+        layers.append(agent_overrides(session, agent))
+    for layer in layers:
+        for key, on in layer.items():
+            if on:
+                enabled.add(key)
+            elif key not in ALWAYS_ON:
+                enabled.discard(key)
     return frozenset(enabled)
 
 
@@ -76,6 +97,10 @@ def enabled_anywhere(session: Session) -> frozenset[str]:
     with system_scope("warming the detectors any workspace switched on", routine=True):
         switched_on = set(
             session.scalars(select(DetectorSetting.key).where(DetectorSetting.enabled.is_(True)))
+        ) | set(
+            session.scalars(
+                select(AgentDetectorSetting.key).where(AgentDetectorSetting.enabled.is_(True))
+            )
         )
     return frozenset(deployment) | switched_on
 
@@ -102,5 +127,42 @@ def set_enabled(
         subject_id=key,
         before={"enabled": before},
         after={"enabled": enabled},
+    )
+    return row
+
+
+def set_enabled_for_agent(
+    session: Session, agent: str, key: str, enabled: bool | None, *, actor: str, reason: str
+) -> AgentDetectorSetting | None:
+    """Switch a detector on or off for one project; ``None`` goes back to the workspace's."""
+    if enabled is False and key in ALWAYS_ON:
+        raise ValueError(f"'{key}' cannot be switched off")
+    row = session.scalar(
+        select(AgentDetectorSetting).where(
+            AgentDetectorSetting.agent == agent, AgentDetectorSetting.key == key
+        )
+    )
+    before = row.enabled if row else None
+    if enabled is None:
+        if row is not None:
+            session.delete(row)
+        row = None
+    else:
+        if row is None:
+            row = AgentDetectorSetting(agent=agent, key=key)
+            session.add(row)
+        row.enabled = enabled
+        row.updated_by = actor
+    session.flush()
+    word = {True: "on", False: "off", None: "back to the workspace setting"}[enabled]
+    operator_log.record(
+        session,
+        "operator.agent_detector.toggled",
+        actor=actor,
+        reason=reason or f"detector '{key}' {word} for agent '{agent}'",
+        subject_type="agent",
+        subject_id=agent,
+        before={"detector": key, "enabled": before},
+        after={"detector": key, "enabled": enabled},
     )
     return row

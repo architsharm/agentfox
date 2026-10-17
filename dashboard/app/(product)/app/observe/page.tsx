@@ -120,8 +120,8 @@ async function Overview({ f }: { f: Filters }) {
       </Card>
 
       <Grid cols={2}>
-        <Card title="By agent" action={<Link href="/app/agents">All agents</Link>}>
-          <BarList rows={breakdownRows(byAgent.rows, f, (k) => `/app/agents/${encodeURIComponent(k)}`)} />
+        <Card title="By agent" action={<Link href="/app/projects">All agents</Link>}>
+          <BarList rows={breakdownRows(byAgent.rows, f, (k) => `/app/projects/${encodeURIComponent(k)}`)} />
         </Card>
         <Card title="By tool">
           <BarList rows={breakdownRows(byTool.rows, f, (k) => runsHref(f, { tool: k }))} empty="No tool calls" />
@@ -315,7 +315,7 @@ async function Security({ f, agents }: { f: Filters; agents: any }) {
         <Kpi label="Attacks seen" value={notChecked(rules, "attacks") ? "Not checked" : num(cats.attacks?.fires || 0)} spark={cats.attacks?.series} href={runsHref(f, { outcome: "blocked" })} />
         <Kpi label="Sensitive data caught" value={notChecked(rules, "data") ? "Not checked" : num(cats.data?.fires || 0)} spark={cats.data?.series} />
         <Kpi label="Risky actions stopped" value={num(cats.actions?.enforced || 0)} spark={cats.actions?.series} href={runsHref(f, { outcome: "held" })} />
-        <Kpi label="Unregistered agents" value={num(shadow)} tone={shadow ? "bad" : undefined} href="/app/agents?tab=attention" />
+        <Kpi label="Unregistered agents" value={num(shadow)} tone={shadow ? "bad" : undefined} href="/app/projects?tab=attention" />
       </Grid>
       <Grid cols={2}>
         <Card title="Attack types">
@@ -335,7 +335,7 @@ async function Security({ f, agents }: { f: Filters; agents: any }) {
         <Card title="Most targeted agents">
           <BarList
             empty="No agents targeted"
-            rows={stopped(byAgent.rows).map(({ key, value, r }) => ({ key, label: key, value, segments: { held: r.held, blocked: r.blocked }, href: `/app/agents/${encodeURIComponent(key)}` }))}
+            rows={stopped(byAgent.rows).map(({ key, value, r }) => ({ key, label: key, value, segments: { held: r.held, blocked: r.blocked }, href: `/app/projects/${encodeURIComponent(key)}` }))}
           />
         </Card>
       </Grid>

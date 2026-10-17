@@ -122,6 +122,88 @@ def register_agent(
     return agent
 
 
+def _propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None:
+    """Register a scan's proposal as a draft, unless a human already approved it.
+
+    Re-scanning a repository proposes the same slugs again, which updates a draft in
+    place instead of duplicating it. An agent someone already added is left alone: a
+    scan turning a live agent back into a proposal would silently undo the approval.
+    Returns None for such an agent, since this scan did not propose it.
+    """
+    existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+    if existing is not None and existing.status not in ("draft", "rejected"):
+        return None
+    return register_agent(session, slug=slug, draft=True, **fields)
+
+
+def _propose_agent_specs(
+    session: Session,
+    *,
+    run_id: str,
+    repo_short: str,
+    repo_display_name: str,
+    specs: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+    trifecta_dirs: set[str],
+) -> list[str]:
+    """One draft per agent a multi-agent scan found, and its declared delegations.
+
+    The slug is the repository plus the agent's own scan key (its name in code), so a
+    re-scan lands on the same rows. A delegation the code no longer declares is removed
+    from the edges, unless traffic has also seen it: a declared edge is a reading of
+    the code, and the code changed.
+    """
+    slug_of: dict[str, str] = {}
+    created: list[str] = []
+    for spec in specs:
+        key = slugify(str(spec.get("key") or spec.get("name") or ""))
+        slug = repo_short if key == repo_short else f"{repo_short}-{key}"
+        slug_of[str(spec.get("key"))] = slugify(slug)
+        tools = [str(t) for t in spec.get("tools") or [] if t]
+        agent = _propose_draft(
+            session,
+            slug=slug,
+            name=f"{repo_display_name}/{spec.get('name') or key}",
+            purpose="",
+            framework=spec.get("framework"),
+            risk_tier="high" if (spec.get("top_dir") or "root") in trifecta_dirs else "limited",
+            declared_tools=tools or None,
+            source_scan_run_id=run_id,
+        )
+        if agent is not None:
+            created.append(agent.slug)
+
+    wanted: set[tuple[str, str]] = set()
+    for edge in edges:
+        parent = slug_of.get(str(edge.get("parent")))
+        child = slug_of.get(str(edge.get("child")))
+        if not parent or not child or parent == child:
+            continue
+        wanted.add((parent, child))
+        record_edge(
+            session,
+            "agent",
+            parent,
+            "agent",
+            child,
+            "delegates_to",
+            declared=True,
+            kind=str(edge.get("relation") or "delegates"),
+        )
+    for stale in session.scalars(
+        select(LineageEdge).where(
+            LineageEdge.relation == "delegates_to",
+            LineageEdge.declared.is_(True),
+            LineageEdge.observed_count == 0,
+            LineageEdge.src_id.in_(list(slug_of.values())),
+        )
+    ):
+        if (stale.src_id, stale.dst_id) not in wanted:
+            session.delete(stale)
+    session.flush()
+    return created
+
+
 def propose_from_scan(
     session: Session,
     *,
@@ -131,9 +213,19 @@ def propose_from_scan(
     frameworks: list[str],
     sites: list[dict[str, Any]],
     author: str,
+    agents: list[dict[str, Any]] | None = None,
+    agent_edges: list[dict[str, Any]] | None = None,
 ) -> tuple[list[str], list[str]]:
     """Propose one draft agent per top-level directory and one observe-mode policy
     per detected framework, from a discovery scan's governable sites.
+
+    A multi-agent system (``agents`` holds two or more, see
+    ``discovery.ScanReport.multi_agent``) is proposed as the agents it is instead: one
+    draft per agent, holding that agent's own tools, with each "hands work to" relation
+    in ``agent_edges`` recorded as a declared ``delegates_to`` edge. Those edges are
+    what the guardrail map draws as sub-agents and what "apply to sub-agents" follows,
+    so both work before the system has run once. Directories holding no agent still
+    get the per-directory proposal, so a model call outside the system is not lost.
 
     Shared by every scan entry point that ends up here — the GitHub-connected repo
     scan (``routes/integrations.py``) and a locally-run ``agentfox scan --submit`` /
@@ -160,6 +252,20 @@ def propose_from_scan(
         groups[site.get("top_dir") or "root"].append(site)
 
     created_agents: list[str] = []
+    specs = agents or []
+    if len(specs) >= 2:
+        created_agents += _propose_agent_specs(
+            session,
+            run_id=run_id,
+            repo_short=repo_short,
+            repo_display_name=repo_display_name,
+            specs=specs,
+            edges=agent_edges or [],
+            trifecta_dirs=trifecta_dirs,
+        )
+        covered = {spec.get("top_dir") or "root" for spec in specs}
+        groups = {k: v for k, v in groups.items() if k not in covered}
+
     for group_key, group_sites in groups.items():
         providers = [s["provider"] for s in group_sites if s.get("provider")]
         framework = providers[0] if providers else (frameworks[0] if frameworks else None)
@@ -172,7 +278,7 @@ def propose_from_scan(
         )
         group_slug = slugify(group_key)
         slug = repo_short if group_slug == repo_short else f"{repo_short}-{group_slug}"
-        agent = register_agent(
+        agent = _propose_draft(
             session,
             slug=slug,
             name=f"{repo_display_name}/{group_key}",
@@ -184,10 +290,10 @@ def propose_from_scan(
             # approval (`compliance.risk.classify` explains why it is a proposal).
             risk_tier="high" if group_key in trifecta_dirs else "limited",
             declared_tools=tools or None,
-            draft=True,
             source_scan_run_id=run_id,
         )
-        created_agents.append(agent.slug)
+        if agent is not None:
+            created_agents.append(agent.slug)
 
     created_policies: list[str] = []
     for framework in frameworks:
@@ -621,8 +727,14 @@ def record_edge(
     dst_id: str,
     relation: str,
     declared: bool = False,
+    kind: str | None = None,
 ) -> LineageEdge:
     """Record an observed (or declared) lineage edge, idempotent under races.
+
+    ``declared=True`` is an edge read from code (``propose_from_scan``) rather than
+    seen in a span: it is recorded with no observation counted, so "from code, never
+    called" and "called N times" stay distinguishable. ``kind`` says how a declared
+    delegation hands work over (``discovery.agents.RELATIONS``).
 
     The existence check below and the insert it guards are two separate
     round-trips, so two callers recording the same edge for the first time at
@@ -653,6 +765,7 @@ def record_edge(
                     dst_id=dst_id,
                     relation=relation,
                     declared=declared,
+                    kind=kind,
                     # Set explicitly: the column default is applied at flush,
                     # and this counter is incremented before the flush happens.
                     observed_count=0,
@@ -668,9 +781,12 @@ def record_edge(
                 )
             )
     edge.observed_count += 0 if declared else 1
-    edge.last_observed_at = utcnow()
+    if not declared:
+        # Only traffic counts as an observation; re-reading the code is not one.
+        edge.last_observed_at = utcnow()
     if declared:
         edge.declared = True
+        edge.kind = kind or edge.kind
     session.flush()
     return edge
 
@@ -815,12 +931,21 @@ def assess_delegation(session: Session) -> list[Finding]:
     is not a repeated tool call — every call is to a different agent — so the loop is
     only visible in the shape of the delegation graph itself, built here from the
     "delegates_to" edges derive_lineage already records from subagent spans.
+
+    Only edges traffic has actually used count. A delegation read from code (a scan's
+    declared edge) that has never been taken is a possibility, not a runaway chain, and
+    handoffs that point back at the agent they came from — a triage agent its
+    specialists can return to — are the ordinary shape of a multi-agent system.
     """
     from agentfox.platform.registry.attribution import delegation_graph
 
     edges = [
         (str(e.src_id), str(e.dst_id))
-        for e in session.scalars(select(LineageEdge).where(LineageEdge.relation == "delegates_to"))
+        for e in session.scalars(
+            select(LineageEdge).where(
+                LineageEdge.relation == "delegates_to", LineageEdge.observed_count > 0
+            )
+        )
     ]
     if not edges:
         return []

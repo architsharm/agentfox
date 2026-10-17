@@ -244,6 +244,8 @@ class Local:
                 frameworks=payload.get("frameworks", []),
                 sites=payload.get("sites", []),
                 author="agentfox up",
+                agents=payload.get("agents", []),
+                agent_edges=payload.get("agent_edges", []),
             )
             run.summary_json = {
                 "cli_command": "up",

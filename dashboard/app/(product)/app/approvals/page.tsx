@@ -23,7 +23,15 @@ function source(s?: string) {
 export default async function Approvals({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const tab = sp.tab === "history" ? "history" : sp.tab === "handoffs" || sp.tab === "escalation" ? "handoffs" : "pending";
-  const pending = await safeApi<any>("/api/approvals?status=pending", { approvals: [] });
+  const [all, agents] = await Promise.all([
+    safeApi<any>("/api/approvals?status=pending", { approvals: [] }),
+    safeApi<any>("/api/agents", { agents: [] }),
+  ]);
+  // In a project's scope, only that project's requests.
+  const project = sp.agent ? (agents.agents || []).find((a: any) => a.slug === sp.agent || a.id === sp.agent) : null;
+  const mine = (list: any[]) => (sp.agent ? list.filter((a) => a.agent_id === (project?.id ?? sp.agent)) : list);
+  const pending = { approvals: mine(all.approvals || []) };
+  const q = sp.agent ? `agent=${encodeURIComponent(sp.agent)}` : "";
 
   return (
     <>
@@ -31,15 +39,15 @@ export default async function Approvals({ searchParams }: { searchParams: Promis
       <Tabs
         active={tab}
         items={[
-          { key: "pending", label: "Waiting", href: "/app/approvals", count: pending.approvals?.length },
-          { key: "history", label: "History", href: "/app/approvals?tab=history" },
-          { key: "handoffs", label: "Hand-offs", href: "/app/approvals?tab=handoffs" },
+          { key: "pending", label: "Waiting", href: q ? `/app/approvals?${q}` : "/app/approvals", count: pending.approvals?.length },
+          { key: "history", label: "History", href: `/app/approvals?tab=history${q ? `&${q}` : ""}` },
+          { key: "handoffs", label: "Hand-offs", href: `/app/approvals?tab=handoffs${q ? `&${q}` : ""}` },
         ]}
       />
       {sp.review_error && <div className="error">{sp.review_error}</div>}
       {sp.review_notice && <div className="note-panel">Request {sp.review_notice}.</div>}
       {tab === "pending" && <Pending approvals={pending.approvals || []} />}
-      {tab === "history" && <History status={sp.status} />}
+      {tab === "history" && <History status={sp.status} agent={sp.agent} only={mine} />}
       {tab === "handoffs" && <EscalationTab agent={sp.agent} />}
     </>
   );
@@ -121,22 +129,22 @@ async function Pending({ approvals }: { approvals: any[] }) {
   );
 }
 
-async function History({ status }: { status?: string }) {
+async function History({ status, agent, only }: { status?: string; agent?: string; only: (list: any[]) => any[] }) {
   const statuses = status && HISTORY.includes(status) ? [status] : HISTORY;
   const [lists, agents] = await Promise.all([
     Promise.all(statuses.map((s) => safeApi<any>(`/api/approvals?status=${s}`, { approvals: [] }))),
     safeApi<any>("/api/agents", { agents: [] }),
   ]);
   const name: Record<string, any> = Object.fromEntries((agents.agents || []).map((a: any) => [a.id, a]));
-  const rows = lists.flatMap((l) => l.approvals || []).sort((a, b) => String(b.requested_at).localeCompare(String(a.requested_at)));
+  const rows = only(lists.flatMap((l) => l.approvals || [])).sort((a, b) => String(b.requested_at).localeCompare(String(a.requested_at)));
 
   return (
     <>
       <div className="k-toolbar">
         <div className="k-seg" role="group" aria-label="Status">
-          <Link href="/app/approvals?tab=history" className={!status ? "active" : ""} scroll={false}>All</Link>
+          <Link href={href("/app/approvals", { tab: "history", agent })} className={!status ? "active" : ""} scroll={false}>All</Link>
           {HISTORY.map((s) => (
-            <Link key={s} href={href("/app/approvals", { tab: "history", status: s })} className={status === s ? "active" : ""} scroll={false}>
+            <Link key={s} href={href("/app/approvals", { tab: "history", status: s, agent })} className={status === s ? "active" : ""} scroll={false}>
               {s[0].toUpperCase() + s.slice(1)}
             </Link>
           ))}

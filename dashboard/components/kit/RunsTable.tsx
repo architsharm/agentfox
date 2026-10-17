@@ -34,7 +34,7 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
               {showAgent && (
                 <td>
                   {t.agent ? (
-                    <Link href={`/app/agents/${encodeURIComponent(t.agent)}`}>{t.agent}</Link>
+                    <Link href={`/app/projects/${encodeURIComponent(t.agent)}`}>{t.agent}</Link>
                   ) : (
                     <span className="k-muted">—</span>
                   )}

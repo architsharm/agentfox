@@ -589,6 +589,10 @@ def trigger_scan(
             if s.kind in ("agent_definition", "tool", "model_call", "lethal_trifecta")
         ],
         author=user.email or user.id,
+        # Read server-side from the downloaded code, so each agent carries its own
+        # tools as well (a laptop's `--submit` does not send them).
+        agents=[{**a.to_json(), "top_dir": a.top_dir} for a in report.agents],
+        agent_edges=[e.to_json() for e in report.agent_edges],
     )
 
     raise_scan_findings(session, payload.repo_full_name, report, all_skill_issues)
@@ -1066,6 +1070,48 @@ def approve_agent(
     )
     session.commit()
     return {"id": agent.id, "status": agent.status}
+
+
+@router.post("/api/agents/{agent_id}/approve-system")
+def approve_agent_system(
+    agent_id: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Approve a proposed agent and every proposed agent it hands work to, in one step.
+
+    A scan proposes a multi-agent system as one draft per agent, joined by the
+    delegations its code declares. Adding the orchestrator without its sub-agents
+    leaves a live agent handing work to drafts nothing governs, so the Proposed list
+    offers this beside each system. Each agent gets the same state change and ledger
+    entry as approving it on its own (`approve_agent`); one already added is skipped.
+    """
+    from agentfox.capabilities.protection.scope import delegates
+    from agentfox.core.models import Agent
+
+    root = session.get(Agent, agent_id)
+    if root is None:
+        raise HTTPException(404, "no agent with that id")
+    slugs = [root.slug, *delegates(session, root.slug)]
+    drafts = list(
+        session.scalars(select(Agent).where(Agent.slug.in_(slugs), Agent.status == "draft"))
+    )
+    if not drafts:
+        raise HTTPException(404, "nothing in this system is waiting to be added")
+    actor = user.email or user.id
+    drafts.sort(key=lambda a: slugs.index(a.slug))
+    for agent in drafts:
+        agent.status = "active"
+        agent.registered = True
+        session.flush()
+        chain.append(
+            session,
+            "agent.draft.approved",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="agent",
+            subject_id=agent.id,
+        )
+    session.commit()
+    return {"id": root.id, "approved": [a.slug for a in drafts]}
 
 
 @router.post("/api/agents/{agent_id}/reject")
