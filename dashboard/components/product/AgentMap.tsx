@@ -78,7 +78,10 @@ export function AgentMap({
       x: cx + Math.cos(angle) * R,
       y: cy + Math.sin(angle) * R,
       // Which side the label sits on, so it never runs back over the node.
-      anchor: Math.cos(angle) > 0.2 ? "start" : Math.cos(angle) < -0.2 ? "end" : "middle",
+      anchor: (Math.cos(angle) > 0.2 ? "start" : Math.cos(angle) < -0.2 ? "end" : "middle") as
+        | "start"
+        | "end"
+        | "middle",
       dx: Math.cos(angle) > 0.2 ? 11 : Math.cos(angle) < -0.2 ? -11 : 0,
       dy: Math.abs(Math.cos(angle)) <= 0.2 ? (Math.sin(angle) > 0 ? 20 : -12) : 4,
     };
