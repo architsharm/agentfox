@@ -153,6 +153,15 @@ export function Hero() {
 
       <div className="mk-wrap mk-hero" style={{ position: "relative" }}>
         <div>
+          <div className="mk-up" style={{ marginBottom: 18 }}>
+            <Link
+              href="/blog/agentfox-0-5-release"
+              className="mk-chip mk-chip-accent"
+              style={{ display: "inline-flex", textDecoration: "none" }}
+            >
+              New in 0.5: one-command setup, multi-agent scans &rarr;
+            </Link>
+          </div>
           <p className="mk-kicker mk-up mk-d1">AI agent security</p>
           <h1 className="mk-h1 mk-up mk-d2">
             Secure your agents.<br />
