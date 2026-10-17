@@ -231,7 +231,7 @@ export default async function Compliance({
               <tbody>
                 {register.register.map((r: any) => (
                   <tr key={r.agent}>
-                    <td className="mono small"><Link href={`/app/agents/${r.agent}`}>{r.agent}</Link></td>
+                    <td className="mono small"><Link href={`/app/projects/${r.agent}`}>{r.agent}</Link></td>
                     <td><span className={`tag ${r.risk_tier === "high" ? "bad" : ""}`}>{r.risk_tier}</span></td>
                     <td className="small">
                       {r.eu_ai_act_class || <span className="tag warn">not assessed</span>}

@@ -38,14 +38,56 @@ Then, on the instance:
 # (Amazon Linux 2023: sudo dnf install -y docker && sudo systemctl enable --now docker)
 sudo usermod -aG docker $USER && newgrp docker   # run docker without sudo
 git clone https://github.com/architsharm/agentfox && cd agentfox/deploy/model-server
-cp .env.example .env    # set MODEL_SERVER_DOMAIN and AGENTFOX_MODEL_SERVER_TOKEN
+cp .env.example .env    # set AGENTFOX_MODEL_SERVER_TOKEN
 docker compose pull && docker compose up -d
 docker compose logs -f models   # ready once each model logs "warm in …"
-curl -H "Authorization: Bearer $TOKEN" https://$MODEL_SERVER_DOMAIN/health
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8090/health
 ```
 
 Generate the token on the machine and paste it only into `.env` and the gateway's
 settings. Not into chat, tickets or shell history you share.
+
+The server listens on `127.0.0.1:8090` only. Give it HTTPS and a name in one of two
+ways.
+
+**Behind the machine's nginx** (it already serves other sites on 80/443). Pick a
+name, point a DNS `A` record at the machine, then add a server block:
+
+```nginx
+# /etc/nginx/sites-available/agentfox-models
+upstream agentfox_models {
+    server 127.0.0.1:8090;
+    keepalive 16;               # the gateway reuses connections; so should nginx
+}
+
+server {
+    listen 80;
+    server_name models.example.com;
+
+    location / {
+        proxy_pass http://agentfox_models;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_read_timeout 30s;
+        client_max_body_size 1m;
+    }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/agentfox-models /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d models.example.com   # adds the 443 block and renews it
+curl -H "Authorization: Bearer $TOKEN" https://models.example.com/health
+```
+
+**On a machine with nothing on 80/443**, use the bundled Caddy instead. Set
+`MODEL_SERVER_DOMAIN` in `.env`, then run `docker compose --profile caddy up -d`.
+
+The name can be a subdomain of any domain you control. Only the gateway ever calls
+it. A domain whose site is hosted elsewhere (on Vercel, say) still works: add an `A`
+record for the subdomain in that domain's DNS, pointing at this machine.
 
 `/health` lists each detector, whether it can run, and the device it runs on.
 

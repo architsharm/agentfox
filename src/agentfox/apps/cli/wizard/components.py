@@ -220,7 +220,10 @@ def _scan_note(run: Run) -> str:
 
 
 def _apply_scan(run: Run) -> None:
-    payload = run.ctx.report.to_submission_payload(source="check")
+    # A local database is this machine: each agent's tool names may go there, so its
+    # project shows its tools before any traffic. Never to a server or Cloud.
+    local = isinstance(run.target.backend, Local)
+    payload = run.ctx.report.to_submission_payload(source="check", tool_names=local)
     payload["label"] = run.ctx.github_repo or run.ctx.project
     # Each recorded scan proposes its own draft agents and policies, so the same scan
     # sent again would pile up duplicates for someone to review. Per destination: a

@@ -38,7 +38,7 @@ export function AgentLink({
 }) {
   const name = agents.find((a) => a.slug === slug)?.name;
   return (
-    <Link href={`/app/agents/${slug}`} className={className} title={name ? slug : undefined}>
+    <Link href={`/app/projects/${slug}`} className={className} title={name ? slug : undefined}>
       {name || slug}
     </Link>
   );

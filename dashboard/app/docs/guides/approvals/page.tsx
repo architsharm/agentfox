@@ -515,7 +515,7 @@ No open findings at severity 'critical'.`}</Output>
         in its default state. The CLI acts on the database directly and records the actor as{" "}
         <code>cli</code>.
       </p>
-      <InTheApp path="/app/agents">Agents → an agent → Kill switch</InTheApp>
+      <InTheApp path="/app/projects">Agents → an agent → Kill switch</InTheApp>
 
       <h2>Incident runbook</h2>
       <p>Every command below was run against the example deployment above.</p>

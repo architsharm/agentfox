@@ -161,6 +161,17 @@ PRIVILEGED: tuple[PrivilegedAction, ...] = (
         "switching a detector off silences it for the whole workspace, like a suppression",
     ),
     PrivilegedAction(
+        "agentfox.capabilities.detection.detector_settings.set_enabled_for_agent",
+        "operator.agent_detector.toggled",
+        "switching a detector off for a project silences it there, like a suppression",
+    ),
+    PrivilegedAction(
+        "agentfox.capabilities.features.set_workspace_protection",
+        "operator.workspace_protection.changed",
+        "changes a protection for every project at once, and can switch it off or let "
+        "projects loosen it",
+    ),
+    PrivilegedAction(
         "agentfox.capabilities.detection.custom_models.save_model",
         "operator.custom_model.saved",
         "registers or changes a model that customer content is sent to, and whose "

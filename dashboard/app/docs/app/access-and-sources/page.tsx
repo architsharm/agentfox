@@ -236,7 +236,7 @@ source changes.
       <NextSteps
         items={[
           { href: "/docs/guides/rag", label: "Retrieval and answers", why: "wire entitlement and sources into retrieval" },
-          { href: "/docs/app/agents#boundary", label: "Knowledge boundary", why: "what an agent may answer at all" },
+          { href: "/docs/app/projects#boundary", label: "Knowledge boundary", why: "what an agent may answer at all" },
           { href: "/docs/app/findings", label: "Findings", why: "stale and deprecated sources raise them" },
         ]}
       />

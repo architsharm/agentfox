@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-277 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+285 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -156,6 +156,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agent-controls` | Kill-switch/quarantine state per agent. |
 | `GET` | `/api/agents` | List Agents |
 | `POST` | `/api/agents` | Create Agent |
+| `POST` | `/api/agents/{agent_id}/approve-system` | Approve a proposed agent and every proposed agent it hands work to, in one step. |
 | `GET` | `/api/agents/{slug}` | Get Agent |
 | `PATCH` | `/api/agents/{slug}` | Update Agent |
 | `GET` | `/api/agents/{slug}/access` | Get Access |
@@ -166,6 +167,9 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/breaker/reset` | Close the breaker now and let the agent's calls through. |
 | `POST` | `/api/agents/{slug}/enforcement` | Switch everything that protects this agent from watching to enforcing. |
 | `POST` | `/api/agents/{slug}/enforcement/preview` | What turning enforcement on for this agent switches, and what it would stop. |
+| `GET` | `/api/agents/{slug}/features` | Get Agent Features |
+| `DELETE` | `/api/agents/{slug}/features/checks/{key}` | Inherit Check |
+| `DELETE` | `/api/agents/{slug}/features/protections/{key}` | Inherit Protection |
 | `POST` | `/api/agents/{slug}/kill` | Stop an agent now. Requires the stronger role — this is an incident action. |
 | `GET` | `/api/agents/{slug}/lineage` | Agent Lineage |
 | `GET` | `/api/agents/{slug}/map` | Which guardrails apply at each step of this agent's requests, with recent traffic. |
@@ -175,6 +179,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/protection/preview` | Replay this agent's last week against the protections, as if enforcing. |
 | `POST` | `/api/agents/{slug}/quarantine` | Stop an agent while you investigate. Reversible and audited. |
 | `POST` | `/api/agents/{slug}/resume` | Restart a stopped agent. Deliberately the same role as `kill` — restarting |
+| `GET` | `/api/agents/{slug}/setup` | What this project still needs, for the banner a project's pages show. |
 | `GET` | `/api/agents/{slug}/tool-paths` | The tool-call paths an agent took, which are new, and which no test expects. |
 | `POST` | `/api/agents/{slug}/tool-paths/tests` | A regression case expecting this path, so the suite checks the agent keeps it. |
 | `GET` | `/api/agents/{slug}/tools` | The tools this agent can be tested with: granted, in its code, or seen called, |
@@ -438,6 +443,9 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/custom-rules/fields` | The arguments a tool is known to take, to suggest as a condition's field. |
 | `POST` | `/api/custom-rules/try` | Match one text against a rule that has not been saved. Records nothing. |
 | `DELETE` | `/api/custom-rules/{key}` | Remove Custom Rule |
+| `GET` | `/api/features` | Get Features |
+| `POST` | `/api/features/checks/{key}` | Switch a check on or off for every project, or for one. Switching on one that |
+| `POST` | `/api/features/protections/{key}` | Set Protection |
 | `POST` | `/api/import/{tool}` | Apply Import |
 | `POST` | `/api/import/{tool}/plan` | Plan Import |
 | `GET` | `/api/judgment/posture` | What is in force, what may be changed, and what the deployment forbids. |

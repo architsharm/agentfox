@@ -173,7 +173,7 @@ export function WelcomeFlow({
                     <button type="button" className="k-btn-primary" onClick={accept}>
                       Set this up
                     </button>
-                    <Link href="/app/agents?tab=proposed" className="k-btn-ghost">
+                    <Link href="/app/projects?tab=proposed" className="k-btn-ghost">
                       Review one by one instead
                     </Link>
                   </div>
@@ -194,7 +194,7 @@ export function WelcomeFlow({
                     {plural(accepted.agents.length, "agent")} registered, {plural(accepted.policies.length, "policy", "policies")} live
                     in observe.
                   </span>
-                  <Link href="/app/agents">Agents</Link>
+                  <Link href="/app/projects">Projects</Link>
                   <Link href="/app/findings">Issues</Link>
                 </div>
               )

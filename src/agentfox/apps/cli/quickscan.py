@@ -141,6 +141,10 @@ def quickscan(
     console.print(f"  Scanned {repo_report.files_scanned} files in [dim]{repo_report.root}[/]")
     if repo_report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(repo_report.frameworks)}")
+    from rich.markup import escape
+
+    for i, line in enumerate(repo_report.agent_summary()):
+        console.print(f"  [dim]{'agents:' if i == 0 else '       '}[/] {escape(line)}")
     calls = len(repo_report.model_calls)
     ungoverned = len(repo_report.ungoverned)
     if calls:

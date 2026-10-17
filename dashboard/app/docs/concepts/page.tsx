@@ -116,7 +116,7 @@ export default function Page() {
           </tbody>
         </table>
         <p>
-          Used in: <Link href="/docs/app/agents">Agents in the web app</Link>,{" "}
+          Used in: <Link href="/docs/app/projects">Agents in the web app</Link>,{" "}
           <Link href="/docs/guides/approvals">Approvals and the kill switch</Link>.
         </p>
       </Def>

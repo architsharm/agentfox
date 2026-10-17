@@ -108,7 +108,7 @@ async function FromRun({ id }: { id: string }) {
                   <span className="k-mono">{tool}</span>
                   <span className="muted">Require approval, add a limit, or remove it for {t.agent}</span>
                 </div>
-                <Link className="k-btn" href={href(`/app/agents/${encodeURIComponent(t.agent)}`, { tab: "access", grant: tool })}>
+                <Link className="k-btn" href={href(`/app/projects/${encodeURIComponent(t.agent)}`, { view: "access", grant: tool })}>
                   Open access
                 </Link>
               </li>
@@ -137,7 +137,7 @@ async function ToolAccess({ agent }: { agent?: string }) {
                 <span className="k-name">{a.name || a.slug}</span>
                 <span className="muted">{a.declared_tools?.length || 0} tools declared</span>
               </div>
-              <Link className="k-btn" href={href(`/app/agents/${encodeURIComponent(a.slug)}`, { tab: "access" })}>
+              <Link className="k-btn" href={href(`/app/projects/${encodeURIComponent(a.slug)}`, { view: "access" })}>
                 Edit access
               </Link>
             </li>
@@ -189,7 +189,7 @@ function Start({ agent }: { agent?: string }) {
         <Card>
           <div className="k-pills" style={{ gap: 10, justifyContent: "space-between", flexWrap: "wrap" }}>
             <span>Set up everything for {agent} in one go: protections, words, topics and the message users see.</span>
-            <Link className="k-btn-primary" href={`/app/agents/${encodeURIComponent(agent)}/protect`}>
+            <Link className="k-btn-primary" href={`/app/projects/${encodeURIComponent(agent)}/protect`}>
               Protect {agent}
             </Link>
           </div>

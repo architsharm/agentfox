@@ -1,7 +1,13 @@
-# The model server on one machine (an EC2 instance, say), behind automatic HTTPS.
+# The model server on one machine (an EC2 instance, say).
 #
-#   cp .env.example .env    # set the domain and the token
+#   cp .env.example .env    # set the token
 #   docker compose up -d
+#
+# It listens on 127.0.0.1:8090 only. Put HTTPS in front of it with:
+#   * the reverse proxy the machine already runs (nginx, say; README.md has the
+#     server block), or
+#   * on a machine with nothing on ports 80/443, the bundled Caddy, which gets a
+#     certificate on its own:  docker compose --profile caddy up -d
 #
 # Updating is a pull, and only when a model-side change ships: the gateway keeps
 # deploying from main as often as it likes without touching this machine.
@@ -23,8 +29,9 @@ services:
       AGENTFOX_MODEL_DEVICE: ${AGENTFOX_MODEL_DEVICE:-auto}
       # Weights are read from the image only, never fetched while serving.
       HF_HUB_OFFLINE: "1"
-    # Not published to the host: only Caddy reaches it.
-    expose: ["8090"]
+    # Loopback only: the host's reverse proxy (or the bundled Caddy) reaches it; the
+    # internet does not.
+    ports: ["127.0.0.1:8090:8090"]
     healthcheck:
       test: ["CMD", "python", "-c", "import os,urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8090/health', headers={'Authorization': 'Bearer ' + os.environ['AGENTFOX_MODEL_SERVER_TOKEN']}), timeout=5)"]
       interval: 30s
@@ -34,12 +41,14 @@ services:
       start_period: 120s
 
   caddy:
-    # TLS from Let's Encrypt for MODEL_SERVER_DOMAIN, renewed automatically. The
-    # gateway sends the text it screens here, so it travels encrypted.
+    # Only with `--profile caddy`, for a machine with no reverse proxy of its own: it
+    # takes ports 80 and 443. TLS from Let's Encrypt for MODEL_SERVER_DOMAIN, renewed
+    # automatically. The gateway sends the text it screens here, so it travels encrypted.
+    profiles: ["caddy"]
     image: caddy:2.8
     restart: unless-stopped
     ports: ["80:80", "443:443"]
-    command: ["caddy", "reverse-proxy", "--from", "${MODEL_SERVER_DOMAIN:?set MODEL_SERVER_DOMAIN in .env}", "--to", "models:8090"]
+    command: ["caddy", "reverse-proxy", "--from", "${MODEL_SERVER_DOMAIN:-set-MODEL_SERVER_DOMAIN-in-.env}", "--to", "models:8090"]
     volumes:
       - caddy-data:/data
     depends_on: [models]

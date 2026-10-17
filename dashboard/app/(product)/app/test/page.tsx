@@ -311,7 +311,7 @@ async function Reliability({ agents }: { agents: any[] }) {
             <tbody>
               {slos.slos.map((s: any) => (
                 <tr key={s.slo_id}>
-                  <td><Link href={`/app/agents/${encodeURIComponent(s.agent)}?tab=quality`}>{s.agent}</Link></td>
+                  <td><Link href={`/app/projects/${encodeURIComponent(s.agent)}?view=activity&tab=quality`}>{s.agent}</Link></td>
                   <td>{s.scorer}{s.objective && <span className="sub">{s.objective}</span>}</td>
                   <td className="num">{s.target != null ? `${Math.round(s.target * 100)}%` : "—"}</td>
                   <td className="num">{s.attainment != null ? `${Math.round(s.attainment * 100)}%` : <span className="k-muted">No data</span>}</td>

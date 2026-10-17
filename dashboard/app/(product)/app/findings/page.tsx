@@ -99,7 +99,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
                     <span className="sub">{findingTypeInfo(f.type).label}</span>
                   </td>
                   <td>
-                    {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/agents/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : <span className="k-muted">—</span>}
+                    {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : <span className="k-muted">—</span>}
                   </td>
                   <td className="num">{num(f.occurrences || 1)}</td>
                   <td className="tight muted">{ago(f.last_seen_at || f.created_at)}</td>

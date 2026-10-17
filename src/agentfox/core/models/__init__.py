@@ -64,6 +64,7 @@ from agentfox.core.models.evaluation import (
     RedTeamFinding,
 )
 from agentfox.core.models.guardrails import (
+    AgentDetectorSetting,
     AgentMessageLog,
     AgentSigningKey,
     Budget,
@@ -155,6 +156,7 @@ __all__ = [
     "Budget",
     "BusinessRule",
     "CustomRule",
+    "AgentDetectorSetting",
     "DetectorSetting",
     "CustomModel",
     "ExternalAuthorizer",
