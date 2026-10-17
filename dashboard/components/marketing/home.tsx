@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BoundarySequence } from "@/components/marketing/sequence";
-import { REPO } from "@/components/marketing/nav";
 import { Shot } from "@/components/marketing/shot";
 
 /*
@@ -153,15 +152,6 @@ export function Hero() {
 
       <div className="mk-wrap mk-hero" style={{ position: "relative" }}>
         <div>
-          <div className="mk-up" style={{ marginBottom: 18 }}>
-            <Link
-              href="/blog/agentfox-0-5-release"
-              className="mk-chip mk-chip-accent"
-              style={{ display: "inline-flex", textDecoration: "none" }}
-            >
-              New in 0.5: one-command setup, multi-agent scans &rarr;
-            </Link>
-          </div>
           <p className="mk-kicker mk-up mk-d1">AI agent security</p>
           <h1 className="mk-h1 mk-up mk-d2">
             Secure your agents.<br />
@@ -172,15 +162,15 @@ export function Hero() {
             runtime guardrails, and an audit trail.
           </p>
           <div className="mk-row mk-up mk-d4" style={{ marginTop: 28 }}>
-            <Link href="/playground" className="mk-btn mk-btn-primary">
-              Try a blocked call
+            <Link href="/login" className="mk-btn mk-btn-primary">
+              Get started free
             </Link>
-            <a href={REPO} target="_blank" rel="noreferrer" className="mk-btn mk-btn-outline">
-              View the source
-            </a>
+            <Link href="/playground" className="mk-btn mk-btn-outline">
+              Try the playground
+            </Link>
           </div>
           <p className="mk-fine mk-up mk-d5" style={{ marginTop: 16 }}>
-            No account. No API key. Apache-2.0.
+            Free hosted preview, no card · Self-host in your own infrastructure
           </p>
         </div>
 
@@ -430,82 +420,52 @@ export function Boundaries() {
   );
 }
 
-/* --- 3b. What it keeps --------------------------------------------------- */
+/* --- 3b. Measured, not asserted ----------------------------------------- */
 
 /**
- * Audit and discovery, in one section instead of two.
+ * The proof band: three figures, set large, on ink.
  *
- * They were two full benefit sections, 195 words between them, which made the
- * page read as three products stacked on one URL. They are one idea — what the
- * product knows about your estate once the checks above are running — so they
- * are one section with two panels, and the reader gets both in a screen.
+ * These are the same three figures, from the same two experiments, as the
+ * sign-in page's brand wall (app/(product)/login/page.tsx), so a visitor who
+ * signs in meets the claim they just read. Both ratios are bound in
+ * benchmarks/claims.yaml and checked by scripts/check/claims.py. What the
+ * containment costs (benign tasks escalated to a person) is stated on /benchmark
+ * with its context, which the link below goes to, and the known gaps are one
+ * click away rather than a banner at the point of decision.
  */
+const PROOF_STATS: [string, string][] = [
+  ["588/588", "AgentDojo attack pairs contained"],
+  ["37/37", "Adaptive attacks that beat the detector, still stopped at the action"],
+  ["0", "Detectors switched on during that AgentDojo run"],
+];
+
 export function Proof() {
   return (
-    <section id="proof" className="mk-section mk-reveal">
+    <section id="proof" className="mk-section mk-proof-band mk-reveal">
       <div className="mk-wrap">
-        <div className="mk-pair">
-          <article className="mk-pair-card">
-            <h2 className="mk-h3">The permission check still holds when detection is off</h2>
-            <p>
-              We turned every detector off and replayed AgentDojo&apos;s ground
-              truth, with provenance inferred from the real tool outputs. 588 of
-              588 attack pairs were contained, blocked or escalated to a human. The
-              cost: only 24 of 97 benign tasks ran without escalating too.
-            </p>
-            <Link href="/benchmark">See how it was measured</Link>
-          </article>
-          <article className="mk-pair-card">
-            <h2 className="mk-h3">A record of what happened, and who owns each agent</h2>
-            <p>
-              Every allow and every block is kept, and you can check that record
-              without us. Agents in a repository, and agents only running on a
-              laptop, are listed too, including the ones nobody owns.
-            </p>
-            <span className="mk-pair-links">
-              <Link href="/evidence">Audit trail</Link>
-              <Link href="/discovery">Which agents are running</Link>
-            </span>
-          </article>
+        <div className="mk-narrow">
+          <p className="mk-proof-kicker mk-up">Measured, not asserted</p>
+          <h2 className="mk-h2 mk-up mk-d1">Containment holds when detection fails.</h2>
+          <p className="mk-lede mk-up mk-d2" style={{ marginTop: 16 }}>
+            We replay public attack benchmarks with every detector switched off. The
+            permission check still stops the harmful action, because it never depended on
+            recognising the attack.
+          </p>
         </div>
+        <div className="mk-proof-stats mk-up mk-d3">
+          {PROOF_STATS.map(([value, label]) => (
+            <div key={label} className="mk-proof-stat">
+              <b>{value}</b>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mk-proof-links mk-up mk-d4">
+          <Link href="/benchmark">Methodology and full results &rarr;</Link>
+          <Link href="/how-it-works#limits">Known gaps &rarr;</Link>
+        </p>
       </div>
     </section>
   );
 }
 
-/* --- 5. The honest limits ---------------------------------------------- */
-
-/* Kept, and kept short. This product's credibility rests on publishing the numbers
- * that make it look worse, and a reader who finds them elsewhere first will not come
- * back. Three lines, not a grid of four dense cards. */
-
-export function Limits() {
-  return (
-    /*
-     * One line and a link, where four cards used to be.
-     *
-     * The cards were right to exist and wrong to be here. They sat between the
-     * product story and the pricing — exactly where a visitor decides whether to
-     * try the thing — and the last of them existed only to say the product is
-     * version 0.3. Publishing the limits is this project's best trait, and it
-     * survives in full on /how-it-works, on /benchmark and on /compare, where the
-     * reader has come to check rather than to be convinced. A link costs nothing
-     * in credibility; a wall of caveats at the point of decision costs a sign-up.
-     */
-    <section id="limits" className="mk-section-tight mk-reveal">
-      <div className="mk-wrap">
-        <div className="mk-honest mk-up">
-          <div>
-            <h2 className="mk-h3">Known gaps</h2>
-            <p className="mk-body">
-            The cases we miss, and where another scanner is more precise than ours.
-            </p>
-          </div>
-          <Link href="/how-it-works#limits" className="mk-btn mk-btn-outline">
-            Read the limits
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}

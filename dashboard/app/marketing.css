@@ -4015,3 +4015,84 @@
 .dg text.dg-t-stop { fill: var(--mk-stop); }
 .dg text.dg-t-good { fill: var(--mk-good); }
 .dg text.dg-t-hold { fill: var(--mk-hold); }
+
+/* ========================================================================
+   Proof band (homepage)
+   ========================================================================
+   The one section that stays on ink in both themes. `.mk-ink-act` is
+   neutralised under the light theme on purpose, so this band sets its own
+   ground and type rather than borrowing that act: three figures read best
+   as light type on a dark field, and this is the section that has to land.
+*/
+.mk-proof-band {
+  background:
+    radial-gradient(70% 90% at 100% 0%, rgba(253, 73, 1, 0.16), transparent 55%),
+    var(--mk-ink);
+  color: #f2f5fa;
+}
+.mk-proof-band::before { display: none; }
+.mk-proof-band + .mk-section::before { display: none; }
+.mk-proof-band .mk-h2 { color: #ffffff; }
+.mk-proof-band .mk-lede { color: #b8c4d6; }
+.mk-proof-kicker {
+  margin: 0 0 14px;
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #ff7a45;
+}
+.mk-proof-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 44px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.mk-proof-stat {
+  padding: 28px 28px 4px 0;
+  min-width: 0;
+}
+.mk-proof-stat + .mk-proof-stat {
+  padding-left: 28px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+.mk-proof-stat b {
+  display: block;
+  font-family: var(--mk-display);
+  font-variation-settings: "wdth" 108;
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  line-height: 1;
+  letter-spacing: -.035em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #ffffff;
+}
+.mk-proof-stat span {
+  display: block;
+  margin-top: 12px;
+  max-width: 30ch;
+  font-size: var(--t-small);
+  line-height: 1.5;
+  color: #9fb0c9;
+}
+.mk-proof-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 36px 0 0;
+  font-size: var(--t-small);
+  font-weight: 600;
+}
+.mk-proof-links a { color: #ff7a45; text-decoration: none; }
+.mk-proof-links a:hover { color: #ff9066; text-decoration: underline; }
+@media (max-width: 760px) {
+  .mk-proof-stats { grid-template-columns: 1fr; }
+  .mk-proof-stat,
+  .mk-proof-stat + .mk-proof-stat {
+    padding: 22px 0 18px;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  .mk-proof-stat:first-child { border-top: 0; }
+}
