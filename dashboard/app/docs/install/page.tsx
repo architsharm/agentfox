@@ -57,7 +57,7 @@ export default function Page() {
       <Code>{`python3 -m venv .venv && source .venv/bin/activate
 pip install agentfox
 agentfox --version`}</Code>
-      <Output>{`agentfox 0.4.0`}</Output>
+      <Output>{`agentfox 0.5.0`}</Output>
       <p>With uv, in a project:</p>
       <Code>{`uv add agentfox`}</Code>
       <p>From source, for the latest commit:</p>

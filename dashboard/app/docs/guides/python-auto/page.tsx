@@ -501,11 +501,11 @@ def chat(body: dict, decision=Depends(guard(agent="support-triage", field="messa
     # decision is the EnforcementResult for the incoming message
     return {"verdict": decision.verdict, "would_be": decision.effective_verdict}`}</Code>
       <p>With baseline in observe, then after <code>agentfox policy enforce baseline</code>:</p>
-      <Output>{`{'status': 'ok', 'version': '0.4.0', 'mode': 'observe', 'service': 'support-api'}
+      <Output>{`{'status': 'ok', 'version': '0.5.0', 'mode': 'observe', 'service': 'support-api'}
 200 {'verdict': 'allow', 'would_be': 'allow'}
 200 {'verdict': 'allow', 'would_be': 'block'}
 baseline → enforce
-{'status': 'ok', 'version': '0.4.0', 'mode': 'observe', 'service': 'support-api'}
+{'status': 'ok', 'version': '0.5.0', 'mode': 'observe', 'service': 'support-api'}
 200 {'verdict': 'allow', 'would_be': 'allow'}
 403 {'detail': {'type': 'agentfox_policy_violation', 'message': 'Prompt-injection or jailbreak attempt detected in user input.; System-prompt extraction attempt.', 'trace_id': 'trc_01m46a5ryh4r78b4ys', 'decision_id': 'dec_01m46a5ryn3wypyv2y', 'explanation': {…}}}`}</Output>
       <p>

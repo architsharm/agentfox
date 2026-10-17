@@ -570,7 +570,7 @@ export AGENTFOX_WEBHOOK_TIMEOUT_SECONDS=3`}</Code>
 Content-Length: 107
 Host: 127.0.0.1:18449
 Content-Type: application/json
-User-Agent: agentfox/0.4.0
+User-Agent: agentfox/0.5.0
 X-AgentFox-Event: webhook.test
 X-AgentFox-Delivery: 0b73737568964955a66901e87c890733
 X-AgentFox-Timestamp: 1791212816
