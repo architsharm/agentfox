@@ -101,7 +101,7 @@ export default function GatewayGuide() {
         <Step title="Start the gateway">
           <Code>{`agentfox init
 agentfox serve`}</Code>
-          <Output>{`AgentFox 0.4.0 → http://127.0.0.1:8080
+          <Output>{`AgentFox 0.5.0 → http://127.0.0.1:8080
   inline:  POST http://127.0.0.1:8080/v1/chat/completions
   api:     http://127.0.0.1:8080/api/agents
   docs:    http://127.0.0.1:8080/docs
