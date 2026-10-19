@@ -70,7 +70,7 @@ jobs:
 
       - name: Work out the labels
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/${{ matrix.image.name }}
           labels: |
@@ -155,7 +155,7 @@ jobs:
 
       - name: Work out the tags
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}/${{ matrix.name }}
           # `edge` tracks main; a vX.Y.Z tag also moves `latest` and publishes the
