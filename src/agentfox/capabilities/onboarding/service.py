@@ -9,7 +9,13 @@ import datetime as dt
 import secrets
 from typing import Any
 
-from agentfox.capabilities.onboarding.attacks import ATTACK_TYPES, build_suite, counts
+from agentfox.capabilities.onboarding.attacks import (
+    ATTACK_TYPES,
+    DEFAULT_SETS,
+    LIBRARY,
+    build_suite,
+    counts,
+)
 
 STEPS = ["connect", "install", "structure", "test", "protect", "retest"]
 INITIAL_STATE = {
@@ -36,7 +42,23 @@ def clean_state(value: Any) -> dict[str, Any]:
         "completedSteps": [s for s in value.get("completedSteps") or [] if s in STEPS],
         "skipped": bool(value.get("skipped")),
         "completedAt": value.get("completedAt") or None,
+        # The attack sets each project tests with, chosen on the map's panel.
+        "tests": {
+            str(project): sets
+            for project, chosen in (value.get("tests") or {}).items()
+            if (sets := clean_sets(chosen))
+        },
     }
+
+
+def clean_sets(value: Any) -> list[str]:
+    """Known attack sets, in library order, each once."""
+    chosen = set(value) if isinstance(value, list) else set()
+    return [k for k in LIBRARY if k in chosen]
+
+
+def project_sets(state: dict[str, Any] | None, project: str) -> list[str]:
+    return (state or {}).get("tests", {}).get(project) or list(DEFAULT_SETS)
 
 
 def runner_fresh(seen: dt.datetime | None, now: dt.datetime) -> bool:
@@ -131,14 +153,18 @@ def new_run(
     *,
     project: str | None = None,
     guards: list[str] | None = None,
+    sets: list[str] | None = None,
 ) -> dict[str, Any]:
     """A queued attack test. ``project`` ties it to a project's panel; ``guards`` are
-    the guardrails the runner applies (None: the setup wizard's own choice)."""
-    suite = build_suite(structure)
+    the guardrails the runner applies (None: the setup wizard's own choice); ``sets``
+    the attack sets it runs (None: the default ones)."""
+    sets = clean_sets(sets) or list(DEFAULT_SETS)
+    suite = build_suite(structure, sets)
     return {
         "id": "run_" + secrets.token_hex(8),
         "project": project,
         "guards": guards,
+        "sets": sets,
         "phase": phase,
         "status": "queued",
         "total": len(suite),
@@ -201,6 +227,8 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
     results = run["results"]
     by_type = []
     for kind, label in ATTACK_TYPES.items():
+        if kind not in run["totals"]:
+            continue
         mine = [r for r in results if r["type"] == kind]
         by_type.append(
             {

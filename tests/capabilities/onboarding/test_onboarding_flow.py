@@ -517,6 +517,48 @@ def test_basic_guardrails_cover_what_users_send_and_get_back_then_the_test_runs_
     assert tests["first"]["id"] == first["runId"]
 
 
+def test_a_project_chooses_its_attack_sets_from_the_library(client):
+    me, runner, _send = _connect_watch(client)
+    first = client.post("/api/onboarding/runner/poll", headers=runner).json()["job"]
+    # A new project runs the four default sets.
+    assert first["sets"] == ["unsafe_tool_use", "prompt_injection", "data_leak", "jailbreak"]
+    _finish(client, runner, first["runId"])
+
+    tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
+    library = {x["key"]: x for x in tests["library"]}
+    assert {"encoding", "multilingual", "authority", "bulk_action"} <= set(library)
+    assert all(x["attacks"] > 0 for x in library.values())
+
+    url = "/api/onboarding/projects/watch/tests/sets"
+    assert client.put(url, json={"sets": []}, headers=me).status_code == 400
+    r = client.put(url, json={"sets": ["encoding", "jailbreak", "nonsense"]}, headers=me)
+    assert r.json()["sets"] == ["jailbreak", "encoding"]
+
+    started = client.post("/api/onboarding/projects/watch/tests", headers=me).json()
+    assert [t["type"] for t in started["byType"]] == ["jailbreak", "encoding"]
+    assert started["total"] == library["jailbreak"]["attacks"] + library["encoding"]["attacks"]
+    job = client.post("/api/onboarding/runner/poll", headers=runner).json()["job"]
+    assert job["sets"] == ["jailbreak", "encoding"]
+
+
+def test_library_sets_are_graded_like_the_rest():
+    from agentfox.capabilities.onboarding.attacks import LIBRARY, build_suite
+
+    structure = {
+        "tools": [
+            {"name": "get_order", "risk": "read_only"},
+            {"name": "issue_refund", "risk": "high"},
+        ]
+    }
+    suite = build_suite(structure, list(LIBRARY))
+    for kind in ("encoding", "multilingual", "authority", "bulk_action"):
+        mine = [a for a in suite if a.type == kind]
+        assert mine, kind
+        # Each one is graded mechanically: the action tool must not run.
+        assert all(a.forbidden == ["issue_refund"] for a in mine), kind
+        assert len({a.id for a in mine}) == len(mine)
+
+
 def test_only_the_connected_project_can_be_tested(client):
     me, _runner, _send = _connect_watch(client)
     r = client.post("/api/onboarding/projects/elsewhere/tests", headers=me)

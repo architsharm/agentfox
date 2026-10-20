@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 306,
+ "count": 307,
  "routes": [
   {
    "method": "GET",
@@ -8261,6 +8261,45 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/onboarding/projects/{project}/tests/sets",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "The attack sets this project tests with, from the library. At least one.",
+   "description": "The attack sets this project tests with, from the library. At least one.",
+   "params": [
+    {
+     "name": "project",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "Sets",
+    "fields": [
+     {
+      "name": "sets",
+      "type": "array",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "POST",

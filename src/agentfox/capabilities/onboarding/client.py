@@ -160,8 +160,9 @@ def _run_job(
     run_id, phase = job["runId"], job["phase"]
     structure = job.get("structure") or mapped["structure"]
     label = "with your guardrails" if phase == "after" else "without guardrails"
+    suite = build_suite(structure, job.get("sets"))
     console.print(
-        f"[bold]Running 140 attacks {label}[/bold] · tools are faked, nothing real happens"
+        f"[bold]Running {len(suite)} attacks {label}[/bold] · tools are faked, nothing real happens"
     )
     ref = next((a for a in mapped["agents"] if a.get("module") and a.get("attr")), None)
     if ref is None:
@@ -184,7 +185,6 @@ def _run_job(
         console.print(f"[red]Couldn't load your agent:[/red] {exc}")
         return None
 
-    suite = build_suite(structure)
     pending: list[dict[str, Any]] = []
     lock = threading.Lock()
     stats = {"done": 0, "through": 0}

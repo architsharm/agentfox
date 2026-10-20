@@ -118,13 +118,14 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
         }
         actions={
           <>
-          <Link className="k-btn-primary" href={`/app/projects/${encodeURIComponent(a.slug)}/protect`}>
-            Protect
-          </Link>
           <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
             <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
-            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>
-              {state === "active" ? "Pause" : "Resume"}
+            <button
+              type="submit"
+              className="k-btn"
+              title={state === "active" ? "Emergency stop: refuse every call from this agent until resumed" : "Let calls through again"}
+            >
+              {state === "active" ? "Pause agent" : "Resume agent"}
             </button>
           </form>
           </>

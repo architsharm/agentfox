@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Play, Plus, Search, X } from "lucide-react";
 
 /**
- * The project's attack tests, in the map's panel when nothing is selected.
+ * The project's attack test, in the map's panel when nothing is selected: one row per
+ * attack set (name and what it tries; the result on the right), a "+" to add sets
+ * from the library, and Run.
  *
- * The first test runs by itself when `agentfox init` connects the project: the agent
- * as it is, no guardrails. Then one click adds the basic guardrails (what users send,
- * what goes back to them; nothing on tools) and the test runs again, so the two sit
- * side by side. After that the map is where everything else is set up.
+ * The first test runs by itself when `agentfox init` connects the project, with no
+ * guardrails. Then one click adds the basic guardrails and tests again; each row shows
+ * before → after. Everything else is set up from the map.
  */
 
 type ByType = { type: string; label: string; total: number; done: number; gotThrough: number };
@@ -18,120 +20,92 @@ type Run = {
   status: "running" | "done" | "failed";
   phase: "before" | "after";
   total: number;
-  gotThrough: number;
   byType: ByType[];
-  feed: { id: string; result: "got_through" | "resisted" | "error"; sentence: string }[];
-  worst: { headline: string; attack: string; toolCall: string } | null;
   waitingForRunner: boolean;
-  errors: number;
   error: string | null;
-  finishedAt?: string | null;
 };
+type LibrarySet = { key: string; name: string; description: string; attacks: number };
 type Tests = {
-  project: string;
   first: Run | null;
   withBasic: Run | null;
   basicOn: boolean;
   connectedProject: string | null;
-  runnerConnected: boolean;
-};
-
-/** What each kind of attack tries, in a line. */
-const KINDS: Record<string, string> = {
-  unsafe_tool_use: "Tricks it into running a tool it shouldn't, like a refund on someone else's order",
-  prompt_injection: "Instructions hidden in what it reads, like a tool result or a document",
-  data_leak: "Gets it to hand over someone else's personal data",
-  jailbreak: "Talks it out of its own rules",
+  sets: string[];
+  library: LibrarySet[];
 };
 
 const POLL_MS = 1500;
 
-async function send(url: string, method = "GET"): Promise<any> {
-  const res = await fetch(url, { method, cache: "no-store" });
+async function send(url: string, method = "GET", body?: unknown): Promise<any> {
+  const res = await fetch(url, {
+    method,
+    cache: "no-store",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.detail || data?.error || `Something went wrong (${res.status}).`);
   return data;
 }
 
-function done(r: Run) {
-  return r.byType.reduce((n, t) => n + t.done, 0);
+const of = (run: Run | null | undefined, type: string) => run?.byType.find((t) => t.type === type);
+
+/** The right-hand side of a row: how many got through, before → with basic guardrails. */
+function Result({ before, after, live }: { before?: ByType; after?: ByType; live?: ByType }) {
+  if (live && live.done < live.total) {
+    return (
+      <span className="at-r at-r-live">
+        {live.done}/{live.total}
+      </span>
+    );
+  }
+  const n = (t: ByType) => (
+    <b className={t.gotThrough ? "at-bad" : "at-good"} title={`${t.gotThrough} of ${t.total} got through`}>
+      {t.gotThrough}/{t.total}
+    </b>
+  );
+  if (!before && !after) return <span className="at-r at-r-none">—</span>;
+  return (
+    <span className="at-r">
+      {before ? n(before) : null}
+      {before && after ? <span className="at-arrow">→</span> : null}
+      {after ? n(after) : null}
+    </span>
+  );
 }
 
-function Progress({ run }: { run: Run }) {
-  const n = done(run);
+function Library({ items, onAdd, onClose }: { items: LibrarySet[]; onAdd: (key: string) => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as globalThis.Node) && onClose();
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [onClose]);
+  const shown = items.filter((x) => `${x.name} ${x.description}`.toLowerCase().includes(q.trim().toLowerCase()));
   return (
-    <div className="at-progress">
-      <div className="at-progress-head">
-        <span>
-          {run.waitingForRunner && n === 0
-            ? "Waiting for agentfox init on your machine…"
-            : `Running ${run.phase === "after" ? "with the basic guardrails" : "on your agent as it is"} · ${n} of ${run.total}`}
-        </span>
-        {run.gotThrough ? <b className="at-bad">{run.gotThrough} got through</b> : null}
-      </div>
-      <div className="at-bar" role="progressbar" aria-valuemin={0} aria-valuemax={run.total} aria-valuenow={n}>
-        <i style={{ width: `${run.total ? (n / run.total) * 100 : 0}%` }} />
-      </div>
-      {run.feed.length ? (
-        <ul className="at-feed">
-          {run.feed.slice(0, 3).map((f) => (
-            <li key={f.id} className={`at-${f.result}`}>
-              {f.sentence}
+    <div className="at-lib" ref={box} role="dialog" aria-label="Add attack sets">
+      <label className="at-lib-search">
+        <Search size={13} aria-hidden />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the attack library" />
+      </label>
+      {shown.length ? (
+        <ul>
+          {shown.map((x) => (
+            <li key={x.key}>
+              <button type="button" onClick={() => onAdd(x.key)}>
+                <span>
+                  <strong>{x.name}</strong>
+                  <em>{x.description}</em>
+                </span>
+                <span className="at-lib-n">{x.attacks}</span>
+              </button>
             </li>
           ))}
         </ul>
-      ) : null}
-    </div>
-  );
-}
-
-/** One row per kind of attack: what it tries, and how many got through (before → after). */
-function Kinds({ first, after }: { first: Run; after?: Run | null }) {
-  const afterOf = (type: string) => after?.byType.find((t) => t.type === type);
-  return (
-    <ul className="at-kinds">
-      {first.byType.map((t) => {
-        const a = afterOf(t.type);
-        const running = first.status === "running";
-        return (
-          <li key={t.type}>
-            <div className="at-kind-head">
-              <strong>{t.label}</strong>
-              <span className="at-kind-n">{t.total} attacks</span>
-            </div>
-            <p>{KINDS[t.type] ?? ""}</p>
-            <div className="at-kind-result">
-              {running && t.done < t.total ? (
-                <span className="gm-sub">
-                  {t.done} of {t.total} run{t.gotThrough ? ` · ${t.gotThrough} got through` : ""}
-                </span>
-              ) : (
-                <>
-                  <span className={t.gotThrough ? "at-bad" : "at-good"}>{t.gotThrough ? `${t.gotThrough} got through` : "all stopped"}</span>
-                  {a && a.done ? (
-                    <>
-                      <span className="at-arrow" aria-label="then, with basic guardrails">→</span>
-                      <span className={a.gotThrough ? "at-bad" : "at-good"}>{a.gotThrough ? `${a.gotThrough} with basic guardrails` : "all stopped with basic guardrails"}</span>
-                    </>
-                  ) : null}
-                </>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function Failed({ run, retry, busy }: { run: Run; retry: () => void; busy: boolean }) {
-  return (
-    <div className="at-failed">
-      <strong>The test couldn&apos;t run.</strong>
-      <p>{run.error || "Most attacks failed before they reached your agent."}</p>
-      <button type="button" className="at-btn at-btn-quiet" onClick={retry} disabled={busy}>
-        Try again
-      </button>
+      ) : (
+        <p className="gm-sub">{items.length ? "Nothing matches." : "Every set in the library is already added."}</p>
+      )}
     </div>
   );
 }
@@ -141,145 +115,139 @@ export function AttackTests({ project }: { project: string }) {
   const [tests, setTests] = useState<Tests | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const url = `/api/onboarding/projects/${encodeURIComponent(project)}/tests`;
+  const [adding, setAdding] = useState(false);
+  const base = `/api/onboarding/projects/${encodeURIComponent(project)}`;
 
   const load = useCallback(async () => {
     try {
-      setTests(await send(url));
+      setTests(await send(`${base}/tests`));
       setError(null);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [url]);
+  }, [base]);
 
-  const running = Boolean(tests && [tests.first, tests.withBasic].some((r) => r?.status === "running"));
+  const live = tests?.first?.status === "running" ? tests.first : tests?.withBasic?.status === "running" ? tests.withBasic : null;
   useEffect(() => {
     load();
   }, [load]);
-  // While a test runs (or the first one is about to start), keep watching.
+  // Watch while a test runs, and while the first one is still to start.
   useEffect(() => {
-    if (!running && tests?.first) return;
+    if (!live && tests?.first) return;
     const t = setInterval(load, POLL_MS);
     return () => clearInterval(t);
-  }, [running, tests?.first, load]);
+  }, [live, tests?.first, load]);
 
-  const act = async (path: string) => {
+  const act = async (fn: () => Promise<unknown>, refresh = false) => {
     setBusy(true);
     setError(null);
     try {
-      await send(path, "POST");
+      await fn();
       await load();
-      router.refresh(); // the map's rails show the new guardrails
+      if (refresh) router.refresh(); // the map's rails show the new guardrails
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   };
-  const runAgain = () => act(url);
-  const addBasic = async () => {
-    await act(`/api/onboarding/projects/${encodeURIComponent(project)}/basic-guardrails`);
-    // Straight into the second run: the difference is the point.
-    await act(url);
-  };
+  const run = () => act(() => send(`${base}/tests`, "POST"));
+  const addBasic = () =>
+    act(async () => {
+      await send(`${base}/basic-guardrails`, "POST");
+      await send(`${base}/tests`, "POST"); // straight into the second run: the difference is the point
+    }, true);
+  const setSets = (sets: string[]) => act(() => send(`${base}/tests/sets`, "PUT", { sets }));
 
+  const library = useMemo(() => tests?.library ?? [], [tests?.library]);
   if (!tests) {
     return (
       <section className="at">
-        <h4>Attack test</h4>
+        <h4 className="at-title">Attack test</h4>
         <p className="gm-sub">{error ?? "Loading…"}</p>
       </section>
     );
   }
-  const { first, withBasic, basicOn } = tests;
+  const { first, withBasic, basicOn, sets } = tests;
   const here = tests.connectedProject === project;
-  // Whichever test is running shows its progress first; the comparison waits for it.
-  const live = first?.status === "running" ? first : withBasic?.status === "running" ? withBasic : null;
-  const compared = withBasic?.status === "done" ? withBasic : null;
+  const done = withBasic?.status === "done" ? withBasic : null;
+  const rows = sets.map((key) => library.find((x) => x.key === key)).filter((x): x is LibrarySet => Boolean(x));
+  const rest = library.filter((x) => !sets.includes(x.key));
+  const failed = live ? null : [withBasic, first].find((r) => r?.status === "failed") ?? null;
 
   return (
     <section className="at" aria-label="Attack test">
       <div className="at-head">
-        <h4>Attack test</h4>
-        <span className="gm-sub">140 attacks · tools are faked, nothing real happens</span>
+        <h4 className="at-title">Attack test</h4>
+        <div className="at-actions">
+          <button
+            type="button"
+            className="at-icon"
+            onClick={run}
+            disabled={busy || !here || Boolean(live)}
+            title={here ? "Run the test" : "Run agentfox init in this project's repository to test it"}
+            aria-label="Run the test"
+          >
+            <Play size={13} aria-hidden />
+          </button>
+          <button type="button" className="at-icon" onClick={() => setAdding((v) => !v)} title="Add from the library" aria-label="Add attack sets">
+            <Plus size={14} aria-hidden />
+          </button>
+        </div>
+        {adding ? (
+          <Library
+            items={rest}
+            onClose={() => setAdding(false)}
+            onAdd={(key) => {
+              setAdding(false);
+              setSets([...sets, key]);
+            }}
+          />
+        ) : null}
       </div>
 
-      {!first ? (
-        <div className="at-empty">
-          {here ? (
-            <p>No tools found to test yet. Once the agent has tools, the test starts by itself.</p>
-          ) : (
-            <p>
-              Tests run on your machine, through <code>agentfox init</code>. Run it in {project}&apos;s repository and leave it
-              running: the test starts by itself.
-            </p>
-          )}
+      {live ? (
+        <div className="at-bar" role="progressbar" aria-valuemin={0} aria-valuemax={live.total} aria-valuenow={live.byType.reduce((n, t) => n + t.done, 0)}>
+          <i style={{ width: `${live.total ? (live.byType.reduce((n, t) => n + t.done, 0) / live.total) * 100 : 0}%` }} />
         </div>
-      ) : (
-        <>
-          {live ? <Progress run={live} /> : null}
-          {first.status === "failed" ? <Failed run={first} retry={runAgain} busy={busy || !here} /> : null}
-          {first.status === "done" ? (
-            <p className="at-summary">
-              <b className={first.gotThrough ? "at-bad" : "at-good"}>
-                {first.gotThrough} of {first.total}
-              </b>{" "}
-              attacks got through with no guardrails
-              {compared ? (
-                <>
-                  {" · "}
-                  <b className={compared.gotThrough ? "at-bad" : "at-good"}>{compared.gotThrough}</b> with the basic ones
-                </>
-              ) : null}
-              .
-            </p>
-          ) : null}
-          {first.status !== "failed" ? <Kinds first={first} after={compared} /> : null}
-          {first.status === "done" && first.worst && !withBasic ? (
-            <div className="at-worst">
-              <span className="gm-sub">Worst one</span>
-              <strong>{first.worst.headline}</strong>
-              <code>{first.worst.toolCall}</code>
-            </div>
-          ) : null}
-        </>
-      )}
+      ) : null}
+      {live?.waitingForRunner && live.byType.every((t) => t.done === 0) ? (
+        <p className="gm-sub">Waiting for agentfox init on your machine…</p>
+      ) : null}
 
-      {/* Step 2, once: the basic guardrails. */}
+      <ul className="at-rows">
+        {rows.map((x) => (
+          <li key={x.key}>
+            <div className="at-row-text">
+              <strong>{x.name}</strong>
+              <span>{x.description}</span>
+            </div>
+            <Result before={of(first, x.key)} after={of(done, x.key)} live={of(live, x.key)} />
+            {sets.length > 1 ? (
+              <button type="button" className="at-remove" onClick={() => setSets(sets.filter((k) => k !== x.key))} aria-label={`Remove ${x.name}`} title="Remove">
+                <X size={12} aria-hidden />
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {first && done ? <p className="at-legend">got through: no guardrails → basic guardrails</p> : null}
+
+      {!first && !here ? (
+        <p className="gm-sub">
+          Run <code>agentfox init</code> in this project&apos;s repository; the test starts by itself.
+        </p>
+      ) : null}
+      {failed ? <p className="at-error">{failed.error || "The test couldn't reach your agent."}</p> : null}
+
       {first?.status === "done" && !basicOn ? (
         <div className="at-next">
-          <strong>Add basic guardrails</strong>
-          <ul>
-            <li>Block prompt attacks and jailbreaks in what users send</li>
-            <li>Hide personal data and secrets in replies</li>
-            <li>Nothing on tools yet: you set those up from the map</li>
-          </ul>
+          <div>
+            <strong>Add basic guardrails</strong>
+            <p>Blocks attacks in what users send; hides personal data and secrets in replies. Nothing on tools.</p>
+          </div>
           <button type="button" className="at-btn" onClick={addBasic} disabled={busy || !here}>
-            {busy ? "Adding…" : "Add basic guardrails and test again"}
-          </button>
-          {!here ? <span className="gm-sub">Run agentfox init in this project&apos;s repository to test again.</span> : null}
-        </div>
-      ) : null}
-
-      {/* Step 3: the second run, then the map. */}
-      {basicOn && withBasic?.status === "failed" ? <Failed run={withBasic} retry={runAgain} busy={busy || !here} /> : null}
-      {basicOn && first && !withBasic ? (
-        <div className="at-next">
-          <strong>Basic guardrails are on</strong>
-          <p className="gm-sub">Run the test again to see what they stop.</p>
-          <button type="button" className="at-btn" onClick={runAgain} disabled={busy || !here}>
-            Run the test again
-          </button>
-        </div>
-      ) : null}
-      {withBasic?.status === "done" ? (
-        <div className="at-next at-next-quiet">
-          <p>
-            What still gets through needs guardrails on tools and on what the agent reads. Click a line or a tool on the map to
-            set them up.
-          </p>
-          <button type="button" className="at-btn at-btn-quiet" onClick={runAgain} disabled={busy || !here || running}>
-            Run the test again
+            Add and test again
           </button>
         </div>
       ) : null}

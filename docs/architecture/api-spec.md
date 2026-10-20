@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-306 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+307 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -150,6 +150,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/onboarding/projects/{project}/basic-guardrails` | Switch on the basic guardrails for every agent in the project: prompt attacks |
 | `GET` | `/api/onboarding/projects/{project}/tests` | The project's first test (as it was) and its latest one with the basic |
 | `POST` | `/api/onboarding/projects/{project}/tests` | Test the project again, with the guardrails it has now. |
+| `PUT` | `/api/onboarding/projects/{project}/tests/sets` | The attack sets this project tests with, from the library. At least one. |
 | `POST` | `/api/onboarding/runner/connect` | Runner Connect |
 | `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/results` | Runner Results |

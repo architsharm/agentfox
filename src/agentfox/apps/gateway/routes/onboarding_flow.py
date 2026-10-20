@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.apps.gateway.deps import current_user, db, require
 from agentfox.capabilities.onboarding import service
+from agentfox.capabilities.onboarding.attacks import library
 from agentfox.core.models import OnboardingSession, User, utcnow
 from agentfox.core.tenancy import bind_session, system_scope
 
@@ -66,7 +67,8 @@ def save_state(
     body: dict[str, Any], session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
     row = _mine(session, user)
-    row.state = service.clean_state(body)
+    # The setup wizard saves its steps; the projects' chosen attack sets stay.
+    row.state = service.clean_state({"tests": (row.state or {}).get("tests"), **body})
     return row.state
 
 
@@ -227,7 +229,29 @@ def project_tests(
         and all(service.has_basic_guardrails(session, a.slug) for a in agents),
         "connectedProject": (row.structure or {}).get("project"),
         "runnerConnected": service.runner_fresh(row.runner_seen_at, now),
+        "sets": service.project_sets(row.state, project),
+        "library": library(
+            row.structure if (row.structure or {}).get("project") == project else None
+        ),
     }
+
+
+class Sets(BaseModel):
+    sets: list[str]
+
+
+@router.put("/projects/{project}/tests/sets")
+def choose_sets(
+    project: str, body: Sets, session: Session = Depends(db), user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """The attack sets this project tests with, from the library. At least one."""
+    sets = service.clean_sets(body.sets)
+    if not sets:
+        raise HTTPException(400, "Choose at least one attack set.")
+    row = _mine(session, user)
+    state = service.clean_state(row.state)
+    row.state = {**state, "tests": {**state.get("tests", {}), project: sets}}
+    return {"project": project, "sets": sets}
 
 
 @router.post("/projects/{project}/tests")
@@ -254,6 +278,7 @@ def start_project_test(
         utcnow(),
         project=project,
         guards=list(service.BASIC_TEST_GUARDS) if basic else [],
+        sets=service.project_sets(row.state, project),
     )
     row.runs = {**(row.runs or {}), run["id"]: run}
     return _test_run(row, run)
@@ -321,7 +346,14 @@ def runner_connect(
         and row.structure["tools"]
         and not any(r.get("project") == project for r in (row.runs or {}).values())
     ):
-        run = service.new_run("before", row.structure, utcnow(), project=project, guards=[])
+        run = service.new_run(
+            "before",
+            row.structure,
+            utcnow(),
+            project=project,
+            guards=[],
+            sets=service.project_sets(row.state, project),
+        )
         row.runs = {**(row.runs or {}), run["id"]: run}
     return {
         "ok": True,
@@ -360,6 +392,7 @@ def runner_poll(
         "job": {
             "runId": run["id"],
             "phase": run["phase"],
+            "sets": run.get("sets"),
             "guardrails": guards,
             "structure": row.structure,
         },

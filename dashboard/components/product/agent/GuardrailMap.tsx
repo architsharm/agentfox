@@ -924,24 +924,18 @@ function shortReason(reason: string): string {
 
 // --- guide (nothing selected) -----------------------------------------------------
 
-function Guide({ map, project }: { map: AgentMap; project: string }) {
+function Guide({ project }: { project: string }) {
   return (
     <div className="gm-panel gm-guide">
-      <div>
-        <span className="gm-guide-kicker">Set up guardrails</span>
-        <strong className="gm-guide-title">{project}</strong>
-      </div>
-
       <AttackTests project={project} />
 
       <section className="gm-more-agents">
         <h4>Add more agents</h4>
         <p>
-          Missing an agent? Run <code>agentfox init</code> in the repository where it lives. Agents found there show up here,
-          grouped by repository; this map shows {map.agent.name || map.agent.slug}&apos;s project.
+          Run <code>agentfox init</code> in the repository where the agent lives.
         </p>
         <details className="gm-help">
-          <summary>Still can&apos;t see it?</summary>
+          <summary>Can&apos;t see your agent?</summary>
           <ol>
             <li>init reads Python code: LangChain&apos;s <code>create_agent</code>, the OpenAI Agents SDK, or a plain tool-calling loop.</li>
             <li>When it finishes, it lists what it recognised and what it may have missed.</li>
@@ -1065,7 +1059,7 @@ function Panel({
     }
   }
   const tl = selected?.kind === "tool" ? map.tools.find((t) => t.key === selected.key) : null;
-  if (!tl) return <Guide map={map} project={project} />;
+  if (!tl) return <Guide project={project} />;
   const limits = Object.entries(tl.limits || {});
   return (
     <div className="gm-panel">
