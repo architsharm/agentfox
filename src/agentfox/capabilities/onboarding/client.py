@@ -53,6 +53,7 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
     mapped = map_repository(root)
     structure = mapped["structure"]
     _print_map(console, structure)
+    _print_coverage(console, mapped)
     if not structure["agents"]:
         console.print(
             "[yellow]No agent found here.[/yellow] "
@@ -65,6 +66,7 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
         console.print(f"[red]Couldn't reach AgentFox at {server}:[/red] {exc}")
         raise SystemExit(1) from exc
     console.print("[green]●[/green] Connected. Your agents are set up: open AgentFox to see them.")
+    _print_missing_help(console)
     console.print(
         "[dim]Keep this running: it runs the attack tests on this machine when you start "
         "them. Ctrl-C to stop.[/dim]\n"
@@ -89,6 +91,48 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
             time.sleep(POLL_SECONDS)
     except KeyboardInterrupt:
         console.print("\nStopped. Run the same command again to reconnect.")
+
+
+def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
+    """What was read, and what may have been missed because of it."""
+    s = mapped["structure"]
+    n_agents, n_tools = len(s["agents"]), len(s["tools"])
+    console.print(
+        f"[bold]Recognised[/bold]: {n_agents} agent{'s' if n_agents != 1 else ''}, "
+        f"{n_tools} tool{'s' if n_tools != 1 else ''} "
+        f"[dim]from {mapped.get('read', 0)} Python files[/dim]"
+    )
+    unreadable = mapped.get("unreadable") or []
+    if unreadable:
+        shown = ", ".join(unreadable[:5]) + (" …" if len(unreadable) > 5 else "")
+        console.print(
+            f"[yellow]Couldn't read {len(unreadable)} file(s)[/yellow] [dim]({shown})[/dim]"
+        )
+    loose = mapped.get("unassigned_tools") or []
+    if loose:
+        console.print(
+            f"[yellow]Tools found but not given to any agent:[/yellow] {', '.join(loose)} "
+            "[dim](pass them in the agent's tools=[...] to include them)[/dim]"
+        )
+    console.print()
+
+
+def _print_missing_help(console: Console) -> None:
+    """How to add an agent, tool or model that init did not find."""
+    console.print(
+        "\n[bold]Missing something?[/bold] init reads your code; it never runs it. It finds:\n"
+        "  • LangChain / LangGraph: [cyan]@tool[/cyan] functions and "
+        "[cyan]create_agent(model=..., tools=[...])[/cyan]\n"
+        "  • OpenAI Agents SDK: [cyan]@function_tool[/cyan] / [cyan]function_tool(fn)[/cyan] and "
+        "[cyan]Agent(name=..., model=..., tools=[...], handoffs=[...])[/cyan]\n"
+        "  • Plain function calling: [cyan]chat.completions.create(tools=[...])[/cyan] "
+        "with JSON tool schemas\n"
+        "  If an agent or tool isn't listed above: give the agent a [cyan]name=[/cyan], pass the "
+        "tool in its [cyan]tools=[...][/cyan], set [cyan]model=[/cyan] where it's created, then "
+        "run this same command again.\n"
+        "  Running it again adds what's new and keeps the guardrails you already have.\n"
+        "  Already found but not allowed? In AgentFox, open the agent → Limits and access.\n"
+    )
 
 
 def _print_map(console: Console, structure: dict[str, Any]) -> None:

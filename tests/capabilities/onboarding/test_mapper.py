@@ -182,3 +182,40 @@ def test_risk_from_the_tool_name():
     assert classify("add_note", "")[0] == "high"
     assert classify("get_ticket", "")[0] == "read_only"
     assert classify("escalate_to_human", "")[0] == "outside"
+
+
+def test_test_code_is_not_the_agent(tmp_path):
+    """Mocks and tests build stand-in tools; they are not reported as the agent's."""
+    m = _repo(
+        tmp_path,
+        {
+            "agent.py": """
+                from langchain.agents import create_agent
+                from langchain_core.tools import tool
+
+                @tool
+                def get_order(order_id: str) -> str:
+                    \"\"\"Look up an order.\"\"\"
+
+                agent = create_agent(model="gpt-4o-mini", tools=[get_order])
+            """,
+            "testing/mocks.py": """
+                from langchain_core.tools import StructuredTool
+
+                def mock_tool(name):
+                    def fake(**kwargs):
+                        return {}
+                    return StructuredTool.from_function(fake, name=name)
+            """,
+            "test_agent.py": """
+                from langchain_core.tools import tool
+
+                @tool
+                def stub(x: str) -> str:
+                    \"\"\"A stub.\"\"\"
+            """,
+        },
+    )
+    assert [t["name"] for t in m["structure"]["tools"]] == ["get_order"]
+    assert m["unassigned_tools"] == []
+    assert m["unreadable"] == []

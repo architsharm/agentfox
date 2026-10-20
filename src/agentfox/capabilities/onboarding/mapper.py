@@ -47,6 +47,10 @@ SKIP_DIRS = {
     ".ruff_cache",
     "tests",
     "test",
+    "testing",
+    "mocks",
+    "fixtures",
+    "__tests__",
     "archive",
     "examples",
 }
@@ -537,17 +541,27 @@ def _who_talks(root: Path, prompts: str) -> tuple[str, str]:
     return label, "chat"
 
 
+def _is_test_file(name: str) -> bool:
+    return name == "conftest.py" or name.startswith("test_") or name.endswith("_test.py")
+
+
 def map_repository(root: str | Path = ".") -> dict[str, Any]:
     """Scan ``root`` and return ``{"structure": Structure, "agents": [runner refs]}``."""
     root = Path(root).resolve()
     visitors: list[_FileVisitor] = []
+    #: Files that could not be parsed: whatever they define was not seen.
+    unreadable: list[str] = []
     for path in sorted(root.rglob("*.py")):
         rel = path.relative_to(root)
         if any(part in SKIP_DIRS or part.startswith(".") for part in rel.parts[:-1]):
             continue
+        # Test code builds stand-in agents and tools; it isn't the agent.
+        if _is_test_file(rel.name):
+            continue
         try:
             tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=str(rel))
         except (SyntaxError, ValueError):
+            unreadable.append(str(rel))
             continue
         v = _FileVisitor(str(rel), _module_name(rel))
         v.visit(tree)
@@ -706,7 +720,17 @@ def map_repository(root: str | Path = ".") -> dict[str, Any]:
         {"agentId": f"ag-{i + 1}", "module": a.module, "attr": a.attr, "framework": a.framework}
         for i, a in enumerate(agents)
     ]
-    return {"structure": structure, "agents": runners, "project": project, "root": str(root)}
+    given = {t["name"] for t in structure["tools"]}
+    return {
+        "structure": structure,
+        "agents": runners,
+        "project": project,
+        "root": str(root),
+        # What the CLI tells you about what it may have missed.
+        "read": len(visitors),
+        "unreadable": unreadable,
+        "unassigned_tools": sorted(n for n in tools if n not in given),
+    }
 
 
 @dataclass

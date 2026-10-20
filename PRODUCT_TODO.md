@@ -16,7 +16,9 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
   - [ ] Helper agents used as guardrails (CX's "Relevance Guardrail", "Jailbreak Guardrail") show up as ordinary agents; mark them as guard agents.
   - [ ] Agent slugs come from names, so two repos with a "Triage Agent" would collide; scope slugs by project.
   - [ ] The attack-test runner loads LangChain agents; check it with OpenAI Agents SDK and raw-loop agents.
-  - [ ] Show in the setup card what was found *and what was missed* ("found 2 agents, 7 tools · 1 file we couldn't read").
+  - [x] CLI says what it recognised and what it may have missed (2026-10-20): "Recognised: N agents, M tools from K Python files", files it couldn't read, tools found but not given to any agent, then "Missing something?" with the code shapes init reads and "run this again" (keeps guardrails). Test and mock code (`testing/`, `mocks/`, `fixtures/`, `test_*.py`, `conftest.py`) is no longer read as the agent.
+  - [ ] Same "recognised / may have missed" summary in the setup card.
+  - [ ] Add a missed agent or tool by hand in the dashboard (today: only grant a tool AgentFox already knows; "Register agent" doesn't place it in a project).
   - [x] Tested on 3 real repos (2026-10-20): `marketplace-agent` (1 agent, 5 tools), `itsm-helpdesk-agent` ("Helpdesk Support Agent", 4 tools, was 0), `cx-airline-agent` (6 named agents + 2 guardrail agents with the full hand-off graph, was 1 merged agent). Need a 4th: LangGraph or CrewAI.
   - [x] Name agents from the code (the agent's own `name=`, or a constant), not the folder.
   - [ ] Leftover from before the fix: a merged `python-backend` agent in the local registry; re-run init on the CX repo and delete it.
@@ -32,6 +34,8 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 - [x] **One view for new signups and "+ Add a project"**: no projects = every page shows its empty cards + the connection card; Skip (first project only) folds it into a slim bar; `/app/onboarding` now leads there.
 - [x] **Disconnect a project** (2026-10-20): switcher → "Disconnect <project>…" → `DELETE /api/projects/{project}`. Agents leave the dashboard, own guardrails emptied (new audited version, back to watching), tool permissions revoked, init's declared edges cleared, setup card forgets it. History kept. Re-running init treats it as new (tested live on marketplace-agent).
   - [ ] `agentfox disconnect` on the command line, so the repo side (stopping the runner) is one step too.
+- [ ] **The setup card's `pip install agentfox` installs 0.4.0 from PyPI, which has no `init --key`** (found 2026-10-20: a user followed it and got "no such option --key"; the old init then created `~/.agentfox/agentfox.db` and `agentfox.toml` in the repo). Publish 0.5 before launch, and until then show the right install for the deployment (e.g. pin `agentfox>=0.5`, or a local/dev install line), plus a clear error if `--key` is missing.
+- [ ] **Rotate the setup key.** It's made once per user and can only report a map and test results, but there's no way to replace it if it's pasted somewhere it shouldn't be.
 - [x] **Local accounts**: `/dev/as/admin` (existing workspace) and `/dev/as/fresh` (a brand-new signup workspace); `next dev` only; tokens in `dashboard/.env.local`.
 
 ## 2. Map: cohesive, readable, easy to click
