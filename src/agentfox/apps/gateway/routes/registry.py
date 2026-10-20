@@ -19,6 +19,7 @@ from agentfox.apps.gateway.deps import (
     operator_or_agent,
     require,
 )
+from agentfox.capabilities.onboarding.projects import remove_project
 from agentfox.core.models import (
     Agent,
     ApiToken,
@@ -49,12 +50,7 @@ from agentfox.platform.identity.operators import issue_token
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger.findings import STATUSES as FINDING_STATUSES
 from agentfox.platform.registry.control import UnknownAgent, all_controls, set_state
-from agentfox.platform.registry.projects import (
-    list_projects,
-    project_map,
-    project_of,
-    remove_project,
-)
+from agentfox.platform.registry.projects import list_projects, project_map, project_of
 from agentfox.platform.registry.service import (
     assess_delegation,
     attest_registry,

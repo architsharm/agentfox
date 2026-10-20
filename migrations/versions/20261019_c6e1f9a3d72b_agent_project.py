@@ -30,15 +30,24 @@ def _has_column() -> bool:
     return any(c["name"] == "project" for c in columns)
 
 
+def _has_index() -> bool:
+    indexes = sa.inspect(op.get_bind()).get_indexes("agents")
+    return any(i["name"] == "ix_agents_project" for i in indexes)
+
+
 def upgrade() -> None:
+    # The column may already be there (init_db adds it at startup without an index),
+    # so the column and the index are each added only when missing.
     if not _has_column():
         with op.batch_alter_table("agents") as batch_op:
             batch_op.add_column(sa.Column("project", sa.String(length=120), nullable=True))
-            batch_op.create_index("ix_agents_project", ["project"])
+    if not _has_index():
+        op.create_index("ix_agents_project", "agents", ["project"])
 
 
 def downgrade() -> None:
+    if _has_index():
+        op.drop_index("ix_agents_project", table_name="agents")
     if _has_column():
         with op.batch_alter_table("agents") as batch_op:
-            batch_op.drop_index("ix_agents_project")
             batch_op.drop_column("project")
