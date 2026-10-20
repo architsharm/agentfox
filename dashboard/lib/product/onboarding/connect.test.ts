@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { httpApi } from "./api";
-import { isFreshConnection, requestError, watchingCount } from "./connect";
+import { isFreshConnection, requestError } from "./connect";
 
 describe("creating a key", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -77,21 +77,5 @@ describe("isFreshConnection: has agentfox init just reported in?", () => {
   it("with no timestamp (older servers), only a first connection counts", () => {
     expect(isFreshConnection({ connected: false, at: null }, live(null))).toBe(true);
     expect(isFreshConnection({ connected: true, at: null }, live(null))).toBe(false);
-  });
-});
-
-describe("watchingCount", () => {
-  it("counts the first guardrails once each, even when a rule guards two steps", () => {
-    const stages = [
-      { rules: [{ id: "watch.user.attacks" }, { id: "injection.direct" }] },
-      { rules: [{ id: "watch.llm.secrets" }] },
-      { rules: [{ id: "watch.llm.secrets" }] },
-      {},
-    ];
-    expect(watchingCount(stages)).toBe(2);
-  });
-
-  it("is zero with no map", () => {
-    expect(watchingCount(undefined)).toBe(0);
   });
 });

@@ -30,7 +30,7 @@ import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/li
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
 import { ensureRange } from "@/lib/product/range";
 import { GuardrailMapLazy as GuardrailMap } from "@/components/product/agent/GuardrailMapLazy";
-import type { Catalog, LastTest } from "@/components/product/agent/GuardrailMap";
+import type { Catalog } from "@/components/product/agent/GuardrailMap";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { PROJECT_VIEWS, projectHref, projectView } from "@/lib/product/project";
 
@@ -180,9 +180,8 @@ async function ProjectFeatures({ slug }: { slug: string }) {
  */
 async function Canvas({ f }: { f: Filters; posture?: any }) {
   const slug = f.agent!;
-  const [map, campaigns, detectors, posture, agent] = await Promise.all([
+  const [map, detectors, posture, agent] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null),
-    safeApi<any>("/api/redteam/campaigns", { campaigns: [] }),
     safeApi<any>("/api/detectors", { detectors: [] }),
     safeApi<any>("/api/judgment/posture", null),
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}`, null),
@@ -198,13 +197,7 @@ async function Canvas({ f }: { f: Filters; posture?: any }) {
     tiers: (posture?.tiers || []).map((t: any) => ({ tier: t.tier, enabled: Boolean(t.enabled), sends_data: Boolean(t.sends_data), blocked_reason: t.blocked_reason || "" })),
     bands: Object.fromEntries(Object.entries(posture?.kinds || {}).map(([k, v]: [string, any]) => [k, v?.band ?? null])),
   };
-  // The panel beside the map is for setting up guardrails; the numbers belong on a dashboard.
-  // The last attack-test run is the one number it keeps: whether what is set up holds.
-  const last = (campaigns.campaigns || []).find((c: any) => c.status === "completed" && c.summary);
-  const lastTest: LastTest = last
-    ? { name: last.name, at: last.created_at, run: last.summary.attacks_run ?? 0, blocked: last.summary.attacks_blocked ?? 0, href: "/app/test" }
-    : null;
-  return map ? <GuardrailMap maps={[map, ...otherMaps]} focus={slug} project={project} lastTest={lastTest} catalog={catalog} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
+  return map ? <GuardrailMap maps={[map, ...otherMaps]} focus={slug} project={project} catalog={catalog} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
 }
 
 async function Access({ slug, prefill }: { slug: string; prefill?: string }) {

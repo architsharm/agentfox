@@ -49,6 +49,7 @@ import {
   type ToolGroup,
 } from "@/lib/product/guardrailMap";
 import { IMPACT, detectorName, ruleTitle } from "@/lib/product/vocab";
+import { AttackTests } from "./AttackTests";
 
 export type { AgentMap, MapRule } from "@/lib/product/guardrailMap";
 
@@ -923,111 +924,34 @@ function shortReason(reason: string): string {
 
 // --- guide (nothing selected) -----------------------------------------------------
 
-/** The last attack-test run the panel reports, read by the page. */
-export type LastTest = { name: string; at: string; run: number; blocked: number; href: string } | null;
-
-const POINTS = ["input", "context", "tool_call", "tool_result", "output", "response"];
-const RISKY = new Set(["irreversible", "high_impact"]);
-
-/** A place on the map counts as secured when something there enforces; watching is half-way. */
-function coverage(map: AgentMap) {
-  const stages = map.stages.filter((s) => POINTS.includes(s.key));
-  const stageState = stages.map((s) => {
-    const c = counts(s.rules);
-    return c.enforcing ? "on" : c.watching || s.detectors.length ? "watch" : "off";
-  });
-  const toolState = map.tools.map((t) =>
-    t.permission !== "allowed" || t.ladders.length || counts(t.rules).enforcing ? "on" : counts(t.rules).watching ? "watch" : "off",
-  );
-  const all = [...stageState, ...toolState];
-  const on = all.filter((x) => x === "on").length;
-  const watch = all.filter((x) => x === "watch").length;
-  return { total: all.length, on, watch, pct: all.length ? Math.round((on / all.length) * 100) : 0 };
-}
-
-type Suggestion = { text: string; action: string; pick: Selected };
-
-/** Where adding a guardrail matters most, most urgent first. */
-function suggestions(map: AgentMap): Suggestion[] {
-  const out: Suggestion[] = [];
-  for (const t of map.tools) {
-    if (RISKY.has(t.impact || "") && t.permission === "allowed" && !counts(t.rules).enforcing)
-      out.push({ text: `${shortKey(t.key)} can do real damage and runs with no check.`, action: "Require approval", pick: { kind: "tool", key: t.key } });
-  }
-  for (const s of map.stages.filter((x) => POINTS.includes(x.key))) {
-    const c = counts(s.rules);
-    if (!c.enforcing && !c.watching && !s.detectors.length)
-      out.push({ text: `Nothing guards ${s.title.toLowerCase()} yet.`, action: "Add guardrails", pick: { kind: "stage", key: s.key } });
-    else if (!c.enforcing)
-      out.push({ text: `${s.title} only watches: nothing is stopped there.`, action: "Start enforcing", pick: { kind: "stage", key: s.key } });
-  }
-  return out.slice(0, 4);
-}
-
-function Guide({ map, lastTest, onSelect }: { map: AgentMap; lastTest?: LastTest; onSelect: (s: Selected) => void }) {
-  const c = coverage(map);
-  const tips = suggestions(map);
+function Guide({ map, project }: { map: AgentMap; project: string }) {
   return (
     <div className="gm-panel gm-guide">
       <div>
         <span className="gm-guide-kicker">Set up guardrails</span>
-        <strong className="gm-guide-title">{map.agent.name || map.agent.slug}</strong>
+        <strong className="gm-guide-title">{project}</strong>
       </div>
 
-      <section className="gm-score" aria-label="How much of this agent is secured">
-        <div className="gm-score-head">
-          <b>{c.pct}%</b>
-          <span>secured</span>
-        </div>
-        <div className="gm-score-bar" aria-hidden>
-          <i className="on" style={{ width: `${c.total ? (c.on / c.total) * 100 : 0}%` }} />
-          <i className="watch" style={{ width: `${c.total ? (c.watch / c.total) * 100 : 0}%` }} />
-        </div>
-        <p className="gm-sub">
-          {c.on} of {c.total} places on the map enforce a guardrail{c.watch ? ` · ${c.watch} only watch` : ""}.
+      <AttackTests project={project} />
+
+      <section className="gm-more-agents">
+        <h4>Add more agents</h4>
+        <p>
+          Missing an agent? Run <code>agentfox init</code> in the repository where it lives. Agents found there show up here,
+          grouped by repository; this map shows {map.agent.name || map.agent.slug}&apos;s project.
         </p>
+        <details className="gm-help">
+          <summary>Still can&apos;t see it?</summary>
+          <ol>
+            <li>init reads Python code: LangChain&apos;s <code>create_agent</code>, the OpenAI Agents SDK, or a plain tool-calling loop.</li>
+            <li>When it finishes, it lists what it recognised and what it may have missed.</li>
+            <li>Already running elsewhere? Route its calls through AgentFox and it shows up the first time it runs.</li>
+          </ol>
+        </details>
       </section>
 
-      <section>
-        <h4>Last test run</h4>
-        {lastTest ? (
-          <div className="gm-test">
-            <span className={`gm-test-result${lastTest.blocked < lastTest.run ? " bad" : ""}`}>
-              {lastTest.blocked} of {lastTest.run} attacks blocked
-            </span>
-            <span className="gm-sub">
-              {lastTest.name} · {new Date(lastTest.at).toLocaleDateString([], { month: "short", day: "numeric" })}
-            </span>
-            <Link className="gm-link-strong" href={lastTest.href}>Run tests again →</Link>
-          </div>
-        ) : (
-          <p className="gm-sub">
-            No tests yet. <Link className="gm-link-strong" href="/app/test">Run the attack suite →</Link>
-          </p>
-        )}
-      </section>
-
-      <section>
-        <h4>Suggestions</h4>
-        {tips.length ? (
-          <ul className="gm-tips">
-            {tips.map((t) => (
-              <li key={t.text}>
-                <span>{t.text}</span>
-                <button type="button" className="gm-link-strong" onClick={() => onSelect(t.pick)}>
-                  {t.action} →
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="gm-sub">Every place on the map has a guardrail. Run the tests to check they hold.</p>
-        )}
-        <p className="gm-sub">Or click any line or tool on the map to see what you can add there.</p>
-      </section>
-
-      <section className="gm-howto">
-        <h4>How to read this map</h4>
+      <details className="gm-help gm-howto">
+        <summary>How to read this map</summary>
         <ul>
           <li>
             <b>User</b> sits outside. Everything inside the box is yours: your agents and what they reach.
@@ -1037,30 +961,14 @@ function Guide({ map, lastTest, onSelect }: { map: AgentMap; lastTest?: LastTest
             out of it.
           </li>
           <li>
-            <b>Rails</b> are the labelled pills on the lines: Input, Output, To / From the LLM, Tool calls, Tool results,
-            Retrieval &amp; memory. Everything the agent reads reaches its LLM, so a guardrail on Input or Tool results also
-            shows on To the LLM. <Mark size={13} /> means guardrails are set there; <b>+</b> means none yet. Click one to set it up.
+            <b>Rails</b> are the labelled pills on the lines. <Mark size={13} /> means guardrails are set there; <b>+</b> means
+            none yet. Click one to set it up.
           </li>
         </ul>
-      </section>
-
-      <details className="gm-help">
-        <summary>Can&apos;t see your agent here?</summary>
-        <ol>
-          <li>
-            Run <code>agentfox init</code> in the repository where the agent lives. It reads the code, finds every agent and
-            tool, and adds them here.
-          </li>
-          <li>Make sure the agent is built in code it can read, e.g. LangChain&apos;s <code>create_agent</code> with its tools.</li>
-          <li>Already running elsewhere? Route its calls through AgentFox and it shows up the first time it runs.</li>
-        </ol>
-        <Link className="gm-link-strong" href="/app/onboarding">Open setup →</Link>
       </details>
     </div>
   );
 }
-
-// --- panel -----------------------------------------------------------------------
 
 function RuleList({ rules, slug }: { rules: MapRule[]; slug: string }) {
   if (!rules.length) return <p className="k-muted">No rules here.</p>;
@@ -1104,7 +1012,7 @@ function Panel({
   selected,
   groups,
   onSelect,
-  lastTest,
+  project,
   catalog,
   toolList,
 }: {
@@ -1112,7 +1020,7 @@ function Panel({
   selected: Selected;
   groups: ToolGroup[];
   onSelect: (s: Selected) => void;
-  lastTest?: LastTest;
+  project: string;
   catalog?: Catalog;
   toolList: ReactNode;
 }) {
@@ -1157,7 +1065,7 @@ function Panel({
     }
   }
   const tl = selected?.kind === "tool" ? map.tools.find((t) => t.key === selected.key) : null;
-  if (!tl) return <Guide map={map} lastTest={lastTest} onSelect={onSelect} />;
+  if (!tl) return <Guide map={map} project={project} />;
   const limits = Object.entries(tl.limits || {});
   return (
     <div className="gm-panel">
@@ -1338,13 +1246,11 @@ export function GuardrailMap({
   maps,
   focus,
   project,
-  lastTest,
   catalog,
 }: {
   maps: AgentMap[];
   focus: string;
   project: string;
-  lastTest?: LastTest;
   catalog?: Catalog;
 }) {
   const [active, setActive] = useState(focus);
@@ -1467,7 +1373,7 @@ export function GuardrailMap({
       </div>
       <div className="gm-side">
         {agentSwitch}
-        <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} lastTest={lastTest} catalog={catalog} toolList={toolList} />
+        <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} project={project} catalog={catalog} toolList={toolList} />
       </div>
     </div>
   );

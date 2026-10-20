@@ -29,8 +29,3 @@ export function isFreshConnection(baseline: Baseline | null, live: Live): boolea
   if (live.connectedAt) return !baseline.at || live.connectedAt > baseline.at;
   return !baseline.connected;
 }
-
-/** How many of the first, watch-only guardrails an agent has; a rule on two steps counts once. */
-export function watchingCount(stages: { rules?: { id: string }[] }[] | undefined): number {
-  return new Set((stages ?? []).flatMap((s) => s.rules ?? []).map((r) => String(r.id)).filter((id) => id.startsWith("watch."))).size;
-}

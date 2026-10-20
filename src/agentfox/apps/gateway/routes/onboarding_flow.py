@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.deps import current_user, db
+from agentfox.apps.gateway.deps import current_user, db, require
 from agentfox.capabilities.onboarding import service
 from agentfox.core.models import OnboardingSession, User, utcnow
 from agentfox.core.tenancy import bind_session, system_scope
@@ -121,7 +121,10 @@ def save_structure(
     """The user added or removed an agent or tool on See structure. Tests run on this map."""
     row = _mine(session, user)
     s = body.structure
+    project = (row.structure or {}).get("project")
     row.structure = {k: list(s.get(k) or []) for k in ("sources", "agents", "tools", "systems")}
+    if project:
+        row.structure["project"] = project
     return {"structure": row.structure}
 
 
@@ -191,6 +194,87 @@ def save_guardrails(
     return service.guardrails_for(row.guardrails, row.structure)
 
 
+# --- A project's attack tests, for the map's panel -------------------------------
+
+
+def _project_runs(row: OnboardingSession, project: str) -> list[dict[str, Any]]:
+    runs = [r for r in (row.runs or {}).values() if r.get("project") == project]
+    return sorted(runs, key=lambda r: r["createdAt"])
+
+
+@router.get("/projects/{project}/tests")
+def project_tests(
+    project: str, session: Session = Depends(db), user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """The project's first test (as it was) and its latest one with the basic
+    guardrails, whether those are on, and whether this project's `agentfox init` is
+    the one connected (only it can run a test)."""
+    from agentfox.platform.registry.projects import project_agents
+
+    row = _mine(session, user)
+    runs = _project_runs(row, project)
+    # The latest test without the basic guardrails (a failed one tried again replaces it).
+    before = [r for r in runs if r["phase"] == "before"]
+    first = before[-1] if before else None
+    after = [r for r in runs if r["phase"] == "after"]
+    agents = project_agents(session, project)
+    now = utcnow()
+    return {
+        "project": project,
+        "first": _test_run(row, first) if first else None,
+        "withBasic": _test_run(row, after[-1]) if after else None,
+        "basicOn": bool(agents)
+        and all(service.has_basic_guardrails(session, a.slug) for a in agents),
+        "connectedProject": (row.structure or {}).get("project"),
+        "runnerConnected": service.runner_fresh(row.runner_seen_at, now),
+    }
+
+
+@router.post("/projects/{project}/tests")
+def start_project_test(
+    project: str, session: Session = Depends(db), user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Test the project again, with the guardrails it has now."""
+    from agentfox.platform.registry.projects import project_agents
+
+    row = _mine(session, user)
+    if (row.structure or {}).get("project") != project:
+        raise HTTPException(
+            409,
+            f"Run `agentfox init` in {project}'s repository first: the tests run there, "
+            "on your machine.",
+        )
+    if any(r["status"] in ("queued", "running") for r in _project_runs(row, project)):
+        raise HTTPException(409, "A test is already running for this project.")
+    agents = project_agents(session, project)
+    basic = bool(agents) and all(service.has_basic_guardrails(session, a.slug) for a in agents)
+    run = service.new_run(
+        "after" if basic else "before",
+        row.structure,
+        utcnow(),
+        project=project,
+        guards=list(service.BASIC_TEST_GUARDS) if basic else [],
+    )
+    row.runs = {**(row.runs or {}), run["id"]: run}
+    return _test_run(row, run)
+
+
+@router.post("/projects/{project}/basic-guardrails")
+def add_basic_guardrails(
+    project: str, session: Session = Depends(db), user: User = Depends(require("policy"))
+) -> dict[str, Any]:
+    """Switch on the basic guardrails for every agent in the project: prompt attacks
+    in what users send are blocked, personal data and secrets in replies hidden."""
+    from agentfox.platform.registry.projects import project_agents
+
+    agents = project_agents(session, project)
+    if not agents:
+        raise HTTPException(404, f"No project '{project}'")
+    actor = user.email or user.id
+    added = [a.slug for a in agents if service.basic_guardrails(session, a.slug, actor=actor)]
+    return {"project": project, "added": added}
+
+
 # --- `agentfox init --key` --------------------------------------------------------
 
 
@@ -229,6 +313,16 @@ def runner_connect(
     row.structure = service.register_structure(session, structure, project=body.project)
     row.structure_at = utcnow()
     row.runner_seen_at = utcnow()
+    # A project connected for the first time is tested straight away, as it is.
+    project = body.project
+    if (
+        project
+        and row.structure["agents"]
+        and row.structure["tools"]
+        and not any(r.get("project") == project for r in (row.runs or {}).values())
+    ):
+        run = service.new_run("before", row.structure, utcnow(), project=project, guards=[])
+        row.runs = {**(row.runs or {}), run["id"]: run}
     return {
         "ok": True,
         "agents": len(row.structure["agents"]),
@@ -253,11 +347,14 @@ def runner_poll(
         return {"needStructure": False, "job": None}
     run = {**queued[0], "status": "running", "startedAt": now.isoformat()}
     row.runs = {**row.runs, run["id"]: run}
-    guards = (
-        [g["id"] for g in service.guardrails_for(row.guardrails, row.structure) if g["enabled"]]
-        if run["phase"] == "after"
-        else []
-    )
+    if run.get("guards") is not None:
+        guards = run["guards"]
+    elif run["phase"] == "after":
+        guards = [
+            g["id"] for g in service.guardrails_for(row.guardrails, row.structure) if g["enabled"]
+        ]
+    else:
+        guards = []
     return {
         "needStructure": False,
         "job": {

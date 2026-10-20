@@ -422,8 +422,7 @@ def test_an_agent_without_a_project_is_its_own_never_a_pile_of_all(client):
     assert [a["slug"] for a in m["agents"]] == ["solo-a"]
 
 
-def test_connect_gives_a_new_agent_first_guardrails_that_only_watch(client):
-    """What users say, what goes to the LLM, what goes to tools: watched, nothing blocked."""
+def _connect_watch(client):
     me = as_user("admin@example.com")
     key = client.get("/api/onboarding/key", headers=me).json()["value"]
     structure = {
@@ -432,97 +431,96 @@ def test_connect_gives_a_new_agent_first_guardrails_that_only_watch(client):
         "tools": [{"id": "t1", "name": "get_order", "agentId": "ag-1", "systemId": "s"}],
         "systems": [{"id": "s", "name": "Orders", "kind": "database"}],
     }
+    runner = {"Authorization": f"Bearer {key}"}
     send = lambda: client.post(  # noqa: E731
         "/api/onboarding/runner/connect",
         json={"structure": structure, "project": "watch"},
-        headers={"Authorization": f"Bearer {key}"},
+        headers=runner,
     )
     assert send().status_code == 200
-    assert (
-        client.get("/api/onboarding/structure", headers=me).json()["structure"]["agents"][0][
-            "firstGuardrails"
-        ]
-        is True
+    return me, runner, send
+
+
+def _finish(client, runner, run_id):
+    r = client.post(
+        f"/api/onboarding/runner/runs/{run_id}/results",
+        json={
+            "results": [{"id": "a1", "type": "prompt_injection", "gotThrough": True}],
+            "done": True,
+        },
+        headers=runner,
     )
+    assert r.status_code == 200
+
+
+def test_connecting_tests_the_project_as_it_is_with_no_guardrails(client):
+    """A new project gets no guardrails, may run its own tools, and is tested at once."""
+    me, runner, send = _connect_watch(client)
 
     m = client.get("/api/agents/watch-agent/map", headers=me).json()
-    mine = {
-        r["id"]: (stage["key"], r["mode"])
-        for stage in m["stages"]
-        for r in stage["rules"]
-        if r["id"].startswith("watch.")
-    }
-    # What goes to the LLM (the user's message included), what it answers, and what
-    # goes to tools: each has some, and every one of them only watches.
-    on = defaultdict(set)
-    for stage in m["stages"]:
-        for r in stage["rules"]:
-            if r["id"].startswith("watch."):
-                on[stage["key"]].add(r["id"])
-    assert {"input", "prompt", "response", "output", "tool_call", "tool_result"} <= set(on)
-    # The user's message is checked with everything else that goes to the LLM.
-    assert {"watch.llm_in.instructions", "watch.llm_in.personal_data"} <= on["input"]
-    assert on["input"] - {"watch.user.harmful"} <= on["prompt"]
-    # What the LLM answers is watched too.
-    assert {"watch.llm_out.personal_data", "watch.llm_out.secrets"} <= on["response"]
-    assert {mode for _, mode in mine.values()} == {"observe"}
+    assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
+    assert {t["key"]: t["permission"] for t in m["tools"]}["get_order"] == "allowed"
 
-    # Watching only: the tools found in its code may run (no default-deny block).
-    tools = {t["key"]: t["permission"] for t in m["tools"]}
-    assert tools["get_order"] == "allowed"
+    tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
+    assert tests["first"]["status"] == "running"  # queued for the runner
+    assert tests["withBasic"] is None and tests["basicOn"] is False
+    assert tests["connectedProject"] == "watch"
 
-    # Running init again leaves what is there alone.
+    # The runner picks it up with no guardrails applied.
+    job = client.post("/api/onboarding/runner/poll", headers=runner).json()["job"]
+    assert job["runId"] == tests["first"]["id"] and job["guardrails"] == []
+
+    # Connecting again doesn't queue a second first test.
+    _finish(client, runner, job["runId"])
     assert send().status_code == 200
-    assert (
-        client.get("/api/onboarding/structure", headers=me).json()["structure"]["agents"][0][
-            "firstGuardrails"
-        ]
-        is False
-    )
+    assert client.post("/api/onboarding/runner/poll", headers=runner).json()["job"] is None
 
 
-def test_init_brings_an_untouched_earlier_first_set_up_to_date(client):
-    """Agents connected before what the LLM answers was watched get it on the next init;
-    a layer someone edited is left alone."""
-    from agentfox.capabilities.onboarding.service import (
-        _EARLIER_FIRST_WATCH,
-        FIRST_WATCH,
-        first_guardrails,
-    )
-    from agentfox.capabilities.protection import layer_key, own_layer
-    from agentfox.core.db import session_scope
-    from agentfox.core.models import Agent
-    from agentfox.platform.policy.model import Condition, PolicyDocument, Rule
-    from agentfox.platform.policy.publish import publish_in_current_mode
+def test_basic_guardrails_cover_what_users_send_and_get_back_then_the_test_runs_again(client):
+    me, runner, _send = _connect_watch(client)
+    first = client.post("/api/onboarding/runner/poll", headers=runner).json()["job"]
+    _finish(client, runner, first["runId"])
 
-    def layer_with(slug, ids):
-        doc = PolicyDocument(
-            key=layer_key(slug),
-            name=f"{slug} protection",
-            rules=[
-                Rule(id=i, effect="block", when=Condition(surface=["input"]), reason="x")
-                for i in sorted(ids)
-            ],
-        )
-        publish_in_current_mode(
-            session, doc, actor="t", notes="t", level="agent", scope_id=slug,
-            compose="extend", agent_slug=slug,
-        )  # fmt: skip
+    r = client.post("/api/onboarding/projects/watch/basic-guardrails", headers=me)
+    assert r.status_code == 200 and r.json()["added"] == ["watch-agent"]
+    # Once only.
+    again = client.post("/api/onboarding/projects/watch/basic-guardrails", headers=me)
+    assert again.json()["added"] == []
 
-    with session_scope() as session:
-        for slug in ("old-agent", "edited-agent"):
-            session.add(Agent(slug=slug, name=slug))
-        session.flush()
-        layer_with("old-agent", _EARLIER_FIRST_WATCH)
-        layer_with("edited-agent", _EARLIER_FIRST_WATCH | {"mine.custom"})
+    m = client.get("/api/agents/watch-agent/map", headers=me).json()
+    on = defaultdict(set)
+    modes = set()
+    for stage in m["stages"]:
+        for rule in stage["rules"]:
+            if rule["id"].startswith("basic."):
+                on[stage["key"]].add(rule["id"])
+                modes.add(rule["mode"])
+    # What users send and what goes back to them; nothing on tools. And they block.
+    assert on["input"] == {"basic.input.attacks"}
+    assert on["output"] == {"basic.reply.personal_data", "basic.reply.secrets"}
+    assert not on["tool_call"] and not on["tool_result"]
+    assert modes == {"enforce"}
 
-        assert first_guardrails(session, "old-agent") is True
-        ids = {r.id for r in own_layer(session, "old-agent").rules}
-        assert {rid for rid, *_ in FIRST_WATCH} <= ids
-        assert "watch.llm_out.personal_data" in ids
+    tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
+    assert tests["basicOn"] is True and tests["first"]["status"] == "done"
 
-        assert first_guardrails(session, "edited-agent") is False
-        assert "mine.custom" in {r.id for r in own_layer(session, "edited-agent").rules}
+    started = client.post("/api/onboarding/projects/watch/tests", headers=me)
+    assert started.status_code == 200 and started.json()["phase"] == "after"
+    # One at a time.
+    assert client.post("/api/onboarding/projects/watch/tests", headers=me).status_code == 409
+    job = client.post("/api/onboarding/runner/poll", headers=runner).json()["job"]
+    assert job["guardrails"] == service.BASIC_TEST_GUARDS
+    _finish(client, runner, job["runId"])
+    tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
+    assert tests["withBasic"]["status"] == "done"
+    # The first test stays as it was, for the before/after.
+    assert tests["first"]["id"] == first["runId"]
+
+
+def test_only_the_connected_project_can_be_tested(client):
+    me, _runner, _send = _connect_watch(client)
+    r = client.post("/api/onboarding/projects/elsewhere/tests", headers=me)
+    assert r.status_code == 409 and "agentfox init" in r.json()["detail"]
 
 
 # --- the setup key ---------------------------------------------------------------
@@ -618,8 +616,10 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
         assert r.status_code == 200
         return client.get("/api/onboarding/structure", headers=me).json()["structure"]["agents"]
 
-    assert all(a["firstGuardrails"] for a in connect())
-    # Someone tightens a rule and the agents are live.
+    connect()
+    assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
+    client.post("/api/onboarding/projects/shop/basic-guardrails", headers=me)
+    # The agents are live.
     before = client.get("/api/projects/shop/map", headers=me).json()
     assert before["agents"][1]["hands_off_to"] == ["refund-bot"] or before["agents"][0][
         "hands_off_to"
@@ -635,19 +635,19 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
     }
     assert client.get("/api/onboarding/structure", headers=me).json()["connected"] is False
     m = client.get("/api/agents/shop-bot/map", headers=me).json()
-    assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("watch.")]
+    assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
     assert {t["permission"] for t in m["tools"]} <= {"not_granted"}
+    assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"] is None
     assert client.delete("/api/projects/shop", headers=me).status_code == 404
 
     # Connect again: treated like a new project.
-    again = connect()
-    assert all(a["firstGuardrails"] for a in again)
+    connect()
     assert {
         p["project"]: p["agents"]
         for p in client.get("/api/projects", headers=me).json()["projects"]
     }["shop"] == 2
     m = client.get("/api/agents/shop-bot/map", headers=me).json()
-    assert {r["mode"] for s in m["stages"] for r in s["rules"] if r["id"].startswith("watch.")} == {
-        "observe"
-    }
+    assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
+    # Tested afresh.
+    assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
     assert {t["key"]: t["permission"] for t in m["tools"]}["shop_lookup"] == "allowed"

@@ -1,7 +1,7 @@
 """Disconnecting a project, so connecting it again starts from scratch.
 
 Lives with onboarding because it undoes what `agentfox init` set up: the agents it
-registered, their first guardrails and tool grants, and the edges it declared.
+registered, their guardrails and tool grants, and the edges it declared.
 """
 
 from __future__ import annotations
@@ -25,9 +25,10 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
     The setup card forgets the connection. Traffic, issues and the audit chain are
     kept: history is not something a button erases.
 
-    Re-running init then registers the agents again, sees an empty layer, and gives
-    them their first, watch-only guardrails and permissions, as for any new project.
+    Re-running init then registers the agents again with their permissions and no
+    guardrails, and tests them, as for any new project.
     """
+    from agentfox.capabilities.onboarding.service import basic_key
     from agentfox.capabilities.protection import layer_key
     from agentfox.core.models import Identity, OnboardingSession, Policy
     from agentfox.platform.identity.service import revoke_capability
@@ -43,18 +44,18 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
 
     for agent in agents:
         # Its own guardrails: an empty version, watching.
-        key = layer_key(agent.slug)
-        if session.scalar(select(Policy).where(Policy.key == key)) is not None:
-            publish_in_current_mode(
-                session,
-                PolicyDocument(key=key, name=f"{agent.slug} protection", rules=[]),
-                actor=actor,
-                notes=f"project '{project}' removed",
-                level="agent",
-                scope_id=agent.slug,
-                agent_slug=agent.slug,
-            )
-            set_mode(session, key, "observe")
+        for key in (layer_key(agent.slug), basic_key(agent.slug)):
+            if session.scalar(select(Policy).where(Policy.key == key)) is not None:
+                publish_in_current_mode(
+                    session,
+                    PolicyDocument(key=key, name=f"{agent.slug} protection", rules=[]),
+                    actor=actor,
+                    notes=f"project '{project}' removed",
+                    level="agent",
+                    scope_id=agent.slug,
+                    agent_slug=agent.slug,
+                )
+                set_mode(session, key, "observe")
         # Its tool permissions.
         for identity in session.scalars(select(Identity).where(Identity.agent_id == agent.id)):
             for cap in list(identity.capabilities):
@@ -84,14 +85,16 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
         else:
             session.delete(edge)
 
-    # The setup card's memory of the connection: the next init is a new one.
-    for row in session.scalars(
-        select(OnboardingSession).where(OnboardingSession.structure.is_not(None))
-    ):
+    # The setup card's memory of the connection, and the project's attack tests: the
+    # next init is a new one, tested afresh.
+    for row in session.scalars(select(OnboardingSession)):
         agent_slugs = {a.get("slug") for a in (row.structure or {}).get("agents", [])}
         if agent_slugs & set(slugs):
             row.structure = None
             row.structure_at = None
+        runs = row.runs or {}
+        if any(r.get("project") == project for r in runs.values()):
+            row.runs = {k: r for k, r in runs.items() if r.get("project") != project}
 
     chain.append(
         session,

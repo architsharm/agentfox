@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 303,
+ "count": 306,
  "routes": [
   {
    "method": "GET",
@@ -8160,6 +8160,93 @@
    "summary": "This user's setup key, made the first time it is asked for and the same ever after. Always retrievable: it can only report a map and test results, so showing it again is safe, and a running `agentfox init` keeps working.",
    "description": "This user's setup key, made the first time it is asked for and the same ever\nafter. Always retrievable: it can only report a map and test results, so showing\nit again is safe, and a running `agentfox init` keeps working.",
    "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/projects/{project}/basic-guardrails",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Switch on the basic guardrails for every agent in the project: prompt attacks in what users send are blocked, personal data and secrets in replies hidden.",
+   "description": "Switch on the basic guardrails for every agent in the project: prompt attacks\nin what users send are blocked, personal data and secrets in replies hidden.",
+   "params": [
+    {
+     "name": "project",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/projects/{project}/tests",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "The project's first test (as it was) and its latest one with the basic guardrails, whether those are on, and whether this project's `agentfox init` is the one connected (only it can run a test).",
+   "description": "The project's first test (as it was) and its latest one with the basic\nguardrails, whether those are on, and whether this project's `agentfox init` is\nthe one connected (only it can run a test).",
+   "params": [
+    {
+     "name": "project",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/projects/{project}/tests",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Test the project again, with the guardrails it has now.",
+   "description": "Test the project again, with the guardrails it has now.",
+   "params": [
+    {
+     "name": "project",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
     {
      "name": "authorization",
      "in": "header",

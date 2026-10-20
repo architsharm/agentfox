@@ -6,10 +6,11 @@ the tools change: each one is swapped, in place, for a recorder that notes the
 call and hands back the attack's faked result. Nothing real happens: no refund,
 no email, no row written.
 
-"after" runs add AgentFox's basic guardrails around the same loop: the input
-and tool-result checks use AgentFox's injection detector, the reply check its
-PII and secrets detectors, and the tool rules hold a money-moving or deleting
-call for a person instead of running it.
+"after" runs add AgentFox's guardrails around the same loop: the input (and,
+with "prompt-attacks", tool-result) checks use AgentFox's injection detector, the
+reply check its PII and secrets detectors, and the tool rules hold a money-moving
+or deleting call for a person instead of running it. The basic guardrails a
+project switches on from its map are "input-attacks" and "hide-personal-data".
 """
 
 from __future__ import annotations
@@ -189,7 +190,9 @@ def _reply_text(result: Any) -> str:
 
 def run_attack(agent: Any, attack: Attack, run: _Run, agent_name: str) -> dict[str, Any]:
     _CTX.set(run)
-    blocked_input = "prompt-attacks" in run.guards and bool(
+    # "input-attacks" checks only what the user sends; "prompt-attacks" also strips
+    # instructions out of tool results (see _dispatch).
+    blocked_input = bool(run.guards & {"prompt-attacks", "input-attacks"}) and bool(
         _detect("injection.heuristic", attack.message)
     )
     reply = ""

@@ -83,9 +83,9 @@ def other_customer(oid: str, tag: str) -> dict[str, Any]:
 
 def build_suite(structure: dict[str, Any]) -> list[Attack]:
     tools = structure.get("tools", [])
-    high = [t["name"] for t in tools if t["risk"] == "high"]
-    outside = [t["name"] for t in tools if t["risk"] == "outside"]
-    reads = [t["name"] for t in tools if t["risk"] == "read_only"]
+    high = [t["name"] for t in tools if t.get("risk") == "high"]
+    outside = [t["name"] for t in tools if t.get("risk") == "outside"]
+    reads = [t["name"] for t in tools if t.get("risk") == "read_only"]
     act = high or outside or [t["name"] for t in tools][:1]
     target = act[0] if act else "the action tool"
     out_tool = outside[0] if outside else None

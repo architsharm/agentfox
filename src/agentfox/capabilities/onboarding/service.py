@@ -54,7 +54,7 @@ def suggest_guardrails(structure: dict[str, Any] | None) -> list[dict[str, Any]]
     structure = structure or EMPTY_STRUCTURE
     agents = {a["id"]: a["name"] for a in structure.get("agents", [])}
     kinds = {s["id"]: s["kind"] for s in structure.get("systems", [])}
-    high = [t for t in structure.get("tools", []) if t["risk"] == "high"]
+    high = [t for t in structure.get("tools", []) if t.get("risk") == "high"]
 
     def where(tools: list[dict[str, Any]]) -> str:
         return ", ".join(f"{t['name']} · {agents.get(t['agentId'], '')}" for t in tools)
@@ -124,10 +124,21 @@ def guardrails_for(
 # --- Test runs ----------------------------------------------------------------------
 
 
-def new_run(phase: str, structure: dict[str, Any], now: dt.datetime) -> dict[str, Any]:
+def new_run(
+    phase: str,
+    structure: dict[str, Any],
+    now: dt.datetime,
+    *,
+    project: str | None = None,
+    guards: list[str] | None = None,
+) -> dict[str, Any]:
+    """A queued attack test. ``project`` ties it to a project's panel; ``guards`` are
+    the guardrails the runner applies (None: the setup wizard's own choice)."""
     suite = build_suite(structure)
     return {
         "id": "run_" + secrets.token_hex(8),
+        "project": project,
+        "guards": guards,
         "phase": phase,
         "status": "queued",
         "total": len(suite),
@@ -232,8 +243,11 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
             }
     return {
         "id": run["id"],
+        "project": run.get("project"),
         "status": status,
         "phase": run["phase"],
+        "createdAt": run.get("createdAt"),
+        "finishedAt": run.get("finishedAt"),
         "total": run["total"],
         "gotThrough": sum(1 for r in results if r.get("gotThrough")),
         "byType": by_type,
@@ -283,169 +297,91 @@ def impact_for(tool: dict[str, Any], kinds: dict[str, str]) -> str:
     return "read"
 
 
-#: Everything an agent sends to its LLM: the user's message, documents and memory,
-#: other agents' messages and tool results. At run time each is checked as part of the
-#: LLM request (pre-flight), on the surface it came in on, so one rule covers them all.
-TO_LLM = ("input", "retrieved", "tool_result", "memory_write", "agent_message")
-#: What the LLM answers: its reply text, checked after every LLM call (post-flight).
-#: The tool calls it asks for are checked on ``tool_args``.
-FROM_LLM = ("output",)
-
-#: The first guardrails `agentfox init` sets up for a newly found agent: what goes to
-#: the LLM (the user's message included), what comes back from it, and what goes to
-#: tools. They go in the agent's own layer, which starts in observe mode: they record
-#: what they would have done and stop nothing until someone switches the agent to
-#: enforcing.
-FIRST_WATCH: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
-    # (rule id, what it watches, surfaces, entity prefix, min score, effect when enforced)
+#: The basic guardrails, added with one click after the first attack test: what users
+#: send and what goes back to them, nothing on tools. They block (or hide) from the
+#: start, so running the test again shows what they stop; the rest is set up from the
+#: map. Kept in a pack of their own per agent, so switching them on never changes the
+#: mode of anything else the agent has.
+BASIC: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
+    # (rule id, what it does, surfaces, entity prefix, min score, effect)
     (
-        "watch.llm_in.instructions",
-        "Prompt attacks and hidden instructions in what goes to the LLM",
-        TO_LLM,
-        "INJECTION",
-        0.7,
-        "block",
-    ),
-    (
-        "watch.llm_in.personal_data",
-        "Personal data in what goes to the LLM",
-        TO_LLM,
-        "PII",
-        0.8,
-        "redact",
-    ),
-    ("watch.llm_in.secrets", "Secrets in what goes to the LLM", TO_LLM, "SECRET", 0.9, "block"),
-    (
-        "watch.user.harmful",
-        "Harmful requests in what users say",
+        "basic.input.attacks",
+        "Block prompt attacks and jailbreaks in what users send",
         ("input",),
-        "SAFETY",
-        0.7,
-        "block",
-    ),
-    (
-        "watch.llm_out.personal_data",
-        "Personal data in what the LLM answers",
-        FROM_LLM,
-        "PII",
-        0.8,
-        "redact",
-    ),
-    ("watch.llm_out.secrets", "Secrets in what the LLM answers", FROM_LLM, "SECRET", 0.9, "block"),
-    (
-        "watch.llm_out.harmful",
-        "Harmful content in what the LLM answers",
-        FROM_LLM,
-        "SAFETY",
-        0.7,
-        "block",
-    ),
-    (
-        "watch.tool.personal_data",
-        "Personal data passed to tools",
-        ("tool_args",),
-        "PII",
-        0.8,
-        "escalate",
-    ),
-    ("watch.tool.secrets", "Secrets passed to tools", ("tool_args",), "SECRET", 0.9, "block"),
-    (
-        "watch.tool.instructions",
-        "Injected instructions passed to tools",
-        ("tool_args",),
         "INJECTION",
         0.7,
         "block",
     ),
+    (
+        "basic.reply.personal_data",
+        "Hide personal data in replies",
+        ("output",),
+        "PII",
+        0.8,
+        "redact",
+    ),
+    ("basic.reply.secrets", "Hide secrets in replies", ("output",), "SECRET", 0.9, "redact"),
 )
-
-#: The first guardrails as init set them up before 2026-10-20: user input and what goes
-#: to the LLM watched by separate rules, and nothing on what the LLM answers. A layer
-#: holding exactly these was never edited, so running init again brings it up to date.
-_EARLIER_FIRST_WATCH = frozenset(
-    {
-        "watch.user.attacks",
-        "watch.user.harmful",
-        "watch.user.personal_data",
-        "watch.user.secrets",
-        "watch.llm.instructions",
-        "watch.llm.personal_data",
-        "watch.llm.secrets",
-        "watch.tool.personal_data",
-        "watch.tool.secrets",
-        "watch.tool.instructions",
-        "watch.tool.undeclared",
-    }
-)
+#: The same guardrails as the attack runner applies them (runner.py): the user's
+#: message checked for prompt attacks, the reply's personal data and secrets hidden.
+BASIC_TEST_GUARDS = ["input-attacks", "hide-personal-data"]
 
 
-def first_guardrails(
-    session: Any, slug: str, tools: list[str] | None = None, *, actor: str = "agentfox init"
-) -> bool:
-    """Give a newly found agent its first guardrails, watching only. False when it
-    already has its own layer: re-running init never overwrites what someone chose
-    (an untouched layer from an earlier init is brought up to date).
+def basic_key(slug: str) -> str:
+    return f"agent.{slug}.basic"
 
-    Watching only means nothing is stopped, and that includes the agent's own tools:
-    with no grant, AgentFox denies every tool call (default deny). So the tools found
-    in the agent's code are granted too, each recorded in the audit chain as granted
-    by init; a tool someone already set up is left as it is."""
+
+def has_basic_guardrails(session: Any, slug: str) -> bool:
     from sqlalchemy import select
 
-    from agentfox.capabilities.protection import layer_key
     from agentfox.core.models import Policy
+    from agentfox.platform.policy.store import current_binding
+
+    policy = session.scalar(select(Policy).where(Policy.key == basic_key(slug)))
+    if policy is None:
+        return False
+    binding, _live = current_binding(session, policy.id)
+    return binding is not None and binding.mode == "enforce"
+
+
+def basic_guardrails(session: Any, slug: str, *, actor: str) -> bool:
+    """Switch on the basic guardrails for one agent, enforcing. False when they are
+    already on."""
     from agentfox.platform.policy.model import Condition, DetectionCondition, PolicyDocument, Rule
     from agentfox.platform.policy.publish import publish_in_current_mode
+    from agentfox.platform.policy.store import set_mode
 
-    key = layer_key(slug)
-    if session.scalar(select(Policy).where(Policy.key == key)) is not None:
-        # An empty layer is a project that was removed and is being connected again,
-        # and one holding exactly the earlier first guardrails was never edited: both
-        # get the current set. Anything else is someone's choice and stays.
-        from agentfox.capabilities.protection import own_layer
-
-        have = {r.id for r in own_layer(session, slug).rules}
-        if have and have != _EARLIER_FIRST_WATCH:
-            return False
-    rules = [
-        Rule(
-            id=rid,
-            description=what,
-            effect=effect,
-            when=Condition(
-                surface=list(surfaces),
-                detection=DetectionCondition(entity_prefix=prefix, min_score=score),
-            ),
-            reason=f"{what} (first guardrails from agentfox init)",
-        )
-        for rid, what, surfaces, prefix, score, effect in FIRST_WATCH
-    ]
-    rules.append(
-        Rule(
-            id="watch.tool.undeclared",
-            description="Tools the code never declared",
-            effect="escalate",
-            when=Condition(surface=["tool_args"], tool_known=False),
-            reason="a tool no one declared was called (first guardrails from agentfox init)",
-        )
-    )
+    if has_basic_guardrails(session, slug):
+        return False
     doc = PolicyDocument(
-        key=key,
-        name=f"{slug} protection",
-        description=f"First guardrails for '{slug}', set up by agentfox init. Watching only.",
-        rules=rules,
+        key=basic_key(slug),
+        name=f"{slug} basic guardrails",
+        description=f"What users send to '{slug}' and what goes back to them.",
+        rules=[
+            Rule(
+                id=rid,
+                description=what,
+                effect=effect,
+                when=Condition(
+                    surface=list(surfaces),
+                    detection=DetectionCondition(entity_prefix=prefix, min_score=score),
+                ),
+                reason=f"{what} (basic guardrails)",
+            )
+            for rid, what, surfaces, prefix, score, effect in BASIC
+        ],
     )
-    _grant_found_tools(session, slug, tools or [], actor=actor)
-    publish_in_current_mode(
+    published = publish_in_current_mode(
         session,
         doc,
         actor=actor,
-        notes="first guardrails from agentfox init",
+        notes="basic guardrails",
         level="agent",
         scope_id=slug,
         compose="extend",
         agent_slug=slug,
     )
+    set_mode(session, doc.key, "enforce", version=published.version)
     return True
 
 
@@ -548,8 +484,11 @@ def register_structure(
                     declared=True,
                     kind=(system.get("kind") or None),
                 )
-        watching = first_guardrails(session, slug, [t["name"] for t in tools])
-        agents.append({**agent, "slug": slug, "firstGuardrails": watching})
+        # No guardrails yet: the first attack test shows the agent as it is, then the
+        # basic guardrails are one click. Its own tools may run (default deny would
+        # otherwise refuse every one of them).
+        _grant_found_tools(session, slug, [t["name"] for t in tools], actor="agentfox init")
+        agents.append({**agent, "slug": slug})
     # Who hands work to whom, from the code: the map draws these between agents.
     slug_of = {a["id"]: a["slug"] for a in agents}
     for a in agents:
@@ -565,4 +504,4 @@ def register_structure(
                     declared=True,
                     kind="handoff",
                 )
-    return {**structure, "agents": agents}
+    return {**structure, "agents": agents, "project": project}

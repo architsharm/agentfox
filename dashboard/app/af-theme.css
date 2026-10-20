@@ -503,3 +503,44 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .gm-docs { box-sizing: border-box; width: 160px; height: 44px; justify-content: center; }
 .gm-agent { height: 100px; }
 .gm-agent .gm-sub, .gm-agent .gm-handoff-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The attack test in the map's panel */
+.at { display: flex; flex-direction: column; gap: 10px; }
+.at-head { display: flex; flex-direction: column; gap: 2px; }
+.at-head h4 { margin: 0; }
+.at-empty p, .at-more p { margin: 0; font-size: 13px; color: var(--af-fg-2); line-height: 1.45; }
+.at code, .gm-more-agents code { font-family: var(--af-mono); font-size: 12px; padding: 0 4px; border-radius: 4px; background: var(--af-subtle); }
+.at-progress { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--af-line); border-radius: var(--af-r-card); }
+.at-progress-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--af-fg-2); }
+.at-bar { height: 6px; border-radius: 3px; overflow: hidden; background: var(--af-subtle); }
+.at-bar i { display: block; height: 100%; background: var(--af-link); transition: width 400ms var(--af-ease); }
+.at-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--af-fg-2); }
+.at-feed li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 12px; position: relative; }
+.at-feed li::before { content: ""; position: absolute; left: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--af-ok); }
+.at-feed li.at-got_through::before { background: var(--af-err); }
+.at-feed li.at-error::before { background: var(--af-warn); }
+.at-summary { margin: 0; font-size: 13.5px; color: var(--af-fg); line-height: 1.45; }
+.at-kinds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--af-line); border-radius: var(--af-r-card); }
+.at-kinds li { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; }
+.at-kinds li + li { border-top: 1px solid var(--af-line); }
+.at-kind-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; }
+.at-kind-n { font-size: 11.5px; color: var(--af-muted); }
+.at-kinds p { margin: 0; font-size: 12px; color: var(--af-muted); line-height: 1.4; }
+.at-kind-result { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 12.5px; font-weight: 500; }
+.at-arrow { color: var(--af-muted); }
+.at-bad { color: var(--af-err); }
+.at-good { color: var(--af-ok); }
+.at-worst { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--af-r-card); background: color-mix(in srgb, var(--af-err) 6%, var(--af-surface)); font-size: 13px; }
+.at-worst code { white-space: pre-wrap; word-break: break-all; font-size: 11.5px; }
+.at-next { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid color-mix(in srgb, var(--af-brand) 35%, var(--af-line)); border-radius: var(--af-r-card); background: color-mix(in srgb, var(--af-brand) 4%, var(--af-surface)); }
+.at-next strong { font-size: 13.5px; }
+.at-next ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--af-fg-2); }
+.at-next p { margin: 0; font-size: 12.5px; color: var(--af-fg-2); line-height: 1.45; }
+.at-next-quiet { border-color: var(--af-line); background: var(--af-surface); }
+.at-btn { align-self: flex-start; height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--af-brand); color: #fff; font-family: var(--af-sans); font-size: 13px; font-weight: 500; cursor: pointer; }
+.at-btn:disabled { opacity: .55; cursor: default; }
+.at-btn-quiet { background: var(--af-surface); color: var(--af-fg); border: 1px solid var(--af-line-2); }
+.at-failed { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid color-mix(in srgb, var(--af-warn) 40%, var(--af-line)); border-radius: var(--af-r-card); font-size: 13px; }
+.at-failed p { margin: 0; color: var(--af-fg-2); }
+.at-error { margin: 0; font-size: 12.5px; color: var(--af-err); }
+.gm-more-agents p { margin: 0; font-size: 13px; color: var(--af-fg-2); line-height: 1.45; }

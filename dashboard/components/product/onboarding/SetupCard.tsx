@@ -8,7 +8,7 @@ import { Logo } from "@/components/product/Logo";
 import { onboardingApi } from "@/lib/product/onboarding/api";
 import { INITIAL_STATE } from "@/lib/product/onboarding/steps";
 import type { Structure } from "@/lib/product/onboarding/types";
-import { isFreshConnection, watchingCount } from "@/lib/product/onboarding/connect";
+import { isFreshConnection } from "@/lib/product/onboarding/connect";
 import { MAP_PROJECT_COOKIE, PROJECT_COOKIE_AGE } from "@/lib/product/project";
 import { cn } from "@/lib/utils";
 
@@ -127,16 +127,14 @@ export function SetupCard({
       if (stop) return;
 
       setPhase("guarding");
-      const guard = slug && !mock ? await atLeast(STEP_MS, getJson<any>(`/api/agents/${encodeURIComponent(slug)}/map`)) : null;
-      if (mock || !slug) await sleep(STEP_MS);
-      // init gives a newly found agent its first guardrails, watching only (see FIRST_WATCH).
-      const watching = watchingCount(guard?.stages);
-      const fresh = agents.some((a: any) => a.firstGuardrails);
+      // Connecting a project queues its first attack test: the agent as it is.
+      const tests = project && !mock ? await atLeast(STEP_MS, getJson<any>(`/api/onboarding/projects/${encodeURIComponent(project)}/tests`)) : null;
+      if (mock || !project) await sleep(STEP_MS);
       setDetail((d) => ({
         ...d,
-        guarding: fresh || watching
-          ? `Watching what goes to the LLM (what users say included), what it answers, and what goes to tools${watching ? ` · ${watching} guardrails` : ""}. They record, they don't block. Only the workspace's safety rules for destructive commands stay on.`
-          : "Kept the guardrails this agent already had.",
+        guarding: tests?.first
+          ? "140 attacks on your agent as it is, no guardrails yet. Tools are faked, nothing real happens. Results show beside the map."
+          : "No tools found to test yet.",
       }));
       if (stop) return;
 
@@ -373,7 +371,7 @@ function Waiting() {
 const LINES: { phase: Phase; label: string; doing: string }[] = [
   { phase: "found", label: "Agents identified", doing: "Reading what init found" },
   { phase: "fetching", label: "Fetching your agents", doing: "Fetching your agents" },
-  { phase: "guarding", label: "First guardrails on, watching", doing: "Setting up your first guardrails" },
+  { phase: "guarding", label: "Attack test started", doing: "Starting the attack test" },
   { phase: "done", label: "Opening your map", doing: "Opening your map" },
 ];
 const ORDER: Phase[] = ["found", "fetching", "guarding", "done"];
