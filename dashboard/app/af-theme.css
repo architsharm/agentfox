@@ -494,3 +494,12 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .gm-docs { padding: 8px 12px; }
 .gm-rail { height: 30px; font-size: 12.5px; }
 .gm-handoff-note { font-size: 10.5px; color: var(--af-brand); }
+
+/* v4: fixed node sizes so every line has an exact length in units (see layout in GuardrailMap.tsx) */
+.gm-end { box-sizing: border-box; width: 96px; height: 96px; flex-direction: column; justify-content: center; gap: 6px; padding: 0; border-radius: 14px; }
+.gm-agent { box-sizing: border-box; height: 96px; overflow: hidden; }
+.gm-agent-target { outline: 2px dashed color-mix(in srgb, var(--af-brand) 45%, transparent); outline-offset: 3px; }
+.gm-llm { box-sizing: border-box; height: 60px; overflow: hidden; justify-content: center; }
+.gm-docs { box-sizing: border-box; width: 160px; height: 44px; justify-content: center; }
+.gm-agent { height: 100px; }
+.gm-agent .gm-sub, .gm-agent .gm-handoff-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

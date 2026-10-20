@@ -114,9 +114,9 @@ function guarded(s: Stage | undefined): boolean {
 function UserNode() {
   return (
     <div className="gm-node gm-end">
-      <Handle type="source" position={Position.Right} id="out" style={{ top: "30%" }} />
-      <Handle type="target" position={Position.Right} id="back" style={{ top: "72%" }} />
-      <User size={14} aria-hidden />
+      <Handle type="source" position={Position.Right} id="out" style={{ top: IN_AT }} />
+      <Handle type="target" position={Position.Right} id="back" style={{ top: OUT_AT }} />
+      <User size={18} aria-hidden />
       User
     </div>
   );
@@ -135,24 +135,27 @@ function SystemNode({ data }: NodeProps<Node<{ title: string; sub: string; w: nu
 }
 
 /** An agent: the loop that decides what to do next. Guardrails sit on what it reaches, not on it. */
-function AgentNode({ data }: NodeProps<Node<{ name: string; framework?: string | null; active: boolean; handsOffTo?: number }>>) {
+function AgentNode({
+  data,
+}: NodeProps<Node<{ name: string; framework?: string | null; active: boolean; target?: string; handsOffTo?: number }>>) {
   return (
-    <div className={`gm-node gm-agent${data.active ? " gm-agent-active" : ""}`}>
-      <Handle type="target" position={Position.Left} id="in" style={{ top: "32%" }} />
-      <Handle type="source" position={Position.Left} id="reply" style={{ top: "70%" }} />
+    <div
+      className={`gm-node gm-agent${data.active ? " gm-agent-active" : ""}${data.target ? " gm-agent-target" : ""}`}
+      title={data.target ? `${data.target} hands off to this agent` : undefined}
+    >
+      <Handle type="target" position={Position.Left} id="in" style={{ top: IN_AT }} />
+      <Handle type="source" position={Position.Left} id="reply" style={{ top: OUT_AT }} />
       <Handle type="source" position={Position.Top} id="llm" />
-      <Handle type="source" position={Position.Bottom} id="calls" style={{ left: "40%" }} />
-      <Handle type="target" position={Position.Bottom} id="results" style={{ left: "62%" }} />
-      <Handle type="target" position={Position.Top} id="context" style={{ left: "6%" }} />
-      <Handle type="source" position={Position.Top} id="handoff" style={{ left: "88%" }} />
-      <Handle type="target" position={Position.Top} id="handin" style={{ left: "12%" }} />
+      <Handle type="source" position={Position.Bottom} id="calls" style={{ left: CALLS_AT }} />
+      <Handle type="target" position={Position.Bottom} id="results" style={{ left: RESULTS_AT }} />
+      <Handle type="target" position={Position.Right} id="context" />
       <Kind icon={Bot} label="Agent" />
       <strong className="gm-ellipsis">{data.name}</strong>
       <span className="gm-sub">{data.framework ? `${data.framework} · ` : ""}decides what to do next</span>
       {data.handsOffTo ? (
         <span className="gm-handoff-note">
           hands off to {plural(data.handsOffTo, "agent")}
-          {data.active ? "" : " · click to show"}
+          {data.active ? " (outlined)" : " · click to show"}
         </span>
       ) : null}
     </div>
@@ -166,11 +169,10 @@ function LlmNode({ data }: NodeProps<Node<{ models: string[] }>>) {
       <Handle type="target" position={Position.Bottom} />
       <Kind icon={Cpu} label={data.models.length > 1 ? `${data.models.length} LLMs` : "LLM"} />
       {data.models.length ? (
-        data.models.map((m) => (
-          <strong key={m} className="gm-ellipsis k-mono">
-            {m}
-          </strong>
-        ))
+        <strong className="gm-ellipsis k-mono" title={data.models.join(", ")}>
+          {data.models[0]}
+          {data.models.length > 1 ? ` +${data.models.length - 1}` : ""}
+        </strong>
       ) : (
         <strong className="gm-sub">model not found in code</strong>
       )}
@@ -182,7 +184,7 @@ function LlmNode({ data }: NodeProps<Node<{ models: string[] }>>) {
 function DocsNode() {
   return (
     <div className="gm-node gm-docs">
-      <Handle type="source" position={Position.Bottom} style={{ left: "80%" }} />
+      <Handle type="source" position={Position.Left} />
       <Kind icon={FileText} label="Documents & memory" />
     </div>
   );
@@ -256,8 +258,10 @@ export const RAIL: Record<string, { name: string; what: (agent: string) => strin
 };
 
 type GuardData = {
-  /** Where along the line the pill sits (0–1); two rails side by side are set apart. */
+  /** Where along the line the pill sits (0–1). */
   at?: number;
+  /** Which side of the line the pill sits on; centred on it when unset. */
+  side?: "above" | "below" | "left" | "right";
   stage?: Stage;
   title: string;
   selected?: boolean;
@@ -297,7 +301,7 @@ function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
           <button
             type="button"
             className={`gm-rail nodrag nopan${on ? " gm-rail-on" : " gm-rail-off"}${sel ? " gm-selected" : ""}${lit ? " gm-rail-lit" : ""}`}
-            style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}
+            style={{ transform: `translate(${x}px, ${y}px) ${PILL_SIDE[data.side ?? "on"]}` }}
             onClick={data.onPick}
             onMouseEnter={() => data.onHover?.(true)}
             onMouseLeave={() => data.onHover?.(false)}
@@ -315,6 +319,15 @@ function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
   );
 }
 
+/** Moves a pill off its line to one side, so lines side by side never share space. */
+const PILL_SIDE = {
+  on: "translate(-50%, -50%)",
+  above: "translate(-50%, calc(-100% - 6px))",
+  below: "translate(-50%, 6px)",
+  left: "translate(calc(-100% - 10px), -50%)",
+  right: "translate(10px, -50%)",
+} as const;
+
 const EDGE_TYPES = { guard: GuardEdge };
 
 // --- layout ----------------------------------------------------------------------
@@ -327,35 +340,59 @@ const TOOL_H = 34;
 const GAP = 10;
 const PAD = 16;
 const HEAD = 48;
-/** The user sits well outside the box, so the Input and Output rails are outside it too. */
-const USER_X = -420;
-const SYS_X = 230;
-const AGENT_X = 600;
+
+/**
+ * Every line on the map is a whole number of units long (the gap between the two
+ * cards it joins): the user's lines one unit, every other line between one and three.
+ * Cards have fixed sizes (af-theme.css, "v4") so the lengths come out exact.
+ */
+const UNIT = 140;
+const units = (n: number) => Math.min(3, Math.max(1, n)) * UNIT;
+const LENGTH = { user: 1, llm: 1.5, tools: 1.5, context: 1.5 } as const;
+
+const USER_W = 96;
 const AGENT_W = 180;
+const AGENT_H = 100;
 const LLM_W = 180;
-/** Rows inside one agent's band, far apart so every line is long enough to read and
- * click: its LLM, then the agent, then tools and documents. */
-const LLM_Y = 60;
-const AGENT_Y = 280;
-const BELOW_Y = 520;
+const LLM_H = 60;
+const DOCS_W = 160;
+const DOCS_H = 44;
+/** Where the lines meet the cards, so facing handles line up and the lines run straight. */
+const IN_AT = "30%";
+const OUT_AT = "70%";
+const CALLS_AT = "32%";
+const RESULTS_AT = "68%";
+/** Room between one agent's area and the next, and around the inside of the project box. */
+const CELL_GAP = 90;
+const INSET = 28;
+const TOP = 44;
 
 /** Node and edge ids carry the agent: `<slug>|<what>`. */
 const nid = (slug: string, what: string) => `${slug}|${what}`;
 
 /**
- * The agents users talk to directly. One agent: it. Several: the ones that hand work
- * to two or more others (a triage agent), or every one if none does.
+ * The agents users talk to directly. One agent: it. Several: the one that hands work
+ * to the most others (a triage agent), or every one if none hands off.
  */
 function entryAgents(maps: AgentMap[]): string[] {
   if (maps.length <= 1) return maps.map((m) => m.agent.slug);
   const inProject = new Set(maps.map((m) => m.agent.slug));
-  const out = (m: AgentMap) => m.subagents.filter((s) => inProject.has(s.slug)).length;
+  const out = (m: AgentMap) => m.subagents.filter((s) => inProject.has(s.slug) && s.slug !== m.agent.slug).length;
   const most = Math.max(...maps.map(out));
-  // The agent that hands work to the most others is where users come in (a triage
-  // agent). With no hand-offs at all, every agent talks to users.
   return most > 0 ? maps.filter((m) => out(m) === most).map((m) => m.agent.slug) : maps.map((m) => m.agent.slug);
 }
 
+/**
+ * One agent's area, top to bottom: its LLM; the agent, with documents & memory to its
+ * right; its tools in a box. The user stands one unit to the left of the entry agent,
+ * outside the project box.
+ *
+ *            [LLM]
+ *              |
+ *   User ── [Agent] ── [Documents & memory]
+ *              |
+ *          [ tools ]
+ */
 function layout(
   maps: AgentMap[],
   drawnFor: (m: AgentMap) => { tools: MapTool[]; hidden: number },
@@ -367,133 +404,170 @@ function layout(
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const arrow = { type: MarkerType.ArrowClosed, width: 14, height: 14 };
-  const entries = new Set(entryAgents(maps));
+  const entryList = entryAgents(maps);
+  const entries = new Set(entryList);
   const isSel = (slug: string, kind: string, key: string) => slug === active && selected?.kind === kind && selected.key === key;
+  const inProject = new Set(maps.map((m) => m.agent.slug));
+  const activeMap = maps.find((m) => m.agent.slug === active);
+  const targets = new Set((activeMap?.subagents ?? []).map((s) => s.slug).filter((s) => s !== active && inProject.has(s)));
 
-  // Entry agents first, so the user's lines run straight to them.
+  // Entry agents first. When every agent is an entry, stack them in one column so the
+  // user reaches each without crossing another; otherwise a grid, four to a row.
   const ordered = [...maps].sort((a, b) => Number(entries.has(b.agent.slug)) - Number(entries.has(a.agent.slug)));
   const many = maps.length > 1;
-  // One agent: a single column with room to spare. Several: a grid, four to a row,
-  // each agent with its LLM above and its tools (one per line) below.
-  const COLS = many ? Math.min(4, maps.length) : 1;
-  const COL_W = 470;
+  const COLS = !many || entries.size > 1 ? 1 : Math.min(4, maps.length);
   const toolCols = many ? 1 : 2;
-  let right = AGENT_X + 300;
+  const boxW = (cells: number) => {
+    const cols = Math.min(toolCols, Math.max(1, cells));
+    return PAD * 2 + cols * TOOL_W + (cols - 1) * GAP;
+  };
+  const cellW = Math.max(AGENT_W + units(LENGTH.context) + DOCS_W, boxW(toolCols) - 10) + CELL_GAP;
+
+  // The agent's position inside its area, and the box below it.
+  const agentDy = LLM_H + units(LENGTH.llm);
+  const boxDy = agentDy + AGENT_H + units(LENGTH.tools);
+  const rowH: number[] = [];
+  const drawn = ordered.map((m) => drawnFor(m));
+  ordered.forEach((_, idx) => {
+    const row = Math.floor(idx / COLS);
+    const { tools, hidden } = drawn[idx];
+    const cells = tools.length + (hidden ? 1 : 0);
+    const rowsN = cells ? Math.ceil(cells / Math.min(toolCols, cells)) : 0;
+    const boxH = cells ? HEAD + rowsN * TOOL_H + (rowsN - 1) * GAP + PAD : 0;
+    rowH[row] = Math.max(rowH[row] ?? 0, boxDy + boxH + CELL_GAP);
+  });
+  const rowTop = (r: number) => TOP + rowH.slice(0, r).reduce((a, b) => a + b, 0);
+
+  // The box's left edge sits just inside the agents' column, so the user's lines cross
+  // it close to the agent and their pills stay outside.
+  const left = 0;
+  const sysX = left - INSET;
+  let right = left + AGENT_W;
   let bottom = 0;
-  const rowHeights: number[] = [];
-  const rowTop = (r: number) => 70 + rowHeights.slice(0, r).reduce((a, b) => a + b, 0);
-  const placed: { slug: string; x: number; y: number }[] = [];
+  const agentAt: Record<string, { x: number; y: number }> = {};
 
   ordered.forEach((map, idx) => {
     const slug = map.agent.slug;
     const col = idx % COLS;
     const row = Math.floor(idx / COLS);
-    if (rowHeights[row] === undefined) rowHeights[row] = 0;
-    const y = rowTop(row);
-    const ax = AGENT_X + col * COL_W;
+    const x = left + col * cellW;
+    const top = rowTop(row);
+    const ay = top + agentDy;
+    agentAt[slug] = { x, y: ay };
     const stage = (key: string) => map.stages.find((s) => s.key === key);
-    const rail = (key: string, source: string, target: string, extra: Partial<Edge> = {}) =>
+    const rail = (key: string, source: string, target: string, extra: Partial<Edge>, place: Partial<GuardData> = {}) =>
       edges.push({
         id: nid(slug, `edge:${key}`),
         source,
         target,
         type: "guard",
         markerEnd: arrow,
-        data: { stage: stage(key), title: RAIL[key]?.name ?? key, selected: isSel(slug, "stage", key), onPick: () => pick(slug, key) },
+        data: { stage: stage(key), title: RAIL[key]?.name ?? key, selected: isSel(slug, "stage", key), onPick: () => pick(slug, key), ...place },
         ...extra,
       });
-    const agentId = nid(slug, "agent");
-    const handsOffTo = map.subagents.filter((s) => s.slug !== slug && maps.some((m) => m.agent.slug === s.slug)).length;
-    nodes.push({ id: agentId, type: "agent", position: { x: ax, y: y + AGENT_Y }, data: { name: map.agent.name, framework: map.agent.framework, active: slug === active && many, handsOffTo } });
-    placed.push({ slug, x: ax, y: y + AGENT_Y });
 
-    // The LLM, straight above it.
-    nodes.push({ id: nid(slug, "llm"), type: "llm", position: { x: ax + (AGENT_W - LLM_W) / 2, y: y + LLM_Y }, data: { models: map.agent.models || [] } });
+    const agentId = nid(slug, "agent");
+    const handsOffTo = map.subagents.filter((s) => s.slug !== slug && inProject.has(s.slug)).length;
+    nodes.push({
+      id: agentId,
+      type: "agent",
+      position: { x, y: ay },
+      data: {
+        name: map.agent.name,
+        framework: map.agent.framework,
+        active: slug === active && many,
+        target: targets.has(slug) ? activeMap?.agent.name : undefined,
+        handsOffTo,
+      },
+    });
+
+    // Its LLM, straight above.
+    nodes.push({ id: nid(slug, "llm"), type: "llm", position: { x: x + (AGENT_W - LLM_W) / 2, y: top }, data: { models: map.agent.models || [] } });
     rail("completion", agentId, nid(slug, "llm"), { sourceHandle: "llm", style: { stroke: "var(--af-link)", strokeDasharray: "5 4" } });
 
-    // Its tools, in a box straight below it.
-    const { tools, hidden } = drawnFor(map);
-    let boxH = 0;
-    if (tools.length || hidden) {
-      const cells = tools.length + (hidden ? 1 : 0);
-      const cols = Math.min(toolCols, Math.max(1, cells));
+    // Documents & memory, to its right, level with it.
+    if (stage("context")) {
+      const dx = x + AGENT_W + units(LENGTH.context);
+      nodes.push({ id: nid(slug, "docs"), type: "docs", position: { x: dx, y: ay + (AGENT_H - DOCS_H) / 2 }, data: {} });
+      rail("context", nid(slug, "docs"), agentId, { targetHandle: "context", style: { strokeDasharray: "4 4" } }, { side: "above" });
+      right = Math.max(right, dx + DOCS_W);
+    }
+
+    // Its tools, in a box straight below. Calls go down on the left, results come back
+    // up on the right; each pill sits on the outer side of its own line.
+    const { tools, hidden } = drawn[idx];
+    const cells = tools.length + (hidden ? 1 : 0);
+    if (cells) {
+      const cols = Math.min(toolCols, cells);
       const rowsN = Math.ceil(cells / cols);
-      const w = PAD * 2 + cols * TOOL_W + (cols - 1) * GAP;
-      boxH = HEAD + rowsN * TOOL_H + (rowsN - 1) * GAP + PAD;
+      const w = boxW(cells);
+      const h = HEAD + rowsN * TOOL_H + (rowsN - 1) * GAP + PAD;
+      const bx = x - 10;
+      const by = top + boxDy;
       const boxId = nid(slug, "box");
-      const bx = many ? ax + 20 : Math.max(ax + AGENT_W / 2 - w / 2, SYS_X + 260);
-      right = Math.max(right, bx + w + 40);
-      // Its top handles sit straight below the agent's, so both lines run straight down.
-      const callsAt = ax + AGENT_W * 0.4 - bx;
-      const resultsAt = ax + AGENT_W * 0.6 - bx;
-      nodes.push({ id: boxId, type: "box", position: { x: bx, y: y + BELOW_Y }, data: { title: plural(map.tools.length, "tool"), w, h: boxH, selected: slug === active && selected?.kind === "tools", callsAt, resultsAt } });
+      const callsAt = x + (AGENT_W * parseFloat(CALLS_AT)) / 100 - bx;
+      const resultsAt = x + (AGENT_W * parseFloat(RESULTS_AT)) / 100 - bx;
+      nodes.push({ id: boxId, type: "box", position: { x: bx, y: by }, data: { title: plural(map.tools.length, "tool"), w, h, selected: slug === active && selected?.kind === "tools", callsAt, resultsAt } });
       const at = (i: number) => ({ x: PAD + (i % cols) * (TOOL_W + GAP), y: HEAD + Math.floor(i / cols) * (TOOL_H + GAP) });
       tools.forEach((tl, i) =>
         nodes.push({ id: nid(slug, `tool:${tl.key}`), type: "tool", parentId: boxId, extent: "parent", position: at(i), data: { tool: tl, selected: isSel(slug, "tool", tl.key) } }),
       );
       if (hidden) nodes.push({ id: nid(slug, "more"), type: "more", parentId: boxId, extent: "parent", position: at(tools.length), data: { label: `+${hidden} more` } });
-      rail("tool_call", agentId, boxId, { sourceHandle: "calls", targetHandle: "in" });
-      rail("tool_result", boxId, agentId, { sourceHandle: "out", targetHandle: "results", style: { strokeDasharray: "4 4" } });
-      // The two pills sit at different heights so they never overlap.
-      edges[edges.length - 2].data = { ...(edges[edges.length - 2].data as GuardData), at: 0.35 };
-      edges[edges.length - 1].data = { ...(edges[edges.length - 1].data as GuardData), at: 0.35 };
+      rail("tool_call", agentId, boxId, { sourceHandle: "calls", targetHandle: "in" }, { side: "left" });
+      rail("tool_result", boxId, agentId, { sourceHandle: "out", targetHandle: "results", style: { strokeDasharray: "4 4" } }, { side: "right" });
+      right = Math.max(right, bx + w);
+      bottom = Math.max(bottom, by + h);
     }
-
-    // Documents & memory: up to the left of the agent, level with its LLM, one
-    // straight line down into the agent's top-left.
-    if (stage("context")) {
-      nodes.push({ id: nid(slug, "docs"), type: "docs", position: { x: Math.max(ax - 230, SYS_X + 24), y: y + LLM_Y + 36 }, data: {} });
-      rail("context", nid(slug, "docs"), agentId, { targetHandle: "context", style: { strokeDasharray: "4 4" } });
-    }
-
-    // Users talk to the entry agents: Input in, Output back.
-    if (entries.has(slug)) {
-      rail("input", "user", agentId, { sourceHandle: "out", targetHandle: "in" });
-      rail("output", agentId, "user", { sourceHandle: "reply", targetHandle: "back" });
-    }
-
-    const height = BELOW_Y + boxH + 60;
-    rowHeights[row] = Math.max(rowHeights[row], height);
-    right = Math.max(right, ax + COL_W - 60);
-    bottom = Math.max(bottom, rowTop(row) + rowHeights[row]);
+    bottom = Math.max(bottom, ay + AGENT_H);
   });
-  const rows = placed.map((p) => ({ slug: p.slug, top: p.y - AGENT_Y, height: 0 }));
-  const y = bottom;
 
-  // Hand-offs between agents in this project: dashed, agent to agent.
-  const inProject = new Set(maps.map((m) => m.agent.slug));
-  // Only the active agent's hand-offs are drawn: every agent's at once is a tangle.
-  for (const map of maps.filter((m) => m.agent.slug === active)) {
-    for (const s of map.subagents) {
-      if (!inProject.has(s.slug) || s.slug === map.agent.slug) continue;
-      edges.push({
-        id: `handoff|${map.agent.slug}|${s.slug}`,
-        source: nid(map.agent.slug, "agent"),
-        sourceHandle: "handoff",
-        target: nid(s.slug, "agent"),
-        targetHandle: "handin",
-        type: "straight",
-        style: { stroke: "var(--af-brand)", strokeDasharray: "6 4", opacity: 0.45, strokeWidth: 1.5 },
-        markerEnd: arrow,
-      });
-    }
-  }
-
-  // The project box first (it is drawn underneath), then the user, outside it.
-  const total = y - 20;
+  // The project box, drawn underneath everything.
   nodes.unshift({
     id: "system",
     type: "system",
-    position: { x: SYS_X, y: 10 },
-    data: { title: project, sub: maps.length > 1 ? `${maps.length} agents · everything inside is yours` : "your agent and everything it reaches" },
+    position: { x: sysX, y: 0 },
+    data: {
+      title: project,
+      sub: many ? `${maps.length} agents · everything inside is yours` : "your agent and everything it reaches",
+      w: right + INSET - sysX,
+      h: bottom + INSET,
+    },
     style: { zIndex: -1 },
     selectable: false,
     draggable: false,
   } as Node);
-  (nodes[0].data as any).w = right - SYS_X;
-  (nodes[0].data as any).h = total;
-  const firstEntry = rows.find((r) => entries.has(r.slug)) ?? rows[0];
-  nodes.push({ id: "user", type: "user", position: { x: USER_X, y: (firstEntry?.top ?? 0) + AGENT_Y + 6 }, data: {} });
+
+  // The user, outside the box, one unit from the entry agent: level with it, so the
+  // Input and Output lines run straight across. With several entry agents (stacked),
+  // the user stands level with the middle of them.
+  const ys = entryList.map((s) => agentAt[s]?.y).filter((v): v is number => v !== undefined);
+  const userY = ys.length ? (Math.min(...ys) + Math.max(...ys)) / 2 : agentDy + TOP;
+  nodes.push({ id: "user", type: "user", position: { x: left - units(LENGTH.user) - USER_W, y: userY }, data: {} });
+  for (const slug of entryList) {
+    const agentId = nid(slug, "agent");
+    const map = maps.find((m) => m.agent.slug === slug)!;
+    const stage = (key: string) => map.stages.find((s) => s.key === key);
+    const common = { type: "guard", markerEnd: arrow } as const;
+    // Pills near the user end, so they sit outside the project box: Input above its line, Output below.
+    edges.push({
+      ...common,
+      id: nid(slug, "edge:input"),
+      source: "user",
+      sourceHandle: "out",
+      target: agentId,
+      targetHandle: "in",
+      data: { stage: stage("input"), title: RAIL.input.name, selected: isSel(slug, "stage", "input"), onPick: () => pick(slug, "input"), at: 0.38, side: "above" },
+    });
+    edges.push({
+      ...common,
+      id: nid(slug, "edge:output"),
+      source: agentId,
+      sourceHandle: "reply",
+      target: "user",
+      targetHandle: "back",
+      data: { stage: stage("output"), title: RAIL.output.name, selected: isSel(slug, "stage", "output"), onPick: () => pick(slug, "output"), at: 0.62, side: "below" },
+    });
+  }
   return { nodes, edges };
 }
 
@@ -1351,7 +1425,7 @@ export function GuardrailMap({
             fitView
             fitViewOptions={
               maps.length > 1
-                ? { padding: 0.25, maxZoom: 1, nodes: laid.nodes.filter((n) => n.id.startsWith(`${active}|`) && !n.parentId).map((n) => ({ id: n.id })) }
+                ? { padding: 0.25, maxZoom: 1, nodes: laid.nodes.filter((n) => (n.id.startsWith(`${active}|`) || (n.id === "user" && laid.edges.some((e) => e.source === "user" && e.target === `${active}|agent`))) && !n.parentId).map((n) => ({ id: n.id })) }
                 : { padding: 0.12, maxZoom: 1 }
             }
             minZoom={0.15}
