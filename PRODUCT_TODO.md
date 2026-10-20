@@ -40,10 +40,12 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 
 ## 2. Map: cohesive, readable, easy to click
 
-- [ ] **More cohesive look, clearer sections.** Make it obvious what each region is: the conversation (user ↔ agent), the agent's brain (LLM, documents & memory), its hands (tools). Possibly faint labelled zones behind each group.
+- [x] **More cohesive look, clearer sections.** (2026-10-20: user outside; the project in one box; agents as the loop; LLM, tools, documents & memory around each; rails as labelled pills on straight lines.)
+  - Earlier idea kept for reference: Make it obvious what each region is: the conversation (user ↔ agent), the agent's brain (LLM, documents & memory), its hands (tools). Possibly faint labelled zones behind each group.
 - [x] **Clicking a line is hard.** (done 2026-10-19: 44px hit band on every line, pointer cursor, hover lights the line indigo and opens its badge into "<line> · see guardrails"; bare-line clicks open the panel; "+" badge where nothing is set; badges are buttons, so Tab reaches them.)
   - [ ] A visible keyboard focus style on the line itself, and arrow keys between lines.
-- [ ] Multi-agent projects: draw every agent of the project on one canvas (today the page draws one agent; the switcher opens the first).
+- [x] Multi-agent projects on one canvas (2026-10-20): grid of agents, entry agent wired to the user, hand-offs for the active agent, panel switches agents.
+  - [ ] With many agents the full view is small; consider a compact "overview" mode (agents only) with click-to-expand.
 - [ ] Per-agent LLM chain settings: order, confidence band, thresholds. Needs backend; today these are hard-coded and workspace-wide.
 
 ## 3. From the map to setting guardrails (today too much lives in Policies)
