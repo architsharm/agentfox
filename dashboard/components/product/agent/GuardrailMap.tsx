@@ -145,7 +145,8 @@ function AgentNode({
     >
       <Handle type="target" position={Position.Left} id="in" style={{ top: IN_AT }} />
       <Handle type="source" position={Position.Left} id="reply" style={{ top: OUT_AT }} />
-      <Handle type="source" position={Position.Top} id="llm" />
+      <Handle type="source" position={Position.Top} id="ask" style={{ left: CALLS_AT }} />
+      <Handle type="target" position={Position.Top} id="answer" style={{ left: RESULTS_AT }} />
       <Handle type="source" position={Position.Bottom} id="calls" style={{ left: CALLS_AT }} />
       <Handle type="target" position={Position.Bottom} id="results" style={{ left: RESULTS_AT }} />
       <Handle type="target" position={Position.Right} id="context" />
@@ -166,7 +167,8 @@ function AgentNode({
 function LlmNode({ data }: NodeProps<Node<{ models: string[] }>>) {
   return (
     <div className="gm-node gm-llm">
-      <Handle type="target" position={Position.Bottom} />
+      <Handle type="target" position={Position.Bottom} id="in" style={{ left: CALLS_AT }} />
+      <Handle type="source" position={Position.Bottom} id="out" style={{ left: RESULTS_AT }} />
       <Kind icon={Cpu} label={data.models.length > 1 ? `${data.models.length} LLMs` : "LLM"} />
       {data.models.length ? (
         <strong className="gm-ellipsis k-mono" title={data.models.join(", ")}>
@@ -247,7 +249,19 @@ const NODE_TYPES = {
 export const RAIL: Record<string, { name: string; what: (agent: string) => string; between: [string, string] }> = {
   input: { name: "Input", what: (a) => `What users send to ${a}, checked before ${a} sees it.`, between: ["User", "Agent"] },
   output: { name: "Output", what: (a) => `What ${a} sends back, checked before the user sees it.`, between: ["Agent", "User"] },
-  completion: { name: "LLM calls", what: (a) => `What ${a} sends to its LLM and what the LLM answers.`, between: ["Agent", "LLM"] },
+  prompt: {
+    name: "To the LLM",
+    what: (a) =>
+      `Everything ${a} sends its LLM, checked before each call: the user's message, documents & memory, tool results. A guardrail here also shows on the line where that content came in.`,
+    between: ["Agent", "LLM"],
+  },
+  response: {
+    name: "From the LLM",
+    what: (a) =>
+      `What the LLM answers ${a}, checked after each call. Its last answer is the reply the user sees, so these also show on Output; the tools it asks for are checked on Tool calls.`,
+    between: ["LLM", "Agent"],
+  },
+  completion: { name: "Done check", what: (a) => `${a} saying it has finished, checked against what really happened.`, between: ["Agent", "User"] },
   tool_call: { name: "Tool calls", what: (a) => `Every call ${a} makes to a tool: which tool, with what arguments.`, between: ["Agent", "Tools"] },
   tool_result: { name: "Tool results", what: (a) => `What tools return to ${a}, before it reads it.`, between: ["Tools", "Agent"] },
   context: {
@@ -483,7 +497,9 @@ function layout(
 
     // Its LLM, straight above.
     nodes.push({ id: nid(slug, "llm"), type: "llm", position: { x: x + (AGENT_W - LLM_W) / 2, y: top }, data: { models: map.agent.models || [] } });
-    rail("completion", agentId, nid(slug, "llm"), { sourceHandle: "llm", style: { stroke: "var(--af-link)", strokeDasharray: "5 4" } });
+    // Up on the left, what goes to it; down on the right, what it answers.
+    rail("prompt", agentId, nid(slug, "llm"), { sourceHandle: "ask", targetHandle: "in", style: { stroke: "var(--af-link)" } }, { side: "left" });
+    rail("response", nid(slug, "llm"), agentId, { sourceHandle: "out", targetHandle: "answer", style: { stroke: "var(--af-link)", strokeDasharray: "5 4" } }, { side: "right" });
 
     // Documents & memory, to its right, level with it.
     if (stage("context")) {
@@ -721,7 +737,7 @@ const CHAIN = ["jev", "local_llm", "llm"];
 
 /** Output is judged as meaning (semantic); everything else as an open pattern. */
 function bandFor(stage: Stage, catalog?: Catalog): [number, number] {
-  const kind = stage.key === "output" ? "semantic" : "pattern_open";
+  const kind = stage.key === "output" || stage.key === "response" ? "semantic" : "pattern_open";
   return catalog?.bands[kind] || (kind === "semantic" ? [0.3, 0.7] : [0.2, 0.8]);
 }
 
@@ -879,7 +895,7 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
           When a judge is switched on it runs alongside the checks above. Judges are asked in order: an answer below {pct(lo)} or
           above {pct(hi)} settles it; anything in between passes to the next judge. The highest score wins and goes through the
           same policies.
-          {stage.key !== "output" ? "" : " Here the question is about meaning, so the band is wider."}
+          {stage.key !== "output" && stage.key !== "response" ? "" : " Here the question is about meaning, so the band is wider."}
         </p>
 
         <h4>Judge checks here</h4>
@@ -910,7 +926,7 @@ function shortReason(reason: string): string {
 /** The last attack-test run the panel reports, read by the page. */
 export type LastTest = { name: string; at: string; run: number; blocked: number; href: string } | null;
 
-const POINTS = ["input", "context", "tool_call", "tool_result", "output"];
+const POINTS = ["input", "context", "tool_call", "tool_result", "output", "response"];
 const RISKY = new Set(["irreversible", "high_impact"]);
 
 /** A place on the map counts as secured when something there enforces; watching is half-way. */
@@ -1021,8 +1037,9 @@ function Guide({ map, lastTest, onSelect }: { map: AgentMap; lastTest?: LastTest
             out of it.
           </li>
           <li>
-            <b>Rails</b> are the labelled pills on the lines: Input, Output, LLM calls, Tool calls, Tool results, Retrieval &amp;
-            memory. <Mark size={13} /> means guardrails are set there; <b>+</b> means none yet. Click one to set it up.
+            <b>Rails</b> are the labelled pills on the lines: Input, Output, To / From the LLM, Tool calls, Tool results,
+            Retrieval &amp; memory. Everything the agent reads reaches its LLM, so a guardrail on Input or Tool results also
+            shows on To the LLM. <Mark size={13} /> means guardrails are set there; <b>+</b> means none yet. Click one to set it up.
           </li>
         </ul>
       </section>

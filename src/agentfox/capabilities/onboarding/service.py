@@ -283,20 +283,38 @@ def impact_for(tool: dict[str, Any], kinds: dict[str, str]) -> str:
     return "read"
 
 
-#: The first guardrails `agentfox init` sets up for a newly found agent, by where they
-#: look: what users say, what the agent feeds its LLM, what it passes to tools. They go
-#: in the agent's own layer, which starts in observe mode: they record what they would
-#: have done and stop nothing until someone switches the agent to enforcing.
+#: Everything an agent sends to its LLM: the user's message, documents and memory,
+#: other agents' messages and tool results. At run time each is checked as part of the
+#: LLM request (pre-flight), on the surface it came in on, so one rule covers them all.
+TO_LLM = ("input", "retrieved", "tool_result", "memory_write", "agent_message")
+#: What the LLM answers: its reply text, checked after every LLM call (post-flight).
+#: The tool calls it asks for are checked on ``tool_args``.
+FROM_LLM = ("output",)
+
+#: The first guardrails `agentfox init` sets up for a newly found agent: what goes to
+#: the LLM (the user's message included), what comes back from it, and what goes to
+#: tools. They go in the agent's own layer, which starts in observe mode: they record
+#: what they would have done and stop nothing until someone switches the agent to
+#: enforcing.
 FIRST_WATCH: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
     # (rule id, what it watches, surfaces, entity prefix, min score, effect when enforced)
     (
-        "watch.user.attacks",
-        "Prompt attacks in what users say",
-        ("input",),
+        "watch.llm_in.instructions",
+        "Prompt attacks and hidden instructions in what goes to the LLM",
+        TO_LLM,
         "INJECTION",
         0.7,
         "block",
     ),
+    (
+        "watch.llm_in.personal_data",
+        "Personal data in what goes to the LLM",
+        TO_LLM,
+        "PII",
+        0.8,
+        "redact",
+    ),
+    ("watch.llm_in.secrets", "Secrets in what goes to the LLM", TO_LLM, "SECRET", 0.9, "block"),
     (
         "watch.user.harmful",
         "Harmful requests in what users say",
@@ -306,36 +324,20 @@ FIRST_WATCH: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
         "block",
     ),
     (
-        "watch.user.personal_data",
-        "Personal data in what users say",
-        ("input",),
+        "watch.llm_out.personal_data",
+        "Personal data in what the LLM answers",
+        FROM_LLM,
         "PII",
         0.8,
-        "tokenize",
-    ),
-    ("watch.user.secrets", "Secrets in what users say", ("input",), "SECRET", 0.9, "block"),
-    (
-        "watch.llm.instructions",
-        "Hidden instructions in what goes to the LLM",
-        ("retrieved", "tool_result", "memory_write", "agent_message"),
-        "INJECTION",
-        0.6,
-        "block",
-    ),
-    (
-        "watch.llm.personal_data",
-        "Personal data in what goes to the LLM",
-        ("retrieved", "tool_result", "memory_write", "agent_message"),
-        "PII",
-        0.7,
         "redact",
     ),
+    ("watch.llm_out.secrets", "Secrets in what the LLM answers", FROM_LLM, "SECRET", 0.9, "block"),
     (
-        "watch.llm.secrets",
-        "Secrets in what goes to the LLM",
-        ("retrieved", "tool_result", "memory_write", "agent_message"),
-        "SECRET",
-        0.9,
+        "watch.llm_out.harmful",
+        "Harmful content in what the LLM answers",
+        FROM_LLM,
+        "SAFETY",
+        0.7,
         "block",
     ),
     (
@@ -357,12 +359,32 @@ FIRST_WATCH: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
     ),
 )
 
+#: The first guardrails as init set them up before 2026-10-20: user input and what goes
+#: to the LLM watched by separate rules, and nothing on what the LLM answers. A layer
+#: holding exactly these was never edited, so running init again brings it up to date.
+_EARLIER_FIRST_WATCH = frozenset(
+    {
+        "watch.user.attacks",
+        "watch.user.harmful",
+        "watch.user.personal_data",
+        "watch.user.secrets",
+        "watch.llm.instructions",
+        "watch.llm.personal_data",
+        "watch.llm.secrets",
+        "watch.tool.personal_data",
+        "watch.tool.secrets",
+        "watch.tool.instructions",
+        "watch.tool.undeclared",
+    }
+)
+
 
 def first_guardrails(
     session: Any, slug: str, tools: list[str] | None = None, *, actor: str = "agentfox init"
 ) -> bool:
     """Give a newly found agent its first guardrails, watching only. False when it
-    already has its own layer: re-running init never overwrites what someone chose.
+    already has its own layer: re-running init never overwrites what someone chose
+    (an untouched layer from an earlier init is brought up to date).
 
     Watching only means nothing is stopped, and that includes the agent's own tools:
     with no grant, AgentFox denies every tool call (default deny). So the tools found
@@ -377,10 +399,13 @@ def first_guardrails(
 
     key = layer_key(slug)
     if session.scalar(select(Policy).where(Policy.key == key)) is not None:
-        # An empty layer is a project that was removed and is being connected again.
+        # An empty layer is a project that was removed and is being connected again,
+        # and one holding exactly the earlier first guardrails was never edited: both
+        # get the current set. Anything else is someone's choice and stays.
         from agentfox.capabilities.protection import own_layer
 
-        if own_layer(session, slug).rules:
+        have = {r.id for r in own_layer(session, slug).rules}
+        if have and have != _EARLIER_FIRST_WATCH:
             return False
     rules = [
         Rule(

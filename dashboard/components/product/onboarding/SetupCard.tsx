@@ -135,7 +135,7 @@ export function SetupCard({
       setDetail((d) => ({
         ...d,
         guarding: fresh || watching
-          ? `Watching what users say, what goes to the LLM and to tools${watching ? ` · ${watching} guardrails` : ""}. They record, they don't block. Only the workspace's safety rules for destructive commands stay on.`
+          ? `Watching what goes to the LLM (what users say included), what it answers, and what goes to tools${watching ? ` · ${watching} guardrails` : ""}. They record, they don't block. Only the workspace's safety rules for destructive commands stay on.`
           : "Kept the guardrails this agent already had.",
       }));
       if (stop) return;

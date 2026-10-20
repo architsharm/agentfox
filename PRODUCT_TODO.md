@@ -27,6 +27,9 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
   - what goes **to the LLM** (prompt/context: personal data, secrets, injected instructions),
   - what goes **to a tool** (tool calls: arguments, risky tools, data from other tools).
   - [x] Say so in the setup card's last step.
+  - [x] (2026-10-20) One set for everything that goes to the LLM, the user's message included (`watch.llm_in.*`, which is how pre-flight checks a request anyway), and the LLM's answer is now watched too (`watch.llm_out.*`: personal data, secrets, harmful content). Untouched layers from the earlier init were brought up to date; edited ones are left alone.
+  - [ ] Map: the backend's `completion` surface means "the agent says it's done", not an LLM call. It was drawn as "LLM calls"; now the LLM line shows "To the LLM" / "From the LLM" and the done-check isn't drawn. Decide where the done-check belongs on the map.
+  - [ ] The OpenAI Responses API (`client.responses.create`) isn't patched by autoguard, so those LLM calls aren't checked at all.
   - [ ] Workspace packs still apply on top: `tool-containment` enforces (destructive SQL/shell) and baseline watches. Decide whether a brand-new workspace should start everything in watch mode.
   - [ ] Decide whether granting found tools should hold irreversible ones for approval instead of allowing them.
 - [ ] A clear next step after setup: "Here's what we'd block — review and turn on."

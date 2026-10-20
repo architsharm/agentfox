@@ -4,6 +4,7 @@ ties `agentfox init --key` to the dashboard."""
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 
 from agentfox.capabilities.onboarding import runner, service
 from agentfox.capabilities.onboarding.attacks import build_suite, counts
@@ -451,9 +452,19 @@ def test_connect_gives_a_new_agent_first_guardrails_that_only_watch(client):
         for r in stage["rules"]
         if r["id"].startswith("watch.")
     }
-    # Each of the three places has some, and every one of them only watches.
-    assert {"input", "tool_call"} <= {where for where, _ in mine.values()}
-    assert any(where in ("context", "tool_result") for where, _ in mine.values())
+    # What goes to the LLM (the user's message included), what it answers, and what
+    # goes to tools: each has some, and every one of them only watches.
+    on = defaultdict(set)
+    for stage in m["stages"]:
+        for r in stage["rules"]:
+            if r["id"].startswith("watch."):
+                on[stage["key"]].add(r["id"])
+    assert {"input", "prompt", "response", "output", "tool_call", "tool_result"} <= set(on)
+    # The user's message is checked with everything else that goes to the LLM.
+    assert {"watch.llm_in.instructions", "watch.llm_in.personal_data"} <= on["input"]
+    assert on["input"] - {"watch.user.harmful"} <= on["prompt"]
+    # What the LLM answers is watched too.
+    assert {"watch.llm_out.personal_data", "watch.llm_out.secrets"} <= on["response"]
     assert {mode for _, mode in mine.values()} == {"observe"}
 
     # Watching only: the tools found in its code may run (no default-deny block).
@@ -468,6 +479,50 @@ def test_connect_gives_a_new_agent_first_guardrails_that_only_watch(client):
         ]
         is False
     )
+
+
+def test_init_brings_an_untouched_earlier_first_set_up_to_date(client):
+    """Agents connected before what the LLM answers was watched get it on the next init;
+    a layer someone edited is left alone."""
+    from agentfox.capabilities.onboarding.service import (
+        _EARLIER_FIRST_WATCH,
+        FIRST_WATCH,
+        first_guardrails,
+    )
+    from agentfox.capabilities.protection import layer_key, own_layer
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+    from agentfox.platform.policy.model import Condition, PolicyDocument, Rule
+    from agentfox.platform.policy.publish import publish_in_current_mode
+
+    def layer_with(slug, ids):
+        doc = PolicyDocument(
+            key=layer_key(slug),
+            name=f"{slug} protection",
+            rules=[
+                Rule(id=i, effect="block", when=Condition(surface=["input"]), reason="x")
+                for i in sorted(ids)
+            ],
+        )
+        publish_in_current_mode(
+            session, doc, actor="t", notes="t", level="agent", scope_id=slug,
+            compose="extend", agent_slug=slug,
+        )  # fmt: skip
+
+    with session_scope() as session:
+        for slug in ("old-agent", "edited-agent"):
+            session.add(Agent(slug=slug, name=slug))
+        session.flush()
+        layer_with("old-agent", _EARLIER_FIRST_WATCH)
+        layer_with("edited-agent", _EARLIER_FIRST_WATCH | {"mine.custom"})
+
+        assert first_guardrails(session, "old-agent") is True
+        ids = {r.id for r in own_layer(session, "old-agent").rules}
+        assert {rid for rid, *_ in FIRST_WATCH} <= ids
+        assert "watch.llm_out.personal_data" in ids
+
+        assert first_guardrails(session, "edited-agent") is False
+        assert "mine.custom" in {r.id for r in own_layer(session, "edited-agent").rules}
 
 
 # --- the setup key ---------------------------------------------------------------

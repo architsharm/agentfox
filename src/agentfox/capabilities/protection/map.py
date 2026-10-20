@@ -64,11 +64,22 @@ STAGES: tuple[Stage, ...] = (
     Stage("tool_call", "Tool calls", ("tool_args",)),
     Stage("tool_result", "Tool results", ("tool_result",)),
     Stage("output", "Agent reply", ("output",)),
-    # What the agent sends to its model and what comes back: a rail on every agent,
-    # shown even before anything guards it, so "LLM calls" is always on the map.
-    Stage("completion", "LLM calls", ("completion",)),
+    # The agent's line to its LLM, both ways. Everything sent to the LLM is checked
+    # before the call, each part on the surface it came in on (the user's message as
+    # input, documents as retrieved, tool results as tool_result), so a rule on any of
+    # those also shows here. What the LLM answers is checked after the call as output
+    # (and its reasoning, where a framework reports it).
+    Stage(
+        "prompt",
+        "To the LLM",
+        ("input", "retrieved", "memory_write", "agent_message", "tool_result"),
+    ),
+    Stage("response", "From the LLM", ("output", "reasoning")),
+    # The agent saying it is done ("your refund is processed"), checked against what
+    # the caller observed (`completion_requires`). Not a line to the LLM.
+    Stage("completion", "Done check", ("completion",), core=False),
 )
-CONTENT_STAGES = ("input", "context", "tool_result", "output")
+CONTENT_STAGES = ("input", "context", "tool_result", "output", "prompt", "response")
 _TOOL_FIELDS = (
     "tool",
     "tool_impact",
@@ -228,7 +239,12 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         if agent
         else []
     )
-    stage_of_surface = {s: st.key for st in STAGES for s in st.surfaces}
+    # A surface can sit on two lines (the user's message is also part of what goes to
+    # the LLM), so a decision counts on each line it crossed.
+    stages_of_surface: dict[str, list[str]] = defaultdict(list)
+    for st in STAGES:
+        for surface in st.surfaces:
+            stages_of_surface[surface].append(st.key)
     stage_stats: dict[str, Counter] = defaultdict(Counter)
     tool_stats: dict[str, Counter] = defaultdict(Counter)
     hits: Counter = Counter()
@@ -236,9 +252,9 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         outcome = {"block": "blocked", "escalate": "held"}.get(d.verdict) or (
             "masked" if d.verdict in ("redact", "mask", "tokenize") else "allowed"
         )
-        stage = stage_of_surface.get(d.surface, "input")
-        stage_stats[stage]["total"] += 1
-        stage_stats[stage][outcome] += 1
+        for stage in stages_of_surface.get(d.surface) or ["input"]:
+            stage_stats[stage]["total"] += 1
+            stage_stats[stage][outcome] += 1
         if d.tool_key:
             tool_stats[d.tool_key]["total"] += 1
             tool_stats[d.tool_key][outcome] += 1

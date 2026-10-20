@@ -176,6 +176,8 @@ const RULE_TITLES: Record<string, string> = {
 /** A rule's name. Custom rules are named by their author: pass the rule's description. */
 export function ruleTitle(ruleId: string, description?: string): string {
   if (RULE_TITLES[ruleId]) return RULE_TITLES[ruleId];
+  // init's first guardrails are described for people ("Secrets in what the LLM answers").
+  if (ruleId.startsWith("watch.") && description) return description;
   // A fired custom rule carries its name in its reason: "<name>: your rule"
   // (older saves: "<name> — your rule").
   if (ruleId.startsWith("custom.") && description) return description.split(/:\s*your rule| — your rule/)[0];
