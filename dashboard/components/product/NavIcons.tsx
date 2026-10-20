@@ -14,6 +14,7 @@ const PATHS: Record<string, React.ReactNode> = {
   "/app/projects": <><rect x="5" y="8" width="14" height="11" rx="2.5" /><path d="M12 3v5" /><circle cx="9.2" cy="13.5" r="1.1" /><circle cx="14.8" cy="13.5" r="1.1" /><path d="M9 17h6" /></>,
   "/app/findings": <><path d="M12 3 2.5 20h19L12 3Z" /><path d="M12 10v4.5" /><path d="M12 17.5h.01" /></>,
   "/app/traces": <path d="M3 12h4l2-7 4 14 2-7h6" />,
+  "/app/map": <><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20z" /><path d="M9 4v13.5M15 6.5V20" /></>,
   "/app/policies": <><rect x="5.5" y="3" width="13" height="18" rx="2" /><path d="M9 3v2h6V3" /><path d="M9 11h6M9 15h6" /></>,
   "/app/entitlement": <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7.5a4 4 0 0 1 8 0V11" /></>,
   "canvas": <><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="18" r="2.5" /><path d="M8.5 6h7M7.3 8.2l3.5 7.6M16.7 8.2l-3.5 7.6" /></>,
@@ -26,6 +27,12 @@ const PATHS: Record<string, React.ReactNode> = {
   "/app/test": <><path d="M9 3h6" /><path d="M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3" /></>,
   "/app/reports": <><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /><path d="M10 13h6M10 17h6" /></>,
   "/app/coverage": <><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M3 20h18" /></>,
+  "/app/events": <><path d="M3 12h4l2-7 4 14 2-7h6" /></>,
+  "/app/sessions": <><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z" /><path d="m3 12 9 4.5 9-4.5" /><path d="m3 16.5 9 4.5 9-4.5" /></>,
+  "/app/tools": <><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.5 17.3a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.3-.4-.4-2.3 2.6-2.6Z" /></>,
+  "/app/models": <><rect x="6" y="6" width="12" height="12" rx="2" /><rect x="9.5" y="9.5" width="5" height="5" rx="1" /><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3" /></>,
+  "icon:errors": <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5v5" /><path d="M12 16h.01" /></>,
+  "icon:security": <><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3Z" /><path d="m9 12 2 2 4-4" /></>,
   "/app/settings": <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" /></>,
 };
 

@@ -49,6 +49,12 @@ from agentfox.platform.identity.operators import issue_token
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger.findings import STATUSES as FINDING_STATUSES
 from agentfox.platform.registry.control import UnknownAgent, all_controls, set_state
+from agentfox.platform.registry.projects import (
+    list_projects,
+    project_map,
+    project_of,
+    remove_project,
+)
 from agentfox.platform.registry.service import (
     assess_delegation,
     attest_registry,
@@ -65,6 +71,34 @@ from agentfox.platform.registry.service import (
 )
 
 router = APIRouter(prefix="/api", tags=["registry", "identity"])
+
+
+@router.get("/projects")
+def get_projects(
+    session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Every project (a repository `agentfox init` mapped) and its agent count."""
+    return {"projects": list_projects(session)}
+
+
+@router.delete("/projects/{project}")
+def delete_project(
+    project: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Disconnect a project: connecting it again with `agentfox init` starts fresh.
+    Its history (traffic, issues, audit) is kept."""
+    out = remove_project(session, project, actor=user.email or user.id)
+    if not out["removed"]:
+        raise HTTPException(404, f"No project '{project}'")
+    return out
+
+
+@router.get("/projects/{project}/map")
+def get_project_map(
+    project: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """One project's map: who talks to its agents, their models, tools, and what the tools touch."""
+    return project_map(session, project)
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +220,7 @@ def _agent_json(agent: Agent, session: Session | None = None) -> dict[str, Any]:
         "environment": agent.environment,
         "risk_tier": agent.risk_tier,
         "framework": agent.framework,
+        "project": project_of(agent),
         "status": agent.status,
         "registered": agent.registered,
         "owned": agent.is_owned,

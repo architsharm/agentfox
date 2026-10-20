@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
@@ -21,7 +22,18 @@ type SP = { review_notice?: string; review_error?: string };
  * Home answers one question: does anything need me? Then, at a glance, how the
  * week went and which agents did it. Everything else is one click away.
  */
-export default async function Home({ searchParams }: { searchParams: Promise<SP> }) {
+/**
+ * Signing in lands on Agents (/app/map); with no project yet that page shows setup:
+ * the page that answers "what is protected" before any dashboard.
+ */
+export default async function Home() {
+  // With no project yet, /app/map shows the connection card in place (see AppChrome).
+  redirect("/app/map");
+}
+
+/** The previous Home, kept while its sections move onto the Map and Activity. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function LegacyHome({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   // The week, or the smallest window that holds the latest traffic in a quiet workspace.
   const { range, last } = await activeRange();

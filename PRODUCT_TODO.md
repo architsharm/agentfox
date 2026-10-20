@@ -1,0 +1,84 @@
+# AgentFox product TODO
+
+A running list as we go. Newest priorities first. `[ ]` open · `[~]` started · `[x]` done.
+
+---
+
+## 1. Onboarding: detect agents correctly and set the first guardrails
+
+- [~] **Agent detection that holds up on real repos.** (2026-10-20: mapper rewritten for the shapes below; all three test repos now map correctly; `tests/capabilities/onboarding/test_mapper.py`.) `agentfox init` maps with AST rules today (LangChain `create_agent`, `@tool`, `ChatOpenAI(model=)`); it only reports a single agent when a repo has one, and names it after the repo.
+  - [x] OpenAI Agents SDK: `Agent(...)` and typed `Agent[Ctx](...)`, `function_tool(fn)`, `function_tool(...)(fn)`, `name_override`, tools from a helper (`tools=build_tools()`).
+  - [x] Plain function-calling loops (`chat.completions.create(tools=...)` with JSON schemas), counted only when there's no framework agent.
+  - [x] Multi-agent repos: one project, several agents, each with its own name/tools/model, and hand-offs (`handoffs=[...]`, `a.handoffs = [...]`, `.append/.extend`, `handoff(agent=b)`) stored as edges.
+  - [x] Models from a constant (`MODEL = "gpt-5.2"`) or config default (`os.getenv("OPENAI_MODEL", "gpt-4o-mini")`).
+  - [x] Risk labels: `issue_compensation`, `book_new_flight`, `assign_*`, `add_note` were "read only"/"outside"; now "can do real damage".
+  - [ ] Still to cover: LangGraph `StateGraph` nodes, CrewAI `Agent/Task/Crew`, Claude Agent SDK, TypeScript agents.
+  - [ ] Helper agents used as guardrails (CX's "Relevance Guardrail", "Jailbreak Guardrail") show up as ordinary agents; mark them as guard agents.
+  - [ ] Agent slugs come from names, so two repos with a "Triage Agent" would collide; scope slugs by project.
+  - [ ] The attack-test runner loads LangChain agents; check it with OpenAI Agents SDK and raw-loop agents.
+  - [ ] Show in the setup card what was found *and what was missed* ("found 2 agents, 7 tools · 1 file we couldn't read").
+  - [x] Tested on 3 real repos (2026-10-20): `marketplace-agent` (1 agent, 5 tools), `itsm-helpdesk-agent` ("Helpdesk Support Agent", 4 tools, was 0), `cx-airline-agent` (6 named agents + 2 guardrail agents with the full hand-off graph, was 1 merged agent). Need a 4th: LangGraph or CrewAI.
+  - [x] Name agents from the code (the agent's own `name=`, or a constant), not the folder.
+  - [ ] Leftover from before the fix: a merged `python-backend` agent in the local registry; re-run init on the CX repo and delete it.
+- [x] **First set of guardrails = observe-only, on the three lines that matter.** (done 2026-10-19: `FIRST_WATCH` in `capabilities/onboarding/service.py`; 11 rules in the agent's own layer, observe mode; the tools found in code are granted so default-deny doesn't block them; re-running init leaves an existing layer alone.) Right after init, turn on watching (not blocking) for:
+  - what the **user says** (input),
+  - what goes **to the LLM** (prompt/context: personal data, secrets, injected instructions),
+  - what goes **to a tool** (tool calls: arguments, risky tools, data from other tools).
+  - [x] Say so in the setup card's last step.
+  - [ ] Workspace packs still apply on top: `tool-containment` enforces (destructive SQL/shell) and baseline watches. Decide whether a brand-new workspace should start everything in watch mode.
+  - [ ] Decide whether granting found tools should hold irreversible ones for approval instead of allowing them.
+- [ ] A clear next step after setup: "Here's what we'd block — review and turn on."
+- [x] **Setup key + tests** (2026-10-20): the key is made on first ask and kept (`createdNow` now true on that first call); clear "can't reach the server" / "sign in again" errors; unit tests (`dashboard/lib/product/onboarding/connect.test.ts`) and backend tests for the key.
+- [x] **One view for new signups and "+ Add a project"**: no projects = every page shows its empty cards + the connection card; Skip (first project only) folds it into a slim bar; `/app/onboarding` now leads there.
+- [x] **Disconnect a project** (2026-10-20): switcher → "Disconnect <project>…" → `DELETE /api/projects/{project}`. Agents leave the dashboard, own guardrails emptied (new audited version, back to watching), tool permissions revoked, init's declared edges cleared, setup card forgets it. History kept. Re-running init treats it as new (tested live on marketplace-agent).
+  - [ ] `agentfox disconnect` on the command line, so the repo side (stopping the runner) is one step too.
+- [x] **Local accounts**: `/dev/as/admin` (existing workspace) and `/dev/as/fresh` (a brand-new signup workspace); `next dev` only; tokens in `dashboard/.env.local`.
+
+## 2. Map: cohesive, readable, easy to click
+
+- [ ] **More cohesive look, clearer sections.** Make it obvious what each region is: the conversation (user ↔ agent), the agent's brain (LLM, documents & memory), its hands (tools). Possibly faint labelled zones behind each group.
+- [x] **Clicking a line is hard.** (done 2026-10-19: 44px hit band on every line, pointer cursor, hover lights the line indigo and opens its badge into "<line> · see guardrails"; bare-line clicks open the panel; "+" badge where nothing is set; badges are buttons, so Tab reaches them.)
+  - [ ] A visible keyboard focus style on the line itself, and arrow keys between lines.
+- [ ] Multi-agent projects: draw every agent of the project on one canvas (today the page draws one agent; the switcher opens the first).
+- [ ] Per-agent LLM chain settings: order, confidence band, thresholds. Needs backend; today these are hard-coded and workspace-wide.
+
+## 3. From the map to setting guardrails (today too much lives in Policies)
+
+- [ ] Everything needed to set up a line's guardrails should be doable from the line's panel without opening Policies:
+  - [ ] Turn a check on and choose what happens (block / ask / watch) in one place; today the check (detector) and the action (policy rule) are separate lists.
+  - [ ] Show and edit the threshold ("block if prompt injection ≥ 0.7"). `min_score` isn't in the map payload yet.
+  - [ ] Add a rule here ("never let `start_return` run over $100") without leaving the map.
+  - [ ] Install a classifier model from the panel (today: "Not installed" → Checks page).
+- [ ] Decide what Policies is for after this: the workspace-wide library, versions, packs.
+
+## 4. Observability: integrated with init
+
+- [ ] **One step, not two.** `agentfox init` should also turn on tracing (OpenTelemetry or our SDK wrap) for the agents it found, using the same key. No separate setup.
+  - [ ] Decide the mechanism: init patches/wraps the LangChain agent at runtime vs. writes a one-line import vs. OTel exporter env vars.
+  - [ ] Models page fills in only once real LLM calls are traced (today the demo traffic doesn't report a model).
+- [ ] **Is it working?** A health view per project: is the agent sending events, when last, error rate, latency, cost; alert when it goes quiet.
+- [ ] **How do we identify an issue?** Define what becomes an Issue automatically: blocked attacks, repeated holds on one tool, error spikes, a tool called that the code never declared, data leaving in replies. Link each to the events/session that caused it.
+
+## 5. Agent audit
+
+- [ ] **Audit an agent's last N days.** Pick an agent and a window; read its sessions and events and report bad patterns:
+  - tools called far more than usual, or in risky orders (read customer data → send email),
+  - prompts that keep hitting guardrails, near-misses that only watched,
+  - personal data seen in replies, cost/latency outliers, loops.
+- [ ] Output: a short report with findings, each linked to sessions, and "add a guardrail here" suggestions that open the map.
+- [ ] Could run on a schedule and post a summary.
+
+## Backend gaps found along the way
+
+- [x] Judge outage doesn't fail closed. (fixed 2026-10-20: `PipelineResult.judge_unavailable`; the enforcer blocks with `pipeline.judge_outage` when a judge tier is on, the posture says deny, and the call is enforcing; `tests/runtime/test_judge_outage.py`.)
+- [ ] Red-team runs aren't tied to an agent, so "last test run" on the map is the workspace's last run.
+- [ ] `sqlglot` (the `sql` extra) and Presidio (`pii` extra) aren't installed locally; one backend test needs Presidio.
+
+## Housekeeping
+
+- [x] ~~`agentfox init --path <repo>` writes `agentfox.toml`~~: not a bug; with `--key` init only maps and connects.
+
+- [ ] Leftover test agents `my-agent` and `marketing-copy-bot` show up as projects; delete once confirmed.
+- [ ] Marketing site and favicon still use the old fox logo.
+- [ ] `/app/map` URL could become `/app/agents` to match the menu.
+- [ ] Nothing committed yet (branch `onboarding-phase1`).

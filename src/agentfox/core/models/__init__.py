@@ -107,6 +107,7 @@ from agentfox.core.models.improvement import (
     ChangeProposal,
     JobSchedule,
 )
+from agentfox.core.models.onboarding import OnboardingSession
 from agentfox.core.models.policy import (
     Control,
     ControlReview,
@@ -141,6 +142,7 @@ from agentfox.core.models.registry import (
 )
 
 __all__ = [
+    "OnboardingSession",
     "AccessScopeRule",
     "Agent",
     "AgentControl",

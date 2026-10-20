@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/product/api";
 import { requestOrigin } from "@/lib/product/origin";
-import { PROJECT_COOKIE, PROJECT_COOKIE_AGE, projectInPath } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, PROJECT_COOKIE, PROJECT_COOKIE_AGE, projectInPath } from "@/lib/product/project";
 
 // /playground is the public, unauthenticated demo (dashboard/app/(marketing)/playground) — it
 // talks directly to the gateway's own unauthenticated `/api/playground/*` routes
@@ -118,6 +118,39 @@ export function middleware(req: NextRequest) {
   const headers = new Headers(req.headers);
   headers.set("x-pathname", pathname);
 
+  // Local account switch: `next dev` only. /dev/as/admin is the usual dev account;
+  // /dev/as/fresh is a brand-new workspace (created the way a GitHub signup is), to
+  // see what a new user sees. Tokens come from dashboard/.env.local, never the URL.
+  if (process.env.NODE_ENV === "development" && pathname.startsWith("/dev/as/")) {
+    const who = pathname.slice("/dev/as/".length);
+    const token =
+      who === "admin" ? process.env.NOMETRIA_DEV_SESSION_TOKEN : who === "fresh" ? process.env.NOMETRIA_DEV_FRESH_TOKEN : undefined;
+    if (token) {
+      const res = NextResponse.redirect(new URL("/app", requestOrigin(req)));
+      res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", path: "/" });
+      // The chosen project belongs to the other workspace.
+      res.cookies.delete(MAP_PROJECT_COOKIE);
+      res.cookies.delete(PROJECT_COOKIE);
+      return res;
+    }
+  }
+
+  // Local auto-login: `next dev` only, and only when dashboard/.env.local supplies a
+  // token minted with `agentfox auth issue`. Production builds never take this path.
+  const devToken = process.env.NOMETRIA_DEV_SESSION_TOKEN;
+  if (
+    process.env.NODE_ENV === "development" &&
+    devToken &&
+    req.method === "GET" &&
+    !req.cookies.get(SESSION_COOKIE)?.value &&
+    req.nextUrl.searchParams.get("session") !== "expired"
+  ) {
+    const url = pathname === "/login" ? new URL("/app", req.url) : req.nextUrl.clone();
+    const res = NextResponse.redirect(url);
+    res.cookies.set(SESSION_COOKIE, devToken, { httpOnly: true, sameSite: "lax", path: "/" });
+    return res;
+  }
+
   // A page whose control-plane call came back 401/403 links here. The cookie is
   // still set and still looks fine to the check below, so without clearing it
   // the user is stuck in a loop: /login sees a cookie and bounces them back into
@@ -140,13 +173,6 @@ export function middleware(req: NextRequest) {
     if (!underPrefix(old)) continue;
     const url = new URL(`${old.replace(/agents$/, "projects")}${pathname.slice(old.length)}${req.nextUrl.search}${req.nextUrl.hash}`, requestOrigin(req));
     return NextResponse.redirect(url, 308);
-  }
-  // The workspace map was every project's canvas behind a picker; each project has
-  // its own canvas now. The one named, else the one last chosen, else the list.
-  if (pathname === "/app/map") {
-    const slug = req.nextUrl.searchParams.get("agent") || req.cookies.get(PROJECT_COOKIE)?.value;
-    const url = new URL(slug ? `/app/projects/${encodeURIComponent(slug)}` : "/app/projects", requestOrigin(req));
-    return NextResponse.redirect(url, 307);
   }
 
   const moved = MOVED_TO_APP.find(underPrefix);

@@ -45,6 +45,10 @@ class Agent(Base, TimestampMixin):
     # EU AI Act aligned tiering.
     risk_tier: Mapped[str] = mapped_column(String(24), default="limited")
     framework: Mapped[str | None] = mapped_column(String(64))  # auto-detected
+    # The project the agent belongs to: one repository that `agentfox init` mapped.
+    # The map shows one project at a time. NULL for an agent registered any other way,
+    # which is grouped under the default project.
+    project: Mapped[str | None] = mapped_column(String(120), index=True)
     status: Mapped[str] = mapped_column(String(24), default="active")
     registered: Mapped[bool] = mapped_column(Boolean, default=True)
     # Set when a repo scan proposed this agent (status="draft") rather than it being

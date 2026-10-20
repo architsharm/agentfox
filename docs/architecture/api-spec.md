@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-285 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+303 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -144,6 +144,21 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
+| `GET` | `/api/onboarding/guardrails` | Get Guardrails |
+| `POST` | `/api/onboarding/guardrails` | Save Guardrails |
+| `GET` | `/api/onboarding/key` | This user's setup key, made the first time it is asked for and the same ever |
+| `POST` | `/api/onboarding/runner/connect` | Runner Connect |
+| `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
+| `POST` | `/api/onboarding/runner/runs/{run_id}/results` | Runner Results |
+| `DELETE` | `/api/onboarding/state` | Start over at step 1. The key survives, so a running `agentfox init` stays valid |
+| `GET` | `/api/onboarding/state` | Get State |
+| `PATCH` | `/api/onboarding/state` | Save State |
+| `GET` | `/api/onboarding/structure` | Get Structure |
+| `PUT` | `/api/onboarding/structure` | The user added or removed an agent or tool on See structure. Tests run on this map. |
+| `GET` | `/api/onboarding/tests` | Latest Test |
+| `POST` | `/api/onboarding/tests` | Start Test |
+| `GET` | `/api/onboarding/tests/{run_id}` | Get Test |
+| `GET` | `/api/onboarding/tests/{run_id}/results` | Test Results |
 | `GET` | `/api/providers` | The neutrality surface, made inspectable. |
 | `GET` | `/api/reliability` | Circuit-breaker state and live budget consumption. |
 | `GET` | `/api/version` | Every version that participates in a decision, so a verdict can be reproduced. |
@@ -453,6 +468,9 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/library/packs` | List Packs |
 | `POST` | `/api/library/packs/{pack_id}/install` | Install Pack |
 | `GET` | `/api/overview` | Agents, their risk tiers and open issues: the Reports summary. |
+| `GET` | `/api/projects` | Every project (a repository `agentfox init` mapped) and its agent count. |
+| `DELETE` | `/api/projects/{project}` | Disconnect a project: connecting it again with `agentfox init` starts fresh. |
+| `GET` | `/api/projects/{project}/map` | One project's map: who talks to its agents, their models, tools, and what the tools touch. |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |
 | `GET` | `/api/proposals/{proposal_id}` | One proposal with its diff, evidence, proof and decisions. |
 | `POST` | `/api/proposals/{proposal_id}/apply` | Apply an approved proposal, or settle one whose canary has finished. |

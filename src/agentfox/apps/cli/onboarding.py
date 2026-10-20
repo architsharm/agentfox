@@ -164,6 +164,19 @@ def init(
         help="Also load the demo fixtures: three agents and an eval suite. No traffic is "
         "recorded; run `agentfox demo` afterwards for sample traces and findings.",
     ),
+    key: str = typer.Option(
+        "",
+        "--key",
+        help="Your onboarding key from the dashboard's Connect screen. Maps the agent in "
+        "this repo, reports its names and shapes, and stays connected to run the attack "
+        "tests on this machine.",
+    ),
+    server: str = typer.Option(
+        "",
+        "--server",
+        envvar="AGENTFOX_SERVER",
+        help="The AgentFox API to report to. Default: http://127.0.0.1:8080.",
+    ),
 ) -> None:
     """Set everything up. Idempotent, offline, and safe to run twice.
 
@@ -174,6 +187,11 @@ def init(
     agentfox.toml carrying the real runtime defaults so they are visible rather than
     implicit. AGENTFOX_* environment variables override that file.
     """
+    if key:
+        from agentfox.capabilities.onboarding.client import connect
+
+        connect(key, server or "http://127.0.0.1:8080", path)
+        return
     setup_workspace(path, environment, demo=demo)
     _print_next_steps(
         [

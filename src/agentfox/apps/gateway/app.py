@@ -50,6 +50,7 @@ from agentfox.apps.gateway.routes import features as feature_routes
 from agentfox.apps.gateway.routes import imports as import_routes
 from agentfox.apps.gateway.routes import library as library_routes
 from agentfox.apps.gateway.routes import metrics as metrics_routes
+from agentfox.apps.gateway.routes import onboarding_flow as onboarding_flow_routes
 from agentfox.apps.gateway.routes import protection as protection_routes
 from agentfox.apps.gateway.routes import rule_examples as rule_example_routes
 from agentfox.apps.gateway.routes import workspace as workspace_routes
@@ -393,6 +394,7 @@ def create_app() -> FastAPI:
     app.include_router(escalation.router)
     app.include_router(answerability.router)
     app.include_router(onboarding.router)
+    app.include_router(onboarding_flow_routes.router)
     app.include_router(provenance.router)
     app.include_router(entitlement.router)
     app.include_router(integrations.router)

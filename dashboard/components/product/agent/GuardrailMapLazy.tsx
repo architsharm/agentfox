@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
-import type { AgentMap } from "./GuardrailMap";
+import type { AgentMap, Catalog, LastTest } from "./GuardrailMap";
 
 /**
  * The map's graph library is the heaviest thing on the agent page; load it only when
@@ -19,6 +18,6 @@ const Map = dynamic(() => import("./GuardrailMap").then((m) => m.GuardrailMap), 
   ),
 });
 
-export function GuardrailMapLazy({ map, summary }: { map: AgentMap; summary?: ReactNode }) {
-  return <Map map={map} summary={summary} />;
+export function GuardrailMapLazy({ map, lastTest, catalog }: { map: AgentMap; lastTest?: LastTest; catalog?: Catalog }) {
+  return <Map map={map} lastTest={lastTest} catalog={catalog} />;
 }

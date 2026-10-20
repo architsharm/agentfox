@@ -2,15 +2,28 @@
 
 import "@xyflow/react/dist/style.css";
 
-import { Background, Controls, Handle, MarkerType, Position, ReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
+import {
+  Background,
+  BaseEdge,
+  Controls,
+  EdgeLabelRenderer,
+  Handle,
+  MarkerType,
+  Position,
+  ReactFlow,
+  getBezierPath,
+  type Edge,
+  type EdgeProps,
+  type Node,
+  type NodeProps,
+} from "@xyflow/react";
 import Link from "next/link";
+import { Logo } from "@/components/product/Logo";
 import { useRouter } from "next/navigation";
+import { Bot, Cpu, FileText, User, Wrench, type LucideIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { ActionPill, ModePill, Pill } from "@/components/kit";
 import {
-  DRAW_EACH,
-  DRAW_GROUPS,
-  DRAW_OPEN,
   DRAW_SUBAGENTS,
   GROUP_BY,
   PERMISSION,
@@ -18,21 +31,17 @@ import {
   TONE_LABEL,
   TOOL_FILTERS,
   counts,
-  drawTools,
   drawnSubagents,
   filterTools,
   groupSummary,
   groupTools,
-  linkActivity,
   parentLabel,
   permissionCall,
   relationLabel,
   ruleChange,
   ruleSetting,
-  stageTone,
   toolTone,
   type AgentMap,
-  type Drawn,
   type GroupBy,
   type MapLink,
   type MapRule,
@@ -41,7 +50,6 @@ import {
   type RuleSetting,
   type Stage,
   type Stats,
-  type Tone,
   type ToolFilter,
   type ToolGroup,
 } from "@/lib/product/guardrailMap";
@@ -58,117 +66,142 @@ function sourceLabel(tl: MapTool): string {
   return (tl.sources || []).map((x) => SOURCE[x]).join(" · ");
 }
 
-function stopped(s: Stats) {
-  return (s.blocked || 0) + (s.held || 0) + (s.masked || 0);
-}
-
 function plural(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
 // --- nodes -----------------------------------------------------------------------
+//
+// Kept deliberately quiet. Each kind of thing has one look:
+//   user    one grey pill: the message leaves it, the reply comes back to it
+//   agent   the largest card, rose (the brand)
+//   llm     a large indigo card above the agent
+//   tools   one tinted box holding a small chip per tool
+//   docs    documents & memory, a small amber card
+// Guardrails are not cards. Where some are set, our logo sits on the line (or on the
+// tool) they guard; where none are, a faint dot. Clicking a line, its logo, or a tool
+// opens what guards it in the panel beside the canvas.
 
-function EndNode({ data }: NodeProps<Node<{ label: string }>>) {
+/** The kind badge a card starts with: an icon in its colour, and its name. */
+function Kind({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <span className="gm-kind">
+      <span className="gm-kind-icon" aria-hidden>
+        <Icon size={13} strokeWidth={2} />
+      </span>
+      {label}
+    </span>
+  );
+}
+
+export const NODE_KINDS: { key: string; label: string; icon: LucideIcon }[] = [
+  { key: "user", label: "User", icon: User },
+  { key: "agent", label: "Agent", icon: Bot },
+  { key: "llm", label: "LLM", icon: Cpu },
+  { key: "tool", label: "Tool", icon: Wrench },
+];
+
+/** Our mark: "guardrails are here". */
+function Mark({ size = 18 }: { size?: number }) {
+  return <Logo size={size} />;
+}
+
+/** Whether anything guards this step: rules that enforce or watch, or detectors. */
+function guarded(s: Stage | undefined): boolean {
+  if (!s) return false;
+  const c = counts(s.rules);
+  return Boolean(c.enforcing || c.watching || s.detectors.length);
+}
+
+/** The single user: their message leaves from the top, the reply comes back in below. */
+function UserNode() {
   return (
     <div className="gm-node gm-end">
-      <Handle type="target" position={Position.Left} />
-      {data.label}
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} id="out" style={{ top: "28%" }} />
+      <Handle type="target" position={Position.Right} id="back" style={{ top: "74%" }} />
+      <Handle type="target" position={Position.Bottom} id="parents" />
+      <User size={14} aria-hidden />
+      User
     </div>
   );
 }
 
-function AgentNode({ data }: NodeProps<Node<{ name: string; slug: string }>>) {
+function AgentNode({ data }: NodeProps<Node<{ name: string; framework?: string | null }>>) {
   return (
     <div className="gm-node gm-agent">
-      <Handle type="target" position={Position.Left} id="in" />
-      <Handle type="source" position={Position.Right} id="out" />
-      <Handle type="source" position={Position.Bottom} id="down" />
-      <Handle type="target" position={Position.Bottom} id="up" style={{ left: "70%" }} />
-      <span className="gm-kicker">Agent</span>
-      <strong>{data.name}</strong>
+      <Handle type="target" position={Position.Left} id="in" style={{ top: "28%" }} />
+      <Handle type="source" position={Position.Left} id="reply" style={{ top: "74%" }} />
+      <Handle type="source" position={Position.Bottom} id="calls" style={{ left: "38%" }} />
+      <Handle type="target" position={Position.Bottom} id="results" style={{ left: "62%" }} />
+      <Handle type="source" position={Position.Top} id="llm" />
+      <Handle type="target" position={Position.Left} id="context" style={{ top: "92%" }} />
+      <Handle type="source" position={Position.Right} id="subs" />
+      <Kind icon={Bot} label="Agent" />
+      <strong className="gm-ellipsis">{data.name}</strong>
+      {data.framework && <span className="gm-sub k-mono">{data.framework}</span>}
     </div>
   );
 }
 
-function StageNode({ data }: NodeProps<Node<{ stage: Stage; selected: boolean }>>) {
-  const s = data.stage;
-  const c = counts(s.rules);
-  const t = stageTone(s.rules, s.detectors);
+/** The model the agent thinks with: big and on its own, never mistaken for a tool. */
+function LlmNode({ data }: NodeProps<Node<{ models: string[] }>>) {
   return (
-    <div className={`gm-node gm-stage gm-${t}${data.selected ? " gm-selected" : ""}`} title={TONE_LABEL[t]}>
-      <Handle type="target" position={Position.Left} />
-      <Handle type="target" position={Position.Top} id="top" />
-      <Handle type="source" position={Position.Right} />
-      <Handle type="source" position={Position.Top} id="topout" />
-      <span className="gm-kicker">{s.title}</span>
-      <strong>{c.enforcing ? plural(c.enforcing, "guardrail") : c.watching || s.detectors.length ? "Watching" : "Nothing set"}</strong>
-      {stopped(s.stats) ? <span className="gm-sub">{stopped(s.stats)} stopped</span> : null}
+    <div className="gm-node gm-llm">
+      <Handle type="target" position={Position.Bottom} />
+      <Kind icon={Cpu} label={data.models.length > 1 ? `${data.models.length} LLMs` : "LLM"} />
+      {data.models.map((m) => (
+        <strong key={m} className="gm-ellipsis k-mono">{m}</strong>
+      ))}
     </div>
   );
 }
 
+/** Documents & memory the agent reads. */
+function DocsNode() {
+  return (
+    <div className="gm-node gm-docs">
+      <Handle type="source" position={Position.Right} />
+      <Kind icon={FileText} label="Documents & memory" />
+    </div>
+  );
+}
+
+/** Every tool in one tinted box; the tools sit inside it. */
+function BoxNode({ data }: NodeProps<Node<{ title: string; w: number; h: number; selected: boolean }>>) {
+  return (
+    <div className={`gm-box${data.selected ? " gm-selected" : ""}`} style={{ width: data.w, height: data.h }}>
+      <Handle type="target" position={Position.Top} id="in" style={{ left: "38%" }} />
+      <Handle type="source" position={Position.Top} id="out" style={{ left: "62%" }} />
+      <span className="gm-box-head">
+        <Kind icon={Wrench} label={data.title} />
+      </span>
+    </div>
+  );
+}
+
+/** One tool: wrench and name; our mark if it has guardrails of its own; a tag only when it is not simply allowed. */
 function ToolNode({ data }: NodeProps<Node<{ tool: MapTool; selected: boolean }>>) {
   const tl = data.tool;
   const p = PERMISSION[tl.permission];
-  const rules = tl.rules.length + tl.ladders.length;
-  const t = toolTone(tl);
+  const own = tl.rules.length + tl.ladders.length;
   return (
-    <div className={`gm-node gm-tool gm-${t} gm-perm-${tl.permission}${data.selected ? " gm-selected" : ""}`} title={TONE_LABEL[t]}>
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
-      <span className="gm-kicker k-mono gm-ellipsis" title={tl.key}>{shortKey(tl.key)}</span>
-      <span className="gm-perms">
-        <span className={`gm-perm gm-perm-${p.tone}`}>{p.label}</span>
-        {rules ? <span className="gm-sub">{plural(rules, "rule")}</span> : null}
-      </span>
-      {tl.stats.total ? <span className="gm-sub">{plural(tl.stats.total, "call")}</span> : null}
+    <div className={`gm-tool gm-perm-${tl.permission}${data.selected ? " gm-selected" : ""}`} title={`${tl.key} · ${p.label}${own ? ` · ${plural(own, "guardrail")} on this tool` : ""}`}>
+      <Wrench size={12} aria-hidden className="gm-tool-icon" />
+      <span className="k-mono gm-ellipsis gm-tool-key">{shortKey(tl.key)}</span>
+      {tl.permission !== "allowed" && <span className={`gm-perm gm-perm-${p.tone}`}>{p.label}</span>}
+      {own ? (
+        <span className="gm-tool-mark" aria-label={plural(own, "guardrail")}>
+          <Mark size={14} />
+        </span>
+      ) : null}
     </div>
   );
 }
 
-function GroupNode({ data }: NodeProps<Node<{ group: ToolGroup; total: number; open: boolean; selected: boolean }>>) {
-  const g = data.group;
-  const s = groupSummary(g.tools);
+function MoreNode({ data }: NodeProps<Node<{ label: string }>>) {
   return (
-    <div className={`gm-node gm-group gm-${s.tone}${data.open ? " gm-open" : ""}${data.selected ? " gm-selected" : ""}`} title={TONE_LABEL[s.tone]}>
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
-      <span className="gm-kicker gm-ellipsis">{g.label}</span>
-      <strong>{plural(g.tools.length, "tool")}</strong>
-      <span className="gm-perms">
-        {s.allowed ? <span className="gm-perm gm-perm-ok">{s.allowed} allowed</span> : null}
-        {s.ask ? <span className="gm-perm gm-perm-held">{s.ask} ask</span> : null}
-        {s.denied ? <span className="gm-perm gm-perm-bad">{s.denied} not allowed</span> : null}
-      </span>
-    </div>
-  );
-}
-
-function MoreNode({ data }: NodeProps<Node<{ label: string; from?: "top" | "left" }>>) {
-  return (
-    <div className="gm-node gm-more" title="Open the list in the inspector">
-      <Handle type="target" position={data.from === "left" ? Position.Left : Position.Top} />
+    <div className="gm-tool gm-more" title="Show every tool">
       {data.label}
-    </div>
-  );
-}
-
-/** Every tool as one node, until the canvas is asked to show them. */
-function ToolsNode({ data }: NodeProps<Node<{ tools: MapTool[]; selected: boolean }>>) {
-  const s = groupSummary(data.tools);
-  return (
-    <div className={`gm-node gm-group gm-tools gm-${s.tone}${data.selected ? " gm-selected" : ""}`} title="Show the tools on the canvas">
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
-      <span className="gm-kicker">Tools</span>
-      <strong>{plural(data.tools.length, "tool")}</strong>
-      <span className="gm-perms">
-        {s.allowed ? <span className="gm-perm gm-perm-ok">{s.allowed} allowed</span> : null}
-        {s.ask ? <span className="gm-perm gm-perm-held">{s.ask} ask</span> : null}
-        {s.denied ? <span className="gm-perm gm-perm-bad">{s.denied} not allowed</span> : null}
-      </span>
-      <span className="gm-expand">Expand ▾</span>
     </div>
   );
 }
@@ -183,9 +216,8 @@ function SubagentNode({ data }: NodeProps<Node<{ link: MapLink; framework?: stri
   return (
     <Link href={linkHref(s.slug)} className={`gm-node gm-sub-agent${s.seen ? "" : " gm-unseen"}`} title={s.slug}>
       <Handle type="target" position={Position.Left} />
-      <span className="gm-kicker">{relationLabel(s.relation, data.framework)}</span>
+      <Kind icon={Bot} label={relationLabel(s.relation, data.framework)} />
       <strong className="gm-ellipsis">{s.name || s.slug}</strong>
-      <span className="gm-sub">{linkActivity(s)} · open project</span>
     </Link>
   );
 }
@@ -195,160 +227,174 @@ function ParentNode({ data }: NodeProps<Node<{ link: MapLink }>>) {
   const s = data.link;
   return (
     <Link href={linkHref(s.slug)} className={`gm-node gm-sub-agent${s.seen ? "" : " gm-unseen"}`} title={s.slug}>
-      <span className="gm-kicker">{parentLabel(s.relation)}</span>
+      <Kind icon={Bot} label={parentLabel(s.relation)} />
       <strong className="gm-ellipsis">{s.name || s.slug}</strong>
-      <span className="gm-sub">{linkActivity(s)} · open project</span>
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Top} />
     </Link>
   );
 }
 
-// "group" is a built-in React Flow type with its own styling, so ours is "toolgroup".
 const NODE_TYPES = {
-  end: EndNode,
+  user: UserNode,
   agent: AgentNode,
-  stage: StageNode,
+  llm: LlmNode,
+  docs: DocsNode,
+  box: BoxNode,
   tool: ToolNode,
-  toolgroup: GroupNode,
-  tools: ToolsNode,
   more: MoreNode,
   subagent: SubagentNode,
   parent: ParentNode,
 };
 
+// --- edges -------------------------------------------------------------------------
+
+type GuardData = { stage?: Stage; title: string; selected?: boolean; hovered?: boolean; onPick?: () => void; onHover?: (on: boolean) => void };
+
+/**
+ * A line a guardrail step sits on. Easy to hit: a wide invisible band follows the line,
+ * hovering lights the line and opens its badge into a label, and the line, the band and
+ * the badge all open the same panel. Our mark when something guards it; a "+" when not.
+ */
+function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, style, data }: EdgeProps<Edge<GuardData>>) {
+  const [path, x, y] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  const on = guarded(data?.stage);
+  const sel = Boolean(data?.selected);
+  const hot = Boolean(data?.hovered);
+  const lit = sel || hot;
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={path}
+        markerEnd={markerEnd}
+        interactionWidth={44}
+        style={{ ...style, ...(lit ? { stroke: "var(--af-link)", strokeWidth: sel ? 2.5 : 2 } : {}) }}
+      />
+      {data?.stage && (
+        <EdgeLabelRenderer>
+          <button
+            type="button"
+            className={`gm-mark nodrag nopan${on ? " gm-mark-on" : " gm-mark-off"}${sel ? " gm-selected" : ""}${lit ? " gm-mark-open" : ""}`}
+            style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}
+            onClick={data.onPick}
+            onMouseEnter={() => data.onHover?.(true)}
+            onMouseLeave={() => data.onHover?.(false)}
+            onFocus={() => data.onHover?.(true)}
+            onBlur={() => data.onHover?.(false)}
+            aria-label={`${data.title}: ${on ? "guardrails here" : "no guardrails yet"}. Open.`}
+          >
+            {on ? <Mark size={18} /> : <span className="gm-mark-plus" aria-hidden>+</span>}
+            {lit && (
+              <span className="gm-mark-label">
+                {data.title}
+                <span>{on ? " · see guardrails" : " · add guardrails"}</span>
+              </span>
+            )}
+          </button>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+const EDGE_TYPES = { guard: GuardEdge };
+
 // --- layout ----------------------------------------------------------------------
 
-const COL = 250;
-const ROW = 150;
-const PER_ROW = 4;
-const GROUPS_PER_ROW = 5;
-const GROUP_ROW = 180;
+/** Tools drawn in the box before "+N more"; expanded, up to BOX_MAX. */
+const BOX_FIRST = 6;
+const BOX_MAX = 24;
+const TOOL_W = 240;
+const TOOL_H = 38;
+const GAP = 10;
+const PAD = 16;
+const HEAD = 48;
 
-function layout(map: AgentMap, d: Drawn, visible: MapTool[], hidden: number, selected: Selected): { nodes: Node[]; edges: Edge[] } {
+function layout(
+  map: AgentMap,
+  tools: MapTool[],
+  hidden: number,
+  selected: Selected,
+  pick: (stage: string) => void,
+): { nodes: Node[]; edges: Edge[] } {
   const stage = (key: string) => map.stages.find((s) => s.key === key);
-  const isSel = (kind: string, key: string) => selected?.kind === kind && selected.key === key;
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const edge = (id: string, source: string, target: string, extra: Partial<Edge> = {}) =>
-    edges.push({ id, source, target, markerEnd: { type: MarkerType.ArrowClosed }, ...extra });
+  const arrow = { type: MarkerType.ArrowClosed, width: 14, height: 14 };
+  /** A line that a guardrail step sits on. */
+  const guard = (id: string, source: string, target: string, key: string, title: string, extra: Partial<Edge> = {}) =>
+    edges.push({
+      id: `edge:${key}`,
+      source,
+      target,
+      type: "guard",
+      markerEnd: arrow,
+      data: { stage: stage(key), title, selected: selected?.kind === "stage" && selected.key === key, onPick: () => pick(key) },
+      ...extra,
+    });
 
-  const agentX = 2 * COL;
-  nodes.push({ id: "user-in", type: "end", position: { x: 0, y: 40 }, data: { label: "User" } });
-  const input = stage("input");
-  if (input) nodes.push({ id: "stage:input", type: "stage", position: { x: COL - 30, y: 10 }, data: { stage: input, selected: isSel("stage", "input") } });
-  nodes.push({ id: "agent", type: "agent", position: { x: agentX, y: 25 }, data: { name: map.agent.name, slug: map.agent.slug } });
-  const output = stage("output");
-  if (output) nodes.push({ id: "stage:output", type: "stage", position: { x: agentX + COL + 10, y: 10 }, data: { stage: output, selected: isSel("stage", "output") } });
-  nodes.push({ id: "user-out", type: "end", position: { x: agentX + 2 * COL + 20, y: 40 }, data: { label: "User" } });
-  edge("e1", "user-in", input ? "stage:input" : "agent");
-  if (input) edge("e2", "stage:input", "agent", { targetHandle: "in" });
-  edge("e3", "agent", output ? "stage:output" : "user-out", { sourceHandle: "out" });
-  if (output) edge("e4", "stage:output", "user-out");
+  const AGENT_X = 360;
+  const AGENT_Y = 120;
 
-  const context = stage("context");
-  if (context) {
-    nodes.push({ id: "stage:context", type: "stage", position: { x: COL - 30, y: 190 }, data: { stage: context, selected: isSel("stage", "context") } });
-    edge("ec", "stage:context", "agent", { targetHandle: "in", style: { strokeDasharray: "4 4" } });
+  // One user: the message goes to the agent, the reply comes back to the same user.
+  nodes.push({ id: "user", type: "user", position: { x: 0, y: AGENT_Y + 18 }, data: {} });
+  nodes.push({ id: "agent", type: "agent", position: { x: AGENT_X, y: AGENT_Y }, data: { name: map.agent.name, framework: map.agent.framework } });
+  guard("in", "user", "agent", "input", "The user's message", { sourceHandle: "out", targetHandle: "in" });
+  guard("out", "agent", "user", "output", "The agent's reply", { sourceHandle: "reply", targetHandle: "back" });
+
+  const models = map.agent.models || [];
+  if (models.length) {
+    nodes.push({ id: "llm", type: "llm", position: { x: AGENT_X + 10, y: AGENT_Y - 140 }, data: { models } });
+    edges.push({ id: "e-llm", source: "agent", sourceHandle: "llm", target: "llm", style: { stroke: "var(--af-link)", strokeDasharray: "5 4", strokeWidth: 1.5 } });
   }
 
-  const call = stage("tool_call");
-  const result = stage("tool_result");
-  // Rows centred under the tool-call step: tools four to a row, groups five.
-  const grid = (n: number, top: number, i: number, per = PER_ROW, row = ROW) => {
-    const perRow = Math.min(per, n);
-    const start = agentX + 80 - ((perRow - 1) * COL) / 2 - 100;
-    return { x: start + (i % perRow) * COL, y: top + Math.floor(i / perRow) * row };
-  };
-  const rows = (n: number, per = PER_ROW) => Math.ceil(n / per);
-  let bottom = 380;
-  const lastIds: string[] = [];
-
-  if (call && (d.collapsed || d.tools.length || d.groups?.length || hidden)) {
-    nodes.push({ id: "stage:tool_call", type: "stage", position: { x: agentX - 20, y: 200 }, data: { stage: call, selected: isSel("stage", "tool_call") } });
-    edge("et", "agent", "stage:tool_call", { sourceHandle: "down", targetHandle: "top" });
-
-    const toolNode = (tl: MapTool, pos: { x: number; y: number }, from: string, i: string) => {
-      const id = `tool:${tl.key}`;
-      nodes.push({ id, type: "tool", position: pos, data: { tool: tl, selected: isSel("tool", tl.key) } });
-      if (from !== "stage:tool_call") {
-        // Inside an opened group the tool's own border says whether it is allowed; keep the wires quiet.
-        edges.push({ id: `etc-${i}`, source: from, target: id, style: { opacity: 0.35 } });
-        return id;
-      }
-      edge(`etc-${i}`, from, id, {
-        animated: tl.permission !== "not_granted" && Boolean(tl.stats.total),
-        style: tl.permission === "not_granted" ? { stroke: "var(--viz-blocked)", strokeDasharray: "4 4" } : undefined,
-      });
-      return id;
-    };
-
-    if (d.collapsed) {
-      nodes.push({ id: "tools:all", type: "tools", position: grid(1, 380, 0), data: { tools: visible, selected: selected?.kind === "tools" } });
-      edge("etc-all", "stage:tool_call", "tools:all", { animated: visible.some((t) => t.stats.total) });
-      lastIds.push("tools:all");
-      bottom = 380 + GROUP_ROW;
-    } else if (!d.groups) {
-      d.tools.forEach((tl, i) => lastIds.push(toolNode(tl, grid(d.tools.length, 380, i), "stage:tool_call", String(i))));
-      bottom = 380 + rows(d.tools.length) * ROW;
-    } else {
-      const shown = d.groups.slice(0, DRAW_GROUPS);
-      const extra = d.groups.length - shown.length;
-      const cells = shown.length + (extra ? 1 : 0);
-      shown.forEach((g, i) => {
-        const id = `group:${g.key}`;
-        const open = d.open?.key === g.key;
-        nodes.push({ id, type: "toolgroup", position: grid(cells, 380, i, GROUPS_PER_ROW, GROUP_ROW), data: { group: g, open, selected: isSel("group", g.key) } });
-        edge(`eg-${i}`, "stage:tool_call", id, { animated: g.tools.some((t) => t.stats.total) });
-        lastIds.push(id);
-      });
-      if (extra) {
-        nodes.push({ id: "more:groups", type: "more", position: grid(cells, 380, shown.length, GROUPS_PER_ROW, GROUP_ROW), data: { label: `+${plural(extra, "more group")}` } });
-        edge("eg-more", "stage:tool_call", "more:groups", { style: { strokeDasharray: "4 4" } });
-      }
-      bottom = 380 + rows(cells, GROUPS_PER_ROW) * GROUP_ROW;
-      if (d.open) {
-        const ts = d.open.tools.slice(0, DRAW_OPEN);
-        const rest = d.open.tools.length - ts.length;
-        const n = ts.length + (rest ? 1 : 0);
-        const top = bottom + 30;
-        const from = `group:${d.open.key}`;
-        // The opened group's tools hang off it; its own node carries the edge onward.
-        ts.forEach((tl, i) => toolNode(tl, grid(n, top, i), from, `o${i}`));
-        if (rest) {
-          nodes.push({ id: "more:tools", type: "more", position: grid(n, top, ts.length), data: { label: `+${rest} more in ${d.open.label.toLowerCase()}` } });
-          edge("eo-more", from, "more:tools", { style: { strokeDasharray: "4 4" } });
-        }
-        bottom = top + rows(n) * ROW;
-      }
-    }
-    if (result) {
-      nodes.push({ id: "stage:tool_result", type: "stage", position: { x: agentX - 20, y: bottom + 20 }, data: { stage: result, selected: isSel("stage", "tool_result") } });
-      lastIds.forEach((id, i) => edge(`etr-${i}`, id, "stage:tool_result", { targetHandle: "top", style: { opacity: 0.5 } }));
-      edge("er", "stage:tool_result", "agent", { targetHandle: "up", type: "smoothstep" });
-    }
+  if (stage("context")) {
+    nodes.push({ id: "docs", type: "docs", position: { x: 20, y: AGENT_Y + 190 }, data: {} });
+    guard("ctx", "docs", "agent", "context", "Documents & memory", { targetHandle: "context", style: { strokeDasharray: "4 4" } });
   }
 
-  // Sub-agents to the right, below the reply. One the code hands work to but traffic
-  // has not used yet is drawn fainter, with a still wire.
+  if (tools.length || hidden) {
+    const more = hidden > 0;
+    const cells = tools.length + (more ? 1 : 0);
+    const cols = Math.min(3, Math.max(1, cells));
+    const rows = Math.ceil(cells / cols);
+    const w = PAD * 2 + cols * TOOL_W + (cols - 1) * GAP;
+    const h = HEAD + rows * TOOL_H + (rows - 1) * GAP + PAD;
+    const x = Math.max(AGENT_X + 120 - w / 2, 240);
+    const total = tools.length + hidden;
+    nodes.push({ id: "box:tools", type: "box", position: { x, y: AGENT_Y + 200 }, data: { title: plural(total, "tool"), w, h, selected: selected?.kind === "tools" } });
+    const at = (i: number) => ({ x: PAD + (i % cols) * (TOOL_W + GAP), y: HEAD + Math.floor(i / cols) * (TOOL_H + GAP) });
+    tools.forEach((tl, i) =>
+      nodes.push({ id: `tool:${tl.key}`, type: "tool", parentId: "box:tools", extent: "parent", position: at(i), data: { tool: tl, selected: selected?.kind === "tool" && selected.key === tl.key } }),
+    );
+    if (more) nodes.push({ id: "more:tools", type: "more", parentId: "box:tools", extent: "parent", position: at(tools.length), data: { label: `+${hidden} more` } });
+    guard("calls", "agent", "box:tools", "tool_call", "Every tool call", { sourceHandle: "calls", targetHandle: "in" });
+    guard("results", "box:tools", "agent", "tool_result", "Every tool result", { sourceHandle: "out", targetHandle: "results", style: { strokeDasharray: "4 4" } });
+  }
+
   const subs = drawnSubagents(map.subagents, DRAW_SUBAGENTS);
   subs.shown.forEach((s, i) => {
     const id = `sub:${s.slug}`;
-    nodes.push({ id, type: "subagent", position: { x: agentX + 2 * COL + 40, y: 200 + i * 120 }, data: { link: s, framework: map.agent.framework } });
-    edge(`es-${i}`, "agent", id, { sourceHandle: "down", animated: Boolean(s.seen), style: { strokeDasharray: "6 4", opacity: s.seen ? 1 : 0.6 } });
+    nodes.push({ id, type: "subagent", position: { x: AGENT_X + 330, y: AGENT_Y - 40 + i * 90 }, data: { link: s, framework: map.agent.framework } });
+    edges.push({ id: `es-${i}`, source: "agent", sourceHandle: "subs", target: id, style: { strokeDasharray: "6 4", opacity: s.seen ? 1 : 0.6 } });
   });
-  if (subs.rest) {
-    const id = "more:subagents";
-    nodes.push({ id, type: "more", position: { x: agentX + 2 * COL + 40, y: 200 + subs.shown.length * 120 }, data: { label: `${plural(subs.rest, "more sub-agent")}`, from: "left" } });
-    edge("es-more", "agent", id, { sourceHandle: "down", style: { strokeDasharray: "4 4" } });
-  }
-
-  // Whoever hands this agent work, to the left of the user, so the map links back up.
   (map.parents || []).slice(0, 3).forEach((p, i) => {
     const id = `parent:${p.slug}`;
-    nodes.push({ id, type: "parent", position: { x: -COL - 10, y: 25 + i * 120 }, data: { link: p } });
-    edge(`ep-${i}`, id, "agent", { targetHandle: "in", animated: Boolean(p.seen), style: { strokeDasharray: "6 4", opacity: p.seen ? 1 : 0.6 } });
+    nodes.push({ id, type: "parent", position: { x: -40 + i * 210, y: AGENT_Y + 320 }, data: { link: p } });
+    edges.push({ id: `ep-${i}`, source: id, target: "user", targetHandle: "parents", style: { strokeDasharray: "6 4", opacity: p.seen ? 1 : 0.6 } });
   });
   return { nodes, edges };
+}
+
+/** The tools the box draws: the first few, every one when expanded, and always the one selected. */
+function boxTools(visible: MapTool[], expanded: boolean, selected: Selected): MapTool[] {
+  const limit = visible.length <= BOX_FIRST + 1 ? visible.length : expanded ? BOX_MAX : BOX_FIRST;
+  const shown = visible.slice(0, limit);
+  if (selected?.kind === "tool" && !shown.some((t) => t.key === selected.key)) {
+    const t = visible.find((x) => x.key === selected.key);
+    if (t) shown[shown.length - 1] = t;
+  }
+  return shown;
 }
 
 // --- changes -----------------------------------------------------------------------
@@ -471,6 +517,320 @@ function PermissionControl({ tool, slug }: { tool: MapTool; slug: string }) {
   );
 }
 
+// --- a line, selected: what can guard it ------------------------------------------
+
+/** The checks the workspace has and the judge chain, read by the page (GET /api/detectors, /api/judgment/posture). */
+export type Catalog = {
+  detectors: { key: string; label: string; source: string; surfaces: string[]; available: boolean }[];
+  tiers: { tier: string; enabled: boolean; sends_data: boolean; blocked_reason: string }[];
+  bands: Record<string, [number, number] | null>;
+};
+
+const TIER: Record<string, { name: string; note: string }> = {
+  jev: { name: "Jev", note: "hosted judge model" },
+  local_llm: { name: "Your LLM", note: "self-hosted, nothing leaves" },
+  llm: { name: "Hosted LLM", note: "e.g. OpenAI, Anthropic" },
+};
+/** The order judges are asked in, for the open-ended questions these checks ask. */
+const CHAIN = ["jev", "local_llm", "llm"];
+
+/** Output is judged as meaning (semantic); everything else as an open pattern. */
+function bandFor(stage: Stage, catalog?: Catalog): [number, number] {
+  const kind = stage.key === "output" ? "semantic" : "pattern_open";
+  return catalog?.bands[kind] || (kind === "semantic" ? [0.3, 0.7] : [0.2, 0.8]);
+}
+
+function CheckToggle({ dkey, on, available, slug }: { dkey: string; on: boolean; available: boolean; slug: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  if (!available)
+    return (
+      <Link className="gm-check-install" href="/app/policies?tab=checks" title="Install it on the Checks page">
+        Not installed
+      </Link>
+    );
+  const flip = async () => {
+    setBusy(true);
+    setError("");
+    const r = await send(`/api/features/checks/${encodeURIComponent(dkey)}`, "POST", { enabled: !on, agent: slug, reason: "Set from the map" });
+    setBusy(false);
+    if (!r.ok) return setError(errorOf(r.data, "Could not change this check."));
+    router.refresh();
+  };
+  return (
+    <>
+      <button type="button" role="switch" aria-checked={on} disabled={busy} className={`gm-switch${on ? " on" : ""}`} onClick={flip}>
+        <span />
+      </button>
+      {error && <span className="k-act-error" role="alert">{error}</span>}
+    </>
+  );
+}
+
+/** Names the catalogue leaves blank. */
+const MODULE_NAME: Record<string, string> = {
+  "custom.validators": "Your validator rules",
+  "injection.judgment": "Prompt injection (judge)",
+  "validator.prompt_injection_llm": "Prompt injection (validator judge)",
+};
+const moduleName = (d: { key: string; label: string }) => MODULE_NAME[d.key] || d.label || detectorName(d.key);
+
+function ModuleRow({ d, stage, slug }: { d: Catalog["detectors"][number]; stage: Stage; slug: string }) {
+  return (
+    <li>
+      <span className="gm-module-name">
+        {moduleName(d)}
+        <span className="k-mono gm-sub">{d.key}</span>
+      </span>
+      <CheckToggle dkey={d.key} on={stage.detectors.includes(d.key)} available={d.available} slug={slug} />
+    </li>
+  );
+}
+
+/** Installed checks with their switch; the ones not installed folded away. */
+function ModuleList({ items, stage, slug, empty }: { items: Catalog["detectors"]; stage: Stage; slug: string; empty: string }) {
+  if (!items.length) return <p className="gm-sub">{empty}</p>;
+  const ready = items.filter((d) => d.available);
+  const rest = items.filter((d) => !d.available);
+  return (
+    <>
+      {ready.length > 0 && (
+        <ul className="gm-modules">
+          {ready.map((d) => (
+            <ModuleRow key={d.key} d={d} stage={stage} slug={slug} />
+          ))}
+        </ul>
+      )}
+      {rest.length > 0 && (
+        <details className="gm-more-modules">
+          <summary>
+            {ready.length ? `${rest.length} more you can install` : `${rest.length} available to install`}
+          </summary>
+          <ul className="gm-modules">
+            {rest.map((d) => (
+              <ModuleRow key={d.key} d={d} stage={stage} slug={slug} />
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
+  );
+}
+
+function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap; catalog?: Catalog; back: ReactNode }) {
+  const slug = map.agent.slug;
+  const here = (catalog?.detectors || []).filter((d) => d.surfaces.some((s) => stage.surfaces.includes(s)));
+  const by = (source: string) => here.filter((d) => d.source === source);
+  const judges = by("llm_judge");
+  const tiers = Object.fromEntries((catalog?.tiers || []).map((t) => [t.tier, t]));
+  const anyJudge = CHAIN.some((t) => tiers[t]?.enabled);
+  const [lo, hi] = bandFor(stage, catalog);
+  const pct = (x: number) => `${Math.round(Math.max(0, x) * 100)}%`;
+
+  return (
+    <div className="gm-panel gm-stage-panel">
+      {back}
+      <div>
+        <strong className="gm-guide-title">{stage.title}</strong>
+        <StatLine days={map.window_days} s={stage.stats} noun="checked" />
+      </div>
+
+      <section className="gm-layer">
+        <header>
+          <span className="gm-layer-tag det">Deterministic</span>
+          <span className="gm-sub">Same input, same answer. Runs on every call, in milliseconds.</span>
+        </header>
+
+        <h4>Policies</h4>
+        <p className="gm-sub">What happens when a check below finds something: block, ask a person, or only watch.</p>
+        <RuleList rules={stage.rules} slug={slug} />
+
+        <h4>Pattern checks · regex</h4>
+        <ModuleList items={by("builtin")} stage={stage} slug={slug} empty="None for this step." />
+
+        <h4>Classifier models · ML</h4>
+        <ModuleList items={by("open_source")} stage={stage} slug={slug} empty="None for this step." />
+
+        {by("yours").length > 0 && (
+          <>
+            <h4>Your own checks</h4>
+            <ModuleList items={by("yours")} stage={stage} slug={slug} empty="" />
+          </>
+        )}
+      </section>
+
+      <section className="gm-layer">
+        <header>
+          <span className="gm-layer-tag llm">Non-deterministic · LLM fallback chain</span>
+          <span className="gm-sub">An LLM reads what the patterns can&apos;t: intent, meaning, disguised attacks.</span>
+        </header>
+
+        <ol className="gm-chain">
+          {CHAIN.map((t, i) => {
+            const st = tiers[t];
+            return (
+              <li key={t} className={st?.enabled ? "on" : ""}>
+                <span className="gm-chain-step">{i + 1}</span>
+                <span className="gm-chain-body">
+                  <b>{TIER[t].name}</b>
+                  <span className="gm-sub">{st?.enabled ? TIER[t].note : st?.blocked_reason ? "off · " + shortReason(st.blocked_reason) : "off"}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="gm-sub">
+          When a judge is switched on it runs alongside the checks above. Judges are asked in order: an answer below {pct(lo)} or
+          above {pct(hi)} settles it; anything in between passes to the next judge. The highest score wins and goes through the
+          same policies.
+          {stage.key !== "output" ? "" : " Here the question is about meaning, so the band is wider."}
+        </p>
+
+        <h4>Judge checks here</h4>
+        {anyJudge ? (
+          <ModuleList items={judges} stage={stage} slug={slug} empty="No judge checks for this step." />
+        ) : (
+          <p className="gm-sub">
+            No judge is switched on, so {judges.length ? `these ${judges.length} checks` : "judge checks"} can&apos;t run yet
+            {judges.length ? `: ${[...new Set(judges.map(moduleName))].join(", ")}` : ""}.
+          </p>
+        )}
+        <Link className="gm-link-strong" href="/app/policies?tab=checks">
+          Set up the chain →
+        </Link>
+      </section>
+    </div>
+  );
+}
+
+/** The first clause of a backend reason, for a one-line status. */
+function shortReason(reason: string): string {
+  if (reason.includes("egress")) return "sending data out is switched off on this deployment";
+  return reason.split(/[;(]/)[0].trim();
+}
+
+// --- guide (nothing selected) -----------------------------------------------------
+
+/** The last attack-test run the panel reports, read by the page. */
+export type LastTest = { name: string; at: string; run: number; blocked: number; href: string } | null;
+
+const POINTS = ["input", "context", "tool_call", "tool_result", "output"];
+const RISKY = new Set(["irreversible", "high_impact"]);
+
+/** A place on the map counts as secured when something there enforces; watching is half-way. */
+function coverage(map: AgentMap) {
+  const stages = map.stages.filter((s) => POINTS.includes(s.key));
+  const stageState = stages.map((s) => {
+    const c = counts(s.rules);
+    return c.enforcing ? "on" : c.watching || s.detectors.length ? "watch" : "off";
+  });
+  const toolState = map.tools.map((t) =>
+    t.permission !== "allowed" || t.ladders.length || counts(t.rules).enforcing ? "on" : counts(t.rules).watching ? "watch" : "off",
+  );
+  const all = [...stageState, ...toolState];
+  const on = all.filter((x) => x === "on").length;
+  const watch = all.filter((x) => x === "watch").length;
+  return { total: all.length, on, watch, pct: all.length ? Math.round((on / all.length) * 100) : 0 };
+}
+
+type Suggestion = { text: string; action: string; pick: Selected };
+
+/** Where adding a guardrail matters most, most urgent first. */
+function suggestions(map: AgentMap): Suggestion[] {
+  const out: Suggestion[] = [];
+  for (const t of map.tools) {
+    if (RISKY.has(t.impact || "") && t.permission === "allowed" && !counts(t.rules).enforcing)
+      out.push({ text: `${shortKey(t.key)} can do real damage and runs with no check.`, action: "Require approval", pick: { kind: "tool", key: t.key } });
+  }
+  for (const s of map.stages.filter((x) => POINTS.includes(x.key))) {
+    const c = counts(s.rules);
+    if (!c.enforcing && !c.watching && !s.detectors.length)
+      out.push({ text: `Nothing guards ${s.title.toLowerCase()} yet.`, action: "Add guardrails", pick: { kind: "stage", key: s.key } });
+    else if (!c.enforcing)
+      out.push({ text: `${s.title} only watches: nothing is stopped there.`, action: "Start enforcing", pick: { kind: "stage", key: s.key } });
+  }
+  return out.slice(0, 4);
+}
+
+function Guide({ map, lastTest, onSelect }: { map: AgentMap; lastTest?: LastTest; onSelect: (s: Selected) => void }) {
+  const c = coverage(map);
+  const tips = suggestions(map);
+  return (
+    <div className="gm-panel gm-guide">
+      <div>
+        <span className="gm-guide-kicker">Set up guardrails</span>
+        <strong className="gm-guide-title">{map.agent.name || map.agent.slug}</strong>
+      </div>
+
+      <section className="gm-score" aria-label="How much of this agent is secured">
+        <div className="gm-score-head">
+          <b>{c.pct}%</b>
+          <span>secured</span>
+        </div>
+        <div className="gm-score-bar" aria-hidden>
+          <i className="on" style={{ width: `${c.total ? (c.on / c.total) * 100 : 0}%` }} />
+          <i className="watch" style={{ width: `${c.total ? (c.watch / c.total) * 100 : 0}%` }} />
+        </div>
+        <p className="gm-sub">
+          {c.on} of {c.total} places on the map enforce a guardrail{c.watch ? ` · ${c.watch} only watch` : ""}.
+        </p>
+      </section>
+
+      <section>
+        <h4>Last test run</h4>
+        {lastTest ? (
+          <div className="gm-test">
+            <span className={`gm-test-result${lastTest.blocked < lastTest.run ? " bad" : ""}`}>
+              {lastTest.blocked} of {lastTest.run} attacks blocked
+            </span>
+            <span className="gm-sub">
+              {lastTest.name} · {new Date(lastTest.at).toLocaleDateString([], { month: "short", day: "numeric" })}
+            </span>
+            <Link className="gm-link-strong" href={lastTest.href}>Run tests again →</Link>
+          </div>
+        ) : (
+          <p className="gm-sub">
+            No tests yet. <Link className="gm-link-strong" href="/app/test">Run the attack suite →</Link>
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h4>Suggestions</h4>
+        {tips.length ? (
+          <ul className="gm-tips">
+            {tips.map((t) => (
+              <li key={t.text}>
+                <span>{t.text}</span>
+                <button type="button" className="gm-link-strong" onClick={() => onSelect(t.pick)}>
+                  {t.action} →
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="gm-sub">Every place on the map has a guardrail. Run the tests to check they hold.</p>
+        )}
+        <p className="gm-sub">Or click any line or tool on the map to see what you can add there.</p>
+      </section>
+
+      <details className="gm-help">
+        <summary>Can&apos;t see your agent here?</summary>
+        <ol>
+          <li>
+            Run <code>agentfox init</code> in the repository where the agent lives. It reads the code, finds every agent and
+            tool, and adds them here.
+          </li>
+          <li>Make sure the agent is built in code it can read, e.g. LangChain&apos;s <code>create_agent</code> with its tools.</li>
+          <li>Already running elsewhere? Route its calls through AgentFox and it shows up the first time it runs.</li>
+        </ol>
+        <Link className="gm-link-strong" href="/app/onboarding">Open setup →</Link>
+      </details>
+    </div>
+  );
+}
+
 // --- panel -----------------------------------------------------------------------
 
 function RuleList({ rules, slug }: { rules: MapRule[]; slug: string }) {
@@ -515,14 +875,16 @@ function Panel({
   selected,
   groups,
   onSelect,
-  summary,
+  lastTest,
+  catalog,
   toolList,
 }: {
   map: AgentMap;
   selected: Selected;
   groups: ToolGroup[];
   onSelect: (s: Selected) => void;
-  summary?: ReactNode;
+  lastTest?: LastTest;
+  catalog?: Catalog;
   toolList: ReactNode;
 }) {
   const slug = map.agent.slug;
@@ -541,31 +903,7 @@ function Panel({
     );
   if (selected?.kind === "stage") {
     const s = map.stages.find((x) => x.key === selected.key);
-    if (s)
-      return (
-        <div className="gm-panel">
-          {back}
-          <strong>{s.title}</strong>
-          <StatLine days={map.window_days} s={s.stats} noun="checked" />
-          <h4>Guardrails here</h4>
-          <RuleList rules={s.rules} slug={slug} />
-          <h4>Checks that run here</h4>
-          {s.detectors.length ? (
-            <div className="k-pills" style={{ gap: 6, flexWrap: "wrap" }}>
-              {s.detectors.map((d) => (
-                <Pill key={d} tone="outline">
-                  {detectorName(d)}
-                </Pill>
-              ))}
-            </div>
-          ) : (
-            <p className="k-muted">None.</p>
-          )}
-          <p>
-            <Link href="/app/policies?tab=checks">Choose checks</Link>
-          </p>
-        </div>
-      );
+    if (s) return <StagePanel stage={s} map={map} catalog={catalog} back={back} />;
   }
   if (selected?.kind === "group") {
     const g = groups.find((x) => x.key === selected.key);
@@ -590,35 +928,7 @@ function Panel({
     }
   }
   const tl = selected?.kind === "tool" ? map.tools.find((t) => t.key === selected.key) : null;
-  if (!tl) {
-    const t = groupSummary(map.tools);
-    return (
-      <div className="gm-panel">
-        {summary}
-        {map.tools.length > 0 && (
-          <>
-            <h4>Tools</h4>
-            <button type="button" className="gm-tools-card" onClick={() => onSelect({ kind: "tools", key: "" })}>
-              <strong>{plural(map.tools.length, "tool")}</strong>
-              <span className="gm-perms">
-                {t.allowed ? <span className="gm-perm gm-perm-ok">{t.allowed} allowed</span> : null}
-                {t.ask ? <span className="gm-perm gm-perm-held">{t.ask} ask</span> : null}
-                {t.denied ? <span className="gm-perm gm-perm-bad">{t.denied} not allowed</span> : null}
-              </span>
-              <span className="gm-sub">Browse and change access →</span>
-            </button>
-          </>
-        )}
-        {map.everywhere.length > 0 && (
-          <>
-            <h4>At every step</h4>
-            <RuleList rules={map.everywhere} slug={slug} />
-          </>
-        )}
-        <p className="gm-sub">Click a step or a tool on the canvas to see and change its guardrails.</p>
-      </div>
-    );
-  }
+  if (!tl) return <Guide map={map} lastTest={lastTest} onSelect={onSelect} />;
   const limits = Object.entries(tl.limits || {});
   return (
     <div className="gm-panel">
@@ -767,17 +1077,24 @@ function ToolList({
 // --- the map -----------------------------------------------------------------------
 
 function Legend() {
-  const tones: Tone[] = ["on", "watch", "off"];
   return (
     <div className="gm-legend" aria-label="Legend">
-      {tones.map((t) => (
-        <span key={t}>
-          <i className={`gm-swatch gm-${t}`} aria-hidden /> {TONE_LABEL[t]}
+      {NODE_KINDS.map((k) => (
+        <span key={k.key} className={`gm-legend-kind gm-lk-${k.key}`}>
+          <span className="gm-kind-icon" aria-hidden>
+            <k.icon size={12} strokeWidth={2} />
+          </span>
+          {k.label}
         </span>
       ))}
-      <span>
-        <i className="gm-swatch gm-swatch-denied" aria-hidden /> Not allowed
+      <span className="gm-legend-sep" aria-hidden />
+      <span className="gm-legend-kind">
+        <Mark size={16} /> Guardrails here
       </span>
+      <span className="gm-legend-kind">
+        <span className="gm-legend-plus" aria-hidden>+</span> None yet: click to add
+      </span>
+      <span className="gm-legend-hint">Click any line or tool to see and change its guardrails</span>
     </div>
   );
 }
@@ -789,8 +1106,9 @@ function Legend() {
  * tools, each with "+N more" into the inspector's list. The inspector beside it
  * shows what is selected, and the project itself (`summary`) when nothing is.
  */
-export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactNode }) {
+export function GuardrailMap({ map, lastTest, catalog }: { map: AgentMap; lastTest?: LastTest; catalog?: Catalog }) {
   const [selected, setSelected] = useState<Selected>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [by, setBy] = useState<GroupBy>("impact");
@@ -798,18 +1116,24 @@ export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactN
 
   const visible = useMemo(() => filterTools(map.tools, query, filter), [map.tools, query, filter]);
   const groups = useMemo(() => groupTools(visible, by), [visible, by]);
-  // The group drawn open: the one chosen, or the one holding the chosen tool.
-  const openKey =
-    selected?.kind === "group"
-      ? selected.key
-      : selected?.kind === "tool"
-        ? groups.find((g) => g.tools.some((t) => t.key === selected.key))?.key || null
-        : null;
-  // Choosing a tool from the list draws it, which needs the tools expanded.
-  const showAll = expanded || selected?.kind === "tool" || selected?.kind === "group";
-  const d = useMemo(() => drawTools(visible, by, showAll, openKey), [visible, by, showAll, openKey]);
-  const { nodes, edges } = useMemo(() => layout(map, d, visible, map.tools.length - visible.length, selected), [map, d, visible, selected]);
-  const many = map.tools.length > DRAW_EACH;
+  const showAll = expanded;
+  const drawn = useMemo(() => boxTools(visible, expanded, selected), [visible, expanded, selected]);
+  const laid = useMemo(
+    () => layout(map, drawn, visible.length - drawn.length, selected, (key) => setSelected({ kind: "stage", key })),
+    [map, drawn, visible.length, selected],
+  );
+  const nodes = laid.nodes;
+  // The line under the pointer (or its badge) lights up and labels itself.
+  const edges = useMemo(
+    () =>
+      laid.edges.map((e) =>
+        e.type === "guard"
+          ? { ...e, data: { ...(e.data as GuardData), hovered: hovered === e.id, onHover: (on: boolean) => setHovered(on ? e.id : null) } }
+          : e,
+      ),
+    [laid.edges, hovered],
+  );
+  const many = map.tools.length > BOX_FIRST + 1;
 
   const toolList = (
     <ToolList
@@ -833,15 +1157,6 @@ export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactN
           <Legend />
           {many && (
             <div className="gm-bar-end">
-              {showAll && !d.collapsed && (
-                <select className="k-select k-select-sm" value={by} onChange={(e) => setBy(e.target.value as GroupBy)} aria-label="Group tools by">
-                  {GROUP_BY.map((g) => (
-                    <option key={g.key} value={g.key}>
-                      Group by {g.label.toLowerCase()}
-                    </option>
-                  ))}
-                </select>
-              )}
               <button
                 type="button"
                 className="k-btn k-btn-sm"
@@ -853,7 +1168,7 @@ export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactN
                   } else setExpanded(true);
                 }}
               >
-                {showAll ? "Collapse tools" : `Expand ${map.tools.length} tools`}
+                {showAll ? "Show fewer tools" : `Show all ${map.tools.length} tools`}
               </button>
             </div>
           )}
@@ -861,10 +1176,17 @@ export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactN
         <div className="gm-flow">
           <ReactFlow
             // Re-fit when what is drawn changes shape, not on every selection.
-            key={`${by}|${openKey || ""}|${visible.length}|${d.collapsed ? "c" : d.groups ? "g" : "t"}`}
+            key={`${visible.length}|${drawn.length}`}
             nodes={nodes}
             edges={edges}
             nodeTypes={NODE_TYPES}
+            edgeTypes={EDGE_TYPES}
+            onEdgeMouseEnter={(_, edge) => edge.type === "guard" && setHovered(edge.id)}
+            onEdgeMouseLeave={() => setHovered(null)}
+            onEdgeClick={(_, edge) => {
+              const key = edge.id.startsWith("edge:") ? (edge.data as GuardData | undefined)?.stage?.key : undefined;
+              if (key) setSelected({ kind: "stage", key });
+            }}
             fitView
             fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
             minZoom={0.2}
@@ -876,12 +1198,8 @@ export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactN
               const [kind, ...rest] = node.id.split(":");
               const key = rest.join(":");
               if (kind === "stage" || kind === "tool") setSelected({ kind, key });
-              else if (kind === "tools") {
-                setExpanded(true);
-                setSelected(null);
-              } else if (kind === "group") setSelected(openKey === key && selected?.kind === "group" ? null : { kind: "group", key });
-              else if (node.id === "more:groups") setSelected({ kind: "tools", key: "" });
-              else if (node.id === "more:tools" && d.open) setSelected({ kind: "group", key: d.open.key });
+              else if (node.id === "box:tools") setSelected({ kind: "tools", key: "" });
+              else if (node.id === "more:tools") setExpanded(true);
               else setSelected(null);
             }}
             onPaneClick={() => setSelected(null)}
@@ -892,7 +1210,7 @@ export function GuardrailMap({ map, summary }: { map: AgentMap; summary?: ReactN
         </div>
       </div>
       <div className="gm-side">
-        <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} summary={summary} toolList={toolList} />
+        <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} lastTest={lastTest} catalog={catalog} toolList={toolList} />
       </div>
     </div>
   );

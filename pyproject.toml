@@ -305,3 +305,6 @@ ignore = ["B008"]  # FastAPI Depends() in defaults is the framework idiom
 # could only alter.
 "src/agentfox/packs/*/*/checks/rules.py" = ["E501"]
 "demo/**" = ["E501"]
+# The onboarding attack suite is data: each line is a message the suite sends.
+# Rewrapping it risks silently changing an attack, as with the trees above.
+"src/agentfox/capabilities/onboarding/attacks.py" = ["E501"]

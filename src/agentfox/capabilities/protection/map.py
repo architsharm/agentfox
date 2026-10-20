@@ -380,6 +380,8 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
             "name": (agent.name if agent else "") or slug,
             "known": agent is not None,
             "framework": agent.framework if agent else None,
+            # The LLMs it runs on: declared in code, or seen in its traffic.
+            "models": _models_of(session, slug, agent),
         },
         "window_days": WINDOW_DAYS,
         "stages": stages,
@@ -388,6 +390,15 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         "subagents": subagents,
         "parents": parents,
     }
+
+
+def _models_of(session: Session, slug: str, agent: Agent | None) -> list[str]:
+    seen = session.scalars(
+        select(LineageEdge.dst_id).where(
+            LineageEdge.src_id == slug, LineageEdge.relation == "uses_model"
+        )
+    )
+    return list(dict.fromkeys([*((agent.declared_models or []) if agent else []), *seen]))
 
 
 def _edge_json(edge: LineageEdge, other: str, names: dict[str, str]) -> dict[str, Any]:

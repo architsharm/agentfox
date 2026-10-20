@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 285,
+ "count": 303,
  "routes": [
   {
    "method": "GET",
@@ -8108,6 +8108,415 @@
   },
   {
    "method": "GET",
+   "path": "/api/onboarding/guardrails",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Get Guardrails",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/guardrails",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Save Guardrails",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/key",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "This user's setup key, made the first time it is asked for and the same ever after. Always retrievable: it can only report a map and test results, so showing it again is safe, and a running `agentfox init` keeps working.",
+   "description": "This user's setup key, made the first time it is asked for and the same ever\nafter. Always retrievable: it can only report a map and test results, so showing\nit again is safe, and a running `agentfox init` keeps working.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/runner/connect",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Runner Connect",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "Connect",
+    "fields": [
+     {
+      "name": "structure",
+      "type": "object",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "project",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/runner/poll",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Heartbeat, and the next test to run if one is waiting.",
+   "description": "Heartbeat, and the next test to run if one is waiting.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/runner/runs/{run_id}/results",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Runner Results",
+   "description": "",
+   "params": [
+    {
+     "name": "run_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "Results",
+    "fields": [
+     {
+      "name": "results",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "done",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "error",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/onboarding/state",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Start over at step 1. The key survives, so a running `agentfox init` stays valid and re-reports its map on its next poll.",
+   "description": "Start over at step 1. The key survives, so a running `agentfox init` stays valid\nand re-reports its map on its next poll.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/state",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Get State",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/onboarding/state",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Save State",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/structure",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Get Structure",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "PUT",
+   "path": "/api/onboarding/structure",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "The user added or removed an agent or tool on See structure. Tests run on this map.",
+   "description": "The user added or removed an agent or tool on See structure. Tests run on this map.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "EditedStructure",
+    "fields": [
+     {
+      "name": "structure",
+      "type": "object",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/tests",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Latest Test",
+   "description": "",
+   "params": [
+    {
+     "name": "phase",
+     "in": "query",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/tests",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Start Test",
+   "description": "",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "StartTest",
+    "fields": [
+     {
+      "name": "phase",
+      "type": "string",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/tests/{run_id}",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Get Test",
+   "description": "",
+   "params": [
+    {
+     "name": "run_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/tests/{run_id}/results",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Test Results",
+   "description": "",
+   "params": [
+    {
+     "name": "run_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/overview",
    "section": "overview",
    "audience": "operator",
@@ -9515,6 +9924,87 @@
    "summary": "What a person must read before enabling probes, plus the probe library, the hard caps and the adapter contract a target endpoint has to speak.",
    "description": "What a person must read before enabling probes, plus the probe library, the\nhard caps and the adapter contract a target endpoint has to speak.",
    "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/projects",
+   "section": "projects",
+   "audience": "operator",
+   "summary": "Every project (a repository `agentfox init` mapped) and its agent count.",
+   "description": "Every project (a repository `agentfox init` mapped) and its agent count.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/projects/{project}",
+   "section": "projects",
+   "audience": "operator",
+   "summary": "Disconnect a project: connecting it again with `agentfox init` starts fresh. Its history (traffic, issues, audit) is kept.",
+   "description": "Disconnect a project: connecting it again with `agentfox init` starts fresh.\nIts history (traffic, issues, audit) is kept.",
+   "params": [
+    {
+     "name": "project",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/projects/{project}/map",
+   "section": "projects",
+   "audience": "operator",
+   "summary": "One project's map: who talks to its agents, their models, tools, and what the tools touch.",
+   "description": "One project's map: who talks to its agents, their models, tools, and what the tools touch.",
+   "params": [
+    {
+     "name": "project",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
     {
      "name": "authorization",
      "in": "header",

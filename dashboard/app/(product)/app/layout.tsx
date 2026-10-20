@@ -3,14 +3,16 @@ import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, safeApi } from "@/lib/product/api";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { Wordmark } from "@/components/product/Logo";
+import { Logo } from "@/components/product/Logo";
 import { AccountMenu } from "@/components/product/AccountMenu";
 import { NotificationsBell } from "@/components/product/NotificationsBell";
 import { CommandSearch } from "@/components/product/CommandSearch";
 import { SideNav } from "@/components/product/SideNav";
-import { SetupBanner } from "@/components/product/SetupBanner";
+import { AppChrome } from "@/components/product/AppChrome";
+import { Crumbs } from "@/components/product/Crumbs";
 import { WORKSPACE_NAV } from "@/lib/product/nav";
-import { PROJECT_COOKIE } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT } from "@/lib/product/project";
+import { apiBase } from "@/lib/env";
 import { TopbarStats } from "@/components/product/TopbarStats";
 import { getEdition } from "@/lib/product/edition";
 
@@ -80,12 +82,12 @@ async function TopbarData() {
   ]);
   const nav = NAV_FLAT.filter((n) => !n.feature || features.has(n.feature));
   return (
-    <>
+    <div className="topbar-right">
       {attention?.counts && <TopbarStats counts={attention.counts} />}
       <CommandSearch nav={nav} />
       <NotificationsBell items={attention?.items?.slice(0, 6) || []} total={attention?.total || 0} />
       {me && <AccountMenu email={me.email} workspace={me.workspace} role={me.role} />}
-    </>
+    </div>
   );
 }
 
@@ -95,55 +97,61 @@ async function TopbarData() {
  * sidebar is already there in the scope the cookie names.
  */
 async function SideNavData({ initial }: { initial: string | null }) {
-  const { agents } = await safeApi<any>("/api/agents", { agents: [] });
-  const projects = (agents || []).map((a: any) => ({ slug: a.slug, name: a.name || a.slug, status: a.status }));
-  return <SideNav projects={projects} initial={initial} />;
-}
-
-/** The setup banner, with the workspace checklist it starts from. */
-async function SetupBannerData({ project }: { project: string | null }) {
-  const onboarding = await safeApi<any>("/api/onboarding", null);
-  return <SetupBanner onboarding={onboarding} initialProject={project} />;
+  const { projects } = await safeApi<any>("/api/projects", { projects: [] });
+  return <SideNav projects={projects || []} initial={initial} />;
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
   const signedIn = Boolean(jar.get(SESSION_COOKIE)?.value);
-  const project = jar.get(PROJECT_COOKIE)?.value || null;
+  const project = jar.get(MAP_PROJECT_COOKIE)?.value || null;
 
+  // AppChrome drops the sidebar and topbar on full-screen routes (onboarding).
+  // Adding a project, or having none yet: the same view either way — each page's own
+  // empty cards and the connection card. A new signup and "+ Add a project" match.
+  const projectCount = signedIn ? ((await safeApi<any>("/api/projects", { projects: [] })).projects ?? []).length : 0;
+  const adding = signedIn && (project === NEW_PROJECT || projectCount === 0);
+  const newProject = adding ? { server: apiBase(), first: projectCount === 0 } : null;
   return (
-    <div className="shell">
-      <nav className="side">
-        {/* The mark and the name only. "by Nometria" sat under both of them
-            as a block, which put it under the fox rather than under the
-            word, and at 11px in a 224px rail it read as a stray caption.
-            The parent brand belongs where there is room for it: the public
-            footer and the sign-in page both carry it. */}
-        <Link href="/app" className="brand" aria-label="Overview">
-          <Wordmark />
-        </Link>
-        <Suspense fallback={<SideNav projects={[]} initial={project} />}>
-          {signedIn ? <SideNavData initial={project} /> : <SideNav projects={[]} initial={null} />}
-        </Suspense>
-        <ThemeToggle />
-      </nav>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        {signedIn && (
+    <AppChrome
+      newProject={newProject}
+      side={
+        <nav className="side">
+          {/* The mark and the name only. "by Nometria" sat under both of them
+              as a block, which put it under the fox rather than under the
+              word, and at 11px in a 224px rail it read as a stray caption.
+              The parent brand belongs where there is room for it: the public
+              footer and the sign-in page both carry it. */}
+          <Link href="/app" className="brand" aria-label="Overview">
+            <Logo size={26} />
+            <span className="brand-text">
+              <span className="brand-name">
+                <span className="brand-path">~/</span> agentfox
+              </span>
+              <span className="brand-sub">guard your agents</span>
+            </span>
+          </Link>
+          <Suspense fallback={<SideNav projects={[]} initial={project} />}>
+            {signedIn ? <SideNavData initial={project} /> : <SideNav projects={[]} initial={null} />}
+          </Suspense>
+          <div className="side-foot">
+            <span className="live-dot">live</span>
+            <ThemeToggle />
+          </div>
+        </nav>
+      }
+      topbar={
+        signedIn && (
           <div className="topbar">
+            <Crumbs />
             <Suspense fallback={<CommandSearch nav={NAV_FLAT} />}>
               <TopbarData />
             </Suspense>
           </div>
-        )}
-        <main>
-          {signedIn && (
-            <Suspense fallback={null}>
-              <SetupBannerData project={project} />
-            </Suspense>
-          )}
-          {children}
-        </main>
-      </div>
-    </div>
+        )
+      }
+    >
+      {children}
+    </AppChrome>
   );
 }

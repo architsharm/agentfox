@@ -496,6 +496,9 @@ def test_no_tenant_scoped_model_has_a_globally_unique_column(isolated_db):
         ("eval_results", "case_id"),
         ("knowledge_boundaries", "agent_id"),
         ("agent_signing_keys", "agent_id"),
+        # A 192-bit random secret minted by the server (service.new_init_key); it
+        # must be unique across orgs because it is how `agentfox init` finds its row.
+        ("onboarding_sessions", "init_key"),
     }
     offenders = []
 

@@ -87,6 +87,7 @@ def register_agent(
     framework: str | None = None,
     draft: bool = False,
     source_scan_run_id: str | None = None,
+    project: str | None = None,
 ) -> Agent:
     """Register (or upsert) an agent.
 
@@ -105,6 +106,7 @@ def register_agent(
     agent.environment = environment
     agent.risk_tier = risk_tier
     agent.framework = framework or agent.framework
+    agent.project = project or agent.project
     agent.declared_models = declared_models or agent.declared_models or []
     agent.declared_tools = declared_tools or agent.declared_tools or []
     agent.data_classes = data_classes or agent.data_classes or []

@@ -37,9 +37,14 @@ describe("sidebar scopes", () => {
     expect(hrefs.some((h) => h.startsWith("/app/policies"))).toBe(false);
   });
 
-  it("has no map page left to link to", () => {
-    const hrefs = WORKSPACE_NAV.flatMap((g) => g.items.map((i) => i[1]));
-    expect(hrefs).not.toContain("/app/map");
-    expect(hrefs).toContain("/app/projects");
+  it("leads with Agents, which stands for the project pages", () => {
+    const rows = WORKSPACE_NAV.flatMap((g) => g.items);
+    expect(rows[0][1]).toBe("/app/map");
+    expect(rows[0][2]).toContain("/app/projects");
+    expect(rows.map((r) => r[0])).toEqual([
+      "Agents", "Policies", "Approvals", "Issues", "Testing",
+      "Overview", "Events", "Sessions", "Tools", "Models", "Errors", "Security", "Evaluations",
+      "Settings",
+    ]);
   });
 });

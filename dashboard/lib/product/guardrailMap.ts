@@ -52,7 +52,7 @@ export type MapLink = {
   relation?: Relation | string | null;
 };
 export type AgentMap = {
-  agent: { slug: string; name: string; framework?: string | null };
+  agent: { slug: string; name: string; framework?: string | null; models?: string[] };
   window_days: number;
   stages: Stage[];
   everywhere: MapRule[];

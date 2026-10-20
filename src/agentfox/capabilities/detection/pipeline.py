@@ -95,6 +95,10 @@ class PipelineResult:
     budget_ms: float = 0.0
     degraded: list[str] = field(default_factory=list)
     errored: list[str] = field(default_factory=list)
+    #: LLM-judge checks that were asked and got no answer (no judge tier reachable).
+    #: Not "degraded": a judge with no tier switched on reports the same status, and
+    #: that is a choice, not an outage. The enforcer decides, from the judgment posture.
+    judge_unavailable: list[str] = field(default_factory=list)
 
     @property
     def detections(self) -> list[Detection]:
@@ -262,6 +266,8 @@ class DetectorPipeline:
                 # reports it rather than raising; it is still a failure to count.
                 if finished.status == "error":
                     result.errored.append(detector.key)
+                elif finished.status == "unavailable" and _is_judge(detector):
+                    result.judge_unavailable.append(detector.key)
             except FutureTimeout:
                 # The worker thread keeps running (Python cannot pre-empt it); we
                 # stop *waiting*, which is what protects the caller's latency. The
@@ -309,6 +315,12 @@ class DetectorPipeline:
         calls it (confirmed by grep), and process-level cleanup of these pools
         happens naturally at interpreter exit, the same as any other module-level
         resource."""
+
+
+def _is_judge(detector: Detector) -> bool:
+    from agentfox.capabilities.detection.catalog import source_of
+
+    return source_of(detector) == "llm_judge"
 
 
 def fail_verdict(fail_mode: str | None = None) -> str:

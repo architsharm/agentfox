@@ -252,6 +252,32 @@
       "multiple": false,
       "default": null,
       "help": "Also load the demo fixtures: three agents and an eval suite. No traffic is recorded; run `agentfox demo` afterwards for sample traces and findings."
+     },
+     {
+      "kind": "option",
+      "name": "key",
+      "opts": [
+       "--key"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": "",
+      "help": "Your onboarding key from the dashboard's Connect screen. Maps the agent in this repo, reports its names and shapes, and stays connected to run the attack tests on this machine."
+     },
+     {
+      "kind": "option",
+      "name": "server",
+      "opts": [
+       "--server"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": "",
+      "help": "The AgentFox API to report to. Default: http://127.0.0.1:8080."
      }
     ],
     "default_subcommand": null,

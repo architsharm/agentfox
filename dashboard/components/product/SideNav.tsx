@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { NavIcon } from "@/components/product/NavIcons";
 import { ProjectSwitcher, type ProjectOption } from "@/components/product/ProjectSwitcher";
-import { WORKSPACE_NAV, projectNav, type NavGroup, type NavItem } from "@/lib/product/nav";
-import { useProjectScope } from "@/lib/product/useProjectScope";
+import { WORKSPACE_NAV, type NavGroup, type NavItem } from "@/lib/product/nav";
+import { MAP_PROJECT_COOKIE, PROJECT_COOKIE_AGE, projectInPath } from "@/lib/product/project";
 
 export type { NavItem };
 
@@ -40,8 +41,20 @@ function parse(href: string): Pattern {
 export function SideNav({ projects, initial }: { projects: ProjectOption[]; initial: string | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [scope, choose] = useProjectScope(initial);
-  const nav: NavGroup[] = scope ? projectNav(scope) : WORKSPACE_NAV;
+  // The Map follows the project in its URL, else the one last chosen.
+  // On an agent's page, the switcher shows that agent's project when it is one.
+  const inPath = projectInPath(pathname);
+  const opened = inPath && projects.some((p) => p.project === inPath) ? inPath : null;
+  const current = (pathname === "/app/map" && searchParams.get("project")) || opened || initial;
+  // Opening a project's page is choosing it: every other page follows, and a project
+  // still being added is left.
+  const router = useRouter();
+  useEffect(() => {
+    if (!opened || opened === initial) return;
+    document.cookie = `${MAP_PROJECT_COOKIE}=${encodeURIComponent(opened)}; path=/; max-age=${PROJECT_COOKIE_AGE}; samesite=lax`;
+    router.refresh();
+  }, [opened, initial, router]);
+  const nav: NavGroup[] = WORKSPACE_NAV;
 
   const patterns = (item: NavItem) => [item[1], ...(item[2] || [])].map(parse);
   const claims = nav.flatMap(({ items }) => items.flatMap(patterns)).filter((p) => p.query.length);
@@ -57,7 +70,7 @@ export function SideNav({ projects, initial }: { projects: ProjectOption[]; init
 
   return (
     <>
-      <ProjectSwitcher projects={projects} current={scope} onChoose={choose} />
+      <ProjectSwitcher projects={projects} current={current} />
       {nav.map(({ group, items }) => (
         <div key={group || "root"}>
           {group && <div className="group">{group}</div>}
