@@ -180,12 +180,18 @@ async function ProjectFeatures({ slug }: { slug: string }) {
  */
 async function Canvas({ f }: { f: Filters; posture?: any }) {
   const slug = f.agent!;
-  const [map, campaigns, detectors, posture] = await Promise.all([
+  const [map, campaigns, detectors, posture, agent] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null),
     safeApi<any>("/api/redteam/campaigns", { campaigns: [] }),
     safeApi<any>("/api/detectors", { detectors: [] }),
     safeApi<any>("/api/judgment/posture", null),
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}`, null),
   ]);
+  // Every agent in this agent's project goes on the same canvas, this one first.
+  const project: string = agent?.project || slug;
+  const projectMap = await safeApi<any>(`/api/projects/${encodeURIComponent(project)}/map`, { agents: [] });
+  const others: string[] = (projectMap.agents || []).map((a: any) => a.slug).filter((s: string) => s !== slug);
+  const otherMaps = (await Promise.all(others.map((s) => safeApi<any>(`/api/agents/${encodeURIComponent(s)}/map`, null)))).filter(Boolean);
   // What can guard a line when it is selected: every check the workspace has, and the judge chain.
   const catalog: Catalog = {
     detectors: (detectors.detectors || []).map((d: any) => ({ key: d.key, label: d.label || "", source: d.source, surfaces: d.surfaces || [], available: Boolean(d.available) })),
@@ -198,7 +204,7 @@ async function Canvas({ f }: { f: Filters; posture?: any }) {
   const lastTest: LastTest = last
     ? { name: last.name, at: last.created_at, run: last.summary.attacks_run ?? 0, blocked: last.summary.attacks_blocked ?? 0, href: "/app/test" }
     : null;
-  return map ? <GuardrailMap map={map} lastTest={lastTest} catalog={catalog} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
+  return map ? <GuardrailMap maps={[map, ...otherMaps]} focus={slug} project={project} lastTest={lastTest} catalog={catalog} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
 }
 
 async function Access({ slug, prefill }: { slug: string; prefill?: string }) {

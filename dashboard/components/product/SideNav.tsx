@@ -44,7 +44,8 @@ export function SideNav({ projects, initial }: { projects: ProjectOption[]; init
   // The Map follows the project in its URL, else the one last chosen.
   // On an agent's page, the switcher shows that agent's project when it is one.
   const inPath = projectInPath(pathname);
-  const opened = inPath && projects.some((p) => p.project === inPath) ? inPath : null;
+  // An agent's page belongs to that agent's project (several agents can share one).
+  const opened = inPath ? (projects.find((p) => p.project === inPath || p.slugs?.includes(inPath))?.project ?? null) : null;
   const current = (pathname === "/app/map" && searchParams.get("project")) || opened || initial;
   // Opening a project's page is choosing it: every other page follows, and a project
   // still being added is left.

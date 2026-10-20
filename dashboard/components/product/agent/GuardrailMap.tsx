@@ -11,7 +11,7 @@ import {
   MarkerType,
   Position,
   ReactFlow,
-  getBezierPath,
+  getStraightPath,
   type Edge,
   type EdgeProps,
   type Node,
@@ -24,26 +24,21 @@ import { Bot, Cpu, FileText, User, Wrench, type LucideIcon } from "lucide-react"
 import { useMemo, useState, type ReactNode } from "react";
 import { ActionPill, ModePill, Pill } from "@/components/kit";
 import {
-  DRAW_SUBAGENTS,
   GROUP_BY,
   PERMISSION,
   RULE_SETTINGS,
   TONE_LABEL,
   TOOL_FILTERS,
   counts,
-  drawnSubagents,
   filterTools,
   groupSummary,
   groupTools,
-  parentLabel,
   permissionCall,
-  relationLabel,
   ruleChange,
   ruleSetting,
   toolTone,
   type AgentMap,
   type GroupBy,
-  type MapLink,
   type MapRule,
   type MapTool,
   type Permission,
@@ -72,15 +67,11 @@ function plural(n: number, one: string, many = `${one}s`) {
 
 // --- nodes -----------------------------------------------------------------------
 //
-// Kept deliberately quiet. Each kind of thing has one look:
-//   user    one grey pill: the message leaves it, the reply comes back to it
-//   agent   the largest card, rose (the brand)
-//   llm     a large indigo card above the agent
-//   tools   one tinted box holding a small chip per tool
-//   docs    documents & memory, a small amber card
-// Guardrails are not cards. Where some are set, our logo sits on the line (or on the
-// tool) they guard; where none are, a faint dot. Clicking a line, its logo, or a tool
-// opens what guards it in the panel beside the canvas.
+// Laid out like a guardrails diagram. The user is the only thing outside. Everything
+// else is inside one tinted box, the project: each agent (just its loop, which is not
+// guarded itself), and what each agent reaches: its LLM, its tools, its documents and
+// memory. Guardrails are rails on the lines between them, each a labelled pill: our
+// mark and a count where guardrails are set, a "+" where none are yet.
 
 /** The kind badge a card starts with: an icon in its colour, and its name. */
 function Kind({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
@@ -98,7 +89,8 @@ export const NODE_KINDS: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "user", label: "User", icon: User },
   { key: "agent", label: "Agent", icon: Bot },
   { key: "llm", label: "LLM", icon: Cpu },
-  { key: "tool", label: "Tool", icon: Wrench },
+  { key: "tool", label: "Tools", icon: Wrench },
+  { key: "docs", label: "Documents & memory", icon: FileText },
 ];
 
 /** Our mark: "guardrails are here". */
@@ -106,52 +98,82 @@ function Mark({ size = 18 }: { size?: number }) {
   return <Logo size={size} />;
 }
 
-/** Whether anything guards this step: rules that enforce or watch, or detectors. */
-function guarded(s: Stage | undefined): boolean {
-  if (!s) return false;
+/** How many guardrails act at a step: rules that enforce or watch. */
+function railCount(s: Stage | undefined): number {
+  if (!s) return 0;
   const c = counts(s.rules);
-  return Boolean(c.enforcing || c.watching || s.detectors.length);
+  return c.enforcing + c.watching;
 }
 
-/** The single user: their message leaves from the top, the reply comes back in below. */
+/** Whether anything guards this step: rules that enforce or watch, or detectors. */
+function guarded(s: Stage | undefined): boolean {
+  return Boolean(s && (railCount(s) || s.detectors.length));
+}
+
+/** The user, outside the box: messages go in from here and replies come back. */
 function UserNode() {
   return (
     <div className="gm-node gm-end">
-      <Handle type="source" position={Position.Right} id="out" style={{ top: "28%" }} />
-      <Handle type="target" position={Position.Right} id="back" style={{ top: "74%" }} />
-      <Handle type="target" position={Position.Bottom} id="parents" />
+      <Handle type="source" position={Position.Right} id="out" style={{ top: "30%" }} />
+      <Handle type="target" position={Position.Right} id="back" style={{ top: "72%" }} />
       <User size={14} aria-hidden />
       User
     </div>
   );
 }
 
-function AgentNode({ data }: NodeProps<Node<{ name: string; framework?: string | null }>>) {
+/** The project: one tinted box around every agent and everything they reach. */
+function SystemNode({ data }: NodeProps<Node<{ title: string; sub: string; w: number; h: number }>>) {
   return (
-    <div className="gm-node gm-agent">
-      <Handle type="target" position={Position.Left} id="in" style={{ top: "28%" }} />
-      <Handle type="source" position={Position.Left} id="reply" style={{ top: "74%" }} />
-      <Handle type="source" position={Position.Bottom} id="calls" style={{ left: "38%" }} />
-      <Handle type="target" position={Position.Bottom} id="results" style={{ left: "62%" }} />
-      <Handle type="source" position={Position.Top} id="llm" />
-      <Handle type="target" position={Position.Left} id="context" style={{ top: "92%" }} />
-      <Handle type="source" position={Position.Right} id="subs" />
-      <Kind icon={Bot} label="Agent" />
-      <strong className="gm-ellipsis">{data.name}</strong>
-      {data.framework && <span className="gm-sub k-mono">{data.framework}</span>}
+    <div className="gm-system" style={{ width: data.w, height: data.h }}>
+      <span className="gm-system-head">
+        <strong>{data.title}</strong>
+        <span>{data.sub}</span>
+      </span>
     </div>
   );
 }
 
-/** The model the agent thinks with: big and on its own, never mistaken for a tool. */
+/** An agent: the loop that decides what to do next. Guardrails sit on what it reaches, not on it. */
+function AgentNode({ data }: NodeProps<Node<{ name: string; framework?: string | null; active: boolean; handsOffTo?: number }>>) {
+  return (
+    <div className={`gm-node gm-agent${data.active ? " gm-agent-active" : ""}`}>
+      <Handle type="target" position={Position.Left} id="in" style={{ top: "32%" }} />
+      <Handle type="source" position={Position.Left} id="reply" style={{ top: "70%" }} />
+      <Handle type="source" position={Position.Top} id="llm" />
+      <Handle type="source" position={Position.Bottom} id="calls" style={{ left: "40%" }} />
+      <Handle type="target" position={Position.Bottom} id="results" style={{ left: "62%" }} />
+      <Handle type="target" position={Position.Top} id="context" style={{ left: "6%" }} />
+      <Handle type="source" position={Position.Top} id="handoff" style={{ left: "88%" }} />
+      <Handle type="target" position={Position.Top} id="handin" style={{ left: "12%" }} />
+      <Kind icon={Bot} label="Agent" />
+      <strong className="gm-ellipsis">{data.name}</strong>
+      <span className="gm-sub">{data.framework ? `${data.framework} · ` : ""}decides what to do next</span>
+      {data.handsOffTo ? (
+        <span className="gm-handoff-note">
+          hands off to {plural(data.handsOffTo, "agent")}
+          {data.active ? "" : " · click to show"}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** The model the agent thinks with. */
 function LlmNode({ data }: NodeProps<Node<{ models: string[] }>>) {
   return (
     <div className="gm-node gm-llm">
       <Handle type="target" position={Position.Bottom} />
       <Kind icon={Cpu} label={data.models.length > 1 ? `${data.models.length} LLMs` : "LLM"} />
-      {data.models.map((m) => (
-        <strong key={m} className="gm-ellipsis k-mono">{m}</strong>
-      ))}
+      {data.models.length ? (
+        data.models.map((m) => (
+          <strong key={m} className="gm-ellipsis k-mono">
+            {m}
+          </strong>
+        ))
+      ) : (
+        <strong className="gm-sub">model not found in code</strong>
+      )}
     </div>
   );
 }
@@ -160,18 +182,18 @@ function LlmNode({ data }: NodeProps<Node<{ models: string[] }>>) {
 function DocsNode() {
   return (
     <div className="gm-node gm-docs">
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Bottom} style={{ left: "80%" }} />
       <Kind icon={FileText} label="Documents & memory" />
     </div>
   );
 }
 
-/** Every tool in one tinted box; the tools sit inside it. */
-function BoxNode({ data }: NodeProps<Node<{ title: string; w: number; h: number; selected: boolean }>>) {
+/** One agent's tools in a tinted box; the tools sit inside it. */
+function BoxNode({ data }: NodeProps<Node<{ title: string; w: number; h: number; selected: boolean; callsAt: number; resultsAt: number }>>) {
   return (
     <div className={`gm-box${data.selected ? " gm-selected" : ""}`} style={{ width: data.w, height: data.h }}>
-      <Handle type="target" position={Position.Top} id="in" style={{ left: "38%" }} />
-      <Handle type="source" position={Position.Top} id="out" style={{ left: "62%" }} />
+      <Handle type="target" position={Position.Top} id="in" style={{ left: data.callsAt }} />
+      <Handle type="source" position={Position.Top} id="out" style={{ left: data.resultsAt }} />
       <span className="gm-box-head">
         <Kind icon={Wrench} label={data.title} />
       </span>
@@ -206,61 +228,61 @@ function MoreNode({ data }: NodeProps<Node<{ label: string }>>) {
   );
 }
 
-function linkHref(slug: string) {
-  return `/app/projects/${encodeURIComponent(slug)}`;
-}
-
-/** A sub-agent this agent hands work to: from its code, from traffic, or both. */
-function SubagentNode({ data }: NodeProps<Node<{ link: MapLink; framework?: string | null }>>) {
-  const s = data.link;
-  return (
-    <Link href={linkHref(s.slug)} className={`gm-node gm-sub-agent${s.seen ? "" : " gm-unseen"}`} title={s.slug}>
-      <Handle type="target" position={Position.Left} />
-      <Kind icon={Bot} label={relationLabel(s.relation, data.framework)} />
-      <strong className="gm-ellipsis">{s.name || s.slug}</strong>
-    </Link>
-  );
-}
-
-/** An agent that hands this one work, so a sub-agent's map links back up. */
-function ParentNode({ data }: NodeProps<Node<{ link: MapLink }>>) {
-  const s = data.link;
-  return (
-    <Link href={linkHref(s.slug)} className={`gm-node gm-sub-agent${s.seen ? "" : " gm-unseen"}`} title={s.slug}>
-      <Kind icon={Bot} label={parentLabel(s.relation)} />
-      <strong className="gm-ellipsis">{s.name || s.slug}</strong>
-      <Handle type="source" position={Position.Top} />
-    </Link>
-  );
-}
-
 const NODE_TYPES = {
   user: UserNode,
+  system: SystemNode,
   agent: AgentNode,
   llm: LlmNode,
   docs: DocsNode,
   box: BoxNode,
   tool: ToolNode,
   more: MoreNode,
-  subagent: SubagentNode,
-  parent: ParentNode,
 };
 
-// --- edges -------------------------------------------------------------------------
+// --- rails (edges) ------------------------------------------------------------------
 
-type GuardData = { stage?: Stage; title: string; selected?: boolean; hovered?: boolean; onPick?: () => void; onHover?: (on: boolean) => void };
+/** Each rail's name on the map, and what it checks, for the pill and the panel. */
+export const RAIL: Record<string, { name: string; what: (agent: string) => string; between: [string, string] }> = {
+  input: { name: "Input", what: (a) => `What users send to ${a}, checked before ${a} sees it.`, between: ["User", "Agent"] },
+  output: { name: "Output", what: (a) => `What ${a} sends back, checked before the user sees it.`, between: ["Agent", "User"] },
+  completion: { name: "LLM calls", what: (a) => `What ${a} sends to its LLM and what the LLM answers.`, between: ["Agent", "LLM"] },
+  tool_call: { name: "Tool calls", what: (a) => `Every call ${a} makes to a tool: which tool, with what arguments.`, between: ["Agent", "Tools"] },
+  tool_result: { name: "Tool results", what: (a) => `What tools return to ${a}, before it reads it.`, between: ["Tools", "Agent"] },
+  context: {
+    name: "Retrieval & memory",
+    what: (a) => `Documents, memory and other agents' messages, before ${a} reads them.`,
+    between: ["Documents & memory", "Agent"],
+  },
+};
+
+type GuardData = {
+  /** Where along the line the pill sits (0–1); two rails side by side are set apart. */
+  at?: number;
+  stage?: Stage;
+  title: string;
+  selected?: boolean;
+  hovered?: boolean;
+  onPick?: () => void;
+  onHover?: (on: boolean) => void;
+};
 
 /**
- * A line a guardrail step sits on. Easy to hit: a wide invisible band follows the line,
- * hovering lights the line and opens its badge into a label, and the line, the band and
- * the badge all open the same panel. Our mark when something guards it; a "+" when not.
+ * A rail: a labelled pill on the line where guardrails apply. Our mark and a count
+ * when something guards it, a "+" when not. The line, a wide band around it and the
+ * pill all open the same panel.
  */
 function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, style, data }: EdgeProps<Edge<GuardData>>) {
-  const [path, x, y] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  // Straight, never bent: the line is the rail, read at a glance.
+  void sourcePosition;
+  void targetPosition;
+  const [path, mx, my] = getStraightPath({ sourceX, sourceY, targetX, targetY });
+  const t = data?.at;
+  const x = t === undefined ? mx : sourceX + (targetX - sourceX) * t;
+  const y = t === undefined ? my : sourceY + (targetY - sourceY) * t;
   const on = guarded(data?.stage);
+  const n = railCount(data?.stage);
   const sel = Boolean(data?.selected);
-  const hot = Boolean(data?.hovered);
-  const lit = sel || hot;
+  const lit = sel || Boolean(data?.hovered);
   return (
     <>
       <BaseEdge
@@ -274,22 +296,18 @@ function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
         <EdgeLabelRenderer>
           <button
             type="button"
-            className={`gm-mark nodrag nopan${on ? " gm-mark-on" : " gm-mark-off"}${sel ? " gm-selected" : ""}${lit ? " gm-mark-open" : ""}`}
+            className={`gm-rail nodrag nopan${on ? " gm-rail-on" : " gm-rail-off"}${sel ? " gm-selected" : ""}${lit ? " gm-rail-lit" : ""}`}
             style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}
             onClick={data.onPick}
             onMouseEnter={() => data.onHover?.(true)}
             onMouseLeave={() => data.onHover?.(false)}
             onFocus={() => data.onHover?.(true)}
             onBlur={() => data.onHover?.(false)}
-            aria-label={`${data.title}: ${on ? "guardrails here" : "no guardrails yet"}. Open.`}
+            aria-label={`${data.title} rail: ${on ? `${n} guardrails` : "no guardrails yet"}. Open.`}
           >
-            {on ? <Mark size={18} /> : <span className="gm-mark-plus" aria-hidden>+</span>}
-            {lit && (
-              <span className="gm-mark-label">
-                {data.title}
-                <span>{on ? " · see guardrails" : " · add guardrails"}</span>
-              </span>
-            )}
+            {on ? <Mark size={15} /> : <span className="gm-mark-plus" aria-hidden>+</span>}
+            <span className="gm-rail-name">{data.title}</span>
+            {on && n ? <span className="gm-rail-count">{n}</span> : null}
           </button>
         </EdgeLabelRenderer>
       )}
@@ -301,97 +319,190 @@ const EDGE_TYPES = { guard: GuardEdge };
 
 // --- layout ----------------------------------------------------------------------
 
-/** Tools drawn in the box before "+N more"; expanded, up to BOX_MAX. */
+/** Tools drawn in an agent's box before "+N more"; expanded, up to BOX_MAX. */
 const BOX_FIRST = 6;
 const BOX_MAX = 24;
-const TOOL_W = 240;
-const TOOL_H = 38;
+const TOOL_W = 200;
+const TOOL_H = 34;
 const GAP = 10;
 const PAD = 16;
 const HEAD = 48;
+/** The user sits well outside the box, so the Input and Output rails are outside it too. */
+const USER_X = -420;
+const SYS_X = 230;
+const AGENT_X = 600;
+const AGENT_W = 180;
+const LLM_W = 180;
+/** Rows inside one agent's band, far apart so every line is long enough to read and
+ * click: its LLM, then the agent, then tools and documents. */
+const LLM_Y = 60;
+const AGENT_Y = 280;
+const BELOW_Y = 520;
+
+/** Node and edge ids carry the agent: `<slug>|<what>`. */
+const nid = (slug: string, what: string) => `${slug}|${what}`;
+
+/**
+ * The agents users talk to directly. One agent: it. Several: the ones that hand work
+ * to two or more others (a triage agent), or every one if none does.
+ */
+function entryAgents(maps: AgentMap[]): string[] {
+  if (maps.length <= 1) return maps.map((m) => m.agent.slug);
+  const inProject = new Set(maps.map((m) => m.agent.slug));
+  const out = (m: AgentMap) => m.subagents.filter((s) => inProject.has(s.slug)).length;
+  const most = Math.max(...maps.map(out));
+  // The agent that hands work to the most others is where users come in (a triage
+  // agent). With no hand-offs at all, every agent talks to users.
+  return most > 0 ? maps.filter((m) => out(m) === most).map((m) => m.agent.slug) : maps.map((m) => m.agent.slug);
+}
 
 function layout(
-  map: AgentMap,
-  tools: MapTool[],
-  hidden: number,
+  maps: AgentMap[],
+  drawnFor: (m: AgentMap) => { tools: MapTool[]; hidden: number },
+  active: string,
   selected: Selected,
-  pick: (stage: string) => void,
+  pick: (slug: string, stage: string) => void,
+  project: string,
 ): { nodes: Node[]; edges: Edge[] } {
-  const stage = (key: string) => map.stages.find((s) => s.key === key);
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const arrow = { type: MarkerType.ArrowClosed, width: 14, height: 14 };
-  /** A line that a guardrail step sits on. */
-  const guard = (id: string, source: string, target: string, key: string, title: string, extra: Partial<Edge> = {}) =>
-    edges.push({
-      id: `edge:${key}`,
-      source,
-      target,
-      type: "guard",
-      markerEnd: arrow,
-      data: { stage: stage(key), title, selected: selected?.kind === "stage" && selected.key === key, onPick: () => pick(key) },
-      ...extra,
-    });
+  const entries = new Set(entryAgents(maps));
+  const isSel = (slug: string, kind: string, key: string) => slug === active && selected?.kind === kind && selected.key === key;
 
-  const AGENT_X = 360;
-  const AGENT_Y = 120;
+  // Entry agents first, so the user's lines run straight to them.
+  const ordered = [...maps].sort((a, b) => Number(entries.has(b.agent.slug)) - Number(entries.has(a.agent.slug)));
+  const many = maps.length > 1;
+  // One agent: a single column with room to spare. Several: a grid, four to a row,
+  // each agent with its LLM above and its tools (one per line) below.
+  const COLS = many ? Math.min(4, maps.length) : 1;
+  const COL_W = 470;
+  const toolCols = many ? 1 : 2;
+  let right = AGENT_X + 300;
+  let bottom = 0;
+  const rowHeights: number[] = [];
+  const rowTop = (r: number) => 70 + rowHeights.slice(0, r).reduce((a, b) => a + b, 0);
+  const placed: { slug: string; x: number; y: number }[] = [];
 
-  // One user: the message goes to the agent, the reply comes back to the same user.
-  nodes.push({ id: "user", type: "user", position: { x: 0, y: AGENT_Y + 18 }, data: {} });
-  nodes.push({ id: "agent", type: "agent", position: { x: AGENT_X, y: AGENT_Y }, data: { name: map.agent.name, framework: map.agent.framework } });
-  guard("in", "user", "agent", "input", "The user's message", { sourceHandle: "out", targetHandle: "in" });
-  guard("out", "agent", "user", "output", "The agent's reply", { sourceHandle: "reply", targetHandle: "back" });
+  ordered.forEach((map, idx) => {
+    const slug = map.agent.slug;
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    if (rowHeights[row] === undefined) rowHeights[row] = 0;
+    const y = rowTop(row);
+    const ax = AGENT_X + col * COL_W;
+    const stage = (key: string) => map.stages.find((s) => s.key === key);
+    const rail = (key: string, source: string, target: string, extra: Partial<Edge> = {}) =>
+      edges.push({
+        id: nid(slug, `edge:${key}`),
+        source,
+        target,
+        type: "guard",
+        markerEnd: arrow,
+        data: { stage: stage(key), title: RAIL[key]?.name ?? key, selected: isSel(slug, "stage", key), onPick: () => pick(slug, key) },
+        ...extra,
+      });
+    const agentId = nid(slug, "agent");
+    const handsOffTo = map.subagents.filter((s) => s.slug !== slug && maps.some((m) => m.agent.slug === s.slug)).length;
+    nodes.push({ id: agentId, type: "agent", position: { x: ax, y: y + AGENT_Y }, data: { name: map.agent.name, framework: map.agent.framework, active: slug === active && many, handsOffTo } });
+    placed.push({ slug, x: ax, y: y + AGENT_Y });
 
-  const models = map.agent.models || [];
-  if (models.length) {
-    nodes.push({ id: "llm", type: "llm", position: { x: AGENT_X + 10, y: AGENT_Y - 140 }, data: { models } });
-    edges.push({ id: "e-llm", source: "agent", sourceHandle: "llm", target: "llm", style: { stroke: "var(--af-link)", strokeDasharray: "5 4", strokeWidth: 1.5 } });
-  }
+    // The LLM, straight above it.
+    nodes.push({ id: nid(slug, "llm"), type: "llm", position: { x: ax + (AGENT_W - LLM_W) / 2, y: y + LLM_Y }, data: { models: map.agent.models || [] } });
+    rail("completion", agentId, nid(slug, "llm"), { sourceHandle: "llm", style: { stroke: "var(--af-link)", strokeDasharray: "5 4" } });
 
-  if (stage("context")) {
-    nodes.push({ id: "docs", type: "docs", position: { x: 20, y: AGENT_Y + 190 }, data: {} });
-    guard("ctx", "docs", "agent", "context", "Documents & memory", { targetHandle: "context", style: { strokeDasharray: "4 4" } });
-  }
+    // Its tools, in a box straight below it.
+    const { tools, hidden } = drawnFor(map);
+    let boxH = 0;
+    if (tools.length || hidden) {
+      const cells = tools.length + (hidden ? 1 : 0);
+      const cols = Math.min(toolCols, Math.max(1, cells));
+      const rowsN = Math.ceil(cells / cols);
+      const w = PAD * 2 + cols * TOOL_W + (cols - 1) * GAP;
+      boxH = HEAD + rowsN * TOOL_H + (rowsN - 1) * GAP + PAD;
+      const boxId = nid(slug, "box");
+      const bx = many ? ax + 20 : Math.max(ax + AGENT_W / 2 - w / 2, SYS_X + 260);
+      right = Math.max(right, bx + w + 40);
+      // Its top handles sit straight below the agent's, so both lines run straight down.
+      const callsAt = ax + AGENT_W * 0.4 - bx;
+      const resultsAt = ax + AGENT_W * 0.6 - bx;
+      nodes.push({ id: boxId, type: "box", position: { x: bx, y: y + BELOW_Y }, data: { title: plural(map.tools.length, "tool"), w, h: boxH, selected: slug === active && selected?.kind === "tools", callsAt, resultsAt } });
+      const at = (i: number) => ({ x: PAD + (i % cols) * (TOOL_W + GAP), y: HEAD + Math.floor(i / cols) * (TOOL_H + GAP) });
+      tools.forEach((tl, i) =>
+        nodes.push({ id: nid(slug, `tool:${tl.key}`), type: "tool", parentId: boxId, extent: "parent", position: at(i), data: { tool: tl, selected: isSel(slug, "tool", tl.key) } }),
+      );
+      if (hidden) nodes.push({ id: nid(slug, "more"), type: "more", parentId: boxId, extent: "parent", position: at(tools.length), data: { label: `+${hidden} more` } });
+      rail("tool_call", agentId, boxId, { sourceHandle: "calls", targetHandle: "in" });
+      rail("tool_result", boxId, agentId, { sourceHandle: "out", targetHandle: "results", style: { strokeDasharray: "4 4" } });
+      // The two pills sit at different heights so they never overlap.
+      edges[edges.length - 2].data = { ...(edges[edges.length - 2].data as GuardData), at: 0.35 };
+      edges[edges.length - 1].data = { ...(edges[edges.length - 1].data as GuardData), at: 0.35 };
+    }
 
-  if (tools.length || hidden) {
-    const more = hidden > 0;
-    const cells = tools.length + (more ? 1 : 0);
-    const cols = Math.min(3, Math.max(1, cells));
-    const rows = Math.ceil(cells / cols);
-    const w = PAD * 2 + cols * TOOL_W + (cols - 1) * GAP;
-    const h = HEAD + rows * TOOL_H + (rows - 1) * GAP + PAD;
-    const x = Math.max(AGENT_X + 120 - w / 2, 240);
-    const total = tools.length + hidden;
-    nodes.push({ id: "box:tools", type: "box", position: { x, y: AGENT_Y + 200 }, data: { title: plural(total, "tool"), w, h, selected: selected?.kind === "tools" } });
-    const at = (i: number) => ({ x: PAD + (i % cols) * (TOOL_W + GAP), y: HEAD + Math.floor(i / cols) * (TOOL_H + GAP) });
-    tools.forEach((tl, i) =>
-      nodes.push({ id: `tool:${tl.key}`, type: "tool", parentId: "box:tools", extent: "parent", position: at(i), data: { tool: tl, selected: selected?.kind === "tool" && selected.key === tl.key } }),
-    );
-    if (more) nodes.push({ id: "more:tools", type: "more", parentId: "box:tools", extent: "parent", position: at(tools.length), data: { label: `+${hidden} more` } });
-    guard("calls", "agent", "box:tools", "tool_call", "Every tool call", { sourceHandle: "calls", targetHandle: "in" });
-    guard("results", "box:tools", "agent", "tool_result", "Every tool result", { sourceHandle: "out", targetHandle: "results", style: { strokeDasharray: "4 4" } });
-  }
+    // Documents & memory: up to the left of the agent, level with its LLM, one
+    // straight line down into the agent's top-left.
+    if (stage("context")) {
+      nodes.push({ id: nid(slug, "docs"), type: "docs", position: { x: Math.max(ax - 230, SYS_X + 24), y: y + LLM_Y + 36 }, data: {} });
+      rail("context", nid(slug, "docs"), agentId, { targetHandle: "context", style: { strokeDasharray: "4 4" } });
+    }
 
-  const subs = drawnSubagents(map.subagents, DRAW_SUBAGENTS);
-  subs.shown.forEach((s, i) => {
-    const id = `sub:${s.slug}`;
-    nodes.push({ id, type: "subagent", position: { x: AGENT_X + 330, y: AGENT_Y - 40 + i * 90 }, data: { link: s, framework: map.agent.framework } });
-    edges.push({ id: `es-${i}`, source: "agent", sourceHandle: "subs", target: id, style: { strokeDasharray: "6 4", opacity: s.seen ? 1 : 0.6 } });
+    // Users talk to the entry agents: Input in, Output back.
+    if (entries.has(slug)) {
+      rail("input", "user", agentId, { sourceHandle: "out", targetHandle: "in" });
+      rail("output", agentId, "user", { sourceHandle: "reply", targetHandle: "back" });
+    }
+
+    const height = BELOW_Y + boxH + 60;
+    rowHeights[row] = Math.max(rowHeights[row], height);
+    right = Math.max(right, ax + COL_W - 60);
+    bottom = Math.max(bottom, rowTop(row) + rowHeights[row]);
   });
-  (map.parents || []).slice(0, 3).forEach((p, i) => {
-    const id = `parent:${p.slug}`;
-    nodes.push({ id, type: "parent", position: { x: -40 + i * 210, y: AGENT_Y + 320 }, data: { link: p } });
-    edges.push({ id: `ep-${i}`, source: id, target: "user", targetHandle: "parents", style: { strokeDasharray: "6 4", opacity: p.seen ? 1 : 0.6 } });
-  });
+  const rows = placed.map((p) => ({ slug: p.slug, top: p.y - AGENT_Y, height: 0 }));
+  const y = bottom;
+
+  // Hand-offs between agents in this project: dashed, agent to agent.
+  const inProject = new Set(maps.map((m) => m.agent.slug));
+  // Only the active agent's hand-offs are drawn: every agent's at once is a tangle.
+  for (const map of maps.filter((m) => m.agent.slug === active)) {
+    for (const s of map.subagents) {
+      if (!inProject.has(s.slug) || s.slug === map.agent.slug) continue;
+      edges.push({
+        id: `handoff|${map.agent.slug}|${s.slug}`,
+        source: nid(map.agent.slug, "agent"),
+        sourceHandle: "handoff",
+        target: nid(s.slug, "agent"),
+        targetHandle: "handin",
+        type: "straight",
+        style: { stroke: "var(--af-brand)", strokeDasharray: "6 4", opacity: 0.45, strokeWidth: 1.5 },
+        markerEnd: arrow,
+      });
+    }
+  }
+
+  // The project box first (it is drawn underneath), then the user, outside it.
+  const total = y - 20;
+  nodes.unshift({
+    id: "system",
+    type: "system",
+    position: { x: SYS_X, y: 10 },
+    data: { title: project, sub: maps.length > 1 ? `${maps.length} agents · everything inside is yours` : "your agent and everything it reaches" },
+    style: { zIndex: -1 },
+    selectable: false,
+    draggable: false,
+  } as Node);
+  (nodes[0].data as any).w = right - SYS_X;
+  (nodes[0].data as any).h = total;
+  const firstEntry = rows.find((r) => entries.has(r.slug)) ?? rows[0];
+  nodes.push({ id: "user", type: "user", position: { x: USER_X, y: (firstEntry?.top ?? 0) + AGENT_Y + 6 }, data: {} });
   return { nodes, edges };
 }
 
-/** The tools the box draws: the first few, every one when expanded, and always the one selected. */
-function boxTools(visible: MapTool[], expanded: boolean, selected: Selected): MapTool[] {
+/** The tools an agent's box draws: the first few, all when expanded, and always the one selected. */
+function boxTools(visible: MapTool[], expanded: boolean, selectedKey: string | null): MapTool[] {
   const limit = visible.length <= BOX_FIRST + 1 ? visible.length : expanded ? BOX_MAX : BOX_FIRST;
   const shown = visible.slice(0, limit);
-  if (selected?.kind === "tool" && !shown.some((t) => t.key === selected.key)) {
-    const t = visible.find((x) => x.key === selected.key);
+  if (selectedKey && !shown.some((t) => t.key === selectedKey)) {
+    const t = visible.find((x) => x.key === selectedKey);
     if (t) shown[shown.length - 1] = t;
   }
   return shown;
@@ -631,8 +742,18 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
   return (
     <div className="gm-panel gm-stage-panel">
       {back}
-      <div>
-        <strong className="gm-guide-title">{stage.title}</strong>
+      <div className="gm-rail-head">
+        <span className="gm-guide-kicker">Rail</span>
+        <strong className="gm-guide-title">{RAIL[stage.key]?.name ?? stage.title}</strong>
+        {RAIL[stage.key] && (
+          <>
+            <span className="gm-rail-between">
+              {RAIL[stage.key].between[0]} <span aria-hidden>→</span> {RAIL[stage.key].between[1]}
+              <span className="gm-sub"> · {map.agent.name}</span>
+            </span>
+            <p className="gm-rail-what">{RAIL[stage.key].what(map.agent.name || map.agent.slug)}</p>
+          </>
+        )}
         <StatLine days={map.window_days} s={stage.stats} noun="checked" />
       </div>
 
@@ -813,6 +934,23 @@ function Guide({ map, lastTest, onSelect }: { map: AgentMap; lastTest?: LastTest
           <p className="gm-sub">Every place on the map has a guardrail. Run the tests to check they hold.</p>
         )}
         <p className="gm-sub">Or click any line or tool on the map to see what you can add there.</p>
+      </section>
+
+      <section className="gm-howto">
+        <h4>How to read this map</h4>
+        <ul>
+          <li>
+            <b>User</b> sits outside. Everything inside the box is yours: your agents and what they reach.
+          </li>
+          <li>
+            An <b>agent</b> is the loop that decides what to do next. Guardrails don&apos;t sit on it; they sit on what goes in and
+            out of it.
+          </li>
+          <li>
+            <b>Rails</b> are the labelled pills on the lines: Input, Output, LLM calls, Tool calls, Tool results, Retrieval &amp;
+            memory. <Mark size={13} /> means guardrails are set there; <b>+</b> means none yet. Click one to set it up.
+          </li>
+        </ul>
       </section>
 
       <details className="gm-help">
@@ -1089,41 +1227,62 @@ function Legend() {
       ))}
       <span className="gm-legend-sep" aria-hidden />
       <span className="gm-legend-kind">
-        <Mark size={16} /> Guardrails here
+        <Mark size={16} /> Rail with guardrails
       </span>
       <span className="gm-legend-kind">
-        <span className="gm-legend-plus" aria-hidden>+</span> None yet: click to add
+        <span className="gm-legend-plus" aria-hidden>+</span> Rail, none yet
       </span>
-      <span className="gm-legend-hint">Click any line or tool to see and change its guardrails</span>
+      <span className="gm-legend-hint">Rails are where guardrails apply: click one, or a tool</span>
     </div>
   );
 }
 
 /**
- * One project's guardrails, drawn where they act: on the user's message, on each
- * tool call, on what tools return, and on the reply. The canvas shows the shape
- * first: many tools are one node until expanded, then groups, then a group's
- * tools, each with "+N more" into the inspector's list. The inspector beside it
- * shows what is selected, and the project itself (`summary`) when nothing is.
+ * One project's guardrails, drawn where they act. The user outside; inside the
+ * project's box, each agent with its LLM, tools and documents; rails on the lines
+ * between them. Clicking a rail, a tool or an agent makes that agent the one the
+ * panel is about; with nothing selected the panel is that agent's set-up guide.
  */
-export function GuardrailMap({ map, lastTest, catalog }: { map: AgentMap; lastTest?: LastTest; catalog?: Catalog }) {
+export function GuardrailMap({
+  maps,
+  focus,
+  project,
+  lastTest,
+  catalog,
+}: {
+  maps: AgentMap[];
+  focus: string;
+  project: string;
+  lastTest?: LastTest;
+  catalog?: Catalog;
+}) {
+  const [active, setActive] = useState(focus);
   const [selected, setSelected] = useState<Selected>(null);
   const [hovered, setHovered] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [by, setBy] = useState<GroupBy>("impact");
   const [filter, setFilter] = useState<ToolFilter>("all");
 
+  const map = maps.find((m) => m.agent.slug === active) ?? maps[0];
   const visible = useMemo(() => filterTools(map.tools, query, filter), [map.tools, query, filter]);
   const groups = useMemo(() => groupTools(visible, by), [visible, by]);
-  const showAll = expanded;
-  const drawn = useMemo(() => boxTools(visible, expanded, selected), [visible, expanded, selected]);
-  const laid = useMemo(
-    () => layout(map, drawn, visible.length - drawn.length, selected, (key) => setSelected({ kind: "stage", key })),
-    [map, drawn, visible.length, selected],
-  );
-  const nodes = laid.nodes;
-  // The line under the pointer (or its badge) lights up and labels itself.
+
+  const choose = (slug: string, next: Selected) => {
+    setActive(slug);
+    setSelected(next);
+  };
+  const laid = useMemo(() => {
+    const drawnFor = (m: AgentMap) => {
+      const mine = m.agent.slug === active;
+      const list = mine ? visible : m.tools;
+      const sel = mine && selected?.kind === "tool" ? selected.key : null;
+      const tools = boxTools(list, expanded.has(m.agent.slug), sel);
+      return { tools, hidden: list.length - tools.length };
+    };
+    return layout(maps, drawnFor, active, selected, (slug, key) => choose(slug, { kind: "stage", key }), project);
+  }, [maps, visible, expanded, active, selected, project]);
+  // The rail under the pointer (or its pill) lights up.
   const edges = useMemo(
     () =>
       laid.edges.map((e) =>
@@ -1133,7 +1292,6 @@ export function GuardrailMap({ map, lastTest, catalog }: { map: AgentMap; lastTe
       ),
     [laid.edges, hovered],
   );
-  const many = map.tools.length > BOX_FIRST + 1;
 
   const toolList = (
     <ToolList
@@ -1149,57 +1307,64 @@ export function GuardrailMap({ map, lastTest, catalog }: { map: AgentMap; lastTe
       onSelect={setSelected}
     />
   );
+  const agentSwitch =
+    maps.length > 1 ? (
+      <div className="gm-agents" role="tablist" aria-label="Agents in this project">
+        {maps.map((m) => (
+          <button
+            key={m.agent.slug}
+            type="button"
+            role="tab"
+            aria-selected={m.agent.slug === active}
+            className={m.agent.slug === active ? "on" : undefined}
+            onClick={() => choose(m.agent.slug, null)}
+          >
+            <Bot size={12} aria-hidden /> {m.agent.name}
+          </button>
+        ))}
+      </div>
+    ) : null;
 
   return (
     <div className="gm">
       <div className="gm-canvas">
         <div className="gm-bar">
           <Legend />
-          {many && (
-            <div className="gm-bar-end">
-              <button
-                type="button"
-                className="k-btn k-btn-sm"
-                aria-pressed={showAll}
-                onClick={() => {
-                  if (showAll) {
-                    setExpanded(false);
-                    if (selected?.kind === "tool" || selected?.kind === "group") setSelected(null);
-                  } else setExpanded(true);
-                }}
-              >
-                {showAll ? "Show fewer tools" : `Show all ${map.tools.length} tools`}
-              </button>
-            </div>
-          )}
         </div>
         <div className="gm-flow">
           <ReactFlow
             // Re-fit when what is drawn changes shape, not on every selection.
-            key={`${visible.length}|${drawn.length}`}
-            nodes={nodes}
+            // With several agents, open on the active one; picking another moves there.
+            key={`${maps.length}|${[...expanded].join(",")}|${visible.length}|${maps.length > 1 ? active : ""}`}
+            nodes={laid.nodes}
             edges={edges}
             nodeTypes={NODE_TYPES}
             edgeTypes={EDGE_TYPES}
             onEdgeMouseEnter={(_, edge) => edge.type === "guard" && setHovered(edge.id)}
             onEdgeMouseLeave={() => setHovered(null)}
             onEdgeClick={(_, edge) => {
-              const key = edge.id.startsWith("edge:") ? (edge.data as GuardData | undefined)?.stage?.key : undefined;
-              if (key) setSelected({ kind: "stage", key });
+              if (edge.type !== "guard") return;
+              const [slug, what] = edge.id.split("|");
+              const key = (edge.data as GuardData | undefined)?.stage?.key;
+              if (key && what?.startsWith("edge:")) choose(slug, { kind: "stage", key });
             }}
             fitView
-            fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
-            minZoom={0.2}
+            fitViewOptions={
+              maps.length > 1
+                ? { padding: 0.25, maxZoom: 1, nodes: laid.nodes.filter((n) => n.id.startsWith(`${active}|`) && !n.parentId).map((n) => ({ id: n.id })) }
+                : { padding: 0.12, maxZoom: 1 }
+            }
+            minZoom={0.15}
             maxZoom={1.5}
             nodesDraggable={false}
             nodesConnectable={false}
             proOptions={{ hideAttribution: true }}
             onNodeClick={(_, node) => {
-              const [kind, ...rest] = node.id.split(":");
-              const key = rest.join(":");
-              if (kind === "stage" || kind === "tool") setSelected({ kind, key });
-              else if (node.id === "box:tools") setSelected({ kind: "tools", key: "" });
-              else if (node.id === "more:tools") setExpanded(true);
+              const [slug, what = ""] = node.id.split("|");
+              if (what.startsWith("tool:")) choose(slug, { kind: "tool", key: what.slice(5) });
+              else if (what === "box") choose(slug, { kind: "tools", key: "" });
+              else if (what === "more") setExpanded(new Set([...expanded, slug]));
+              else if (what === "agent") choose(slug, null);
               else setSelected(null);
             }}
             onPaneClick={() => setSelected(null)}
@@ -1210,6 +1375,7 @@ export function GuardrailMap({ map, lastTest, catalog }: { map: AgentMap; lastTe
         </div>
       </div>
       <div className="gm-side">
+        {agentSwitch}
         <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} lastTest={lastTest} catalog={catalog} toolList={toolList} />
       </div>
     </div>

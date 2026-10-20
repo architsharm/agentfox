@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE } from "@/lib/product/project";
 
 /** A project: one repository `agentfox init` mapped, and how many agents are in it. */
-export type ProjectOption = { project: string; agents: number };
+export type ProjectOption = { project: string; agents: number; slugs?: string[] };
 
 /**
  * The project at the top of the sidebar. The dashboard is always in exactly one:

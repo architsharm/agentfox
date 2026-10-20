@@ -18,6 +18,6 @@ const Map = dynamic(() => import("./GuardrailMap").then((m) => m.GuardrailMap), 
   ),
 });
 
-export function GuardrailMapLazy({ map, lastTest, catalog }: { map: AgentMap; lastTest?: LastTest; catalog?: Catalog }) {
-  return <Map map={map} lastTest={lastTest} catalog={catalog} />;
+export function GuardrailMapLazy(props: { maps: AgentMap[]; focus: string; project: string; lastTest?: LastTest; catalog?: Catalog }) {
+  return <Map {...props} />;
 }

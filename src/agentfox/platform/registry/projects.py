@@ -35,8 +35,9 @@ def list_projects(session: Session) -> list[dict[str, Any]]:
     projects: dict[str, dict[str, Any]] = {}
     for agent in session.scalars(select(Agent).where(Agent.status.not_in(("rejected", "removed")))):
         key = project_of(agent)
-        p = projects.setdefault(key, {"project": key, "agents": 0, "updated_at": None})
+        p = projects.setdefault(key, {"project": key, "agents": 0, "slugs": [], "updated_at": None})
         p["agents"] += 1
+        p["slugs"].append(agent.slug)
         seen = agent.updated_at or agent.created_at
         if seen and (p["updated_at"] is None or seen > p["updated_at"]):
             p["updated_at"] = seen

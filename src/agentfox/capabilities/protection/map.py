@@ -64,7 +64,9 @@ STAGES: tuple[Stage, ...] = (
     Stage("tool_call", "Tool calls", ("tool_args",)),
     Stage("tool_result", "Tool results", ("tool_result",)),
     Stage("output", "Agent reply", ("output",)),
-    Stage("completion", "Finishing", ("completion",), core=False),
+    # What the agent sends to its model and what comes back: a rail on every agent,
+    # shown even before anything guards it, so "LLM calls" is always on the map.
+    Stage("completion", "LLM calls", ("completion",)),
 )
 CONTENT_STAGES = ("input", "context", "tool_result", "output")
 _TOOL_FIELDS = (

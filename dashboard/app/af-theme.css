@@ -458,3 +458,39 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .project-switch-confirm > div { display: flex; gap: 6px; }
 .project-switch-confirm button { height: 28px !important; width: auto !important; padding: 0 10px !important; font-size: 12px !important; }
 .project-switch-error { color: var(--af-err); }
+
+/* ── Project canvas v3: user outside, the project in a box, rails as labelled pills ── */
+.gm-system { position: relative; border-radius: 16px; border: 1.5px solid color-mix(in srgb, var(--af-brand) 22%, var(--af-line)); background: color-mix(in srgb, var(--af-brand) 3%, var(--af-bg)); pointer-events: none; }
+.gm-system-head { position: absolute; top: 12px; left: 18px; display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.gm-system-head strong { font-weight: 600; color: var(--af-fg); }
+.gm-system-head span { font-size: 12px; color: var(--af-muted); }
+.gm-agent { width: 250px; }
+.gm-agent .gm-sub { font-size: 11px; }
+.gm-agent-active { outline: 2px solid color-mix(in srgb, var(--af-brand) 55%, transparent); outline-offset: 3px; }
+.gm-rail { position: absolute; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 7px; border-radius: 999px; border: 1px solid var(--af-line-2); background: var(--af-surface); box-shadow: var(--af-shadow-1); cursor: pointer; pointer-events: all; white-space: nowrap; font-family: var(--af-sans); font-size: 12px; font-weight: 500; color: var(--af-fg); transition: border-color 120ms var(--af-ease), box-shadow 120ms var(--af-ease); }
+.gm-rail:hover, .gm-rail-lit { border-color: var(--af-link); box-shadow: var(--af-shadow-2); z-index: 10; }
+.gm-rail-off { border-style: dashed; background: var(--af-bg); color: var(--af-fg-2); box-shadow: none; }
+.gm-rail-off.gm-rail-lit { border-style: solid; }
+.gm-rail-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--af-brand); background: color-mix(in srgb, var(--af-brand) 10%, transparent); }
+.gm-rail.gm-selected { outline: 2px solid var(--af-link); outline-offset: 2px; }
+.gm-agents { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border: 1px solid var(--af-line); border-radius: var(--af-r-card); background: var(--af-surface); }
+.gm-agents button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--af-line); border-radius: 999px; background: var(--af-bg); font-family: var(--af-sans); font-size: 12px; color: var(--af-fg-2); cursor: pointer; }
+.gm-agents button.on { border-color: color-mix(in srgb, var(--af-brand) 50%, var(--af-line)); background: color-mix(in srgb, var(--af-brand) 8%, var(--af-surface)); color: var(--af-fg); font-weight: 500; }
+.gm-rail-head { display: flex; flex-direction: column; gap: 4px; }
+.gm-rail-between { font-size: 12.5px; color: var(--af-fg-2); }
+.gm-rail-what { margin: 2px 0 0; font-size: 13px; color: var(--af-fg); line-height: 1.45; }
+.gm-howto ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--af-fg-2); line-height: 1.45; }
+.gm-howto img, .gm-howto svg { display: inline; vertical-align: -2px; }
+.gm-lk-docs .gm-kind-icon { --k: var(--af-warn); }
+
+/* v3.1: smaller cards, long prominent straight lines */
+.gm-canvas .react-flow__edge-path { stroke: color-mix(in srgb, var(--af-fg-2) 55%, transparent); stroke-width: 2; }
+.gm-agent { width: 180px; padding: 10px 12px; gap: 4px; }
+.gm-agent strong { font-size: 14px; line-height: 19px; }
+.gm-llm { width: 180px; padding: 9px 12px; }
+.gm-llm strong { font-size: 13px; }
+.gm-end { padding: 8px 14px; }
+.gm-tool { width: 200px; height: 34px; font-size: 11.5px; }
+.gm-docs { padding: 8px 12px; }
+.gm-rail { height: 30px; font-size: 12.5px; }
+.gm-handoff-note { font-size: 10.5px; color: var(--af-brand); }
