@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 310,
+ "count": 311,
  "routes": [
   {
    "method": "GET",
@@ -8111,8 +8111,8 @@
    "path": "/api/onboarding/guardrails",
    "section": "onboarding",
    "audience": "operator",
-   "summary": "Get Guardrails",
-   "description": "",
+   "summary": "The setup wizard's suggested guardrails, as a list to show. No test reads them: an \"after\" test checks the agents' real policies. Kept so the wizard still loads.",
+   "description": "The setup wizard's suggested guardrails, as a list to show. No test reads them:\nan \"after\" test checks the agents' real policies. Kept so the wizard still loads.",
    "params": [
     {
      "name": "authorization",
@@ -8134,8 +8134,8 @@
    "path": "/api/onboarding/guardrails",
    "section": "onboarding",
    "audience": "operator",
-   "summary": "Save Guardrails",
-   "description": "",
+   "summary": "Saves the wizard's toggles. They change what the wizard shows, nothing else.",
+   "description": "Saves the wizard's toggles. They change what the wizard shows, nothing else.",
    "params": [
     {
      "name": "authorization",
@@ -8373,6 +8373,63 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/runner/runs/{run_id}/guard",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Check one surface of one attack against an agent's real policies, persisting nothing.",
+   "description": "Check one surface of one attack against an agent's real policies, persisting nothing.\n\nFor an \"after\" attack test the runner, on the user's machine, asks this for the\nuser's message, each tool call, each tool result and the reply, and applies the\nverdict. It is the red-team runner's dry run (``redteam.dry_run_check``): the real\nenforcement path for the agent's bound policies, inside a savepoint that is rolled\nback, so no decision, trace, finding, taint tag or shadow agent is written.\n\nOnly for a running test of this setup key's (its project's, or the user's own\nsetup-wizard test), and only for that test's agents: the key can check, never\nchange, and never another project's agents. ``verdict`` is what the policy asks\nfor (in observe mode, what it would do once it blocks); ``applied`` what live\ntraffic would get now; ``mode`` which.",
+   "params": [
+    {
+     "name": "run_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "GuardCheck",
+    "fields": [
+     {
+      "name": "agent",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "surface",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "content",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "arguments",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "POST",

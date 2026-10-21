@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-310 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+311 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -144,8 +144,8 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
-| `GET` | `/api/onboarding/guardrails` | Get Guardrails |
-| `POST` | `/api/onboarding/guardrails` | Save Guardrails |
+| `GET` | `/api/onboarding/guardrails` | The setup wizard's suggested guardrails, as a list to show. No test reads them: |
+| `POST` | `/api/onboarding/guardrails` | Saves the wizard's toggles. They change what the wizard shows, nothing else. |
 | `GET` | `/api/onboarding/key` | This user's setup key. Made the first time it is asked for (or after the last |
 | `POST` | `/api/onboarding/key/rotate` | Revoke this user's setup key and make a new one, shown in full this once. A |
 | `POST` | `/api/onboarding/projects/{project}/basic-guardrails` | Add the basic guardrails to every agent in the project: prompt attacks in what |
@@ -154,6 +154,7 @@ from the code. Regenerate after changing any route:
 | `PUT` | `/api/onboarding/projects/{project}/tests/sets` | The attack sets this project tests with, from the library. At least one. |
 | `POST` | `/api/onboarding/runner/connect` | Runner Connect |
 | `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
+| `POST` | `/api/onboarding/runner/runs/{run_id}/guard` | Check one surface of one attack against an agent's real policies, persisting nothing. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/results` | Runner Results |
 | `DELETE` | `/api/onboarding/state` | Start over at step 1. The key survives, so a running `agentfox init` stays valid |
 | `GET` | `/api/onboarding/state` | Get State |
