@@ -14,7 +14,6 @@ import {
   type MapRule,
   type MapTool,
   feeds,
-  strictnessOf,
   settingsFor,
 } from "./guardrailMap";
 
@@ -148,13 +147,6 @@ describe("how checks feed rules", () => {
 
   it("no check feeds a rule about tool calls or the run", () => {
     expect(feeds({ finds: "INJECTION" }, rule({ kind: "action", about: "tools the code never declared" }))).toBe(false);
-  });
-
-  it("strictness is the step nearest the rule's threshold", () => {
-    expect(strictnessOf(0.9)).toBe("low");
-    expect(strictnessOf(0.75)).toBe("medium");
-    expect(strictnessOf(0.5)).toBe("high");
-    expect(strictnessOf(null)).toBe("high");
   });
 
   it("hiding is offered for content rules only, and masking shows as hiding", () => {

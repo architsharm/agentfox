@@ -175,22 +175,6 @@ export function ruleSetting(r: MapRule): RuleSetting | null {
   return null;
 }
 
-// --- strictness -------------------------------------------------------------------
-
-/** How sure a check must be before a rule acts, in three steps instead of a number. */
-export const STRICTNESS = [
-  { key: "low", label: "Low", score: 0.9, title: "Acts only when a check is very sure" },
-  { key: "medium", label: "Medium", score: 0.7, title: "Acts when a check is fairly sure" },
-  { key: "high", label: "High", score: 0.5, title: "Acts on weaker signals too; more false alarms" },
-] as const;
-export type Strictness = (typeof STRICTNESS)[number]["key"];
-
-/** The step nearest a rule's threshold. */
-export function strictnessOf(minScore: number | null | undefined): Strictness {
-  const score = minScore ?? 0.5;
-  return STRICTNESS.reduce((best, s) => (Math.abs(s.score - score) < Math.abs(best.score - score) ? s : best)).key;
-}
-
 /** Whether a check feeds a content rule: it reports the kind of finding the rule looks for. */
 export function feeds(check: { finds?: string }, rule: MapRule): boolean {
   if (rule.kind !== "content" || !check.finds || !rule.finds) return false;

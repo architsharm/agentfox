@@ -602,3 +602,11 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .gm-strict .gm-control { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .gm-unused { margin: 0; font-size: 12px; color: var(--af-muted); }
 a.gm-add { align-self: flex-start; text-decoration: none; }
+.gm-rule-rows > li { padding: 0; }
+.gm-rule-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; text-decoration: none; color: var(--af-fg); }
+.gm-rule-link:hover { background: var(--af-subtle); }
+.gm-rule-link .gm-rule-name { font-size: 13.5px; }
+.gm-rule-state { flex: none; font-size: 11.5px; }
+.gm-rule-on { color: var(--af-ok); }
+.gm-rule-watch { color: var(--af-warn); }
+.gm-rule-off { color: var(--af-muted); }

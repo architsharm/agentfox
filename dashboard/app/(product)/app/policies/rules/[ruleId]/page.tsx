@@ -8,6 +8,8 @@ import { RunsTable } from "@/components/kit/RunsTable";
 import { CustomRule } from "@/components/product/policies/CustomRule";
 import { RuleTests } from "@/components/product/policies/RuleTests";
 import { RuleTuner, type RuleScope } from "@/components/product/policies/RuleTuner";
+import { RuleChecks } from "@/components/product/policies/RuleChecks";
+import { checksFor, type CheckInfo } from "@/lib/product/checks";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
@@ -120,6 +122,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
         </Card>
       )}
 
+      {tab === "tune" && rule?.finds ? <CheckedBy finds={rule.finds} agent={sp.agent} /> : null}
       {tab === "tune" && (
         <Card title="What this rule does">
           {rule ? <Tune ruleId={ruleId} packs={rule.packs} exact={own ? own.kind !== "topic" : false} agent={sp.agent} /> : <Empty>Not in any installed pack.</Empty>}
@@ -193,3 +196,33 @@ async function Tests({ ruleId, pack, agents }: { ruleId: string; pack?: string; 
   const slugs = Array.from(new Set([...agents, ...(all.agents || []).filter((a: any) => a.status !== "draft").map((a: any) => a.slug)]));
   return <RuleTests ruleId={ruleId} results={checked.results || []} agents={slugs} />;
 }
+
+/**
+ * The checks that can fire this rule: any check that reports what it looks for. Regex,
+ * ML and LLM judges alike; a check is switched on per agent, so with an agent chosen
+ * they can be turned on and off here.
+ */
+async function CheckedBy({ finds, agent }: { finds: string; agent?: string }) {
+  const [detectors, map] = await Promise.all([
+    safeApi<any>("/api/detectors", { detectors: [] }),
+    agent ? safeApi<any>(`/api/agents/${encodeURIComponent(agent)}/map`, null) : Promise.resolve(null),
+  ]);
+  const catalog: CheckInfo[] = (detectors.detectors || []).map((d: any) => ({
+    key: d.key,
+    label: d.label || "",
+    source: d.source,
+    surfaces: d.surfaces || [],
+    available: Boolean(d.available),
+    finds: d.finds || "",
+  }));
+  const on: string[] = Array.from(new Set((map?.stages || []).flatMap((st: any) => st.detectors || [])));
+  return (
+    <Card
+      title="Checked by"
+      hint={agent ? `Checks on for ${agent} that can fire this rule. A check is on or off for the whole agent.` : "Checks that can fire this rule. Choose an agent below to turn them on or off for it."}
+    >
+      <RuleChecks checks={checksFor(finds, catalog)} on={on} agent={agent} />
+    </Card>
+  );
+}
+
