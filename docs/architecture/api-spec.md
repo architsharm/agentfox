@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-307 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+309 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -146,10 +146,11 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
 | `GET` | `/api/onboarding/guardrails` | Get Guardrails |
 | `POST` | `/api/onboarding/guardrails` | Save Guardrails |
-| `GET` | `/api/onboarding/key` | This user's setup key, made the first time it is asked for and the same ever |
-| `POST` | `/api/onboarding/projects/{project}/basic-guardrails` | Switch on the basic guardrails for every agent in the project: prompt attacks |
+| `GET` | `/api/onboarding/key` | This user's setup key. Made the first time it is asked for (or after the last |
+| `POST` | `/api/onboarding/key/rotate` | Revoke this user's setup key and make a new one, shown in full this once. A |
+| `POST` | `/api/onboarding/projects/{project}/basic-guardrails` | Add the basic guardrails to every agent in the project: prompt attacks in what |
 | `GET` | `/api/onboarding/projects/{project}/tests` | The project's first test (as it was) and its latest one with the basic |
-| `POST` | `/api/onboarding/projects/{project}/tests` | Test the project again, with the guardrails it has now. |
+| `POST` | `/api/onboarding/projects/{project}/tests` | Test the project again, with the guardrails it has now, on its own map. |
 | `PUT` | `/api/onboarding/projects/{project}/tests/sets` | The attack sets this project tests with, from the library. At least one. |
 | `POST` | `/api/onboarding/runner/connect` | Runner Connect |
 | `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
@@ -474,6 +475,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/overview` | Agents, their risk tiers and open issues: the Reports summary. |
 | `GET` | `/api/projects` | Every project (a repository `agentfox init` mapped) and its agent count. |
 | `DELETE` | `/api/projects/{project}` | Disconnect a project: connecting it again with `agentfox init` starts fresh. |
+| `POST` | `/api/projects/{project}/approve` | Add every agent `agentfox init` proposed for this project ("Add all"). |
 | `GET` | `/api/projects/{project}/map` | One project's map: who talks to its agents, their models, tools, and what the tools touch. |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |
 | `GET` | `/api/proposals/{proposal_id}` | One proposal with its diff, evidence, proof and decisions. |

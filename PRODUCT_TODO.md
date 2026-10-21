@@ -31,10 +31,10 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
   - [ ] Map: the backend's `completion` surface means "the agent says it's done", not an LLM call. It was drawn as "LLM calls"; now the LLM line shows "To the LLM" / "From the LLM" and the done-check isn't drawn. Decide where the done-check belongs on the map.
   - [ ] The OpenAI Responses API (`client.responses.create`) isn't patched by autoguard, so those LLM calls aren't checked at all.
   - [ ] Workspace packs still apply on top: `tool-containment` enforces (destructive SQL/shell) and baseline watches. Decide whether a brand-new workspace should start everything in watch mode.
-  - [ ] Decide whether granting found tools should hold irreversible ones for approval instead of allowing them.
+  - [x] (2026-10-21) Superseded: init no longer grants anything. It proposes agents as drafts (main's `propose_draft`), never changes a live agent outside its project, and access is granted per tool by a person. `POST /api/projects/{project}/approve` adds a project's drafts. Dashboard still to show "Add all" and per-tool grants.
 - [x] **Test first, then basic guardrails** (2026-10-20, replaces the watch-only first set): connecting a project starts its 140-attack test with no guardrails. The map's panel shows progress and results per kind of attack. Then one click adds the basic guardrails (prompt attacks in what users send blocked, personal data and secrets in replies hidden, nothing on tools; enforcing, in a pack of their own) and runs the test again, before vs after. After that, setup happens from the map.
   - [ ] The test runner only drives LangChain agents (`agent.invoke`); OpenAI Agents SDK projects (like the CX repo) fail with a clear error. Add a driver per framework.
-  - [ ] Runs live on the user's onboarding row, so only the project whose `agentfox init` is connected can be tested. One runner per project would remove that.
+  - [x] (2026-10-21) Runs are their own rows (`onboarding_runs`), per project with their own map (`onboarding_projects`); a runner says its project when it polls, holds a run under a lease, and a dead runner's run is failed instead of blocking the project; results only append and a finished run refuses more.
   - [ ] A re-run hides the previous "with basic guardrails" numbers until it finishes; keep the last finished one visible.
   - [x] (2026-10-20) Panel cleaned up: just "Attack test", one row per set (name, what it tries, result on the right as before → after), Run and "+" in the header. "+" searches the attack library: four more sets (hidden encodings, other languages, fake authority, bulk actions), graded the same way. Chosen sets are kept per project.
   - [ ] More library sets that need a judge to grade (harmful content, system prompt extraction, off-topic use).
@@ -44,7 +44,7 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 - [x] **Disconnect a project** (2026-10-20): switcher → "Disconnect <project>…" → `DELETE /api/projects/{project}`. Agents leave the dashboard, own guardrails emptied (new audited version, back to watching), tool permissions revoked, init's declared edges cleared, setup card forgets it. History kept. Re-running init treats it as new (tested live on marketplace-agent).
   - [ ] `agentfox disconnect` on the command line, so the repo side (stopping the runner) is one step too.
 - [ ] **The setup card's `pip install agentfox` installs 0.4.0 from PyPI, which has no `init --key`** (found 2026-10-20: a user followed it and got "no such option --key"; the old init then created `~/.agentfox/agentfox.db` and `agentfox.toml` in the repo). Publish 0.5 before launch, and until then show the right install for the deployment (e.g. pin `agentfox>=0.5`, or a local/dev install line), plus a clear error if `--key` is missing.
-- [ ] **Rotate the setup key.** It's made once per user and can only report a map and test results, but there's no way to replace it if it's pasted somewhere it shouldn't be.
+- [x] **Rotate the setup key.** (2026-10-21) The key is an `ApiToken` now: hashed, shown once, 30-day expiry (`onboarding_key_ttl_days`), `POST /api/onboarding/key/rotate`, revocable from the token list, refused once its owner is deactivated or loses the registry role; minting needs the registry role. Dashboard still to show prefix + Rotate.
 - [x] **Local accounts**: `/dev/as/admin` (existing workspace) and `/dev/as/fresh` (a brand-new signup workspace); `next dev` only; tokens in `dashboard/.env.local`.
 
 ## 2. Map: cohesive, readable, easy to click
@@ -84,6 +84,8 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 - [ ] Could run on a schedule and post a summary.
 
 ## Backend gaps found along the way
+
+- [x] Onboarding hardening (2026-10-21): first-load race on `onboarding_sessions` fixed (savepoint insert; GETs never write); basic guardrails go through simulate-before-enforce (observe unless the caller has `policy_production` and the rules were simulated); onboarding payloads validated (422, size caps); `agentfox init` keeps results until delivered; model errors name the provider.
 
 - [x] Judge outage doesn't fail closed. (fixed 2026-10-20: `PipelineResult.judge_unavailable`; the enforcer blocks with `pipeline.judge_outage` when a judge tier is on, the posture says deny, and the call is enforcing; `tests/runtime/test_judge_outage.py`.)
 - [ ] Red-team runs aren't tied to an agent, so "last test run" on the map is the workspace's last run.
