@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 308,
+ "count": 310,
  "routes": [
   {
    "method": "GET",
@@ -8157,8 +8157,31 @@
    "path": "/api/onboarding/key",
    "section": "onboarding",
    "audience": "operator",
-   "summary": "This user's setup key, made the first time it is asked for and the same ever after. Always retrievable: it can only report a map and test results, so showing it again is safe, and a running `agentfox init` keeps working.",
-   "description": "This user's setup key, made the first time it is asked for and the same ever\nafter. Always retrievable: it can only report a map and test results, so showing\nit again is safe, and a running `agentfox init` keeps working.",
+   "summary": "This user's setup key. Made the first time it is asked for (or after the last one expired or was revoked), and then shown in full that once: ``value`` is null on every later call, which returns the key's ``prefix``, ``createdAt`` and ``expiresAt`` instead. ``POST /key/rotate`` replaces it.",
+   "description": "This user's setup key. Made the first time it is asked for (or after the last\none expired or was revoked), and then shown in full that once: ``value`` is null\non every later call, which returns the key's ``prefix``, ``createdAt`` and\n``expiresAt`` instead. ``POST /key/rotate`` replaces it.\n\nMinting one needs the registry write role, because what it does is propose agents.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/onboarding/key/rotate",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Revoke this user's setup key and make a new one, shown in full this once. A running `agentfox init` with the old key stops being accepted.",
+   "description": "Revoke this user's setup key and make a new one, shown in full this once. A\nrunning `agentfox init` with the old key stops being accepted.",
    "params": [
     {
      "name": "authorization",
@@ -8180,8 +8203,8 @@
    "path": "/api/onboarding/projects/{project}/basic-guardrails",
    "section": "onboarding",
    "audience": "operator",
-   "summary": "Switch on the basic guardrails for every agent in the project: prompt attacks in what users send are blocked, personal data and secrets in replies hidden.",
-   "description": "Switch on the basic guardrails for every agent in the project: prompt attacks\nin what users send are blocked, personal data and secrets in replies hidden.",
+   "summary": "Add the basic guardrails to every agent in the project: prompt attacks in what users send blocked, personal data and secrets in replies hidden.",
+   "description": "Add the basic guardrails to every agent in the project: prompt attacks in what\nusers send blocked, personal data and secrets in replies hidden.\n\nThey go live as any policy does: watching, and blocking only when the caller may\nchange production policy and these rules have been simulated (the\n``POST /api/policies/{key}/mode`` gate). ``mode`` says which; ``observe`` means\nsimulate and promote them on the Policies page to make them block.",
    "params": [
     {
      "name": "project",
@@ -8209,8 +8232,8 @@
    "path": "/api/onboarding/projects/{project}/tests",
    "section": "onboarding",
    "audience": "operator",
-   "summary": "The project's first test (as it was) and its latest one with the basic guardrails, whether those are on, and whether this project's `agentfox init` is the one connected (only it can run a test).",
-   "description": "The project's first test (as it was) and its latest one with the basic\nguardrails, whether those are on, and whether this project's `agentfox init` is\nthe one connected (only it can run a test).",
+   "summary": "The project's first test (as it was) and its latest one with the basic guardrails, whether those are on (``basicOn``: watching or blocking; ``basicEnforcing``: blocking), and whether this project's `agentfox init` is connected (only it can run a test).",
+   "description": "The project's first test (as it was) and its latest one with the basic\nguardrails, whether those are on (``basicOn``: watching or blocking;\n``basicEnforcing``: blocking), and whether this project's `agentfox init` is\nconnected (only it can run a test).",
    "params": [
     {
      "name": "project",
@@ -8238,8 +8261,8 @@
    "path": "/api/onboarding/projects/{project}/tests",
    "section": "onboarding",
    "audience": "operator",
-   "summary": "Test the project again, with the guardrails it has now.",
-   "description": "Test the project again, with the guardrails it has now.",
+   "summary": "Test the project again, with the guardrails it has now, on its own map.",
+   "description": "Test the project again, with the guardrails it has now, on its own map.",
    "params": [
     {
      "name": "project",
@@ -8321,7 +8344,7 @@
     "fields": [
      {
       "name": "structure",
-      "type": "object",
+      "type": "Structure",
       "required": true,
       "description": ""
      },
@@ -8514,7 +8537,7 @@
     "fields": [
      {
       "name": "structure",
-      "type": "object",
+      "type": "Structure",
       "required": true,
       "description": ""
      }
@@ -10136,6 +10159,35 @@
    "audience": "operator",
    "summary": "Disconnect a project: connecting it again with `agentfox init` starts fresh. Its history (traffic, issues, audit) is kept.",
    "description": "Disconnect a project: connecting it again with `agentfox init` starts fresh.\nIts history (traffic, issues, audit) is kept.",
+   "params": [
+    {
+     "name": "project",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/projects/{project}/approve",
+   "section": "projects",
+   "audience": "operator",
+   "summary": "Add every agent `agentfox init` proposed for this project (\"Add all\").",
+   "description": "Add every agent `agentfox init` proposed for this project (\"Add all\").\n\nEach gets the same state change and ledger entry as approving it on its own\n(``POST /api/agents/{id}/approve``). Tool access is still granted per tool\n(``POST /api/agents/{slug}/access``): adding an agent does not grant it anything.",
    "params": [
     {
      "name": "project",
