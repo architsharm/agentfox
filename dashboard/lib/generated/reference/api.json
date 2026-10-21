@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 311,
+ "count": 312,
  "routes": [
   {
    "method": "GET",
