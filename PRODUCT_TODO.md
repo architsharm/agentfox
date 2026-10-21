@@ -89,6 +89,66 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 - [ ] Red-team runs aren't tied to an agent, so "last test run" on the map is the workspace's last run.
 - [ ] `sqlglot` (the `sql` extra) and Presidio (`pii` extra) aren't installed locally; one backend test needs Presidio.
 
+## 6. UI changes, deferred (review of PR #122, 2026-10-21)
+
+The new design stays. These are the UI fixes the review found. They come after the backend fixes, so some items depend on API changes listed under "Needs the backend first".
+
+### Restore what the redesign dropped from main
+- [ ] Home (`/app`): the "does anything need me" page (week stats, approvals). Today it redirects to `/app/map`, and the old page sits unused as `LegacyHome`.
+- [ ] Agent page summary: Requests / Blocked / Held / Errors linked to runs, the top 3 open issues, the rules that fired most, and owner (with Assign), environment, framework and last active.
+- [ ] Lineage and blast radius on the agent page (`AgentMap.tsx`, `/api/agents/{slug}/lineage`). Main had restored this on purpose (e4bf126d).
+- [ ] Sub-agents and parents on the map, across projects too (PR #112's drawing; `relationLabel`, `parentLabel` and `drawnSubagents` in `guardrailMap.ts` are now unused).
+- [ ] Rules that apply at every step (`map.everywhere`) and "Done check" (completion) rules: shown nowhere on the map today.
+- [ ] Per-line traffic stats ("Last N days: X checked · blocked · held") and the inline Block / Ask / Watch / Off control on each rule row.
+- [ ] Map panel with nothing selected: the tools summary (allowed / ask / not allowed, "Browse and change access").
+- [ ] Nav:
+  - Projects list with the Proposed tab and Add all (PR #112).
+  - Reports.
+  - The "All projects" scope.
+  - Features, reachable again.
+- [ ] Severity colours that `af-theme.css` neutralised:
+  - eval drift vs healthy (`evals/page.tsx`)
+  - risky vs safe policy simulation (`PolicyEditor.tsx`)
+  - the missed-escalation panel
+  - `.card.bad/.warn/.ok`
+- [ ] Setup banner: fold main's banner (`SetupBanner.tsx`, `/api/onboarding` checklist) into the setup card, so there's one setup guide, not two.
+
+### Fix
+- [ ] Mobile: `af-theme.css:161` fixes the sidebar at 212px, so below 760px the nav links disappear.
+- [ ] Redirect loop: `/app/map` goes to `/app/onboarding` when a map is empty or its call fails, and `/app/onboarding` goes straight back to `/app/map`.
+- [ ] Attack test panel:
+  - It polls `/tests` every 1.5s forever on a project that can't run.
+  - A failed run, or one with errors, shows a green 0/N. Show errored and not-run attacks separately, and never green when anything errored.
+  - It shows raw provider errors.
+  - The same error handling applies to the RetestStep headline and the −X%.
+- [ ] Shield mark: show it only when a rule acts on the line. Checks alone only record, and the panel already says so.
+- [ ] "Blocks · watching only" → "Would block (watching)".
+- [ ] Naming:
+  - One name for Output / "Agent reply" / `agent_reply`.
+  - The tool panel's empty state says "No policies on this line yet"; change it to "No rules for this tool".
+  - The static "live" dot in the sidebar footer.
+  - Raw rule IDs in Events.
+  - "Activity" vs "Overview".
+  - "Jev" shown to users.
+- [ ] Events shows only the run's first surface. Sessions and Events filter the latest 100–200 traces on the client. Tools and Models use workspace-wide breakdowns, so they mix in other projects' traffic. Scope all of them on the server by the project's agents, and add a range picker.
+- [ ] `af-theme.css` `:root` overrides main's tokens site-wide (`/docs`, `/login`, playground). Scope it to `.shell` or adopt it deliberately everywhere, and align the logo between marketing and the app.
+- [ ] `NOMETRIA_DEV_SESSION_TOKEN` / `NOMETRIA_DEV_FRESH_TOKEN` → `AGENTFOX_*` (the rename is otherwise complete). Make dev auto-login on every cookieless GET opt-in.
+- [ ] Revert the machine-generated `next-env.d.ts` change.
+- [ ] `/api/projects` is fetched three times per page, and `SideNav` calls `router.refresh()` on agent pages.
+- [ ] Duplicated check-name maps (`GuardrailMap.tsx` `MODULE_NAME`/`KIND` vs `lib/product/checks.ts`).
+- [ ] New-user gate hides Policies / Approvals / Issues / Testing / Evals before the first connect, so a new user can't browse policy packs.
+- [ ] Dead code: `LegacyHome`, `projectNav`, `setupBanner.ts`, `useProjectScope.ts`, `AppChrome`'s `banner` prop, 5 unused shadcn components (avatar, badge, select, separator, tooltip), and the unread `agentfox_project` cookie.
+- [ ] The orphaned 6-step wizard (`/app/onboarding/[step]`, ~2,600 lines): move its risk-label copy (RISK_HELP / RISK_WHY) into the setup card, then delete it along with its wizard-only endpoints.
+
+### Needs the backend first (see the fix branches)
+- [ ] The setup card's install line has no `--server`, so on a hosted deployment it points at localhost. Also pin `agentfox>=0.5` until PyPI has 0.5.
+- [ ] The setup key is shown once and has rotation: show its prefix, and add a Rotate button.
+- [ ] Agents arriving from `init --key` come in as proposed: the setup card needs an "Add all" step and a tool-access step.
+- [ ] Projects become PR #112 systems (root agent plus everything it hands work to): the switcher and map read the system.
+- [ ] Attack results report errored and not-run counts: show them.
+- [ ] Rule "Checked by": use the backend's surface-aware `checks` list instead of the client-side join.
+- [ ] Map "To / From the LLM" lines are a view: don't add their counts to other lines.
+
 ## Housekeeping
 
 - [x] ~~`agentfox init --path <repo>` writes `agentfox.toml`~~: not a bug; with `--key` init only maps and connects.
