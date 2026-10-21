@@ -85,7 +85,7 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 
 ## Backend gaps found along the way
 
-- [x] Judge outage doesn't fail closed. (fixed 2026-10-20: `PipelineResult.judge_unavailable`; the enforcer blocks with `pipeline.judge_outage` when a judge tier is on, the posture says deny, and the call is enforcing; `tests/runtime/test_judge_outage.py`.)
+- [ ] Judge outage doesn't fail closed. (A first fix on the onboarding branch was taken out on 2026-10-21; it is being redone on its own branch off main.)
 - [ ] Red-team runs aren't tied to an agent, so "last test run" on the map is the workspace's last run.
 - [ ] `sqlglot` (the `sql` extra) and Presidio (`pii` extra) aren't installed locally; one backend test needs Presidio.
 
