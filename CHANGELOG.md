@@ -11,6 +11,26 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **"On a judge outage: deny the request" is now applied.** The judgment posture's
+  `fail_closed` was stored and shown but nothing read it. A judge that was asked and did
+  not answer (unreachable, an error, a timeout) is now a degraded detector, so
+  `fail_mode` treats "unreachable" and "timed out" the same way. With the posture's
+  `fail_closed` on, an enforcing decision is also blocked as `pipeline.judge_outage` when
+  an enforcing pack has a rule on that surface that the judge's findings could fire. It
+  adds a block and never removes one. A payload the egress gate refused to send
+  (`pii_egress=block` on text with personal data) is reported as `cause="refused"` and is
+  never an outage. Validator judges, standalone or in a workspace rule, report outages the
+  same way, and one rule's judge being down no longer drops the other rules' findings.
+
+### Changed
+
+- **`judgment_fail_closed` defaults to off**, like `fail_mode`, and a workspace may turn
+  it on or off. Before, it defaulted on and the deployment ceiling refused to let anyone
+  turn it off, though nothing acted on it. Set `AGENTFOX_JUDGMENT_FAIL_CLOSED=true` to
+  require it for every workspace.
+
 ## [0.5.0] - 2026-10-17
 
 ### Added

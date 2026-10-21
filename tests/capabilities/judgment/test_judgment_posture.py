@@ -90,7 +90,31 @@ def test_pii_handling_may_be_tightened_but_not_loosened(session):
     assert "looser" in str(exc.value)
 
 
-def test_fail_closed_cannot_be_turned_off_when_the_deployment_requires_it(session):
+def test_fail_closed_is_off_by_default_and_a_workspace_may_choose_it(session):
+    """Like `fail_mode`, open unless someone chose closed: a workspace may turn it on
+    and back off when the deployment does not require it."""
+    assert P.from_settings().fail_closed is False
+    assert P.Ceiling.from_settings().fail_closed is False
+    on = P.save(session, P.Posture(fail_closed=True), actor="admin@example.com", reason="strict")
+    assert on.fail_closed is True
+    off = P.save(session, P.Posture(fail_closed=False), actor="admin@example.com", reason="lax")
+    assert off.fail_closed is False
+    assert P.load(session).fail_closed is False
+
+
+@pytest.fixture
+def fail_closed_required(monkeypatch):
+    """A deployment whose operator requires judgment to fail closed."""
+    monkeypatch.setenv("AGENTFOX_JUDGMENT_FAIL_CLOSED", "true")
+    reset_settings_cache()
+    yield
+    reset_settings_cache()
+
+
+def test_fail_closed_cannot_be_turned_off_when_the_deployment_requires_it(
+    session, fail_closed_required
+):
+    assert P.load(session).fail_closed is True  # the ceiling clamps a read, too
     with pytest.raises(P.PostureRefused) as exc:
         P.save(
             session,

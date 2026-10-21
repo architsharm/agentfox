@@ -78,6 +78,7 @@ _CAUSE_BY_PREFIX: tuple[tuple[str, str], ...] = (
     ("loop.", "runaway"),
     ("completion.", "unverified_completion"),
     ("pipeline.fail_closed", "fail_closed"),
+    ("pipeline.judge_outage", "fail_closed"),
     ("business.", "business_rule"),
     ("sql.", "destructive"),
     ("shell.", "destructive"),

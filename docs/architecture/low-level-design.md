@@ -309,6 +309,17 @@ raising, so the other packs are still evaluated. `Enforcer.evaluate()` then reco
 `closed`, and otherwise the call is allowed with the gap named in the decision. Read-only views
 skip the layer and list it.
 
+**A judge outage is a degraded detector.** An LLM judge (`injection.judgment`, `pii.judgment`,
+a judge validator, a workspace rule that uses one) that times out, errors or reports
+`status="unavailable"` with `cause="outage"` is listed in `degraded` and in
+`PipelineResult.judge_outage` with the entity types it would have produced, so both `fail_mode`
+sources above treat "unreachable" and "timed out" alike. The judgment posture's `fail_closed` is a
+third source, for judges only: when it is on and the decision is enforcing, an enforcing pack with
+an enabled, non-allow detection rule on this surface that those entities could fire blocks the call
+as `pipeline.judge_outage`. It adds a block and never removes one, so it cannot loosen a closed
+deployment or pack. A payload the egress gate refused (`cause="refused"`, e.g. `pii_egress=block`
+on text with personal data) or a tier with no key (`not_configured`) is never an outage.
+
 **Saving and promoting are separate.** Saving appends an immutable version and leaves what is in
 force unchanged (`save_policy(..., rebind=False)`). Promotion (`POST /api/policies/{key}/mode`,
 `agentfox policy enforce`) is the only way to change it, and promoting to `enforce` over HTTP

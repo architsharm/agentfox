@@ -46,7 +46,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
 
-from agentfox.capabilities.judgment.jev import JevClient, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.jev import REFUSED, JevClient, JevResult, JevUnavailable
 from agentfox.core.config import get_settings
 
 log = logging.getLogger(__name__)
@@ -86,7 +86,14 @@ class EgressRefused(JevUnavailable):
     Deliberately a `JevUnavailable`: the router already treats that as UNKNOWN
     and never as authorisation, so a refusal degrades exactly like an outage
     instead of needing a second code path that might forget to fail closed.
+
+    Its ``cause`` is ``refused``, not ``outage``: the judge was healthy and was never
+    asked. The enforcer's judge-outage handling (`pipeline.judge_outage`) reads that
+    difference, so that `pii_egress=block` on a payload with an email address in it
+    means "not judged remotely", never "the judge is down, deny the request".
     """
+
+    cause = REFUSED
 
 
 #: Field names whose value never leaves this process regardless of redaction —
