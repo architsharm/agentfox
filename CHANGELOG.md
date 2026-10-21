@@ -13,6 +13,14 @@ the file it came from.
 
 ### Fixed
 
+- **A workspace's judgment settings now reach its checks.** Checks run on worker
+  threads, and those threads did not inherit the request's context, so every check
+  saw the deployment's settings instead of the workspace's. A workspace that set
+  "personal data to a judge: block" had it redacted and sent anyway, and judge tiers
+  switched on only for a workspace looked "not configured". Each check, and each call
+  to a workspace's own models, now runs in a copy of the request's context (judgment
+  posture and tenant).
+
 - **"On a judge outage: deny the request" is now applied.** The judgment posture's
   `fail_closed` was stored and shown but nothing read it. A judge that was asked and did
   not answer (unreachable, an error, a timeout) is now a degraded detector, so

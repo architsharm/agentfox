@@ -18,6 +18,7 @@ So the pipeline:
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import threading
 import time
@@ -244,8 +245,15 @@ class DetectorPipeline:
             return result
 
         started = time.perf_counter()
+        # Each detector runs in a copy of this request's context: pool threads don't
+        # inherit context variables, and the request's judgment posture (its judge
+        # tiers, whether personal data may reach a judge) and tenant live in them.
+        # One copy per submit, because a context can't be entered by two threads.
         futures = {
-            self._pool_for(d).submit(self._run_one, d, content, context): d for d in detectors
+            self._pool_for(d).submit(
+                contextvars.copy_context().run, self._run_one, d, content, context
+            ): d
+            for d in detectors
         }
 
         for future, detector in futures.items():
