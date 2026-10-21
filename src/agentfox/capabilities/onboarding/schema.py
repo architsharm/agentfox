@@ -43,6 +43,11 @@ class MappedAgent(_Item):
     handsOffTo: list[str] = Field(default_factory=list, max_length=200)  # noqa: N815
     framework: str | None = Field(default=None, max_length=64)
     addedByUser: bool | None = None  # noqa: N815
+    #: Where the attack test finds the live object: module, the name in it, and its
+    #: kind (``object``, ``factory``, ``function``), as discovery reports them.
+    module: str | None = Field(default=None, max_length=_ID)
+    attr: str | None = Field(default=None, max_length=_ID)
+    attrKind: str | None = Field(default=None, max_length=32)  # noqa: N815
 
 
 class MappedTool(_Item):
@@ -83,6 +88,10 @@ class Poll(BaseModel):
     #: The project this runner serves (newer `init`s say; older ones don't, and get
     #: the project they connected last).
     project: str | None = Field(default=None, min_length=1, max_length=PROJECT_MAX)
+    #: What the runner can do: 2 checks an "after" test against the project's real
+    #: policies (``/runner/runs/{id}/guard``). Older runners don't say, and are not
+    #: handed an "after" test (they would simulate guardrails that aren't the project's).
+    protocol: int | None = Field(default=None, ge=1, le=100)
 
 
 class AttackOutcome(_Item):
@@ -96,11 +105,21 @@ class AttackOutcome(_Item):
     owasp: list[str] | None = Field(default=None, max_length=20)
     severity: float | None = None
     calls: list[Any] | None = Field(default=None, max_length=50)
+    #: got_through | stopped | resisted | errored | not_run, or for a control
+    #: allowed | over_blocked | errored.
+    outcome: str | None = Field(default=None, max_length=32)
+    agent: str | None = Field(default=None, max_length=_ID)
+    #: The rule that stopped it: surface, rule, verdict, mode, reason, tool, watching.
+    stoppedBy: dict[str, Any] | None = None  # noqa: N815
+    control: bool | None = None
+    reason: str | None = Field(default=None, max_length=_TEXT)
 
     @model_validator(mode="after")
     def _calls_fit(self) -> AttackOutcome:
         if self.calls is not None and len(json.dumps(self.calls, default=str)) > 20_000:
             raise ValueError("calls is too large")
+        if self.stoppedBy is not None and len(json.dumps(self.stoppedBy, default=str)) > 4_000:
+            raise ValueError("stoppedBy is too large")
         return self
 
 
@@ -108,3 +127,21 @@ class Results(BaseModel):
     results: list[AttackOutcome] = Field(default_factory=list, max_length=RESULTS_PER_REPORT)
     done: bool = False
     error: str | None = Field(default=None, max_length=_TEXT)
+
+
+class GuardCheck(BaseModel):
+    """One surface of one attack, for the project's policies to judge (an "after" test)."""
+
+    #: The agent's registry slug (from the job's structure).
+    agent: str = Field(min_length=1, max_length=_ID)
+    #: input | tool_call | tool_result | output
+    surface: str = Field(max_length=32)
+    content: str = Field(default="", max_length=50_000)
+    tool: str | None = Field(default=None, max_length=_ID)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _fits(self) -> GuardCheck:
+        if len(json.dumps(self.arguments, default=str)) > 20_000:
+            raise ValueError("arguments is too large")
+        return self

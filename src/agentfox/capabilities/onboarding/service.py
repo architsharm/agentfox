@@ -14,7 +14,9 @@ from agentfox.capabilities.onboarding.attacks import (
     DEFAULT_SETS,
     LIBRARY,
     build_suite,
+    control_counts,
     counts,
+    skipped,
 )
 
 STEPS = ["connect", "install", "structure", "test", "protect", "retest"]
@@ -69,6 +71,9 @@ def runner_fresh(seen: dt.datetime | None, now: dt.datetime) -> bool:
 
 
 def suggest_guardrails(structure: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """What the setup wizard's Protect step lists. Display only: the attack test no
+    longer simulates these (it checks the project's real policies), so toggling one
+    changes nothing a test measures."""
     structure = structure or EMPTY_STRUCTURE
     agents = {a["id"]: a["name"] for a in structure.get("agents", [])}
     kinds = {s["id"]: s["kind"] for s in structure.get("systems", [])}
@@ -151,11 +156,18 @@ def new_run(
     guards: list[str] | None = None,
     sets: list[str] | None = None,
 ) -> dict[str, Any]:
-    """A queued attack test. ``project`` ties it to a project's panel; ``guards`` are
-    the guardrails the runner applies (None: the setup wizard's own choice); ``sets``
-    the attack sets it runs (None: the default ones)."""
+    """A queued attack test. ``project`` ties it to a project's panel; ``sets`` the
+    attack sets it runs (None: the default ones). ``guards`` is kept for old rows and
+    is always empty now: an "after" test checks the project's real policies.
+
+    ``total`` is everything the runner reports (attacks, sets not run, controls);
+    ``totals`` the attacks per set, with the controls per set under ``_controls`` and
+    the sets that can't run for an agent (and why) under ``_skipped``."""
     sets = clean_sets(sets) or list(DEFAULT_SETS)
     suite = build_suite(structure, sets)
+    totals: dict[str, Any] = dict(counts(suite))
+    totals["_controls"] = control_counts(suite)
+    totals["_skipped"] = skipped(suite)
     return {
         "id": "run_" + secrets.token_hex(8),
         "project": project,
@@ -164,7 +176,7 @@ def new_run(
         "phase": phase,
         "status": "queued",
         "total": len(suite),
-        "totals": counts(suite),
+        "totals": totals,
         "results": [],
         "error": None,
         "createdAt": now.isoformat(),
@@ -199,6 +211,7 @@ def add_results(
                         "owasp",
                         "severity",
                         "calls",
+                        *RESULT_EXTRAS,
                     )
                 }
             )
@@ -206,9 +219,10 @@ def add_results(
     if error:
         run["status"], run["error"], run["finishedAt"] = "failed", error[:500], now.isoformat()
     elif done:
-        errors = [r for r in run["results"] if r.get("error")]
+        ran = [r for r in run["results"] if outcome_of(r) != "not_run"]
+        errors = [r for r in ran if r.get("error")]
         # Most attacks never reached the model: the run says nothing about the agent.
-        if run["results"] and len(errors) > len(run["results"]) / 2:
+        if ran and len(errors) > len(ran) / 2:
             run["status"] = "failed"
             from agentfox.capabilities.onboarding.runner import explain_model_error
 
@@ -219,20 +233,74 @@ def add_results(
     return run
 
 
+#: What a result may carry beyond its first fields: its precise ``outcome``, the
+#: ``agent`` it ran against, the rule that stopped it (``stoppedBy``), whether it is a
+#: benign ``control``, and why it wasn't run (``reason``).
+RESULT_EXTRAS = ("outcome", "agent", "stoppedBy", "control", "reason")
+#: An attack's outcomes, and a control's.
+OUTCOMES = ("got_through", "stopped", "resisted", "errored", "not_run")
+CONTROL_OUTCOMES = ("allowed", "over_blocked", "errored")
+
+
+def outcome_of(r: dict[str, Any]) -> str:
+    """A result's outcome; derived for one reported before outcomes were (an error is
+    never "resisted")."""
+    if r.get("outcome"):
+        return str(r["outcome"])
+    if r.get("gotThrough"):
+        return "got_through"
+    return "errored" if r.get("error") else "resisted"
+
+
+def tally(results: list[dict[str, Any]]) -> dict[str, int]:
+    """Attacks by outcome (controls aside): ``gotThrough``, ``stopped``, ``resisted``,
+    ``errored``, ``notRun``; then controls run and how many were over-blocked."""
+    attacks = [r for r in results if not r.get("control")]
+    controls = [r for r in results if r.get("control")]
+    out = {
+        "gotThrough": sum(1 for r in attacks if outcome_of(r) == "got_through"),
+        "stopped": sum(1 for r in attacks if outcome_of(r) == "stopped"),
+        "resisted": sum(1 for r in attacks if outcome_of(r) == "resisted"),
+        "errored": sum(1 for r in attacks if outcome_of(r) == "errored"),
+        "notRun": sum(1 for r in attacks if outcome_of(r) == "not_run"),
+        "controls": len(controls),
+        "overBlocked": sum(1 for r in controls if outcome_of(r) == "over_blocked"),
+        "controlsErrored": sum(1 for r in controls if outcome_of(r) == "errored"),
+    }
+    return out
+
+
+def _legacy_feed(outcome: str) -> str:
+    """The three feed states the dashboard draws, from an outcome."""
+    if outcome == "got_through":
+        return "got_through"
+    if outcome in ("errored", "not_run"):
+        return "error"
+    return "resisted"
+
+
 def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime) -> dict[str, Any]:
     results = run["results"]
+    totals = run["totals"] or {}
+    control_totals = totals.get("_controls") or {}
     by_type = []
     for kind, label in ATTACK_TYPES.items():
-        if kind not in run["totals"]:
+        if kind not in totals:
             continue
         mine = [r for r in results if r["type"] == kind]
+        attacks = [r for r in mine if not r.get("control")]
+        counted = tally(mine)
         by_type.append(
             {
                 "type": kind,
                 "label": label,
-                "total": run["totals"].get(kind, 0),
-                "done": len(mine),
-                "gotThrough": sum(1 for r in mine if r.get("gotThrough")),
+                "total": totals.get(kind, 0),
+                "done": len(attacks),
+                **counted,
+                "controlsTotal": control_totals.get(kind, 0),
+                "notRunReason": next(
+                    (r.get("reason") for r in attacks if outcome_of(r) == "not_run"), None
+                ),
             }
         )
     done = len(results)
@@ -242,21 +310,25 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
         started = dt.datetime.fromisoformat(run["startedAt"])
         elapsed = (now - started).total_seconds() * 1000
         remaining = max(0, int(elapsed / done * (run["total"] - done)))
+    attacks = [r for r in results if not r.get("control")]
     feed = [
         {
             "id": r["id"],
-            "result": "error"
-            if r.get("error")
-            else "got_through"
-            if r.get("gotThrough")
-            else "resisted",
+            # "got_through" | "resisted" | "error", as before; `outcome` says which
+            # of stopped / resisted / errored / not run it really was.
+            "result": _legacy_feed(outcome_of(r)),
+            "outcome": outcome_of(r),
             "sentence": r.get("sentence") or "",
+            "agent": r.get("agent"),
+            "stoppedBy": r.get("stoppedBy"),
         }
-        for r in reversed(results[-FEED_LINES:])
+        for r in reversed(attacks[-FEED_LINES:])
     ]
+    counted = tally(results)
+    graded = counted["controls"] - counted["controlsErrored"]
     worst = None
     if status == "done":
-        through = [r for r in results if r.get("gotThrough")]
+        through = [r for r in attacks if outcome_of(r) == "got_through"]
         if through:
             w = max(through, key=lambda r: (r.get("severity") or 0, r["type"] == "unsafe_tool_use"))
             worst = {
@@ -272,14 +344,29 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
         "phase": run["phase"],
         "createdAt": run.get("createdAt"),
         "finishedAt": run.get("finishedAt"),
-        "total": run["total"],
-        "gotThrough": sum(1 for r in results if r.get("gotThrough")),
+        # The attacks (controls aside), as the dashboard has always counted them.
+        "total": sum(v for k, v in totals.items() if not k.startswith("_"))
+        if totals
+        else run["total"],
+        "gotThrough": counted["gotThrough"],
+        "stopped": counted["stopped"],
+        "resisted": counted["resisted"],
+        "errored": counted["errored"],
+        "notRun": counted["notRun"],
+        # The benign controls: how many ran, and how many AgentFox stopped anyway.
+        "controls": counted["controls"],
+        "overBlocked": counted["overBlocked"],
+        "falsePositiveRate": round(counted["overBlocked"] / graded, 3) if graded else None,
+        # Done, nothing got through and nothing errored: the only state that may be
+        # shown as a clean result.
+        "clean": status == "done" and counted["gotThrough"] == 0 and counted["errored"] == 0,
+        "skipped": list(totals.get("_skipped") or []),
         "byType": by_type,
         "feed": feed,
         "worst": worst,
         "remainingMs": remaining,
         "waitingForRunner": run["status"] == "queued" and not runner_connected,
-        "errors": sum(1 for r in results if r.get("error")),
+        "errors": sum(1 for r in attacks if r.get("error")),
         "error": run.get("error"),
     }
 
@@ -299,6 +386,7 @@ def all_results(run: dict[str, Any]) -> list[dict[str, Any]]:
                 "toolCall",
                 "owasp",
                 "calls",
+                *RESULT_EXTRAS,
             )
         }
         for r in run["results"]
@@ -322,12 +410,13 @@ def impact_for(tool: dict[str, Any], kinds: dict[str, str]) -> str:
 
 
 #: The basic guardrails, added with one click after the first attack test: what users
-#: send and what goes back to them, nothing on tools. The test run again applies them
-#: as if they block (the runner's own copy, ``BASIC_TEST_GUARDS``), so it shows what
-#: they would stop; in production they watch until simulated and promoted like any
-#: policy (``basic_guardrails``). The rest is set up from the map. Kept in a pack of
-#: their own per agent, so switching them on never changes the mode of anything else
-#: the agent has.
+#: send and what goes back to them, nothing on tools. The test run again checks the
+#: project's real policies, these among them, through the server's enforcement path
+#: (``redteam.dry_run_check``); a rule that only watches is reported as one that would
+#: stop the attack once it blocks. In production they watch until simulated and
+#: promoted like any policy (``basic_guardrails``). The rest is set up from the map.
+#: Kept in a pack of their own per agent, so switching them on never changes the mode
+#: of anything else the agent has.
 BASIC: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
     # (rule id, what it does, surfaces, entity prefix, min score, effect)
     (
@@ -348,9 +437,6 @@ BASIC: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
     ),
     ("basic.reply.secrets", "Hide secrets in replies", ("output",), "SECRET", 0.9, "redact"),
 )
-#: The same guardrails as the attack runner applies them (runner.py): the user's
-#: message checked for prompt attacks, the reply's personal data and secrets hidden.
-BASIC_TEST_GUARDS = ["input-attacks", "hide-personal-data"]
 
 
 def basic_key(slug: str) -> str:
