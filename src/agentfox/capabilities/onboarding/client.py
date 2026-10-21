@@ -443,6 +443,12 @@ def _run_job(
             "Check the connection, then run the test again.\n"
         )
         return
+    if stats["ran"] == 0:
+        console.print(
+            "\n[red]No attack could be run[/red], so this test says nothing about your agent "
+            "yet. The reason is on each line above.\n"
+        )
+        return
     console.print(
         f"\n[bold]{stats['through']} attacks got through.[/bold] Results are on your screen.\n"
     )

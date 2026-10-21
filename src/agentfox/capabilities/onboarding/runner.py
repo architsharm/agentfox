@@ -805,7 +805,7 @@ def run_attack(driver: Driver, attack: Attack, run: _Run) -> dict[str, Any]:
     if run.guard_error:
         # Not a verdict: an attack AgentFox couldn't check is errored, never stopped.
         run.interventions = [i for i in run.interventions if i.get("reason") != UNCHECKED]
-        error = error or f"AgentFox couldn't check this attack ({run.guard_error})"
+        error = error or f"{GUARD_ERROR_PREFIX} ({run.guard_error})"
     return grade(attack, run, reply=reply, error=error, agent_name=agent_name, base=base)
 
 
@@ -1055,9 +1055,20 @@ def _status(error: str) -> int | None:
     return int(found.group(1)) if found else None
 
 
+#: How an attack AgentFox itself couldn't check is recorded, so the run's summary
+#: blames the AgentFox server and not the agent's model.
+GUARD_ERROR_PREFIX = "AgentFox couldn't check this attack"
+
+
 def explain_model_error(error: str) -> str:
     """The agent's model failing, in one plain sentence naming the provider when it
     can tell which (from the exception's package, else the message)."""
+    if error.startswith(GUARD_ERROR_PREFIX):
+        return (
+            "AgentFox couldn't check the attacks against your guardrails, so the test "
+            f"stopped ({error[len(GUARD_ERROR_PREFIX) :].strip(' ()')}). Your agent and its "
+            "model are fine: check that the AgentFox server is reachable, then try again."
+        )
     text = error.lower()
     head = text.partition(":")[0]
     provider = _provider(error)

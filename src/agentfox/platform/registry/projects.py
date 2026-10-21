@@ -204,13 +204,7 @@ def list_projects(session: Session) -> list[dict[str, Any]]:
                 "updated_at": updated,
             }
         )
-    out.sort(
-        key=lambda p: (
-            -(p["updated_at"].timestamp() if p["updated_at"] else 0),
-            p["repos"][0] if p["repos"] else "",
-            p["root"],
-        )
-    )
+    out = _order(out)
     return [
         {**p, "updated_at": p["updated_at"].isoformat() if p["updated_at"] else None} for p in out
     ]
@@ -351,3 +345,19 @@ def project_map(session: Session, project: str) -> dict[str, Any] | None:
         "tools": [{"key": k, "impact": impacts.get(k, "read")} for k in sorted(tool_keys)],
         "resources": list(resources.values()),
     }
+
+
+def _order(out: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The newest repository first; within one, the biggest system first, so a repo's
+    main system opens before its one-agent helpers (registered a moment later)."""
+
+    def stamp(p: dict[str, Any]) -> float:
+        return p["updated_at"].timestamp() if p["updated_at"] else 0.0
+
+    def repo(p: dict[str, Any]) -> str:
+        return p["repos"][0] if p["repos"] else p["root"]
+
+    latest: dict[str, float] = {}
+    for p in out:
+        latest[repo(p)] = max(latest.get(repo(p), 0.0), stamp(p))
+    return sorted(out, key=lambda p: (-latest[repo(p)], -len(p["members"]), -stamp(p), p["root"]))

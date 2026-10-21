@@ -102,6 +102,7 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
   - [ ] Dashboard: read `lineStats` for the LLM line's numbers, and don't count `sharedWith` rules / `detectorsSharedWith` checks again.
 - [x] (2026-10-21) Projects are PR #112 systems: a root agent (nothing hands it work; in a cycle, the one that hands off to most, ties by name) and its `delegates_to` closure of any kind, across repositories. `/api/projects` lists them (key = root slug, plus `root`, `members` with depth/relation/repo, `repos`); `/api/projects/{p}/map` draws the closure; a repository name still resolves (to the systems with its agents) and an unknown name is a 404. `agents.project` is provenance only.
 - [x] (2026-10-21) `talks_to` / `touches` edges keep their detail and resource kind in `lineage_edges.attrs` (migration `d7a4c2e9f1b6`); `kind` is the delegation relation only. Input boxes are no longer part of an agent's blast radius (`registry.service.lineage`).
+- [ ] Injection check false positive, found by the attack test's harmless controls (2026-10-21 local run): "Please ignore the typo in my last message and look up customer CUS-441…" is stopped by `basic.input.attacks`. Tune the heuristic for "ignore the typo/that" phrasings.
 - [ ] Red-team runs aren't tied to an agent, so "last test run" on the map is the workspace's last run.
 - [ ] `sqlglot` (the `sql` extra) and Presidio (`pii` extra) aren't installed locally; one backend test needs Presidio.
 

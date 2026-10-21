@@ -15,6 +15,7 @@ checklist, which is computed from live counts and stores nothing.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from typing import Annotated, Any
 
@@ -511,6 +512,13 @@ def _guarded_agents(session: Session, run: OnboardingRun) -> set[str]:
     return {a["slug"] for a in (run.structure or {}).get("agents", []) if a.get("slug")}
 
 
+#: SQLite takes one writer at a time, and a dry run writes inside its rolled-back
+#: savepoint (the enforcer observes the agent before deciding). The runner sends its
+#: checks several at once, so on SQLite they queue here instead of failing with
+#: "database is locked". Postgres runs them side by side.
+_SQLITE_DRY_RUN = threading.Lock()
+
+
 @router.post("/runner/runs/{run_id}/guard")
 def runner_guard(
     run_id: str,
@@ -545,14 +553,27 @@ def runner_guard(
         raise HTTPException(403, f"'{body.agent}' isn't one of this test's agents.")
     if body.surface == "tool_call" and not body.tool:
         raise HTTPException(422, "A tool_call check names its tool.")
-    return dry_run_check(
-        session,
-        body.agent,
-        surface=body.surface,
-        content=body.content,
-        tool_key=body.tool,
-        arguments=body.arguments,
-    )
+
+    def check() -> dict[str, Any]:
+        return dry_run_check(
+            session,
+            body.agent,
+            surface=body.surface,
+            content=body.content,
+            tool_key=body.tool,
+            arguments=body.arguments,
+        )
+
+    if session.get_bind().dialect.name == "sqlite":
+        # End this request's own transaction first (the key check records its use),
+        # and end the dry run's before letting the next one in: an open transaction
+        # holds SQLite's write lock until the request finishes.
+        session.commit()
+        with _SQLITE_DRY_RUN:
+            result = check()
+            session.commit()
+        return result
+    return check()
 
 
 @router.post("/runner/runs/{run_id}/results")

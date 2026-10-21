@@ -370,3 +370,20 @@ def test_risk_on_the_map_becomes_a_registry_impact_that_never_replaces_a_declare
     tools = {t["key"]: t["impact"] for t in client.get("/api/tools", headers=ADMIN).json()["tools"]}
     assert tools["get_order"] == "high_impact"
     assert tools["issue_refund"] == "irreversible"
+
+
+def test_a_repos_main_system_is_listed_before_its_one_agent_helpers():
+    """Found live: on the airline repo the switcher opened "Relevance Guardrail" (a
+    one-agent helper registered a moment after the 6-agent Triage system)."""
+    import datetime as dt
+
+    from agentfox.platform.registry import projects as P
+
+    t0 = dt.datetime(2026, 10, 21, 12, 0, 0)
+    later, earlier = t0 + dt.timedelta(seconds=2), t0 - dt.timedelta(hours=1)
+    out = [
+        {"root": "relevance", "repos": ["airline"], "members": [1], "updated_at": later},
+        {"root": "triage", "repos": ["airline"], "members": [1, 2, 3, 4, 5, 6], "updated_at": t0},
+        {"root": "shop", "repos": ["shop"], "members": [1], "updated_at": earlier},
+    ]
+    assert [p["root"] for p in P._order(out)] == ["triage", "relevance", "shop"]

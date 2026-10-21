@@ -221,8 +221,15 @@ def add_results(
     elif done:
         ran = [r for r in run["results"] if outcome_of(r) != "not_run"]
         errors = [r for r in ran if r.get("error")]
+        if run["results"] and not ran:
+            # Nothing ran at all (the agent couldn't be loaded or driven): that is not
+            # a pass, and must never read as "0 got through".
+            first = run["results"][0]
+            why = first.get("reason") or first.get("sentence") or "the agent couldn't be run"
+            run["status"] = "failed"
+            run["error"] = f"No attack could be run: {why}"[:500]
         # Most attacks never reached the model: the run says nothing about the agent.
-        if ran and len(errors) > len(ran) / 2:
+        elif ran and len(errors) > len(ran) / 2:
             run["status"] = "failed"
             from agentfox.capabilities.onboarding.runner import explain_model_error
 
@@ -359,7 +366,11 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
         "falsePositiveRate": round(counted["overBlocked"] / graded, 3) if graded else None,
         # Done, nothing got through and nothing errored: the only state that may be
         # shown as a clean result.
-        "clean": status == "done" and counted["gotThrough"] == 0 and counted["errored"] == 0,
+        # At least one attack must have run: a test where nothing ran is not clean.
+        "clean": status == "done"
+        and counted["gotThrough"] == 0
+        and counted["errored"] == 0
+        and counted["gotThrough"] + counted["stopped"] + counted["resisted"] > 0,
         "skipped": list(totals.get("_skipped") or []),
         "byType": by_type,
         "feed": feed,
