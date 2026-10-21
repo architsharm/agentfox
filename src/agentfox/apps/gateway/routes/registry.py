@@ -89,6 +89,28 @@ def delete_project(
     return out
 
 
+@router.post("/projects/{project}/approve")
+def approve_project(
+    project: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Add every agent `agentfox init` proposed for this project ("Add all").
+
+    Each gets the same state change and ledger entry as approving it on its own
+    (``POST /api/agents/{id}/approve``). Tool access is still granted per tool
+    (``POST /api/agents/{slug}/access``): adding an agent does not grant it anything."""
+    from agentfox.platform.registry.projects import project_agents
+    from agentfox.platform.registry.service import approve_drafts
+
+    agents = project_agents(session, project)
+    if not agents:
+        raise HTTPException(404, f"No project '{project}'")
+    approved = approve_drafts(
+        session, sorted(agents, key=lambda a: a.slug), actor=user.email or user.id
+    )
+    session.commit()
+    return {"project": project, "approved": [a.slug for a in approved]}
+
+
 @router.get("/projects/{project}/map")
 def get_project_map(
     project: str, session: Session = Depends(db), _user: User = Depends(current_user)

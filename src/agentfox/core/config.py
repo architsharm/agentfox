@@ -295,6 +295,9 @@ class Settings(BaseSettings):
     fail_mode: str = "open"  # open | closed
     #: How long a held call waits for a person before it is denied (fails closed).
     approval_ttl_minutes: int = 30
+    #: How long an onboarding setup key (`agentfox init --key`, ``afi_…``) stays valid
+    #: after it is made or rotated. 0 means it never expires.
+    onboarding_key_ttl_days: int = 30
     #: What a tool call's provenance is, for the taint rules
     #: (`taint.irreversible_tool` and friends). The one setting that decides it.
     #:

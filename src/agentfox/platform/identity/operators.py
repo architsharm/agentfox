@@ -32,6 +32,11 @@ API_KEY_PREFIX = "nom_api_"
 PREFIX_LENGTH = len(API_KEY_PREFIX) + 8
 
 
+def prefix_length(prefix: str) -> int:
+    """How much of a key of kind ``prefix`` is stored to find its row (``key_prefix``)."""
+    return len(prefix) + 8
+
+
 #: Environments where an unverified identity header is acceptable. Defined in
 #: core.config (the published-secrets guard uses the same set) and re-exported here.
 DEV_ENVIRONMENTS = _DEV_ENVIRONMENTS
@@ -151,6 +156,7 @@ def issue_token(
     ttl_days: int | None = 365,
     actor: str = "",
     reason: str = "",
+    prefix: str = API_KEY_PREFIX,
 ) -> tuple[ApiToken, str]:
     """Mint an operator token. The raw value is returned once and never stored.
 
@@ -162,12 +168,16 @@ def issue_token(
     the entry's subject rather than by any part of the key — the chain's capture-time
     redaction treats the key prefix as a secret and scrubs it, which is correct, and
     recording a field that always reads `<redacted>` would only look like evidence.
+
+    ``prefix`` names the kind of key. Only ``nom_api_`` keys are operator tokens: a
+    token minted with another prefix (the onboarding setup key, ``afi_``) never
+    authenticates an operator, because :func:`resolve_token` only looks for this one.
     """
-    raw = API_KEY_PREFIX + secrets.token_urlsafe(32).replace("-", "").replace("_", "")[:40]
+    raw = prefix + secrets.token_urlsafe(32).replace("-", "").replace("_", "")[:40]
     token = ApiToken(
         user_id=user.id,
         name=name or "unnamed",
-        key_prefix=raw[:PREFIX_LENGTH],
+        key_prefix=raw[: prefix_length(prefix)],
         key_hash=hash_key(raw),
         expires_at=(utcnow() + dt.timedelta(days=ttl_days)) if ttl_days else None,
         org_id=user.org_id,
@@ -245,18 +255,23 @@ def resolve_token(session: Session, raw: str) -> User | None:
     return user
 
 
-def resolve_token_record(session: Session, raw: str) -> ApiToken | None:
-    """The live token row a raw operator token verifies against, or None.
+def resolve_token_record(
+    session: Session, raw: str, *, prefix: str = API_KEY_PREFIX
+) -> ApiToken | None:
+    """The live token row a raw token of kind ``prefix`` verifies against, or None.
 
-    Separate from :func:`resolve_token` for the one caller that needs the credential
-    rather than the person: signing out revokes *this* token and no other.
+    Separate from :func:`resolve_token` for the callers that need the credential
+    rather than the person: signing out revokes *this* token and no other, and the
+    onboarding setup key (``afi_``) is checked here and then held to its own rules.
     """
-    if not raw.startswith(API_KEY_PREFIX):
+    if not raw.startswith(prefix):
         return None
     now = utcnow()
     with system_scope("resolving an operator token to its user", routine=True):
         candidates = list(
-            session.scalars(select(ApiToken).where(ApiToken.key_prefix == raw[:PREFIX_LENGTH]))
+            session.scalars(
+                select(ApiToken).where(ApiToken.key_prefix == raw[: prefix_length(prefix)])
+            )
         )
         for token in candidates:
             if not _token_is_live(token, now):

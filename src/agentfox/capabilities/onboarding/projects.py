@@ -89,12 +89,15 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
     # next init is a new one, tested afresh.
     for row in session.scalars(select(OnboardingSession)):
         agent_slugs = {a.get("slug") for a in (row.structure or {}).get("agents", [])}
-        if agent_slugs & set(slugs):
+        if agent_slugs & set(slugs) or (row.structure or {}).get("project") == project:
             row.structure = None
             row.structure_at = None
-        runs = row.runs or {}
-        if any(r.get("project") == project for r in runs.values()):
-            row.runs = {k: r for k, r in runs.items() if r.get("project") != project}
+    from agentfox.capabilities.onboarding import runs, sessions
+
+    runs.remove_project(session, project)
+    connected = sessions.find_project(session, project)
+    if connected is not None:
+        session.delete(connected)
 
     chain.append(
         session,

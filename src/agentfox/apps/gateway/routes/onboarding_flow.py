@@ -3,7 +3,11 @@
 Two callers. The dashboard, as the signed-in user, reads and saves progress and
 starts test runs. `agentfox init --key` on the user's machine reports the map of
 their agent, then stays connected and runs the attacks when asked; it presents
-the onboarding key, which can do nothing else.
+the setup key (``capabilities/onboarding/keys.py``), which acts for the user who
+made it and can do nothing but propose agents and report test results.
+
+Reading never writes: a user with no onboarding row yet gets the defaults, and the
+row is made on their first write (``capabilities/onboarding/sessions.py``).
 
 Distinct from ``GET /api/onboarding`` (routes/onboarding.py), the Get started
 checklist, which is computed from live counts and stores nothing.
@@ -11,47 +15,40 @@ checklist, which is computed from live counts and stores nothing.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Body, Depends, Header, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.deps import current_user, db, require
-from agentfox.capabilities.onboarding import service
+from agentfox.apps.gateway.deps import WRITE_ROLES, current_user, db, require
+from agentfox.capabilities.onboarding import keys, runs, service, sessions
 from agentfox.capabilities.onboarding.attacks import library
-from agentfox.core.models import OnboardingSession, User, utcnow
-from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.capabilities.onboarding.schema import Connect, Poll, Results, Structure
+from agentfox.core.models import OnboardingRun, OnboardingSession, User, utcnow
+from agentfox.core.tenancy import bind_session
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
 
-def _mine(session: Session, user: User) -> OnboardingSession:
-    row = session.scalar(select(OnboardingSession).where(OnboardingSession.user_id == user.id))
-    if row is None:
-        row = OnboardingSession(
-            user_id=user.id,
-            org_id=user.org_id,
-            init_key=service.new_init_key(),
-            state=dict(service.INITIAL_STATE),
-            runs={},
-        )
-        session.add(row)
-        session.flush()
-    return row
+def _runner_connected(seen: Any) -> bool:
+    return service.runner_fresh(seen, utcnow())
 
 
-def _latest(row: OnboardingSession, phase: str) -> dict[str, Any] | None:
-    runs = [r for r in (row.runs or {}).values() if r["phase"] == phase]
-    return max(runs, key=lambda r: r["createdAt"]) if runs else None
-
-
-def _test_run(row: OnboardingSession, run: dict[str, Any]) -> dict[str, Any]:
+def _show(run: OnboardingRun, *, runner_seen: Any) -> dict[str, Any]:
     now = utcnow()
     return service.to_test_run(
-        run, runner_connected=service.runner_fresh(row.runner_seen_at, now), now=now
+        runs.view(run, now), runner_connected=service.runner_fresh(runner_seen, now), now=now
     )
+
+
+def _runner_seen(session: Session, run: OnboardingRun, row: OnboardingSession | None) -> Any:
+    if run.project:
+        project = sessions.find_project(session, run.project)
+        if project is not None:
+            return project.runner_seen_at
+    return row.runner_seen_at if row else None
 
 
 # --- The dashboard --------------------------------------------------------------
@@ -59,14 +56,15 @@ def _test_run(row: OnboardingSession, run: dict[str, Any]) -> dict[str, Any]:
 
 @router.get("/state")
 def get_state(session: Session = Depends(db), user: User = Depends(current_user)) -> dict[str, Any]:
-    return service.clean_state(_mine(session, user).state)
+    row = sessions.find(session, user)
+    return service.clean_state(row.state if row else None)
 
 
 @router.patch("/state")
 def save_state(
     body: dict[str, Any], session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    row = _mine(session, user)
+    row = sessions.ensure(session, user)
     # The setup wizard saves its steps; the projects' chosen attack sets stay.
     row.state = service.clean_state({"tests": (row.state or {}).get("tests"), **body})
     return row.state
@@ -76,44 +74,67 @@ def save_state(
 def reset(session: Session = Depends(db), user: User = Depends(current_user)) -> dict[str, Any]:
     """Start over at step 1. The key survives, so a running `agentfox init` stays valid
     and re-reports its map on its next poll."""
-    row = _mine(session, user)
+    row = sessions.find(session, user)
+    if row is None:
+        return dict(service.INITIAL_STATE)
     row.state = dict(service.INITIAL_STATE)
     row.structure = None
     row.structure_at = None
-    row.runs = {}
     row.guardrails = None
+    # The setup wizard's own runs; a project's tests belong to the project.
+    for run in runs.for_user(session, user.id):
+        if run.project is None:
+            session.delete(run)
     return row.state
 
 
 @router.get("/key")
-def get_key(session: Session = Depends(db), user: User = Depends(current_user)) -> dict[str, Any]:
-    """This user's setup key, made the first time it is asked for and the same ever
-    after. Always retrievable: it can only report a map and test results, so showing
-    it again is safe, and a running `agentfox init` keeps working."""
-    existed = (
-        session.scalar(select(OnboardingSession.id).where(OnboardingSession.user_id == user.id))
-        is not None
-    )
-    return {"value": _mine(session, user).init_key, "createdNow": not existed}
+def get_key(
+    session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """This user's setup key. Made the first time it is asked for (or after the last
+    one expired or was revoked), and then shown in full that once: ``value`` is null
+    on every later call, which returns the key's ``prefix``, ``createdAt`` and
+    ``expiresAt`` instead. ``POST /key/rotate`` replaces it.
+
+    Minting one needs the registry write role, because what it does is propose agents."""
+    token = keys.live_key(session, user)
+    if token is not None:
+        return keys.describe(token)
+    row = sessions.ensure(session, user)
+    token, raw = keys.mint(session, user, row, reason="setup key made for `agentfox init`")
+    return keys.describe(token, raw)
+
+
+@router.post("/key/rotate")
+def rotate_key(
+    session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Revoke this user's setup key and make a new one, shown in full this once. A
+    running `agentfox init` with the old key stops being accepted."""
+    row = sessions.ensure(session, user)
+    token, raw = keys.mint(session, user, row, reason="setup key rotated")
+    return keys.describe(token, raw)
 
 
 @router.get("/structure")
 def get_structure(
     session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    row = _mine(session, user)
+    row = sessions.find(session, user)
+    structure = row.structure if row else None
     return {
-        "connected": row.structure is not None,
+        "connected": structure is not None,
         # When `agentfox init` last reported its map: lets setup tell a fresh connection
         # from one made before the page was opened.
-        "connectedAt": row.structure_at.isoformat() if row.structure_at else None,
-        "runnerConnected": service.runner_fresh(row.runner_seen_at, utcnow()),
-        "structure": row.structure or service.EMPTY_STRUCTURE,
+        "connectedAt": row.structure_at.isoformat() if row and row.structure_at else None,
+        "runnerConnected": _runner_connected(row.runner_seen_at if row else None),
+        "structure": structure or service.EMPTY_STRUCTURE,
     }
 
 
 class EditedStructure(BaseModel):
-    structure: dict[str, Any]
+    structure: Structure
 
 
 @router.put("/structure")
@@ -121,10 +142,9 @@ def save_structure(
     body: EditedStructure, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
     """The user added or removed an agent or tool on See structure. Tests run on this map."""
-    row = _mine(session, user)
-    s = body.structure
+    row = sessions.ensure(session, user)
     project = (row.structure or {}).get("project")
-    row.structure = {k: list(s.get(k) or []) for k in ("sources", "agents", "tools", "systems")}
+    row.structure = body.structure.as_dict()
     if project:
         row.structure["project"] = project
     return {"structure": row.structure}
@@ -140,58 +160,80 @@ def start_test(
 ) -> dict[str, Any]:
     if body.phase not in ("before", "after"):
         raise HTTPException(400, "phase must be 'before' or 'after'")
-    row = _mine(session, user)
-    if not row.structure or not row.structure.get("tools"):
+    row = sessions.find(session, user)
+    if row is None or not row.structure or not row.structure.get("tools"):
         raise HTTPException(409, "Connect an agent with at least one tool first.")
-    run = service.new_run(body.phase, row.structure, utcnow())
-    row.runs = {**(row.runs or {}), run["id"]: run}
-    return _test_run(row, run)
+    # The setup wizard's "after" test applies the guardrails chosen on Protect.
+    guards = None
+    if body.phase == "after":
+        guards = [
+            g["id"] for g in service.guardrails_for(row.guardrails, row.structure) if g["enabled"]
+        ]
+    run = runs.create(
+        session,
+        user_id=user.id,
+        org_id=user.org_id,
+        phase=body.phase,
+        structure=row.structure,
+        now=utcnow(),
+        guards=guards,
+    )
+    return _show(run, runner_seen=row.runner_seen_at)
 
 
 @router.get("/tests")
 def latest_test(
     phase: str, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any] | None:
-    run = _latest(_mine(session, user), phase)
-    return _test_run(_mine(session, user), run) if run else None
+    mine = [r for r in runs.for_user(session, user.id) if r.phase == phase]
+    if not mine:
+        return None
+    return _show(
+        mine[-1], runner_seen=_runner_seen(session, mine[-1], sessions.find(session, user))
+    )
+
+
+def _visible_run(session: Session, user: User, run_id: str) -> OnboardingRun:
+    """A run this user may see: their own, or any of their workspace's projects'."""
+    run = session.get(OnboardingRun, run_id)
+    if run is None or (run.project is None and run.user_id != user.id):
+        raise HTTPException(404, "No such test run")
+    return run
 
 
 @router.get("/tests/{run_id}")
 def get_test(
     run_id: str, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    row = _mine(session, user)
-    run = (row.runs or {}).get(run_id)
-    if run is None:
-        raise HTTPException(404, "No such test run")
-    return _test_run(row, run)
+    run = _visible_run(session, user, run_id)
+    return _show(run, runner_seen=_runner_seen(session, run, sessions.find(session, user)))
 
 
 @router.get("/tests/{run_id}/results")
 def test_results(
     run_id: str, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    run = (_mine(session, user).runs or {}).get(run_id)
-    if run is None:
-        raise HTTPException(404, "No such test run")
-    return {"run": run["id"], "phase": run["phase"], "results": service.all_results(run)}
+    run = _visible_run(session, user, run_id)
+    return {"run": run.id, "phase": run.phase, "results": service.all_results(runs.as_dict(run))}
 
 
 @router.get("/guardrails")
 def get_guardrails(
     session: Session = Depends(db), user: User = Depends(current_user)
 ) -> list[dict[str, Any]]:
-    row = _mine(session, user)
-    return service.guardrails_for(row.guardrails, row.structure)
+    row = sessions.find(session, user)
+    return service.guardrails_for(row.guardrails if row else None, row.structure if row else None)
 
 
 @router.post("/guardrails")
 def save_guardrails(
     body: list[dict[str, Any]], session: Session = Depends(db), user: User = Depends(current_user)
 ) -> list[dict[str, Any]]:
-    row = _mine(session, user)
+    row = sessions.ensure(session, user)
     row.guardrails = [
-        {"id": g.get("id"), "enabled": bool(g.get("enabled"))} for g in body if isinstance(g, dict)
+        {"id": str(g.get("id"))[:120], "enabled": bool(g.get("enabled"))}
+        for g in body[:200]
+        if isinstance(g, dict)
     ]
     return service.guardrails_for(row.guardrails, row.structure)
 
@@ -199,9 +241,17 @@ def save_guardrails(
 # --- A project's attack tests, for the map's panel -------------------------------
 
 
-def _project_runs(row: OnboardingSession, project: str) -> list[dict[str, Any]]:
-    runs = [r for r in (row.runs or {}).values() if r.get("project") == project]
-    return sorted(runs, key=lambda r: r["createdAt"])
+def _basic(session: Session, project: str) -> tuple[bool, bool]:
+    """(on, enforcing) for the project's basic guardrails: on when every agent has
+    them, watching or blocking; enforcing when every agent's block."""
+    from agentfox.platform.registry.projects import project_agents
+
+    agents = project_agents(session, project)
+    modes = [service.basic_mode(session, a.slug) for a in agents]
+    return (
+        bool(agents) and all(m is not None for m in modes),
+        bool(agents) and all(m == "enforce" for m in modes),
+    )
 
 
 @router.get("/projects/{project}/tests")
@@ -209,30 +259,31 @@ def project_tests(
     project: str, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
     """The project's first test (as it was) and its latest one with the basic
-    guardrails, whether those are on, and whether this project's `agentfox init` is
-    the one connected (only it can run a test)."""
-    from agentfox.platform.registry.projects import project_agents
-
-    row = _mine(session, user)
-    runs = _project_runs(row, project)
+    guardrails, whether those are on (``basicOn``: watching or blocking;
+    ``basicEnforcing``: blocking), and whether this project's `agentfox init` is
+    connected (only it can run a test)."""
+    row = sessions.find(session, user)
+    connected = sessions.find_project(session, project)
+    seen = connected.runner_seen_at if connected else None
+    project_runs = runs.for_project(session, project)
     # The latest test without the basic guardrails (a failed one tried again replaces it).
-    before = [r for r in runs if r["phase"] == "before"]
-    first = before[-1] if before else None
-    after = [r for r in runs if r["phase"] == "after"]
-    agents = project_agents(session, project)
-    now = utcnow()
+    before = [r for r in project_runs if r.phase == "before"]
+    after = [r for r in project_runs if r.phase == "after"]
+    basic_on, basic_enforcing = _basic(session, project)
     return {
         "project": project,
-        "first": _test_run(row, first) if first else None,
-        "withBasic": _test_run(row, after[-1]) if after else None,
-        "basicOn": bool(agents)
-        and all(service.has_basic_guardrails(session, a.slug) for a in agents),
-        "connectedProject": (row.structure or {}).get("project"),
-        "runnerConnected": service.runner_fresh(row.runner_seen_at, now),
-        "sets": service.project_sets(row.state, project),
-        "library": library(
-            row.structure if (row.structure or {}).get("project") == project else None
-        ),
+        "first": _show(before[-1], runner_seen=seen) if before else None,
+        "withBasic": _show(after[-1], runner_seen=seen) if after else None,
+        "basicOn": basic_on,
+        "basicEnforcing": basic_enforcing,
+        # This project when its own `agentfox init` has connected; else the project
+        # this user's latest init reported, as before.
+        "connectedProject": project
+        if connected is not None
+        else ((row.structure or {}).get("project") if row else None),
+        "runnerConnected": _runner_connected(seen),
+        "sets": service.project_sets(row.state if row else None, project),
+        "library": library(connected.structure if connected is not None else None),
     }
 
 
@@ -248,7 +299,7 @@ def choose_sets(
     sets = service.clean_sets(body.sets)
     if not sets:
         raise HTTPException(400, "Choose at least one attack set.")
-    row = _mine(session, user)
+    row = sessions.ensure(session, user)
     state = service.clean_state(row.state)
     row.state = {**state, "tests": {**state.get("tests", {}), project: sets}}
     return {"project": project, "sets": sets}
@@ -258,151 +309,174 @@ def choose_sets(
 def start_project_test(
     project: str, session: Session = Depends(db), user: User = Depends(current_user)
 ) -> dict[str, Any]:
-    """Test the project again, with the guardrails it has now."""
-    from agentfox.platform.registry.projects import project_agents
-
-    row = _mine(session, user)
-    if (row.structure or {}).get("project") != project:
+    """Test the project again, with the guardrails it has now, on its own map."""
+    connected = sessions.find_project(session, project)
+    if connected is None or not connected.structure:
         raise HTTPException(
             409,
             f"Run `agentfox init` in {project}'s repository first: the tests run there, "
             "on your machine.",
         )
-    if any(r["status"] in ("queued", "running") for r in _project_runs(row, project)):
+    now = utcnow()
+    active = [r for r in runs.for_project(session, project) if r.status in runs.ACTIVE]
+    runs.expire(session, active, now)
+    if any(r.status in runs.ACTIVE for r in active):
         raise HTTPException(409, "A test is already running for this project.")
-    agents = project_agents(session, project)
-    basic = bool(agents) and all(service.has_basic_guardrails(session, a.slug) for a in agents)
-    run = service.new_run(
-        "after" if basic else "before",
-        row.structure,
-        utcnow(),
+    basic, _enforcing = _basic(session, project)
+    row = sessions.find(session, user)
+    run = runs.create(
+        session,
+        user_id=user.id,
+        org_id=user.org_id,
+        phase="after" if basic else "before",
+        structure=connected.structure,
+        now=now,
         project=project,
         guards=list(service.BASIC_TEST_GUARDS) if basic else [],
-        sets=service.project_sets(row.state, project),
+        sets=service.project_sets(row.state if row else None, project),
     )
-    row.runs = {**(row.runs or {}), run["id"]: run}
-    return _test_run(row, run)
+    return _show(run, runner_seen=connected.runner_seen_at)
 
 
 @router.post("/projects/{project}/basic-guardrails")
 def add_basic_guardrails(
     project: str, session: Session = Depends(db), user: User = Depends(require("policy"))
 ) -> dict[str, Any]:
-    """Switch on the basic guardrails for every agent in the project: prompt attacks
-    in what users send are blocked, personal data and secrets in replies hidden."""
+    """Add the basic guardrails to every agent in the project: prompt attacks in what
+    users send blocked, personal data and secrets in replies hidden.
+
+    They go live as any policy does: watching, and blocking only when the caller may
+    change production policy and these rules have been simulated (the
+    ``POST /api/policies/{key}/mode`` gate). ``mode`` says which; ``observe`` means
+    simulate and promote them on the Policies page to make them block."""
     from agentfox.platform.registry.projects import project_agents
 
     agents = project_agents(session, project)
     if not agents:
         raise HTTPException(404, f"No project '{project}'")
     actor = user.email or user.id
-    added = [a.slug for a in agents if service.basic_guardrails(session, a.slug, actor=actor)]
-    return {"project": project, "added": added}
+    may_enforce = user.role in WRITE_ROLES["policy_production"]
+    added: list[str] = []
+    modes: set[str] = set()
+    for a in agents:
+        mode = service.basic_guardrails(session, a.slug, actor=actor, may_enforce=may_enforce)
+        if mode is not None:
+            added.append(a.slug)
+            modes.add(mode)
+    mode = "enforce" if modes == {"enforce"} else ("observe" if modes else None)
+    return {
+        "project": project,
+        "added": added,
+        "mode": mode,
+        "policyKeys": {a: service.basic_key(a) for a in added},
+    }
 
 
 # --- `agentfox init --key` --------------------------------------------------------
 
 
+@dataclass
+class Runner:
+    """Who is calling: the setup key's user and their onboarding row."""
+
+    user: User
+    row: OnboardingSession
+
+
 def runner_session(
     session: Session = Depends(db), authorization: Annotated[str | None, Header()] = None
-) -> OnboardingSession:
-    key = (authorization or "").removeprefix("Bearer ").removeprefix("bearer ").strip()
-    if not key.startswith("afi_"):
+) -> Runner:
+    raw = (authorization or "").removeprefix("Bearer ").removeprefix("bearer ").strip()
+    if not raw.startswith(keys.SETUP_KEY_PREFIX):
         raise HTTPException(
-            401, "Send the onboarding key from the Connect screen: Authorization: Bearer afi_…"
+            401, "Send the setup key from the Connect screen: Authorization: Bearer afi_…"
         )
-    # Authentication is the one unavoidably cross-tenant read: whose key is this?
-    with system_scope("onboarding init key", routine=True):
-        row = session.scalar(select(OnboardingSession).where(OnboardingSession.init_key == key))
-    if row is None:
+    try:
+        _token, user, row = keys.resolve(session, raw, allowed_roles=WRITE_ROLES["registry"])
+    except LookupError:
         raise HTTPException(
-            401, "That onboarding key isn't valid. Copy it again from the Connect screen."
-        )
-    bind_session(session, row.org_id)
-    return row
-
-
-class Connect(BaseModel):
-    structure: dict[str, Any]
-    #: The repository's name: the project its agents are grouped under.
-    project: str | None = None
+            401,
+            "That setup key isn't valid: it may have expired or been replaced. Copy a new "
+            "one from the Connect screen.",
+        ) from None
+    except keys.SetupKeyRefused as exc:
+        raise HTTPException(403, str(exc)) from None
+    bind_session(session, user.org_id)
+    return Runner(user=user, row=row)
 
 
 @router.post("/runner/connect")
 def runner_connect(
-    body: Connect, session: Session = Depends(db), row: OnboardingSession = Depends(runner_session)
+    body: Connect, session: Session = Depends(db), runner: Runner = Depends(runner_session)
 ) -> dict[str, Any]:
-    s = body.structure
-    structure = {k: s.get(k, []) for k in ("sources", "agents", "tools", "systems")}
-    # Set it up for real: the agents and tools land in the registry, under Projects.
-    row.structure = service.register_structure(session, structure, project=body.project)
-    row.structure_at = utcnow()
-    row.runner_seen_at = utcnow()
-    # A project connected for the first time is tested straight away, as it is.
+    row, user = runner.row, runner.user
+    now = utcnow()
+    actor = user.email or user.id
+    # Proposed in the registry, under Projects, for a person to add.
+    structure = service.register_structure(
+        session, body.structure.as_dict(), project=body.project, actor=actor
+    )
+    row.structure = structure
+    row.structure_at = now
+    row.runner_seen_at = now
     project = body.project
-    if (
-        project
-        and row.structure["agents"]
-        and row.structure["tools"]
-        and not any(r.get("project") == project for r in (row.runs or {}).values())
-    ):
-        run = service.new_run(
-            "before",
-            row.structure,
-            utcnow(),
-            project=project,
-            guards=[],
-            sets=service.project_sets(row.state, project),
-        )
-        row.runs = {**(row.runs or {}), run["id"]: run}
+    if project:
+        connected = sessions.ensure_project(session, project, org_id=user.org_id)
+        connected.structure = structure
+        connected.structure_at = now
+        connected.runner_seen_at = now
+        connected.connected_by = user.id
+        # A project connected for the first time is tested straight away, as it is.
+        if structure["agents"] and structure["tools"] and not runs.for_project(session, project):
+            runs.create(
+                session,
+                user_id=user.id,
+                org_id=user.org_id,
+                phase="before",
+                structure=structure,
+                now=now,
+                project=project,
+                guards=[],
+                sets=service.project_sets(row.state, project),
+            )
     return {
         "ok": True,
-        "agents": len(row.structure["agents"]),
-        "tools": len(row.structure["tools"]),
+        "agents": len(structure["agents"]),
+        "tools": len(structure["tools"]),
+        "proposed": [a["slug"] for a in structure["agents"] if a.get("registry") == "proposed"],
+        "skipped": [a["name"] for a in structure["agents"] if a.get("registry") == "skipped"],
     }
 
 
 @router.post("/runner/poll")
 def runner_poll(
-    session: Session = Depends(db), row: OnboardingSession = Depends(runner_session)
+    body: Annotated[Poll | None, Body()] = None,
+    session: Session = Depends(db),
+    runner: Runner = Depends(runner_session),
 ) -> dict[str, Any]:
     """Heartbeat, and the next test to run if one is waiting."""
+    row, user = runner.row, runner.user
     now = utcnow()
     row.runner_seen_at = now
-    if row.structure is None:
+    project = (body.project if body else None) or (row.structure or {}).get("project")
+    connected = sessions.find_project(session, project) if project else None
+    if connected is not None:
+        connected.runner_seen_at = now
+    if row.structure is None or (project and connected is None):
         return {"needStructure": True, "job": None}
-    queued = sorted(
-        (r for r in (row.runs or {}).values() if r["status"] == "queued"),
-        key=lambda r: r["createdAt"],
-    )
-    if not queued:
+    run = runs.claim_next(session, user_id=user.id, project=project, now=now)
+    if run is None:
         return {"needStructure": False, "job": None}
-    run = {**queued[0], "status": "running", "startedAt": now.isoformat()}
-    row.runs = {**row.runs, run["id"]: run}
-    if run.get("guards") is not None:
-        guards = run["guards"]
-    elif run["phase"] == "after":
-        guards = [
-            g["id"] for g in service.guardrails_for(row.guardrails, row.structure) if g["enabled"]
-        ]
-    else:
-        guards = []
     return {
         "needStructure": False,
         "job": {
-            "runId": run["id"],
-            "phase": run["phase"],
-            "sets": run.get("sets"),
-            "guardrails": guards,
-            "structure": row.structure,
+            "runId": run.id,
+            "phase": run.phase,
+            "sets": run.sets,
+            "guardrails": list(run.guards or []),
+            "structure": run.structure,
         },
     }
-
-
-class Results(BaseModel):
-    results: list[dict[str, Any]] = []
-    done: bool = False
-    error: str | None = None
 
 
 @router.post("/runner/runs/{run_id}/results")
@@ -410,13 +484,29 @@ def runner_results(
     run_id: str,
     body: Results,
     session: Session = Depends(db),
-    row: OnboardingSession = Depends(runner_session),
+    runner: Runner = Depends(runner_session),
 ) -> dict[str, Any]:
-    run = (row.runs or {}).get(run_id)
-    if run is None:
-        raise HTTPException(404, "No such test run")
     now = utcnow()
-    row.runner_seen_at = now
-    updated = service.add_results(run, body.results, done=body.done, error=body.error, now=now)
-    row.runs = {**row.runs, run_id: updated}
-    return {"ok": True, "status": updated["status"], "received": len(updated["results"])}
+    runner.row.runner_seen_at = now
+    run = runs.locked(session, run_id)
+    if run is None or (run.project is None and run.user_id != runner.user.id):
+        raise HTTPException(404, "No such test run")
+    if len(body.results) > (run.total or 0):
+        raise HTTPException(422, f"This test has {run.total} attacks; that is more results.")
+    if run.project:
+        connected = sessions.find_project(session, run.project)
+        if connected is not None:
+            connected.runner_seen_at = now
+    try:
+        updated = runs.add_results(
+            session,
+            run,
+            [r.model_dump(exclude_none=True) for r in body.results],
+            done=body.done,
+            error=body.error,
+            now=now,
+        )
+    except runs.RunFinished:
+        session.commit()  # keep the lapsed run's failure
+        raise HTTPException(409, f"This test has already finished ({run.status}).") from None
+    return {"ok": True, "status": updated.status, "received": len(updated.results or [])}

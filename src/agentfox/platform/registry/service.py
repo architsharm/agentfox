@@ -124,8 +124,14 @@ def register_agent(
     return agent
 
 
-def _propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None:
-    """Register a scan's proposal as a draft, unless a human already approved it.
+#: Statuses a new proposal may overwrite: nothing live, nothing a person approved.
+#: "removed" is an agent whose project was disconnected (`registry/projects.py`).
+PROPOSABLE = ("draft", "rejected", "removed")
+
+
+def propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None:
+    """Register a proposal (a repo scan's, or `agentfox init`'s) as a draft, unless a
+    human already approved it.
 
     Re-scanning a repository proposes the same slugs again, which updates a draft in
     place instead of duplicating it. An agent someone already added is left alone: a
@@ -133,9 +139,36 @@ def _propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | Non
     Returns None for such an agent, since this scan did not propose it.
     """
     existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
-    if existing is not None and existing.status not in ("draft", "rejected"):
+    if existing is not None and existing.status not in PROPOSABLE:
         return None
     return register_agent(session, slug=slug, draft=True, **fields)
+
+
+_propose_draft = propose_draft
+
+
+def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list[Agent]:
+    """Add proposed agents: the same state change and ledger entry as approving one
+    draft (``POST /api/agents/{id}/approve``). Agents that are not drafts are skipped."""
+    from agentfox.platform.ledger import chain
+
+    approved = []
+    for agent in agents:
+        if agent.status != "draft":
+            continue
+        agent.status = "active"
+        agent.registered = True
+        session.flush()
+        chain.append(
+            session,
+            "agent.draft.approved",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="agent",
+            subject_id=agent.id,
+        )
+        approved.append(agent)
+    return approved
 
 
 def _propose_agent_specs(
