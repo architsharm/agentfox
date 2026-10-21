@@ -308,17 +308,27 @@ def all_results(run: dict[str, Any]) -> list[dict[str, Any]]:
 # --- Registering what `agentfox init` found -------------------------------------
 
 
-#: The registry's impact vocabulary, from the onboarding risk and what a tool touches.
+#: Registry impacts, least to most.
+IMPACTS = ("read", "write", "high_impact", "irreversible")
+#: The least a tool of each onboarding risk is in the registry's words.
+_RISK_FLOOR = {"high": "high_impact", "outside": "write", "read_only": "read"}
+
+
 def impact_for(tool: dict[str, Any], kinds: dict[str, str]) -> str:
-    if tool.get("risk") == "high":
-        kind = kinds.get(tool.get("systemId", ""), "")
-        text = f"{tool.get('name', '')} {tool.get('whatItDoes', '')}".lower()
-        if kind == "payments" or any(w in text for w in ("delete", "drop", "remove", "refund")):
-            return "irreversible"
-        return "high_impact"
-    if tool.get("risk") == "outside":
-        return "write"
-    return "read"
+    """The registry's impact for a tool on the map: the classifier's own reading
+    (``tool["impact"]``, from ``infer_impact``; a map from an older CLI has none, and
+    gets it from the name), raised to what its onboarding risk says it at least is. A
+    tool that moves money (it touches payments) cannot be undone."""
+    from agentfox.platform.registry.impact import infer_impact
+
+    name = str(tool.get("name", ""))
+    found = tool.get("impact")
+    if found not in IMPACTS:
+        found = infer_impact(name, {"description": tool.get("whatItDoes", "")}, cautious=True)
+    floor = _RISK_FLOOR.get(str(tool.get("risk")), "read")
+    if tool.get("risk") == "high" and kinds.get(tool.get("systemId", ""), "") == "payments":
+        floor = "irreversible"
+    return max(found, floor, key=IMPACTS.index)
 
 
 #: The basic guardrails, added with one click after the first attack test: what users
@@ -465,7 +475,8 @@ def register_structure(
     The setup key can propose; it cannot change what is live:
 
     * an agent it has not seen is proposed as a draft of this project;
-    * a draft (or a rejected or removed agent) of the same name is proposed again;
+    * a draft (or a rejected or removed agent) of the same name, of this project or
+      of none, is proposed again; one another repository's init mapped stays its own;
     * a live agent of this same project gets the newly found models and tools added
       to its declaration, and nothing else (risk tier, environment, purpose, status,
       owner and project stay as a person set them);
@@ -479,6 +490,7 @@ def register_structure(
     """
     from sqlalchemy import select
 
+    from agentfox.capabilities.discovery.agents import RELATIONS
     from agentfox.core.models import Agent, Tool
     from agentfox.platform.ledger import chain
     from agentfox.platform.registry.projects import TALKS_TO, TOUCHES
@@ -492,7 +504,11 @@ def register_structure(
     )
 
     def owned(agent: Any) -> bool:
-        return agent.status in PROPOSABLE or bool(project and agent.project == project)
+        # Another repository's draft or disconnected agent is still that repository's:
+        # proposing over it would hand this one its name, its edges and its snapshot.
+        if project and agent.project == project:
+            return True
+        return agent.status in PROPOSABLE and agent.project in (None, project)
 
     def place(name: str) -> tuple[str, Any] | None:
         for candidate in [slugify(name), *([slugify(f"{project}-{name}")] if project else [])]:
@@ -552,7 +568,7 @@ def register_structure(
                     slug,
                     TALKS_TO,
                     declared=True,
-                    kind=(src.get("detail") or "")[:32] or None,
+                    attrs={"detail": src.get("detail") or ""},
                 )
         for t in tools:
             known = session.scalar(select(Tool).where(Tool.key == t["name"]))
@@ -578,14 +594,20 @@ def register_structure(
                     system["name"],
                     TOUCHES,
                     declared=True,
-                    kind=(system.get("kind") or None),
+                    attrs={"resource_kind": system.get("kind") or "service"},
                 )
-        agents.append({**agent, "slug": slug, "registry": outcome})
+        row = existing or session.scalar(select(Agent).where(Agent.slug == slug))
+        # Disconnected before: its guardrails can be put back (`restore-guardrails`).
+        restorable = bool(row is not None and row.guardrails_snapshot)
+        agents.append({**agent, "slug": slug, "registry": outcome, "restorable": restorable})
     # Who hands work to whom, from the code: the map draws these between agents.
     slug_of = {a["id"]: a["slug"] for a in agents if a["slug"]}
     for a in agents:
         if not a["slug"]:
             continue
+        # How each hand-off works, as discovery read it (`handoffs`); a map from an
+        # older CLI only lists `handsOffTo`, which were OpenAI hand-offs.
+        relation = {h.get("agentId"): h.get("relation") for h in a.get("handoffs") or []}
         for child in a.get("handsOffTo") or []:
             if child in slug_of and slug_of[child] != a["slug"]:
                 record_edge(
@@ -596,7 +618,7 @@ def register_structure(
                     slug_of[child],
                     "delegates_to",
                     declared=True,
-                    kind="handoff",
+                    kind=relation.get(child) if relation.get(child) in RELATIONS else "handoff",
                 )
     chain.append(
         session,

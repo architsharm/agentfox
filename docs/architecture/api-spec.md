@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-310 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+311 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -174,7 +174,7 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/agent-controls` | Kill-switch/quarantine state per agent. |
-| `GET` | `/api/agents` | List Agents |
+| `GET` | `/api/agents` | Every agent. An agent whose project was disconnected (status ``removed``) is |
 | `POST` | `/api/agents` | Create Agent |
 | `POST` | `/api/agents/{agent_id}/approve-system` | Approve a proposed agent and every proposed agent it hands work to, in one step. |
 | `GET` | `/api/agents/{slug}` | Get Agent |
@@ -198,6 +198,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/protection` | Save Protection |
 | `POST` | `/api/agents/{slug}/protection/preview` | Replay this agent's last week against the protections, as if enforcing. |
 | `POST` | `/api/agents/{slug}/quarantine` | Stop an agent while you investigate. Reversible and audited. |
+| `POST` | `/api/agents/{slug}/restore-guardrails` | Put back the guardrails an agent had when its project was disconnected. |
 | `POST` | `/api/agents/{slug}/resume` | Restart a stopped agent. Deliberately the same role as `kill` — restarting |
 | `GET` | `/api/agents/{slug}/setup` | What this project still needs, for the banner a project's pages show. |
 | `GET` | `/api/agents/{slug}/tool-paths` | The tool-call paths an agent took, which are new, and which no test expects. |
@@ -474,10 +475,10 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/library/packs` | List Packs |
 | `POST` | `/api/library/packs/{pack_id}/install` | Install Pack |
 | `GET` | `/api/overview` | Agents, their risk tiers and open issues: the Reports summary. |
-| `GET` | `/api/projects` | Every project (a repository `agentfox init` mapped) and its agent count. |
+| `GET` | `/api/projects` | Every project: a multi-agent system (a root agent and every agent it hands work |
 | `DELETE` | `/api/projects/{project}` | Disconnect a project: connecting it again with `agentfox init` starts fresh. |
 | `POST` | `/api/projects/{project}/approve` | Add every agent `agentfox init` proposed for this project ("Add all"). |
-| `GET` | `/api/projects/{project}/map` | One project's map: who talks to its agents, their models, tools, and what the tools touch. |
+| `GET` | `/api/projects/{project}/map` | One project's map: who talks to its agents, their models, tools, and what the |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |
 | `GET` | `/api/proposals/{proposal_id}` | One proposal with its diff, evidence, proof and decisions. |
 | `POST` | `/api/proposals/{proposal_id}/apply` | Apply an approved proposal, or settle one whose canary has finished. |

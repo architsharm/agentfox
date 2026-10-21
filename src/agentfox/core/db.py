@@ -206,6 +206,10 @@ _ADDITIVE_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("lineage_edges", "kind", "VARCHAR(32)"),
     # c6e1f9a3d72b — an agent belongs to a project (the repository init mapped).
     ("agents", "project", "VARCHAR(120)"),
+    # d7a4c2e9f1b6 — what a declared edge says besides its relation; the guardrail
+    # layers an agent had when its project was disconnected.
+    ("lineage_edges", "attrs", "JSON"),
+    ("agents", "guardrails_snapshot", "JSON"),
 )
 
 

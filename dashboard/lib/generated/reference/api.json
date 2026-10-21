@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 310,
+ "count": 311,
  "routes": [
   {
    "method": "GET",
@@ -736,8 +736,8 @@
    "path": "/api/agents",
    "section": "agents",
    "audience": "operator",
-   "summary": "List Agents",
-   "description": "",
+   "summary": "Every agent. An agent whose project was disconnected (status ``removed``) is left out unless ``include_removed``: it is history, not part of the workspace.",
+   "description": "Every agent. An agent whose project was disconnected (status ``removed``) is\nleft out unless ``include_removed``: it is history, not part of the workspace.",
    "params": [
     {
      "name": "registered",
@@ -750,6 +750,12 @@
      "in": "query",
      "required": false,
      "type": null
+    },
+    {
+     "name": "include_removed",
+     "in": "query",
+     "required": false,
+     "type": "boolean"
     },
     {
      "name": "authorization",
@@ -1790,6 +1796,35 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/restore-guardrails",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Put back the guardrails an agent had when its project was disconnected.",
+   "description": "Put back the guardrails an agent had when its project was disconnected.\n\nEach layer's recorded version goes live again, watching; blocking again only when\nit was, the caller may change production policy, and that version was simulated.\n404 when the agent has nothing to restore; 409 while it is still disconnected\n(connect it again first).",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -10134,8 +10169,8 @@
    "path": "/api/projects",
    "section": "projects",
    "audience": "operator",
-   "summary": "Every project (a repository `agentfox init` mapped) and its agent count.",
-   "description": "Every project (a repository `agentfox init` mapped) and its agent count.",
+   "summary": "Every project: a multi-agent system (a root agent and every agent it hands work to, from code or traffic, across repositories), or one agent on its own.",
+   "description": "Every project: a multi-agent system (a root agent and every agent it hands work\nto, from code or traffic, across repositories), or one agent on its own.\n\n``project`` (= ``root``) is the key the other ``/api/projects/{project}`` routes\ntake; ``members`` lists each agent with its ``depth`` under the root and the\n``relation`` it is reached by; ``repos`` the repositories `agentfox init` mapped\nthem from, which those routes also accept.",
    "params": [
     {
      "name": "authorization",
@@ -10157,8 +10192,8 @@
    "path": "/api/projects/{project}",
    "section": "projects",
    "audience": "operator",
-   "summary": "Disconnect a project: connecting it again with `agentfox init` starts fresh. Its history (traffic, issues, audit) is kept.",
-   "description": "Disconnect a project: connecting it again with `agentfox init` starts fresh.\nIts history (traffic, issues, audit) is kept.",
+   "summary": "Disconnect a project: connecting it again with `agentfox init` starts fresh.",
+   "description": "Disconnect a project: connecting it again with `agentfox init` starts fresh.\n\nActs on the members that came from the same repository (``project`` may be a\nsystem's root or a repository init mapped); an agent of another project it hands\nwork to, and the hand-off itself, stay. Each agent's guardrails are recorded\nbefore they are emptied (``restorable`` lists who has them), to be put back with\n``POST /api/agents/{slug}/restore-guardrails``. Its history (traffic, issues,\naudit) is kept.",
    "params": [
     {
      "name": "project",
@@ -10215,8 +10250,8 @@
    "path": "/api/projects/{project}/map",
    "section": "projects",
    "audience": "operator",
-   "summary": "One project's map: who talks to its agents, their models, tools, and what the tools touch.",
-   "description": "One project's map: who talks to its agents, their models, tools, and what the tools touch.",
+   "summary": "One project's map: who talks to its agents, their models, tools, and what the tools touch. Every member of the system is drawn, sub-agents and parents in other repositories included. 404 for a name that is no project, root, repository or agent.",
+   "description": "One project's map: who talks to its agents, their models, tools, and what the\ntools touch. Every member of the system is drawn, sub-agents and parents in other\nrepositories included. 404 for a name that is no project, root, repository or agent.",
    "params": [
     {
      "name": "project",
