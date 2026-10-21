@@ -249,11 +249,22 @@ session_id=None, intent=None, register=True, quiet=False, …)`:
    `TaintTracker` rebuilt from the conversation (`_provenance_of`); unseen tools are upserted
    with an inferred impact (`_register_tool`). A refused call raises `Blocked` in place of the
    response.
+7. An output redaction (`redact` / `mask` / `tokenize` on the output surface) is applied, not
+   only recorded: `_applied_rewrite` picks the enforcer's `EnforcementResult.content` under the
+   same mode rule as a block, and `shapes._rewrite_text` writes it into the client's own
+   response object (`choices[0].message.content`; Anthropic text blocks, the first taking the
+   whole rewrite and the others emptied; `AIMessage.content`). The recorded conversation turn
+   holds the redacted text. A response that cannot be rewritten is refused with `Blocked`; a
+   streamed response, whose chunks are already with the caller, raises `Blocked` at the end of
+   the stream instead (the gateway's buffered streaming is the way to get redacted streamed
+   text).
 
 The default mode is `policy`: `Blocked` is raised only when an enforce-mode policy, the kill
 switch or a budget cap stops the call, and an agent holding no grants at all is not refused
 for a missing grant until its first grant. `mode="observe"` never raises; `mode="enforce"`
-raises on anything a policy would block. `off()` reverses every patch.
+raises on anything a policy would block. Redaction follows the same rule: the enforced verdict
+in `policy` mode, the effective verdict in `enforce`, never in `observe`. `off()` reverses
+every patch.
 
 ---
 
