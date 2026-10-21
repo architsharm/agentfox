@@ -11,6 +11,36 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+
+- **The multi-agent scan reads more of the shapes real repositories use.** Typed
+  constructors (`Agent[Context](...)`); hand-offs and tools added after an agent is
+  built (`a.handoffs = [...]`, `.append`, `.extend`, `+=`, `handoff(agent=x, ...)`),
+  including from a separate wiring module; tool lists built by a helper
+  (`tools=build_tools()`), `tools or ALL_TOOLS`, `A if c else B`, and a list another
+  module defines; tools made by a call (`function_tool(fn)`,
+  `function_tool(name_override="x")(fn)`, `StructuredTool.from_function(fn)`), named as
+  the code names them, here and in the repo scan's tool sites; an agent `name=` held in
+  a module constant; pre-1.0 LangChain (`create_tool_calling_agent` and friends,
+  `initialize_agent`, `AgentExecutor`, reported as one agent); and, only when nothing
+  else is an agent, a hand-written OpenAI/Anthropic/LiteLLM function-calling loop. On
+  OpenAI's customer-service agents demo the scan now finds all 8 agents, their tools and
+  15 hand-offs, where it found 2 agents, no tools and no hand-offs. A list the scan
+  cannot read adds nothing instead of a tool named after the helper.
+- **Test, mock and fixture files are no longer read for agents or tools** (`tests/`,
+  `testing/`, `mocks/`, `fixtures/`, `test_*.py`, `*_test.py`, `conftest.py`). The repo
+  scan's own findings still cover them.
+
+### Added
+
+- **`scan --json` says more about each agent**: its `model` (read from a literal, a
+  module constant, an f-string of constants, an `os.getenv` default or a chat-model
+  object, and `null` when only running the code would tell), a `ref` (module, name and
+  whether it is the agent, a factory or a loop function) for a local runner, and
+  `tool_details` (each tool's description and argument names). The report gains
+  `unassigned_tools`, the tools found that no agent is handed. None of this is added to
+  what `scan --submit` sends.
+
 ## [0.5.0] - 2026-10-17
 
 ### Added
