@@ -11,6 +11,14 @@ export type MapRule = {
   level: string;
   message: string;
   hits: number;
+  /** content: fed by checks (regex, ML, LLM); action: about a tool call; run: the run as a whole. */
+  kind?: "content" | "action" | "run";
+  /** What a content rule looks for (`PII`, `INJECTION.JAILBREAK`): checks that report it feed the rule. */
+  finds?: string;
+  /** How sure a check must be before a content rule acts. */
+  minScore?: number | null;
+  /** What a rule that isn't about content looks at, in plain words. */
+  about?: string;
   enabled?: boolean;
   /** This agent has its own copy of the rule. */
   own?: boolean;
@@ -144,20 +152,49 @@ export const TONE_LABEL: Record<Tone, string> = { on: "Enforcing", watch: "Watch
 
 // --- rule control ------------------------------------------------------------------
 
-export type RuleSetting = "block" | "escalate" | "allow" | "off";
+export type RuleSetting = "block" | "escalate" | "redact" | "allow" | "off";
 
 export const RULE_SETTINGS: { key: RuleSetting; label: string; title: string }[] = [
   { key: "block", label: "Block", title: "Block" },
   { key: "escalate", label: "Ask", title: "Ask a person" },
+  { key: "redact", label: "Hide", title: "Hide what was found and let the rest through" },
   { key: "allow", label: "Watch", title: "Watch only: record, do not stop" },
   { key: "off", label: "Off", title: "Off for this agent" },
 ];
+
+/** The actions a rule can take: hiding only makes sense for content. */
+export function settingsFor(r: MapRule) {
+  return r.kind === "content" ? RULE_SETTINGS : RULE_SETTINGS.filter((o) => o.key !== "redact");
+}
 
 /** Which control a rule shows as chosen; null for an action the control does not offer. */
 export function ruleSetting(r: MapRule): RuleSetting | null {
   if (r.enabled === false) return "off";
   if (r.effect === "block" || r.effect === "escalate" || r.effect === "allow") return r.effect;
+  if (r.effect === "redact" || r.effect === "mask" || r.effect === "tokenize") return "redact";
   return null;
+}
+
+// --- strictness -------------------------------------------------------------------
+
+/** How sure a check must be before a rule acts, in three steps instead of a number. */
+export const STRICTNESS = [
+  { key: "low", label: "Low", score: 0.9, title: "Acts only when a check is very sure" },
+  { key: "medium", label: "Medium", score: 0.7, title: "Acts when a check is fairly sure" },
+  { key: "high", label: "High", score: 0.5, title: "Acts on weaker signals too; more false alarms" },
+] as const;
+export type Strictness = (typeof STRICTNESS)[number]["key"];
+
+/** The step nearest a rule's threshold. */
+export function strictnessOf(minScore: number | null | undefined): Strictness {
+  const score = minScore ?? 0.5;
+  return STRICTNESS.reduce((best, s) => (Math.abs(s.score - score) < Math.abs(best.score - score) ? s : best)).key;
+}
+
+/** Whether a check feeds a content rule: it reports the kind of finding the rule looks for. */
+export function feeds(check: { finds?: string }, rule: MapRule): boolean {
+  if (rule.kind !== "content" || !check.finds || !rule.finds) return false;
+  return rule.finds.split(".")[0] === check.finds;
 }
 
 /** The body for `POST /api/policies/{key}/rules/{id}/scope` that sets this rule for one agent. */

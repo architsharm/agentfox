@@ -92,6 +92,38 @@ _WHERE = {
 }
 
 
+#: Detector key prefix -> the kind of finding it reports, for detectors that don't
+#: state one (`spec.entity_type`). The kind is the first part of the entity type a
+#: detection carries (`INJECTION.JAILBREAK` -> `INJECTION`), which is what a policy
+#: rule matches on (`detection.entity_prefix`): it is how a check feeds a rule.
+_FINDS_BY_KEY = (
+    ("injection.", "INJECTION"),
+    ("unicode.", "INJECTION"),
+    ("pii.", "PII"),
+    ("secrets.", "SECRET"),
+    ("safety.", "SAFETY"),
+    ("schema.", "SCHEMA"),
+    ("rails.guardrails_ai", "SCHEMA"),
+    ("rails.nemo", "RAILS"),
+    ("grounding.", "GROUNDING"),
+    ("code.", "CODE"),
+    ("custom.", "CUSTOM"),
+)
+
+
+def finds_of(detector: Any) -> str:
+    """The kind of finding a detector reports (`INJECTION`, `PII`, …); empty if unknown."""
+    spec = getattr(detector, "spec", None)
+    entity = str(getattr(spec, "entity_type", "") or "")
+    if entity:
+        return entity.split(".")[0]
+    key = str(getattr(detector, "key", ""))
+    for prefix, kind in _FINDS_BY_KEY:
+        if key.startswith(prefix):
+            return kind
+    return ""
+
+
 def group_of(detector: Any) -> str:
     key = str(getattr(detector, "key", ""))
     spec = getattr(detector, "spec", None)
@@ -146,6 +178,7 @@ def describe(detector: Any) -> dict[str, Any]:
             else {}
         ),
         "group": group_of(detector),
+        "finds": finds_of(detector),
         "source": source_of(detector),
         "where": where(tuple(getattr(detector, "surfaces", ()) or ())),
         "models": models,

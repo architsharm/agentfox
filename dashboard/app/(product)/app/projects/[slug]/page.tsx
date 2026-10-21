@@ -194,7 +194,7 @@ async function Canvas({ f }: { f: Filters; posture?: any }) {
   const otherMaps = (await Promise.all(others.map((s) => safeApi<any>(`/api/agents/${encodeURIComponent(s)}/map`, null)))).filter(Boolean);
   // What can guard a line when it is selected: every check the workspace has, and the judge chain.
   const catalog: Catalog = {
-    detectors: (detectors.detectors || []).map((d: any) => ({ key: d.key, label: d.label || "", source: d.source, surfaces: d.surfaces || [], available: Boolean(d.available) })),
+    detectors: (detectors.detectors || []).map((d: any) => ({ key: d.key, label: d.label || "", source: d.source, surfaces: d.surfaces || [], available: Boolean(d.available), finds: d.finds || "" })),
     tiers: (posture?.tiers || []).map((t: any) => ({ tier: t.tier, enabled: Boolean(t.enabled), sends_data: Boolean(t.sends_data), blocked_reason: t.blocked_reason || "" })),
     bands: Object.fromEntries(Object.entries(posture?.kinds || {}).map(([k, v]: [string, any]) => [k, v?.band ?? null])),
   };

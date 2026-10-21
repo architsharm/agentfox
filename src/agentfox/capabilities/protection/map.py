@@ -213,7 +213,76 @@ def agent_tools(session: Session, slug: str) -> dict[str, Any]:
     return {"agent": slug, "window_days": WINDOW_DAYS, "tools": out}
 
 
+_IMPACT_WORDS = {
+    "read": "read-only",
+    "write": "writing",
+    "high_impact": "high-impact",
+    "irreversible": "irreversible",
+}
+_CAPABILITY_WORDS = {
+    "denied": "tools this agent may not use",
+    "requires_approval": "tools that need approval",
+    "granted": "tools this agent may use",
+    "constraint_violated": "calls outside a tool's allowed limits",
+}
+
+
+def rule_kind(rule: Rule) -> str:
+    """``content``: a check found something (fed by regex, ML and LLM checks);
+    ``action``: about a tool call itself; ``run``: about the run as a whole."""
+    when = rule.when
+    if when.detection is not None:
+        return "content"
+    if any(getattr(when, f) not in (None, []) for f in _TOOL_FIELDS):
+        return "action"
+    return "run"
+
+
+def rule_about(rule: Rule) -> str:
+    """What a rule that isn't about content looks at, in a few plain words."""
+    w = rule.when
+    parts: list[str] = []
+    if w.tool:
+        parts.append(f"tool {w.tool}")
+    if w.tool_impact:
+        parts.append(" or ".join(_IMPACT_WORDS.get(i, i) for i in w.tool_impact) + " tools")
+    if w.tool_known is False:
+        parts.append("tools the code never declared")
+    if w.capability:
+        parts.append(_CAPABILITY_WORDS.get(w.capability, f"capability {w.capability}"))
+    if w.argument:
+        parts.append(f"argument {w.argument.path}")
+    if w.taint_exceeds:
+        parts.append(f"arguments that came from {w.taint_exceeds.replace('_', ' ')} or worse")
+    if w.action_operation:
+        parts.append(" or ".join(w.action_operation) + " actions")
+    if w.action_risk:
+        parts.append(
+            "risky actions: " + w.action_risk.replace(".*", "").replace("-", " ").replace("_", " ")
+        )
+    if w.blast_radius_at_least:
+        parts.append(f"blast radius {w.blast_radius_at_least} or more")
+    if w.action_reversible is False:
+        parts.append("actions that can't be undone")
+    if w.intent_declared is False:
+        parts.append("no declared intent")
+    if w.budget_exceeded:
+        parts.append("budget used up")
+    if w.loop_detected:
+        parts.append("the agent going round in a loop")
+    if w.detector_degraded:
+        parts.append("a check is down")
+    if w.completion_requires:
+        parts.append("saying it's done without " + ", ".join(w.completion_requires))
+    if w.risk_tier:
+        parts.append(" or ".join(w.risk_tier) + "-risk agents")
+    if w.expr:
+        parts.append("a custom condition")
+    return " · ".join(parts)
+
+
 def _rule_json(rule: Rule, mode: str, level: str, hits: Counter) -> dict[str, Any]:
+    detection = rule.when.detection
     return {
         "id": rule.id,
         "description": rule.description,
@@ -222,6 +291,12 @@ def _rule_json(rule: Rule, mode: str, level: str, hits: Counter) -> dict[str, An
         "level": level,
         "message": rule.message,
         "hits": hits.get(rule.id, 0),
+        "kind": rule_kind(rule),
+        # What a content rule looks for (`PII`, `INJECTION.JAILBREAK`) and how sure a
+        # check must be; the checks that report that kind of finding feed it.
+        "finds": (detection.entity or detection.entity_prefix or "") if detection else "",
+        "minScore": detection.min_score if detection else None,
+        "about": "" if detection else rule_about(rule),
     }
 
 

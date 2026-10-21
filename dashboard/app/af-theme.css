@@ -578,3 +578,27 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .gm-nondet { padding: 10px 12px; border: 1px solid var(--af-line); border-radius: var(--af-r-card); font-size: 13px; }
 .gm-nondet summary { cursor: pointer; font-weight: 500; color: var(--af-fg-2); }
 .gm-nondet[open] { display: flex; flex-direction: column; gap: 8px; }
+
+/* Rules on a line: each with the checks that feed it, how strict, and what it does */
+.gm-rule-rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--af-line); border-radius: var(--af-r-card); }
+.gm-rule-rows > li { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.gm-rule-rows > li + li { border-top: 1px solid var(--af-line); }
+.gm-rule-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.gm-rule-tag { flex: none; font-size: 11px; color: var(--af-warn); }
+.gm-rule-checks, .gm-strict { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.gm-rule-label { width: 74px; flex: none; font-size: 11.5px; color: var(--af-muted); }
+.gm-rule-about { font-size: 12.5px; color: var(--af-fg-2); }
+.gm-chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 4px 0 8px; border-radius: 999px; border: 1px solid var(--af-line); background: var(--af-surface); font-family: var(--af-sans); font-size: 11.5px; color: var(--af-fg); }
+.gm-chip b { font-weight: 600; font-size: 10.5px; color: var(--af-muted); }
+.gm-chip button { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 0; border-radius: 50%; background: transparent; color: var(--af-muted); cursor: pointer; }
+.gm-chip button:hover { background: var(--af-subtle); color: var(--af-fg); }
+.gm-chip-llm_judge b { color: var(--af-link); }
+.gm-chip-open_source b { color: var(--af-ok); }
+.gm-chip-none { padding-right: 8px; border-style: dashed; color: var(--af-warn); }
+.gm-chip-add { padding-right: 8px; border-style: dashed; color: var(--af-fg-2); cursor: pointer; }
+.gm-rule-add { position: relative; }
+.gm-rule-add .at-lib { top: 26px; left: 0; right: auto; }
+.gm-strict .k-seg button { height: 24px; padding: 0 9px; font-size: 11.5px; }
+.gm-strict .gm-control { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.gm-unused { margin: 0; font-size: 12px; color: var(--af-muted); }
+a.gm-add { align-self: flex-start; text-decoration: none; }

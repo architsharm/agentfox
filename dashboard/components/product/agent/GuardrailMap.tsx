@@ -26,7 +26,10 @@ import { ModePill, Pill } from "@/components/kit";
 import {
   GROUP_BY,
   PERMISSION,
-  RULE_SETTINGS,
+  STRICTNESS,
+  feeds,
+  settingsFor,
+  strictnessOf,
   TONE_LABEL,
   TOOL_FILTERS,
   counts,
@@ -606,6 +609,7 @@ function errorOf(data: any, fallback: string): string {
 
 /** Block / ask / watch / off for one rule, for this agent only. */
 function RuleControl({ rule, slug }: { rule: MapRule; slug: string }) {
+  const options = settingsFor(rule);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ error: boolean; text: string } | null>(null);
@@ -635,7 +639,7 @@ function RuleControl({ rule, slug }: { rule: MapRule; slug: string }) {
   return (
     <div className="gm-control">
       <div className="k-seg" role="group" aria-label={`What ${ruleTitle(rule.id, rule.description)} does for this agent`}>
-        {RULE_SETTINGS.map((o) => (
+        {options.map((o) => (
           <button key={o.key} type="button" title={o.title} disabled={busy} className={current === o.key ? "active" : ""} aria-pressed={current === o.key} onClick={() => set(o.key)}>
             {o.label}
           </button>
@@ -709,7 +713,7 @@ function PermissionControl({ tool, slug }: { tool: MapTool; slug: string }) {
 
 /** The checks the workspace has and the judge chain, read by the page (GET /api/detectors, /api/judgment/posture). */
 export type Catalog = {
-  detectors: { key: string; label: string; source: string; surfaces: string[]; available: boolean }[];
+  detectors: { key: string; label: string; source: string; surfaces: string[]; available: boolean; finds?: string }[];
   tiers: { tier: string; enabled: boolean; sends_data: boolean; blocked_reason: string }[];
   bands: Record<string, [number, number] | null>;
 };
@@ -816,11 +820,149 @@ function Checks({ items, stage, slug }: { items: Catalog["detectors"]; stage: St
   );
 }
 
+/** The checks that feed one content rule, as chips; "+" adds another that finds the same thing. */
+function RuleChecks({ rule, stage, catalog, slug }: { rule: MapRule; stage: Stage; catalog: Catalog["detectors"]; slug: string }) {
+  const router = useRouter();
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const fit = catalog.filter((d) => feeds(d, rule) && d.surfaces.some((x) => stage.surfaces.includes(x)));
+  const on = fit.filter((d) => stage.detectors.includes(d.key));
+  const rest = fit.filter((d) => !stage.detectors.includes(d.key));
+
+  const set = async (key: string, enabled: boolean) => {
+    setBusy(true);
+    setError("");
+    const r = await send(`/api/features/checks/${encodeURIComponent(key)}`, "POST", { enabled, agent: slug, reason: "Set from the map" });
+    setBusy(false);
+    if (!r.ok) return setError(errorOf(r.data, "Could not change this check."));
+    setAdding(false);
+    router.refresh();
+  };
+
+  return (
+    <div className="gm-rule-checks">
+      <span className="gm-rule-label">Checked by</span>
+      {on.length ? (
+        on.map((d) => (
+          <span key={d.key} className={`gm-chip gm-chip-${d.source}`} title={`${moduleName(d)}: on for this agent, on every line it reads`}>
+            <b>{KIND[d.source] ?? ""}</b> {moduleName(d)}
+            <button type="button" disabled={busy} onClick={() => set(d.key, false)} aria-label={`Turn off ${moduleName(d)}`}>
+              <X size={11} aria-hidden />
+            </button>
+          </span>
+        ))
+      ) : (
+        <span className="gm-chip gm-chip-none">No check on: this rule can&apos;t fire</span>
+      )}
+      {rest.length ? (
+        <span className="gm-rule-add">
+          <button type="button" className="gm-chip gm-chip-add" onClick={() => setAdding((v) => !v)} aria-label="Add a check to this rule">
+            <Plus size={11} aria-hidden /> add
+          </button>
+          {adding ? (
+            <div className="at-lib" role="dialog" aria-label="Add a check">
+              <ul>
+                {rest.map((d) => (
+                  <li key={d.key}>
+                    {d.available ? (
+                      <button type="button" disabled={busy} onClick={() => set(d.key, true)}>
+                        <span>
+                          <strong>{moduleName(d)}</strong>
+                        </span>
+                        <span className="at-lib-n">{KIND[d.source] ?? ""}</span>
+                      </button>
+                    ) : (
+                      <Link href="/app/policies?tab=checks" className="gm-lib-install">
+                        <span>
+                          <strong>{moduleName(d)}</strong>
+                        </span>
+                        <span className="at-lib-n">Install</span>
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </span>
+      ) : null}
+      {error && <span className="k-act-error" role="alert">{error}</span>}
+    </div>
+  );
+}
+
+/** Low / Medium / High: how sure a check must be before the rule acts, for this agent. */
+function StrictnessControl({ rule, slug }: { rule: MapRule; slug: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const current = strictnessOf(rule.minScore);
+  if (!rule.policy) return null;
+  const set = async (score: number, key: string) => {
+    if (key === current) return;
+    setBusy(true);
+    setError("");
+    const r = await send(`/api/policies/${encodeURIComponent(rule.policy!)}/rules/${encodeURIComponent(rule.id)}/scope`, "POST", { agents: [slug], min_score: score });
+    setBusy(false);
+    if (!r.ok) return setError(errorOf(r.data, "Could not change how strict this rule is."));
+    router.refresh();
+  };
+  return (
+    <div className="gm-strict">
+      <span className="gm-rule-label">Strictness</span>
+      <div className="k-seg" role="group" aria-label="How strict this rule is">
+        {STRICTNESS.map((o) => (
+          <button key={o.key} type="button" title={o.title} disabled={busy} className={current === o.key ? "active" : ""} aria-pressed={current === o.key} onClick={() => set(o.score, o.key)}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {error && <span className="k-act-error" role="alert">{error}</span>}
+    </div>
+  );
+}
+
+/** One rule: its name, what feeds it (checks, or what it looks at), and what it does. */
+function RuleRow({ rule, stage, catalog, slug }: { rule: MapRule; stage: Stage; catalog: Catalog["detectors"]; slug: string }) {
+  const watching = rule.mode === "observe" && rule.enabled !== false && rule.effect !== "allow";
+  return (
+    <li>
+      <div className="gm-rule-top">
+        <Link href={`/app/policies/rules/${encodeURIComponent(rule.id)}?tab=tune&agent=${encodeURIComponent(slug)}`} className="gm-rule-name">
+          {ruleTitle(rule.id, rule.description)}
+        </Link>
+        {watching ? (
+          <span className="gm-rule-tag" title="Its pack is in watch mode: it records what it would do and stops nothing">
+            watching only
+          </span>
+        ) : null}
+      </div>
+      {rule.kind === "content" ? (
+        <>
+          <RuleChecks rule={rule} stage={stage} catalog={catalog} slug={slug} />
+          <StrictnessControl rule={rule} slug={slug} />
+        </>
+      ) : rule.about ? (
+        <div className="gm-rule-checks">
+          <span className="gm-rule-label">Looks at</span>
+          <span className="gm-rule-about">{rule.about}</span>
+        </div>
+      ) : null}
+      <div className="gm-strict">
+        <span className="gm-rule-label">Action</span>
+        <RuleControl rule={rule} slug={slug} />
+      </div>
+    </li>
+  );
+}
+
 function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap; catalog?: Catalog; back: ReactNode }) {
   const slug = map.agent.slug;
   const here = (catalog?.detectors || []).filter((d) => d.surfaces.some((s) => stage.surfaces.includes(s)));
-  const deterministic = here.filter((d) => d.source !== "llm_judge");
   const judges = here.filter((d) => d.source === "llm_judge");
+  // Checks switched on here that feed none of the rules here: they find things and nothing happens.
+  const unused = here.filter((d) => stage.detectors.includes(d.key) && !stage.rules.some((r) => feeds(d, r)));
   const tiers = Object.fromEntries((catalog?.tiers || []).map((t) => [t.tier, t]));
   const anyJudge = CHAIN.some((t) => tiers[t]?.enabled);
   const rail = RAIL[stage.key];
@@ -834,16 +976,29 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
       </div>
 
       <section className="gm-det">
-        <h3>Deterministic</h3>
-        <h4>Checks</h4>
-        <Checks items={deterministic} stage={stage} slug={slug} />
-        <h4>Policies</h4>
-        <RuleList rules={stage.rules} slug={slug} />
+        <h3>Rules</h3>
+        {stage.rules.length ? (
+          <ul className="gm-rule-rows">
+            {sortRules(stage.rules).map((r) => (
+              <RuleRow key={r.id} rule={r} stage={stage} catalog={here} slug={slug} />
+            ))}
+          </ul>
+        ) : (
+          <p className="gm-sub">No rules on this line yet.</p>
+        )}
+        <Link className="gm-add" href={`/app/policies/new?agent=${encodeURIComponent(slug)}`}>
+          <Plus size={13} aria-hidden /> Add rule
+        </Link>
+        {unused.length ? (
+          <p className="gm-unused">
+            On but no rule uses: {unused.map((d) => moduleName(d)).join(", ")}. They only record.
+          </p>
+        ) : null}
       </section>
 
       <details className="gm-nondet">
         <summary>
-          Non-deterministic · LLM judge <span className="gm-sub">{anyJudge ? "on" : "off"}</span>
+          LLM judges <span className="gm-sub">{anyJudge ? "on" : "off"}</span>
         </summary>
         <ol className="gm-chain">
           {CHAIN.map((t, i) => {
@@ -908,6 +1063,12 @@ function Guide({ project }: { project: string }) {
       </details>
     </div>
   );
+}
+
+/** Rules that stop traffic first; content rules before the others. */
+function sortRules(rules: MapRule[]): MapRule[] {
+  const kind = (r: MapRule) => (r.kind === "content" ? 0 : r.kind === "action" ? 1 : 2);
+  return [...rules].sort((a, b) => counts([b]).enforcing - counts([a]).enforcing || kind(a) - kind(b) || b.hits - a.hits);
 }
 
 function RuleList({ rules, slug }: { rules: MapRule[]; slug: string }) {
