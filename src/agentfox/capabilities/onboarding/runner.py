@@ -210,7 +210,7 @@ def run_attack(agent: Any, attack: Attack, run: _Run, agent_name: str) -> dict[s
             )
             reply = _reply_text(result)
         except Exception as exc:  # the agent's own failure is a result, not a crash
-            error = f"{type(exc).__name__}: {exc}"[:300]
+            error = error_text(exc)
     if "hide-personal-data" in run.guards:
         reply = _redact(reply, ("pii.native", "secrets.native"))
 
@@ -299,25 +299,106 @@ def run_suite(
         pool.shutdown(wait=True, cancel_futures=True)
 
 
-def explain_model_error(error: str) -> str:
-    """The agent's model failing, in one plain sentence."""
+def error_text(exc: BaseException) -> str:
+    """An agent's exception as a result's ``error``: ``<package>.<Type>: <message>``.
+
+    The package (``openai``, ``anthropic``, ``google``…) is kept so the error can be
+    explained for the provider that raised it (:func:`explain_model_error`).
+    """
+    kind = type(exc)
+    package = (kind.__module__ or "").split(".")[0]
+    name = kind.__name__ if package in ("", "builtins") else f"{package}.{kind.__name__}"
+    return f"{name}: {exc}"[:300]
+
+
+#: Model providers: (name, the exception packages and words that identify them,
+#: where to add credits).
+PROVIDERS: tuple[tuple[str, tuple[str, ...], str], ...] = (
+    ("OpenAI", ("openai", "langchain_openai"), "platform.openai.com/settings/organization/billing"),
+    ("Anthropic", ("anthropic", "langchain_anthropic"), "console.anthropic.com/settings/billing"),
+    ("Google", ("google", "langchain_google_genai", "gemini"), "console.cloud.google.com/billing"),
+    ("Mistral", ("mistralai", "langchain_mistralai"), "console.mistral.ai/billing"),
+    ("Groq", ("groq", "langchain_groq"), "console.groq.com/settings/billing"),
+    ("Cohere", ("cohere", "langchain_cohere"), "dashboard.cohere.com/billing"),
+)
+
+_CREDITS = (
+    "insufficient_quota",
+    "exceeded your current quota",
+    "credit balance is too low",
+    "credit_balance",
+    "no credits",
+    "payment required",
+)
+_BAD_KEY = (
+    "invalid_api_key",
+    "incorrect api key",
+    "invalid x-api-key",
+    "invalid api key",
+    "api key not valid",
+    "authentication_error",
+)
+
+
+def _provider(error: str) -> tuple[str, str] | None:
+    """(name, billing page) of the provider that raised ``error``: from the exception's
+    package first, then from the provider's name in the message."""
+    head, _, _rest = error.partition(":")
+    package = head.split(".")[0].strip().lower() if "." in head else ""
+    for name, packages, billing in PROVIDERS:
+        if package in packages:
+            return name, billing
     text = error.lower()
-    if "insufficient_quota" in text or "credit_balance" in text or "no credits" in text:
+    for name, packages, billing in PROVIDERS:
+        if name.lower() in text or any(p in text for p in packages if len(p) > 4):
+            return name, billing
+    return None
+
+
+def _status(error: str) -> int | None:
+    """The HTTP status the provider's SDK reported ("Error code: 401 - ..."), if any."""
+    import re
+
+    found = re.search(r"\b(?:error code|status(?: code)?|http)[:\s]+(\d{3})\b", error, re.I)
+    return int(found.group(1)) if found else None
+
+
+def explain_model_error(error: str) -> str:
+    """The agent's model failing, in one plain sentence naming the provider when it
+    can tell which (from the exception's package, else the message)."""
+    text = error.lower()
+    head = text.partition(":")[0]
+    provider = _provider(error)
+    who = f"{provider[0]} account" if provider else "model provider's account"
+    status = _status(error)
+    if any(w in text for w in _CREDITS) or status == 402:
+        where = f" Add credits at {provider[1]}, then" if provider else " Add credits, then"
         return (
-            "Your agent's OpenAI account is out of credits, so the attacks couldn't reach its "
-            "model. Add credits at platform.openai.com/settings/organization/billing, "
+            f"Your agent's {who} is out of credits, so the attacks couldn't reach its "
+            f"model.{where} try again."
+        )
+    if (
+        status in (401, 403)
+        or any(w in text for w in _BAD_KEY)
+        or head.endswith(("authenticationerror", "permissiondeniederror"))
+    ):
+        name = f"{provider[0]} " if provider else ""
+        return (
+            f"Your agent's {name}API key was rejected, so the attacks couldn't run. Check "
+            "the key in your agent's environment, then try again."
+        )
+    if status == 429 or head.endswith("ratelimiterror") or ("rate" in text and "limit" in text):
+        name = provider[0] if provider else "model"
+        return (
+            f"Your agent's {name} is rate-limiting requests right now. Wait a minute, "
             "then try again."
         )
-    if "invalid_api_key" in text or "401" in text or "authentication" in text:
-        return (
-            "Your agent's model rejected its API key, so the attacks couldn't run. Check the key "
-            "in your agent's environment, then try again."
-        )
-    if "rate" in text and "limit" in text:
-        return (
-            "Your agent's model is rate-limiting requests right now. Wait a minute, then try again."
-        )
-    if "connect" in text or "timeout" in text:
+    if (
+        head.endswith(("apiconnectionerror", "connecterror", "connectionerror", "timeouterror"))
+        or "timed out" in text
+        or "timeout" in head
+        or "connection error" in text
+    ):
         return (
             "Your agent couldn't reach its model (network error). "
             "Check your connection, then try again."
