@@ -129,12 +129,12 @@ def test_re_registering_a_server_with_only_a_url_keeps_its_trust(client):
 
 
 def test_an_unchanged_relisting_keeps_a_declared_impact(seeded):
-    """The operator said archive_doc is irreversible; the verbs say read. Before, every
+    """The operator said archive_doc is irreversible; the verbs say write. Before, every
     listing put the guess back, and a tainted call went from escalate to allow."""
     _grant(seeded, "archive_doc")
     governor = _governor(seeded)
     governor.register_tools(LISTING)
-    assert _tool(seeded, "archive_doc").impact == "read"  # the guess
+    assert _tool(seeded, "archive_doc").impact == "write"  # the guess (archiving changes state)
     upsert_tool(seeded, tool_key(SERVER, "archive_doc"), kind="mcp", impact="irreversible")
 
     tainted = {"doc_id": "tool_result"}
@@ -181,7 +181,7 @@ def test_an_impact_change_is_on_the_audit_chain(seeded):
         )
     ).all()
     assert len(entries) == 1
-    assert entries[0].payload_json["from"] == "read"
+    assert entries[0].payload_json["from"] == "write"
     assert entries[0].payload_json["to"] == "irreversible"
     assert entries[0].payload_json["source"] == "declared"
 

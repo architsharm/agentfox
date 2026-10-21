@@ -900,3 +900,85 @@ def test_test_code_is_not_an_agent_but_is_still_scanned(tmp_path):
     # The security findings in test files are not dropped.
     secret_files = {s.file for s in report.sites if s.kind == "secret"}
     assert "tests/test_bot.py" in secret_files and "conftest.py" in secret_files
+
+
+# ---------------------------------------------------------------------------
+# What `agentfox init`'s map reads from the scan (capabilities/onboarding/mapper.py)
+# ---------------------------------------------------------------------------
+
+
+def test_a_module_level_agent_built_by_a_factory_is_reached_as_the_object(tmp_path):
+    """`agent = build_agent()`: a runner takes `agent` as it is, it never calls the
+    factory; a factory that needs arguments stays a factory."""
+    _write(
+        tmp_path,
+        "agent.py",
+        """
+        from langchain.agents import create_agent
+
+        def build_agent(llm=None):
+            return create_agent(model=llm or "gpt-4o-mini", tools=[])
+
+        agent = build_agent()
+        """,
+    )
+    _write(
+        tmp_path,
+        "other.py",
+        """
+        from agents import Agent
+
+        def make(settings):
+            return Agent(name="Other", instructions="x", model="gpt-4o")
+        """,
+    )
+    refs = {a.name: (a.attr, a.attr_kind) for a in scan(tmp_path).agents}
+    assert refs["build_agent"] == ("agent", "object")
+    assert refs["Other"] == ("make", "factory")
+
+
+def test_named_and_instructions_are_read_but_instructions_never_serialised(tmp_path):
+    _write(
+        tmp_path,
+        "agents_mod.py",
+        """
+        from agents import Agent
+
+        PROMPT = "You help airline customers."
+        triage = Agent(name="Triage", instructions=PROMPT)
+        helper = Agent(name=HELPER_NAME, instructions="x", model="gpt-4o")
+        """,
+    )
+    report = scan(tmp_path)
+    by = {a.key: a for a in report.agents}
+    assert by["triage"].named and by["triage"].instructions == "You help airline customers."
+    # A name the scan could not read is the variable's: not the code's own name.
+    assert not by["helper"].named
+    assert "instructions" not in by["triage"].to_json()
+    assert "airline customers" not in str(report.to_json())
+
+
+def test_a_plain_module_of_functions_gives_its_docstrings_to_the_tools_made_of_them(tmp_path):
+    """`function_tool(tools.get_ticket)` where tools.py imports no framework at all."""
+    _write(
+        tmp_path,
+        "helpdesk/tools.py",
+        '''
+        def get_ticket(ticket_id: str) -> str:
+            """Look up one ticket."""
+        ''',
+    )
+    _write(
+        tmp_path,
+        "helpdesk/agent.py",
+        """
+        from agents import Agent, function_tool
+        from helpdesk import tools
+
+        desk = Agent(name="Desk", instructions="x", tools=[function_tool(tools.get_ticket)])
+        """,
+    )
+    (desk,) = scan(tmp_path).agents
+    assert desk.tool_details == [
+        {"name": "get_ticket", "description": "Look up one ticket.", "args": ["ticket_id"]}
+    ]

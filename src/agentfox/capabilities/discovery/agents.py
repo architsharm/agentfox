@@ -89,6 +89,23 @@ from typing import Any
 #:   graph's agent nodes).
 RELATIONS = ("handoff", "as_tool", "delegates", "member")
 
+#: What this module recognises, per framework, in a line each: what `agentfox init`
+#: prints under "Missing something?". Keep it in step with the docstring above.
+RECOGNISED = (
+    ("OpenAI Agents SDK", "Agent(name=..., tools=[...], handoffs=[...]), agent.as_tool(...)"),
+    ("LangGraph", "create_react_agent / create_agent, create_supervisor, create_swarm, StateGraph"),
+    ("LangChain", "@tool, create_tool_calling_agent / initialize_agent, AgentExecutor"),
+    ("CrewAI", "Agent(role=..., tools=[...]), Crew(agents=[...]), @CrewBase"),
+    ("AutoGen / AG2", "AssistantAgent(tools=...), group chats, Swarm handoffs"),
+    ("Google ADK", "Agent / LlmAgent(sub_agents=[...]), AgentTool, workflow agents"),
+    (
+        "Hand-written loops",
+        "chat.completions.create / responses.create / messages.create / litellm "
+        "completion(tools=[...]) with JSON tool schemas",
+    ),
+    ("TypeScript / JavaScript", "OpenAI Agents SDK new Agent({...})"),
+)
+
 
 @dataclass
 class AgentSpec:
@@ -117,6 +134,13 @@ class AgentSpec:
     #: What each of :attr:`tools` says about itself, where the code says it: the
     #: description (a docstring or ``description=``) and argument names.
     tool_details: list[dict[str, Any]] = field(default_factory=list)
+    #: False when the code gives the agent no name of its own (``name=``, ``role=``)
+    #: and :attr:`name` is only the variable or function it was found under.
+    named: bool = True
+    #: The agent's instructions or system prompt, when the code says them as a string
+    #: that can be read without running anything. Local only: never serialised, never
+    #: part of a submission; a caller may derive a label from it (who the agent serves).
+    instructions: str | None = field(default=None, repr=False)
 
     @property
     def top_dir(self) -> str:
@@ -194,6 +218,9 @@ class _Raw:
     #: The module-level name a runner reaches this agent by, and how (see AgentSpec).
     attr: str | None = None
     attr_kind: str | None = None
+    #: The code names the agent itself (see AgentSpec.named), and what it instructs it.
+    named: bool = False
+    instructions: str | None = None
     #: ``triage.handoffs.append(x)`` / ``a.tools += [...]``: this raw is no agent but
     #: more of the agent ``extends`` names. Its children and tools are that agent's.
     extends: Ref | None = None
@@ -303,6 +330,16 @@ _MODEL_KW = {
     "autogen_agent": ("model_client", "llm_config"),
     "loop": ("model",),
 }
+#: Where each framework takes the agent's instructions (its system prompt).
+_INSTRUCTION_KW = (
+    "instructions",
+    "system_prompt",
+    "prompt",
+    "system_message",
+    "state_modifier",
+    "backstory",
+    "goal",
+)
 _TOOL_ROLES = (
     "openai_agent",
     "crew_agent",
@@ -623,6 +660,9 @@ class _Extractor:
         #: function returns -> that function: how a runner reaches the agent.
         self.module_calls: set[int] = set()
         self.factory_calls: dict[int, str] = {}
+        #: module-level function -> the module-level name its call is assigned to
+        #: (`agent = build_agent()`): the live object a runner can take as it is.
+        self.factory_objects: dict[str, str] = {}
         #: id(call) -> the module-level function it sits in
         self.enclosing: dict[int, str] = {}
         #: variable -> every call assigned to it (`tools = build_tools(kit)`)
@@ -676,6 +716,8 @@ class _Extractor:
                 )
                 if isinstance(value, ast.Call) and names:
                     self.module_calls.add(id(value))
+                    if isinstance(value.func, ast.Name) and body is self.tree.body:
+                        self.factory_objects.setdefault(value.func.id, names[0])
                 for name in names:
                     if name in ambiguous:
                         continue
@@ -911,6 +953,8 @@ class _Extractor:
                 cls=cls,
             )
             raw.name = self._name(node, role, var, cls)
+            raw.named = raw.name is not None and raw.name not in (var, cls)
+            raw.instructions = self.resolve_str(_kw(node, *_INSTRUCTION_KW))
             model_node = _kw(node, *_MODEL_KW.get(role, ()))
             if model_node is None and role in _MODEL_ARG and len(node.args) > _MODEL_ARG[role]:
                 model_node = node.args[_MODEL_ARG[role]]
@@ -918,7 +962,12 @@ class _Extractor:
             if cls is None and id(node) in self.module_calls:
                 raw.attr, raw.attr_kind = var, "object"
             elif id(node) in self.factory_calls:
-                raw.attr, raw.attr_kind = self.factory_calls[id(node)], "factory"
+                factory = self.factory_calls[id(node)]
+                # `agent = build_agent()` at module level: the module already builds it.
+                if factory in self.factory_objects:
+                    raw.attr, raw.attr_kind = self.factory_objects[factory], "object"
+                else:
+                    raw.attr, raw.attr_kind = factory, "factory"
             self.next_idx += 1
             self.call_raw[id(node)] = raw.idx
             self.out.raws.append(raw)
@@ -1622,9 +1671,13 @@ class AgentCollector:
         self.include_tests = include_tests
 
     def add(self, source: str, rel: str, suffix: str) -> None:
-        if not _HINT.search(source):
-            return
         if not self.include_tests and is_test_path(rel):
+            return
+        if not _HINT.search(source):
+            # No framework here, but a plain module of functions another file turns
+            # into tools (`function_tool(tools.get_ticket)`): keep what each says.
+            if suffix == ".py" and "def " in source:
+                self._functions_only(source, rel)
             return
         if suffix == ".py":
             try:
@@ -1652,6 +1705,21 @@ class AgentCollector:
             or result.consts
             or result.func_info
         ):
+            self.files.append(result)
+
+    def _functions_only(self, source: str, rel: str) -> None:
+        try:
+            tree = ast.parse(source, filename=rel)
+        except (SyntaxError, ValueError):
+            return
+        result = _FileResult(file=rel)
+        result.module = _module_name(rel)
+        for stmt in tree.body:
+            if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
+                doc, args = _fn_info(stmt)
+                if doc or args:
+                    result.func_info.setdefault(stmt.name, (doc, args))
+        if result.func_info:
             self.files.append(result)
 
     def finish(self) -> tuple[list[AgentSpec], list[AgentEdge]]:
@@ -1880,6 +1948,8 @@ class _Linker:
                     attr=raw.attr if module else None,
                     attr_kind=raw.attr_kind if module and raw.attr else None,
                     tool_details=self._details(i, tools),
+                    named=raw.named,
+                    instructions=raw.instructions,
                 )
             )
         seen: set[tuple[int, int]] = set()
