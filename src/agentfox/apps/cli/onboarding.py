@@ -168,8 +168,9 @@ def init(
         "",
         "--key",
         help="Your onboarding key from the dashboard's Connect screen. Maps the agent in "
-        "this repo, reports its names and shapes, and stays connected to run the attack "
-        "tests on this machine.",
+        "this repo (reading the code, never running it), reports its names and shapes, and "
+        "stays connected to run the attack tests on this machine: those do run your agent, "
+        "with every tool faked.",
     ),
     server: str = typer.Option(
         "",

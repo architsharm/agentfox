@@ -25,7 +25,13 @@ from sqlalchemy.orm import Session
 from agentfox.apps.gateway.deps import WRITE_ROLES, current_user, db, require
 from agentfox.capabilities.onboarding import keys, runs, service, sessions
 from agentfox.capabilities.onboarding.attacks import library
-from agentfox.capabilities.onboarding.schema import Connect, Poll, Results, Structure
+from agentfox.capabilities.onboarding.schema import (
+    Connect,
+    GuardCheck,
+    Poll,
+    Results,
+    Structure,
+)
 from agentfox.core.models import OnboardingRun, OnboardingSession, User, utcnow
 from agentfox.core.tenancy import bind_session
 
@@ -163,12 +169,8 @@ def start_test(
     row = sessions.find(session, user)
     if row is None or not row.structure or not row.structure.get("tools"):
         raise HTTPException(409, "Connect an agent with at least one tool first.")
-    # The setup wizard's "after" test applies the guardrails chosen on Protect.
-    guards = None
-    if body.phase == "after":
-        guards = [
-            g["id"] for g in service.guardrails_for(row.guardrails, row.structure) if g["enabled"]
-        ]
+    # An "after" test checks the agents' real policies (`/runner/runs/{id}/guard`);
+    # nothing chosen here is simulated.
     run = runs.create(
         session,
         user_id=user.id,
@@ -176,7 +178,7 @@ def start_test(
         phase=body.phase,
         structure=row.structure,
         now=utcnow(),
-        guards=guards,
+        guards=[],
     )
     return _show(run, runner_seen=row.runner_seen_at)
 
@@ -221,6 +223,8 @@ def test_results(
 def get_guardrails(
     session: Session = Depends(db), user: User = Depends(current_user)
 ) -> list[dict[str, Any]]:
+    """The setup wizard's suggested guardrails, as a list to show. No test reads them:
+    an "after" test checks the agents' real policies. Kept so the wizard still loads."""
     row = sessions.find(session, user)
     return service.guardrails_for(row.guardrails if row else None, row.structure if row else None)
 
@@ -229,6 +233,7 @@ def get_guardrails(
 def save_guardrails(
     body: list[dict[str, Any]], session: Session = Depends(db), user: User = Depends(current_user)
 ) -> list[dict[str, Any]]:
+    """Saves the wizard's toggles. They change what the wizard shows, nothing else."""
     row = sessions.ensure(session, user)
     row.guardrails = [
         {"id": str(g.get("id"))[:120], "enabled": bool(g.get("enabled"))}
@@ -332,7 +337,7 @@ def start_project_test(
         structure=connected.structure,
         now=now,
         project=project,
-        guards=list(service.BASIC_TEST_GUARDS) if basic else [],
+        guards=[],
         sets=service.project_sets(row.state if row else None, project),
     )
     return _show(run, runner_seen=connected.runner_seen_at)
@@ -467,16 +472,87 @@ def runner_poll(
     run = runs.claim_next(session, user_id=user.id, project=project, now=now)
     if run is None:
         return {"needStructure": False, "job": None}
+    if run.phase == "after" and ((body.protocol if body else None) or 1) < RUNNER_PROTOCOL:
+        # An older `agentfox init` would simulate guardrails of its own, not check the
+        # project's: its "after" would measure something that isn't there.
+        run.status, run.error, run.finished_at = "failed", OLD_RUNNER, now
+        run.lease_expires_at = None
+        return {"needStructure": False, "job": None}
     return {
         "needStructure": False,
         "job": {
             "runId": run.id,
             "phase": run.phase,
             "sets": run.sets,
-            "guardrails": list(run.guards or []),
+            # Always empty: kept for older runners. An "after" test checks the
+            # project's real policies through `/runner/runs/{id}/guard` (`policies`).
+            "guardrails": [],
+            "policies": run.phase == "after",
             "structure": run.structure,
         },
     }
+
+
+#: The runner protocol that checks real policies (`schema.Poll.protocol`).
+RUNNER_PROTOCOL = 2
+OLD_RUNNER = (
+    "This `agentfox init` is too old to test with your guardrails. Update it "
+    "(`pip install -U agentfox`), run it again, then start the test again."
+)
+
+
+def _guarded_agents(session: Session, run: OnboardingRun) -> set[str]:
+    """The agents a run may have checked: its project's, or (a setup-wizard run) the
+    ones its map was registered as."""
+    if run.project:
+        from agentfox.platform.registry.projects import project_agents
+
+        return {a.slug for a in project_agents(session, run.project)}
+    return {a["slug"] for a in (run.structure or {}).get("agents", []) if a.get("slug")}
+
+
+@router.post("/runner/runs/{run_id}/guard")
+def runner_guard(
+    run_id: str,
+    body: GuardCheck,
+    session: Session = Depends(db),
+    runner: Runner = Depends(runner_session),
+) -> dict[str, Any]:
+    """Check one surface of one attack against an agent's real policies, persisting nothing.
+
+    For an "after" attack test the runner, on the user's machine, asks this for the
+    user's message, each tool call, each tool result and the reply, and applies the
+    verdict. It is the red-team runner's dry run (``redteam.dry_run_check``): the real
+    enforcement path for the agent's bound policies, inside a savepoint that is rolled
+    back, so no decision, trace, finding, taint tag or shadow agent is written.
+
+    Only for a running test of this setup key's (its project's, or the user's own
+    setup-wizard test), and only for that test's agents: the key can check, never
+    change, and never another project's agents. ``verdict`` is what the policy asks
+    for (in observe mode, what it would do once it blocks); ``applied`` what live
+    traffic would get now; ``mode`` which.
+    """
+    from agentfox.capabilities.evaluation.redteam import DRY_RUN_SURFACES, dry_run_check
+
+    run = session.get(OnboardingRun, run_id)
+    if run is None or (run.project is None and run.user_id != runner.user.id):
+        raise HTTPException(404, "No such test run")
+    if run.status != "running":
+        raise HTTPException(409, f"This test isn't running ({run.status}).")
+    if body.surface not in DRY_RUN_SURFACES:
+        raise HTTPException(422, f"surface must be one of {', '.join(DRY_RUN_SURFACES)}")
+    if body.agent not in _guarded_agents(session, run):
+        raise HTTPException(403, f"'{body.agent}' isn't one of this test's agents.")
+    if body.surface == "tool_call" and not body.tool:
+        raise HTTPException(422, "A tool_call check names its tool.")
+    return dry_run_check(
+        session,
+        body.agent,
+        surface=body.surface,
+        content=body.content,
+        tool_key=body.tool,
+        arguments=body.arguments,
+    )
 
 
 @router.post("/runner/runs/{run_id}/results")

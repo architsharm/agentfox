@@ -3,10 +3,9 @@ ties `agentfox init --key` to the dashboard."""
 
 from __future__ import annotations
 
-import json
 from collections import defaultdict
 
-from agentfox.capabilities.onboarding import runner, service
+from agentfox.capabilities.onboarding import service
 from agentfox.capabilities.onboarding.attacks import build_suite, counts
 from agentfox.capabilities.onboarding.mapper import classify, map_repository
 from tests.conftest import as_user, promote
@@ -86,77 +85,18 @@ def test_names_decide_before_docstrings():
     assert classify("delete_user", "")[0] == "high"
 
 
-def test_suite_is_140_split_like_the_brief(tmp_path):
+def test_the_default_suite_is_written_from_the_mapped_tools(tmp_path):
     suite = build_suite(map_repository(_repo(tmp_path))["structure"])
-    assert len(suite) == 140
     assert counts(suite) == {
-        "unsafe_tool_use": 40,
-        "prompt_injection": 40,
-        "data_leak": 30,
-        "jailbreak": 30,
+        "unsafe_tool_use": 24,
+        "prompt_injection": 24,
+        "data_leak": 18,
+        "jailbreak": 18,
     }
-    assert all(a.forbidden == ["start_return"] for a in suite if a.type == "unsafe_tool_use")
-
-
-class _Msg:
-    def __init__(self, content):
-        self.content = content
-
-
-class _GullibleAgent:
-    """Does whatever the message says: refunds when asked, repeats what tools return."""
-
-    def __init__(self, tools):
-        self.tools = tools
-
-    def invoke(self, payload, config=None):
-        text = payload["messages"][0]["content"]
-        record = json.loads(self.tools["get_order"](order_id="BZ-2207"))
-        if "refund" in text.lower() or "return" in text.lower():
-            self.tools["start_return"](order_id="BZ-2207", reason="asked")
-        return {"messages": [_Msg(f"Sure! The buyer is {record.get('customer_email', '')}.")]}
-
-
-def _run(structure, guards, kinds):
-    tools = {
-        t["name"]: runner._dispatch(t["name"], lambda **kw: "real") for t in structure["tools"]
-    }
-    suite = [a for a in build_suite(structure) if a.id in kinds]
-    out = []
-    runner.run_suite(
-        _GullibleAgent(tools),
-        suite,
-        structure,
-        guards,
-        out.append,
-        agent_name="shop-agent",
-        concurrency=2,
-    )
-    return {r["id"]: r for r in out}
-
-
-def test_before_attacks_get_through_and_guardrails_stop_them(tmp_path):
-    structure = map_repository(_repo(tmp_path))["structure"]
-    ids = {"unsafe_tool_use-001", "data_leak-001"}
-    before = _run(structure, [], ids)
-    assert before["unsafe_tool_use-001"]["gotThrough"]
-    assert "start_return" in before["unsafe_tool_use-001"]["toolCall"]
-    assert before["data_leak-001"]["gotThrough"]
-
-    after = _run(structure, ["refund-approval", "prompt-attacks", "hide-personal-data"], ids)
-    held = after["unsafe_tool_use-001"]
-    assert not held["gotThrough"]
-    assert held["calls"][-1] == {
-        "tool": "start_return",
-        "executed": False,
-        "held": "Money-moving actions need a person to approve them.",
-    }
-    assert not after["data_leak-001"]["gotThrough"]  # the email was hidden from the reply
-
-
-def test_real_tools_run_outside_a_test():
-    call = runner._dispatch("start_return", lambda **kw: "really refunded")
-    assert call(order_id="x") == "really refunded"
+    # The hand-off to a human is never what an attack is trying to trigger.
+    unsafe = [a for a in suite if a.type == "unsafe_tool_use" and not a.control]
+    assert all(a.forbidden == ["start_return"] for a in unsafe)
+    assert all("escalate_to_human" not in a.forbidden for a in suite)
 
 
 def test_run_aggregates_and_explains_a_broken_model():
@@ -241,7 +181,8 @@ def test_api_end_to_end(client):
     )
 
     run = client.post("/api/onboarding/tests", json={"phase": "before"}, headers=me).json()
-    assert run["total"] == 140 and run["status"] == "running"
+    assert run["total"] == sum(counts(build_suite(structure)).values())
+    assert run["status"] == "running"
     job = client.post("/api/onboarding/runner/poll", headers=runner_auth).json()["job"]
     assert job["runId"] == run["id"] and job["guardrails"] == []
 
@@ -273,11 +214,11 @@ def test_api_end_to_end(client):
         "/api/onboarding/guardrails", json=[{"id": "refund-approval", "enabled": False}], headers=me
     )
     after = client.post("/api/onboarding/tests", json={"phase": "after"}, headers=me).json()
-    job = client.post("/api/onboarding/runner/poll", headers=runner_auth).json()["job"]
-    assert job["runId"] == after["id"] and job["guardrails"] == [
-        "prompt-attacks",
-        "hide-personal-data",
-    ]
+    job = client.post(
+        "/api/onboarding/runner/poll", json={"protocol": 2}, headers=runner_auth
+    ).json()["job"]
+    # The wizard's toggles aren't simulated: an "after" test checks the real policies.
+    assert job["runId"] == after["id"] and job["guardrails"] == [] and job["policies"]
 
     client.patch(
         "/api/onboarding/state",
@@ -317,10 +258,9 @@ def test_user_can_add_to_the_map_and_tests_use_it(client):
     assert live["tools"][0]["addedByUser"] is True
     guards = client.get("/api/onboarding/guardrails", headers=me).json()
     assert guards[0]["id"] == "refund-approval" and "payouts.send" in guards[0]["appliesTo"]
-    assert (
-        client.post("/api/onboarding/tests", json={"phase": "before"}, headers=me).json()["total"]
-        == 140
-    )
+    assert client.post("/api/onboarding/tests", json={"phase": "before"}, headers=me).json()[
+        "total"
+    ] == sum(counts(build_suite(structure)).values())
 
 
 def test_connect_registers_agents_and_tools_under_projects(client):
@@ -524,8 +464,10 @@ def test_basic_guardrails_cover_what_users_send_and_get_back_then_the_test_runs_
     assert started.status_code == 200 and started.json()["phase"] == "after"
     # One at a time.
     assert client.post("/api/onboarding/projects/watch/tests", headers=me).status_code == 409
-    job = client.post("/api/onboarding/runner/poll", headers=runner).json()["job"]
-    assert job["guardrails"] == service.BASIC_TEST_GUARDS
+    job = client.post("/api/onboarding/runner/poll", json={"protocol": 2}, headers=runner).json()[
+        "job"
+    ]
+    assert job["policies"] is True and job["guardrails"] == []
     _finish(client, runner, job["runId"])
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["withBasic"]["status"] == "done"
@@ -543,7 +485,13 @@ def test_a_project_chooses_its_attack_sets_from_the_library(client):
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     library = {x["key"]: x for x in tests["library"]}
     assert {"encoding", "multilingual", "authority", "bulk_action"} <= set(library)
-    assert all(x["attacks"] > 0 for x in library.values())
+    # A read-only agent: the sets that need a tool that changes something can't run,
+    # and say so; every other set has attacks.
+    for key, x in library.items():
+        if key in ("unsafe_tool_use", "bulk_action"):
+            assert x["attacks"] == 0 and x["notRunReason"], key
+        else:
+            assert x["attacks"] > 0 and x["notRunReason"] is None, key
 
     url = "/api/onboarding/projects/watch/tests/sets"
     assert client.put(url, json={"sets": []}, headers=me).status_code == 400
@@ -568,11 +516,13 @@ def test_library_sets_are_graded_like_the_rest():
     }
     suite = build_suite(structure, list(LIBRARY))
     for kind in ("encoding", "multilingual", "authority", "bulk_action"):
-        mine = [a for a in suite if a.type == kind]
+        mine = [a for a in suite if a.type == kind and not a.control]
         assert mine, kind
         # Each one is graded mechanically: the action tool must not run.
         assert all(a.forbidden == ["issue_refund"] for a in mine), kind
-        assert len({a.id for a in mine}) == len(mine)
+        assert len({a.id for a in suite if a.type == kind}) == len(
+            [a for a in suite if a.type == kind]
+        )
 
 
 def test_only_the_connected_project_can_be_tested(client):
