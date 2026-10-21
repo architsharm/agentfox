@@ -20,9 +20,9 @@ import {
 import Link from "next/link";
 import { Logo } from "@/components/product/Logo";
 import { useRouter } from "next/navigation";
-import { Bot, Cpu, FileText, User, Wrench, type LucideIcon } from "lucide-react";
+import { Bot, Cpu, FileText, Plus, Search, User, Wrench, X, type LucideIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { ActionPill, ModePill, Pill } from "@/components/kit";
+import { ModePill, Pill } from "@/components/kit";
 import {
   GROUP_BY,
   PERMISSION,
@@ -247,29 +247,15 @@ const NODE_TYPES = {
 // --- rails (edges) ------------------------------------------------------------------
 
 /** Each rail's name on the map, and what it checks, for the pill and the panel. */
-export const RAIL: Record<string, { name: string; what: (agent: string) => string; between: [string, string] }> = {
-  input: { name: "Input", what: (a) => `What users send to ${a}, checked before ${a} sees it.`, between: ["User", "Agent"] },
-  output: { name: "Output", what: (a) => `What ${a} sends back, checked before the user sees it.`, between: ["Agent", "User"] },
-  prompt: {
-    name: "To the LLM",
-    what: (a) =>
-      `Everything ${a} sends its LLM, checked before each call: the user's message, documents & memory, tool results. A guardrail here also shows on the line where that content came in.`,
-    between: ["Agent", "LLM"],
-  },
-  response: {
-    name: "From the LLM",
-    what: (a) =>
-      `What the LLM answers ${a}, checked after each call. Its last answer is the reply the user sees, so these also show on Output; the tools it asks for are checked on Tool calls.`,
-    between: ["LLM", "Agent"],
-  },
-  completion: { name: "Done check", what: (a) => `${a} saying it has finished, checked against what really happened.`, between: ["Agent", "User"] },
-  tool_call: { name: "Tool calls", what: (a) => `Every call ${a} makes to a tool: which tool, with what arguments.`, between: ["Agent", "Tools"] },
-  tool_result: { name: "Tool results", what: (a) => `What tools return to ${a}, before it reads it.`, between: ["Tools", "Agent"] },
-  context: {
-    name: "Retrieval & memory",
-    what: (a) => `Documents, memory and other agents' messages, before ${a} reads them.`,
-    between: ["Documents & memory", "Agent"],
-  },
+export const RAIL: Record<string, { name: string; what: string; between: [string, string] }> = {
+  input: { name: "Input", what: "What users send, before the agent sees it.", between: ["User", "Agent"] },
+  output: { name: "Output", what: "What the agent sends back to users.", between: ["Agent", "User"] },
+  prompt: { name: "To the LLM", what: "Everything sent to the LLM: user message, documents, tool results.", between: ["Agent", "LLM"] },
+  response: { name: "From the LLM", what: "What the LLM answers, after each call.", between: ["LLM", "Agent"] },
+  completion: { name: "Done check", what: "The agent saying it's done, checked against what happened.", between: ["Agent", "User"] },
+  tool_call: { name: "Tool calls", what: "Every tool the agent calls, with its arguments.", between: ["Agent", "Tools"] },
+  tool_result: { name: "Tool results", what: "What tools return, before the agent reads it.", between: ["Tools", "Agent"] },
+  context: { name: "Retrieval & memory", what: "Documents, memory and other agents' messages.", between: ["Documents & memory", "Agent"] },
 };
 
 type GuardData = {
@@ -736,40 +722,6 @@ const TIER: Record<string, { name: string; note: string }> = {
 /** The order judges are asked in, for the open-ended questions these checks ask. */
 const CHAIN = ["jev", "local_llm", "llm"];
 
-/** Output is judged as meaning (semantic); everything else as an open pattern. */
-function bandFor(stage: Stage, catalog?: Catalog): [number, number] {
-  const kind = stage.key === "output" || stage.key === "response" ? "semantic" : "pattern_open";
-  return catalog?.bands[kind] || (kind === "semantic" ? [0.3, 0.7] : [0.2, 0.8]);
-}
-
-function CheckToggle({ dkey, on, available, slug }: { dkey: string; on: boolean; available: boolean; slug: string }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  if (!available)
-    return (
-      <Link className="gm-check-install" href="/app/policies?tab=checks" title="Install it on the Checks page">
-        Not installed
-      </Link>
-    );
-  const flip = async () => {
-    setBusy(true);
-    setError("");
-    const r = await send(`/api/features/checks/${encodeURIComponent(dkey)}`, "POST", { enabled: !on, agent: slug, reason: "Set from the map" });
-    setBusy(false);
-    if (!r.ok) return setError(errorOf(r.data, "Could not change this check."));
-    router.refresh();
-  };
-  return (
-    <>
-      <button type="button" role="switch" aria-checked={on} disabled={busy} className={`gm-switch${on ? " on" : ""}`} onClick={flip}>
-        <span />
-      </button>
-      {error && <span className="k-act-error" role="alert">{error}</span>}
-    </>
-  );
-}
-
 /** Names the catalogue leaves blank. */
 const MODULE_NAME: Record<string, string> = {
   "custom.validators": "Your validator rules",
@@ -777,107 +729,122 @@ const MODULE_NAME: Record<string, string> = {
   "validator.prompt_injection_llm": "Prompt injection (validator judge)",
 };
 const moduleName = (d: { key: string; label: string }) => MODULE_NAME[d.key] || d.label || detectorName(d.key);
+/** What kind of check each source is, in a word. */
+const KIND: Record<string, string> = { builtin: "Regex", open_source: "ML", yours: "Custom", llm_judge: "LLM" };
 
-function ModuleRow({ d, stage, slug }: { d: Catalog["detectors"][number]; stage: Stage; slug: string }) {
-  return (
-    <li>
-      <span className="gm-module-name">
-        {moduleName(d)}
-        <span className="k-mono gm-sub">{d.key}</span>
-      </span>
-      <CheckToggle dkey={d.key} on={stage.detectors.includes(d.key)} available={d.available} slug={slug} />
-    </li>
-  );
-}
+/**
+ * The checks on a line: their names, and "+ Add check" to pick more from the library.
+ * A check runs for the whole agent, on every line it can read.
+ */
+function Checks({ items, stage, slug }: { items: Catalog["detectors"]; stage: Stage; slug: string }) {
+  const router = useRouter();
+  const [adding, setAdding] = useState(false);
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const on = items.filter((d) => stage.detectors.includes(d.key));
+  const rest = items.filter((d) => !stage.detectors.includes(d.key));
+  const shown = rest.filter((d) => `${moduleName(d)} ${KIND[d.source] ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()));
 
-/** Installed checks with their switch; the ones not installed folded away. */
-function ModuleList({ items, stage, slug, empty }: { items: Catalog["detectors"]; stage: Stage; slug: string; empty: string }) {
-  if (!items.length) return <p className="gm-sub">{empty}</p>;
-  const ready = items.filter((d) => d.available);
-  const rest = items.filter((d) => !d.available);
+  const set = async (key: string, enabled: boolean) => {
+    setBusy(key);
+    setError("");
+    const r = await send(`/api/features/checks/${encodeURIComponent(key)}`, "POST", { enabled, agent: slug, reason: "Set from the map" });
+    setBusy(null);
+    if (!r.ok) return setError(errorOf(r.data, "Could not change this check."));
+    setAdding(false);
+    router.refresh();
+  };
+
   return (
-    <>
-      {ready.length > 0 && (
-        <ul className="gm-modules">
-          {ready.map((d) => (
-            <ModuleRow key={d.key} d={d} stage={stage} slug={slug} />
+    <div className="gm-checks">
+      {on.length ? (
+        <ul>
+          {on.map((d) => (
+            <li key={d.key}>
+              <span className="gm-check-name">{moduleName(d)}</span>
+              <span className="gm-check-kind">{KIND[d.source] ?? ""}</span>
+              <button type="button" className="gm-check-remove" disabled={busy === d.key} onClick={() => set(d.key, false)} aria-label={`Remove ${moduleName(d)}`} title="Remove">
+                <X size={12} aria-hidden />
+              </button>
+            </li>
           ))}
         </ul>
+      ) : (
+        <p className="gm-sub">No checks on this line yet.</p>
       )}
-      {rest.length > 0 && (
-        <details className="gm-more-modules">
-          <summary>
-            {ready.length ? `${rest.length} more you can install` : `${rest.length} available to install`}
-          </summary>
-          <ul className="gm-modules">
-            {rest.map((d) => (
-              <ModuleRow key={d.key} d={d} stage={stage} slug={slug} />
-            ))}
-          </ul>
-        </details>
-      )}
-    </>
+      <div className="gm-checks-add">
+        <button type="button" className="gm-add" onClick={() => setAdding((v) => !v)}>
+          <Plus size={13} aria-hidden /> Add check
+        </button>
+        {adding ? (
+          <div className="at-lib" role="dialog" aria-label="Add a check">
+            <label className="at-lib-search">
+              <Search size={13} aria-hidden />
+              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search checks" />
+            </label>
+            {shown.length ? (
+              <ul>
+                {shown.map((d) => (
+                  <li key={d.key}>
+                    {d.available ? (
+                      <button type="button" disabled={busy === d.key} onClick={() => set(d.key, true)}>
+                        <span>
+                          <strong>{moduleName(d)}</strong>
+                        </span>
+                        <span className="at-lib-n">{KIND[d.source] ?? ""}</span>
+                      </button>
+                    ) : (
+                      <Link href="/app/policies?tab=checks" className="gm-lib-install">
+                        <span>
+                          <strong>{moduleName(d)}</strong>
+                        </span>
+                        <span className="at-lib-n">Install</span>
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="gm-sub">{rest.length ? "Nothing matches." : "Every check for this line is on."}</p>
+            )}
+          </div>
+        ) : null}
+      </div>
+      {error && <span className="k-act-error" role="alert">{error}</span>}
+    </div>
   );
 }
 
 function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap; catalog?: Catalog; back: ReactNode }) {
   const slug = map.agent.slug;
   const here = (catalog?.detectors || []).filter((d) => d.surfaces.some((s) => stage.surfaces.includes(s)));
-  const by = (source: string) => here.filter((d) => d.source === source);
-  const judges = by("llm_judge");
+  const deterministic = here.filter((d) => d.source !== "llm_judge");
+  const judges = here.filter((d) => d.source === "llm_judge");
   const tiers = Object.fromEntries((catalog?.tiers || []).map((t) => [t.tier, t]));
   const anyJudge = CHAIN.some((t) => tiers[t]?.enabled);
-  const [lo, hi] = bandFor(stage, catalog);
-  const pct = (x: number) => `${Math.round(Math.max(0, x) * 100)}%`;
+  const rail = RAIL[stage.key];
 
   return (
     <div className="gm-panel gm-stage-panel">
       {back}
       <div className="gm-rail-head">
-        <span className="gm-guide-kicker">Rail</span>
-        <strong className="gm-guide-title">{RAIL[stage.key]?.name ?? stage.title}</strong>
-        {RAIL[stage.key] && (
-          <>
-            <span className="gm-rail-between">
-              {RAIL[stage.key].between[0]} <span aria-hidden>→</span> {RAIL[stage.key].between[1]}
-              <span className="gm-sub"> · {map.agent.name}</span>
-            </span>
-            <p className="gm-rail-what">{RAIL[stage.key].what(map.agent.name || map.agent.slug)}</p>
-          </>
-        )}
-        <StatLine days={map.window_days} s={stage.stats} noun="checked" />
+        <strong className="gm-guide-title">{rail?.name ?? stage.title}</strong>
+        {rail && <p className="gm-rail-what">{rail.what}</p>}
       </div>
 
-      <section className="gm-layer">
-        <header>
-          <span className="gm-layer-tag det">Deterministic</span>
-          <span className="gm-sub">Same input, same answer. Runs on every call, in milliseconds.</span>
-        </header>
-
+      <section className="gm-det">
+        <h3>Deterministic</h3>
+        <h4>Checks</h4>
+        <Checks items={deterministic} stage={stage} slug={slug} />
         <h4>Policies</h4>
-        <p className="gm-sub">What happens when a check below finds something: block, ask a person, or only watch.</p>
         <RuleList rules={stage.rules} slug={slug} />
-
-        <h4>Pattern checks · regex</h4>
-        <ModuleList items={by("builtin")} stage={stage} slug={slug} empty="None for this step." />
-
-        <h4>Classifier models · ML</h4>
-        <ModuleList items={by("open_source")} stage={stage} slug={slug} empty="None for this step." />
-
-        {by("yours").length > 0 && (
-          <>
-            <h4>Your own checks</h4>
-            <ModuleList items={by("yours")} stage={stage} slug={slug} empty="" />
-          </>
-        )}
       </section>
 
-      <section className="gm-layer">
-        <header>
-          <span className="gm-layer-tag llm">Non-deterministic · LLM fallback chain</span>
-          <span className="gm-sub">An LLM reads what the patterns can&apos;t: intent, meaning, disguised attacks.</span>
-        </header>
-
+      <details className="gm-nondet">
+        <summary>
+          Non-deterministic · LLM judge <span className="gm-sub">{anyJudge ? "on" : "off"}</span>
+        </summary>
         <ol className="gm-chain">
           {CHAIN.map((t, i) => {
             const st = tiers[t];
@@ -886,40 +853,19 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
                 <span className="gm-chain-step">{i + 1}</span>
                 <span className="gm-chain-body">
                   <b>{TIER[t].name}</b>
-                  <span className="gm-sub">{st?.enabled ? TIER[t].note : st?.blocked_reason ? "off · " + shortReason(st.blocked_reason) : "off"}</span>
+                  <span className="gm-sub">{st?.enabled ? TIER[t].note : "off"}</span>
                 </span>
               </li>
             );
           })}
         </ol>
-        <p className="gm-sub">
-          When a judge is switched on it runs alongside the checks above. Judges are asked in order: an answer below {pct(lo)} or
-          above {pct(hi)} settles it; anything in between passes to the next judge. The highest score wins and goes through the
-          same policies.
-          {stage.key !== "output" && stage.key !== "response" ? "" : " Here the question is about meaning, so the band is wider."}
-        </p>
-
-        <h4>Judge checks here</h4>
-        {anyJudge ? (
-          <ModuleList items={judges} stage={stage} slug={slug} empty="No judge checks for this step." />
-        ) : (
-          <p className="gm-sub">
-            No judge is switched on, so {judges.length ? `these ${judges.length} checks` : "judge checks"} can&apos;t run yet
-            {judges.length ? `: ${[...new Set(judges.map(moduleName))].join(", ")}` : ""}.
-          </p>
-        )}
+        {anyJudge && judges.length ? <Checks items={judges} stage={stage} slug={slug} /> : null}
         <Link className="gm-link-strong" href="/app/policies?tab=checks">
-          Set up the chain →
+          Set up the judges →
         </Link>
-      </section>
+      </details>
     </div>
   );
-}
-
-/** The first clause of a backend reason, for a one-line status. */
-function shortReason(reason: string): string {
-  if (reason.includes("egress")) return "sending data out is switched off on this deployment";
-  return reason.split(/[;(]/)[0].trim();
 }
 
 // --- guide (nothing selected) -----------------------------------------------------
@@ -965,26 +911,15 @@ function Guide({ project }: { project: string }) {
 }
 
 function RuleList({ rules, slug }: { rules: MapRule[]; slug: string }) {
-  if (!rules.length) return <p className="k-muted">No rules here.</p>;
+  if (!rules.length) return <p className="gm-sub">No policies on this line yet.</p>;
   const sorted = [...rules].sort((a, b) => counts([b]).enforcing - counts([a]).enforcing || b.hits - a.hits);
   return (
-    <ul className="gm-rules">
+    <ul className="gm-rules gm-rules-clean">
       {sorted.map((r) => (
         <li key={r.id}>
-          <div className="gm-rule-head">
-            <Link href={`/app/policies/rules/${encodeURIComponent(r.id)}`} className="k-name">
-              {ruleTitle(r.id, r.description)}
-            </Link>
-            <Link className="gm-link" href={`/app/policies/rules/${encodeURIComponent(r.id)}?tab=tune&agent=${encodeURIComponent(slug)}`} title="More options">
-              More
-            </Link>
-          </div>
-          <span className="k-pills" style={{ gap: 6 }}>
-            {ruleSetting(r) === null && <ActionPill effect={r.effect} />}
-            {r.enabled !== false && <ModePill mode={r.effect === "allow" ? "observe" : r.mode} />}
-            {r.own && <Pill tone="outline">This agent</Pill>}
-            {r.hits ? <span className="k-muted">{r.hits} hits</span> : null}
-          </span>
+          <Link href={`/app/policies/rules/${encodeURIComponent(r.id)}?tab=tune&agent=${encodeURIComponent(slug)}`} className="gm-rule-name" title={r.own ? "Set for this agent" : "From the workspace"}>
+            {ruleTitle(r.id, r.description)}
+          </Link>
           <RuleControl rule={r} slug={slug} />
         </li>
       ))}
