@@ -11,6 +11,19 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`auto()` applies output redaction instead of only recording it.** A `redact` / `mask` /
+  `tokenize` rule on the output surface was evaluated and logged under `auto()`, but the
+  caller still got the original text, so a policy to hide personal data in replies hid
+  nothing for apps on patched OpenAI, Anthropic, LiteLLM or LangChain calls. The redacted
+  text now replaces the reply in the client's own response object (sync and async), as the
+  gateway and the LangGraph guard already did. It follows the same mode rule as a block:
+  the enforced verdict by default, the effective one under `mode="enforce"`, never under
+  `mode="observe"`. A streamed reply, whose chunks are already with the caller, raises
+  `Blocked` at the end of the stream instead; a response that cannot be rewritten is
+  refused rather than returned unredacted.
+
 ## [0.5.0] - 2026-10-17
 
 ### Added
