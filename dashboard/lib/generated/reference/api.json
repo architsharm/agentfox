@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 307,
+ "count": 308,
  "routes": [
   {
    "method": "GET",
@@ -8936,6 +8936,29 @@
      "required": true,
      "type": "string"
     },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/applied",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Every rule in force on at least one agent: what it does, which library it comes from, and whether it applies to every agent or only some (and which).",
+   "description": "Every rule in force on at least one agent: what it does, which library it comes\nfrom, and whether it applies to every agent or only some (and which).",
+   "params": [
     {
      "name": "authorization",
      "in": "header",

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
+import { AppliedRules } from "@/components/product/policies/AppliedRules";
+import { Libraries } from "@/components/product/policies/Libraries";
 import { safeApi } from "@/lib/product/api";
 import {
   ActionPill,
@@ -36,15 +38,13 @@ export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
 
+/** What the page is for: the rules on your agents now, and libraries of rules to apply. */
 const TABS = [
-  { key: "rules", label: "Rules" },
-  { key: "checks", label: "Checks" },
-  { key: "performance", label: "Performance" },
-  { key: "library", label: "Library" },
-  { key: "changes", label: "Changes" },
-  { key: "code", label: "Code" },
-  { key: "advanced", label: "Advanced" },
+  { key: "applied", label: "Applied rules" },
+  { key: "libraries", label: "Libraries" },
 ];
+/** Still reachable by link (installing a check, a library's rules), not in the tab bar. */
+const HIDDEN = ["rules", "checks", "performance", "library", "changes", "code", "advanced"];
 
 /** Tab names from before the redesign, so old links still land. */
 const LEGACY: Record<string, { tab: string; sec?: string }> = {
@@ -60,18 +60,29 @@ function firstSentence(text: string): string {
 export default async function Policies({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   // The detector list moved from Library to its own tab; old links still land there.
-  const legacy = sp.tab === "library" && sp.sec === "detectors" ? { tab: "checks", sec: undefined } : LEGACY[sp.tab || ""];
-  const tab = legacy?.tab || (TABS.some((t) => t.key === sp.tab) ? sp.tab! : "rules");
+  const legacy =
+    sp.tab === "library" && sp.sec === "detectors"
+      ? { tab: "checks", sec: undefined }
+      : sp.tab === "library" && sp.sec !== "import"
+        ? { tab: "libraries", sec: undefined }
+        : LEGACY[sp.tab || ""];
+  const tab = legacy?.tab || (TABS.some((t) => t.key === sp.tab) || HIDDEN.includes(sp.tab || "") ? sp.tab! : "applied");
   const sec = legacy?.sec || sp.sec;
   if (tab === "rules" || tab === "performance") await ensureRange("/app/policies", sp);
 
   return (
     <RangeProvider range={sp.range}>
     <>
-      <Header title="Policies" actions={<Link href="/app/policies/new" className="k-btn-primary">Add rule</Link>} />
-      <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/policies", { tab: t.key === "rules" ? undefined : t.key }) }))} active={tab} />
+      <Header
+        title="Policies"
+        hint="The rules on your agents, and libraries of rules to apply."
+        actions={<Link href="/app/policies/new" className="k-btn-primary">New rule</Link>}
+      />
+      <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/policies", { tab: t.key === "applied" ? undefined : t.key }) }))} active={tab} />
       {sp.review_error && <div className="error">{sp.review_error}</div>}
       {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
+      {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} />}
+      {tab === "libraries" && <Libraries />}
       {tab === "rules" && <RulesTab sp={sp} />}
       {tab === "checks" && <Checks />}
       {tab === "performance" && <PerformanceTab sp={sp} />}

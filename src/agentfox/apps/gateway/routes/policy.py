@@ -165,6 +165,15 @@ def get_effective(
     return out
 
 
+@router.get("/applied")
+def get_applied(session: Session = Depends(db), _u: User = Depends(current_user)) -> dict[str, Any]:
+    """Every rule in force on at least one agent: what it does, which library it comes
+    from, and whether it applies to every agent or only some (and which)."""
+    from agentfox.capabilities.protection.applied import applied_rules
+
+    return applied_rules(session)
+
+
 @router.get("/lint")
 def get_lint(session: Session = Depends(db), _u: User = Depends(current_user)) -> dict[str, Any]:
     """Policy lint. `passed` is false when critical/high findings exist."""

@@ -90,7 +90,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
               <BarList rows={Object.entries(s?.tools || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: runsHref({ range }, { rule: ruleId, tool: k }) }))} empty="Not tool-specific" />
             </Card>
           </Grid>
-          <Card title="In packs" flush>
+          <Card title="In libraries" flush>
             {rule ? (
               <table className="k-table">
                 <tbody>
@@ -104,7 +104,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
                 </tbody>
               </table>
             ) : (
-              <Empty>Not in any installed pack.</Empty>
+              <Empty>Not in any applied library.</Empty>
             )}
           </Card>
         </>
@@ -118,14 +118,14 @@ export default async function RulePage({ params, searchParams }: { params: Promi
 
       {tab === "tests" && (
         <Card>
-          {rule ? <Tests ruleId={ruleId} pack={rule.packs[0]?.key} agents={Object.keys(s?.agents || {})} /> : <Empty>Not in any installed pack.</Empty>}
+          {rule ? <Tests ruleId={ruleId} pack={rule.packs[0]?.key} agents={Object.keys(s?.agents || {})} /> : <Empty>Not in any applied library.</Empty>}
         </Card>
       )}
 
       {tab === "tune" && rule?.finds ? <CheckedBy finds={rule.finds} agent={sp.agent} /> : null}
       {tab === "tune" && (
         <Card title="What this rule does">
-          {rule ? <Tune ruleId={ruleId} packs={rule.packs} exact={own ? own.kind !== "topic" : false} agent={sp.agent} /> : <Empty>Not in any installed pack.</Empty>}
+          {rule ? <Tune ruleId={ruleId} packs={rule.packs} exact={own ? own.kind !== "topic" : false} agent={sp.agent} /> : <Empty>Not in any applied library.</Empty>}
         </Card>
       )}
 

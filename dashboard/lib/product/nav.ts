@@ -28,9 +28,9 @@ const SETTINGS: NavItem = [
 ];
 
 /**
- * Guardrails first: Agents (each project's map) is home and the place to set things up; Policies,
- * Approvals, Issues and Testing are the ways back in to what needs a decision;
- * Activity is the record behind all of it, for troubleshooting.
+ * Guardrails is everything: Agents (each project's map) is home and the place to set
+ * things up; Policies, Approvals, Issues and Testing are the ways back in to what
+ * needs a decision; Traces is the record behind all of it, for troubleshooting.
  */
 export const WORKSPACE_NAV: NavGroup[] = [
   {
@@ -41,21 +41,7 @@ export const WORKSPACE_NAV: NavGroup[] = [
       ["Approvals", "/app/approvals"],
       ["Issues", "/app/findings"],
       ["Testing", "/app/test"],
-    ],
-  },
-  {
-    group: "Observe",
-    // What happened, to troubleshoot: the numbers, every step, every conversation, and
-    // the same traffic cut by tool, by model, by what broke and by what was attacked.
-    items: [
-      ["Overview", "/app/observe", ["/app/reports", "/app/compliance", "/app/coverage"]],
-      ["Events", "/app/events", ["/app/traces"]],
-      ["Sessions", "/app/sessions", ["/app/escalation/conversations"]],
-      ["Tools", "/app/tools"],
-      ["Models", "/app/models", ["/app/observe?tab=cost"]],
-      ["Errors", "/app/observe?tab=breaks", [], "icon:errors"],
-      ["Security", "/app/observe?tab=security", [], "icon:security"],
-      ["Evaluations", "/app/evals"],
+      ["Traces", "/app/traces", ["/app/events", "/app/sessions", "/app/escalation/conversations"]],
     ],
   },
   { group: "", items: [SETTINGS] },
@@ -71,11 +57,8 @@ export function projectNav(slug: string): NavGroup[] {
         ["Policies", projectHref(slug, "access"), [projectHref(slug, "features")], "/app/policies"],
         ["Approvals", `/app/approvals?${q}`],
         ["Issues", `/app/findings?${q}`],
+        ["Traces", `/app/traces?${q}`, [projectHref(slug, "activity"), `/app/observe?${q}`], "/app/traces"],
       ],
-    },
-    {
-      group: "Observe",
-      items: [["Activity", projectHref(slug, "activity"), [`/app/observe?${q}`, `/app/traces?${q}`], "/app/observe"]],
     },
     { group: "", items: [["Settings", projectHref(slug, "settings"), [], "/app/settings"]] },
   ];

@@ -693,3 +693,17 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
     # Tested afresh.
     assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
     assert {t["key"]: t["permission"] for t in m["tools"]}["shop_lookup"] == "allowed"
+
+
+def test_policies_page_shows_which_rules_apply_to_which_agents(client):
+    """The basic guardrails apply to the agent they were added for, blocking; the
+    page says so, and not that they apply to every agent."""
+    me, runner, _send = _connect_watch(client)
+    client.post("/api/onboarding/projects/watch/basic-guardrails", headers=me)
+    applied = client.get("/api/policies/applied", headers=me).json()
+    rows = {r["id"]: r for r in applied["rules"]}
+    row = rows["basic.input.attacks"]
+    assert [a["slug"] for a in row["agents"]] == ["watch-agent"]
+    assert row["mode"] == "enforce" and row["effect"] == "block"
+    assert row["libraries"] == ["Set for agents"]
+    assert row["all"] is (applied["agents"] == 1)

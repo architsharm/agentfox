@@ -82,6 +82,9 @@ describe("in-app links", () => {
   it("every /app/policies?tab= link names a tab the page has", () => {
     const page = readFileSync(join(APP, "(product)", "app", "policies", "page.tsx"), "utf8");
     const tabs = new Set([...page.matchAll(/\{ key: "([a-z_-]+)", label:/g)].map((m) => m[1]));
+    // Tabs still reachable by link but kept out of the tab bar.
+    const hidden = page.match(/const HIDDEN = \[([^\]]*)\]/)?.[1] ?? "";
+    for (const m of hidden.matchAll(/"([a-z_-]+)"/g)) tabs.add(m[1]);
     expect(tabs.size).toBeGreaterThan(0);
     const broken: string[] = [];
     for (const f of files) {

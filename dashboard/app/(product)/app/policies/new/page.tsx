@@ -26,7 +26,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
     { key: "custom", label: "Your own rule" },
     { key: "describe", label: "Approval limits" },
     { key: "access", label: "Tool access" },
-    { key: "packs", label: "Packs" },
+    { key: "packs", label: "Libraries" },
     { key: "import", label: "Import" },
   ];
   const keep = { run: sp.run, agent: sp.agent };
@@ -36,7 +36,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <Header back={{ href: "/app/policies", label: "Policies" }} title={sp.agent ? `Add rule for ${sp.agent}` : "Add rule"} />
+      <Header back={{ href: "/app/policies", label: "Policies" }} title={sp.agent ? `New rule for ${sp.agent}` : "New rule"} />
       <Tabs items={tabs.map((t) => ({ ...t, href: href("/app/policies/new", { ...keep, from: t.key }) }))} active={tab} />
       {tab === "run" && sp.run && <FromRun id={sp.run} />}
       {tab === "describe" && <Describe agent={sp.agent} />}
