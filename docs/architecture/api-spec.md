@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-308 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+310 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -244,6 +244,8 @@ from the code. Regenerate after changing any route:
 | `DELETE` | `/api/policies/agents/{slug}/rules/{rule_id}` | Drop an agent's own copy of a rule: the workspace rule applies to it again. |
 | `GET` | `/api/policies/applied` | Every rule in force on at least one agent: what it does, which library it comes |
 | `GET` | `/api/policies/effective` | The policy actually in force for a subject, with per-rule provenance. |
+| `POST` | `/api/policies/libraries/basic/apply` | Apply the basic guardrails to every agent that doesn't have them yet. |
+| `POST` | `/api/policies/libraries/starter/remove` | Remove the watch-only starter rules earlier versions of `agentfox init` added. |
 | `GET` | `/api/policies/lint` | Policy lint. `passed` is false when critical/high findings exist. |
 | `POST` | `/api/policies/simulate` | Replay recorded traffic against a candidate policy. |
 | `POST` | `/api/policies/validate` | Validate Policy |

@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from agentfox.capabilities.protection.libraries import BASIC, STARTER, library_of
 from agentfox.core.models import Agent, Policy
 from agentfox.platform.policy import effective_for
 from agentfox.platform.registry.projects import REMOVED
@@ -47,11 +48,8 @@ def applied_rules(session: Session) -> dict[str, Any]:
             row["enforcing"] += int(r.get("enforcement") == "enforce")
             row["agents"].append({"slug": agent.slug, "name": agent.name or agent.slug})
             key = r.get("policy") or ""
-            # A workspace library by its name; an agent's own layer is "set for this agent".
-            if r.get("level") == "org" and key:
-                row["libraries"][key] = names.get(key, key)
-            else:
-                row["libraries"]["agent"] = "Set for agents"
+            lib = library_of(r["rule_id"], key, r.get("level") or "", names.get(key, ""))
+            row["libraries"][lib] = lib
 
     out = []
     for row in rows.values():
@@ -73,4 +71,14 @@ def applied_rules(session: Session) -> dict[str, Any]:
             }
         )
     out.sort(key=lambda r: (r["mode"] != "enforce", not r["all"], r["libraries"], r["id"]))
-    return {"agents": len(agents), "rules": out}
+    # The two libraries applied per agent: on how many agents each is.
+    per_agent = {}
+    for lib in (BASIC, STARTER):
+        mine = [r for r in out if lib in r["libraries"]]
+        on = {a["slug"] for r in mine for a in r["agents"]}
+        per_agent[lib] = {
+            "rules": len(mine),
+            "agents": len(on),
+            "blocking": bool(mine) and all(r["mode"] == "enforce" for r in mine),
+        }
+    return {"agents": len(agents), "rules": out, "perAgent": per_agent}

@@ -19,6 +19,8 @@ export type MapRule = {
   minScore?: number | null;
   /** What a rule that isn't about content looks at, in plain words. */
   about?: string;
+  /** The library it comes from ("Baseline runtime guardrails", "Basic guardrails"…). */
+  library?: string;
   enabled?: boolean;
   /** This agent has its own copy of the rule. */
   own?: boolean;
@@ -173,6 +175,19 @@ export function ruleSetting(r: MapRule): RuleSetting | null {
   if (r.effect === "block" || r.effect === "escalate" || r.effect === "allow") return r.effect;
   if (r.effect === "redact" || r.effect === "mask" || r.effect === "tokenize") return "redact";
   return null;
+}
+
+/** A line's rules by library: basic guardrails first, the agent's own and the starter rules last. */
+export function byLibrary(rules: MapRule[]): { library: string; rules: MapRule[] }[] {
+  const groups = new Map<string, MapRule[]>();
+  for (const r of rules) {
+    const lib = r.library || "Set for this agent";
+    groups.set(lib, [...(groups.get(lib) || []), r]);
+  }
+  const rank = (lib: string) => (lib === "Basic guardrails" ? 0 : lib === "Set for this agent" ? 2 : lib.startsWith("Starter rules") ? 3 : 1);
+  return [...groups.entries()]
+    .map(([library, list]) => ({ library, rules: list }))
+    .sort((a, b) => rank(a.library) - rank(b.library) || a.library.localeCompare(b.library));
 }
 
 /** Whether a check feeds a content rule: it reports the kind of finding the rule looks for. */

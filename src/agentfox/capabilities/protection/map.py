@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from agentfox.capabilities.detection import all_detectors
 from agentfox.capabilities.detection.detector_settings import enabled_for
 from agentfox.capabilities.protection import layer_key
+from agentfox.capabilities.protection.libraries import library_of
 from agentfox.capabilities.protection.scope import agent_changes
 from agentfox.core.models import (
     Agent,
@@ -382,6 +383,12 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         )
         if own and base:
             entry["workspace"] = {"effect": base["effect"], "enabled": base["enabled"]}
+        # The library it comes from: an agent's change to a workspace rule still
+        # belongs to the workspace rule's library.
+        from_key = (base or {}).get("policy") or layer.document.key
+        entry["library"] = library_of(
+            rule.id, from_key, "org" if base else layer.level, layer.document.name or ""
+        )
         stages = _stages_for(rule)
         if stages == ["tool_call"] and (rule.when.tool or rule.when.tool_impact):
             tool_rules.append((rule, entry))

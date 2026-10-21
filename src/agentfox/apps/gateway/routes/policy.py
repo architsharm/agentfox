@@ -174,6 +174,32 @@ def get_applied(session: Session = Depends(db), _u: User = Depends(current_user)
     return applied_rules(session)
 
 
+@router.post("/libraries/basic/apply")
+def apply_basic_library(
+    session: Session = Depends(db), user: User = Depends(require("policy"))
+) -> dict[str, Any]:
+    """Apply the basic guardrails to every agent that doesn't have them yet."""
+    from agentfox.capabilities.onboarding.service import basic_guardrails
+    from agentfox.platform.registry.projects import REMOVED
+
+    actor = user.email or user.id
+    agents = session.scalars(
+        select(Agent).where(Agent.status.not_in(("rejected", "draft", REMOVED)))
+    )
+    added = [a.slug for a in agents if basic_guardrails(session, a.slug, actor=actor)]
+    return {"added": added}
+
+
+@router.post("/libraries/starter/remove")
+def remove_starter_library(
+    session: Session = Depends(db), user: User = Depends(require("policy"))
+) -> dict[str, Any]:
+    """Remove the watch-only starter rules earlier versions of `agentfox init` added."""
+    from agentfox.capabilities.protection.libraries import remove_starter
+
+    return {"removed": remove_starter(session, actor=user.email or user.id)}
+
+
 @router.get("/lint")
 def get_lint(session: Session = Depends(db), _u: User = Depends(current_user)) -> dict[str, Any]:
     """Policy lint. `passed` is false when critical/high findings exist."""

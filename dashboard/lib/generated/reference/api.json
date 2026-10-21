@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 308,
+ "count": 310,
  "routes": [
   {
    "method": "GET",
@@ -9006,6 +9006,52 @@
      "required": false,
      "type": "string"
     },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/libraries/basic/apply",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Apply the basic guardrails to every agent that doesn't have them yet.",
+   "description": "Apply the basic guardrails to every agent that doesn't have them yet.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/libraries/starter/remove",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Remove the watch-only starter rules earlier versions of `agentfox init` added.",
+   "description": "Remove the watch-only starter rules earlier versions of `agentfox init` added.",
+   "params": [
     {
      "name": "authorization",
      "in": "header",

@@ -26,6 +26,7 @@ import { ModePill, Pill } from "@/components/kit";
 import {
   GROUP_BY,
   PERMISSION,
+  byLibrary,
   feeds,
   settingsFor,
   TONE_LABEL,
@@ -861,11 +862,18 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
       <section className="gm-det">
         <h3>Rules</h3>
         {stage.rules.length ? (
-          <ul className="gm-rule-rows">
-            {sortRules(stage.rules).map((r) => (
-              <RuleRow key={r.id} rule={r} slug={slug} />
-            ))}
-          </ul>
+          byLibrary(sortRules(stage.rules)).map((g) => (
+            <div key={g.library} className="gm-lib-group">
+              <h4>
+                {g.library} <span>{g.rules.length}</span>
+              </h4>
+              <ul className="gm-rule-rows">
+                {g.rules.map((r) => (
+                  <RuleRow key={r.id} rule={r} slug={slug} />
+                ))}
+              </ul>
+            </div>
+          ))
         ) : (
           <p className="gm-sub">No rules on this line yet.</p>
         )}
