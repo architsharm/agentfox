@@ -642,8 +642,4 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .lib-state { font-size: 12.5px; font-weight: 500; color: var(--af-muted); }
 .lib-actions { display: inline-flex; gap: 6px; }
 .lib-foot { margin-top: auto; }
-.gm-lib-group { display: flex; flex-direction: column; gap: 6px; }
-.gm-lib-group + .gm-lib-group { margin-top: 6px; }
-.gm-lib-group h4 { display: flex; align-items: baseline; gap: 6px; margin: 4px 0 0; font-size: 12px; font-weight: 600; color: var(--af-fg-2); }
-.gm-lib-group h4 span { font-weight: 400; color: var(--af-muted); }
 .lib-default { border-color: color-mix(in srgb, var(--af-brand) 35%, var(--af-line)); }
