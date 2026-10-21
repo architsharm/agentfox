@@ -239,11 +239,9 @@ def _print_missing_help(console: Console) -> None:
 
     found = "".join(f"  • {what}: [cyan]{shapes}[/cyan]\n" for what, shapes in RECOGNISED)
     console.print(
-        "
-[bold]Missing something?[/bold] Mapping reads your code; it never runs it. "
+        "\n[bold]Missing something?[/bold] Mapping reads your code; it never runs it. "
         "The attack test does run your agent, here on this machine, with every tool "
-        "faked so nothing real happens. Mapping finds:
-"
+        "faked so nothing real happens. Mapping finds:\n"
         + found
         + "  If an agent or tool isn't listed above: give the agent a [cyan]name=[/cyan], pass the "
         "tool in its [cyan]tools=[...][/cyan], set [cyan]model=[/cyan] where it's created, then "
