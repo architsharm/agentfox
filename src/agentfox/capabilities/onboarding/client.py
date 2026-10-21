@@ -184,18 +184,31 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
 
 def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
     """What was read, and what may have been missed because of it."""
+    from agentfox.capabilities.discovery.repo import SUPPORTED_LANGUAGES
+
     s = mapped["structure"]
     n_agents, n_tools = len(s["agents"]), len(s["tools"])
+    n_handoffs = sum(len(a.get("handsOffTo") or []) for a in s["agents"])
+    read = mapped.get("read", 0)
     console.print(
         f"[bold]Recognised[/bold]: {n_agents} agent{'s' if n_agents != 1 else ''}, "
-        f"{n_tools} tool{'s' if n_tools != 1 else ''} "
-        f"[dim]from {mapped.get('read', 0)} Python files[/dim]"
+        f"{n_tools} tool{'s' if n_tools != 1 else ''}"
+        + (f", {n_handoffs} hand-off{'s' if n_handoffs != 1 else ''}" if n_handoffs else "")
+        + f" [dim]from {read} code file{'s' if read != 1 else ''}"
+        + (f" ({', '.join(mapped['frameworks'])})" if mapped.get("frameworks") else "")
+        + "[/dim]"
     )
     unreadable = mapped.get("unreadable") or []
     if unreadable:
         shown = ", ".join(unreadable[:5]) + (" …" if len(unreadable) > 5 else "")
         console.print(
             f"[yellow]Couldn't read {len(unreadable)} file(s)[/yellow] [dim]({shown})[/dim]"
+        )
+    # Nothing here in a language the scan reads: "found nothing" would be a guess.
+    if not read:
+        console.print(
+            f"[yellow]Read no source:[/yellow] init reads {SUPPORTED_LANGUAGES}; "
+            f"[dim]this folder has {mapped.get('skipped_summary') or 'nothing else'}.[/dim]"
         )
     loose = mapped.get("unassigned_tools") or []
     if loose:
@@ -208,15 +221,13 @@ def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
 
 def _print_missing_help(console: Console) -> None:
     """How to add an agent, tool or model that init did not find."""
+    from agentfox.capabilities.onboarding.mapper import RECOGNISED
+
+    found = "".join(f"  • {what}: [cyan]{shapes}[/cyan]\n" for what, shapes in RECOGNISED)
     console.print(
         "\n[bold]Missing something?[/bold] init reads your code; it never runs it. It finds:\n"
-        "  • LangChain / LangGraph: [cyan]@tool[/cyan] functions and "
-        "[cyan]create_agent(model=..., tools=[...])[/cyan]\n"
-        "  • OpenAI Agents SDK: [cyan]@function_tool[/cyan] / [cyan]function_tool(fn)[/cyan] and "
-        "[cyan]Agent(name=..., model=..., tools=[...], handoffs=[...])[/cyan]\n"
-        "  • Plain function calling: [cyan]chat.completions.create(tools=[...])[/cyan] "
-        "with JSON tool schemas\n"
-        "  If an agent or tool isn't listed above: give the agent a [cyan]name=[/cyan], pass the "
+        + found
+        + "  If an agent or tool isn't listed above: give the agent a [cyan]name=[/cyan], pass the "
         "tool in its [cyan]tools=[...][/cyan], set [cyan]model=[/cyan] where it's created, then "
         "run this same command again.\n"
         "  Running it again adds what's new and keeps the guardrails you already have.\n"
